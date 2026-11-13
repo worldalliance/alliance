@@ -37,6 +37,16 @@ export enum KoraReviewStatus {
   OptedOut = "opted_out",
 }
 
+/** A row on the participant's home base: an offered user-batch, or one of their assignments. */
+export enum KoraUserBatchStatus {
+  Ready = "ready",
+  Open = "open",
+  Done = "done",
+  Closed = "closed",
+}
+
+export const KORA_EXAMPLE_PATH = `${KORA_REVIEW_PATH}/example`;
+
 export enum KoraBatchEventKind {
   Upload = "upload",
   Retire = "retire",

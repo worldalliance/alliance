@@ -7,6 +7,7 @@ import { SiteFooter } from "../../../site/Footer";
 import { NAV_HEIGHT } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
+import { KoraHomeBase } from "./KoraHomeBase";
 import { KoraNavbar } from "./KoraNavbar";
 import { KoraSignUpPage } from "./KoraSignUpPage";
 import { KoraViewer, KoraWelcome } from "./KoraWelcome";
@@ -66,12 +67,18 @@ export default function SaferChatbotsForChildren26() {
         className={cn(SITE_COL, "flex-1 pb-16")}
         style={{ paddingTop: `calc(${NAV_HEIGHT}px + 2.5rem)` }}
       >
-        <KoraWelcome
-          viewer={
-            member.isAuthenticated ? KoraViewer.Member : KoraViewer.Participant
-          }
-          status={status}
-        />
+        {status === KoraProjectStatus.Active ? (
+          <KoraHomeBase />
+        ) : (
+          <KoraWelcome
+            viewer={
+              member.isAuthenticated
+                ? KoraViewer.Member
+                : KoraViewer.Participant
+            }
+            status={status}
+          />
+        )}
       </main>
       <SiteFooter collapsible />
     </SiteRoot>

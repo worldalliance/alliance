@@ -5,13 +5,19 @@ import { Play, Shuffle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import { formatKoraDate } from "../lib/koraParticipants";
+import {
+  browserTimeZone,
+  closingInstant,
+  dateInputValue,
+  formatKoraDate,
+} from "../lib/koraParticipants";
 import {
   koraUploadRejection,
   useKoraBatchesAdmin,
   useUploadKoraBatch,
 } from "../lib/useKoraBatchesAdmin";
 import { useKoraBatchActions } from "./KoraBatchActions";
+import { KoraBatchClosesAt } from "./KoraBatchClosesAt";
 import { KoraBatchEvents } from "./KoraBatchEvents";
 
 const CELL = "px-3 py-2 align-top";
@@ -70,6 +76,7 @@ function UploadForm() {
       transcripts,
       transcriptsPerAssignment: Number(form.get("transcriptsPerAssignment")),
       reviewsPerTranscript: Number(form.get("reviewsPerTranscript")),
+      closesAt: closingInstant(String(form.get("closesAt"))),
     });
   };
 
@@ -109,6 +116,23 @@ function UploadForm() {
             required
             className={FIELD}
           />
+        </label>
+        <label>
+          Closes on
+          <input
+            name="closesAt"
+            type="date"
+            min={dateInputValue(new Date())}
+            required
+            aria-describedby="kora-closes-at-note"
+            className={FIELD}
+          />
+          <span
+            id="kora-closes-at-note"
+            className="mt-1 block text-xs text-zinc-500"
+          >
+            At 23:59 your time ({browserTimeZone()})
+          </span>
         </label>
       </div>
       <Button
@@ -171,6 +195,7 @@ function BatchTable({ batches }: { batches: KoraBatchDto[] }) {
             <th className={CELL}>Transcripts</th>
             <th className={CELL}>Per assignment</th>
             <th className={CELL}>Reviews each</th>
+            <th className={CELL}>Closes on</th>
             <th className={CELL}>Status</th>
             <th className={CELL}>
               <span className="sr-only">Preview</span>
@@ -187,6 +212,9 @@ function BatchTable({ batches }: { batches: KoraBatchDto[] }) {
               <td className={CELL}>{batch.transcriptCount}</td>
               <td className={CELL}>{batch.transcriptsPerAssignment}</td>
               <td className={CELL}>{batch.reviewsPerTranscript}</td>
+              <td className={CELL}>
+                <KoraBatchClosesAt batch={batch} />
+              </td>
               <td className={CELL}>
                 {batch.retiredAt
                   ? `Retired ${formatKoraDate(batch.retiredAt)}`

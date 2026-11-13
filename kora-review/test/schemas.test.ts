@@ -4,6 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
 import sampleTranscript from "../samples/transcript.json";
 import samplePairs from "../samples/transcripts.json";
+import { EXAMPLE_PAIR as examplePair } from "../src/example-pair.js";
 import {
   exportSchema,
   SCHEMA_VERSION,
@@ -35,6 +36,9 @@ describe("schemas", () => {
       v.transcript(sampleTranscript),
       JSON.stringify(v.transcript.errors),
     ).toBe(true);
+    expect(v.transcript(examplePair), JSON.stringify(v.transcript.errors)).toBe(
+      true,
+    );
     for (const t of samplePairs)
       expect(v.transcript(t), JSON.stringify(v.transcript.errors)).toBe(true);
   });

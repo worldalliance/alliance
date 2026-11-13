@@ -48,6 +48,13 @@ export class KoraAssignment {
   @Column({ type: "timestamptz" })
   lastActivityAt: Date;
 
+  /**
+   * The earliest closesAt of its transcripts' batches, null when none has one.
+   * After it the assignment can't be continued and its unreviewed transcripts are released.
+   */
+  @Column({ type: "timestamptz", nullable: true })
+  closesAt: Date | null;
+
   @Column({ type: "timestamptz", nullable: true })
   completedAt: Date | null;
 

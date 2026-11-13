@@ -1,4 +1,4 @@
-import { KORA_REVIEW_PATH, KoraProjectStatus } from "@alliance/common/kora";
+import { KoraProjectStatus } from "@alliance/common/kora";
 import { cn } from "@alliance/shared/styles/util";
 import { Check, X } from "lucide-react";
 import {
@@ -8,7 +8,6 @@ import {
   useState,
   type TransitionEvent,
 } from "react";
-import { Link } from "react-router";
 import { DisplayHeading, SiteSubtitle, SubtitleSize } from "../../../site/ui";
 import { CLOSED_HEADING } from "./copy";
 import { KoraClosedNotice } from "./KoraClosedNotice";
@@ -270,6 +269,7 @@ function RemindMeToggle({ viewer }: { viewer: KoraViewer }) {
   );
 }
 
+/** The Pending and Closed pages; Active shows the home base instead. */
 export function KoraWelcome({
   viewer,
   status,
@@ -306,24 +306,12 @@ export function KoraWelcome({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
-          {status === KoraProjectStatus.Active ? (
-            <div className="flex w-fit max-w-xs shrink-0 flex-col gap-4 bg-yellow-200 px-6 py-8 text-zinc-900 shadow-md">
-              <p className="text-lg font-medium">Reviews are open.</p>
-              <Link
-                to={KORA_REVIEW_PATH}
-                className="site-sans inline-flex min-h-11 items-center self-start rounded-lg bg-black px-5 font-medium text-white"
-              >
-                Start reviewing
-              </Link>
-            </div>
-          ) : (
-            <p
-              role="note"
-              className="w-fit max-w-xs shrink-0 -rotate-2 bg-yellow-200 px-6 py-12 text-lg font-medium text-zinc-900 shadow-md"
-            >
-              Reviews start on November 17th.
-            </p>
-          )}
+          <p
+            role="note"
+            className="w-fit max-w-xs shrink-0 -rotate-2 bg-yellow-200 px-6 py-12 text-lg font-medium text-zinc-900 shadow-md"
+          >
+            Reviews start on November 17th.
+          </p>
           <div className="flex flex-col gap-6">
             <RemindMeToggle viewer={viewer} />
           </div>

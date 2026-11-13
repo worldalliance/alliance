@@ -22,6 +22,7 @@ import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import {
   KoraExportSavedDto,
+  KoraHomeDto,
   KoraReviewStateDto,
   SaveKoraExportDto,
 } from "./dto/kora-review.dto";
@@ -61,6 +62,18 @@ export class KoraReviewController {
   ): Promise<KoraReviewStateDto> {
     return new KoraReviewStateDto(
       await this.reviewService.state(await this.identity(req, res)),
+    );
+  }
+
+  /** The participant's user-batches and any offer, without starting one. */
+  @Get("home")
+  @ApiOkResponse({ type: KoraHomeDto })
+  async home(
+    @Req() req: JwtRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<KoraHomeDto> {
+    return new KoraHomeDto(
+      await this.reviewService.home(await this.identity(req, res)),
     );
   }
 

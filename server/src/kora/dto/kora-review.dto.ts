@@ -1,7 +1,8 @@
-import { KoraReviewPhase } from "@alliance/common/kora";
+import { KoraReviewPhase, KoraUserBatchStatus } from "@alliance/common/kora";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsObject } from "class-validator";
 import type { KoraTranscript } from "../entities/kora-transcript.entity";
+import type { KoraHome, KoraUserBatch } from "../kora-home";
 import { KoraTranscriptPreviewDto } from "./kora-batch.dto";
 
 export type KoraLoadedAssignment = {
@@ -86,5 +87,51 @@ export class KoraExportSavedDto {
 
   constructor(input: { completed: boolean }) {
     this.completed = input.completed;
+  }
+}
+
+export class KoraUserBatchDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Null for an offer not yet started",
+  })
+  id: string | null;
+
+  @ApiProperty({ enum: KoraUserBatchStatus, enumName: "KoraUserBatchStatus" })
+  status: KoraUserBatchStatus;
+
+  @ApiProperty({ type: Date })
+  releasedAt: Date;
+
+  @ApiProperty({ type: Date, nullable: true })
+  closesAt: Date | null;
+
+  @ApiProperty({ description: "Pairs ranked or skipped" })
+  progress: number;
+
+  @ApiProperty()
+  total: number;
+
+  constructor(input: KoraUserBatch) {
+    this.id = input.id;
+    this.status = input.status;
+    this.releasedAt = input.releasedAt;
+    this.closesAt = input.closesAt;
+    this.progress = input.progress;
+    this.total = input.total;
+  }
+}
+
+export class KoraHomeDto {
+  @ApiProperty({ description: "Pairs ranked, not counting skipped ones" })
+  totalRanked: number;
+
+  @ApiProperty({ type: () => KoraUserBatchDto, isArray: true })
+  userBatches: KoraUserBatchDto[];
+
+  constructor(input: KoraHome) {
+    this.totalRanked = input.totalRanked;
+    this.userBatches = input.userBatches.map((b) => new KoraUserBatchDto(b));
   }
 }

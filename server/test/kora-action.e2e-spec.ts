@@ -19,7 +19,12 @@ import {
   createTestApp,
   type TestContext,
 } from "./e2e-test-utils";
-import { koraAdminActor, ORIGIN, setKoraProjectStatus } from "./kora-fixtures";
+import {
+  koraAdminActor,
+  koraClosesAt,
+  ORIGIN,
+  setKoraProjectStatus,
+} from "./kora-fixtures";
 import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora review actions (e2e)", () => {
@@ -70,6 +75,7 @@ describe("Kora review actions (e2e)", () => {
       transcriptsText: koraPairsFile(koraPair("A1"), koraPair("A2")),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
+      closesAt: koraClosesAt(),
       actor: koraAdminActor(ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));

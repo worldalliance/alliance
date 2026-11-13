@@ -9,6 +9,7 @@ import { KoraBatches } from "./KoraBatches";
 let batches: KoraBatchDto[];
 let uploadResponse: () => Response;
 let uploads: FormData[];
+let closings: { id: string; body: unknown }[];
 
 const batch = (id: string, transcriptCount: number): KoraBatchDto => ({
   id,
@@ -16,6 +17,7 @@ const batch = (id: string, transcriptCount: number): KoraBatchDto => ({
   transcriptsPerAssignment: 10,
   reviewsPerTranscript: 3,
   retiredAt: null,
+  closesAt: null,
   createdAt: "2026-11-10T10:00:00.000Z",
 });
 
@@ -30,6 +32,10 @@ serveApi(
         toNotify: 0,
         moreToNotify: 0,
       }),
+    "PUT /kora/admin/batches/:id/closes-at": async ({ request, params }) => {
+      closings.push({ id: params.id, body: await request.json() });
+      return Response.json(batches[0]);
+    },
     "POST /kora/admin/batches": async ({ request }) => {
       uploads.push(await request.formData());
       return uploadResponse();
@@ -40,6 +46,7 @@ serveApi(
 beforeEach(() => {
   batches = [];
   uploads = [];
+  closings = [];
   uploadResponse = () => {
     batches = [batch("b-new", 12)];
     return Response.json(batches[0], { status: 201 });
@@ -68,6 +75,9 @@ const fillAndUpload = () => {
   fireEvent.change(screen.getByLabelText("Transcripts per assignment"), {
     target: { value: "8" },
   });
+  fireEvent.change(screen.getByLabelText(/^Closes on/), {
+    target: { value: "2099-11-30" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 };
 
@@ -89,6 +99,9 @@ test("uploads the transcripts file with the settings, then offers a preview", as
   expect(sent.get("reviewsPerTranscript")).toBe("3");
   expect(sent.get("transcripts")).toBeInstanceOf(File);
   expect(sent.has("exportSchema")).toBe(false);
+  expect(sent.get("closesAt")).toBe(
+    new Date(2099, 10, 30, 23, 59, 59, 999).toISOString(),
+  );
   const links = await screen.findAllByRole("link", {
     name: "Preview a random transcript",
   });
@@ -103,6 +116,9 @@ test("uploads the transcripts file with the settings, then offers a preview", as
 test("asks for the transcripts file before uploading", async () => {
   renderBatches();
   await screen.findByText(/No transcripts yet/);
+  fireEvent.change(screen.getByLabelText(/^Closes on/), {
+    target: { value: "2099-11-30" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
   const missing = await screen.findByText("Choose the transcripts file.");
   expect(missing.getAttribute("role")).toBe("alert");
@@ -136,4 +152,25 @@ test("lists every rejected line by number", async () => {
     "Line 2: /category must be equal to one of the allowed values",
   );
   expect(alert.textContent).toContain("Line 5: couldn't be read");
+});
+
+test("saves a batch's closing date in place, as the end of that day", async () => {
+  batches = [batch("b-old", 4)];
+  renderBatches();
+  const input = await screen.findByLabelText(/^Closing date of the batch/);
+  expect(screen.getByText("Not set")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+
+  fireEvent.change(input, { target: { value: "2099-12-01" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(closings).toEqual([
+      {
+        id: "b-old",
+        body: {
+          closesAt: new Date(2099, 11, 1, 23, 59, 59, 999).toISOString(),
+        },
+      },
+    ]),
+  );
 });

@@ -1,4 +1,5 @@
 import {
+  koraReviewHome,
   koraReviewMore,
   koraReviewSave,
   koraReviewState,
@@ -37,3 +38,12 @@ export const saveKoraExport = (
     body: { export: exported },
     throwOnError: true,
   }).then(() => undefined);
+
+export function useKoraHome() {
+  return useQuery({
+    queryKey: queryKeys.koraHome(),
+    queryFn: () =>
+      koraReviewHome({ throwOnError: true }).then((res) => res.data),
+    retry: retryUnlessRefused(1),
+  });
+}

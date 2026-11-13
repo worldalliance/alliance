@@ -6,6 +6,7 @@ import {
   koraBatchesRandomTranscript,
   koraBatchesReactivate,
   koraBatchesRetire,
+  koraBatchesSetClosesAt,
   koraBatchesUpload,
   koraResultsAssignment,
   type KoraBatchDto,
@@ -46,6 +47,26 @@ export function useUploadKoraBatch(params: {
       params.onSuccess(batch);
       await refresh();
     },
+  });
+}
+
+export function useSetKoraBatchClosesAt(params: {
+  onSuccess: () => void;
+  onError: (error: Error) => void;
+}) {
+  const refresh = useRefreshBatches();
+  return useMutation({
+    mutationFn: (input: { batchId: string; closesAt: string }) =>
+      koraBatchesSetClosesAt({
+        path: { id: input.batchId },
+        body: { closesAt: input.closesAt },
+        throwOnError: true,
+      }),
+    onSuccess: async () => {
+      params.onSuccess();
+      await refresh();
+    },
+    onError: params.onError,
   });
 }
 

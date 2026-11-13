@@ -16,16 +16,16 @@ function shuffle<T>(items: T[], random: () => number): T[] {
  * first, at most MAX_PER_CATEGORY per category unless that leaves the
  * assignment short. Returns them grouped by category, groups in random order.
  */
-export function pickAssignment(params: {
-  candidates: Candidate[];
+export function pickAssignment<C extends Candidate>(params: {
+  candidates: C[];
   size: number;
   random: () => number;
-}): Candidate[] {
+}): C[] {
   const { size, random } = params;
   const ranked = shuffle(params.candidates, random).sort(
     (a, b) => b.deficit - a.deficit,
   );
-  const picked: Candidate[] = [];
+  const picked: C[] = [];
   const perCategory = new Map<string, number>();
   for (const c of ranked) {
     if (picked.length === size) break;
@@ -39,7 +39,7 @@ export function pickAssignment(params: {
     if (picked.length === size) break;
     if (!picked.includes(c)) picked.push(c);
   }
-  const groups = new Map<string, Candidate[]>();
+  const groups = new Map<string, C[]>();
   for (const c of picked) {
     groups.set(c.category, [...(groups.get(c.category) ?? []), c]);
   }

@@ -1,7 +1,12 @@
 import type { KoraReviewPhase } from "@alliance/common/kora";
 import { KoraBatchService } from "src/kora/kora-batch.service";
 import type TestAgent from "supertest/lib/agent";
-import { koraAdminActor, ORIGIN, type KoraHarness } from "./kora-fixtures";
+import {
+  koraAdminActor,
+  koraClosesAt,
+  ORIGIN,
+  type KoraHarness,
+} from "./kora-fixtures";
 import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 import { uniqueEmail } from "./otp-fixtures";
 
@@ -61,7 +66,12 @@ export function koraReviewClient(harness: () => KoraHarness) {
   };
   const upload = async (
     count: number,
-    options: { perAssignment?: number; reviews?: number; prefix?: string } = {},
+    options: {
+      perAssignment?: number;
+      reviews?: number;
+      prefix?: string;
+      closesAt?: Date;
+    } = {},
   ): Promise<string> => {
     const { ctx } = harness();
     const uploaded = await ctx.app.get(KoraBatchService).upload({
@@ -77,6 +87,7 @@ export function koraReviewClient(harness: () => KoraHarness) {
       ),
       transcriptsPerAssignment: options.perAssignment ?? 3,
       reviewsPerTranscript: options.reviews ?? 2,
+      closesAt: options.closesAt ?? koraClosesAt(),
       actor: koraAdminActor(ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));

@@ -5373,6 +5373,7 @@ export type KoraBatchDto = {
     transcriptsPerAssignment: number;
     reviewsPerTranscript: number;
     retiredAt: string | null;
+    closesAt: string | null;
     createdAt: string;
     transcriptCount: number;
 };
@@ -5414,6 +5415,13 @@ export type KoraBatchEventDto = {
     assignmentDeleted: boolean;
 };
 
+export type SetKoraBatchClosesAtDto = {
+    /**
+     * Must be in the future
+     */
+    closesAt: string;
+};
+
 export type KoraDeletionImpactDto = {
     transcriptCount: number;
     ratingCount: number;
@@ -5453,6 +5461,31 @@ export type KoraReviewStateDto = {
      */
     extraReviews: number;
     assignment?: KoraReviewAssignmentDto;
+};
+
+export type KoraUserBatchStatus = 'ready' | 'open' | 'done' | 'closed';
+
+export type KoraUserBatchDto = {
+    /**
+     * Null for an offer not yet started
+     */
+    id: string | null;
+    status: KoraUserBatchStatus;
+    releasedAt: string;
+    closesAt: string | null;
+    /**
+     * Pairs ranked or skipped
+     */
+    progress: number;
+    total: number;
+};
+
+export type KoraHomeDto = {
+    /**
+     * Pairs ranked, not counting skipped ones
+     */
+    totalRanked: number;
+    userBatches: Array<KoraUserBatchDto>;
 };
 
 export type SaveKoraExportDto = {
@@ -16648,6 +16681,7 @@ export type KoraBatchesUploadData = {
         transcripts: Blob | File;
         transcriptsPerAssignment: number;
         reviewsPerTranscript: number;
+        closesAt: string;
     };
     path?: never;
     query?: never;
@@ -16760,6 +16794,30 @@ export type KoraBatchesReactivateResponses = {
 
 export type KoraBatchesReactivateResponse = KoraBatchesReactivateResponses[keyof KoraBatchesReactivateResponses];
 
+export type KoraBatchesSetClosesAtData = {
+    body: SetKoraBatchClosesAtDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/closes-at';
+};
+
+export type KoraBatchesSetClosesAtErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesSetClosesAtError = KoraBatchesSetClosesAtErrors[keyof KoraBatchesSetClosesAtErrors];
+
+export type KoraBatchesSetClosesAtResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesSetClosesAtResponse = KoraBatchesSetClosesAtResponses[keyof KoraBatchesSetClosesAtResponses];
+
 export type KoraBatchesDeletionImpactData = {
     body?: never;
     path: {
@@ -16831,6 +16889,28 @@ export type KoraReviewStateResponses = {
 };
 
 export type KoraReviewStateResponse = KoraReviewStateResponses[keyof KoraReviewStateResponses];
+
+export type KoraReviewHomeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review/home';
+};
+
+export type KoraReviewHomeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewHomeError = KoraReviewHomeErrors[keyof KoraReviewHomeErrors];
+
+export type KoraReviewHomeResponses = {
+    200: KoraHomeDto;
+};
+
+export type KoraReviewHomeResponse = KoraReviewHomeResponses[keyof KoraReviewHomeResponses];
 
 export type KoraReviewMoreData = {
     body?: never;

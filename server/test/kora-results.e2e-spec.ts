@@ -11,6 +11,7 @@ import type TestAgent from "supertest/lib/agent";
 import { closeTestApp } from "./e2e-test-utils";
 import {
   koraAdminActor,
+  koraClosesAt,
   koraHarness,
   ORIGIN,
   setKoraProjectStatus,
@@ -50,6 +51,7 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
       ),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 3,
+      closesAt: koraClosesAt(),
       actor: koraAdminActor(h.ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));

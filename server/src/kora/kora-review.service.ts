@@ -7,7 +7,14 @@ import { R, type Result } from "@alliance/common/result";
 import { exportSchema } from "@alliance/kora-review/schemas";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { DataSource, type EntityManager, In, IsNull, Not } from "typeorm";
+import {
+  DataSource,
+  type EntityManager,
+  In,
+  IsNull,
+  MoreThan,
+  Not,
+} from "typeorm";
 import type {
   KoraLoadedAssignment,
   KoraReviewState,
@@ -28,6 +35,12 @@ import {
   resultTranscriptIds,
   withoutResultsFor,
 } from "./kora-export-check";
+import {
+  type KoraAssignmentProgress,
+  type KoraHome,
+  koraHome,
+  type KoraOffer,
+} from "./kora-home";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
 import { koraAjv } from "./kora-upload";
@@ -46,6 +59,10 @@ export type KoraSaveRefusal =
 export const KORA_RELEASE_AFTER_DAYS = 7;
 
 const validExport = koraAjv().compile(exportSchema);
+
+type BatchCandidate = Candidate & { closesAt: Date | null };
+
+const OPEN_BATCH = `b."retiredAt" IS NULL AND (b."closesAt" IS NULL OR b."closesAt" > now())`;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -69,20 +86,17 @@ export class KoraReviewService {
       await lockReviewer(manager, reviewer.id);
       const unfinished = await this.unfinished(manager, reviewer.id);
       if (unfinished) return this.reviewing(manager, reviewer, unfinished);
-      const anyAssignment = await manager.existsBy(KoraAssignment, {
-        reviewerId: reviewer.id,
-      });
-      if (anyAssignment) {
+      if (await this.hasCompleted(manager, reviewer.id)) {
         return this.summary(manager, reviewer, KoraReviewPhase.Finished);
       }
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NotActive);
       }
-      return this.assign(manager, reviewer, false);
+      return this.assign(manager, reviewer);
     });
   }
 
-  /** Starts an extra assignment once the last one is finished. */
+  /** Starts another assignment once none is open. */
   async more(identity: KoraIdentity): Promise<KoraReviewState> {
     const reviewer = await this.reviewerFor(identity);
     const status = (await this.projectService.project()).status;
@@ -93,8 +107,21 @@ export class KoraReviewService {
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
       }
-      return this.assign(manager, reviewer, true);
+      return this.assign(manager, reviewer);
     });
+  }
+
+  /** Reads only: an offer reserves nothing until `more` starts it. */
+  async home(identity: KoraIdentity): Promise<KoraHome> {
+    const reviewer = await this.reviewerFor(identity);
+    const manager = this.dataSource.manager;
+    const status = (await this.projectService.project()).status;
+    const assignments = await this.progress(manager, reviewer.id);
+    const offer =
+      status === KoraProjectStatus.Active
+        ? await this.offer(manager, reviewer.id)
+        : null;
+    return koraHome({ now: new Date(), assignments, offer });
   }
 
   async save(params: {
@@ -214,9 +241,20 @@ export class KoraReviewService {
   }
 
   private unfinished(manager: EntityManager, reviewerId: string) {
+    const open = { reviewerId, completedAt: IsNull() };
     return manager.findOne(KoraAssignment, {
-      where: { reviewerId, completedAt: IsNull() },
+      where: [
+        { ...open, closesAt: IsNull() },
+        { ...open, closesAt: MoreThan(new Date()) },
+      ],
       order: { createdAt: "DESC" },
+    });
+  }
+
+  private hasCompleted(manager: EntityManager, reviewerId: string) {
+    return manager.existsBy(KoraAssignment, {
+      reviewerId,
+      completedAt: Not(IsNull()),
     });
   }
 
@@ -225,10 +263,7 @@ export class KoraReviewService {
     reviewer: KoraReviewer,
     phase: KoraReviewPhase,
   ): Promise<KoraReviewState> {
-    const reviewed = await manager.existsBy(KoraAssignment, {
-      reviewerId: reviewer.id,
-      completedAt: Not(IsNull()),
-    });
+    const reviewed = await this.hasCompleted(manager, reviewer.id);
     const extraReviews = await manager
       .createQueryBuilder(KoraAssignmentTranscript, "at")
       .innerJoin(KoraAssignment, "a", `a.id = at."assignmentId"`)
@@ -275,12 +310,8 @@ export class KoraReviewService {
   private async assign(
     manager: EntityManager,
     reviewer: KoraReviewer,
-    extra: boolean,
   ): Promise<KoraReviewState> {
-    const newest = await manager.findOne(KoraBatch, {
-      where: { retiredAt: IsNull() },
-      order: { createdAt: "DESC" },
-    });
+    const newest = await this.newestOpenBatch(manager);
     const candidates = newest
       ? await this.candidates(manager, reviewer.id)
       : [];
@@ -296,10 +327,11 @@ export class KoraReviewService {
     }
     const assignment = await manager.save(KoraAssignment, {
       reviewerId: reviewer.id,
-      extra,
+      extra: await this.hasCompleted(manager, reviewer.id),
       schemaBatchId: newest.id,
       export: null,
       lastActivityAt: new Date(),
+      closesAt: earliestClose(picked),
       completedAt: null,
     });
     await manager.insert(
@@ -314,43 +346,96 @@ export class KoraReviewService {
     return this.reviewing(manager, reviewer, assignment);
   }
 
+  private newestOpenBatch(manager: EntityManager): Promise<KoraBatch | null> {
+    return manager
+      .createQueryBuilder(KoraBatch, "b")
+      .where(OPEN_BATCH)
+      .orderBy(`b."createdAt"`, "DESC")
+      .getOne();
+  }
+
+  private async offer(
+    manager: EntityManager,
+    reviewerId: string,
+  ): Promise<KoraOffer | null> {
+    const newest = await this.newestOpenBatch(manager);
+    if (!newest) return null;
+    const candidates = await this.candidates(manager, reviewerId);
+    if (candidates.length === 0) return null;
+    return {
+      releasedAt: newest.createdAt,
+      closesAt: earliestClose(candidates),
+      size: Math.min(newest.transcriptsPerAssignment, candidates.length),
+    };
+  }
+
+  private async progress(
+    manager: EntityManager,
+    reviewerId: string,
+  ): Promise<KoraAssignmentProgress[]> {
+    return manager.query(
+      `SELECT a."id", a."createdAt", a."closesAt", a."completedAt",
+         MAX(b."createdAt") AS "releasedAt",
+         COUNT(at."transcriptId")::int AS "total",
+         COUNT(at."transcriptId") FILTER (WHERE at."status" <> $2)::int AS "progress",
+         COUNT(at."transcriptId") FILTER (WHERE at."status" = $3)::int AS "ranked"
+       FROM "kora_assignment" a
+       LEFT JOIN "kora_assignment_transcript" at ON at."assignmentId" = a."id"
+       LEFT JOIN "kora_transcript" t ON t."id" = at."transcriptId"
+       LEFT JOIN "kora_batch" b ON b."id" = t."batchId"
+       WHERE a."reviewerId" = $1 AND a."deletedAt" IS NULL
+       GROUP BY a."id"`,
+      [reviewerId, KoraReviewStatus.Pending, KoraReviewStatus.Done],
+    );
+  }
+
   /**
-   * Transcripts this reviewer hasn't had, with how many reviews each still
-   * needs: its target, less finished reviews, less pending ones in assignments
-   * saved within the release window.
+   * Transcripts in open batches this reviewer hasn't had, with how many
+   * reviews each still needs: its target, less finished reviews, less pending
+   * ones in assignments saved within the release window and not yet closed.
    */
   private async candidates(
     manager: EntityManager,
     reviewerId: string,
-  ): Promise<Candidate[]> {
-    const rows: { id: string; category: string; deficit: number }[] =
-      await manager.query(
-        `SELECT t."id", t."category",
+  ): Promise<BatchCandidate[]> {
+    const rows: BatchCandidate[] = await manager.query(
+      `SELECT t."id", t."category", b."closesAt",
            b."reviewsPerTranscript" - (
              SELECT COUNT(*)::int FROM "kora_assignment_transcript" at
              JOIN "kora_assignment" a ON a."id" = at."assignmentId"
              WHERE at."transcriptId" = t."id" AND a."deletedAt" IS NULL
                AND (at."status" = $2 OR (at."status" = $3
                  AND a."completedAt" IS NULL
-                 AND a."lastActivityAt" > now() - make_interval(days => $4)))
+                 AND a."lastActivityAt" > now() - make_interval(days => $4)
+                 AND (a."closesAt" IS NULL OR a."closesAt" > now())))
            ) AS "deficit"
          FROM "kora_transcript" t
          JOIN "kora_batch" b ON b."id" = t."batchId"
-         WHERE b."retiredAt" IS NULL AND NOT EXISTS (
+         WHERE ${OPEN_BATCH} AND NOT EXISTS (
            SELECT 1 FROM "kora_assignment_transcript" mine
            JOIN "kora_assignment" a ON a."id" = mine."assignmentId"
            WHERE mine."transcriptId" = t."id" AND a."reviewerId" = $1
              AND a."deletedAt" IS NULL
          )`,
-        [
-          reviewerId,
-          KoraReviewStatus.Done,
-          KoraReviewStatus.Pending,
-          KORA_RELEASE_AFTER_DAYS,
-        ],
-      );
+      [
+        reviewerId,
+        KoraReviewStatus.Done,
+        KoraReviewStatus.Pending,
+        KORA_RELEASE_AFTER_DAYS,
+      ],
+    );
     return rows.filter((r) => r.deficit > 0);
   }
+}
+
+function earliestClose(candidates: BatchCandidate[]): Date | null {
+  return candidates.reduce<Date | null>(
+    (earliest, c) =>
+      c.closesAt && (!earliest || c.closesAt < earliest)
+        ? c.closesAt
+        : earliest,
+    null,
+  );
 }
 
 function loadedTranscript(row: KoraAssignmentTranscript): KoraTranscript {

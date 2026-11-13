@@ -1,6 +1,6 @@
 import { ApiProperty, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsInt, Max, Min } from "class-validator";
+import { IsDate, IsInt, Max, Min, MinDate } from "class-validator";
 import { KoraBatchEvent } from "../entities/kora-batch-event.entity";
 import { KoraBatch } from "../entities/kora-batch.entity";
 import type { KoraTranscript } from "../entities/kora-transcript.entity";
@@ -15,6 +15,7 @@ export class KoraBatchDto extends PickType(KoraBatch, [
   "transcriptsPerAssignment",
   "reviewsPerTranscript",
   "retiredAt",
+  "closesAt",
   "createdAt",
 ]) {
   @ApiProperty()
@@ -26,6 +27,7 @@ export class KoraBatchDto extends PickType(KoraBatch, [
     this.transcriptsPerAssignment = input.batch.transcriptsPerAssignment;
     this.reviewsPerTranscript = input.batch.reviewsPerTranscript;
     this.retiredAt = input.batch.retiredAt;
+    this.closesAt = input.batch.closesAt;
     this.createdAt = input.batch.createdAt;
     this.transcriptCount = input.transcriptCount;
   }
@@ -45,7 +47,17 @@ export class UploadKoraBatchDto {
   @Min(1)
   @Max(50)
   reviewsPerTranscript: number;
+
+  @ApiProperty({ type: Date, description: "Must be in the future" })
+  @Type(() => Date)
+  @IsDate()
+  @MinDate(() => new Date())
+  closesAt: Date;
 }
+
+export class SetKoraBatchClosesAtDto extends PickType(UploadKoraBatchDto, [
+  "closesAt",
+]) {}
 
 export class KoraRejectedLineDto {
   @ApiProperty()

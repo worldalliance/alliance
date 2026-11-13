@@ -11,7 +11,7 @@ import {
   createTestApp,
   type TestContext,
 } from "./e2e-test-utils";
-import { setKoraProjectStatus } from "./kora-fixtures";
+import { koraClosesAt, setKoraProjectStatus } from "./kora-fixtures";
 import { koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora transcript batches (e2e)", () => {
@@ -19,12 +19,21 @@ describe("Kora transcript batches (e2e)", () => {
   let prefix: string;
 
   const server = () => request(ctx.app.getHttpServer());
-  const upload = (params: { transcripts?: string; token?: string }) => {
+  const upload = (params: {
+    transcripts?: string;
+    token?: string;
+    closesAt?: string | null;
+  }) => {
     let req = server()
       .post("/kora/admin/batches")
       .set("Authorization", `Bearer ${params.token ?? ctx.adminAccessToken}`)
       .field("transcriptsPerAssignment", "10")
       .field("reviewsPerTranscript", "3");
+    const closesAt =
+      params.closesAt === undefined
+        ? koraClosesAt().toISOString()
+        : params.closesAt;
+    if (closesAt !== null) req = req.field("closesAt", closesAt);
     if (params.transcripts !== undefined) {
       req = req.attach(
         "transcripts",
@@ -120,6 +129,31 @@ describe("Kora transcript batches (e2e)", () => {
     expect(res.body.rejected[0].problems).toEqual([
       `transcript ${prefix}-once was already uploaded in an earlier batch`,
     ]);
+  });
+
+  it("requires a closing date in the future, and lets an admin move it", async () => {
+    const transcripts = koraPairsFile(koraPair(`${prefix}-1`));
+    await upload({ transcripts, closesAt: null }).expect(400);
+    await upload({
+      transcripts,
+      closesAt: new Date(Date.now() - 60_000).toISOString(),
+    }).expect(400);
+
+    const closesAt = koraClosesAt().toISOString();
+    const res = await upload({ transcripts, closesAt }).expect(201);
+    expect(res.body.closesAt).toBe(closesAt);
+
+    const later = new Date(Date.now() + 60 * 86_400_000).toISOString();
+    const moved = await asAdmin(
+      "put",
+      `/kora/admin/batches/${res.body.id}/closes-at`,
+    )
+      .send({ closesAt: later })
+      .expect(200);
+    expect(moved.body).toMatchObject({ closesAt: later, transcriptCount: 1 });
+    await asAdmin("put", `/kora/admin/batches/${randomUUID()}/closes-at`)
+      .send({ closesAt: later })
+      .expect(404);
   });
 
   it("asks for the transcripts file", async () => {

@@ -118,7 +118,7 @@ const validateExport = ajv.compile(exportSchema);
 
 The TypeScript types are generated from the schemas (`bun run gen:types`), and a test fails if they drift. `SCHEMA_VERSION` is bumped whenever either schema changes shape.
 
-Synthetic samples are in `samples/`: [`samples/transcript.json`](samples/transcript.json), [`src/sample-export.ts`](src/sample-export.ts) (with a partly answered pending result, in `src` so the server can import it) and [`samples/transcripts.json`](samples/transcripts.json) (five pairs). None of them is real reviewer data or a real child's conversation.
+Synthetic samples are in `samples/`: [`samples/transcript.json`](samples/transcript.json), [`src/sample-export.ts`](src/sample-export.ts) (with a partly answered pending result, in `src` so the server can import it), [`src/example-pair.ts`](src/example-pair.ts) (the practice pair the site shows before real ones, in a category with no content warning) and [`samples/transcripts.json`](samples/transcripts.json) (five pairs). None of them is real reviewer data or a real child's conversation.
 
 ### Converting KORA's pair files
 

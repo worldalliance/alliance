@@ -6,8 +6,18 @@ import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
-import { type KoraActor, logBatchEvent } from "./kora-batch-actions.service";
+import {
+  type KoraActor,
+  KoraBatchActionError,
+  logBatchEvent,
+} from "./kora-batch-actions.service";
 import { checkTranscripts, type RejectedLine } from "./kora-upload";
+
+/** SQL for assignment `a`'s closesAt: the earliest of its transcripts' batches. */
+const ASSIGNMENT_CLOSES_AT = `SELECT MIN(b."closesAt") FROM "kora_assignment_transcript" at
+  JOIN "kora_transcript" t ON t."id" = at."transcriptId"
+  JOIN "kora_batch" b ON b."id" = t."batchId"
+  WHERE at."assignmentId" = a."id"`;
 
 export type KoraBatchSummary = { batch: KoraBatch; transcriptCount: number };
 
@@ -42,6 +52,7 @@ export class KoraBatchService {
     transcriptsText: string;
     transcriptsPerAssignment: number;
     reviewsPerTranscript: number;
+    closesAt: Date;
     actor: KoraActor;
   }): Promise<Result<KoraBatchSummary, RejectedLine[]>> {
     const existing = await this.transcripts.find({
@@ -62,6 +73,7 @@ export class KoraBatchService {
       const saved = await manager.save(KoraBatch, {
         transcriptsPerAssignment: params.transcriptsPerAssignment,
         reviewsPerTranscript: params.reviewsPerTranscript,
+        closesAt: params.closesAt,
       });
       await manager.insert(
         KoraTranscript,
@@ -80,6 +92,37 @@ export class KoraBatchService {
       return saved;
     });
     return R.success({ batch, transcriptCount: checked.value.length });
+  }
+
+  setClosesAt(params: {
+    batchId: string;
+    closesAt: Date;
+  }): Promise<Result<KoraBatchSummary, KoraBatchActionError>> {
+    return this.dataSource.transaction(async (manager) => {
+      const batch = await manager.findOneBy(KoraBatch, { id: params.batchId });
+      if (!batch) return R.failure(KoraBatchActionError.NotFound);
+      batch.closesAt = params.closesAt;
+      await manager.update(
+        KoraBatch,
+        { id: batch.id },
+        { closesAt: batch.closesAt },
+      );
+      await manager.query(
+        `UPDATE "kora_assignment" a SET "closesAt" = (${ASSIGNMENT_CLOSES_AT})
+         WHERE a."completedAt" IS NULL AND a."deletedAt" IS NULL AND EXISTS (
+           SELECT 1 FROM "kora_assignment_transcript" at
+           JOIN "kora_transcript" t ON t."id" = at."transcriptId"
+           WHERE at."assignmentId" = a."id" AND t."batchId" = $1
+         )`,
+        [batch.id],
+      );
+      return R.success({
+        batch,
+        transcriptCount: await manager.countBy(KoraTranscript, {
+          batchId: batch.id,
+        }),
+      });
+    });
   }
 
   hasTranscripts(): Promise<boolean> {

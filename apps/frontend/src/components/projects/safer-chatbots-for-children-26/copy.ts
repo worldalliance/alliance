@@ -197,3 +197,46 @@ export const REVIEW_COPY = {
   retrySave: "Try again",
   loadFailed: "We couldn’t load your reviews. Reload to try again.",
 };
+
+const pairs = (n: number) => `${n} ${n === 1 ? "pair" : "pairs"}`;
+
+// Placeholder copy for the Active home base; the project lead will supply the final wording.
+export const HOME_COPY = {
+  rank: (n: number) => `Rank ${pairs(n)}`,
+  rankMore: (n: number) => `Rank ${n} more ${n === 1 ? "pair" : "pairs"}`,
+  by: (date: string) => ` by ${date}`,
+  closesSoon: (relative: string) => ` · closes ${relative}`,
+  rankedAll: (n: number) => `You ranked all ${n}. Thank you`,
+  caughtUp: "You’re all caught up",
+  caughtUpNote: "We’ll let you know when more pairs are ready.",
+  rankedSoFar: (n: number) => `${pairs(n)} ranked so far`,
+  startRanking: "Start ranking",
+  continueRanking: "Continue ranking",
+  rankAnother: (n: number) => `Rank another ${n}`,
+  startFailed: "We couldn’t start your pairs. Try again.",
+  loadFailed: "We couldn’t load your pairs. Reload to try again.",
+  exampleHeading: "New here? Try an example pair",
+  exampleBody: "A short, made-up pair to practise on. Nothing is saved.",
+  exampleButton: "Try the example",
+  exampleTime: "About 2 minutes",
+  exampleLink: "Try an example pair",
+  exampleAgain: "Try the example again",
+  batchesHeading: "Your batches",
+  released: "Released",
+  closes: "Closes",
+  ranked: "Ranked",
+  status: "Status",
+  noClosingDate: "No closing date",
+  progress: (done: number, total: number) => `${done} of ${total}`,
+  start: "Start",
+  continue: "Continue",
+  questions: "Questions?",
+  about: "About the project",
+  contact: "Contact us",
+};
+
+export const EXAMPLE_COPY = {
+  banner: "Example pair · nothing is saved",
+  doneHeading: "That’s it. Ready for the real ones?",
+  back: "Back to your pairs",
+};

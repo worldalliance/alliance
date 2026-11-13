@@ -1,5 +1,6 @@
 import { KORA_PROJECT_PATH, KoraProjectStatus } from "@alliance/common/kora";
 import { R } from "@alliance/common/result";
+import { milliseconds } from "date-fns";
 import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import {
@@ -65,6 +66,9 @@ export async function setKoraProjectStatus(
     .getRepository(KoraProject)
     .save({ id: KORA_PROJECT_ID, status });
 }
+
+export const koraClosesAt = (): Date =>
+  new Date(Date.now() + milliseconds({ days: 30 }));
 
 export const koraAdminActor = (ctx: TestContext): KoraActor => ({
   id: ctx.adminUserId,

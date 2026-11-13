@@ -25,6 +25,7 @@ const batch = (id: string, retiredAt: string | null = null): KoraBatchDto => ({
   transcriptsPerAssignment: 2,
   reviewsPerTranscript: 3,
   retiredAt,
+  closesAt: null,
   createdAt: "2026-11-10T10:00:00.000Z",
 });
 

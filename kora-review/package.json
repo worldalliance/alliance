@@ -10,6 +10,7 @@
     "./convert": "./src/convert.ts",
     "./parse": "./src/parse.ts",
     "./sample-export": "./src/sample-export.ts",
+    "./example-pair": "./src/example-pair.ts",
     "./style.css": "./src/style.css"
   },
   "scripts": {

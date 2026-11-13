@@ -12,6 +12,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Request,
   UploadedFile,
   UseGuards,
@@ -33,6 +34,7 @@ import {
   KoraDeletionImpactDto,
   KoraTranscriptPreviewDto,
   KoraUploadRejectedDto,
+  SetKoraBatchClosesAtDto,
   UploadKoraBatchDto,
 } from "./dto/kora-batch.dto";
 import {
@@ -73,11 +75,13 @@ export class KoraBatchesController {
         "transcripts",
         "transcriptsPerAssignment",
         "reviewsPerTranscript",
+        "closesAt",
       ],
       properties: {
         transcripts: { type: "string", format: "binary" },
         transcriptsPerAssignment: { type: "integer" },
         reviewsPerTranscript: { type: "integer" },
+        closesAt: { type: "string", format: "date-time" },
       },
     },
   })
@@ -95,6 +99,7 @@ export class KoraBatchesController {
       transcriptsText: transcripts.buffer.toString("utf8"),
       transcriptsPerAssignment: dto.transcriptsPerAssignment,
       reviewsPerTranscript: dto.reviewsPerTranscript,
+      closesAt: dto.closesAt,
       actor: await this.actions.actor(req.user.sub),
     });
     if (!uploaded.ok) {
@@ -151,6 +156,23 @@ export class KoraBatchesController {
       actor: await this.actions.actor(req.user.sub),
     });
     return new KoraBatchDto(found(reactivated));
+  }
+
+  /** Also moves the closing date of unfinished assignments holding its transcripts. */
+  @Put(":id/closes-at")
+  @ApiOkResponse({ type: KoraBatchDto })
+  async setClosesAt(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetKoraBatchClosesAtDto,
+  ): Promise<KoraBatchDto> {
+    return new KoraBatchDto(
+      found(
+        await this.batchService.setClosesAt({
+          batchId: id,
+          closesAt: dto.closesAt,
+        }),
+      ),
+    );
   }
 
   @Get(":id/deletion-impact")

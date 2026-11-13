@@ -1,8 +1,4 @@
-import {
-  KORA_PROJECT_PATH,
-  KORA_REVIEW_PATH,
-  KoraProjectStatus,
-} from "@alliance/common/kora";
+import { KORA_PROJECT_PATH, KoraProjectStatus } from "@alliance/common/kora";
 import type { KoraParticipantDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -36,6 +32,20 @@ serveApi(
     "GET /kora/participants/count": () => Response.json({ count: 123 }),
     "POST /kora/sign-out": () =>
       new Response(null, { status: signOutFails ? 500 : 204 }),
+    "GET /kora/review/home": () =>
+      Response.json({
+        totalRanked: 0,
+        userBatches: [
+          {
+            id: null,
+            status: "ready",
+            releasedAt: "2026-11-17T10:00:00.000Z",
+            closesAt: null,
+            progress: 0,
+            total: 10,
+          },
+        ],
+      }),
     "GET /kora/project": () =>
       projectFails
         ? new Response(null, { status: 500 })
@@ -212,14 +222,16 @@ test("thanks a member once the project has closed", async () => {
   expect(h1()).toBe("Thank you for taking part");
 });
 
-test("invites a signed-in participant to start once the project is active", async () => {
+test("shows a signed-in participant their home base once the project is active", async () => {
   participant = PARTICIPANT;
   status = KoraProjectStatus.Active;
   renderPage();
 
-  const start = await screen.findByRole("link", { name: "Start reviewing" });
-  expect(start.getAttribute("href")).toBe(KORA_REVIEW_PATH);
-  expect(screen.queryByText("Reviews start on November 17th.")).toBeNull();
+  await screen.findByRole("heading", { level: 1, name: "Rank 10 pairs" });
+  expect(screen.queryByText("Thank you for joining the waitlist")).toBeNull();
+  expect(screen.queryByText(/KoraBench/)).toBeNull();
+  expect(screen.queryByRole("switch", { name: "Remind me" })).toBeNull();
+  expect(screen.queryByRole("group", { name: "Choose a category" })).toBeNull();
 });
 
 test("says so when the project status can't load", async () => {
