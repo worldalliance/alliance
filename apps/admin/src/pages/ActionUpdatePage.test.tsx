@@ -285,6 +285,32 @@ describe("ActionUpdatePage", () => {
     ).toBeTruthy();
     expect(countedAudiences).toHaveLength(1);
   });
+
+  it("asks before saving a worldalliance title, saving only on Save anyway", async () => {
+    let writes = 0;
+    let titleSaved: string | null = null;
+    api.alsoServing({
+      "PATCH /actions/updateUpdate/:id": async ({ request }) => {
+        writes += 1;
+        const body: { title: string } = await request.json();
+        titleSaved = body.title;
+        return Response.json(served);
+      },
+    });
+    await renderDetails();
+    const title = await screen.findByDisplayValue("Hearing");
+    const saveAs = async (value: string, choice: string) => {
+      fireEvent.change(title, { target: { value } });
+      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+      fireEvent.click(await screen.findByRole("button", { name: choice }));
+    };
+
+    await saveAs("See worldalliance.org", "Cancel");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await saveAs("See worldalliance.org/b", "Save anyway");
+    await waitFor(() => expect(titleSaved).toBe("See worldalliance.org/b"));
+    expect(writes).toBe(1);
+  });
 });
 
 describe("while an update's notifications are on hold", () => {

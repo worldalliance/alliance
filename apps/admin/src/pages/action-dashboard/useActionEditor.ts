@@ -5,6 +5,7 @@ import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
+import { useWorldallianceConfirm } from "../../components/useWorldallianceConfirm";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
@@ -50,6 +51,48 @@ const draftOf = (input: {
     imageKey: input.imageKey,
   });
 
+// `form` also holds the fetched action's read-only fields, such as authors'
+// bios, so the worldalliance check covers only the fields edited here.
+const AUTHORED_FIELDS: Record<keyof CreateActionDto, boolean> = {
+  name: true,
+  shortDescription: true,
+  body: true,
+  image: true,
+  squareThumbnailImage: true,
+  squareThumbnailImageAlt: true,
+  customStatLabel: true,
+  reviewers: true,
+  cohortExpression: false,
+  category: false,
+  isContractSigningAction: false,
+  visibilityMode: false,
+  onboarding: false,
+  optional: false,
+  preventCompletion: false,
+  publicOnly: false,
+  shouldCompleteAfterDeadline: false,
+  isForumParticipationAction: false,
+  customStatType: false,
+  timeEstimate: false,
+  taskFormId: false,
+  taskKind: false,
+  forumParticipationPostId: false,
+  forumParticipationIncludeChildren: false,
+  computedAutocompleteAt: false,
+  customStatGoal: false,
+  suiteId: false,
+  staffPreview: false,
+  authorIds: false,
+  prerequisiteActionIds: false,
+  slug: false,
+};
+
+const AUTHORED_KEYS = new Set(
+  Object.entries(AUTHORED_FIELDS).flatMap(([key, authored]) =>
+    authored ? [key] : [],
+  ),
+);
+
 export function useActionEditor(params: {
   admin: Pick<
     ReturnType<typeof useActionAdmin>,
@@ -91,6 +134,8 @@ export function useActionEditor(params: {
   );
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
+  const { confirmSave, dialog: worldallianceDialog } =
+    useWorldallianceConfirm();
 
   useEffect(() => {
     if (isNew) {
@@ -276,6 +321,10 @@ export function useActionEditor(params: {
         })
         .filter((r) => r.name),
     };
+    const authored = Object.fromEntries(
+      Object.entries(formData).filter(([key]) => AUTHORED_KEYS.has(key)),
+    );
+    if (!(await confirmSave(authored))) return;
 
     if (isNew) {
       const result = await R.fromPromise(
@@ -315,6 +364,7 @@ export function useActionEditor(params: {
       draftOf({ form, reviewerRows, cohortExpression, imageKey }) !==
         savedDraft,
     setStaffPreview,
+    worldallianceDialog,
     form,
     reviewerRows,
     setReviewerRows,

@@ -46,6 +46,7 @@ export default [
       route("/member/:userId", "pages/UserDetailView.tsx"),
       route("/test-push", "pages/TestPushNotification.tsx"),
       route("/members", "pages/UsersList.tsx"),
+      route("/needs-reply", "pages/NeedsReplyPage.tsx"),
       route("/image", "pages/ImageUpload.tsx"),
       route("/videos", "pages/VideoManagement.tsx"),
       route("/videos/:videoId", "pages/VideoDetail.tsx"),

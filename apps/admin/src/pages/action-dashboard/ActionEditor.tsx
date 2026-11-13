@@ -83,6 +83,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
     return (
       <div className="p-5">
         <ActionForm {...formProps} isNew={true} onCancel={mode.onCancel} />
+        {editor.worldallianceDialog}
       </div>
     );
   }
@@ -107,6 +108,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
         baseUrl={getApiUrl()}
         hideStaffPreview={mode.hideStaffPreview}
       />
+      {editor.worldallianceDialog}
     </div>
   );
 };

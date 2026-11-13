@@ -247,11 +247,15 @@ export type Mail = {
     clickedLink: boolean;
 };
 
+export type MmsDirection = 'inbound' | 'outbound';
+
 export type Mms = {
     id: number;
     to: string;
     from: string;
     body: string;
+    direction: MmsDirection;
+    memberPhoneNumber: string;
     status: string;
     twilioSid: string;
     errorCode: number | null;
@@ -996,7 +1000,6 @@ export type UserPropertyPresenceDto = {
     over18: boolean;
     clusterId: boolean;
     staffTitle: boolean;
-    switchedDomainAt: boolean;
     referredById: boolean;
     shareInfoPublicly: boolean;
 };
@@ -1747,6 +1750,68 @@ export type NotifClickDto = {
 
 export type NotifClickResponseDto = {
     mms: boolean;
+};
+
+export type NeedsReplyMemberDto = {
+    userId: number;
+    name: string;
+    /**
+     * The member's latest text that still needs a reply; STOP and START texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the member's oldest text no staff reply has followed arrived
+     */
+    waitingSince: string;
+};
+
+export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
+
+export type MmsMediaDto = {
+    id: number;
+    contentType: string;
+    status: MmsMediaStatus;
+    /**
+     * Safe to render in an <img>
+     */
+    inline: boolean;
+};
+
+export type MmsMessageDto = {
+    id: number;
+    body: string;
+    direction: MmsDirection;
+    status: string;
+    errorCode: number | null;
+    errorMessage: string | null;
+    createdAt: string;
+    /**
+     * True for texts staff wrote, even once the sender is deleted; false for automated and inbound texts
+     */
+    sentByStaff: boolean;
+    sentByName: string | null;
+    media: Array<MmsMediaDto>;
+};
+
+export type MmsThreadDto = {
+    phoneNumber: string | null;
+    /**
+     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
+     */
+    textable: boolean;
+    optedOut: boolean;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
+};
+
+export type SendStaffTextDto = {
+    body: string;
 };
 
 export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
@@ -8898,6 +8963,110 @@ export type MmsHandleInboundMmsResponses = {
 };
 
 export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadNeedsReplyAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply';
+};
+
+export type MmsThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyAdminError = MmsThreadNeedsReplyAdminErrors[keyof MmsThreadNeedsReplyAdminErrors];
+
+export type MmsThreadNeedsReplyAdminResponses = {
+    200: Array<NeedsReplyMemberDto>;
+};
+
+export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+
+export type MmsThreadMediaAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/mms-threads/media/{id}';
+};
+
+export type MmsThreadMediaAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMediaAdminError = MmsThreadMediaAdminErrors[keyof MmsThreadMediaAdminErrors];
+
+export type MmsThreadGetThreadAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadGetThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetThreadAdminError = MmsThreadGetThreadAdminErrors[keyof MmsThreadGetThreadAdminErrors];
+
+export type MmsThreadGetThreadAdminResponses = {
+    200: MmsThreadDto;
+};
+
+export type MmsThreadGetThreadAdminResponse = MmsThreadGetThreadAdminResponses[keyof MmsThreadGetThreadAdminResponses];
+
+export type MmsThreadSendTextAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadSendTextAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendTextAdminError = MmsThreadSendTextAdminErrors[keyof MmsThreadSendTextAdminErrors];
+
+export type MmsThreadSendTextAdminResponses = {
+    200: MmsMessageDto;
+};
+
+export type MmsThreadSendTextAdminResponse = MmsThreadSendTextAdminResponses[keyof MmsThreadSendTextAdminResponses];
+
+export type MmsThreadMarkOptedOutAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/opt-out';
+};
+
+export type MmsThreadMarkOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkOptedOutAdminError = MmsThreadMarkOptedOutAdminErrors[keyof MmsThreadMarkOptedOutAdminErrors];
+
+export type MmsThreadMarkOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkOptedOutAdminResponse = MmsThreadMarkOptedOutAdminResponses[keyof MmsThreadMarkOptedOutAdminResponses];
 
 export type EventLogFindAllAdminData = {
     body?: never;

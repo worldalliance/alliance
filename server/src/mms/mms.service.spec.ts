@@ -10,7 +10,7 @@ import { MessageTrackingService } from "src/link-tracking/message-tracking.servi
 import { DeliveryFailure } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import type Twilio from "twilio";
-import type { Mms } from "./mms.entity";
+import { type Mms, MmsDirection } from "./mms.entity";
 import { MmsService } from "./mms.service";
 
 const TO = "+14155559001";
@@ -110,6 +110,8 @@ describe("MmsService sendMms", () => {
         to: TO,
         from: "+15555550100",
         body: BODY,
+        direction: MmsDirection.Outbound,
+        sentById: null,
         twilioSid: "SM0123456789",
         status: "queued",
         errorCode: null,
@@ -267,6 +269,7 @@ describe("MmsService sendMms", () => {
       userId: USER_ID,
       body: BODY,
       cid: "cid-1",
+      sentById: null,
     });
     await delay(0);
 
@@ -275,6 +278,8 @@ describe("MmsService sendMms", () => {
         to: TO,
         from: "+15555550100",
         body: BODY,
+        direction: MmsDirection.Outbound,
+        sentById: null,
         twilioSid: "SM0123456789",
         status: "queued",
         errorCode: null,
@@ -294,6 +299,7 @@ describe("MmsService sendMms", () => {
       userId: USER_ID,
       body: BODY,
       cid: "cid-1",
+      sentById: null,
     });
     await delay(0);
 
@@ -327,6 +333,7 @@ describe("MmsService sendMms", () => {
         userId: USER_ID,
         body: BODY,
         cid: null,
+        sentById: null,
       });
     }
     await delay(0);

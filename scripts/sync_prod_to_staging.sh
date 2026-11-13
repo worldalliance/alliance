@@ -302,6 +302,7 @@ echo "[$(date)] ==> S3 sync s3://$PROD_ASSETS_BUCKET -> s3://$STAGING_ASSETS_BUC
 unlocked aws s3 sync \
   "s3://${PROD_ASSETS_BUCKET}/" \
   "s3://${STAGING_ASSETS_BUCKET}/" \
+  --exclude 'mms-media/*' \
   --only-show-errors \
   --size-only
 

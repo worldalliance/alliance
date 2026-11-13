@@ -14,4 +14,5 @@ export const LOCK_KEYS = {
   actionUpdateRecognitionDelivery: [0xa11a, 0xce07] as const,
   taskBadgeSweep: [0xa11a, 0xce08] as const,
   reloadUsersJoined: [0xa11a, 0xce09] as const,
+  mmsMediaCopy: [0xa11a, 0xce0a] as const,
 };

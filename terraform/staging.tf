@@ -353,6 +353,17 @@ resource "aws_s3_bucket_policy" "staging_assets" {
             "AWS:SourceArn" = aws_cloudfront_distribution.staging_assets.arn
           }
         }
+      },
+      {
+        # CloudFront serves this bucket publicly; members' MMS attachments
+        # under mms-media/ stay off it.
+        Sid    = "DenyCloudFrontMemberTextMedia"
+        Effect = "Deny"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.staging_assets.arn}/mms-media/*"
       }
     ]
   })

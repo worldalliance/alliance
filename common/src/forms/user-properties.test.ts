@@ -17,7 +17,6 @@ const emptyBag = {
   over18: null,
   clusterId: null,
   staffTitle: null,
-  switchedDomainAt: null,
   referredById: null,
   shareInfoPublicly: null,
 };

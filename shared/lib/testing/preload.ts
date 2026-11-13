@@ -38,11 +38,13 @@ Bun.plugin({
 const { cleanup } = await import("@testing-library/react/pure");
 afterEach(cleanup);
 
-// A spy left standing reaches every test file that runs after it, so it is
-// restored here rather than per file. Spy in `beforeEach`: one installed in
-// `beforeAll` or at file scope is gone after the file's first test.
+// A spy or stored value left standing reaches every later test file, so it is
+// reset here rather than per file. Set either up in `beforeEach`: one from
+// `beforeAll` or file scope is gone after the file's first test.
 afterEach(() => {
   jest.restoreAllMocks();
+  localStorage.clear();
+  sessionStorage.clear();
   if (!Reflect.deleteProperty(navigator, "clipboard")) {
     throw new Error(
       "navigator.clipboard was stubbed without configurable: true",

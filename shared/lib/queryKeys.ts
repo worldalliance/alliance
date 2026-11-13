@@ -304,7 +304,10 @@ export const queryKeys = {
     ["analyticsGetMemberCompletionRetentionAdmin"] as const,
   memberReliabilityWindowAdmin: (weeks: number | null) =>
     ["analyticsGetMemberReliabilityWindowAdmin", weeks] as const,
+  memberTextThreadAdmin: (userId: number) =>
+    ["mmsThreadGetThreadAdmin", userId] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
+  needsReplyAdmin: () => ["mmsThreadNeedsReplyAdmin"] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,

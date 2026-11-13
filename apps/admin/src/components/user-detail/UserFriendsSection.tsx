@@ -21,7 +21,7 @@ export default function UserFriendsSection({ userId }: { userId: number }) {
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Friends ({friends.length})
       </h2>
-      {isRefetchError && <SectionRefreshError noun="friends" />}
+      <SectionRefreshError noun="friends" isError={isRefetchError} />
       {friends.length ? (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {friends.map((friend) => (

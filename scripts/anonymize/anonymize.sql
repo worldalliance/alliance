@@ -106,6 +106,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Staging's media cron would otherwise fetch and delete prod's Twilio media,
+-- whose files staging must not hold. 30 is MAX_COPY_ATTEMPTS, as
+-- server/src/mms/anonymize-media.spec.ts checks, so every copy reads as given
+-- up on. Prod gains the table only once the migration adding it ships there.
+DO $$
+BEGIN
+  IF to_regclass('mms_media') IS NOT NULL THEN
+    UPDATE "mms_media"
+    SET "copyAttempts" = 30,
+        "twilioDeletedAt" = coalesce("twilioDeletedAt", now());
+  END IF;
+END $$;
+
 UPDATE "waitlist_entry"
 SET "email" = 'waitlist'||id||'@example.com'
 WHERE "email" IS NOT NULL;
@@ -147,6 +160,7 @@ BEGIN
       ('onetime_invite', 'info', 'text'),
       ('waitlist_entry', 'reason', 'text'),
       ('waitlist_entry', 'nonprofitNominations', 'text'),
+      ('mms', 'body', 'text'),
       ('mms_optout', 'rawBody', 'text'),
       ('ambassador_program_interaction', 'text', 'text'),
       ('user_away_range', 'note', 'text'),

@@ -16,6 +16,7 @@ const startDate = "2026-03-10T15:00:00.000Z";
 const endDate = "2026-03-20T22:30:00.000Z";
 let saved: UpdateGeneralUpdateDto | null = null;
 let created: CreateGeneralUpdateDto | null = null;
+let writes = 0;
 let servedName = "Weekly note";
 let findStatus = 200;
 let updateStatus = 200;
@@ -52,6 +53,7 @@ serveApi(
       return Response.json(generalUpdateAdmin(2, "New"));
     },
     "PATCH /actions/generalUpdates/:id": async ({ request }) => {
+      writes += 1;
       if (updateStatus !== 200)
         return Response.json({}, { status: updateStatus });
       saved = await request.json();
@@ -83,6 +85,7 @@ const hostZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 beforeEach(() => {
   saved = null;
   created = null;
+  writes = 0;
   servedName = "Weekly note";
   findStatus = 200;
   updateStatus = 200;
@@ -330,4 +333,22 @@ it("reports a failed save and keeps the form", async () => {
   ).toBeDefined();
   expect(screen.getByLabelText("Title")).toBe(title);
   errors.mockRestore();
+});
+
+it("asks before saving a worldalliance title, saving only on Save anyway", async () => {
+  renderPage();
+  const title = await screen.findByLabelText("Title");
+  const saveAs = async (value: string, choice: string) => {
+    fireEvent.change(title, { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(await screen.findByRole("button", { name: choice }));
+  };
+
+  await saveAs("See worldalliance.org", "Cancel");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await saveAs("See worldalliance.org/b", "Save anyway");
+  await waitFor(() =>
+    expect(saved).toMatchObject({ name: "See worldalliance.org/b" }),
+  );
+  expect(writes).toBe(1);
 });

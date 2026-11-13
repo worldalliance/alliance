@@ -8,6 +8,7 @@ import MemberZoneLink from "./components/MemberZoneLink";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
+import { useNeedsReplyCount } from "./lib/useMemberTextsAdmin";
 import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
 
 const Sidebar: React.FC = () => {
@@ -24,6 +25,7 @@ const Sidebar: React.FC = () => {
   const { logout, user, loading: authLoading } = useAuth();
   const { data: membersUndergoingGroupAssignment = [] } =
     useGroupAssignmentMembersAdmin();
+  const needsReplyCount = useNeedsReplyCount();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 
@@ -76,6 +78,7 @@ const Sidebar: React.FC = () => {
           <AdminSearch />
           <SidebarNav
             groupAssignmentCount={membersUndergoingGroupAssignment.length}
+            needsReplyCount={needsReplyCount}
             pendingOutreachPartnershipCount={pendingOutreachPartnershipCount}
           />
         </div>

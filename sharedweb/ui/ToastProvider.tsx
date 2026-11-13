@@ -15,7 +15,7 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-enum ToastVariant {
+export enum ToastVariant {
   Info = "info",
   Success = "success",
   Error = "error",
@@ -108,7 +108,7 @@ type ConfirmOptions = {
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
   variant?: ToastVariant;
-  durationMs?: number;
+  durationMs?: number | null;
 };
 
 type ToastConfirm = Omit<ToastBase, "variant"> & {
@@ -152,6 +152,13 @@ const toastColorClasses: Record<ToastVariant, string> = {
   [ToastVariant.Success]: "bg-emerald-600 text-white",
   [ToastVariant.Warning]: "bg-amber-500 text-white",
   [ToastVariant.Error]: "bg-white text-red-500 border border-red-500",
+};
+
+const dismissColorClasses: Record<ToastVariant, string> = {
+  [ToastVariant.Info]: "text-slate-100/70 hover:text-white",
+  [ToastVariant.Success]: "text-slate-100/70 hover:text-white",
+  [ToastVariant.Warning]: "text-slate-100/70 hover:text-white",
+  [ToastVariant.Error]: "text-red-500 hover:text-red-700",
 };
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -331,7 +338,7 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
         <button
           type="button"
           aria-label="Dismiss"
-          className="ml-2 text-slate-100/70 hover:text-white"
+          className={cn("ml-2", dismissColorClasses[toast.variant])}
           onClick={() => onDismiss(toast.id)}
         >
           ✕

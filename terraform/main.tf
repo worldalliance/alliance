@@ -443,6 +443,33 @@ resource "aws_s3_bucket_policy" "assets" {
             "AWS:SourceArn" = aws_cloudfront_distribution.assets.arn
           }
         }
+      },
+      {
+        # CloudFront serves this bucket publicly; members' MMS attachments
+        # under mms-media/ stay off it.
+        Sid    = "DenyCloudFrontMemberTextMedia"
+        Effect = "Deny"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.assets.arn}/mms-media/*"
+      },
+      {
+        # Only the production server's role, which signs the presigned links,
+        # reads or writes objects under mms-media/, whatever grants other
+        # principals get on this bucket. Listing keys is a bucket action this
+        # doesn't cover.
+        Sid       = "DenyAllButProdServerMemberTextMedia"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = "${aws_s3_bucket.assets.arn}/mms-media/*"
+        Condition = {
+          ArnNotEquals = {
+            "aws:PrincipalArn" = aws_iam_role.ec2_role.arn
+          }
+        }
       }
     ]
   })
@@ -542,6 +569,25 @@ resource "aws_s3_bucket_lifecycle_configuration" "assets" {
 
     filter {}
   }
+
+  # The bucket is versioned, so a delete only hides an object; S3 removes
+  # members' deleted attachments a day or two later.
+  rule {
+    id     = "expire-deleted-mms-media"
+    status = "Enabled"
+
+    filter {
+      prefix = "mms-media/"
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+
+    expiration {
+      expired_object_delete_marker = true
+    }
+  }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "dev_assets" {
@@ -571,5 +617,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "staging_assets" {
     }
 
     filter {}
+  }
+
+  # The bucket is versioned, so a delete only hides an object; S3 removes
+  # members' deleted attachments a day or two later.
+  rule {
+    id     = "expire-deleted-mms-media"
+    status = "Enabled"
+
+    filter {
+      prefix = "mms-media/"
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+
+    expiration {
+      expired_object_delete_marker = true
+    }
   }
 }
