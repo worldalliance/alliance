@@ -56,7 +56,7 @@ export default function RootLayout() {
     "Libre Baskerville": require("../assets/fonts/LibreBaskerville.ttf"),
     "Libre Baskerville Bold": require("../assets/fonts/LibreBaskerville-Bold.ttf"),
     "Libre Baskerville SemiBold": require("../assets/fonts/LibreBaskerville-SemiBold.ttf"),
-    Berlingske: require("../assets/fonts/BerlingskeSerif-Blk.ttf"),
+    "Libre Caslon Text Bold": require("../assets/fonts/LibreCaslonText-Bold.ttf"),
   });
 
   useEffect(() => {

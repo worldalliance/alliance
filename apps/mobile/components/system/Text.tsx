@@ -17,7 +17,7 @@ export enum TextStyle {
 export enum FontFamily {
   Sans = "sans",
   Serif = "serif",
-  Berlingske = "berlingske",
+  Logotype = "logotype",
   Mono = "mono",
 }
 
@@ -67,11 +67,11 @@ const fontFamilies: Record<FontFamily, Partial<Record<FontWeight, string>>> = {
     [FontWeight.Semibold]: "Libre Baskerville SemiBold",
     [FontWeight.Bold]: "Libre Baskerville Bold",
   },
-  [FontFamily.Berlingske]: {
-    [FontWeight.Regular]: "Berlingske",
-    [FontWeight.Medium]: "Berlingske",
-    [FontWeight.Semibold]: "Berlingske",
-    [FontWeight.Bold]: "Berlingske",
+  [FontFamily.Logotype]: {
+    [FontWeight.Regular]: "Libre Caslon Text Bold",
+    [FontWeight.Medium]: "Libre Caslon Text Bold",
+    [FontWeight.Semibold]: "Libre Caslon Text Bold",
+    [FontWeight.Bold]: "Libre Caslon Text Bold",
   },
   [FontFamily.Mono]: {
     [FontWeight.Regular]: monoFamily,
