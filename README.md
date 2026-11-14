@@ -45,7 +45,7 @@ Start the admin panel: `cd apps/admin && bun dev` (or `bun run admin:dev` from r
 
 #### First time only:
 
-Local secrets come from AWS: see `docs/local-secrets.md`.
+Local secrets come from AWS: see `docs/local-secrets.md`. Without team AWS access, run `bun scripts/setup-without-team-secrets.ts` from the repo root instead (its section in that doc says what stays off).
 
 Run the migrations: `(cd server && bun migration:run)`
 
@@ -54,7 +54,7 @@ And if you get an error `database "alliance" does not exist`, first run `created
 
 Start the server: `cd server && bun dev` (or `bun server:dev` from root dir)
 
-When opening the app locally for the first time, you can log in with the account specified by `ADMIN_USER` and `ADMIN_PASSWORD` under `/alliance/dev/server/` in Parameter Store, which `scripts/with-secrets.sh server printenv ADMIN_USER ADMIN_PASSWORD` prints (this account will be automatically added to the db on startup)
+When opening the app locally for the first time, you can log in with the account specified by `ADMIN_USER` and `ADMIN_PASSWORD` under `/alliance/dev/server/` in Parameter Store, which `scripts/with-secrets.sh server printenv ADMIN_USER ADMIN_PASSWORD` prints (this account will be automatically added to the db on startup). Without team AWS access, log in with the `ADMIN_USER` and `ADMIN_PASSWORD` that `scripts/setup-without-team-secrets.ts` wrote to `server/.env`.
 
 ### Loading data
 

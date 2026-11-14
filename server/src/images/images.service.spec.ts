@@ -1,7 +1,9 @@
 import { deployedConfigFor } from "@alliance/common/deployed-config";
 import { NodeEnv } from "@alliance/common/node-env";
+import { S3Client } from "@aws-sdk/client-s3";
+import { ServiceUnavailableException } from "@nestjs/common";
 import { afterEach, describe, expect, it } from "bun:test";
-import { getImageSource } from "./images.service";
+import { getImageSource, ImagesService } from "./images.service";
 
 const KEY = "1762925939234-8f14e45f.webp";
 
@@ -54,4 +56,37 @@ describe("getImageSource when deployed", () => {
       );
     },
   );
+});
+
+describe("without the team's secrets", () => {
+  const original = { ...process.env };
+  afterEach(() => {
+    process.env = { ...original };
+  });
+  const service = () => {
+    process.env = {
+      ...original,
+      NODE_ENV: "development",
+      ALLIANCE_WITHOUT_TEAM_SECRETS: "1",
+    };
+    return new ImagesService(new S3Client({}));
+  };
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+  it("answers 503 to an upload", async () => {
+    await expect(service().uploadImage(png)).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+  });
+
+  it("answers 503 to a jpeg download", async () => {
+    await expect(
+      service().jpegDownload({
+        key: KEY,
+        requester: "requester",
+        clientGone: () => false,
+      }),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
 });

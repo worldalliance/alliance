@@ -7,7 +7,13 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { env, requireEnv, validateServerEnv } from "./env";
+import {
+  env,
+  requireEnv,
+  teamOnlyKeys,
+  unsetTeamOnlyKeys,
+  validateServerEnv,
+} from "./env";
 
 const base = {
   NODE_ENV: "test",
@@ -275,6 +281,87 @@ describe("validateServerEnv", () => {
     expect(problems({ ...deployed, APPLE_BUNDLE_ID: "," })).toEqual([
       "APPLE_BUNDLE_ID: missing",
     ]);
+  });
+});
+
+describe("ALLIANCE_WITHOUT_TEAM_SECRETS", () => {
+  const teamOnly: ReadonlySet<string> = teamOnlyKeys;
+  const without = (config: Record<string, string>) => ({
+    ...Object.fromEntries(
+      Object.entries(config).filter(([key]) => !teamOnly.has(key)),
+    ),
+    ALLIANCE_WITHOUT_TEAM_SECRETS: "1",
+  });
+
+  it("stops development requiring the team-only keys", () => {
+    expect(problems(without(development))).toEqual([]);
+  });
+
+  it("still requires the generated keys and the checkout's own", () => {
+    expect(
+      problems({ NODE_ENV: "development", ALLIANCE_WITHOUT_TEAM_SECRETS: "1" }),
+    ).toEqual(
+      expect.arrayContaining(["JWT_SECRET: missing", "DB_HOST: missing"]),
+    );
+    expect(
+      problems({
+        ...without(development),
+        JWT_SECRET: "",
+        ADMIN_PASSWORD: "",
+      }),
+    ).toEqual(["JWT_SECRET: missing", "ADMIN_PASSWORD: missing"]);
+  });
+
+  it("still requires mail and Twilio when delivery is on", () => {
+    expect(
+      problems({ ...without(development), SEND_DEV_NOTIFS: "1" }),
+    ).toContain("TWILIO_AUTH_TOKEN: missing");
+  });
+
+  it("is refused outside development", () => {
+    for (const config of [deployed, production, base]) {
+      expect(
+        problems({ ...config, ALLIANCE_WITHOUT_TEAM_SECRETS: "1" }),
+      ).toEqual([
+        `ALLIANCE_WITHOUT_TEAM_SECRETS: only for development, not ${config.NODE_ENV}`,
+      ]);
+    }
+  });
+
+  it("covers every dev secret but the JWT secrets and the seeded admin", () => {
+    const manifest = z
+      .object({ server: z.object({ secrets: z.array(z.string()) }) })
+      .parse(
+        JSON.parse(
+          readFileSync(
+            join(__dirname, "../../../scripts/dev-secrets.json"),
+            "utf8",
+          ),
+        ),
+      );
+    const generated = [
+      "ADMIN_PASSWORD",
+      "ADMIN_USER",
+      "JWT_REFRESH_SECRET",
+      "JWT_SECRET",
+    ];
+    expect([...teamOnlyKeys, ...generated].sort()).toEqual(
+      manifest.server.secrets.sort(),
+    );
+  });
+
+  it("lists the team-only keys left unset", () => {
+    const parsed = validateServerEnv({
+      ...without(development),
+      SLACK_WEBHOOK_URL: "https://hooks.example.com/slack",
+    });
+    if (!parsed.ok) throw new Error(parsed.error.join("\n"));
+    expect(unsetTeamOnlyKeys(parsed.value)).toEqual(
+      [...teamOnlyKeys].filter((key) => key !== "SLACK_WEBHOOK_URL").sort(),
+    );
+    const team = validateServerEnv(development);
+    if (!team.ok) throw new Error(team.error.join("\n"));
+    expect(unsetTeamOnlyKeys(team.value)).toEqual([]);
   });
 });
 

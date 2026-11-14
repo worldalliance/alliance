@@ -33,6 +33,9 @@ Turns "Action updates" texts and emails off for every account, except where the 
 `with-secrets.sh <consumer> <command...>`
 Runs a command with the consumer's dev secrets from `/alliance/dev/<consumer>/` in AWS SSM Parameter Store, read with the person's `alliance-dev` login. `dev-secrets.json` lists each consumer's keys. Setup, adding a secret and the fallback flag: `docs/local-secrets.md`.
 
+`setup-without-team-secrets.ts`
+Writes `server/.env` for running the server without team credentials and prints the seeded admin's login. See `docs/local-secrets.md`.
+
 ## Deploy
 
 `deploy_backend.sh`
