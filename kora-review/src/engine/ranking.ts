@@ -357,7 +357,7 @@ export function createRanking(ctx: RankingCtx) {
         h(
           "option",
           { value: "none", selected: d.turn === "none" },
-          "No real problem, it is just less good",
+          "No real problem, it is just not as good",
         ),
       );
       const quote = d.quote ? clipQuote(d.quote) : null;

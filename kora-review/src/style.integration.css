@@ -26,15 +26,6 @@
   text-transform: none;
 }
 
-.kora-review .mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.kora-review .mini .ic {
-  width: 14px;
-  height: 14px;
-}
 .kora-review .note-btn {
   gap: 6px;
   font-size: 16px;
@@ -117,12 +108,15 @@
 
 /* Touch devices: every target at least 44 × 44 */
 @media (pointer: coarse) {
-  .kora-review .mini,
   .kora-review .link,
   .kora-review .ann-q,
   .kora-review .seg button,
   .kora-review .ctx-more summary {
     min-height: 44px;
+  }
+  .kora-review .ann-ic {
+    width: 44px;
+    height: 44px;
   }
   .kora-review .sh-x {
     width: 44px;

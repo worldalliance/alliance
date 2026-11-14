@@ -308,10 +308,15 @@ describe("mountKoraReview", () => {
     expect(el.querySelectorAll(".msg .anns .ann")).toHaveLength(1);
     expect(marks().querySelectorAll(".ann")).toHaveLength(1);
     expect(marks().textContent).toContain("Turn 1");
+    const listed = el.querySelector(".msg .anns .ann")!;
+    expect(listed.textContent).not.toContain("Flip");
+    const remove = listed.querySelector<HTMLButtonElement>(".ann-ic")!;
+    expect(remove.textContent).toBe("");
+    expect(remove.getAttribute("aria-label")).toMatch(/^Remove mark on/);
     marks().querySelector<HTMLButtonElement>(".ann-q")!.click();
     expect(sheet().textContent).toContain("Remove");
 
-    button("Flip").click();
+    button("Flip to −1").click();
     await tick(10);
     expect(el.querySelectorAll(".tk.pos")).toHaveLength(0);
     expect(el.querySelectorAll(".tk.neg")).toHaveLength(1);
@@ -387,7 +392,9 @@ describe("mountKoraReview", () => {
     slider.value = "0";
     slider.dispatchEvent(new Event("change"));
     await tick(0);
-    expect(rank().querySelector('[data-q="q2"]')).not.toBeNull();
+    expect(rank().querySelector('[data-q="q2"]')?.textContent).toContain(
+      "No real problem, it is just not as good",
+    );
   });
 
   it("leaves which-was-safer unset until the slider is used, then starts from the middle", async () => {

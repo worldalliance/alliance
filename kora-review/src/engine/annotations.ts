@@ -98,27 +98,16 @@ export function createAnnotations(ctx: AnnotationsCtx) {
             h(
               "span",
               { class: "ann-act" },
-              a.value
-                ? h(
-                    "button",
-                    {
-                      type: "button",
-                      class: "mini",
-                      onclick: () => flip(a.id),
-                      "aria-label": `Flip “${clip(a.text, 30)}” to ${fmt(-a.value)}`,
-                    },
-                    "Flip",
-                  )
-                : null,
               h(
                 "button",
                 {
                   type: "button",
-                  class: "mini",
+                  class: "ann-ic",
                   onclick: () => removeAnn(a.id),
                   "aria-label": `Remove mark on “${clip(a.text, 30)}”`,
+                  title: "Remove mark",
                 },
-                "Remove",
+                icon("trash"),
               ),
             ),
             a.note
@@ -132,12 +121,12 @@ export function createAnnotations(ctx: AnnotationsCtx) {
                         "button",
                         {
                           type: "button",
-                          class: "mini",
+                          class: "ann-ic",
                           onclick: () => editNote(a.id),
                           "aria-label": `Edit note on “${clip(a.text, 30)}”`,
+                          title: "Edit note",
                         },
                         icon("pencil"),
-                        "Edit note",
                       ),
                 )
               : null,

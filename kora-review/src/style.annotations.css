@@ -223,18 +223,7 @@
   gap: 4px;
   margin-left: auto;
 }
-.kora-review .mini {
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: 4px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  color: var(--muted);
-}
-.kora-review .pencil {
+.kora-review .ann-ic {
   display: inline-grid;
   place-items: center;
   width: 32px;
@@ -247,11 +236,11 @@
   vertical-align: middle;
   border-radius: 4px;
 }
-.kora-review .pencil .ic {
+.kora-review .ann-ic .ic {
   width: 16px;
   height: 16px;
 }
-.kora-review .pencil:hover {
+.kora-review .ann-ic:hover {
   color: var(--accent);
   background: var(--accent-soft);
 }

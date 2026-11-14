@@ -171,7 +171,7 @@ export function createSheet(ctx: SheetCtx) {
         disabled: !S.noteDraft.trim(),
         title: "Save as a neutral note",
       },
-      icon("pencil"),
+      icon("note"),
       "Note",
     );
     return [

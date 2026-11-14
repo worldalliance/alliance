@@ -90,7 +90,7 @@ export function createReview(ctx: ReviewCtx) {
       renderContext(t),
       renderPair(t),
       h("section", {
-        class: "marks card",
+        class: "marks",
         id: "marks",
         "aria-labelledby": "marks-h",
       }),

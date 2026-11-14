@@ -103,7 +103,7 @@ export function createPresentation(ctx: PresentationCtx) {
       : h(
           "span",
           { class: cls + " v-note" },
-          icon("pencil"),
+          icon("note"),
           h("span", { class: "sr" }, "Note:"),
         );
 
