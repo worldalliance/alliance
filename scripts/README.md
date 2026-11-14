@@ -45,7 +45,7 @@ Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` 
 Run on the backend host, not locally; the deploy installs it as `~/secrets_run.sh`. Runs the command with the parameters under `/alliance/<env>/server/` in AWS SSM Parameter Store as env vars, `<env>` picked by `NODE_ENV`, read with the host's instance role. Setup, rotation and running without Parameter Store: `docs/backend-secrets.md`.
 
 `check-parameter-drift.ts [--required]`
-Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AWS SSM Parameter Store and fails when a path lacks a key its schema or `dev-secrets.json` requires, or holds one neither declares, or when a name outside the CI paths is under no path it checks. `--required` prints each path's required keys and needs no AWS login. See `docs/backend-secrets.md`.
+Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AWS SSM Parameter Store and fails when a path lacks a key its schema or `dev-secrets.json` requires, or holds one undeclared there or in `SHARED_KEYS`, or when a name outside the CI paths is under no path it checks. `--required` prints each path's required keys and needs no AWS login. See `docs/backend-secrets.md`.
 
 `deployed-config.ts <staging|production>`
 Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.

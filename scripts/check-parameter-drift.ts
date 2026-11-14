@@ -13,6 +13,8 @@ export type Expected = {
 
 export const DEV_PREFIX = "/alliance/dev/";
 const CI_PATH = /^\/alliance\/(staging\/)?ci\//;
+export const SHARED_PREFIX = "/alliance/shared/";
+const SHARED_KEYS = ["APPLE_KEY_F9J58D7K92_P8_BASE64", "EC2_SSH_KEY"];
 
 export function findDrift(params: {
   names: readonly string[];
@@ -71,6 +73,12 @@ export function expectations(): Expected[] {
   ] as const;
   return [
     ...dev,
+    {
+      prefix: SHARED_PREFIX,
+      required: new Set(),
+      allowed: new Set(SHARED_KEYS),
+      allowedBy: "SHARED_KEYS in scripts/check-parameter-drift.ts",
+    },
     ...deployed.map(({ store, nodeEnv }) => ({
       prefix: `/alliance/${store}/server/`,
       required: new Set(requiredKeys(nodeEnv)),
