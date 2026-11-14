@@ -406,7 +406,7 @@ jobs:
             mkdir -p ~/admin-config
             mv ~/web-config.json ~/admin-config/config.json || { echo "could not install config.json"; exit 1; }
 
-            unzip -o -DD ~/admin-build.zip -d ~/admin-app
+            unzip -o -DD ~/admin-build.zip -d ~/admin-app || { echo "unzip of the admin bundle failed"; exit 1; }
             # Same pruning as the frontend deploy's ~/output/build.
             find ~/admin-app -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/admin-app"
 
@@ -425,7 +425,7 @@ jobs:
 
             reload () {
               sudo nginx -t || { echo "nginx config invalid"; exit 1; }
-              sudo systemctl reload nginx
+              sudo systemctl reload nginx || { echo "nginx reload failed"; exit 1; }
             }
 
             # The port 80 vhost lands first and unconditionally: it serves the

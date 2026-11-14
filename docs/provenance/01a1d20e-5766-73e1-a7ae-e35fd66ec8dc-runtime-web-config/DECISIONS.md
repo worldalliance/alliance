@@ -19,6 +19,7 @@ All origin: agent decision, unless noted.
 ## Deploy
 
 - **`config.json` comes from `scripts/web-runtime-config.ts`, run in the `deployed-config` job,** and is uploaded in the same artifact the deploy jobs already download. The admin deploy installs it at `~/admin-config/config.json`, outside `~/admin-app`, since it belongs to the environment rather than the build. Promotion (ALL-2166) can write production's file beside staging's bundle the same way.
+- **A failed nginx reload or unzip fails the admin deploy.** The host script's status is its last command's, so a failed first reload or unzip, with commands after it, used to leave a green job. Its own commit, since it doesn't depend on the install order below.
 - **The admin deploy unzips the new bundle after the final nginx reload.** The bundle needs the `/config.json` route, which lands only after the cert check. A failed check exits before the bundle lands and leaves the old bundle, which needs no route, live.
 - **The serving side ships in its own commit before the apps read it.** Writing, uploading, installing and serving `config.json` deploy alone, since nothing reads the file yet. The commit that switches the apps comes after it.
 - **nginx serves it with an exact `alias` location,** so a missing file is a 404 rather than the SPA fallback. Its `no-cache` header is `always`, since nginx otherwise leaves it off a 404.
