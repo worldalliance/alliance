@@ -116,7 +116,13 @@ const StaffDirectoryPage: React.FC = () => {
               staffTitle,
               staffLink,
             ]);
-            if (await confirmSave(authored)) save.mutate(items);
+            if (
+              await confirmSave(authored, {
+                siteUrlsIn: items.map(({ staffLink }) => staffLink),
+              })
+            ) {
+              save.mutate(items);
+            }
           }}
           disabled={save.isPending || !anyChanged}
         >

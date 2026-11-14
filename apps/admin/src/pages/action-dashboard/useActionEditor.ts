@@ -52,7 +52,7 @@ const draftOf = (input: {
   });
 
 // `form` also holds the fetched action's read-only fields, such as authors'
-// bios, so the worldalliance check covers only the fields edited here.
+// bios, so the save check covers only the fields edited here.
 const AUTHORED_FIELDS: Record<keyof CreateActionDto, boolean> = {
   name: true,
   shortDescription: true,
@@ -322,7 +322,9 @@ export function useActionEditor(params: {
     const authored = Object.fromEntries(
       Object.entries(formData).filter(([key]) => AUTHORED_KEYS.has(key)),
     );
-    if (!(await confirmSave(authored))) return;
+    // The other authored fields are plain text, images, or reviewer urls the
+    // editor makes absolute, so only the body holds links a path can replace.
+    if (!(await confirmSave(authored, { siteLinksIn: formData.body }))) return;
 
     if (isNew) {
       const result = await R.fromPromise(

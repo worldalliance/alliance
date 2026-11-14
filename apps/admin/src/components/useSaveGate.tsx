@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/forms/variable-interpolation";
 import { useCallback, useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
+import { linkCheckedText } from "./linkCheckedText";
 import { useContentConfirm } from "./useContentConfirm";
 
 function describeUnresolvedReferences(
@@ -24,8 +25,8 @@ function describeUnresolvedReferences(
 
 /**
  * Save, unless `blocked`, which runs `onBlocked` instead. A schema with
- * unmatched variable references or worldalliance text saves only once each
- * dialog is confirmed.
+ * unmatched variable references, absolute links to the site or worldalliance
+ * text saves only once each dialog is confirmed.
  */
 export function useSaveGate({
   schema,
@@ -53,7 +54,7 @@ export function useSaveGate({
 
   const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const saveUnlessCancelled = useCallback(async () => {
-    if (await confirmSave(schema)) await saveForm();
+    if (await confirmSave(schema, linkCheckedText(schema))) await saveForm();
   }, [confirmSave, saveForm, schema]);
 
   const handleSaveForm = useCallback(() => {
