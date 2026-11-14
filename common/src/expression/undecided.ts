@@ -1,7 +1,5 @@
 import ts from "typescript";
-import { unionParts } from "../forms/formula-renderable";
 import { IS_UNKNOWN, type Diagnostic } from "./catalog";
-import { unparenthesized } from "./convert-syntax";
 import {
   collectsEachResult,
   isItemLookup,
@@ -11,11 +9,15 @@ import {
 } from "./evaluate-methods";
 import { BinaryOp, ExprKind, UnaryOp, children, type Expr } from "./tree";
 import { guards, readKey, readsGuardedBy } from "./undecided-guards";
+import {
+  isNullableType,
+  isYesNoType,
+  sourceQueries,
+  type Span,
+} from "./undecided-source";
 
 /** What a message says a result can be unknown without, as "`count`" or "an item of `marks`"; "" for a literal `null`. */
 export type Culprit = string;
-
-type Span = { start: number; end: number };
 
 /** `tsc` calls the left of `??` never nullish. */
 const UNREACHABLE_FALLBACK = 2869;
@@ -31,17 +33,6 @@ type Analysis = {
   /** Set when the whole result can be unknown or undecided. */
   root: Culprit | undefined;
 };
-
-const NULLISH = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
-const BOOLEAN_LIKE = ts.TypeFlags.BooleanLike | NULLISH | ts.TypeFlags.Never;
-
-export const isNullableType = (type: ts.Type) =>
-  unionParts(type).some((part) => (part.flags & NULLISH) !== 0);
-
-export const isYesNoType = (type: ts.Type) =>
-  unionParts(type).every(
-    (part) => (part.flags & (BOOLEAN_LIKE | ts.TypeFlags.Any)) !== 0,
-  );
 
 export const undecidedMessage = ({
   culprit,
@@ -89,33 +80,19 @@ export function analyze({
   const diagnostics: Diagnostic[] = [];
   const excused: Excused[] = [];
 
-  const node = (expr: Expr): ts.Expression => {
-    const found = source.get(expr);
-    if (found === undefined)
-      throw new Error(`no source for a ${expr.kind} node`);
-    return found;
-  };
-  const span = (expr: Expr): Span => ({
-    start: node(expr).getStart(file) - offset,
-    end: node(expr).getEnd() - offset,
-  });
-  const text = (expr: Expr) => unparenthesized(node(expr)).getText(file);
+  const {
+    node,
+    span,
+    operandSpan,
+    text,
+    typeOf,
+    nullable,
+    declaredNullable,
+    hasMissingItem,
+    isString,
+  } = sourceQueries({ source, checker, file, offset });
   const report = (expr: Expr, message: string) =>
     diagnostics.push({ message, ...span(expr) });
-  const typeOf = (expr: Expr) => checker.getTypeAtLocation(node(expr));
-  const every = (expr: Expr, flags: ts.TypeFlags) =>
-    unionParts(typeOf(expr)).every(
-      (part) => (part.flags & (flags | ts.TypeFlags.Any)) !== 0,
-    );
-  const nullable = (expr: Expr) => isNullableType(typeOf(expr));
-  const hasMissingItem = (list: Expr) => {
-    const item = checker.getIndexTypeOfType(
-      checker.getNonNullableType(typeOf(list)),
-      ts.IndexKind.Number,
-    );
-    return item !== undefined && isNullableType(item);
-  };
-  const isString = (expr: Expr) => every(expr, ts.TypeFlags.StringLike);
   // `tsc` rejects `join` on a list with missing items (formula-lib.ts).
   const missingItemMatters = (expr: Extract<Expr, { kind: ExprKind.Method }>) =>
     isItemLookup(expr.method) ||
@@ -174,12 +151,7 @@ export function analyze({
     dead = saved;
   };
   const excuse = (expr: Expr, code: number) => {
-    const operand = unparenthesized(node(expr));
-    excused.push({
-      code,
-      start: operand.getStart(file) - offset,
-      end: operand.getEnd() - offset,
-    });
+    excused.push({ code, ...operandSpan(expr) });
   };
   // `tsc` leaves the right of `??` out of the result's type when it thinks the
   // left is never missing, so whether a required fallback fits is checked here.
@@ -261,27 +233,11 @@ export function analyze({
     readKey(expr),
     ...children(expr).flatMap(keysIn),
   ];
-  // A read declared never missing stays so whatever `tsc` narrowed, unless
-  // its target can be missing and no guard covers that target.
-  const declaredNullable = (expr: Expr): boolean => {
-    if (
-      (expr.kind === ExprKind.Member || expr.kind === ExprKind.Index) &&
-      !covers(expr.target) &&
-      declaredNullable(expr.target)
-    ) {
-      return true;
-    }
-    const read = unparenthesized(node(expr));
-    const symbol = checker.getSymbolAtLocation(
-      ts.isPropertyAccessExpression(read) ? read.name : read,
-    );
-    if (symbol === undefined) return ts.isElementAccessExpression(read);
-    return isNullableType(checker.getTypeOfSymbol(symbol));
-  };
   const own = (expr: Expr): Culprit | undefined => {
     const key = readKey(expr);
     return nullable(expr) ||
-      ((unrun.has(key) || leftReads.has(key)) && declaredNullable(expr))
+      ((unrun.has(key) || leftReads.has(key)) &&
+        declaredNullable(expr, { covered: covers }))
       ? `\`${text(expr)}\``
       : undefined;
   };

@@ -26,12 +26,11 @@ import { printExpression } from "./print";
 import { ExprKind, children, type Expr } from "./tree";
 import {
   analyze,
-  isNullableType,
-  isYesNoType,
   undecidedMessage,
   type Culprit,
   type Excused,
 } from "./undecided";
+import { isNullableType, isYesNoType } from "./undecided-source";
 
 export enum Undecided {
   /** The consumer handles an unknown result itself, as a split group's fallback does. */
