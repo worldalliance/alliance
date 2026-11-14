@@ -111,7 +111,7 @@ describe("FormBuilder save with worldalliance text", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     expect((await screen.findByRole("dialog")).textContent).toContain(
-      "Save with worldalliance text?",
+      "This mentions worldalliance",
     );
     expect(writes).toEqual([]);
     fireEvent.click(screen.getByRole("button", { name: "Save anyway" }));

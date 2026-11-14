@@ -14,7 +14,7 @@ import { Plus, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import FormTextarea from "../components/FormTextarea";
-import { useWorldallianceConfirm } from "../components/useWorldallianceConfirm";
+import { useContentConfirm } from "../components/useContentConfirm";
 import { useContractAdmin } from "../lib/useContractAdmin";
 
 type DescriptionRow = {
@@ -91,8 +91,7 @@ const ContractPage: React.FC = () => {
   const saving = create.isPending || update.isPending;
   const createContract = create.mutateAsync;
   const updateContract = update.mutateAsync;
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
 
   if (contract && formContractId !== contract.id) {
     setFormContractId(contract.id);
@@ -184,7 +183,7 @@ const ContractPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <title>{pageTitle} - Admin</title>
-      {worldallianceDialog}
+      {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
         <button

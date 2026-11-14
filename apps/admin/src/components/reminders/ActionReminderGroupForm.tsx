@@ -11,7 +11,7 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useReminderTentativePlansAdmin } from "../../lib/useReminderTentativePlansAdmin";
-import { useWorldallianceConfirm } from "../useWorldallianceConfirm";
+import { useContentConfirm } from "../useContentConfirm";
 import ReminderKeywordHelp from "./ReminderKeywordHelp";
 import ReminderMessageFields from "./ReminderMessageFields";
 import ReminderScheduleFields from "./ReminderScheduleFields";
@@ -107,8 +107,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [draft, setDraft] = useState(() =>
     draftFromInitialValues(initialValues),
   );
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const updateDraft = (patch: Partial<ReminderGroupDraft>) =>
     setDraft((current) => ({ ...current, ...patch }));
   const {
@@ -434,7 +433,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           {submitting ? "Saving…" : submitLabel}
         </Button>
       </div>
-      {worldallianceDialog}
+      {contentDialog}
     </form>
   );
 };

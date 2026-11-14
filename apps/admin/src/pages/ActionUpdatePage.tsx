@@ -20,7 +20,7 @@ import { CollectiveResultFields } from "../components/CollectiveResultFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
 import { UPDATE_PREVIEW_DESCRIPTION } from "../components/UpdatePreview";
-import { useWorldallianceConfirm } from "../components/useWorldallianceConfirm";
+import { useContentConfirm } from "../components/useContentConfirm";
 import {
   detailsBody,
   formOf,
@@ -94,8 +94,7 @@ const ActionUpdatePage: React.FC = () => {
   const savedForm = useMemo(() => update && formOf(update), [update]);
 
   const saveDetails = updateMutation.mutateAsync;
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const handleSubmitDetails = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -360,7 +359,7 @@ const ActionUpdatePage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <title>{update.title} - Admin</title>
-      {worldallianceDialog}
+      {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{update.title}</h1>
         <button

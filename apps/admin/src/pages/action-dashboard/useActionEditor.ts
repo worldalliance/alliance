@@ -5,7 +5,7 @@ import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
-import { useWorldallianceConfirm } from "../../components/useWorldallianceConfirm";
+import { useContentConfirm } from "../../components/useContentConfirm";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
@@ -133,8 +133,7 @@ export function useActionEditor(params: {
   );
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
 
   useEffect(() => {
     if (isNew) {
@@ -363,7 +362,7 @@ export function useActionEditor(params: {
       draftOf({ form, reviewerRows, cohortExpression, imageKey }) !==
         savedDraft,
     setStaffPreview,
-    worldallianceDialog,
+    contentDialog,
     form,
     reviewerRows,
     setReviewerRows,

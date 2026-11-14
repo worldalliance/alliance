@@ -41,7 +41,7 @@ const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
       searchParams: new URLSearchParams(),
       setError: jest.fn(),
     });
-    return editor.worldallianceDialog;
+    return editor.contentDialog;
   };
   render(<Harness />, { wrapper: MemoryRouter });
   return {

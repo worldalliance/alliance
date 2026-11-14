@@ -5,7 +5,7 @@ import {
 } from "@alliance/common/forms/variable-interpolation";
 import { useCallback, useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
-import { useWorldallianceConfirm } from "./useWorldallianceConfirm";
+import { useContentConfirm } from "./useContentConfirm";
 
 function describeUnresolvedReferences(
   references: UnresolvedVariableReference[],
@@ -51,8 +51,7 @@ export function useSaveGate({
     [schema],
   );
 
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const saveUnlessCancelled = useCallback(async () => {
     if (await confirmSave(schema)) await saveForm();
   }, [confirmSave, saveForm, schema]);
@@ -82,7 +81,7 @@ export function useSaveGate({
           void saveUnlessCancelled();
         }}
       />
-      {worldallianceDialog}
+      {contentDialog}
     </>
   );
 

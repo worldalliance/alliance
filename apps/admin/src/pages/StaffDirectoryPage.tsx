@@ -6,7 +6,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { GripVertical } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { useWorldallianceConfirm } from "../components/useWorldallianceConfirm";
+import { useContentConfirm } from "../components/useContentConfirm";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 import {
@@ -75,8 +75,7 @@ const StaffDirectoryPage: React.FC = () => {
     );
   };
 
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const save = useSaveStaffDirectoryAdmin({
     onSuccess: () => setEdits(null),
     onError: (err) => {
@@ -106,7 +105,7 @@ const StaffDirectoryPage: React.FC = () => {
   return (
     <div className="p-5 space-y-4 max-w-4xl">
       <title>Staff Directory - Admin</title>
-      {worldallianceDialog}
+      {contentDialog}
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-bold text-lg">Staff directory</h1>
         <Button
