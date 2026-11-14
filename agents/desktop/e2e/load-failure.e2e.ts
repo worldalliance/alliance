@@ -11,7 +11,13 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { appArgs } from "./app-args";
 import { start } from "./ipc-helpers";
-import { captured, launch, runningCount, trackedClaude } from "./launch";
+import {
+  captured,
+  launch,
+  outlivedApp,
+  runningCount,
+  trackedClaude,
+} from "./launch";
 
 const electronPath: string = createRequire(import.meta.url)("electron");
 
@@ -47,6 +53,7 @@ test("a window that fails to load closes every conversation's CLI before the app
   const [code] = await exited;
   expect(code).toBe(1);
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
 });
 
 async function failPreload(

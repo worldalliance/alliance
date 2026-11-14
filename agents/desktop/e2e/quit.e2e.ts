@@ -20,6 +20,8 @@ import { firstMessage, start } from "./ipc-helpers";
 import {
   captured,
   launch,
+  noteOutlivedApp,
+  outlivedApp,
   runningCount,
   trackedClaude,
   workFolder,
@@ -102,6 +104,7 @@ test("quitting waits for every conversation's CLI to exit", async () => {
   expect(runningCount(claude)).toBe(1);
   await app.close();
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
 });
 
 test("quitting twice still waits for every conversation's CLI", async () => {
@@ -118,6 +121,7 @@ test("quitting twice still waits for every conversation's CLI", async () => {
   });
   await closed;
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
 });
 
 test("quitting while a conversation starts waits for its CLI too", async () => {
@@ -133,6 +137,7 @@ test("quitting while a conversation starts waits for its CLI too", async () => {
   await expect.poll(() => runningCount(claude)).toBeGreaterThan(0);
   await app.close();
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
 });
 
 test("quitting waits only so long for a conversation still starting", async () => {
@@ -162,12 +167,15 @@ test("quitting waits only so long for a conversation still starting", async () =
 test("quitting closes live conversations without waiting for one still starting", async () => {
   const stub = process.env[claudeExecutableVariable];
   const exited = test.info().outputPath("session-exited");
-  const claude = writeClaude(`case "$1" in
+  const claude = test.info().outputPath("claude");
+  writeClaude(`case "$1" in
   --version) mkdir "${test.info().outputPath("checked")}" 2>/dev/null || sleep 8; exec "${stub}" "$@";;
   auth) exec "${stub}" "$@";;
 esac
 "${stub}" "$@"
 status=$?
+sleep 1
+${noteOutlivedApp(claude)}
 touch "${exited}"
 exit $status
 `);
@@ -186,6 +194,7 @@ exit $status
   await app.evaluate(({ app }) => app.quit());
   await expect.poll(() => existsSync(exited), { timeout: 3_000 }).toBe(true);
   await closed;
+  expect(outlivedApp(claude)).toBe(false);
 });
 
 test("a conversation or resume that finishes starting while the quit closes others is closed too", async () => {
@@ -201,18 +210,19 @@ test("a conversation or resume that finishes starting while the quit closes othe
     JSON.stringify({ version: 1, conversations: [resumable] }),
   );
   // Version check n waits for release-n; session n, once its CLI ends, notes stopped-n and waits for exit-n, each numbered in arrival order.
-  writeClaude(`wait_for() { while [ ! -e "${gates}/$1" ]; do kill -0 $PPID 2>/dev/null || exit 1; sleep 0.05; done; }
+  writeClaude(`wait_for() { while [ ! -e "${gates}/$1" ]; do kill -0 $PPID 2>/dev/null || return 1; sleep 0.05; done; }
 take() { n=1; while ! mkdir "${gates}/$1-$n" 2>/dev/null; do n=$((n+1)); done; }
 case "$1" in
-  --version) take check; wait_for "release-$n"; exec "${stub}" "$@";;
+  --version) take check; wait_for "release-$n" || exit 1; exec "${stub}" "$@";;
   auth) exec "${stub}" "$@";;
 esac
 take session
 "${stub}" "$@"
 status=$?
 touch "${gates}/stopped-$n"
-wait_for "exit-$n"
+wait_for "exit-$n" || { ${noteOutlivedApp(claude)}; exit 1; }
 touch "${gates}/leaving-$n"
+${noteOutlivedApp(claude)}
 exit $status
 `);
   const gate = (name: string) => path.join(gates, name);
@@ -263,6 +273,7 @@ exit $status
   expect(await late).toEqual([quitting, quitting]);
   await closed;
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
   expect(savedConversations().map((c) => c.id)).toEqual([
     ...(started.ok ? [started.value.id] : []),
     resumable.id,
@@ -290,6 +301,7 @@ test("a conversation still saving when the quit begins starts, and its CLI is cl
   const conversation = await started;
   await closed;
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
   expect(savedConversations().map((c) => c.id)).toEqual(
     conversation.ok ? [conversation.value.id] : [],
   );
@@ -300,13 +312,15 @@ test("a resume still reading the saved conversations when the quit begins launch
   const stub = process.env[claudeExecutableVariable];
   const launches = test.info().outputPath("launches");
   // A live session slow to exit keeps the quit going until the refused resume's result reaches the renderer.
-  const claude = writeClaude(`case "$1" in
+  const claude = test.info().outputPath("claude");
+  writeClaude(`case "$1" in
   --version|auth) exec "${stub}" "$@";;
 esac
 echo >> "${launches}"
 "${stub}" "$@"
 status=$?
 sleep 1
+${noteOutlivedApp(claude)}
 exit $status
 `);
   const { app, page } = await launch({
@@ -330,6 +344,8 @@ exit $status
   closeSync(fifo);
   expect(await resume).toEqual(quitting);
   await closed;
+  expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
   expect(readFileSync(launches, "utf8")).toBe("\n");
 });
 
@@ -353,4 +369,5 @@ test("a conversation, resume or sign-in asked for once the quit begins is refuse
   expect(refused).toEqual([quitting, quitting, quitting]);
   await closed;
   expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
 });

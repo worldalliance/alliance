@@ -109,7 +109,7 @@ exit $status
 }
 
 /** Shell for a wrapper's last step that notes when the CLI outlived the app that started it. */
-const noteOutlivedApp = (claude: string): string =>
+export const noteOutlivedApp = (claude: string): string =>
   `kill -0 $PPID 2>/dev/null || touch "${claude}.outlived-app"`;
 
 export const outlivedApp = (claude: string): boolean =>
