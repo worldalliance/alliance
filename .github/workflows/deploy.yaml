@@ -96,7 +96,6 @@ jobs:
         run: bun run --cwd apps/frontend build
         env:
           VITE_APP_GIT_SHA: ${{ github.sha }}
-          VITE_APP_VERSION: ${{ github.ref_name }}
 
       - name: Install PostHog CLI
         continue-on-error: true

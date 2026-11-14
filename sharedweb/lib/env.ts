@@ -15,7 +15,6 @@ const dev = () => import.meta.env.MODE === "development";
 const buildSource = () =>
   ({
     VITE_APP_GIT_SHA: import.meta.env.VITE_APP_GIT_SHA,
-    VITE_APP_VERSION: import.meta.env.VITE_APP_VERSION,
     ALLIANCE_DEV_API_URL: dev()
       ? import.meta.env.ALLIANCE_DEV_API_URL
       : undefined,

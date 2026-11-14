@@ -1,12 +1,17 @@
 import { webEnv } from "@alliance/sharedweb/lib/env";
+import { webEnvironment } from "@alliance/sharedweb/lib/runtimeConfig";
 import type { PostHog, PostHogConfig } from "posthog-js";
 import { registerArrival } from "./linkOpenings";
 
-// Before PostHog has loaded it has no persistence, and register does nothing.
-function tagBuild(posthog: Pick<PostHog, "register">) {
+// Before PostHog has loaded it has no persistence, and both calls do nothing.
+function tagBuild(posthog: Pick<PostHog, "register" | "unregister">) {
+  // BACKCOMPAT(app-version): super-properties persist, so browsers that ran
+  // an older build still send app_version. Remove a year after this reaches
+  // production: events stop carrying it at once, so no query can tell when.
+  posthog.unregister("app_version");
   posthog.register({
     git_sha: webEnv("VITE_APP_GIT_SHA") ?? "unknown",
-    app_version: webEnv("VITE_APP_VERSION") ?? "unknown",
+    environment: webEnvironment(),
   });
 }
 
