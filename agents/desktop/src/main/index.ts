@@ -1,4 +1,11 @@
-import { app, BrowserWindow, dialog, net, protocol } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  nativeTheme,
+  net,
+  protocol,
+} from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
@@ -55,11 +62,16 @@ function exitUnloaded(cause: string): void {
   }
 }
 
+// styles.css's --background, which shows while the window resizes or its page reloads.
+const windowBackground = () =>
+  nativeTheme.shouldUseDarkColors ? "#0d1117" : "#ffffff";
+
 function createWindow(): void {
   const window = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
+    backgroundColor: windowBackground(),
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/index.cjs"),
     },
@@ -163,6 +175,10 @@ void app.whenReady().then(() => {
     ),
     rendererUrl,
     openingWaitMs,
+  });
+  nativeTheme.on("updated", () => {
+    for (const window of BrowserWindow.getAllWindows())
+      window.setBackgroundColor(windowBackground());
   });
   createWindow();
   app.on("activate", () => {

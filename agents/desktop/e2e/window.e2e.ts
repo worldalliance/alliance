@@ -5,6 +5,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
+import type { NativeTheme } from "electron";
 import { rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -71,6 +72,78 @@ test("the CSP blocks inline scripts", async () => {
   }`);
   expect(await page.evaluate("document.body.dataset.inline")).toBeUndefined();
   await violation;
+});
+
+const windowBackground = (target: ElectronApplication) =>
+  target.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]?.getBackgroundColor().toUpperCase(),
+  );
+
+const pageBackground = async (target: Page) => {
+  const rgb = String(
+    await target.evaluate("getComputedStyle(document.body).backgroundColor"),
+  );
+  const channels = rgb.match(/\d+/g) ?? [];
+  const hex = channels.map((channel) =>
+    Number(channel).toString(16).padStart(2, "0"),
+  );
+  return `#${hex.join("")}`.toUpperCase();
+};
+
+const followsTheme = async (params: {
+  theme: NativeTheme["themeSource"];
+  colour: string;
+  page: Page;
+}) => {
+  await app.evaluate(({ nativeTheme }, theme) => {
+    nativeTheme.themeSource = theme;
+  }, params.theme);
+  // Playwright otherwise emulates light, whatever the app's theme.
+  await params.page.emulateMedia({ colorScheme: null });
+  await expect
+    .poll(async () => [
+      await windowBackground(app),
+      await pageBackground(params.page),
+    ])
+    .toEqual([params.colour, params.colour]);
+};
+
+test("the window's own background follows the page's light and dark colours", async () => {
+  await followsTheme({ theme: "dark", colour: "#0D1117", page });
+  await followsTheme({ theme: "light", colour: "#FFFFFF", page });
+});
+
+test("a window opened in dark mode starts with the dark background", async () => {
+  const dark = test.info().outputPath("dark.cjs");
+  await writeFile(
+    dark,
+    'require("electron").nativeTheme.themeSource = "dark";',
+  );
+  // -r runs before the app's code, so the window opens dark with no theme change after it to set its colour.
+  const darkApp = await electron.launch({
+    args: ["-r", dark, ...appArgs("dark")],
+  });
+  try {
+    await darkApp.firstWindow();
+    expect(await windowBackground(darkApp)).toBe("#0D1117");
+  } finally {
+    await darkApp.close();
+  }
+});
+
+test("on macOS, a window reopened after the first is destroyed follows the theme too", async () => {
+  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
+  await followsTheme({ theme: "light", colour: "#FFFFFF", page });
+  const reopened = app.waitForEvent("window");
+  await app.evaluate(({ app, BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.destroy();
+    app.emit("activate");
+  });
+  await followsTheme({
+    theme: "dark",
+    colour: "#0D1117",
+    page: await reopened,
+  });
 });
 
 test("the page can't read local files", async () => {
