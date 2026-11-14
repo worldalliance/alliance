@@ -115,13 +115,13 @@ export const noteOutlivedApp = (claude: string): string =>
 export const outlivedApp = (claude: string): boolean =>
   existsSync(`${claude}.outlived-app`);
 
-// A busy machine's full process list can outgrow execFileSync's 1 MB default buffer.
-const psMaxBuffer = 256 * 1024 * 1024;
+/** Every process's columns, as `ps -o` names them, one line each. */
+export const processLines = (columns: string): string[] =>
+  execFileSync("ps", ["-A", "-ww", "-o", columns], {
+    encoding: "utf8",
+    // A busy machine's full process list can outgrow execFileSync's 1 MB default buffer.
+    maxBuffer: 256 * 1024 * 1024,
+  }).split("\n");
 
 export const runningCount = (claude: string): number =>
-  execFileSync("ps", ["-A", "-ww", "-o", "command="], {
-    encoding: "utf8",
-    maxBuffer: psMaxBuffer,
-  })
-    .split("\n")
-    .filter((command) => command.includes(claude)).length;
+  processLines("command=").filter((command) => command.includes(claude)).length;

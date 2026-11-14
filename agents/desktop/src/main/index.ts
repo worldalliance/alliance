@@ -103,8 +103,16 @@ if (!app.requestSingleInstanceLock()) app.exit();
 
 let closeSessions: (() => Promise<void>) | undefined;
 let closing: Promise<void> | undefined;
+let relaunching = false;
+// The quitting process holds the lock until it exits, so a launch during the quit relaunches the app then. app.relaunch starts one app per call.
+const relaunchAfterQuit = () => {
+  if (relaunching) return;
+  relaunching = true;
+  app.relaunch();
+};
 
 app.on("second-instance", () => {
+  if (closing) return relaunchAfterQuit();
   const [window] = BrowserWindow.getAllWindows();
   if (!window) return createWindow();
   if (window.isMinimized()) window.restore();
@@ -144,6 +152,7 @@ void app.whenReady().then(() => {
   });
   createWindow();
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (closing) relaunchAfterQuit();
+    else if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
