@@ -301,7 +301,7 @@ export function KoraWelcome({
           role="note"
           className="w-fit max-w-xs shrink-0 -rotate-2 bg-yellow-200 px-6 py-12 text-lg font-medium text-zinc-900 shadow-md"
         >
-          Reviews start on November 17th.
+          We expect the project to begin in December.
         </p>
         <div className="flex flex-col gap-6">
           <RemindMeToggle viewer={viewer} />
