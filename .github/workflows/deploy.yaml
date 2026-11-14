@@ -403,13 +403,6 @@ jobs:
           script: |
             sudo yum install -y unzip nginx
 
-            mkdir -p ~/admin-config
-            mv ~/web-config.json ~/admin-config/config.json || { echo "could not install config.json"; exit 1; }
-
-            unzip -o -DD ~/admin-build.zip -d ~/admin-app || { echo "unzip of the admin bundle failed"; exit 1; }
-            # Same pruning as the frontend deploy's ~/output/build.
-            find ~/admin-app -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/admin-app"
-
             chmod o+x /home/ec2-user
 
             DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
@@ -440,6 +433,15 @@ jobs:
 
             render alliance_admin.conf
             reload
+
+            # After the vhost, which serves routes the bundle needs, such as
+            # /config.json. A failed cert check above also exits before this,
+            # leaving the old bundle and its config live.
+            mkdir -p ~/admin-config
+            mv ~/web-config.json ~/admin-config/config.json || { echo "could not install config.json"; exit 1; }
+            unzip -o -DD ~/admin-build.zip -d ~/admin-app || { echo "unzip of the admin bundle failed"; exit 1; }
+            # Same pruning as the frontend deploy's ~/output/build.
+            find ~/admin-app -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/admin-app"
 
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
