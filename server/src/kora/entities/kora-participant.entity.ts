@@ -1,5 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { OtpChannel } from "src/otp/otp-copy";
+import type { OtpContact } from "src/otp/otp.service";
 import { phoneNumberTransformer } from "src/utils/phone";
 import { Check, Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
@@ -46,7 +48,21 @@ export class KoraParticipant {
   @Column({ type: "timestamptz" })
   contactVerifiedAt: Date;
 
+  /** When the "reviews are open" message was sent; null until it is delivered. */
+  @Column({ type: "timestamptz", nullable: true })
+  launchNotifiedAt: Date | null;
+
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
   createdAt: Date;
+}
+
+export function participantContact(participant: KoraParticipant): OtpContact {
+  if (participant.email !== null) {
+    return { channel: OtpChannel.Email, destination: participant.email };
+  }
+  if (participant.phoneNumber !== null) {
+    return { channel: OtpChannel.Sms, destination: participant.phoneNumber };
+  }
+  throw new Error(`participant ${participant.id} has no contact`);
 }

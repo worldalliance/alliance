@@ -1,0 +1,31 @@
+{
+  "name": "@alliance/kora-review",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas.ts",
+    "./convert": "./src/convert.ts",
+    "./parse": "./src/parse.ts",
+    "./sample-export": "./src/sample-export.ts",
+    "./example-pair": "./src/example-pair.ts",
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && eslint .",
+    "gen:types": "bun scripts/gen-types.mjs"
+  },
+  "dependencies": {
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.11.1",
+    "@types/bun": "^1.4.4",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "json-schema-to-typescript": "^16.0.0"
+  }
+}

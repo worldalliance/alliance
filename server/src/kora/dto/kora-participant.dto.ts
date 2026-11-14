@@ -21,6 +21,7 @@ import { trim } from "src/utils/transforms";
 import {
   KORA_PARTICIPANT_NAME_MAX_LENGTH,
   KoraParticipant,
+  participantContact,
 } from "../entities/kora-participant.entity";
 
 export const INVALID_CONTACT = "Enter a valid email address or mobile number.";
@@ -72,10 +73,16 @@ export class KoraParticipantDto extends PickType(KoraParticipant, [
   "id",
   "name",
 ]) {
+  @ApiProperty({
+    description: "The email or phone signed in with, partly hidden",
+  })
+  maskedContact: string;
+
   constructor(input: KoraParticipant) {
     super();
     this.id = input.id;
     this.name = input.name;
+    this.maskedContact = maskDestination(participantContact(input));
   }
 }
 

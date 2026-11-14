@@ -18,7 +18,7 @@
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents/hooks agents/skills agents/chats)
+PACKAGES=(server common kora-review shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents/hooks agents/skills agents/chats)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1

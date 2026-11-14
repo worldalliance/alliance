@@ -51,7 +51,7 @@ uploads/
 
 .yarn/*
 **/tsconfig.tsbuildinfo
-/db_dumps/
+db_dumps/
 
 shared/tsconfig.tsbuildinfo
 

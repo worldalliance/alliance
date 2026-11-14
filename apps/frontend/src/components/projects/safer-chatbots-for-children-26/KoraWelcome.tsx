@@ -1,3 +1,4 @@
+import { KoraProjectStatus } from "@alliance/common/kora";
 import { cn } from "@alliance/shared/styles/util";
 import { Check, X } from "lucide-react";
 import {
@@ -5,10 +6,11 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
   type TransitionEvent,
 } from "react";
 import { DisplayHeading, SiteSubtitle, SubtitleSize } from "../../../site/ui";
+import { CLOSED_HEADING } from "./copy";
+import { KoraClosedNotice } from "./KoraClosedNotice";
 import { RISK_CATEGORIES, RiskCategory } from "./riskCategories";
 
 export const REMIND_ME_KEY = "kora.remindMe";
@@ -267,18 +269,20 @@ function RemindMeToggle({ viewer }: { viewer: KoraViewer }) {
   );
 }
 
+/** The Pending and Closed pages; Active shows the home base instead. */
 export function KoraWelcome({
   viewer,
-  account,
+  status,
 }: {
   viewer: KoraViewer;
-  account: ReactNode;
+  status: KoraProjectStatus;
 }) {
+  const closed = status === KoraProjectStatus.Closed;
   return (
     <div className="flex flex-col gap-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <DisplayHeading as="h1" className="text-5xl sm:text-6xl lg:text-7xl">
-          {HEADING[viewer]}
+          {closed ? CLOSED_HEADING : HEADING[viewer]}
         </DisplayHeading>
         <SiteSubtitle size={SubtitleSize.Page} className="max-w-none">
           Our partner,{" "}
@@ -296,18 +300,23 @@ export function KoraWelcome({
         </SiteSubtitle>
       </div>
       <CategoryCycle />
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
-        <p
-          role="note"
-          className="w-fit max-w-xs shrink-0 -rotate-2 bg-yellow-200 px-6 py-12 text-lg font-medium text-zinc-900 shadow-md"
-        >
-          Reviews start on November 17th.
-        </p>
-        <div className="flex flex-col gap-6">
-          <RemindMeToggle viewer={viewer} />
-          {account}
+      {closed ? (
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+          <KoraClosedNotice />
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
+          <p
+            role="note"
+            className="w-fit max-w-xs shrink-0 -rotate-2 bg-yellow-200 px-6 py-12 text-lg font-medium text-zinc-900 shadow-md"
+          >
+            Reviews start on November 17th.
+          </p>
+          <div className="flex flex-col gap-6">
+            <RemindMeToggle viewer={viewer} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

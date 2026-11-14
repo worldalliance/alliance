@@ -13,6 +13,7 @@ The project is the Alliance, and `alliance` is its identifier wherever a name ca
 - `sharedweb/`: shared by admin + frontend
 - `shared/`: shared by admin + frontend + mobile
 - `common/`: shared by all apps + server
+- `kora-review/`: KORA's transcript review tool, mounted by frontend; its schemas and converter are used by server
 - `agents/`: skills and hooks for the coding agents
 - `agents/desktop/`: Alliance agent, the desktop app employees work with coding agents through
 
@@ -153,7 +154,7 @@ Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
-This repository is open source, so anything written in it may become public: redact what shouldn't be public. Information anyone viewing the repository can already see needs none, such as contributors' names and handles on their commits, or identifying information deliberately used for authorship, credit, or project responsibility. Committing secrets or incidental personal information doesn't exempt them: they still get redacted, even in an earlier task's provenance. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
+This repository is open source, so anything written in it may become public: redact what shouldn't be public. Information anyone viewing the repository can already see needs none, such as contributors' names and handles on their commits, or identifying information deliberately used for authorship, credit, or project responsibility. Committing secrets or incidental personal information doesn't exempt them: they still get redacted, even in an earlier task's provenance. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Database dumps, staging's included, stay out of commits, in `.scratch/` or an ignored `db_dumps/`. Before handing off, check every file you created or changed for secrets and incidental personal information.
 
 ## Working files
 

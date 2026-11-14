@@ -1,0 +1,29 @@
+/*
+ * Kora review styles. Import once: import "@alliance/kora-review/style.css".
+ * Every rule is scoped to .kora-review, the element the tool adds inside the host's mount element.
+ * There are no global resets and nothing styles html, body or bare elements outside the tool.
+ *
+ * Theming: set any of these custom properties on the mount element or any ancestor. Unset ones use KORA's look.
+ *   --kora-color-background  --kora-color-surface  --kora-color-text  --kora-color-text-muted  --kora-color-border
+ *   --kora-color-accent  --kora-color-accent-text  --kora-color-accent-soft  --kora-color-child-bubble  --kora-color-code
+ *   --kora-color-positive  --kora-color-positive-soft  --kora-color-negative  --kora-color-negative-soft
+ *   --kora-color-neutral  --kora-color-on-semantic  --kora-color-highlight
+ *   --kora-radius (controls, 6px)  --kora-radius-large (cards and sheets, 8px)
+ *   --kora-font-family  --kora-font-family-display  --kora-font-family-mono
+ *   --kora-top-offset (height of a sticky host header, 0px)  --kora-z-index (base for the tool's layers, 0)
+ * Colour scheme follows prefers-color-scheme. Force one with data-kora-theme="light" or "dark" on an ancestor.
+ * Host colour overrides apply in both schemes, so a host that sets colours should also set data-kora-theme.
+ *
+ * Fonts are bundled (SIL Open Font License 1.1, see fonts/OFL-*.txt) under names that can't clash with the host's.
+ */
+@import "./style.foundation.css";
+@import "./style.controls.css";
+@import "./style.entry.css";
+@import "./style.review-context.css";
+@import "./style.transcript.css";
+@import "./style.annotations.css";
+@import "./style.review-feedback.css";
+@import "./style.completion.css";
+@import "./style.comparison.css";
+@import "./style.questions.css";
+@import "./style.integration.css";

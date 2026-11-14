@@ -1,10 +1,11 @@
 import { GENERIC_FAILURE } from "@alliance/common/errorMessage";
-import { KoraError } from "@alliance/common/kora";
+import { KoraError, KoraProjectStatus } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import {
   koraAbandonCode,
   koraCompleteSignup,
   koraParticipantCount,
+  koraProject,
   koraSendCode,
   koraSignOut,
   koraState,
@@ -83,7 +84,11 @@ export function useKoraParticipant() {
     onSuccess: ({ participant }) =>
       update({ participant, pendingCode: null, signupPending: !participant }),
     onError: (error) => {
-      if (thrownKoraError(error) === OtpError.CodeInvalid) {
+      const refused = thrownKoraError(error);
+      if (
+        refused === OtpError.CodeInvalid ||
+        refused === KoraError.ProjectClosed
+      ) {
         update({ pendingCode: null });
       }
     },
@@ -96,7 +101,11 @@ export function useKoraParticipant() {
       }).then((res) => res.data),
     onSuccess: (participant) => update({ participant, signupPending: false }),
     onError: (error) => {
-      if (thrownKoraError(error) === KoraError.SignupExpired) {
+      const refused = thrownKoraError(error);
+      if (
+        refused === KoraError.SignupExpired ||
+        refused === KoraError.ProjectClosed
+      ) {
         update({ signupPending: false });
       }
     },
@@ -113,4 +122,15 @@ export function useKoraParticipant() {
     completeSignup,
     signOut,
   };
+}
+
+export function useKoraProject() {
+  return useQuery({
+    queryKey: queryKeys.koraProject(),
+    queryFn: () =>
+      koraProject({ throwOnError: true }).then((res) => ({
+        status: z.enum(KoraProjectStatus).parse(res.data.status),
+      })),
+    retry: retryUnlessRefused(1),
+  });
 }

@@ -30,6 +30,7 @@ import {
   VERIFY_LIMITS_PER_IP,
 } from "./otp-limits";
 import { OtpRateEvent } from "./otp-rate-event.entity";
+import { isTestPhone, TEST_PHONE_CODE } from "./test-phone";
 
 export type OtpContact = { channel: OtpChannel; destination: string };
 
@@ -93,7 +94,8 @@ export class OtpService {
     const { purpose, contact, ip, webOtpHost } = params;
     const now = new Date();
     const browserToken = randomToken(32);
-    const code = generateOtpCode();
+    const testPhone = isTestPhone(contact);
+    const code = testPhone ? TEST_PHONE_CODE : generateOtpCode();
     const id = randomUUID();
     const challenge = this.challenges.create({
       id,
@@ -109,19 +111,21 @@ export class OtpService {
       expiresAt: later(now, OTP_TTL_MS),
       createdAt: now,
     });
-    const limited: LimitedBucket[] = [
-      {
-        bucket: otpRateBucket([
-          "send-contact",
-          contact.destination.toLowerCase(),
-        ]),
-        limits: SEND_LIMITS_PER_CONTACT,
-      },
-      {
-        bucket: otpRateBucket(["send-ip", ipRateKey(ip)]),
-        limits: SEND_LIMITS_PER_IP,
-      },
-    ];
+    const limited: LimitedBucket[] = testPhone
+      ? []
+      : [
+          {
+            bucket: otpRateBucket([
+              "send-contact",
+              contact.destination.toLowerCase(),
+            ]),
+            limits: SEND_LIMITS_PER_CONTACT,
+          },
+          {
+            bucket: otpRateBucket(["send-ip", ipRateKey(ip)]),
+            limits: SEND_LIMITS_PER_IP,
+          },
+        ];
 
     const claimed = await this.dataSource.transaction(
       async (manager): Promise<Result<void, Throttled>> => {
@@ -131,7 +135,7 @@ export class OtpService {
           order: { createdAt: "DESC" },
         });
         const resendAt = latest && later(latest.createdAt, OTP_RESEND_AFTER_MS);
-        if (resendAt && resendAt > now) {
+        if (!testPhone && resendAt && resendAt > now) {
           return R.failure(throttled(resendAt));
         }
         const retryAt = await claimRateEvents({ manager, limited, now });
@@ -150,7 +154,10 @@ export class OtpService {
       return claimed;
     }
 
-    if (!(await this.deliver({ purpose, contact, code, webOtpHost }))) {
+    if (
+      !testPhone &&
+      !(await this.deliver({ purpose, contact, code, webOtpHost }))
+    ) {
       await this.challenges.delete({ id });
       return R.failure({ error: OtpError.DeliveryFailed });
     }
@@ -175,19 +182,20 @@ export class OtpService {
         limits: VERIFY_LIMITS_PER_IP,
       },
     ];
-    const retryAt = await this.dataSource.transaction(async (manager) => {
-      await lockBuckets(manager, limited);
-      return claimRateEvents({ manager, limited, now });
-    });
-    if (retryAt) {
-      return R.failure(throttled(retryAt));
-    }
-
     const challenge = await this.usableChallenge({
       purpose,
       browserToken,
       now,
     });
+    if (!challenge || !isTestPhone(challenge)) {
+      const retryAt = await this.dataSource.transaction(async (manager) => {
+        await lockBuckets(manager, limited);
+        return claimRateEvents({ manager, limited, now });
+      });
+      if (retryAt) {
+        return R.failure(throttled(retryAt));
+      }
+    }
     if (!challenge) {
       return R.failure({ error: OtpError.CodeInvalid });
     }

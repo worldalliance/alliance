@@ -1,0 +1,232 @@
+/* Welcome */
+.kora-review .welcome {
+  padding-block: 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.kora-review .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 14px var(--f-mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.kora-review .hero {
+  font-size: clamp(34px, 9vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+.kora-review .m-pos {
+  background: var(--plus-tint);
+  text-decoration: underline solid var(--plus) 4px;
+  text-underline-offset: 6px;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.kora-review .m-neg {
+  background: var(--minus-tint);
+  text-decoration: underline dashed var(--minus) 2.5px;
+  text-underline-offset: 7px;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.kora-review .lede {
+  font-size: 18px;
+  color: var(--muted);
+  max-width: 60ch;
+}
+.kora-review .demo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kora-review .demo .bubble {
+  font-size: 17px;
+}
+.kora-review .demo-cap {
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.kora-review .steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  counter-reset: s;
+}
+.kora-review .steps li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  align-items: start;
+  counter-increment: s;
+}
+.kora-review .steps li::before {
+  content: counter(s);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font: 800 15px var(--f-display);
+}
+.kora-review .steps b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+.kora-review .steps span {
+  color: var(--muted);
+}
+.kora-review .card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.kora-review .form {
+  display: grid;
+  gap: 14px;
+}
+.kora-review .field {
+  display: grid;
+  gap: 6px;
+}
+.kora-review .field label {
+  font-weight: 700;
+}
+.kora-review .field input,
+.kora-review textarea {
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  width: 100%;
+  min-height: 48px;
+}
+.kora-review .field input:focus,
+.kora-review textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.kora-review .err {
+  color: var(--minus);
+  font-size: 14px;
+  font-weight: 700;
+}
+.kora-review .fine {
+  font-size: 14px;
+  color: var(--muted);
+}
+.kora-review .back-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.kora-review .qtitle {
+  font-size: clamp(26px, 6.5vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.kora-review .seg {
+  display: flex;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 3px;
+  gap: 3px;
+}
+.kora-review .seg button {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--muted);
+}
+.kora-review .seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.kora-review .qi-l {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kora-review .qi-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.kora-review .qi-snip {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kora-review .badge {
+  flex: none;
+  font: 700 12px var(--f-mono);
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1.5px dashed var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.kora-review .mini-stamp {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 800 15px var(--f-display);
+  border: 2.5px solid currentColor;
+  border-radius: 4px;
+  padding: 3px 8px;
+  transform: rotate(-5deg);
+}
+.kora-review .mini-stamp .ic {
+  width: 14px;
+  height: 14px;
+}
+.kora-review .warnbox {
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-size: 14px;
+  display: grid;
+  gap: 4px;
+  background: var(--card);
+}
+.kora-review .warnbox b {
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+.kora-review .warnbox ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}

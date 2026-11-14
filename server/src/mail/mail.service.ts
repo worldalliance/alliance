@@ -114,6 +114,8 @@ export class MailService {
     [EmailType.WaitlistLink]: "waitlist-link",
     [EmailType.WaitlistStaff]: "waitlist-staff",
     [EmailType.OtpCode]: "otp-code",
+    [EmailType.KoraLaunch]: "kora-launch",
+    [EmailType.KoraMoreReviews]: "kora-more-reviews",
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {

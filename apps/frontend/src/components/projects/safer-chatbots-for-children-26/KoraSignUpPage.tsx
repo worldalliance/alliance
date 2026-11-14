@@ -1,7 +1,9 @@
 import { cn } from "@alliance/shared/styles/util";
+import { useOAuthNotice } from "@alliance/sharedweb/lib/oauth";
+import { useState } from "react";
 import { Link } from "react-router";
 import { SiteFooter } from "../../../site/Footer";
-import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
+import { NAV_HEIGHT } from "../../../site/Navbar";
 import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { WaitlistHeroImages } from "../democratic-grantmaking-26/DemocraticGrantmaking26";
@@ -16,6 +18,8 @@ import {
 } from "./copy";
 import { ExpertList } from "./ExpertList";
 import { FactBlocks } from "./FactBlocks";
+import { KoraClosedNotice } from "./KoraClosedNotice";
+import { KoraNavbar } from "./KoraNavbar";
 import { KoraSignIn } from "./KoraSignIn";
 import { NewsCollage } from "./NewsCollage";
 import { ParticipantsBar } from "./ParticipantsBar";
@@ -43,7 +47,28 @@ function ProjectProgress() {
   );
 }
 
-function HeroScreen() {
+function ClosedSignIn() {
+  const returningFromProvider = useOAuthNotice() !== null;
+  const [open, setOpen] = useState(returningFromProvider);
+  return (
+    <div className="mt-2 flex w-full flex-col gap-4">
+      <KoraClosedNotice />
+      {open ? (
+        <KoraSignIn className="w-full" note={null} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="site-sans min-h-6 self-start text-base underline"
+        >
+          Already taking part? Sign in to finish your reviews
+        </button>
+      )}
+    </div>
+  );
+}
+
+function HeroScreen({ closed }: { closed: boolean }) {
   return (
     <section
       aria-label="Sign up"
@@ -83,7 +108,11 @@ function HeroScreen() {
             to improve the safety of chatbots for children worldwide.
           </p>
           <ExpertList />
-          <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
+          {closed ? (
+            <ClosedSignIn />
+          ) : (
+            <KoraSignIn className="mt-2 w-full" note={SIGNUP_NOTE} />
+          )}
         </div>
         <div className="flex justify-center lg:justify-end">
           <WaitlistHeroImages images={HERO_IMAGES} />
@@ -93,12 +122,12 @@ function HeroScreen() {
   );
 }
 
-export function KoraSignUpPage() {
+export function KoraSignUpPage({ closed }: { closed: boolean }) {
   return (
     <SiteRoot className="bg-white">
-      <Navbar />
+      <KoraNavbar />
       <main>
-        <HeroScreen />
+        <HeroScreen closed={closed} />
         <div
           className={cn(
             PROJECT_COL,

@@ -1,0 +1,4 @@
+- The persona's goal, completing the actions she's assigned, restates her approved summary line rather than adding a trait. (agent interpretation)
+- The review interface, its link from the action, and the continue option are marked unbuilt with no route or component, because no branch had them as of 2026-11-09. The full-screen task flow (`docs/task-flow-authoring.md`) exists, but the user chose the shared review interface over it. (reconstructed from existing code)
+- The time estimate step cites `apps/mobile/components/TaskTimeInfo.tsx`, which shows the action's `timeEstimate` in minutes. (reconstructed from existing code)
+- The failure states are the mobile action screen's existing loading and error copy. Failure states of the unbuilt steps are left out, because the code doesn't have them yet. (agent decision)

@@ -26,6 +26,8 @@ export enum EmailType {
   WaitlistLink = "waitlist_link",
   WaitlistStaff = "waitlist_staff",
   OtpCode = "otp_code",
+  KoraLaunch = "kora_launch",
+  KoraMoreReviews = "kora_more_reviews",
 }
 
 export enum EmailStatus {

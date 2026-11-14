@@ -1,4 +1,8 @@
-import { CreateActionDto, VisibilityMode } from "@alliance/shared/client";
+import {
+  ActionTaskKind,
+  CreateActionDto,
+  VisibilityMode,
+} from "@alliance/shared/client";
 import { tracksCustomStat } from "@alliance/shared/lib/customActionStat";
 import { suiteOptions } from "./suiteOptions";
 
@@ -40,6 +44,11 @@ export type ActionFieldDef = {
 const customStatTypeOptions = [
   { value: "none", label: "None" },
   { value: "users_invited", label: "Users Invited" },
+];
+
+const taskKindOptions: { value: ActionTaskKind; label: string }[] = [
+  { value: "form", label: "Form" },
+  { value: "kora_review", label: "Kora review" },
 ];
 
 const visibilityModeOptions: { value: VisibilityMode; label: string }[] = [
@@ -126,6 +135,16 @@ export function actionFieldDefs(
       section: ActionFieldSection.Settings,
       options: visibilityModeOptions,
       gridCol: true,
+    },
+    {
+      name: "taskKind",
+      label: "Task",
+      type: "select",
+      section: ActionFieldSection.Settings,
+      options: taskKindOptions,
+      gridCol: true,
+      helpText:
+        "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
     },
     {
       name: "timeEstimate",

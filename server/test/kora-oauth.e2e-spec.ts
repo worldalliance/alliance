@@ -100,6 +100,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
     expect(participant).toEqual({
       id: expect.any(String),
       name: "Google Person",
+      maskedContact: expect.stringMatching(/^\w•••@example\.com$/),
     });
     expect(
       await participants().findOneByOrFail({ id: participant!.id }),

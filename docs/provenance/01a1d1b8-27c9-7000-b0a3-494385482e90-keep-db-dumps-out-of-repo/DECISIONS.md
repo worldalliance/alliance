@@ -1,0 +1,2 @@
+- The `AGENTS.md` line sits in **Secrets and personal information** rather than **Working files**, because the reason a dump stays out is that staging is a copy of production data in an open-source repository. (agent decision)
+- The incident: a staging dump at `scripts/db_dumps/` reached a commit through `git add -A`, because the root-anchored `/db_dumps/` ignore missed it. (agent observation)

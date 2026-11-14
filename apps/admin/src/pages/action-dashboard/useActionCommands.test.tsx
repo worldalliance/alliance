@@ -39,7 +39,9 @@ beforeEach(() => {
 
 const notCalled = () => Promise.reject(new Error("not called"));
 
-function renderCommands() {
+function renderCommands(
+  form: CreateActionDto = { ...testActions[0], taskFormId: 3 },
+) {
   const { wrapper: QueryWrapper } = queryWrapper();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryWrapper>
@@ -73,7 +75,7 @@ function renderCommands() {
           unarchiveAction: notCalled,
         },
         actionId: 1,
-        form: { ...testActions[0], taskFormId: 3 },
+        form,
         imageKey: null,
         imageUploading: false,
         setError: (error) => errors.push(error),
@@ -91,6 +93,17 @@ test("duplicating an action points the copy at a clone of its task form", async 
     name: `${testActions[0].name} (Copy)`,
     taskFormId: 9,
   });
+});
+
+test("duplicating a Kora review action keeps its task kind", async () => {
+  const view = renderCommands({
+    ...testActions[0],
+    taskFormId: undefined,
+    taskKind: "kora_review",
+  });
+  await view.result.current.handleDuplicate();
+  expect(errors).toEqual([]);
+  expect(created[0]).toMatchObject({ taskKind: "kora_review" });
 });
 
 test("a task form that fails to clone stops the duplicate", async () => {
