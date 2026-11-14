@@ -8,6 +8,9 @@ import {
 import { Undecided, checkExpression, type ResultRule } from "./check";
 import { parseExpression } from "./parse";
 
+export const UNDECIDED_STATE =
+  "This is undecided when `state` has no value. Add `?? false` or `?? true` to decide it then.";
+
 export const string: ValueType = { kind: TypeKind.String };
 const number: ValueType = { kind: TypeKind.Number };
 const boolean: ValueType = { kind: TypeKind.Boolean };

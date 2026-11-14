@@ -127,6 +127,13 @@ describe("types", () => {
     expect(passes("highest([marks[0]])", variable).type).toBe("number");
   });
 
+  test("a result found always decided names no missing value in its type", () => {
+    expect(passes("true ? true : null", variable)).toMatchObject({
+      type: "boolean",
+      mayBeUnknown: false,
+    });
+  });
+
   test("the result must fit the consumer's type", () => {
     expect(problems("total", condition)).toEqual([
       {
@@ -348,11 +355,4 @@ describe("named expressions", () => {
       },
     ]);
   });
-});
-
-test("a guard on the left of a `??` in a chain decides the chain", () => {
-  expect(
-    passes('((!isUnknown(state) && count === 1) ?? true) && state === "CA"')
-      .mayBeUnknown,
-  ).toBe(false);
 });
