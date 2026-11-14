@@ -1,0 +1,8 @@
+# Decisions
+
+- The env-read lint ratchet the issue asks for already shipped with ALL-1961 (PR #893): `eslint/shared-rules.mjs` defines `serverEnvReads`, `webEnvReads`, `mobileEnvReads` and `sharedEnvReads`, which each package's ESLint config applies. This task adds nothing for it. (Agent decision, from the existing code.)
+- Infisical's repo footprint is down to the `.env.infisical` line in `server/.gitignore`. `server/.infisical.yaml`, its `.prettierignore` entry and the `env.ts` comment the issue names are already gone. The line stays: an export the Infisical CLI left in a checkout outlives the deleted projects, and the Storage project's values were copied unchanged into Parameter Store, so they are still live. (Agent decision.)
+- `ADMIN_USER` and `ADMIN_PASSWORD` can go from GitHub: `server/src/config/env.ts` keeps them out of the deployed store, so no deployed server reads them. (Agent decision, from the existing code.)
+- ALL-1325 needs no change: on 2026-11-13 the `production` environment already allowed only `main` and `production`, and `staging`, `staging-hosts`, `production-hosts` and `pr-screenshots` were restricted too. This task closes the issue. (Agent decision.)
+- Deleting the `AWS_ACCESS_KEY_ID` GitHub secret doesn't revoke the IAM key it held, and the agent couldn't tell which IAM user that key belongs to. Revoking it is left to the user. (Agent decision.)
+- `~/db-ca.pem` on the staging host was removed only after a search of the home directory, the crontab and pm2's process list found no reference to it. (Agent decision.)

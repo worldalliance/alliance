@@ -82,7 +82,7 @@ The deploy runs the new release's config check under the wrapper before it stops
 
 A running backend doesn't need Parameter Store. A deploy fails and leaves the old backend running. A restart or a host reboot leaves the backend down while pm2 retries, up to every 15 seconds, until the fetch succeeds. Meanwhile `pm2 logs nest-app` shows the errors from `secrets_run.sh` or the AWS CLI.
 
-When Parameter Store itself is down, the deploy keeps no copy of the secrets outside it (GitHub secrets can't be read back), so the backend comes back when the store does.
+When Parameter Store itself is down, the deploy keeps no copy of the secrets outside it, so the backend comes back when the store does.
 
 When only this host can't read, for example after its role or policy breaks, start the backend by hand. A teammate who can read Parameter Store prints the server's secrets as shell-quoted `NAME='value'` lines:
 
