@@ -6,8 +6,13 @@ import { formSchemaOf } from "./form-snapshot-schema";
 
 /** The schema getForm serves for a stored snapshot, without the contracts it fills in. */
 export function servedSchema(snapshot: FormSnapshot): FormSchema {
-  const schema = structuredClone(formSchemaOf(snapshot));
-  const pages = schema.pages;
+  const schema = withImageUrls(formSchemaOf(snapshot));
+  serveVideoSources(schema);
+  return schema;
+}
+
+function withImageUrls(schema: FormSchema): FormSchema {
+  const rendered = structuredClone(schema);
   const transformElement = (field: Page["fields"][number]): void => {
     if (field.kind === "images") {
       field.images = field.images.map((image) => ({
@@ -21,11 +26,10 @@ export function servedSchema(snapshot: FormSnapshot): FormSchema {
       }
     }
   };
-  for (const page of pages) {
+  for (const page of rendered.pages) {
     page.fields.forEach(transformElement);
   }
-  serveVideoSources(schema);
-  return schema;
+  return rendered;
 }
 
 /** Mobile bundles older than useVideoSource's storage-url check would play an
