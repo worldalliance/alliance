@@ -124,11 +124,10 @@ export type ImageSaveTarget =
 
 /**
  * What saving an image acts on: a stored image's jpeg download, or any other
- * source as it is, unless its scheme is unsafe. Forms serve sources the way
- * getImageSource renders them, as a cloudfront url in production, so any url
- * shaped like one counts as stored; an external url that only looks like one
- * 404s at the download. A bare key isn't a rendered url; resolve it with
- * resolveUploadSrc first.
+ * source as it is, unless its scheme is unsafe. Any url shaped like one
+ * getImageSource renders, a cloudfront url in production, counts as stored; an
+ * external url that only looks like one 404s at the download. A bare key isn't
+ * a rendered url; resolve it with resolveUploadSrc first.
  */
 export function imageSaveTarget({
   src,
