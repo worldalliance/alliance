@@ -1,5 +1,5 @@
 import type { QuoteBlock } from "@alliance/common/forms/display-blocks";
-import { type UserDto } from "@alliance/shared/client";
+import { type AdminUserListItemDto } from "@alliance/shared/client";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useMemo, useState } from "react";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
@@ -7,7 +7,7 @@ import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
-type QuoteUser = Pick<UserDto, "id" | "name" | "profilePicture">;
+type QuoteUser = Pick<AdminUserListItemDto, "id" | "name" | "profilePicture">;
 
 function QuoteBlockEditor({
   activeBlock,
@@ -56,11 +56,11 @@ function QuoteBlockEditor({
       .slice(0, 8);
   }, [activeBlock.userId, query, users]);
 
-  const selectUser = (user: QuoteUser) => {
+  const selectUser = (user: AdminUserListItemDto) => {
     onUpdate({
       userId: user.id,
       userName: user.name ?? `User #${user.id}`,
-      userProfilePicture: user.profilePicture ?? null,
+      userProfilePicture: user.storedProfilePicture,
     });
     setQuery("");
   };
