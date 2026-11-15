@@ -51,6 +51,9 @@ Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AW
 `deployed-config.ts <staging|production>`
 Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.
 
+`deployed-db-name.ts <staging|production>`
+Prints the environment's `DB_NAME` from `common/src/deployed-config.ts`. The deploy ships it to the backend host, for the scripts there that need a database name.
+
 `web-runtime-config.ts <staging|production>`
 Prints the environment's web runtime config from `common/src/web-runtime-config.ts` as JSON. The deploy workflow uploads it, and the admin host serves it as `/config.json`.
 

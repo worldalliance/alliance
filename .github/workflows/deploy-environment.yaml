@@ -83,6 +83,8 @@ jobs:
             server/migrations \
             server/scripts \
             scripts/deploy_backend.sh \
+            scripts/deployed-config-arg.ts \
+            scripts/deployed-db-name.ts \
             scripts/secrets_run.sh \
             scripts/sync_prod_to_staging.sh \
             scripts/anonymize \
