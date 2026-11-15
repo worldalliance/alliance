@@ -78,11 +78,15 @@ rm value.txt
 
 The deploy runs the new release's config check under the wrapper before it stops the running backend. A missing key or an unreachable Parameter Store fails the deploy and leaves the old backend running.
 
+## Secret files kept for admins
+
+`/alliance/shared/` holds secret files kept only for admins, such as the hosts' SSH key `EC2_SSH_KEY`; no role is granted it, and it is unrelated to `/alliance/ci/shared/`. The `parameter-drift` workflow reports a parameter there whose name isn't in `SHARED_KEYS` in `scripts/check-parameter-drift.ts`, but never requires one. To add one, merge its name into `SHARED_KEYS`, then create `/alliance/shared/<NAME>` with the console or CLI steps above. To remove one, delete the parameter first, then its `SHARED_KEYS` entry. Dispatch the workflow on `main` after each store edit.
+
 ## When the fetch fails
 
 A running backend doesn't need Parameter Store. A deploy fails and leaves the old backend running. A restart or a host reboot leaves the backend down while pm2 retries, up to every 15 seconds, until the fetch succeeds. Meanwhile `pm2 logs nest-app` shows the errors from `secrets_run.sh` or the AWS CLI.
 
-When Parameter Store itself is down, the deploy keeps no copy of the secrets outside it (GitHub secrets can't be read back), so the backend comes back when the store does.
+When Parameter Store itself is down, the deploy keeps no copy of the secrets outside it, so the backend comes back when the store does.
 
 When only this host can't read, for example after its role or policy breaks, start the backend by hand. A teammate who can read Parameter Store prints the server's secrets as shell-quoted `NAME='value'` lines:
 
@@ -92,7 +96,7 @@ aws ssm get-parameters-by-path --region us-west-2 --path /alliance/<env>/server/
   | jq -r '.Parameters[] | "\(.Name | split("/") | last)=\(.Value | @sh)"'
 ```
 
-On the host, create a file only you can read with `install -m 600 /dev/null ~/server.env` and paste those lines into it in an editor, not with `export` or `echo`, which leave them in shell history. Keep the quoting: the file is sourced by the shell, so an unquoted `$`, space, quote or backtick silently changes the value. Then from `~/nest-backend/server`:
+On the host, which admins reach over SSH with the key at `/alliance/shared/EC2_SSH_KEY`, create a file only you can read with `install -m 600 /dev/null ~/server.env` and paste those lines into it in an editor, not with `export` or `echo`, which leave them in shell history. Keep the quoting: the file is sourced by the shell, so an unquoted `$`, space, quote or backtick silently changes the value. Then from `~/nest-backend/server`:
 
 ```bash
 pm2 delete nest-app
