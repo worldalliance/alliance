@@ -7,8 +7,9 @@ export const NEWER = "d".repeat(40);
 
 // Stands in for gh: answers each call with API-shaped JSON built from
 // $FAKE_DEPLOYMENTS ("id sha" lines) and $FAKE_STATES ("id state" lines, a
-// deployment's newest state), then applies the call's --jq filter with jq.
-// $FAKE_FAIL fails the call whose arguments contain it.
+// deployment's newest state), $FAKE_COMPARE and $FAKE_TIP, then applies the
+// call's --jq filter with jq. It keeps the posted deployment body and answers
+// it with id 42. $FAKE_FAIL fails the call whose arguments contain it.
 const FAKE_GH = `#!/usr/bin/env bash
 echo "$*" >> "$FAKE_DIR/calls"
 if [ -n "\${FAKE_FAIL:-}" ] && [[ "$*" == *"$FAKE_FAIL"* ]]; then echo "HTTP 502" >&2; exit 1; fi
@@ -24,6 +25,9 @@ case "$*" in
     id=\${2#*/deployments/}; id=\${id%%/*}
     printf '%s\\n' "\${FAKE_STATES:-}" \\
       | jq -nRc --arg id "$id" '[inputs | split(" ") | select(.[0] == $id) | {state: .[1]}]' ;;
+  *"/compare/"*) jq -n --arg status "$FAKE_COMPARE" '{$status}' ;;
+  *"/git/ref/heads/production"*) jq -n --arg sha "$FAKE_TIP" '{object: {$sha}}' ;;
+  *"POST repos/o/r/deployments --input"*) cat > "$FAKE_DIR/body"; echo '{"id": 42}' ;;
 esac | jq -r "$filter"
 `;
 
