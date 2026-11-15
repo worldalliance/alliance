@@ -1,3 +1,5 @@
+import { R, type Result } from "../result";
+import { topologicalOrder } from "../topological-order";
 import { IS_UNKNOWN, type NamedExpression } from "./catalog";
 import { ExprKind, children, mathFunctionName, type Expr } from "./tree";
 
@@ -11,6 +13,8 @@ function walk(expr: Expr, visit: (node: Expr) => void): void {
   visit(expr);
   for (const child of children(expr)) walk(child, visit);
 }
+
+const directRefs = (expr: Expr): Set<string> => reads(expr, []).named;
 
 /**
  * What an expression reads, directly or through the named expressions it
@@ -60,4 +64,23 @@ export function reads(expr: Expr, named: readonly NamedExpression[]): Reads {
   };
   walk(expr, visit);
   return found;
+}
+
+/**
+ * The named expressions `roots` reach, each after those it references, or the
+ * names along a cycle. References to ids missing from `named` are skipped.
+ */
+export function dependencyOrder(
+  roots: readonly Expr[],
+  named: readonly NamedExpression[],
+): Result<NamedExpression[], string[]> {
+  const byId = new Map(named.map((each) => [each.id, each]));
+  return R.mapError(
+    topologicalOrder({
+      roots: roots.flatMap((root) => [...directRefs(root)]),
+      itemOf: (id) => byId.get(id),
+      dependenciesOf: (definition) => directRefs(definition.tree),
+    }),
+    (cycle) => cycle.map((definition) => definition.name),
+  );
 }

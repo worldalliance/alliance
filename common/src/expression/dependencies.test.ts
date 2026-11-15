@@ -1,6 +1,6 @@
 import { R } from "../result";
 import { TypeKind, type Catalog, type NamedExpression } from "./catalog";
-import { reads } from "./dependencies";
+import { dependencyOrder, reads } from "./dependencies";
 import { parseExpression } from "./parse";
 import { ExprKind } from "./tree";
 
@@ -68,4 +68,54 @@ test("reads stop at a cycle", () => {
 
 test("reads list a reference missing from the named expressions", () => {
   expect(reads(refTo("a", "gone").tree, []).named).toEqual(new Set(["gone"]));
+});
+
+describe("dependencyOrder", () => {
+  test("named expressions are ordered after what they reference", () => {
+    expect(
+      R.map(dependencyOrder([tree("middle")], [middle, base]), (order) =>
+        order.map((each) => each.name),
+      ),
+    ).toEqual(R.success(["base", "middle"]));
+  });
+
+  test("several roots are ordered together, sharing a definition once", () => {
+    expect(
+      R.map(
+        dependencyOrder([tree("base"), tree("middle")], [middle, base]),
+        (order) => order.map((each) => each.name),
+      ),
+    ).toEqual(R.success(["base", "middle"]));
+  });
+
+  test("a cycle is reported by name", () => {
+    const a = refTo("a", "b");
+    const b = refTo("b", "a");
+    expect(dependencyOrder([a.tree], [a, b])).toEqual(
+      R.failure(["nb", "na", "nb"]),
+    );
+  });
+
+  test("a self-reference is a cycle", () => {
+    const a = refTo("a", "a");
+    expect(dependencyOrder([a.tree], [a])).toEqual(R.failure(["na", "na"]));
+  });
+
+  test("a named expression reached twice is ordered once", () => {
+    const d = define({ id: "d", text: "count" });
+    const b = define({ id: "b", text: "d", named: [d] });
+    const c = define({ id: "c", text: "d * 2", named: [d] });
+    const a = define({ id: "a", text: "b + c", named: [b, c] });
+    expect(
+      R.map(dependencyOrder([a.tree], [a, b, c, d]), (order) =>
+        order.map((each) => each.name),
+      ),
+    ).toEqual(R.success(["d", "b", "c"]));
+  });
+
+  test("ordering skips a reference missing from the named expressions", () => {
+    expect(dependencyOrder([refTo("a", "gone").tree], [])).toEqual(
+      R.success([]),
+    );
+  });
 });
