@@ -87,7 +87,7 @@ export class OtpService {
     purpose: OtpPurpose;
     contact: OtpContact;
     ip: string;
-    webOtpHost: string;
+    webOtpHost: string | null;
   }): Promise<
     Result<{ browserToken: string; pending: PendingOtp }, OtpStartRefusal>
   > {
@@ -287,7 +287,7 @@ export class OtpService {
     purpose: OtpPurpose;
     contact: OtpContact;
     code: string;
-    webOtpHost: string;
+    webOtpHost: string | null;
   }): Promise<boolean> {
     const { purpose, contact, code, webOtpHost } = params;
     switch (contact.channel) {

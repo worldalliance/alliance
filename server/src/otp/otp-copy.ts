@@ -39,18 +39,17 @@ export function otpEmail(params: { purpose: OtpPurpose; code: string }): {
 }
 
 /**
- * The last line is the WebOTP format, which lets a browser on `webOtpHost`
- * offer the code for autofill.
+ * With a `webOtpHost`, the last line is the WebOTP format, which lets a
+ * browser on that host offer the code for autofill.
  */
 export function otpText(params: {
   purpose: OtpPurpose;
   code: string;
-  webOtpHost: string;
+  webOtpHost: string | null;
 }): string {
   const copy = OTP_COPY[params.purpose];
-  return [
-    `Your Alliance ${copy.codeLabel} is ${params.code}. It expires in ${EXPIRY}.`,
-    "",
-    `@${params.webOtpHost} #${params.code}`,
-  ].join("\n");
+  const text = `Your Alliance ${copy.codeLabel} is ${params.code}. It expires in ${EXPIRY}.`;
+  return params.webOtpHost
+    ? `${text}\n\n@${params.webOtpHost} #${params.code}`
+    : text;
 }

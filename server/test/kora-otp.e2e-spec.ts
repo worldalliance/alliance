@@ -78,6 +78,13 @@ describe("Kora one-time codes (e2e)", () => {
     );
   });
 
+  it("ends a text with the WebOTP line for the requesting site", async () => {
+    await h.sendCode(h.browser(), { phoneNumber: uniquePhone() }).expect(200);
+    expect(h.lastText()).toMatch(
+      new RegExp(`\n\n@${new URL(ORIGIN).host} #${h.lastCode()}$`),
+    );
+  });
+
   it("reports a failed send", async () => {
     h.failDelivery();
     const res = await h
