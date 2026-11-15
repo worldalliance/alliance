@@ -38,8 +38,8 @@ locals {
         "${local.github_sub_prefix}:pull_request"        = ["refs/pull/*/merge"]
       }
       workflows = {
-        "${local.github_sub_prefix}:ref:refs/heads/main" = "${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/heads/main"
-        "${local.github_sub_prefix}:pull_request"        = "${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/pull/*/merge"
+        "${local.github_sub_prefix}:ref:refs/heads/main" = ["${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/heads/main"]
+        "${local.github_sub_prefix}:pull_request"        = ["${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/pull/*/merge"]
       }
       parameters           = []
       max_session_duration = 3600
@@ -75,14 +75,14 @@ locals {
     staging-hosts = {
       test                 = "StringEquals"
       trust                = { "${local.github_sub_prefix}:environment:staging-hosts" = ["refs/heads/main"] }
-      workflows            = { "${local.github_sub_prefix}:environment:staging-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main" }
+      workflows            = { "${local.github_sub_prefix}:environment:staging-hosts" = ["${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main"] }
       parameters           = []
       max_session_duration = 10800
     }
     production-hosts = {
       test                 = "StringEquals"
       trust                = { "${local.github_sub_prefix}:environment:production-hosts" = ["refs/heads/production"] }
-      workflows            = { "${local.github_sub_prefix}:environment:production-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production" }
+      workflows            = { "${local.github_sub_prefix}:environment:production-hosts" = ["${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production"] }
       parameters           = []
       max_session_duration = 10800
     }
@@ -138,7 +138,7 @@ data "aws_iam_policy_document" "ci_assume" {
         content {
           test     = each.value.test
           variable = "${local.github_oidc}:job_workflow_ref"
-          values   = [condition.value]
+          values   = condition.value
         }
       }
     }
