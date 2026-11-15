@@ -48,6 +48,20 @@ export const MATH_FUNCTION_NAMES = [
   "trunc",
 ] as const;
 
+type MathFunctionName = (typeof MATH_FUNCTION_NAMES)[number];
+
+export const MATH_BINARY_FUNCTIONS = [
+  "atan2",
+  "imul",
+  "pow",
+] as const satisfies readonly MathFunctionName[];
+
+export const MATH_VARIADIC_FUNCTIONS = [
+  "hypot",
+  "max",
+  "min",
+] as const satisfies readonly MathFunctionName[];
+
 // Use native implementations for JavaScript-compatible defaults and ordering.
 // Exclude locale-dependent methods and methods that return unsupported values.
 export const ARRAY_METHOD_NAMES = [
