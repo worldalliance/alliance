@@ -13,7 +13,8 @@ import {
   NotifsService,
 } from "src/notifs/notifs.service";
 import { groupUrl } from "src/search/approutes";
-import { loadedUserCommunities, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
+import { loadedUserCommunities } from "src/user/user.utils";
 import { IsNull, type Repository } from "typeorm";
 import { assertCanManageCommunity } from "./community-permissions";
 import { RequestCommunityInviteDto } from "./dto/community-invite.dto";

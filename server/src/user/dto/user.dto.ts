@@ -30,8 +30,9 @@ import {
   findLastContractEvent,
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
-import { hasPassword, User } from "../entities/user.entity";
+import { User } from "../entities/user.entity";
 import type { ReferrerResolution } from "../referral.service";
+import { hasPassword } from "../user.utils";
 
 export type FriendStatusDtoArgs = {
   status: FriendStatus;

@@ -1,6 +1,12 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { User } from "./entities/user.entity";
-import { memberWithReferral, referralLabel, textReachable } from "./user.utils";
+import {
+  hasPassword,
+  loadedUserTags,
+  memberWithReferral,
+  referralLabel,
+  textReachable,
+} from "./user.utils";
 
 describe("textReachable", () => {
   const reachable = {
@@ -98,5 +104,27 @@ describe("memberWithReferral", () => {
         referredByCampaign: null,
       }),
     ).toBe("Bob");
+  });
+});
+
+describe("hasPassword", () => {
+  it.each([
+    { password: "hunter2", expected: true },
+    { password: "", expected: false },
+    { password: null, expected: false },
+  ])("is $expected for password $password", ({ password, expected }) => {
+    expect(hasPassword({ password })).toBe(expected);
+  });
+});
+
+describe("loadedUserTags", () => {
+  it("returns the loaded tags", () => {
+    expect(loadedUserTags({ id: 3, tags: [] })).toEqual([]);
+  });
+
+  it("throws when the tags aren't loaded", () => {
+    expect(() => loadedUserTags({ id: 3, tags: undefined })).toThrow(
+      "tags of user 3 not loaded",
+    );
   });
 });

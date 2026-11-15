@@ -572,23 +572,3 @@ export class User extends UserRetiredColumns {
   @DeleteDateColumnTz()
   deletedAt: Date | null;
 }
-
-export function hasPassword(user: Pick<User, "password">): boolean {
-  return Boolean(user.password);
-}
-
-export function loadedUserTags(
-  user: Pick<User, "id" | "tags">,
-): Relation<Tag>[] {
-  if (!user.tags) {
-    throw new Error(`tags of user ${user.id} not loaded`);
-  }
-  return user.tags;
-}
-
-export function loadedUserCommunities(user: User): Relation<Community>[] {
-  if (!user.communities) {
-    throw new Error(`communities of user ${user.id} not loaded`);
-  }
-  return user.communities;
-}
