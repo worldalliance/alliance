@@ -12,6 +12,24 @@ import { join } from "node:path";
 
 const SOURCE = join(import.meta.dir, "sync_prod_to_staging.sh");
 
+const SECRETS: Record<string, string> = {
+  SLACK_WEBHOOK_URL: "http://slack.invalid",
+  HEALTHCHECK_URL: "http://hc.invalid/check",
+  PROD_DB_HOST: "prod.invalid",
+  PROD_DB_USER: "reader",
+  PROD_DB_PASSWORD: "prod-secret",
+  PROD_ASSETS_BUCKET: "prod-bucket",
+  STAGING_PASSWORD_HASH: `$2b$10$${"a".repeat(53)}`,
+  STAGING_DB_HOST: "staging.invalid",
+  STAGING_DB_USER: "admin",
+  STAGING_DB_PASSWORD: "staging-secret",
+  STAGING_ASSETS_BUCKET: "staging-bucket",
+};
+
+const PG_TOOL = `
+  echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE" >> "$STATE/pg"
+  [ "$(basename "$0")" != "\${PG_FAILS:-}" ]`;
+
 // Unless FLOCK_OK is set, flock exits 1, so a run the guard lets through stops
 // at the lock and posts "another sync is already running". FLOCK_FAILS names
 // the one flock call that still fails.
@@ -22,12 +40,18 @@ const STUBS: Record<string, string> = {
   flock: `
     echo "flock $*" >> "$STATE/calls"
     [ -n "\${FLOCK_OK:-}" ] && [ "$*" != "\${FLOCK_FAILS:-}" ]`,
+  aws: `echo "aws $*" >> "$STATE/aws"`,
+  pg_dump: PG_TOOL,
+  pg_restore: PG_TOOL,
+  psql: `cat > /dev/null; ${PG_TOOL}`,
+  env: `echo "$*" >> "$STATE/env"; exec /usr/bin/env "$@"`,
   ".bun/bin/bun": `
     held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
       || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')
     echo "bun $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
     [ -z "\${BUN_FAILS:-}" ] || exit 1
     [ "$2" = "\${BUN_EMPTY:-}" ] || echo "\${2}_db"`,
+  ".bun/bin/bunx": `echo "bunx $* | $DB_HOST $DB_NAME $DB_USERNAME $DB_PASSWORD" >> "$STATE/pg"`,
 };
 
 let home: string;
@@ -48,9 +72,12 @@ beforeEach(() => {
   );
   writeFileSync(
     join(home, "db-sync.env"),
-    "SLACK_WEBHOOK_URL=http://slack.invalid\nHEALTHCHECK_URL=http://hc.invalid/check\n",
+    Object.entries(SECRETS)
+      .map(([name, value]) => `${name}='${value}'\n`)
+      .join(""),
   );
   mkdirSync(join(home, ".bun/bin"), { recursive: true });
+  mkdirSync(join(home, "nest-backend/server"), { recursive: true });
   for (const [name, body] of Object.entries(STUBS)) {
     const path = name.includes("/") ? join(home, name) : join(bin, name);
     writeFileSync(path, `#!/usr/bin/env bash\n${body}\n`);
@@ -71,6 +98,14 @@ function epochMinute(params: { day?: number; at: string }) {
   return epochDay(params.day) * DAY + hours * 60 + minutes;
 }
 
+const readState = (name: string) => {
+  try {
+    return readFileSync(join(state, name), "utf8");
+  } catch {
+    return "";
+  }
+};
+
 function run(params: {
   scheduledAt?: string;
   day?: number;
@@ -88,10 +123,7 @@ function run(params: {
     env.SYNC_SCHEDULED_AT = params.scheduledAt;
   }
   const result = Bun.spawnSync(["bash", script], { stdin: "ignore", env });
-  let curl = "";
-  try {
-    curl = readFileSync(join(state, "curl"), "utf8");
-  } catch {}
+  const curl = readState("curl");
   rmSync(join(state, "curl"), { force: true });
   return { exitCode: result.exitCode, curl };
 }
@@ -219,10 +251,59 @@ test("the service's SYNC_SCHEDULED_AT matches the timer's OnCalendar=", () => {
   expect(service?.[1]).toBe(timer?.[1]);
 });
 
+test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of argv", () => {
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  expect(result.exitCode).toBe(0);
+  expect(result.curl).toContain("Sync completed successfully.");
+  expect(result.curl).toEndWith("http://hc.invalid/check\n");
+  const pg = readState("pg");
+  const steps = pg.split("\n").filter(Boolean);
+  expect(steps.map((line) => line.split(" ")[0])).toEqual([
+    "pg_dump",
+    "psql",
+    "pg_restore",
+    "psql",
+    "bunx",
+    "psql",
+  ]);
+  expect(steps[0]).toEndWith("| prod.invalid reader prod-secret production_db");
+  expect(steps[1]).toEndWith("| staging.invalid admin staging-secret postgres");
+  expect(steps[2]).toContain("--dbname=staging_db_sync");
+  expect(steps[2]).toEndWith(
+    "| staging.invalid admin staging-secret staging_db_sync",
+  );
+  expect(steps[3]).toEndWith(
+    "| staging.invalid admin staging-secret staging_db_sync",
+  );
+  expect(steps[4]).toEndWith(
+    "| staging.invalid staging_db_sync admin staging-secret",
+  );
+  expect(steps[5]).toEndWith("| staging.invalid admin staging-secret postgres");
+  for (const line of steps) {
+    const argv = line.split(" | ")[0];
+    expect(argv).not.toContain("secret");
+  }
+  expect(readState("env")).not.toContain("secret");
+  expect(readState("aws")).toContain("s3://prod-bucket/ s3://staging-bucket/");
+});
+
+test("sync_prod_to_staging.sh drops the scratch database when a step before the swap fails", () => {
+  const result = run({
+    at: "15:00",
+    env: { FLOCK_OK: "1", PG_FAILS: "pg_restore" },
+  });
+  expect(result.exitCode).toBe(1);
+  expect(result.curl).toContain("FAILED during restore");
+  const steps = readState("pg").split("\n").filter(Boolean);
+  expect(steps.at(-1)).toBe(
+    "psql -q -c DROP DATABASE IF EXISTS staging_db_sync WITH (FORCE); | staging.invalid admin staging-secret postgres",
+  );
+});
+
 test("sync_prod_to_staging.sh reads the production, then the staging database name under ~/migrate.lock", () => {
   run({ at: "15:00", env: { FLOCK_OK: "1" } });
   const helper = join(home, "nest-backend/scripts/deployed-db-name.ts");
-  expect(readFileSync(join(state, "calls"), "utf8")).toBe(
+  expect(readState("calls")).toStartWith(
     `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n`,
   );
 });
@@ -235,6 +316,7 @@ test.each([
   expect(result.exitCode).toBe(1);
   expect(result.curl).toContain("deployed-db-name.ts");
   expect(result.curl).toContain("http://hc.invalid/check/fail");
+  expect(readState("pg")).toBe("");
 });
 
 test("sync_prod_to_staging.sh reports a deploy that holds ~/migrate.lock", () => {

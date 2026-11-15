@@ -182,12 +182,21 @@ if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
   exit 1
 fi
 
-PROD_URL="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:5432/${PROD_DB_NAME}"
-
-STAGING_ADMIN_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/postgres"
-
 SCRATCH_DB="${STAGING_DB_NAME}_sync"
-SCRATCH_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/${SCRATCH_DB}"
+
+# On Linux only the process's own user and root can read its environment, so
+# libpq takes the logins from there rather than argv or a password file on disk.
+prod_pg() {
+  PGHOST=$PROD_DB_HOST PGUSER=$PROD_DB_USER PGPASSWORD=$PROD_DB_PASSWORD \
+    PGDATABASE=$PROD_DB_NAME "$@"
+}
+
+staging_pg() {
+  local database=$1
+  shift
+  PGHOST=$STAGING_DB_HOST PGUSER=$STAGING_DB_USER PGPASSWORD=$STAGING_DB_PASSWORD \
+    PGDATABASE=$database "$@"
+}
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DUMP_FILE="/home/ec2-user/prod_dump_${TIMESTAMP}.pgcustom"
@@ -204,7 +213,7 @@ cleanup() {
   rm -f "$DUMP_FILE"
 
   if [ "$SWAP_STARTED" -eq 0 ]; then
-    unlocked psql "$STAGING_ADMIN_URL" -q \
+    unlocked staging_pg postgres psql -q \
       -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" \
       >/dev/null 2>&1 \
       || echo "[$(date)] ==> WARNING: could not drop ${SCRATCH_DB}; it may still" \
@@ -249,17 +258,16 @@ ping_healthcheck /start
 STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
 
-unlocked pg_dump \
+unlocked prod_pg pg_dump \
   --format=custom \
   --no-owner \
   --no-privileges \
-  "$PROD_URL" \
   --file="$DUMP_FILE"
 
 STAGE="scratch database"
 echo "[$(date)] ==> Recreating scratch database ${SCRATCH_DB}..."
 
-unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked staging_pg postgres psql -v ON_ERROR_STOP=1 <<SQL
 DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);
 CREATE DATABASE ${SCRATCH_DB} WITH TEMPLATE=template0 ENCODING='UTF8';
 SQL
@@ -267,17 +275,17 @@ SQL
 STAGE="restore"
 echo "[$(date)] ==> Restoring dump into ${SCRATCH_DB}..."
 
-unlocked pg_restore \
+unlocked staging_pg "$SCRATCH_DB" pg_restore \
   --exit-on-error \
   --no-owner \
   --no-privileges \
-  --dbname="$SCRATCH_URL" \
+  --dbname="$SCRATCH_DB" \
   "$DUMP_FILE"
 
 STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
-unlocked psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
+unlocked staging_pg "$SCRATCH_DB" psql -v ON_ERROR_STOP=1 --single-transaction \
   -v password_hash="$STAGING_PASSWORD_HASH" \
   -f /home/ec2-user/nest-backend/scripts/anonymize/anonymize.sql
 
@@ -294,12 +302,12 @@ flock -w 900 201
 STAGE="migrations"
 echo "[$(date)] ==> Running staging's migrations on ${SCRATCH_DB}..."
 
-unlocked env -C /home/ec2-user/nest-backend/server \
-  NODE_ENV=staging \
+NODE_ENV=staging \
   DB_HOST="$STAGING_DB_HOST" \
   DB_NAME="$SCRATCH_DB" \
   DB_USERNAME="$STAGING_DB_USER" \
   DB_PASSWORD="$STAGING_DB_PASSWORD" \
+  unlocked env -C /home/ec2-user/nest-backend/server \
   /home/ec2-user/.bun/bin/bunx typeorm-ts-node-commonjs \
   --dataSource src/datasources/dataSource.ts migration:run
 
@@ -307,7 +315,7 @@ STAGE="swap"
 echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
 
 SWAP_STARTED=1
-unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked staging_pg postgres psql -v ON_ERROR_STOP=1 <<SQL
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = '${SCRATCH_DB}'
