@@ -1,5 +1,6 @@
 import { OtpError } from "@alliance/common/otp";
 import { milliseconds } from "date-fns";
+import { OtpPurpose } from "./otp-copy";
 import { otpRefusalException } from "./otp-refusal";
 
 describe("otpRefusalException", () => {
@@ -16,7 +17,7 @@ describe("otpRefusalException", () => {
       "We couldn’t send your code. Try again later or use another sign-in method.",
     ],
   ] as const)("refuses %s with its copy", (error, status, message) => {
-    const exception = otpRefusalException({ error });
+    const exception = otpRefusalException({ error }, OtpPurpose.KoraSignIn);
     expect(exception.getStatus()).toBe(status);
     expect(exception.getResponse()).toEqual({
       statusCode: status,
@@ -29,10 +30,10 @@ describe("otpRefusalException", () => {
     const retryAt = new Date(
       Date.now() + milliseconds({ minutes: 4, seconds: 10 }),
     );
-    const exception = otpRefusalException({
-      error: OtpError.Throttled,
-      retryAt,
-    });
+    const exception = otpRefusalException(
+      { error: OtpError.Throttled, retryAt },
+      OtpPurpose.KoraSignIn,
+    );
     expect(exception.getStatus()).toBe(429);
     expect(exception.getResponse()).toEqual({
       statusCode: 429,

@@ -11,3 +11,4 @@ The work is planned as separate PRs, each with its Linear issue. This directory 
 ## Server
 
 - **`hasPassword`, `loadedUserTags` and `loadedUserCommunities` moved from `user.entity.ts` to `user.utils.ts`.** The entity would pass 500 non-blank lines with the verified-at column this task adds; of the three splits a codex subagent proposed, this one moves functions that don't touch the class and leaves every import of `User` alone. (agent decision under root `AGENTS.md` **File size**)
+- **`otpRefusalException` takes the purpose**, because its delivery-failure copy told the caller to "use another sign-in method", which is wrong for confirming a phone number. (agent decision)
