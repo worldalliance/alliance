@@ -51,3 +51,7 @@ Read from `node_modules/pg-pool/index.js` 3.13.0 (pg 8.20.0, typeorm 0.3.28), 20
 
 - A `rules.yaml` that isn't valid YAML: Grafana logged `HTTP Server Listen`, then exited 1 about four seconds later with `failure to parse file rules.yaml`.
 - A `rules.yaml` whose threshold expression has `type: bogus` and whose query names a datasource uid that doesn't exist: Grafana started, `/api/health` answered 200, and nothing about the rule was logged.
+
+## Blackbox exporter pin
+
+2026-11-15. `gh api repos/prometheus/blackbox_exporter/releases/latest` gives v0.29.1, published 2026-10-21; Docker Hub has `prom/blackbox-exporter:v0.29.1`. The official darwin-arm64 build (sha256 matching the release's `sha256sums.txt`) accepted `deploy/monitoring/blackbox.yml` with `--config.check`, and through it a local stub's 200 read `probe_success 1` and its 503 `probe_success 0`.

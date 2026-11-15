@@ -1,6 +1,6 @@
 # Monitoring
 
-Prometheus and Grafana run in Docker on the monitoring host (`terraform/monitoring.tf`, EC2 tag `MonitoringInstance`). Prometheus scrapes the production API's and frontend SSR server's `/metrics` every 15 seconds. Grafana, at https://metrics.worldalliance.org, reads from it and sends alerts to the Slack channel the server's event log uses, through the same webhook (`/alliance/prod/server/SLACK_WEBHOOK_URL` in Parameter Store). The deploy copies the webhook to the host, so after changing it, deploy monitoring again. The deploy fails without that parameter.
+Prometheus and Grafana run in Docker on the monitoring host (`terraform/monitoring.tf`, EC2 tag `MonitoringInstance`). Prometheus scrapes the production API's and frontend SSR server's `/metrics` every 15 seconds and, through the blackbox exporter, probes `GET /health/db`. Grafana, at https://metrics.worldalliance.org, reads from it and sends alerts to the Slack channel the server's event log uses, through the same webhook (`/alliance/prod/server/SLACK_WEBHOOK_URL` in Parameter Store). The deploy copies the webhook to the host, so after changing it, deploy monitoring again. The deploy fails without that parameter.
 
 Everything the host runs in Docker is in `deploy/monitoring/`, and `scripts/deploy_monitoring.sh` puts it there. The Prometheus data, Grafana's database (users, dashboards) and `grafana.env` live only on the host, in `~/prometheus`.
 
