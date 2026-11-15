@@ -87,6 +87,7 @@ jobs:
             scripts/deployed-db-name.ts \
             scripts/secrets_run.sh \
             scripts/sync_prod_to_staging.sh \
+            scripts/with_db_env.sh \
             scripts/anonymize \
             deploy/systemd \
             common/package.json \

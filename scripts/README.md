@@ -45,6 +45,9 @@ Run by `deploy-environment.yaml` on the backend host, not locally. Swaps `~/nest
 `secrets_run.sh --path <prefix> [NAME...] [--path ...] -- <command...>`
 Run on the backend host, not locally; the deploy installs it as `~/secrets_run.sh`. Runs the command with the parameters under `/alliance/<env>/server/` in AWS SSM Parameter Store as env vars, `<env>` picked by `NODE_ENV`, read with the host's instance role. The `--path` form reads each prefix instead, without `NODE_ENV`, keeping only the listed names where a prefix lists any, and fails on a listed name a prefix lacks or a name two prefixes both set. Setup, rotation and running without Parameter Store: `docs/backend-secrets.md`.
 
+`with_db_env.sh <staging|production> <command...>`
+Run on that environment's backend host from `~/nest-backend`, not locally; the deploy ships it there. Runs the command with libpq's `PG*` variables set to the server's own database login, verifying the RDS certificate. See "Database access from the backend hosts" in `docs/backend-secrets.md`.
+
 `check-parameter-drift.ts [--required]`
 Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AWS SSM Parameter Store and fails when a path lacks a key its schema or `dev-secrets.json` requires, or holds one undeclared there or in `SHARED_KEYS`, or when a name outside the CI paths is under no path it checks. `--required` prints each path's required keys and needs no AWS login. See `docs/backend-secrets.md`.
 

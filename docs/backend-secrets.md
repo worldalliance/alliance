@@ -92,6 +92,10 @@ The database names come from `common/src/deployed-config.ts`. `DB_SYNC_KEYS` in 
 
 When the sync can't read its parameters, it stops before it can post to Slack, so the missing healthcheck ping is the alert, and `sudo journalctl -u alliance-prod-to-staging-sync.service` shows the error.
 
+## Database access from the backend hosts
+
+`scripts/with_db_env.sh` runs a command on a backend host with libpq's `PG*` variables set to that server's own database login, passing the command only `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` from `/alliance/<env>/server/` through `~/secrets_run.sh`, and verifying the RDS certificate as the server does.
+
 ## Secret files kept for admins
 
 `/alliance/shared/` holds secret files kept only for admins, such as the hosts' SSH key `EC2_SSH_KEY`; no role is granted it, and it is unrelated to `/alliance/ci/shared/`. The `parameter-drift` workflow reports a parameter there whose name isn't in `SHARED_KEYS` in `scripts/check-parameter-drift.ts`, but never requires one. To add one, merge its name into `SHARED_KEYS`, then create `/alliance/shared/<NAME>` with the console or CLI steps above. To remove one, delete the parameter first, then its `SHARED_KEYS` entry. Dispatch the workflow on `main` after each store edit.
