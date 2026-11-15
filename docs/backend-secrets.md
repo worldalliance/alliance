@@ -4,7 +4,7 @@ The staging and production backends read their secrets from AWS SSM Parameter St
 
 ## How a backend gets its secrets
 
-`scripts/secrets_run.sh`, installed on each host as `~/secrets_run.sh`, reads every parameter under `/alliance/<env>/server/` with the host's instance role and runs its command with them as env vars, `<env>` picked by `NODE_ENV`. It refuses a parameter named like a variable already set, such as `NODE_ENV`, rather than override it. pm2 starts the app through it, and the deploy runs migrations and the streak recognition script through it. The deploy first runs the config check through the new release's copy and installs that copy only once the check passes.
+`scripts/secrets_run.sh`, installed on each host as `~/secrets_run.sh`, reads every parameter under `/alliance/<env>/server/` with the host's instance role and runs its command with them as env vars, `<env>` picked by `NODE_ENV`. Given `--path <prefix> [NAME...]`, once or more, it reads those prefixes instead, without `NODE_ENV`, keeping only the listed names where a prefix lists any, and fails on a listed name a prefix lacks or a name two prefixes both set. It refuses a parameter named like a variable already set, such as `NODE_ENV`, rather than override it. pm2 starts the app through it, and the deploy runs migrations and the streak recognition script through it. The deploy first runs the config check through the new release's copy and installs that copy only once the check passes.
 
 | Host       | IAM role                    | Reads                       |
 | ---------- | --------------------------- | --------------------------- |
