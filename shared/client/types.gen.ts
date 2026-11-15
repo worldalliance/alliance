@@ -1001,6 +1001,45 @@ export type MyVisibilityContextDto = {
     completedActionCount: number;
 };
 
+export type AdminUserListItemDto = {
+    id: number;
+    name: string;
+    phoneNumber: string | null;
+    preferredReminderTime: string | null;
+    timeZone: string | null;
+    shareEmailWithCommunityLead: boolean;
+    sharePhoneNumberWithCommunityLead: boolean;
+    switchedDomainAt: string | null;
+    admin: boolean;
+    staff: boolean;
+    ambassador: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
+    referralCode: string;
+    customCityString: string | null;
+    anonymous: boolean;
+    shareInfoPublicly: boolean;
+    formDataPreference: PublicFormResponseDefault;
+    undergoingGroupAssignment: boolean;
+    referredById: number | null;
+    referralSource: ReferralSource;
+    referredByCampaignId: number | null;
+    tags?: Array<Tag>;
+    communities?: Array<Community>;
+    leaderOfIds: Array<number>;
+    clusterId: number | null;
+    email: string;
+    hasActiveContract: boolean;
+    contractEvents?: Array<ContractEventDto>;
+    lastContractEvent?: ContractEventDto;
+    oauthAccounts?: Array<OAuthAccountDto>;
+    hasPassword: boolean;
+    /**
+     * The profilePicture column itself: an upload key or an external url. `profilePicture` is that value rendered as a url.
+     */
+    storedProfilePicture: string | null;
+};
+
 export type UserCityCountDto = {
     cityId?: number | null;
     cityName?: string | null;
@@ -6126,7 +6165,7 @@ export type UserListAdminErrors = {
 export type UserListAdminError = UserListAdminErrors[keyof UserListAdminErrors];
 
 export type UserListAdminResponses = {
-    200: Array<UserDto>;
+    200: Array<AdminUserListItemDto>;
 };
 
 export type UserListAdminResponse = UserListAdminResponses[keyof UserListAdminResponses];

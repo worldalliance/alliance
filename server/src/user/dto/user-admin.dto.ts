@@ -230,3 +230,18 @@ export class DeleteUserAdminDto {
   @Transform(trimToNull)
   screenshotKey?: string | null;
 }
+
+export class AdminUserListItemDto extends UserDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "The profilePicture column itself: an upload key or an external url. `profilePicture` is that value rendered as a url.",
+  })
+  storedProfilePicture: string | null;
+
+  constructor(input: User) {
+    super(input);
+    this.storedProfilePicture = input.profilePicture;
+  }
+}
