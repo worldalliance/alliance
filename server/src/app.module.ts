@@ -19,7 +19,7 @@ import { CommunityModule } from "./community/community.module";
 import { env } from "./config/env";
 import { ContractModule } from "./contract/contract.module";
 import { CustomLinksModule } from "./custom-links/custom-links.module";
-import { connectionOptions } from "./datasources/dataSource";
+import { connectionOptions } from "./datasources/connection-options";
 import { EventLogModule } from "./eventlog/eventlog.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";

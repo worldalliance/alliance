@@ -8,4 +8,6 @@ The user left the split open. Metrics, readiness endpoint, #992's leftovers and 
 
 ## #992's leftovers
 
+`connectionOptions()` moves to `server/src/datasources/connection-options.ts`. `dataSource.ts` builds the CLI `DataSource` and loads `dotenv` as soon as it is imported, which is what kept a unit test from importing it. The test now builds a `DataSource` from `connectionOptions()` and checks that its driver carries the pool size and timeout. The app no longer imports `dotenv/config` through `dataSource.ts`. Bun loads `.env` itself before any code runs, and the CLI still loads it through `dataSource.ts`.
+
 The `poolSize` comment now states the plan's threshold: the 11 locked crons hold at least 25 connections while each waits for another, so a pool under 26 can deadlock. The comment names the spec that sums those connections rather than the number, so a recount can't leave it stale. The old test's `LOCK_KEYS × 2` bound understated that. Its replacement lists that audit's per-job connection counts in the spec as a `Record` over `LOCK_KEYS`, so a new lock-taking cron doesn't compile until someone counts its connections, and checks the pool is larger than their sum less one per job.
