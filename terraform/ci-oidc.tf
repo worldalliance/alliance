@@ -38,8 +38,8 @@ locals {
         "${local.github_sub_prefix}:pull_request"        = ["refs/pull/*/merge"]
       }
       workflows = {
-        "${local.github_sub_prefix}:ref:refs/heads/main" = "${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/heads/main"
-        "${local.github_sub_prefix}:pull_request"        = "${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/pull/*/merge"
+        "${local.github_sub_prefix}:ref:refs/heads/main" = ["${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/heads/main"]
+        "${local.github_sub_prefix}:pull_request"        = ["${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/pull/*/merge"]
       }
       parameters           = []
       max_session_duration = 3600
@@ -69,20 +69,29 @@ locals {
       parameters           = concat(local.ci_shared_parameters, local.ci_deploy_parameters)
       max_session_duration = 3600
     }
-    # Run Command is a root shell on the host, so only deploy.yaml's jobs
-    # deploying to a host can assume these. run-on-host polls for over two
-    # hours on one session.
+    # Run Command is a root shell on the host, so only the jobs deploying to a
+    # host can assume these. run-on-host polls for over two hours on one
+    # session. BACKCOMPAT(deploy-lock): those jobs move from deploy.yaml to
+    # deploy-environment.yaml; drop deploy.yaml's entries 30 days after
+    # production first deployed a commit carrying deploy-environment.yaml,
+    # when no earlier Deploy run can be re-run.
     staging-hosts = {
-      test                 = "StringEquals"
-      trust                = { "${local.github_sub_prefix}:environment:staging-hosts" = ["refs/heads/main"] }
-      workflows            = { "${local.github_sub_prefix}:environment:staging-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main" }
+      test  = "StringEquals"
+      trust = { "${local.github_sub_prefix}:environment:staging-hosts" = ["refs/heads/main"] }
+      workflows = { "${local.github_sub_prefix}:environment:staging-hosts" = [
+        "${local.github_repo}/.github/workflows/deploy-environment.yaml@refs/heads/main",
+        "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main",
+      ] }
       parameters           = []
       max_session_duration = 10800
     }
     production-hosts = {
-      test                 = "StringEquals"
-      trust                = { "${local.github_sub_prefix}:environment:production-hosts" = ["refs/heads/production"] }
-      workflows            = { "${local.github_sub_prefix}:environment:production-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production" }
+      test  = "StringEquals"
+      trust = { "${local.github_sub_prefix}:environment:production-hosts" = ["refs/heads/production"] }
+      workflows = { "${local.github_sub_prefix}:environment:production-hosts" = [
+        "${local.github_repo}/.github/workflows/deploy-environment.yaml@refs/heads/production",
+        "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production",
+      ] }
       parameters           = []
       max_session_duration = 10800
     }
@@ -138,7 +147,7 @@ data "aws_iam_policy_document" "ci_assume" {
         content {
           test     = each.value.test
           variable = "${local.github_oidc}:job_workflow_ref"
-          values   = [condition.value]
+          values   = condition.value
         }
       }
     }

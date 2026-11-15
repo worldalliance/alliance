@@ -62,14 +62,18 @@ jobs:
             read -r DEPLOY_RUN_ID DEPLOY_RUN_ATTEMPT <<<"$deploy"
             DEPLOY_SHA=$GITHUB_SHA
           fi
+          # BACKCOMPAT(deploy-lock): Deploy runs from before deploy-environment.yaml
+          # name the job deploy-nest-backend. Drop that name once none can finish
+          # or be re-run, 30 days after the change merged. "deploy" alone is the
+          # calling job, listed once when it was skipped.
           backend=$(gh api --paginate \
             "repos/$GITHUB_REPOSITORY/actions/runs/$DEPLOY_RUN_ID/attempts/$DEPLOY_RUN_ATTEMPT/jobs" \
-            --jq '.jobs[] | select(.name == "deploy-nest-backend") | .conclusion')
+            --jq '.jobs[] | select(.name == "deploy / deploy-nest-backend" or .name == "deploy" or .name == "deploy-nest-backend") | .conclusion')
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$backend" != success ]; then
             echo "::error::deploy-nest-backend of main's HEAD $GITHUB_SHA hasn't succeeded (Deploy run $DEPLOY_RUN_ID: '$backend'). Dispatch once it has." >&2
             exit 1
           fi
-          # Deploy's concurrency group cancels a pending run before it starts any job.
+          # A run cancelled before it starts any job lists none.
           if [ -z "$backend" ] && [ "$DEPLOY_CONCLUSION" = cancelled ]; then
             echo "Deploy run $DEPLOY_RUN_ID was cancelled before deploy-nest-backend; nothing to build."
             exit 0
