@@ -13,7 +13,7 @@ import {
   runClaude,
 } from "./process";
 import { CLAUDE_CODE_VERSION } from "./protocol";
-import { CaptureRecordKind, captureDir } from "./testing/capture";
+import { CaptureRecordKind, captured } from "./testing/capture";
 import {
   hangingCli,
   replay,
@@ -249,7 +249,7 @@ describe("the version check", () => {
   afterEach(stopReplay);
 
   test("accepts the version the captures came from", async () => {
-    replay(path.join(captureDir(CLAUDE_CODE_VERSION), "version.jsonl"));
+    replay(captured("version"));
     expect(await checkClaudeVersion(stubCli)).toEqual(R.success(undefined));
   });
 

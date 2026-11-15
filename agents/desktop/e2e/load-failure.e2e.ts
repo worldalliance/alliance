@@ -6,6 +6,7 @@ import {
 } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { appArgs } from "./app-args";
@@ -25,6 +26,49 @@ test("a window that fails to load reports the error and exits", async () => {
   const [code] = await once(child, "exit");
   expect(code).toBe(1);
   expect(stderr).toContain("Alliance agent couldn't load its window");
+});
+
+async function failPreload(
+  source: string,
+): Promise<{ code: number | null; stderr: string }> {
+  const preload = test.info().outputPath("failing-preload.js");
+  writeFileSync(preload, source);
+  const app = await electron.launch({ args: appArgs() });
+  const child = app.process();
+  let stderr = "";
+  child.stderr?.on("data", (chunk: Buffer) => (stderr += chunk));
+  const exited = once(child, "close");
+  try {
+    // The app is ready once its window exists. The reload waits a task so evaluate replies before the failing preload exits the app.
+    await app.firstWindow();
+    await app.evaluate(({ BrowserWindow, session }, filePath) => {
+      session.defaultSession.registerPreloadScript({ type: "frame", filePath });
+      setTimeout(() => BrowserWindow.getAllWindows()[0]?.webContents.reload());
+    }, preload);
+    const [code] = await exited;
+    return { code, stderr };
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill("SIGKILL");
+      await exited;
+    }
+  }
+}
+
+test("a preload script that fails reports what it threw and exits", async () => {
+  const { code, stderr } = await failPreload('throw "preload failed";');
+  expect(code).toBe(1);
+  expect(stderr).toContain(
+    "Alliance agent couldn't load its window: preload failed",
+  );
+  expect(stderr).not.toMatch(/^preload failed$/m);
+});
+
+test("a preload script that throws an error reports where it threw", async () => {
+  const { stderr } = await failPreload(
+    'function inner() { throw new Error("preload failed"); }\ninner();',
+  );
+  expect(stderr).toContain("failing-preload.js:1:");
 });
 
 // The first /slow.js response is held, so the replacement lands after the page commits.

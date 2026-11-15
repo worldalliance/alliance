@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { R } from "../../../../../../../common/src/result";
-import { AgentEventKind } from "../../session";
+import { AgentEventKind } from "../../../../shared/agent-event";
 import { ClaudeLineKind, parseClaudeLine } from "../protocol";
 import { CaptureRecordKind, readCaptureLine, stdinShape } from "./capture";
 

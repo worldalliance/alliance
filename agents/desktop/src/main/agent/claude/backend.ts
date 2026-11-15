@@ -3,10 +3,10 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
+import { AgentEventKind } from "../../../shared/agent-event";
 import { SessionListeners } from "../listeners";
 import {
   type AgentBackend,
-  AgentEventKind,
   type AgentEventListener,
   type AgentMessage,
   type AgentSession,
@@ -75,7 +75,7 @@ class ClaudeSession implements AgentSession {
         init.onExit();
         if (this.turn) {
           if (!this.closing) this.emitError(this.exitMessage);
-          this.endTurn();
+          this.endTurn({ interrupted: this.closing !== undefined });
         }
         resolve();
       }),
@@ -96,7 +96,7 @@ class ClaudeSession implements AgentSession {
         : `${this.exitMessage}\nResume the session to continue.`;
       queueMicrotask(() => {
         this.emitError(message);
-        this.endTurn();
+        this.endTurn({ interrupted: false });
       });
     } else {
       this.child.stdin.write(`${userMessageLine(message)}\n`);
@@ -164,7 +164,9 @@ class ClaudeSession implements AgentSession {
       case ClaudeLineKind.TurnEnded:
         if (claudeLine.error && !this.turn.interrupted)
           this.emitError(claudeLine.error);
-        this.endTurn();
+        this.endTurn({
+          interrupted: this.turn.interrupted && claudeLine.error !== undefined,
+        });
         return;
       default:
         throw new Error(`unknown line kind: ${claudeLine satisfies never}`);
@@ -175,9 +177,9 @@ class ClaudeSession implements AgentSession {
     this.listeners.emit({ kind: AgentEventKind.Error, message });
   }
 
-  private endTurn(): void {
+  private endTurn({ interrupted }: { interrupted: boolean }): void {
     this.turn = undefined;
-    this.listeners.emit({ kind: AgentEventKind.TurnEnded });
+    this.listeners.emit({ kind: AgentEventKind.TurnEnded, interrupted });
   }
 }
 
