@@ -21,8 +21,7 @@ fi
 # process, so every child inherits them: an orphaned pg_dump would hold the sync
 # lock after a kill and skip every run that follows, and an orphaned migration
 # would hold ~/migrate.lock against the deploy. Anything that can outlive the
-# shell runs through here. Startup aborts that run before either lock exists
-# close fds nothing opened, which is a no-op.
+# shell runs through here.
 unlocked() {
   "$@" 200>&- 201>&-
 }
@@ -113,6 +112,7 @@ runs from overlapping."
 fi
 
 LOCK_FILE=/home/ec2-user/sync_prod_to_staging.lock
+MIGRATE_LOCK=/home/ec2-user/migrate.lock
 if ! true >>"$LOCK_FILE"; then
   abort_before_start "cannot write ${LOCK_FILE}; the sync needs it to stop two \
 runs from overlapping."
@@ -129,6 +129,30 @@ skipping this one."
   exit 0
 fi
 
+# The deploy holds ~/migrate.lock while it replaces ~/nest-backend, which
+# deployed-db-name.ts and its node_modules come from.
+if ! true >>"$MIGRATE_LOCK"; then
+  abort_before_start "cannot write ~/migrate.lock; the sync needs it to read \
+its database names."
+fi
+db_name_of() {
+  unlocked /home/ec2-user/.bun/bin/bun \
+    /home/ec2-user/nest-backend/scripts/deployed-db-name.ts "$1"
+}
+{
+  if ! flock -w 900 201; then
+    abort_before_start "a backend deploy held ~/migrate.lock for 15 minutes, \
+so the sync could not read its database names."
+  fi
+  if ! PROD_DB_NAME=$(db_name_of production) \
+    || ! STAGING_DB_NAME=$(db_name_of staging) \
+    || [ -z "$PROD_DB_NAME" ] || [ -z "$STAGING_DB_NAME" ]; then
+    abort_before_start "could not read both database names through \
+~/nest-backend/scripts/deployed-db-name.ts, which failed or printed an empty \
+name; the sync's journal on the staging host has any error."
+  fi
+} 201>>"$MIGRATE_LOCK"
+
 # cleanup reads paths built further down, so it can't be the trap yet. This one
 # reports a db-sync.env that loads but doesn't hold what the sync needs.
 report_startup_failure() {
@@ -143,11 +167,9 @@ trap report_startup_failure EXIT
 : "${PROD_DB_USER:?missing in db-sync.env}" \
   "${PROD_DB_PASSWORD:?missing in db-sync.env}" \
   "${PROD_DB_HOST:?missing in db-sync.env}" \
-  "${PROD_DB_NAME:?missing in db-sync.env}" \
   "${STAGING_DB_USER:?missing in db-sync.env}" \
   "${STAGING_DB_PASSWORD:?missing in db-sync.env}" \
   "${STAGING_DB_HOST:?missing in db-sync.env}" \
-  "${STAGING_DB_NAME:?missing in db-sync.env}" \
   "${STAGING_PASSWORD_HASH:?missing in db-sync.env}" \
   "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
   "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}" \
@@ -263,7 +285,7 @@ unlocked psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
 # code passes its health check or rolls back, so it can't migrate the database
 # the swap is about to drop.
 STAGE="migrate lock"
-exec 201>>/home/ec2-user/migrate.lock
+exec 201>>"$MIGRATE_LOCK"
 flock -w 900 201
 
 # Prod's schema lags the code deployed to staging by every migration that
