@@ -14,3 +14,4 @@ All entries are agent decisions unless they say otherwise.
 ## Dependencies
 
 - **Shared ordering.** The depth-first order that the options formulas used (`optionsFormulaOrder`) moves to `common/src/topological-order.ts` as `topologicalOrder`, which takes the roots, a lookup and each item's dependencies, since named expressions need the same walk and cycle report. The options formulas behave as before.
+- **What `reads` returns.** `reads` lists the inputs, host functions and named expressions an expression reaches, following named expressions, which splits (same-suite reads, waits) and fill sessions (what to pin) need. `Math` functions and `isUnknown` aren't host functions, so they aren't listed. A reference to a named expression the caller didn't pass is listed but not followed.
