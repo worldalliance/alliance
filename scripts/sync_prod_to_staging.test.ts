@@ -20,10 +20,10 @@ const SECRETS: Record<string, string> = {
   PROD_DB_PASSWORD: "prod-secret",
   PROD_ASSETS_BUCKET: "prod-bucket",
   STAGING_PASSWORD_HASH: `$2b$10$${"a".repeat(53)}`,
-  STAGING_DB_HOST: "staging.invalid",
-  STAGING_DB_USER: "admin",
-  STAGING_DB_PASSWORD: "staging-secret",
-  STAGING_ASSETS_BUCKET: "staging-bucket",
+  DB_HOST: "staging.invalid",
+  DB_USERNAME: "admin",
+  DB_PASSWORD: "staging-secret",
+  ASSETS_BUCKET: "staging-bucket",
 };
 
 const PG_TOOL = `
@@ -45,13 +45,23 @@ const STUBS: Record<string, string> = {
   pg_restore: PG_TOOL,
   psql: `cat > /dev/null; ${PG_TOOL}`,
   env: `echo "$*" >> "$STATE/env"; exec /usr/bin/env "$@"`,
+  "secrets_run.sh": `
+    echo "$*" >> "$STATE/secrets_run"
+    while [ "$1" != -- ]; do shift; done
+    shift
+    while IFS='=' read -r -d '' name value; do
+      export "$name=$value"
+    done < "$STATE/secrets"
+    exec "$@"`,
   ".bun/bin/bun": `
     held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
       || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')
     echo "bun $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
     [ -z "\${BUN_FAILS:-}" ] || exit 1
     [ "$2" = "\${BUN_EMPTY:-}" ] || echo "\${2}_db"`,
-  ".bun/bin/bunx": `echo "bunx $* | $DB_HOST $DB_NAME $DB_USERNAME $DB_PASSWORD" >> "$STATE/pg"`,
+  ".bun/bin/bunx": `
+    echo "bunx $* | $DB_HOST $DB_NAME $DB_USERNAME $DB_PASSWORD" >> "$STATE/pg"
+    env > "$STATE/bunx-env"`,
 };
 
 let home: string;
@@ -70,16 +80,20 @@ beforeEach(() => {
     script,
     readFileSync(SOURCE, "utf8").replaceAll("/home/ec2-user", home),
   );
+  chmodSync(script, 0o755);
   writeFileSync(
-    join(home, "db-sync.env"),
+    join(state, "secrets"),
     Object.entries(SECRETS)
-      .map(([name, value]) => `${name}='${value}'\n`)
+      .map(([name, value]) => `${name}=${value}\0`)
       .join(""),
   );
   mkdirSync(join(home, ".bun/bin"), { recursive: true });
   mkdirSync(join(home, "nest-backend/server"), { recursive: true });
   for (const [name, body] of Object.entries(STUBS)) {
-    const path = name.includes("/") ? join(home, name) : join(bin, name);
+    const path =
+      name.includes("/") || name.endsWith(".sh")
+        ? join(home, name)
+        : join(bin, name);
     writeFileSync(path, `#!/usr/bin/env bash\n${body}\n`);
     chmodSync(path, 0o755);
   }
@@ -251,6 +265,16 @@ test("the service's SYNC_SCHEDULED_AT matches the timer's OnCalendar=", () => {
   expect(service?.[1]).toBe(timer?.[1]);
 });
 
+test("sync_prod_to_staging.sh loads its secrets once, through the wrapper", () => {
+  run({ at: "15:00" });
+  expect(readState("secrets_run")).toBe(
+    "--path /alliance/staging/db-sync/ SLACK_WEBHOOK_URL HEALTHCHECK_URL " +
+      "PROD_DB_HOST PROD_DB_USER PROD_DB_PASSWORD PROD_ASSETS_BUCKET " +
+      "STAGING_PASSWORD_HASH --path /alliance/staging/server/ " +
+      `DB_HOST DB_USERNAME DB_PASSWORD ASSETS_BUCKET -- env SYNC_SECRETS_LOADED=1 bash ${script}\n`,
+  );
+});
+
 test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of argv", () => {
   const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
   expect(result.exitCode).toBe(0);
@@ -284,6 +308,12 @@ test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of
     expect(argv).not.toContain("secret");
   }
   expect(readState("env")).not.toContain("secret");
+  const migrationEnv = readState("bunx-env");
+  expect(migrationEnv).toContain("DB_PASSWORD=staging-secret");
+  const passedLogin = ["DB_HOST", "DB_USERNAME", "DB_PASSWORD"];
+  for (const [name, value] of Object.entries(SECRETS)) {
+    if (!passedLogin.includes(name)) expect(migrationEnv).not.toContain(value);
+  }
   expect(readState("aws")).toContain("s3://prod-bucket/ s3://staging-bucket/");
 });
 

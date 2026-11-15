@@ -6,11 +6,20 @@ set -euo pipefail
 
 umask 077
 
-source /home/ec2-user/db-sync.env
-
-# Checked ahead of the traps below, and of every other variable, because a trap
-# has no way to report its own failure without these two.
-: "${SLACK_WEBHOOK_URL:?missing in db-sync.env}"
+# Runs itself again with its secrets loaded, so a run started by hand gets them
+# too. A failure to load alerts only through the missing healthcheck ping.
+SECRETS_PATH=/alliance/staging/db-sync/
+SYNC_KEYS=(SLACK_WEBHOOK_URL HEALTHCHECK_URL PROD_DB_HOST PROD_DB_USER
+  PROD_DB_PASSWORD PROD_ASSETS_BUCKET STAGING_PASSWORD_HASH)
+SERVER_KEYS=(DB_HOST DB_USERNAME DB_PASSWORD ASSETS_BUCKET)
+if [ -z "${SYNC_SECRETS_LOADED:-}" ]; then
+  exec /home/ec2-user/secrets_run.sh \
+    --path "$SECRETS_PATH" "${SYNC_KEYS[@]}" \
+    --path /alliance/staging/server/ "${SERVER_KEYS[@]}" \
+    -- env SYNC_SECRETS_LOADED=1 bash "$0" "$@"
+fi
+# The wrapper exports what it loads; a child gets only the logins passed to it.
+export -n "${SYNC_KEYS[@]}" "${SERVER_KEYS[@]}"
 
 if ! command -v jq >/dev/null; then
   echo "jq is not installed; the sync needs it to post results to Slack." >&2
@@ -38,15 +47,10 @@ notify_slack() {
 # A Slack message only reports a run that lived long enough to send it. A
 # SIGKILL, a dead host, or a timer that never fires sends nothing at all, so the
 # ping that never arrives has to be what raises the alarm.
-#
-# The startup trap fires above the HEALTHCHECK_URL check, so an unset variable
-# is a no-op here instead of a curl error about a URL with no host.
 ping_healthcheck() {
-  local base="${HEALTHCHECK_URL:-}"
-  [ -n "$base" ] || return 0
   unlocked curl --silent --show-error --fail --max-time 10 \
     --retry 3 --retry-connrefused --retry-max-time 30 \
-    "${base%/}${1:-}" >/dev/null \
+    "${HEALTHCHECK_URL%/}${1:-}" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
 }
 
@@ -153,35 +157,26 @@ name; the sync's journal on the staging host has any error."
   fi
 } 201>>"$MIGRATE_LOCK"
 
-# cleanup reads paths built further down, so it can't be the trap yet. This one
-# reports a db-sync.env that loads but doesn't hold what the sync needs.
+# cleanup reads paths built further down, so it can't be the trap yet.
 report_startup_failure() {
   notify_slack ":x: prod → staging: FAILED during startup, before the sync \
-began. Check db-sync.env on the staging host. Staging still holds the data from \
-its previous successful sync."
+began. Check its journal on the staging host and its parameters under \
+${SECRETS_PATH}. Staging still holds the data from its previous successful sync."
   ping_healthcheck /fail
   exit 1
 }
 trap report_startup_failure EXIT
 
-: "${PROD_DB_USER:?missing in db-sync.env}" \
-  "${PROD_DB_PASSWORD:?missing in db-sync.env}" \
-  "${PROD_DB_HOST:?missing in db-sync.env}" \
-  "${STAGING_DB_USER:?missing in db-sync.env}" \
-  "${STAGING_DB_PASSWORD:?missing in db-sync.env}" \
-  "${STAGING_DB_HOST:?missing in db-sync.env}" \
-  "${STAGING_PASSWORD_HASH:?missing in db-sync.env}" \
-  "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
-  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}" \
-  "${HEALTHCHECK_URL:?missing in db-sync.env}"
-
 BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
 if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
-  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
-    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
+  echo "${SECRETS_PATH}STAGING_PASSWORD_HASH is not a bcrypt hash." >&2
   exit 1
 fi
 
+STAGING_DB_HOST=$DB_HOST
+STAGING_DB_USER=$DB_USERNAME
+STAGING_DB_PASSWORD=$DB_PASSWORD
+STAGING_ASSETS_BUCKET=$ASSETS_BUCKET
 SCRATCH_DB="${STAGING_DB_NAME}_sync"
 
 # On Linux only the process's own user and root can read its environment, so

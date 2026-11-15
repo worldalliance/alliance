@@ -1,8 +1,11 @@
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeEnv } from "../common/src/node-env";
 import { committedEnv, deployedStoreKeys } from "../server/src/config/env";
 import {
+  DB_SYNC_KEYS,
+  DB_SYNC_PREFIX,
   DEV_PREFIX,
   expectations,
   findDrift,
@@ -114,7 +117,8 @@ test("expects exactly each dev consumer's manifest secrets", () => {
 
 test("deployed paths require the uncommitted keys and allow only the deployed store's", () => {
   const deployed = expectations().filter(
-    ({ prefix }) => !prefix.startsWith(DEV_PREFIX) && prefix !== SHARED_PREFIX,
+    ({ prefix }) =>
+      !prefix.startsWith(DEV_PREFIX) && prefix.endsWith("/server/"),
   );
   expect(deployed.map(({ prefix }) => prefix)).toEqual([
     "/alliance/staging/server/",
@@ -174,4 +178,29 @@ test("--required lists each path's required keys without AWS", () => {
   expect(listed.stdout.toString()).toMatch(
     /^\/alliance\/staging\/server\/: .*\bJWT_SECRET\b/m,
   );
+});
+
+test("the store requires every key sync_prod_to_staging.sh loads", () => {
+  const script = readFileSync(
+    join(import.meta.dir, "sync_prod_to_staging.sh"),
+    "utf8",
+  );
+  const listed = (name: string) =>
+    new RegExp(`^${name}=\\(([^)]*)\\)`, "m")
+      .exec(script)?.[1]
+      .split(/\s+/)
+      .filter(Boolean);
+  expect(script).toContain(`SECRETS_PATH=${DB_SYNC_PREFIX}\n`);
+  expect(listed("SYNC_KEYS")?.sort()).toEqual([...DB_SYNC_KEYS].sort());
+  const expected = (path: string) =>
+    expectations().find(({ prefix }) => prefix === path);
+  expect(expected(DB_SYNC_PREFIX)?.required).toEqual(new Set(DB_SYNC_KEYS));
+  expect(expected(DB_SYNC_PREFIX)?.allowed).toEqual(new Set(DB_SYNC_KEYS));
+  expect(script).toContain(
+    `--path /alliance/staging/server/ "\${SERVER_KEYS[@]}"`,
+  );
+  const serverKeys = listed("SERVER_KEYS") ?? [];
+  expect(serverKeys.length).toBeGreaterThan(0);
+  const staging = expected("/alliance/staging/server/")?.required;
+  for (const key of serverKeys) expect(staging).toContain(key);
 });
