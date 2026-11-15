@@ -45,6 +45,17 @@ Read from `node_modules/pg-pool/index.js` 3.13.0 (pg 8.20.0, typeorm 0.3.28), 20
 
 2026-11-16. `gh api repos/grafana/grafana/releases` lists v12.2.2 through v12.2.10 (published 2026-06-23) after v12.2.1, plus `+security` builds. The release notes of v12.2.8+security-01, v12.2.8+security-04 and v12.2.9 list CVE fixes. Docker Hub has `grafana/grafana:12.2.10`. The official darwin-arm64 Grafana 12.2.10, its sha256 matching dl.grafana.com's `.sha256`, started with a fresh data directory and a copy of `deploy/monitoring/grafana/provisioning/`, answered `/api/health` with version 12.2.10 and listed the provisioned datasource. With a provisioning file that isn't valid YAML it exited, logging `failure to parse file`. With `.gitkeep` alone in `dashboards/`, `plugins/` and `alerting/` it logged no provisioning error.
 
+## Local run
+
+2026-11-14, on macOS arm64. A local server ran this branch's code. The official darwin-arm64 releases of Prometheus 3.5.0, blackbox_exporter 0.27.0 and Grafana 12.2.1 ran from `.scratch/`, with `deploy/monitoring/`'s files changed only in hosts and ports. A local HTTP sink stood in for Slack. `promtool check config deploy/monitoring/prometheus.yml` passed.
+
+- Grafana 12.2.1 rejected a rule group interval of 15s: `interval (15s) should be non-zero and divided exactly by scheduler interval: 10`.
+- Blackbox exporter resolves `localhost` to `::1` first, which failed against a server listening on IPv4 only. The local run probed `127.0.0.1`, and production probes an IPv4 address.
+- Pool starvation: one psql session held `LOCK TABLE action IN ACCESS EXCLUSIVE MODE` for 150 s while 45 concurrent loops requested `GET /actions/slug/1`. The metrics read 30 connections, 16 waiting, and acquire timeouts rising about 2 a second. `GET /health/db` answered 503. The timeout and readiness rules fired within about 45 s and the waiter rule after its one-minute hold. After the lock was released, all three resolved. The sink received `[FIRING:1]` and `[RESOLVED]` Slack payloads for the waiter and timeout alerts and `[RESOLVED]` for readiness.
+- Stopping the server fired "Prometheus cannot scrape the API" after its one-minute hold.
+- 2026-11-16, Grafana 12.2.10 with a fresh data directory and the provisioning files provisioned the datasource, the Slack contact point, the notification policy and all five rules, as 12.2.1 did.
+- Grafana's contact-point test sent a Slack-format payload to the sink, with the URL taken from `SLACK_WEBHOOK_URL` in the environment.
+
 ## Grafana provisioning errors
 
 2026-11-14, the official darwin-arm64 Grafana 12.2.1 started from `.scratch/` with a fresh data directory and a copy of the provisioning files.
@@ -55,3 +66,21 @@ Read from `node_modules/pg-pool/index.js` 3.13.0 (pg 8.20.0, typeorm 0.3.28), 20
 ## Blackbox exporter pin
 
 2026-11-15. `gh api repos/prometheus/blackbox_exporter/releases/latest` gives v0.29.1, published 2026-10-21; Docker Hub has `prom/blackbox-exporter:v0.29.1`. The official darwin-arm64 build (sha256 matching the release's `sha256sums.txt`) accepted `deploy/monitoring/blackbox.yml` with `--config.check`, and through it a local stub's 200 read `probe_success 1` and its 503 `probe_success 0`.
+
+## Rule edge cases
+
+2026-11-14, `promtool test rules` from the official darwin-arm64 Prometheus 3.5.0, 15-second samples, and Grafana 12.2.1 from `.scratch/`.
+
+- Readiness with `probe_success` `1 1 0 _`, the newest probe still running, and the API scrape up: the expression without the `count_over_time` term fired at 45 s on that one failure; with it, it stayed quiet. Both still fired on `1 1 1 0 0 0` with the API up and stayed quiet through a restart gap where both series failed together.
+- In-flight probes, 2026-11-14, with Prometheus 3.5.0 and blackbox_exporter 0.27.0 probing, through `deploy/monitoring/blackbox.yml`, a local stub whose `/health/db` answered 503 after 2 s and whose `/metrics` answered at once: the readiness expression without `offset` read 1 (healthy) on 13 of 105 one-second queries once warmed up, two consecutive seconds in each 15-second probe cycle. With `offset 10s` on all three ranges it read 0 on all 105. `promtool test rules` gave the offset expression the same results as the cases above, one 15-second evaluation later.
+- `sum(increase(...[2m]))` over a counter going `0 0 1 1 1 1 2 2 2 3 3`, three timeouts inside the window ending at 135 s, read 2.2857.
+- Grafana with the provisioned rules and contact point, a Prometheus with no `probe_success` series, and a local sink as the Slack webhook: the readiness rule with `noDataState: NoData` went to NoData, and the sink received `[FIRING:1] DatasourceNoData Alliance API (alliance-prometheus A The API cannot reach its database)`. On that fresh Grafana's first start, the first dispatch went to the default email contact point before the provisioned policy took effect; the retry 30 s later reached the sink.
+- 2026-11-15, `promtool test rules` from the official darwin-arm64 Prometheus 3.16.0, the pinned release, passed the readiness expression's cases above unchanged.
+- 2026-11-15, `scripts/readiness-rule.test.ts` on macOS arm64, downloading and checksum-checking promtool 3.16.0 into an empty cache: all cases passed. Each change to the readiness rule in `rules.yaml` failed it: dropping `offset 10s` failed four cases (sustained failure, newest probe running, probe gap, recovery), dropping the count term two (single failure with the next probe running, probe gap), dropping the `up` term one (restart gap), and `noDataState: NoData` the settings check. Not run on Linux, where CI runs it.
+
+## Restart gap
+
+2026-11-15, the official darwin-arm64 Prometheus 3.16.0, blackbox_exporter 0.27.0 and Grafana 12.2.1 from `.scratch/`, with `deploy/monitoring/`'s files changed only in hosts and ports, a local stub answering 200 to `/health/db` and `/metrics`, and a local sink as the Slack webhook. Each run started the three, stopped them all after 2.5 to 3 minutes, as the deploy does, and started them again 30 s later.
+
+- With the readiness rule's `noDataState: NoData`, the rule went to NoData 8 s after the restart, and Grafana sent `DatasourceNoData` to its notifier, then resolved it 30 s later, the same as the policy's `group_wait`. The sink received nothing that time.
+- With `noDataState: OK` and the probe-down rule, nothing was sent after the restart. The probe-down rule went to Pending on no data and back. Killing the blackbox exporter two minutes later sent the probe-down alert after 75 s, and the sink received `[FIRING:1] Prometheus cannot probe GET /health/db` 30 s after that. The readiness rule never fired.

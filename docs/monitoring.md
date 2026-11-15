@@ -1,12 +1,22 @@
 # Monitoring
 
-Prometheus and Grafana run in Docker on the monitoring host (`terraform/monitoring.tf`, EC2 tag `MonitoringInstance`). Prometheus scrapes the production API's and frontend SSR server's `/metrics` every 15 seconds and, through the blackbox exporter, probes `GET /health/db`. Grafana, at https://metrics.worldalliance.org, reads from it and sends alerts to the Slack channel the server's event log uses, through the same webhook (`/alliance/prod/server/SLACK_WEBHOOK_URL` in Parameter Store). The deploy copies the webhook to the host, so after changing it, deploy monitoring again. The deploy fails without that parameter.
+Prometheus and Grafana run in Docker on the monitoring host (`terraform/monitoring.tf`, EC2 tag `MonitoringInstance`). Prometheus scrapes the production API's and frontend SSR server's `/metrics` every 15 seconds and, through the blackbox exporter, probes `GET /health/db`. Grafana, at https://metrics.worldalliance.org, reads from it, evaluates the alert rules and posts to the Slack channel the server's event log uses, through the same webhook (`/alliance/prod/server/SLACK_WEBHOOK_URL` in Parameter Store). The deploy copies the webhook to the host, so after changing it, deploy monitoring again. The deploy fails without that parameter.
 
 Everything the host runs in Docker is in `deploy/monitoring/`, and `scripts/deploy_monitoring.sh` puts it there. The Prometheus data, Grafana's database (users, dashboards) and `grafana.env` live only on the host, in `~/prometheus`.
 
 ## Alerts
 
-The contact point and notification policy are provisioned from `deploy/monitoring/grafana/provisioning/`, so Grafana's UI can't edit them. Change the files and deploy. Provisioning the notification policy replaces Grafana's whole policy tree. Deleting an entry or file leaves its resource in Grafana; removing it takes a delete entry such as `deleteContactPoints`.
+| Alert                                          | Fires when                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| Requests are waiting for a database connection | `db_pool_waiting_requests` above 0 for a minute                       |
+| Database connection checkouts are timing out   | about three or more `db_pool_acquire_timeouts_total` in two minutes   |
+| Prometheus cannot scrape the API               | the `app_server_api` scrape failing for a minute                      |
+| The API cannot reach its database              | `GET /health/db` failing twice in a row while the API scrape succeeds |
+| Prometheus cannot probe GET /health/db         | the blackbox exporter's scrape failing for a minute                   |
+
+`GET /health/db` runs `SELECT 1` through the API's own pool and answers 503 when it fails or takes over 2 seconds, so it fails while the pool is starved. `GET /` never touches the database, because the backend deploy decides from it whether a release came up.
+
+The rules, contact point and notification policy are provisioned from `deploy/monitoring/grafana/provisioning/`, so Grafana's UI can't edit them. Change the files and deploy. `scripts/readiness-rule.test.ts`, which CI runs with the other `scripts` tests, checks the readiness rule's settings and runs its expression through the pinned Prometheus release's `promtool` over outage, restart-gap and in-flight-probe cases. Provisioning the notification policy replaces Grafana's whole policy tree. Deleting an entry or file leaves its resource in Grafana; removing it takes a delete entry such as `deleteRules` or `deleteContactPoints`.
 
 ## Getting onto the host
 
@@ -28,7 +38,9 @@ aws sso login --profile alliance-admin
 scripts/deploy_monitoring.sh
 ```
 
-It deploys `deploy/monitoring/` as committed at your checkout's `HEAD`; uncommitted changes stay behind. It shows how every file in the host's `~/prometheus`, apart from Prometheus's and Grafana's data and `grafana.env`, differs from that, and asks before changing anything. It refuses to go on when the host runs a newer Prometheus or Grafana than `docker-compose.yml` pins, since the deploy would downgrade it. Then it pulls the pinned images, stops the containers, backs up `~/prometheus`, minus Prometheus's data, to `~/monitoring-backup-<time>.tgz` on the host, readable only by root, writes the webhook into `~/prometheus/grafana.env`, copies the files over and recreates the containers. It fails unless Prometheus and Grafana answer half a minute later with no container restarted. That catches a config Prometheus rejects and a provisioning file Grafana can't parse, but not a provisioned resource Grafana parses and can't use, so check it in Grafana after changing it. `SSH_KEY` picks a key other than `~/.ssh/id_ed25519`.
+It deploys `deploy/monitoring/` as committed at your checkout's `HEAD`; uncommitted changes stay behind. It shows how every file in the host's `~/prometheus`, apart from Prometheus's and Grafana's data and `grafana.env`, differs from that, and asks before changing anything. It refuses to go on when the host runs a newer Prometheus or Grafana than `docker-compose.yml` pins, since the deploy would downgrade it. Then it pulls the pinned images, stops the containers, backs up `~/prometheus`, minus Prometheus's data, to `~/monitoring-backup-<time>.tgz` on the host, readable only by root, writes the webhook into `~/prometheus/grafana.env`, copies the files over and recreates the containers. It fails unless Prometheus and Grafana answer half a minute later with no container restarted. That catches a config Prometheus rejects and a provisioning file Grafana can't parse, but not an alert rule Grafana parses and can't evaluate, so check the rules in Grafana after changing them. `SSH_KEY` picks a key other than `~/.ssh/id_ed25519`.
+
+Deploy a server that serves `GET /health/db` before a monitoring config that probes it. Otherwise the readiness alert fires on the 404.
 
 To check that alerts reach Slack, open the "Slack event log" contact point in Grafana (Alerting, then Contact points) and press "Test".
 
