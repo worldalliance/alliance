@@ -1,0 +1,9 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus (provisioned)
+    uid: alliance-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    editable: false
