@@ -70,7 +70,11 @@ describe("deployed-config.ts", () => {
 
   test("refuses an environment that isn't deployed", () => {
     for (const args of [[], ["development"], ["prod"], ["staging", "x"]]) {
-      expect(run(...args).exitCode).toBe(2);
+      const result = run(...args);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr.toString()).toContain(
+        "usage: bun scripts/deployed-config.ts <staging|production>",
+      );
     }
   });
 });
