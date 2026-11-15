@@ -32,10 +32,13 @@ jobs:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
       - run: bun scripts/deployed-config.ts "$env_name" > deployed-config.env
+      - run: bun scripts/web-runtime-config.ts "$env_name" > web-config.json
       - uses: actions/upload-artifact@v4
         with:
           name: deployed-config
-          path: deployed-config.env
+          path: |
+            deployed-config.env
+            web-config.json
 
   test-backend-e2e:
     uses: ./.github/workflows/test-backend-e2e.yaml
@@ -90,10 +93,9 @@ jobs:
         working-directory: ./apps/frontend
 
       - name: Build React App
-        run: bun run --cwd apps/frontend build -- --mode "$env_name"
+        run: bun run --cwd apps/frontend build
         env:
           VITE_APP_GIT_SHA: ${{ github.sha }}
-          VITE_APP_VERSION: ${{ github.ref_name }}
 
       - name: Install PostHog CLI
         continue-on-error: true
@@ -192,7 +194,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build React App
-        run: bun run --cwd apps/admin build -- --mode "$env_name"
+        run: bun run --cwd apps/admin build
 
       - name: Zip Build Output
         run: zip -r admin-build.zip build/client
@@ -324,6 +326,11 @@ jobs:
             cd ~/
 
             unzip -o -DD ~/react-build.zip
+            # BACKCOMPAT(prerender): earlier builds prerendered these, and
+            # express.static would serve them, with that build's config, until
+            # the prune below. Remove once this has deployed to staging and
+            # production.
+            rm -f ~/output/build/client/index.html ~/output/build/client/guide/index.html
 
             cd ~/output
             # node_modules isn't in the zip; clear it so the frozen install
@@ -396,12 +403,9 @@ jobs:
             deploy/nginx/alliance_admin_http.conf
             deploy/nginx/check-cert.sh
             admin-build.zip
+            web-config.json
           script: |
             sudo yum install -y unzip nginx
-
-            unzip -o -DD ~/admin-build.zip -d ~/admin-app
-            # Same pruning as the frontend deploy's ~/output/build.
-            find ~/admin-app -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/admin-app"
 
             chmod o+x /home/ec2-user
 
@@ -418,7 +422,7 @@ jobs:
 
             reload () {
               sudo nginx -t || { echo "nginx config invalid"; exit 1; }
-              sudo systemctl reload nginx
+              sudo systemctl reload nginx || { echo "nginx reload failed"; exit 1; }
             }
 
             # The port 80 vhost lands first and unconditionally: it serves the
@@ -433,6 +437,15 @@ jobs:
 
             render alliance_admin.conf
             reload
+
+            # After the vhost, which serves routes the bundle needs, such as
+            # /config.json. A failed cert check above also exits before this,
+            # leaving the old bundle and its config live.
+            mkdir -p ~/admin-config
+            mv ~/web-config.json ~/admin-config/config.json || { echo "could not install config.json"; exit 1; }
+            unzip -o -DD ~/admin-build.zip -d ~/admin-app || { echo "unzip of the admin bundle failed"; exit 1; }
+            # Same pruning as the frontend deploy's ~/output/build.
+            find ~/admin-app -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/admin-app"
 
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
@@ -648,6 +661,12 @@ jobs:
           echo "Checking admin app on admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
           curl --fail --silent --show-error https://admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
           echo "admin other domain https ok"
+
+      - name: Check admin config
+        run: |
+          set -o pipefail
+          curl --fail --silent --show-error https://admin.${{ steps.config.outputs.DOMAIN_NAME }}/config.json | jq -e --slurpfile want web-config.json '. == $want[0]' > /dev/null
+          echo "admin config.json ok"
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
       # certificate. Last, so a PostHog outage doesn't skip the checks above.

@@ -1,6 +1,8 @@
 import type { DevUrl } from "@alliance/common/dev-ports";
+import { NodeEnv } from "@alliance/common/node-env";
 import { adminOrigin, preferNewDomain } from "@alliance/common/url";
 import { requireWebEnv, webEnv } from "./env";
+import { webEnvironment } from "./runtimeConfig";
 
 const mode = import.meta.env.MODE;
 
@@ -27,13 +29,10 @@ export const getWebSocketUrl = (mode: string): string => {
   }
 };
 
-export const isProduction = (): boolean => {
-  return mode === "production";
-};
+export const isProduction = (): boolean =>
+  webEnvironment() === NodeEnv.Production;
 
-export const isStaging = (): boolean => {
-  return mode === "staging";
-};
+export const isStaging = (): boolean => webEnvironment() === NodeEnv.Staging;
 
 export const getBaseUrl = (): string => {
   if (mode === "development") {

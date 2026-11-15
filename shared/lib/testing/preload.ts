@@ -60,6 +60,3 @@ afterEach(() => {
   jest.useRealTimers();
   Reflect.deleteProperty(setTimeout, "clock");
 });
-
-// Every non-development web build carries an API URL; a test has no build.
-process.env.VITE_API_URL ??= "https://alliance.test";

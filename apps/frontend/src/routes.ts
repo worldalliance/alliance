@@ -113,4 +113,5 @@ export default [
   ]),
   route(BUILD_VERSION_PATH, "pages/BuildVersionRoute.ts"),
   route("/:customLinkSlug", "pages/static/CustomLinkRedirect.tsx"),
+  route("*", "pages/UnmatchedRoute.tsx"),
 ] satisfies RouteConfig;

@@ -21,11 +21,7 @@ import {
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
-import { getApiUrl, getSiteUrl } from "./lib/config";
-
-client.setConfig({
-  baseUrl: getApiUrl(),
-});
+import { getSiteUrl } from "./lib/config";
 
 registerErrorStatus(client);
 
@@ -92,15 +88,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <SiteOriginLinkProvider origin={getSiteUrl()}>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
-                <ToastProvider>{children}</ToastProvider>
-              </ShareLinkViewerProvider>
-            </AuthProvider>
-          </QueryClientProvider>
-        </SiteOriginLinkProvider>
+        {children}
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -108,6 +96,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// The providers read the runtime config, which entry.client loads before
+// hydrating, so they stay out of Layout, which the build prerenders.
 export default function Root() {
-  return <Outlet />;
+  return (
+    <SiteOriginLinkProvider origin={getSiteUrl()}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
+            <ToastProvider>
+              <Outlet />
+            </ToastProvider>
+          </ShareLinkViewerProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </SiteOriginLinkProvider>
+  );
 }
