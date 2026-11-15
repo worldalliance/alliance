@@ -21,6 +21,10 @@ instance=$(aws_admin ec2 describe-instances \
 read -r instance_id ip <<< "$instance"
 [[ "$instance_id" == i-* ]] || { echo "no running MonitoringInstance found"; exit 1; }
 
+webhook=$(aws_admin ssm get-parameter --name /alliance/prod/server/SLACK_WEBHOOK_URL \
+  --with-decryption --query Parameter.Value --output text) ||
+  { echo "Grafana's alerts need /alliance/prod/server/SLACK_WEBHOOK_URL in Parameter Store"; exit 1; }
+
 # EC2 Instance Connect trusts the key for 60 seconds, so one master connection
 # opens now and every later command rides on it.
 work=$(mktemp -d)
@@ -35,7 +39,7 @@ remote () { ssh "${ssh_opts[@]}" "$host" "$@"; }
 
 mkdir "$work/host" "$work/repo"
 config_tar | tar -C "$work/repo" -xf -
-remote 'sudo tar -C ~/prometheus --exclude=./data --exclude=./grafana-data -cf - .' |
+remote 'sudo tar -C ~/prometheus --exclude=./data --exclude=./grafana-data --exclude=./grafana.env -cf - .' |
   tar -C "$work/host" -xf - || echo "could not read all of ~/prometheus on the host"
 (cd "$work" && diff -ru host repo) || true
 [[ -z "$(git -C "$root" status --porcelain -- deploy/monitoring)" ]] ||
@@ -65,6 +69,9 @@ remote "cd ~/prometheus && docker-compose stop && umask 077 && sudo tar -C ~/pro
 echo "backed up to ~/$backup on the host"
 failed () { echo "$1; ~/$backup on the host holds the previous config, and docs/monitoring.md says how to restore it"; exit 1; }
 
+# Compose can't load a project whose env_file is missing, so grafana.env goes first.
+printf 'SLACK_WEBHOOK_URL=%s\n' "$webhook" | remote 'umask 077 && cat > ~/prometheus/grafana.env' ||
+  failed "writing grafana.env failed with the containers stopped"
 # Grafana provisions every file it finds, so a file deleted from the repo must go too.
 config_tar | remote 'rm -rf ~/prometheus/grafana/provisioning && tar -C ~/prometheus -xf -' || failed "copying the config failed with the containers stopped"
 remote 'cd ~/prometheus && docker-compose up -d --force-recreate' || failed "starting the containers failed"

@@ -16,6 +16,7 @@ services:
   grafana:
     image: grafana/grafana:12.2.10
     container_name: grafana
+    env_file: grafana.env
     ports:
       - "3001:3000"
     volumes:
