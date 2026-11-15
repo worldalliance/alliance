@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Form renderers and the expression printer must not import the
+// Form renderers and the expression interpreter and printer must not import the
 // several-megabyte TypeScript compiler. Only the variable builder, the schema
 // validator and the expression parser need it.
 const RENDER_PATH_ENTRIES = [
@@ -21,6 +21,7 @@ const RENDER_PATH_ENTRIES = [
   "./ranking.ts",
   "./element-descriptors.ts",
   "./display-only-schema.ts",
+  "../expression/evaluate.ts",
   "../expression/print.ts",
 ];
 
