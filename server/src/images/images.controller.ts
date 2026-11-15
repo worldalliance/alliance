@@ -27,7 +27,7 @@ import { OnlyThrottle } from "src/utils/throttle";
 import { requireEnv } from "../config/env";
 import { UploadImageDto, UploadImageResponseDto } from "./dto/image.dto";
 import { IMAGE_DOWNLOAD_THROTTLE } from "./image-download-throttle.config";
-import { getImageSource, ImagesService } from "./images.service";
+import { cloudfrontSrc, getImageSource, ImagesService } from "./images.service";
 
 @Controller("images")
 export class ImagesController {
@@ -47,6 +47,10 @@ export class ImagesController {
     @Res() res: Response,
   ): Promise<void> {
     if (!isUploadKey(key)) throw new NotFoundException();
+    const cdn = cloudfrontSrc(key);
+    // Cached for a day rather than a year, since the CloudFront domain can change.
+    if (cdn)
+      return res.set("Cache-Control", "public, max-age=86400").redirect(cdn);
 
     await pipeS3Object({ s3: this.s3, bucket: this.bucket, key, res });
   }
