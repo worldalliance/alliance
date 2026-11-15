@@ -9,6 +9,7 @@ import {
 } from "@alliance/common/dev-ports";
 import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
 import { AppTypeOrmLogger } from "../utils/typeorm-logger";
+import { instrumentedPg } from "./pool-metrics";
 import { poolOptions } from "./pool-options";
 import { SlugSubscriber } from "./slug.subscriber";
 
@@ -29,6 +30,7 @@ export const connectionOptions = (): PostgresConnectionOptions => {
     database: env("DB_NAME"),
     useUTC: true,
     ...poolOptions,
+    driver: instrumentedPg,
     maxQueryExecutionTime: 100,
     logging: ["error", "warn"],
     logger: new AppTypeOrmLogger(),

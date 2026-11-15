@@ -5,6 +5,7 @@ import { LOCK_KEYS } from "src/notifs/lock-keys";
 import { DataSource } from "typeorm";
 import { PostgresDriver } from "typeorm/driver/postgres/PostgresDriver";
 import { connectionOptions } from "./connection-options";
+import { InstrumentedPool } from "./pool-metrics";
 import { poolOptions } from "./pool-options";
 
 // Lower bounds from a static reading of each locked job: "Connections per
@@ -48,11 +49,12 @@ describe("connectionOptions", () => {
 
   afterEach(() => setEnv("DB_NAME", savedDbName));
 
-  it("gives the app's DataSource the pool size and timeout", () => {
+  it("gives the app's DataSource the pool size, timeout and instrumented pool", () => {
     const { driver } = new DataSource(connectionOptions());
     if (!(driver instanceof PostgresDriver)) throw new Error("not Postgres");
 
     expect(driver.options.poolSize).toBe(poolOptions.poolSize);
     expect(driver.options.connectTimeoutMS).toBe(poolOptions.connectTimeoutMS);
+    expect(driver.postgres.Pool).toBe(InstrumentedPool);
   });
 });
