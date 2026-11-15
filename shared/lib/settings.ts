@@ -1,6 +1,8 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import {
   type CountryCode,
   normalizePhoneNumber,
+  PHONE_NUMBER_TAKEN_MESSAGE,
   type PhoneNumberError,
   toE164,
 } from "@alliance/common/phone";
@@ -11,6 +13,7 @@ import type {
   PublicFormResponseDefault,
   UpdateProfileDto,
 } from "../client";
+import { thrownStatus } from "./hey-api";
 
 export type NotificationChannelOption = {
   value: NotificationChannel;
@@ -72,6 +75,38 @@ export function phoneNumberSettingsError(
 
   const parsed = toE164(entered, country);
   return R.isFailure(parsed) ? PHONE_NUMBER_ERROR_COPY[parsed.error] : null;
+}
+
+export type PhoneNumberRefusal = { phoneNumber: string; message: string };
+
+/** The server's refusal of a sent number another account holds, else null. */
+export function phoneNumberRefusal(
+  error: unknown,
+  body: UpdateProfileDto,
+): PhoneNumberRefusal | null {
+  if (!body.phoneNumber || thrownStatus(error) !== 409) {
+    return null;
+  }
+  return {
+    phoneNumber: body.phoneNumber,
+    message: errorMessage({ error, fallback: PHONE_NUMBER_TAKEN_MESSAGE }),
+  };
+}
+
+/**
+ * The refusal's message while the entered number is the one refused: a
+ * refusal can arrive after the member has typed another.
+ */
+export function enteredNumberRefusal(
+  refusal: PhoneNumberRefusal | null,
+  editableUser: UpdateProfileDto | null,
+  country: CountryCode,
+): string | null {
+  return refusal &&
+    phoneNumberToStore(editableUser?.phoneNumber, country) ===
+      refusal.phoneNumber
+    ? refusal.message
+    : null;
 }
 
 function settingsSavePayload(
