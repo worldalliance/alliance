@@ -9,6 +9,7 @@ All entries are agent decisions unless they say otherwise.
 ## Tree
 
 - **One walk order.** `children` in `tree.ts` lists a node's direct subexpressions, so every walk over a tree visits the same parts, and adding a node kind fails the build there until its children are listed.
+- **One `Math` decoder.** `mathFunctionName` in `tree.ts` decodes the parser's `Math.<name>` call encoding for the interpreter and the dependency reads, so both read a call one way.
 
 ## Dependencies
 

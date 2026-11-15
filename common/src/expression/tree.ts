@@ -1,3 +1,5 @@
+import { MATH_OBJECT_NAME } from "../forms/formula-allowlist";
+
 export enum ExprKind {
   Literal = "literal",
   Input = "input",
@@ -109,4 +111,10 @@ export function children(expr: Expr): readonly Expr[] {
     default:
       throw new Error(`unknown kind: ${expr satisfies never}`);
   }
+}
+
+/** The `Math` function a call's `fn` names, as the parser writes it. */
+export function mathFunctionName(fn: string): string | undefined {
+  const prefix = `${MATH_OBJECT_NAME}.`;
+  return fn.startsWith(prefix) ? fn.slice(prefix.length) : undefined;
 }

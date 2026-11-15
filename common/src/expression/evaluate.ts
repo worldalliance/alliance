@@ -1,7 +1,6 @@
 import {
   MATH_BINARY_FUNCTIONS,
   MATH_FUNCTIONS,
-  MATH_OBJECT_NAME,
   MATH_VARIADIC_FUNCTIONS,
 } from "../forms/formula-allowlist";
 import { R, type Result } from "../result";
@@ -30,7 +29,13 @@ import {
   runEvery,
   type EvalFailure,
 } from "./failure";
-import { BinaryOp, ExprKind, LAMBDA_ONLY_AS_ARGUMENT, type Expr } from "./tree";
+import {
+  BinaryOp,
+  ExprKind,
+  LAMBDA_ONLY_AS_ARGUMENT,
+  mathFunctionName,
+  type Expr,
+} from "./tree";
 
 export type Bindings = Scope & {
   readInput: (id: string) => Result<Value, EvalFailure>;
@@ -238,9 +243,7 @@ class Evaluator {
       if (args.length !== 1) throw evalError(`${IS_UNKNOWN} takes one value.`);
       return args[0] === null;
     }
-    const mathName = fn.startsWith(`${MATH_OBJECT_NAME}.`)
-      ? fn.slice(MATH_OBJECT_NAME.length + 1)
-      : undefined;
+    const mathName = mathFunctionName(fn);
     const math =
       mathName === undefined ? undefined : MATH_FUNCTIONS.get(mathName);
     if (math !== undefined) {
