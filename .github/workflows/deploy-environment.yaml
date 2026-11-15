@@ -25,6 +25,10 @@ on:
         description: JSON object of the ids of artifacts-run-id's react-build, admin-build and react-assets artifacts, by name; a missing id fails the download that needs it.
         type: string
         default: "{}"
+      details:
+        description: JSON object recorded as the deployment's payload.
+        type: string
+        default: "{}"
 
 permissions:
   contents: read
@@ -80,6 +84,7 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           commit: ${{ inputs.commit }}
+          details: ${{ inputs.details }}
 
   deploy-nest-backend:
     runs-on: ubuntu-latest

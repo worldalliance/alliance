@@ -14,6 +14,9 @@ inputs:
   commit:
     description: Full SHA of the commit this run deploys.
     required: true
+  details:
+    description: JSON object recorded as the deployment's payload.
+    default: "{}"
 
 outputs:
   deployment_id:
@@ -29,5 +32,6 @@ runs:
         GH_TOKEN: ${{ github.token }}
         ENVIRONMENT: ${{ inputs.environment }}
         COMMIT: ${{ inputs.commit }}
+        DETAILS: ${{ inputs.details }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
       run: bash "$GITHUB_ACTION_PATH/guard.sh"

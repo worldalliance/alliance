@@ -2,6 +2,7 @@
 set -euo pipefail
 
 [[ $COMMIT =~ ^[0-9a-f]{40}$ ]] || { echo "commit must be a full SHA: '$COMMIT'" >&2; exit 1; }
+jq -en --argjson details "$DETAILS" '$details | type == "object"' > /dev/null 2>&1 || { echo "details must be a JSON object: '$DETAILS'" >&2; exit 1; }
 
 repo="repos/$GITHUB_REPOSITORY"
 record="$ENVIRONMENT-live"
@@ -47,7 +48,8 @@ production_environment=false
 # passed, in this run or the one whose artifacts it deploys; GitHub would
 # otherwise demand every commit status.
 id=$(jq -n --arg ref "$COMMIT" --arg environment "$record" --argjson production "$production_environment" \
-  '{ref: $ref, environment: $environment, auto_merge: false, required_contexts: [], production_environment: $production}' \
+  --argjson details "$DETAILS" \
+  '{ref: $ref, environment: $environment, auto_merge: false, required_contexts: [], production_environment: $production, payload: $details}' \
   | gh api -X POST "$repo/deployments" --input - --jq .id)
 # auto_inactive=false keeps GitHub from marking the live record inactive,
 # which live-commit.sh would stop reading as live.
