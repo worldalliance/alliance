@@ -16,10 +16,11 @@ import {
 import { useAppDrawer } from "../../lib/AppDrawerContext";
 import { useAuth } from "../../lib/AuthContext";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
+import { resolveProfileImageUri } from "../../lib/profileImageUri";
 import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { ImageLightboxModal } from "../ImageLightbox";
-import ProfileImage, { resolveProfileImageUri } from "../ProfileImage";
+import ProfileImage from "../ProfileImage";
 import BackButton from "../system/BackButton";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Text, { FontWeight } from "../system/Text";
