@@ -94,7 +94,7 @@ When the sync can't read its parameters, it stops before it can post to Slack, s
 
 ## Database access from the backend hosts
 
-`scripts/with_db_env.sh` runs a command on a backend host with libpq's `PG*` variables set to that server's own database login, passing the command only `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` from `/alliance/<env>/server/` through `~/secrets_run.sh`, and verifying the RDS certificate as the server does.
+`scripts/with_db_env.sh` runs a command on a backend host with libpq's `PG*` variables set to that server's own database login, passing the command only `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` from `/alliance/<env>/server/` through `~/secrets_run.sh`, and verifying the RDS certificate as the server does. `scripts/download_staging_data.sh` and `scripts/disable_action_update_texts_emails.sh` run their database commands through it over SSH, to the host aliases `staging` and `prod`: entries in your `~/.ssh/config` with the host's public IP as `HostName` (`aws ec2 describe-instances --region us-west-2 --instance-ids <id> --query 'Reservations[].Instances[].PublicIpAddress' --output text`, with `STAGING_INSTANCE_ID` or `PRODUCTION_INSTANCE_ID` from `.github/ci.env`), `User ec2-user`, and as `IdentityFile` the key at `/alliance/shared/EC2_SSH_KEY`, which only admins can read, so ask one for it. They fail with `No such file or directory` on a host whose release predates `with_db_env.sh`, so `prod` works once production has deployed a release that ships it.
 
 ## Secret files kept for admins
 
