@@ -2,7 +2,12 @@
 // formula. Keep these signatures synchronized with the evaluator allowlists;
 // `formula-lib.test.ts` checks method names in both directions.
 
-import { MATH_FUNCTION_NAMES, MATH_OBJECT_NAME } from "./formula-allowlist";
+import {
+  MATH_BINARY_FUNCTIONS,
+  MATH_FUNCTION_NAMES,
+  MATH_OBJECT_NAME,
+  MATH_VARIADIC_FUNCTIONS,
+} from "./formula-allowlist";
 
 // `noLib` still requires these intrinsic declarations to type-check a formula.
 const INTRINSICS = `
@@ -85,10 +90,6 @@ interface Array<T> {
 }
 interface ReadonlyArray<T> extends Array<T> {}
 `;
-
-export const MATH_BINARY_FUNCTIONS = ["atan2", "imul", "pow"] as const;
-
-export const MATH_VARIADIC_FUNCTIONS = ["hypot", "max", "min"] as const;
 
 const parametersFor = (name: string): string => {
   if (MATH_BINARY_FUNCTIONS.some((each) => each === name)) {
