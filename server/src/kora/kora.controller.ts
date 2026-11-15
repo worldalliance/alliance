@@ -19,6 +19,7 @@ import type { Request, Response } from "express";
 import { AllowedOriginGuard } from "src/auth/guards/allowed-origin.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
+import { clientIp } from "src/otp/client-ip";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import { OTP_TTL_MS } from "src/otp/otp-limits";
 import { otpRefusalException } from "src/otp/otp-refusal";
@@ -57,10 +58,6 @@ function signupsClosedException(): BadRequestException {
   return new BadRequestException(KORA_SIGNUPS_CLOSED, {
     description: KoraError.ProjectClosed,
   });
-}
-
-function clientIp(req: Request): string {
-  return req.ip ?? "unknown";
 }
 
 function webOtpHost(req: Request): string {
