@@ -305,14 +305,9 @@ describe("mountKoraReview", () => {
     press("+");
     await tick(10);
     expect(el.querySelectorAll(".tk.pos")).toHaveLength(1);
-    expect(el.querySelectorAll(".msg .anns .ann")).toHaveLength(1);
+    expect(el.querySelectorAll(".msg .anns")).toHaveLength(0);
     expect(marks().querySelectorAll(".ann")).toHaveLength(1);
     expect(marks().textContent).toContain("Turn 1");
-    const listed = el.querySelector(".msg .anns .ann")!;
-    expect(listed.textContent).not.toContain("Flip");
-    const remove = listed.querySelector<HTMLButtonElement>(".ann-ic")!;
-    expect(remove.textContent).toBe("");
-    expect(remove.getAttribute("aria-label")).toMatch(/^Remove mark on/);
     marks().querySelector<HTMLButtonElement>(".ann-q")!.click();
     expect(sheet().textContent).toContain("Remove");
 
