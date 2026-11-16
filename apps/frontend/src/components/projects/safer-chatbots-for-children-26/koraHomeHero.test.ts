@@ -24,7 +24,9 @@ test("asks for the whole open user-batch before any pair is ranked", () => {
   expect(heroOf(home(row({})), now)).toEqual({
     heading: "Rank 10 pairs by November 30",
     action: { kind: HeroAction.Continue, label: "Start ranking" },
-    note: null,
+    note: expect.stringMatching(
+      /^You have 10 pairs of conversations to review\./,
+    ),
   });
 });
 
@@ -32,6 +34,7 @@ test("asks for what's left once some are ranked, with one pair in the singular",
   expect(heroOf(home(row({ progress: 3 })), now)).toMatchObject({
     heading: "Rank 7 more pairs by November 30",
     action: { label: "Continue ranking" },
+    note: null,
   });
   expect(heroOf(home(row({ progress: 9 })), now).heading).toBe(
     "Rank 1 more pair by November 30",
@@ -72,6 +75,9 @@ test("offers a fresh start after a closed user-batch", () => {
   expect(heroOf(home(ready, closed), now)).toMatchObject({
     heading: "Rank 10 pairs by November 30",
     action: { kind: HeroAction.Start, label: "Start ranking" },
+    note: expect.stringMatching(
+      /^You have 10 pairs of conversations to review\./,
+    ),
   });
 });
 

@@ -47,7 +47,6 @@ export type Late = {
   renderReview(slow?: boolean): void;
   renderSel(): void;
   renderWarning(next: { then: string }): void;
-  renderWelcome(): void;
   selRange(): [number, number];
 };
 

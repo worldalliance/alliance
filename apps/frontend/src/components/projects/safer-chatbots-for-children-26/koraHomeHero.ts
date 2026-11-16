@@ -65,7 +65,7 @@ export function heroOf(home: KoraHomeDto, now: Date): Hero {
             ? HOME_COPY.startRanking
             : HOME_COPY.continueRanking,
       },
-      note: null,
+      note: open.progress === 0 ? HOME_COPY.startIntro(open.total) : null,
     };
   }
   const ready = find(KoraUserBatchStatus.Ready);
@@ -86,7 +86,7 @@ export function heroOf(home: KoraHomeDto, now: Date): Hero {
     return {
       heading: HOME_COPY.rank(ready.total) + deadline(ready.closesAt, now),
       action: { kind: HeroAction.Start, label: HOME_COPY.startRanking },
-      note: null,
+      note: HOME_COPY.startIntro(ready.total),
     };
   }
   return {

@@ -69,7 +69,6 @@ export type Result = Pick<
 
 export type Screen =
   | "boot"
-  | "welcome"
   | "profile"
   | "warning"
   | "review"

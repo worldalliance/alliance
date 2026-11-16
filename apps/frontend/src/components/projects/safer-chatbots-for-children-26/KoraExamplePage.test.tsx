@@ -41,9 +41,7 @@ test("mounts the example pair under a banner, and remembers it was opened", asyn
     screen.getByRole("link", { name: EXAMPLE_COPY.back }).getAttribute("href"),
   ).toBe(KORA_PROJECT_PATH);
   await waitFor(() =>
-    expect(container.textContent).toContain(
-      "You have 1 pair of conversations to review.",
-    ),
+    expect(container.textContent).toContain("What to look for"),
   );
   expect(localStorage.getItem(EXAMPLE_OPENED_KEY)).toBe("true");
 });

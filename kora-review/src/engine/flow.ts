@@ -45,8 +45,6 @@ export function createFlow(ctx: FlowCtx) {
     ctx.late().renderReview(...args);
   const renderWarning: Late["renderWarning"] = (...args) =>
     ctx.late().renderWarning(...args);
-  const renderWelcome: Late["renderWelcome"] = (...args) =>
-    ctx.late().renderWelcome(...args);
 
   const changed = () => {
     if (!isDestroyed() && S.mounted) o.onChange();
@@ -61,8 +59,7 @@ export function createFlow(ctx: FlowCtx) {
     S.editing = null;
     closeSheet();
     closeIntro();
-    if (screen === "welcome") renderWelcome();
-    else if (screen === "finish") renderFinish();
+    if (screen === "finish") renderFinish();
     else if (screen === "warning" && opts) renderWarning(opts);
     else if (screen === "profile") renderProfile();
     else if (screen === "exit") renderExit();
@@ -243,27 +240,23 @@ export function createFlow(ctx: FlowCtx) {
     restore(o.savedExport);
     refreshList();
     const saved = o.savedExport;
+    const fresh = !S.all.some((t) => res(t).startedAt);
     if (S.isDone) {
       go("finish");
       o.onComplete();
     } else if (allReviewed()) finishFlow();
-    else if (needsProfile() && !S.all.some((t) => res(t).startedAt))
-      go("welcome");
     else if (needsProfile()) go("profile");
     else {
       const i =
         saved && saved.currentTranscriptId
           ? S.list.findIndex((t) => t.id === saved.currentTranscriptId)
           : -1;
-      if (i >= 0 && !reviewed(res(S.list[i]))) {
-        openTranscript(i);
-      } else if (
-        S.all.some((t) => res(t).startedAt || res(t).status === "done")
-      )
-        startReviewing();
-      else go("welcome");
+      if (i >= 0 && !reviewed(res(S.list[i]))) openTranscript(i);
+      else startReviewing();
     }
     S.mounted = true;
+    // Boot changes don't save, so a first pair opened here saves its start once mounted.
+    if (fresh && S.screen === "review") changed();
   }
 
   const introShown = () => intro;

@@ -211,6 +211,8 @@ export const HOME_COPY = {
   caughtUpNote: "We’ll let you know when more pairs are ready.",
   rankedSoFar: (n: number) => `${pairs(n)} ranked so far`,
   startRanking: "Start ranking",
+  startIntro: (n: number) =>
+    `You have ${pairs(n)} of conversations to review. In each, a simulated child talks to two AI chatbots, side by side. A short guide says what a good and a bad answer look like. You mark the words that show it, then say which chatbot responded more safely. You can stop and come back at any time.`,
   continueRanking: "Continue ranking",
   rankAnother: (n: number) => `Rank another ${n}`,
   startFailed: "We couldn’t start your pairs. Try again.",
