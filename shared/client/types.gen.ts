@@ -6311,30 +6311,6 @@ export type UserUpdateResponses = {
 
 export type UserUpdateResponse = UserUpdateResponses[keyof UserUpdateResponses];
 
-export type UserSwitchDomainData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/switch-domain';
-};
-
-export type UserSwitchDomainErrors = {
-    401: HeyApiError;
-};
-
-export type UserSwitchDomainError = UserSwitchDomainErrors[keyof UserSwitchDomainErrors];
-
-export type UserSwitchDomainResponses = {
-    /**
-     * No-op since the cutover
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserSwitchDomainResponse = UserSwitchDomainResponses[keyof UserSwitchDomainResponses];
-
 export type UserMyLocationData = {
     body?: never;
     path?: never;

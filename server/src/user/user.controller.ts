@@ -110,14 +110,6 @@ export class UserController {
     );
   }
 
-  // BACKCOMPAT(ALL-2200): web tabs loaded on a legacy host before the cutover
-  // still call this; remove once the access logs show no POST /api/user/switch-domain.
-  @Post("switch-domain")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ description: "No-op since the cutover" })
-  @ApiUnauthorizedResponse()
-  async switchDomain(): Promise<void> {}
-
   @Get("mylocation")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: MaybeUserLocationDto })
