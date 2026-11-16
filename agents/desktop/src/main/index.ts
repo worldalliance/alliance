@@ -62,6 +62,31 @@ function exitUnloaded(cause: string): void {
   }
 }
 
+let hideOnLeavingFullScreen = false;
+// Showing the window before its page paints flashes an empty frame; ready-to-show, or a crashed page's reload, shows it then.
+let painted = false;
+// A reveal asked for before the page paints. A crashed page's reload carries it out unless the window closes or the app quits first; ready-to-show shows the first paint regardless.
+let revealOnLoad = false;
+
+function reveal(): void {
+  const [window] = BrowserWindow.getAllWindows();
+  if (!window) throw new Error("Alliance agent has no window to show");
+  hideOnLeavingFullScreen = false;
+  if (window.webContents.isCrashed()) {
+    painted = false;
+    window.webContents.once("did-finish-load", () => {
+      painted = true;
+      if (revealOnLoad && !closing) reveal();
+    });
+    window.webContents.reload();
+  }
+  revealOnLoad = !painted;
+  if (!painted) return;
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+}
+
 // styles.css's --background, which shows while the window resizes or its page reloads.
 const windowBackground = () =>
   nativeTheme.shouldUseDarkColors ? "#0d1117" : "#ffffff";
@@ -76,10 +101,26 @@ function createWindow(): void {
       preload: path.join(import.meta.dirname, "../preload/index.cjs"),
     },
   });
-  if (!headless)
-    window.once("ready-to-show", () => {
-      if (!hiddenForQuit) window.show();
+  window.once("ready-to-show", () => {
+    painted = true;
+    if (!headless && !hiddenForQuit) window.show();
+  });
+  // On macOS the app and its sessions outlive a closed window, so it hides to keep the renderer's conversations and unsent messages.
+  if (process.platform === "darwin") {
+    window.on("close", (event) => {
+      event.preventDefault();
+      revealOnLoad = false;
+      // Hiding a fullscreen window leaves its Space behind as a black screen.
+      if (!window.isFullScreen()) return window.hide();
+      hideOnLeavingFullScreen = true;
+      window.setFullScreen(false);
     });
+    window.on("leave-full-screen", () => {
+      if (!hideOnLeavingFullScreen) return;
+      hideOnLeavingFullScreen = false;
+      window.hide();
+    });
+  }
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, url) => {
     if (url !== window.webContents.getURL()) event.preventDefault();
@@ -103,10 +144,6 @@ function createWindow(): void {
   window.loadURL(rendererUrl).catch(() => undefined);
 }
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
-
 const devData = !app.isPackaged && !app.commandLine.hasSwitch("user-data-dir");
 
 // The lock belongs to the user data folder, so each checkout's unpackaged app keeps its own, inside the checkout so it goes when the checkout does.
@@ -128,13 +165,9 @@ const relaunchAfterQuit = () => {
   app.relaunch();
 };
 
-app.on("second-instance", () => {
-  if (closing) return relaunchAfterQuit();
-  const [window] = BrowserWindow.getAllWindows();
-  if (!window) return createWindow();
-  if (window.isMinimized()) window.restore();
-  window.focus();
-});
+const reopen = () => (closing ? relaunchAfterQuit() : reveal());
+
+app.on("second-instance", reopen);
 
 // Quitting waits for each CLI to exit, so its session-end hooks, such as the transcript upload, finish. The app and its windows hide meanwhile, so the quit looks done.
 app.on("before-quit", (event) => {
@@ -181,8 +214,5 @@ void app.whenReady().then(() => {
       window.setBackgroundColor(windowBackground());
   });
   createWindow();
-  app.on("activate", () => {
-    if (closing) relaunchAfterQuit();
-    else if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  app.on("activate", reopen);
 });

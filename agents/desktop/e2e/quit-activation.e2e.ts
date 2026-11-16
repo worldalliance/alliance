@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createRequire } from "node:module";
 import { appArgs } from "./app-args";
+import { crashRenderer } from "./crash-renderer";
 import { heldPage } from "./held-page";
 import { start } from "./ipc-helpers";
 import {
@@ -173,4 +174,46 @@ test("opening the app while it quits reopens it once the quit finishes", async (
     for (const pid of mainProcesses()) process.kill(pid);
   }
   await expect.poll(() => runningCount(claude)).toBe(0);
+});
+
+test("a crashed window that finishes reloading while the app quits stays hidden", async () => {
+  const { app, page } = await launch({
+    captures: [captured("edit-and-interrupt-session")],
+    claude: trackedClaude(),
+  });
+  await start(page);
+  const closed = app.waitForEvent("close");
+  await crashRenderer(app);
+  const calls = await app.evaluate(async ({ app, BrowserWindow }) => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) throw new Error("no window");
+    const calls: string[] = [];
+    Object.assign(window, {
+      show: () => calls.push("show"),
+      focus: () => calls.push("focus"),
+    });
+    Object.assign(app, { hide: () => calls.push("hide") });
+    const loaded = new Promise<void>((resolve) =>
+      window.webContents.once("did-finish-load", () => resolve()),
+    );
+    // The quit would otherwise end before a slow reload finishes, and its exit would cut this evaluate short.
+    const exit = app.exit.bind(app);
+    const released = new Promise<void>((resolve) =>
+      Object.assign(globalThis, { releaseExit: resolve }),
+    );
+    Object.assign(app, {
+      exit: (code?: number) => void released.then(() => exit(code)),
+    });
+    app.emit("activate");
+    app.quit();
+    await loaded;
+    return calls;
+  });
+  expect(calls).toEqual(process.platform === "darwin" ? ["hide"] : []);
+  await app.evaluate(() => {
+    const release: unknown = Reflect.get(globalThis, "releaseExit");
+    if (typeof release !== "function") throw new Error("no exit to release");
+    release();
+  });
+  await closed;
 });
