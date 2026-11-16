@@ -1,13 +1,7 @@
-import { deployedConfigFor, domainMove } from "../common/src/deployed-config";
-import { parseNodeEnv } from "../common/src/node-env";
+import { domainMove } from "../common/src/deployed-config";
+import { deployedConfigFromArgv } from "./deployed-config-arg";
 
-const [arg, ...rest] = process.argv.slice(2);
-const nodeEnv = parseNodeEnv(arg);
-const config = nodeEnv.ok ? deployedConfigFor(nodeEnv.value) : undefined;
-if (!config || rest.length) {
-  console.error("usage: bun scripts/deployed-config.ts <staging|production>");
-  process.exit(2);
-}
+const config = deployedConfigFromArgv();
 const { legacyDomain, newDomain } = domainMove(config);
 const lines = {
   DOMAIN_NAME: config.DOMAIN_NAME,

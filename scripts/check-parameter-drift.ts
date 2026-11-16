@@ -15,6 +15,16 @@ export const DEV_PREFIX = "/alliance/dev/";
 const CI_PATH = /^\/alliance\/(staging\/)?ci\//;
 export const SHARED_PREFIX = "/alliance/shared/";
 const SHARED_KEYS = ["APPLE_KEY_F9J58D7K92_P8_BASE64", "EC2_SSH_KEY"];
+export const DB_SYNC_PREFIX = "/alliance/staging/db-sync/";
+export const DB_SYNC_KEYS = [
+  "HEALTHCHECK_URL",
+  "PROD_ASSETS_BUCKET",
+  "PROD_DB_HOST",
+  "PROD_DB_PASSWORD",
+  "PROD_DB_USER",
+  "SLACK_WEBHOOK_URL",
+  "STAGING_PASSWORD_HASH",
+];
 
 export function findDrift(params: {
   names: readonly string[];
@@ -78,6 +88,12 @@ export function expectations(): Expected[] {
       required: new Set(),
       allowed: new Set(SHARED_KEYS),
       allowedBy: "SHARED_KEYS in scripts/check-parameter-drift.ts",
+    },
+    {
+      prefix: DB_SYNC_PREFIX,
+      required: new Set(DB_SYNC_KEYS),
+      allowed: new Set(DB_SYNC_KEYS),
+      allowedBy: "DB_SYNC_KEYS in scripts/check-parameter-drift.ts",
     },
     ...deployed.map(({ store, nodeEnv }) => ({
       prefix: `/alliance/${store}/server/`,

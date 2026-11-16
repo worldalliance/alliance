@@ -12,13 +12,56 @@ import { join } from "node:path";
 
 const SOURCE = join(import.meta.dir, "sync_prod_to_staging.sh");
 
-// flock exits 1, so a run the guard lets through stops at the lock and posts
-// "another sync is already running".
+const SECRETS: Record<string, string> = {
+  SLACK_WEBHOOK_URL: "http://slack.invalid",
+  HEALTHCHECK_URL: "http://hc.invalid/check",
+  PROD_DB_HOST: "prod.invalid",
+  PROD_DB_USER: "reader",
+  PROD_DB_PASSWORD: "prod-secret",
+  PROD_ASSETS_BUCKET: "prod-bucket",
+  STAGING_PASSWORD_HASH: `$2b$10$${"a".repeat(53)}`,
+  DB_HOST: "staging.invalid",
+  DB_USERNAME: "admin",
+  DB_PASSWORD: "staging-secret",
+  ASSETS_BUCKET: "staging-bucket",
+};
+
+const PG_TOOL = `
+  echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE" >> "$STATE/pg"
+  [ "$(basename "$0")" != "\${PG_FAILS:-}" ]`;
+
+// Unless FLOCK_OK is set, flock exits 1, so a run the guard lets through stops
+// at the lock and posts "another sync is already running". FLOCK_FAILS names
+// the one flock call that still fails.
 const STUBS: Record<string, string> = {
   curl: `echo "$*" >> "$STATE/curl"`,
   date: `
     if [ "$*" = "-u +%s" ]; then echo "$FAKE_EPOCH"; else PATH="\${PATH#*:}" exec date "$@"; fi`,
-  flock: "exit 1",
+  flock: `
+    echo "flock $*" >> "$STATE/calls"
+    [ -n "\${FLOCK_OK:-}" ] && [ "$*" != "\${FLOCK_FAILS:-}" ]`,
+  aws: `echo "aws $*" >> "$STATE/aws"`,
+  pg_dump: PG_TOOL,
+  pg_restore: PG_TOOL,
+  psql: `cat > /dev/null; ${PG_TOOL}`,
+  env: `echo "$*" >> "$STATE/env"; exec /usr/bin/env "$@"`,
+  "secrets_run.sh": `
+    echo "$*" >> "$STATE/secrets_run"
+    while [ "$1" != -- ]; do shift; done
+    shift
+    while IFS='=' read -r -d '' name value; do
+      export "$name=$value"
+    done < "$STATE/secrets"
+    exec "$@"`,
+  ".bun/bin/bun": `
+    held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
+      || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')
+    echo "bun $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
+    [ -z "\${BUN_FAILS:-}" ] || exit 1
+    [ "$2" = "\${BUN_EMPTY:-}" ] || echo "\${2}_db"`,
+  ".bun/bin/bunx": `
+    echo "bunx $* | $DB_HOST $DB_NAME $DB_USERNAME $DB_PASSWORD" >> "$STATE/pg"
+    env > "$STATE/bunx-env"`,
 };
 
 let home: string;
@@ -37,13 +80,22 @@ beforeEach(() => {
     script,
     readFileSync(SOURCE, "utf8").replaceAll("/home/ec2-user", home),
   );
+  chmodSync(script, 0o755);
   writeFileSync(
-    join(home, "db-sync.env"),
-    "SLACK_WEBHOOK_URL=http://slack.invalid\nHEALTHCHECK_URL=http://hc.invalid/check\n",
+    join(state, "secrets"),
+    Object.entries(SECRETS)
+      .map(([name, value]) => `${name}=${value}\0`)
+      .join(""),
   );
+  mkdirSync(join(home, ".bun/bin"), { recursive: true });
+  mkdirSync(join(home, "nest-backend/server"), { recursive: true });
   for (const [name, body] of Object.entries(STUBS)) {
-    writeFileSync(join(bin, name), `#!/usr/bin/env bash\n${body}\n`);
-    chmodSync(join(bin, name), 0o755);
+    const path =
+      name.includes("/") || name.endsWith(".sh")
+        ? join(home, name)
+        : join(bin, name);
+    writeFileSync(path, `#!/usr/bin/env bash\n${body}\n`);
+    chmodSync(path, 0o755);
   }
 });
 
@@ -60,25 +112,32 @@ function epochMinute(params: { day?: number; at: string }) {
   return epochDay(params.day) * DAY + hours * 60 + minutes;
 }
 
+const readState = (name: string) => {
+  try {
+    return readFileSync(join(state, name), "utf8");
+  } catch {
+    return "";
+  }
+};
+
 function run(params: {
   scheduledAt?: string;
   day?: number;
   at: string;
   fakeEpoch?: string;
+  env?: Record<string, string>;
 }) {
   const env: Record<string, string> = {
     PATH: `${bin}:${process.env.PATH}`,
     STATE: state,
     FAKE_EPOCH: params.fakeEpoch ?? String(epochMinute(params) * 60 + 17),
+    ...params.env,
   };
   if (params.scheduledAt !== undefined) {
     env.SYNC_SCHEDULED_AT = params.scheduledAt;
   }
   const result = Bun.spawnSync(["bash", script], { stdin: "ignore", env });
-  let curl = "";
-  try {
-    curl = readFileSync(join(state, "curl"), "utf8");
-  } catch {}
+  const curl = readState("curl");
   rmSync(join(state, "curl"), { force: true });
   return { exitCode: result.exitCode, curl };
 }
@@ -204,4 +263,106 @@ test("the service's SYNC_SCHEDULED_AT matches the timer's OnCalendar=", () => {
   );
   expect(timer?.[1]).toBeDefined();
   expect(service?.[1]).toBe(timer?.[1]);
+});
+
+test("sync_prod_to_staging.sh loads its secrets once, through the wrapper", () => {
+  run({ at: "15:00" });
+  expect(readState("secrets_run")).toBe(
+    "--path /alliance/staging/db-sync/ SLACK_WEBHOOK_URL HEALTHCHECK_URL " +
+      "PROD_DB_HOST PROD_DB_USER PROD_DB_PASSWORD PROD_ASSETS_BUCKET " +
+      "STAGING_PASSWORD_HASH --path /alliance/staging/server/ " +
+      `DB_HOST DB_USERNAME DB_PASSWORD ASSETS_BUCKET -- env SYNC_SECRETS_LOADED=1 bash ${script}\n`,
+  );
+});
+
+test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of argv", () => {
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  expect(result.exitCode).toBe(0);
+  expect(result.curl).toContain("Sync completed successfully.");
+  expect(result.curl).toEndWith("http://hc.invalid/check\n");
+  const pg = readState("pg");
+  const steps = pg.split("\n").filter(Boolean);
+  expect(steps.map((line) => line.split(" ")[0])).toEqual([
+    "pg_dump",
+    "psql",
+    "pg_restore",
+    "psql",
+    "bunx",
+    "psql",
+  ]);
+  expect(steps[0]).toEndWith("| prod.invalid reader prod-secret production_db");
+  expect(steps[1]).toEndWith("| staging.invalid admin staging-secret postgres");
+  expect(steps[2]).toContain("--dbname=staging_db_sync");
+  expect(steps[2]).toEndWith(
+    "| staging.invalid admin staging-secret staging_db_sync",
+  );
+  expect(steps[3]).toEndWith(
+    "| staging.invalid admin staging-secret staging_db_sync",
+  );
+  expect(steps[4]).toEndWith(
+    "| staging.invalid staging_db_sync admin staging-secret",
+  );
+  expect(steps[5]).toEndWith("| staging.invalid admin staging-secret postgres");
+  for (const line of steps) {
+    const argv = line.split(" | ")[0];
+    expect(argv).not.toContain("secret");
+  }
+  expect(readState("env")).not.toContain("secret");
+  const migrationEnv = readState("bunx-env");
+  expect(migrationEnv).toContain("DB_PASSWORD=staging-secret");
+  const passedLogin = ["DB_HOST", "DB_USERNAME", "DB_PASSWORD"];
+  for (const [name, value] of Object.entries(SECRETS)) {
+    if (!passedLogin.includes(name)) expect(migrationEnv).not.toContain(value);
+  }
+  expect(readState("aws")).toContain("s3://prod-bucket/ s3://staging-bucket/");
+});
+
+test("sync_prod_to_staging.sh drops the scratch database when a step before the swap fails", () => {
+  const result = run({
+    at: "15:00",
+    env: { FLOCK_OK: "1", PG_FAILS: "pg_restore" },
+  });
+  expect(result.exitCode).toBe(1);
+  expect(result.curl).toContain("FAILED during restore");
+  const steps = readState("pg").split("\n").filter(Boolean);
+  expect(steps.at(-1)).toBe(
+    "psql -q -c DROP DATABASE IF EXISTS staging_db_sync WITH (FORCE); | staging.invalid admin staging-secret postgres",
+  );
+});
+
+test("sync_prod_to_staging.sh reads the production, then the staging database name under ~/migrate.lock", () => {
+  run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  const helper = join(home, "nest-backend/scripts/deployed-db-name.ts");
+  expect(readState("calls")).toStartWith(
+    `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n`,
+  );
+});
+
+test.each([
+  ["it can't read", { BUN_FAILS: "1" }],
+  ["that are empty", { BUN_EMPTY: "staging" }],
+])("sync_prod_to_staging.sh reports database names %s", (_, failure) => {
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1", ...failure } });
+  expect(result.exitCode).toBe(1);
+  expect(result.curl).toContain("deployed-db-name.ts");
+  expect(result.curl).toContain("http://hc.invalid/check/fail");
+  expect(readState("pg")).toBe("");
+});
+
+test("sync_prod_to_staging.sh reports a deploy that holds ~/migrate.lock", () => {
+  const result = run({
+    at: "15:00",
+    env: { FLOCK_OK: "1", FLOCK_FAILS: "-w 900 201" },
+  });
+  expect(result.exitCode).toBe(1);
+  expect(result.curl).toContain("held ~/migrate.lock for 15 minutes");
+  expect(result.curl).toContain("http://hc.invalid/check/fail");
+});
+
+test("sync_prod_to_staging.sh reports a ~/migrate.lock it can't open", () => {
+  mkdirSync(join(home, "migrate.lock"));
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  expect(result.exitCode).toBe(1);
+  expect(result.curl).toContain("cannot write ~/migrate.lock");
+  expect(result.curl).toContain("http://hc.invalid/check/fail");
 });

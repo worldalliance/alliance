@@ -20,13 +20,13 @@ Runs a command with this checkout's worktree env sourced. No arguments prints th
 Download plus restore in one step. This is the one you usually want.
 
 `download_staging_data.sh`
-Pulls a `pg_dump` of staging over SSH into `./db_dumps`. Override `SSH_HOST_ALIAS`, `REMOTE_ENV_FILE`, `DUMP_DIR`.
+Pulls a `pg_dump` of staging over SSH into `./db_dumps`, run on the staging host through its `with_db_env.sh`. Override `SSH_HOST_ALIAS`, `DUMP_DIR`.
 
 `restore_staging_data.sh <dump-file>`
 Drops and recreates the local db named by `server/.env`, then restores the dump and clears push tokens. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
 
 `disable_action_update_texts_emails.sh [staging|prod] [--apply]`
-Turns "Action updates" texts and emails off for every account, except where the member chose a setting themselves. Runs over SSH from the staging host, which holds both databases' credentials. Without `--apply` it rolls back and only prints before/after counts. Override `SSH_HOST_ALIAS`, `REMOTE_ENV_FILE`.
+Turns "Action updates" texts and emails off for every account, except where the member chose a setting themselves. Runs over SSH on the target's own host (SSH host alias `staging` or `prod`) through its `with_db_env.sh`, as that server's database login. Without `--apply` it rolls back and only prints before/after counts. Override `SSH_HOST_ALIAS`.
 
 ## Secrets
 
@@ -42,13 +42,20 @@ Writes `server/.env` for running the server without team credentials and prints 
 Run by `deploy-environment.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, and rolls back to the old release on failure. A release that applies RemoveStreakRecognition stops the backend first and reverts the removal if the new backend fails; if that revert fails, the backend is left stopped and the job fails with an `::error::`.
 
 `secrets_run.sh <command...>`
-Run on the backend host, not locally; the deploy installs it as `~/secrets_run.sh`. Runs the command with the parameters under `/alliance/<env>/server/` in AWS SSM Parameter Store as env vars, `<env>` picked by `NODE_ENV`, read with the host's instance role. Setup, rotation and running without Parameter Store: `docs/backend-secrets.md`.
+`secrets_run.sh --path <prefix> [NAME...] [--path ...] -- <command...>`
+Run on the backend host, not locally; the deploy installs it as `~/secrets_run.sh`. Runs the command with the parameters under `/alliance/<env>/server/` in AWS SSM Parameter Store as env vars, `<env>` picked by `NODE_ENV`, read with the host's instance role. The `--path` form reads each prefix instead, without `NODE_ENV`, keeping only the listed names where a prefix lists any, and fails on a listed name a prefix lacks or a name two prefixes both set. Setup, rotation and running without Parameter Store: `docs/backend-secrets.md`.
+
+`with_db_env.sh <staging|production> <command...>`
+Run on that environment's backend host from `~/nest-backend`, not locally; the deploy ships it there. Runs the command with libpq's `PG*` variables set to the server's own database login, verifying the RDS certificate. See "Database access from the backend hosts" in `docs/backend-secrets.md`.
 
 `check-parameter-drift.ts [--required]`
 Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AWS SSM Parameter Store and fails when a path lacks a key its schema or `dev-secrets.json` requires, or holds one undeclared there or in `SHARED_KEYS`, or when a name outside the CI paths is under no path it checks. `--required` prints each path's required keys and needs no AWS login. See `docs/backend-secrets.md`.
 
 `deployed-config.ts <staging|production>`
 Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.
+
+`deployed-db-name.ts <staging|production>`
+Prints the environment's `DB_NAME` from `common/src/deployed-config.ts`. The deploy ships it to the backend host, for the scripts there that need a database name.
 
 `web-runtime-config.ts <staging|production>`
 Prints the environment's web runtime config from `common/src/web-runtime-config.ts` as JSON. The deploy workflow uploads it, and the admin host serves it as `/config.json`.
