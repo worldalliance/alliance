@@ -309,7 +309,8 @@ export class ActionEventNotifWorker {
     try {
       notif = await saveForLiveRecipient(this.dataSource, {
         plan,
-        notif: plannedNotif,
+        actionSuite: null,
+        build: async () => plannedNotif,
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -384,23 +385,24 @@ export class ActionEventNotifWorker {
     try {
       notif = await saveForLiveRecipient(this.dataSource, {
         plan,
-        notif: this.actionEventNotifsRepository.create({
-          user: plan.user,
-          reminderGroup: plan.group,
-          memberActionEvent: cohortNotifiesRecipientPersonally(
-            plan.group.cohortType,
-          )
-            ? loadedReminderGroupMemberActionEvent(plan.group)
-            : undefined,
-          notifiedActionIds:
-            notice?.standing.missedActions.map((action) => action.id) ?? [],
-          sent: false,
-          type: ActionEventNotifType.MissedDeadline,
-          idempotency_key: missedSuiteNoticeKey(suiteId, plan.user.id),
-          actionSuite: suite,
-          missNumber: standing?.missNumber ?? null,
-          missedSuiteCopy: notice?.copy ?? null,
-        } satisfies Partial<ActionEventNotif>),
+        actionSuite: suite,
+        build: async () =>
+          this.actionEventNotifsRepository.create({
+            user: plan.user,
+            reminderGroup: plan.group,
+            memberActionEvent: cohortNotifiesRecipientPersonally(
+              plan.group.cohortType,
+            )
+              ? loadedReminderGroupMemberActionEvent(plan.group)
+              : undefined,
+            notifiedActionIds:
+              notice?.standing.missedActions.map((action) => action.id) ?? [],
+            sent: false,
+            type: ActionEventNotifType.MissedDeadline,
+            idempotency_key: missedSuiteNoticeKey(suiteId, plan.user.id),
+            missNumber: standing?.missNumber ?? null,
+            missedSuiteCopy: notice?.copy ?? null,
+          } satisfies Partial<ActionEventNotif>),
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
