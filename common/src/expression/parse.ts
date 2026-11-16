@@ -1,7 +1,8 @@
 import ts from "typescript";
 import { R, type Result } from "../result";
 import { type Diagnostic, type Scope } from "./catalog";
-import { TYPE_ARGUMENTS, checkScope, convertExpression } from "./convert";
+import { TYPE_ARGUMENTS, convertExpression } from "./convert";
+import { checkScope } from "./convert-scope";
 import { printExpression } from "./print";
 import { BinaryOp, type Expr } from "./tree";
 
