@@ -8,7 +8,7 @@ import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
-import { In } from "typeorm";
+import { In, type SelectQueryBuilder } from "typeorm";
 import { z } from "zod";
 import { MmsMedia } from "./mms-media.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
@@ -34,9 +34,11 @@ export type MmsThread = {
 
 export const THREAD_PAGE_SIZE = 100;
 
+const THREAD_RELATIONS = { sentBy: true, media: true } as const;
+
 export enum ThreadRefusal {
   MemberNotFound = "member_not_found",
-  BeforeNotInThread = "before_not_in_thread",
+  TextNotInThread = "text_not_in_thread",
 }
 
 export type NeedsReplyMember = {
@@ -70,6 +72,26 @@ const ANSWERS_MEMBER: Record<MessageStatus, boolean> = {
 const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
   .filter(([, answers]) => answers)
   .map(([status]) => status);
+
+/** Inbound texts Needs reply counts and no staff reply has followed, from a
+ * query aliased `inbound`. */
+const unanswered = (query: SelectQueryBuilder<Mms>) =>
+  query
+    .andWhere("inbound.direction = :inbound", {
+      inbound: MmsDirection.Inbound,
+    })
+    .andWhere("inbound.keyword IS NULL")
+    .andWhere(
+      `NOT EXISTS (
+        SELECT 1 FROM mms reply
+        WHERE reply."memberPhoneNumber" = inbound."memberPhoneNumber"
+          AND reply."deletedAt" IS NULL
+          AND (reply."createdAt", reply.id) > (inbound."createdAt", inbound.id)
+          AND reply."sentById" IS NOT NULL
+          AND reply.status IN (:...answering)
+      )`,
+      { answering: ANSWERING_STATUSES },
+    );
 
 /** Staging's anonymized numbers pass there, so staff texting can be tried on
  * staging; in production they are unassigned 555 numbers no text would reach. */
@@ -174,23 +196,28 @@ export class MmsThreadService {
     });
   }
 
+  private async inThread(phoneNumber: string | null, id: number) {
+    return (
+      phoneNumber !== null &&
+      this.mmsRepository.exists({
+        where: { id, memberPhoneNumber: phoneNumber },
+        withDeleted: true,
+      })
+    );
+  }
+
   private async threadPage(
     phoneNumber: string | null,
     before: number | undefined,
   ): Promise<
     Result<
       Pick<MmsThread, "messages" | "hasOlder">,
-      ThreadRefusal.BeforeNotInThread
+      ThreadRefusal.TextNotInThread
     >
   > {
     const beforeInThread =
-      before === undefined ||
-      (phoneNumber !== null &&
-        (await this.mmsRepository.exists({
-          where: { id: before, memberPhoneNumber: phoneNumber },
-          withDeleted: true,
-        })));
-    if (!beforeInThread) return R.failure(ThreadRefusal.BeforeNotInThread);
+      before === undefined || (await this.inThread(phoneNumber, before));
+    if (!beforeInThread) return R.failure(ThreadRefusal.TextNotInThread);
     if (!phoneNumber) return R.success({ messages: [], hasOlder: false });
     const query = this.mmsRepository
       .createQueryBuilder("mms")
@@ -208,7 +235,7 @@ export class MmsThreadService {
     const ids = (await query.getMany()).map((m) => m.id);
     const messages = await this.mmsRepository.find({
       where: { id: In(ids.slice(0, THREAD_PAGE_SIZE)) },
-      relations: { sentBy: true, media: true },
+      relations: THREAD_RELATIONS,
       order: { createdAt: "ASC", id: "ASC", media: { id: "ASC" } },
     });
     return R.success({ messages, hasOlder: ids.length > THREAD_PAGE_SIZE });
@@ -238,7 +265,7 @@ export class MmsThreadService {
     if (!sent.ok) return sent;
     const mms = await this.mmsRepository.findOneOrFail({
       where: { id: sent.value.id },
-      relations: { sentBy: true, media: true },
+      relations: THREAD_RELATIONS,
     });
     return R.success(mms);
   }
@@ -288,8 +315,9 @@ export class MmsThreadService {
    * followed, with the latest such text's body as `lastMessageBody`. The window
    * runs before `DISTINCT ON` keeps each number's first row. */
   private async unansweredTexts() {
-    const rows = await this.mmsRepository
-      .createQueryBuilder("inbound")
+    const rows = await unanswered(
+      this.mmsRepository.createQueryBuilder("inbound"),
+    )
       .select("inbound.id", "id")
       .addSelect("inbound.memberPhoneNumber", "memberPhoneNumber")
       .addSelect("inbound.createdAt", "createdAt")
@@ -300,21 +328,6 @@ export class MmsThreadService {
           ORDER BY inbound."createdAt" DESC, inbound.id DESC
         )`,
         "lastMessageBody",
-      )
-      .where("inbound.direction = :inbound", {
-        inbound: MmsDirection.Inbound,
-      })
-      .andWhere("inbound.keyword IS NULL")
-      .andWhere(
-        `NOT EXISTS (
-          SELECT 1 FROM mms reply
-          WHERE reply."memberPhoneNumber" = inbound."memberPhoneNumber"
-            AND reply."deletedAt" IS NULL
-            AND (reply."createdAt", reply.id) > (inbound."createdAt", inbound.id)
-            AND reply."sentById" IS NOT NULL
-            AND reply.status IN (:...answering)
-        )`,
-        { answering: ANSWERING_STATUSES },
       )
       .andWhere(
         `inbound."memberPhoneNumber" IN (${this.subscribedMembers()

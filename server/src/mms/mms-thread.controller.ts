@@ -61,7 +61,7 @@ const refusalException: Record<
 > = {
   [ThreadRefusal.MemberNotFound]: () =>
     new NotFoundException("Member not found"),
-  [ThreadRefusal.BeforeNotInThread]: () =>
+  [ThreadRefusal.TextNotInThread]: () =>
     new BadRequestException("That text isn't in this thread."),
   [StaffTextRefusal.NoPhoneNumber]: () =>
     new BadRequestException("This member has no phone number."),
