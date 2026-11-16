@@ -50,7 +50,7 @@ The parameters hold only what the server reads, under the server's own names (`s
 
 ## Adding or rotating a secret
 
-Signed in to AWS as an admin (IAM Identity Center), set the parameter for each environment, then restart the backend (`pm2 restart nest-app`) or deploy; a running process keeps the values it started with.
+Signed in to AWS as an admin (IAM Identity Center), set the parameter for each environment, then restart the backend (`pm2 restart nest-app`) or deploy; a running process keeps the values it started with. Grafana on the monitoring host also posts alerts through prod's `SLACK_WEBHOOK_URL`, copied when monitoring deploys, so after changing that one, run `scripts/deploy_monitoring.sh` too. That deploy fails without the parameter, so keep it while Grafana posts alerts through it.
 
 A new name also goes in the server's schema, `server/src/config/env.ts`. The `parameter-drift` workflow, run on PRs that change the schema and on every push to `main`, fails when `/alliance/<env>/server/` lacks a key the schema requires there or holds one that `inDeployedStore`, in the same file, leaves out of those paths. Nothing reruns it after a store edit, so dispatch it on `main` (Actions, Parameter drift, Run workflow) once you add or delete a parameter. Add a key in three steps, so neither the workflow nor a deploy fails in between:
 

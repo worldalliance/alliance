@@ -50,6 +50,8 @@ class IsEligibleDto {
 
 Every new endpoint needs `@UseGuards(X)` with a guard from `src/auth/guards/`.
 
+The exception is an infrastructure probe called without credentials or an `Origin` header, such as `GET /` by the backend deploy and `GET /health/db` by the monitoring host: it takes `@Public()` and no guard.
+
 ## DTO classes
 
 Build them from mapped types over the entity, preferring `PickType` — an `OmitType` DTO silently gains every new entity column. Files end `.dto.ts`.

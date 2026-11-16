@@ -12,6 +12,7 @@ it("moves every page-serving location off the legacy domain", () => {
   const notPages = [
     "^~ /assets/",
     "/api/",
+    "~* ^/api/health/",
     "~ ^/api/videos/\\d+/[^/]+\\.(m3u8|ts|vtt)$",
     "^~ /.well-known/",
     "/socket.io/",
