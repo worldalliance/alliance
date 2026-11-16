@@ -37,6 +37,12 @@ import { MemberActionsService } from "./member-actions.service";
 import { assertNotInStaffPreview } from "./staff-preview";
 import { CompletionBlock } from "./user-action-status";
 
+export class ActivityAlreadyExistsException extends BadRequestException {
+  constructor() {
+    super("Activity already exists");
+  }
+}
+
 /**
  * Withdrawal reasons longer than this are truncated in the opt-out event-log
  * message to keep the Slack copy readable; the full reason is still stored on
@@ -130,7 +136,7 @@ export class ActionActivityService {
         where: { actionId, userId, type },
       });
       if (existingActivity) {
-        throw new BadRequestException("Activity already exists");
+        throw new ActivityAlreadyExistsException();
       }
     }
 
