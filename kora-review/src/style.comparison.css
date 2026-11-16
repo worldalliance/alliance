@@ -70,6 +70,8 @@
   height: 44px;
   stroke-width: 1.5;
   color: var(--muted);
+  align-self: flex-start;
+  margin-top: 6px;
 }
 .kora-review .opener .msg {
   flex: 0 1 640px;
@@ -90,6 +92,8 @@
   .kora-review .opener > .ic {
     width: 32px;
     height: 32px;
+    align-self: center;
+    margin-top: 0;
   }
   .kora-review .opener .msg {
     order: 2;

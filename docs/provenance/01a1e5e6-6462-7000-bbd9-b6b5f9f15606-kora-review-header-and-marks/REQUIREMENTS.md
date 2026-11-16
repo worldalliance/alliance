@@ -20,3 +20,4 @@ Each entry is user-originated unless it says otherwise.
 - No horizontal line sits under the header with the rules.
 - In the pre-survey, "Your age", "How fluent is your English?", "Highest level of education (optional)" and "How often do you use AI chatbots? (optional)" are dropdowns.
 - The review tool has no "Mark what the chatbot got right, and what it got wrong." welcome screen. On the project page (`/projects/safer-chatbots-for-children`), above the "Start ranking" button, a paragraph reads: "You have <N> pairs of conversations to review. In each, a simulated child talks to two AI chatbots, side by side. A short guide says what a good and a bad answer look like. You mark the words that show it, then say which chatbot responded more safely. You can stop and come back at any time."
+- The message icon in the opener is top-aligned and stays put while the message types in, rather than drifting down as the bubble grows.
