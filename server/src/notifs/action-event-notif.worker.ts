@@ -336,7 +336,7 @@ export class ActionEventNotifWorker {
     });
     Object.assign(notif, socialProof.columns);
 
-    const sendingAnyNotif = await this.delivery.deliver({
+    const send = await this.delivery.prepare({
       notif,
       user: plan.user,
       channels,
@@ -345,7 +345,7 @@ export class ActionEventNotifWorker {
       render: socialProof.render,
       push: { screen: "/", idempotencyKey: plan.group.id.toString() },
     });
-    if (sendingAnyNotif) {
+    if (await send()) {
       await recordDelivery(this.dataSource.manager, notif);
     }
   }
@@ -452,7 +452,7 @@ export class ActionEventNotifWorker {
     // when a later send fails.
     if (notif.notification)
       await recordDelivery(this.dataSource.manager, notif);
-    await this.delivery.deliver({
+    const send = await this.delivery.prepare({
       notif,
       user: plan.user,
       channels: await this.preferences.channelsFor(
@@ -468,6 +468,7 @@ export class ActionEventNotifWorker {
         notification: notif.notification,
       },
     });
+    await send();
     await recordDelivery(this.dataSource.manager, notif);
   }
 }
