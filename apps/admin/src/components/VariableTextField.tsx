@@ -65,6 +65,7 @@ export type VariableTextFieldProps = {
   style?: TextareaAutosizeProps["style"];
   spellCheck?: boolean;
   "aria-label"?: string;
+  "aria-describedby"?: string;
 };
 
 export function VariableTextField({
@@ -79,6 +80,7 @@ export function VariableTextField({
   style,
   spellCheck,
   "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
 }: VariableTextFieldProps) {
   const variables = useFormVariables();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -211,6 +213,7 @@ export function VariableTextField({
     // and an opaque input hides the highlight painted behind it.
     style: segments ? { backgroundColor: "transparent", ...style } : style,
     "aria-label": ariaLabel,
+    "aria-describedby": ariaDescribedBy,
     className: cn(sharedClassName, "relative"),
     onKeyDown: handleKeyDown,
     onSelect: syncCaret,
