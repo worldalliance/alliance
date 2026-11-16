@@ -254,7 +254,7 @@ describe("usePreviousAnswerSources", () => {
     expect(result.current.previousAnswersPending).toBe(true);
   });
 
-  it("stays loading after a source response fails to load", async () => {
+  it("stays loading, and failed, after a source response fails to load", async () => {
     let failed = false;
     api.alsoServing({
       "GET /tasks/myResponse/:id": () => {
@@ -263,10 +263,12 @@ describe("usePreviousAnswerSources", () => {
       },
     });
     const { result } = renderSources();
+    expect(result.current.previousAnswersFailed).toBe(false);
 
     await waitFor(() => expect(failed).toBe(true));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(result.current.previousAnswersPending).toBe(true);
+    expect(result.current.previousAnswersFailed).toBe(true);
   });
 
   const countingResponses = () => {
@@ -438,6 +440,7 @@ describe("usePreviousAnswerSources", () => {
     await waitFor(() =>
       expect(result.current.previousAnswersPending).toBe(false),
     );
+    expect(result.current.previousAnswersFailed).toBe(false);
     expect(result.current.previousAnswerData[9]).toEqual({ pick: ["a"] });
   });
 

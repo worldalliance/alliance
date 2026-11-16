@@ -202,6 +202,7 @@ export function useWebFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
   } = useFormVisibility({
     schema,
@@ -222,11 +223,16 @@ export function useWebFormState({
     firstContractSignedAt: visibilityContext.firstContractSignedAt,
     completedActionCount: visibilityContext.completedActionCount,
     visibilityInputs: {
-      visibilityContextLoading: visibilityContext.isLoading,
-      visibilityContextFailed: visibilityContext.failed,
-      visibilityValidatorsFailed: visibilityValidators.failed,
-      userLoading,
-      previousAnswersPending: previousAnswers.previousAnswersPending,
+      pending: {
+        visibilityContext: visibilityContext.isLoading,
+        user: userLoading,
+        previousAnswers: previousAnswers.previousAnswersPending,
+      },
+      failed: {
+        visibilityContext: visibilityContext.failed,
+        visibilityValidators: visibilityValidators.failed,
+        previousAnswers: previousAnswers.previousAnswersFailed,
+      },
     },
   });
 
@@ -334,6 +340,7 @@ export function useWebFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
     updateField,
     imageUpload,

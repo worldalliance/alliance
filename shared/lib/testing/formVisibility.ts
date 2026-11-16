@@ -14,7 +14,7 @@ import {
   SourceHistoriesStatus,
   type SourceHistories,
 } from "../../forms/useVariableSourceHistories";
-import { type VisibilityInputsPending } from "../../useFormRenderer";
+import { type VisibilityInputs } from "../../useFormRenderer";
 
 export const textField = (id: string): TextField => ({
   id,
@@ -69,12 +69,13 @@ export function lookupFor(schema: FormSchema): Map<string, AnyField> {
   );
 }
 
-export const SETTLED_INPUTS: VisibilityInputsPending = {
-  visibilityContextLoading: false,
-  visibilityContextFailed: false,
-  visibilityValidatorsFailed: false,
-  userLoading: false,
-  previousAnswersPending: false,
+export const SETTLED_INPUTS: VisibilityInputs = {
+  pending: { visibilityContext: false, user: false, previousAnswers: false },
+  failed: {
+    visibilityContext: false,
+    visibilityValidators: false,
+    previousAnswers: false,
+  },
 };
 
 export const NO_SOURCES_READY: SourceHistories = {

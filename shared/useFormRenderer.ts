@@ -110,13 +110,21 @@ function fieldContextFor(params: {
   };
 }
 
-/** Each input visibility reads, set while it loads or after it fails. */
-export type VisibilityInputsPending = {
-  visibilityContextLoading: boolean;
-  visibilityContextFailed: boolean;
-  visibilityValidatorsFailed: boolean;
-  userLoading: boolean;
-  previousAnswersPending: boolean;
+/**
+ * The inputs visibility reads. Any one set keeps visibility unsettled; one set
+ * in `failed` also marks it failed.
+ */
+export type VisibilityInputs = {
+  pending: {
+    visibilityContext: boolean;
+    user: boolean;
+    previousAnswers: boolean;
+  };
+  failed: {
+    visibilityContext: boolean;
+    visibilityValidators: boolean;
+    previousAnswers: boolean;
+  };
 };
 
 export type FormVisibility = {
@@ -133,10 +141,15 @@ export type FormVisibility = {
   nextVisiblePageIndex: number | null;
   previousVisiblePageIndex: number | null;
   /**
-   * False while an input a condition reads is loading or failed, so which
+   * False while an input visibility waits on is loading or failed, so which
    * pages are visible, and where Next goes, may still change.
    */
   visibilitySettled: boolean;
+  /**
+   * Set while an input visibility waits on has failed, so visibility won't
+   * settle unless it loads again.
+   */
+  visibilityFailed: boolean;
   validateFieldValue: (
     field: AnyField,
     fieldValue: FormValue | undefined,
@@ -183,7 +196,7 @@ export function useFormVisibility(args: {
    * Selections drop only once none of these is set. Verdicts not yet requested
    * are read from `visibilityValidatorResults`.
    */
-  visibilityInputs: VisibilityInputsPending;
+  visibilityInputs: VisibilityInputs;
 }): FormVisibility {
   const {
     schema,
@@ -273,8 +286,11 @@ export function useFormVisibility(args: {
       ),
     [schema, visibilityValidatorResults],
   );
+  const visibilityFailed = Object.values(visibilityInputs.failed).some(Boolean);
   const visibilitySettled =
-    !Object.values(visibilityInputs).some(Boolean) && !verdictsPending;
+    !Object.values(visibilityInputs.pending).some(Boolean) &&
+    !visibilityFailed &&
+    !verdictsPending;
   const offeredChoicesFor = useOfferedChoicesFor({
     schema,
     extras: visibilityExtrasReadOnly,
@@ -415,6 +431,7 @@ export function useFormVisibility(args: {
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
   };
 }

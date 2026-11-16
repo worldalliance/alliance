@@ -128,8 +128,12 @@ export function useMobileFormState({
     maxPageIndex,
   } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
 
-  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
-    usePreviousAnswerSources({ schema, signedIn: !!user });
+  const {
+    previousAnswerSchemas,
+    previousAnswerData,
+    previousAnswersPending,
+    previousAnswersFailed,
+  } = usePreviousAnswerSources({ schema, signedIn: !!user });
 
   const sourceHistories = useVariableSourceHistories({
     schema,
@@ -214,6 +218,7 @@ export function useMobileFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
   } = useFormVisibility({
     schema,
@@ -234,11 +239,16 @@ export function useMobileFormState({
     firstContractSignedAt,
     completedActionCount,
     visibilityInputs: {
-      visibilityContextLoading,
-      visibilityContextFailed,
-      visibilityValidatorsFailed,
-      userLoading,
-      previousAnswersPending,
+      pending: {
+        visibilityContext: visibilityContextLoading,
+        user: userLoading,
+        previousAnswers: previousAnswersPending,
+      },
+      failed: {
+        visibilityContext: visibilityContextFailed,
+        visibilityValidators: visibilityValidatorsFailed,
+        previousAnswers: previousAnswersFailed,
+      },
     },
   });
 
@@ -346,6 +356,7 @@ export function useMobileFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
     validatePage,
     validateScreenFields,
