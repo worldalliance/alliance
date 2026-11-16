@@ -1,8 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { _electron as electron, expect, test } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createRequire } from "node:module";
 import { appArgs } from "./app-args";
+import { heldPage } from "./held-page";
 import { start } from "./ipc-helpers";
 import {
   captured,
@@ -29,6 +30,109 @@ test("clicking the dock icon while the app quits reopens it once", async () => {
   });
   expect(relaunches).toBe(1);
   await closed;
+});
+
+test("the quit hides the app, and hides it again when it becomes active", async () => {
+  const { app, page } = await launch({
+    captures: [captured("edit-and-interrupt-session")],
+    claude: trackedClaude(),
+  });
+  await start(page);
+  const closed = app.waitForEvent("close");
+  const hides = await app.evaluate(({ app, BrowserWindow }) => {
+    const calls = { app: 0, window: 0 };
+    Object.assign(app, { hide: () => (calls.app += 1) });
+    for (const window of BrowserWindow.getAllWindows())
+      Object.assign(window, { hide: () => (calls.window += 1) });
+    const activate = () => {
+      if (process.platform === "darwin") app.emit("did-become-active");
+    };
+    activate();
+    const before = { ...calls };
+    app.quit();
+    activate();
+    return [before, calls];
+  });
+  expect(hides).toEqual([
+    { app: 0, window: 0 },
+    process.platform === "darwin"
+      ? { app: 2, window: 0 }
+      : { app: 0, window: 1 },
+  ]);
+  await closed;
+});
+
+test("a window still loading when the quit begins stays hidden once it paints", async () => {
+  const page = await heldPage();
+  // Only a run that isn't headless shows the window on ready-to-show; the stubs keep it off screen, though macOS shows the dock icon.
+  const app = await electron.launch({
+    args: appArgs(),
+    env: {
+      ...process.env,
+      ALLIANCE_AGENT_HEADLESS: "0",
+      ELECTRON_RENDERER_URL: page.url,
+    },
+  });
+  try {
+    await page.requested;
+    await app.evaluate(({ app, BrowserWindow, ipcMain }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      if (!window) throw new Error("the app has no window");
+      const calls: string[] = [];
+      Object.assign(globalThis, { paintCalls: calls });
+      Object.assign(window, {
+        show: () => calls.push("show"),
+        hide: () => undefined,
+      });
+      const exit = app.exit.bind(app);
+      const checked = new Promise((resolve) =>
+        ipcMain.once("checked", resolve),
+      );
+      Object.assign(app, {
+        hide: () => undefined,
+        exit: (code?: number) => void checked.then(() => exit(code)),
+      });
+      window.once("ready-to-show", () => calls.push("painted"));
+      app.quit();
+    });
+    page.release();
+    const calls = () =>
+      app.evaluate(() => Reflect.get(globalThis, "paintCalls"));
+    await expect.poll(calls).toContain("painted");
+    expect(await calls()).toEqual(["painted"]);
+  } finally {
+    page.close();
+    const closed = app.waitForEvent("close");
+    // A setup that failed before the test's own quit leaves the app to quit here.
+    await app.evaluate(({ app, ipcMain }) => {
+      ipcMain.emit("checked");
+      app.quit();
+    });
+    await closed;
+  }
+});
+
+test("a window that fails to load leaves the app shown for its error when it becomes active", async () => {
+  const { app } = await launch({ captures: [] });
+  const exited = once(app.process(), "exit");
+  const hides = await app.evaluate(async ({ app, BrowserWindow }) => {
+    let hides = 0;
+    Object.assign(app, { hide: () => (hides += 1) });
+    const exit = app.exit.bind(app);
+    const exiting = new Promise<number | undefined>((resolve) =>
+      Object.assign(app, { exit: resolve }),
+    );
+    void BrowserWindow.getAllWindows()[0]
+      ?.loadURL("app://renderer/missing.html")
+      .catch(() => undefined);
+    const code = await exiting;
+    app.emit("did-become-active");
+    setTimeout(() => exit(code));
+    return hides;
+  });
+  expect(hides).toBe(0);
+  const [code] = await exited;
+  expect(code).toBe(1);
 });
 
 test("opening the app while it quits reopens it once the quit finishes", async () => {

@@ -13,7 +13,7 @@ import { registerIpc } from "./ipc";
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
 const headless = process.env.ALLIANCE_AGENT_HEADLESS === "1";
-// Caps the quit's wait for sessions still starting, which a hung network folder can stall. The e2e tests shorten it.
+// Caps the quit's wait for sessions still starting, which a hung network folder can stall. The quit hides the app first, so an endless wait would leave an invisible app holding the lock. The e2e tests shorten it.
 const openingWaitMs = z.coerce
   .number()
   .int()
@@ -64,7 +64,10 @@ function createWindow(): void {
       preload: path.join(import.meta.dirname, "../preload/index.cjs"),
     },
   });
-  if (!headless) window.once("ready-to-show", () => window.show());
+  if (!headless)
+    window.once("ready-to-show", () => {
+      if (!hiddenForQuit) window.show();
+    });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, url) => {
     if (url !== window.webContents.getURL()) event.preventDefault();
@@ -103,6 +106,8 @@ if (!app.requestSingleInstanceLock()) app.exit();
 
 let closeSessions: (() => Promise<void>) | undefined;
 let closing: Promise<void> | undefined;
+// exitUnloaded also sets closing, but keeps the app shown for its error dialog.
+let hiddenForQuit = false;
 let relaunching = false;
 // The quitting process holds the lock until it exits, so a launch during the quit relaunches the app then. app.relaunch starts one app per call.
 const relaunchAfterQuit = () => {
@@ -119,13 +124,22 @@ app.on("second-instance", () => {
   window.focus();
 });
 
-// Quitting waits for each CLI to exit, so its session-end hooks, such as the transcript upload, finish.
+// Quitting waits for each CLI to exit, so its session-end hooks, such as the transcript upload, finish. The app and its windows hide meanwhile, so the quit looks done.
 app.on("before-quit", (event) => {
   if (!closeSessions) return;
   event.preventDefault();
   if (closing) return;
-  // app.quit's teardown can outlast a child process still running, such as a starting session's version check.
+  hiddenForQuit = true;
+  // On macOS hiding a fullscreen window itself leaves its Space black.
+  if (process.platform === "darwin") app.hide();
+  else for (const window of BrowserWindow.getAllWindows()) window.hide();
+  // app.quit's teardown can outlast a child process still running, such as a starting session's version check, keeping the hidden app and its lock.
   closing = closeSessions().finally(() => app.exit(0));
+});
+
+// macOS shows a hidden app again when it becomes active, such as through Cmd+Tab.
+app.on("did-become-active", () => {
+  if (hiddenForQuit) app.hide();
 });
 
 void app.whenReady().then(() => {
