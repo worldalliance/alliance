@@ -178,36 +178,18 @@ export class UserService {
   }
 
   async update(id: number, data: UpdateProfileDto): Promise<User> {
-    const user = await this.findOneOrFail(id);
+    const { cityId, profilePicture, ...updateData } = data;
 
-    if (data.cityId !== undefined) {
-      if (data.cityId === null) {
-        user.city = null;
-      } else {
-        const city =
-          (data.cityId
-            ? await this.cityRepository.findOne({
-                where: { id: data.cityId },
-              })
-            : undefined) ?? undefined;
-
-        if (data.cityId && !city) {
-          throw new BadRequestException("City not found");
-        }
-
-        user.city = city;
-      }
+    let city: City | null | undefined;
+    if (cityId === null) {
+      city = null;
+    } else if (cityId) {
+      city = await this.cityRepository.findOne({ where: { id: cityId } });
+      if (!city) throw new BadRequestException("City not found");
     }
-
-    const { cityId: _cityId, profilePicture, ...updateData } = data;
 
     const nextPicture =
       await this.imagesService.resolvePhotoUpdate(profilePicture);
-
-    Object.assign(user, updateData);
-    if (nextPicture !== undefined) {
-      user.profilePicture = nextPicture;
-    }
 
     try {
       await writeUnderLive(this.dataSource.manager, {
@@ -216,7 +198,15 @@ export class UserService {
           id,
           notFound: `User ${id} not found`,
         },
-        write: (manager) => manager.save(user),
+        write: async (em) => {
+          // Read under the row lock: a save writes back every column that
+          // differs, so a copy read earlier would undo a concurrent write.
+          const user = await em.findOneByOrFail(User, { id });
+          if (city !== undefined) user.city = city;
+          Object.assign(user, updateData);
+          if (nextPicture !== undefined) user.profilePicture = nextPicture;
+          return em.save(user);
+        },
       });
     } catch (error) {
       if (isUniqueViolation(error, PHONE_NUMBER_INDEX)) {
