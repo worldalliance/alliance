@@ -2,7 +2,12 @@ import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { NodeEnv } from "../common/src/node-env";
 import { committedEnv, deployedStoreKeys } from "../server/src/config/env";
-import { DEV_PREFIX, expectations, findDrift } from "./check-parameter-drift";
+import {
+  DEV_PREFIX,
+  expectations,
+  findDrift,
+  SHARED_PREFIX,
+} from "./check-parameter-drift";
 import devSecrets from "./dev-secrets.json";
 
 const expected = [
@@ -76,6 +81,17 @@ test("ignores the CI paths", () => {
   ).toEqual([]);
 });
 
+test("allows the listed shared keys without requiring them", () => {
+  expect(
+    findDrift({
+      names: ["/alliance/shared/EC2_SSH_KEY", "/alliance/shared/OTHER"],
+      expected: expectations().filter(({ prefix }) => prefix === SHARED_PREFIX),
+    }),
+  ).toEqual([
+    "/alliance/shared/OTHER is not in SHARED_KEYS in scripts/check-parameter-drift.ts",
+  ]);
+});
+
 const sorted = (keys: Iterable<string>) => [...keys].sort();
 
 test("expects exactly each dev consumer's manifest secrets", () => {
@@ -98,7 +114,7 @@ test("expects exactly each dev consumer's manifest secrets", () => {
 
 test("deployed paths require the uncommitted keys and allow only the deployed store's", () => {
   const deployed = expectations().filter(
-    ({ prefix }) => !prefix.startsWith(DEV_PREFIX),
+    ({ prefix }) => !prefix.startsWith(DEV_PREFIX) && prefix !== SHARED_PREFIX,
   );
   expect(deployed.map(({ prefix }) => prefix)).toEqual([
     "/alliance/staging/server/",

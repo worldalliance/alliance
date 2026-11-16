@@ -20,7 +20,7 @@ import { randomUUID } from "crypto";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import type { ZodError } from "zod";
-import { requireEnv } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 import { CreateHostedDocDto, UpdateHostedDocDto } from "./dto/hosted-doc.dto";
 import { HostedDoc } from "./entities/hosted-doc.entity";
 
@@ -43,9 +43,6 @@ function assertPdf(file: Express.Multer.File | undefined): Express.Multer.File {
 @Injectable()
 export class HostedDocsService {
   private readonly logger = new Logger(HostedDocsService.name);
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
 
   constructor(
     @InjectRepository(HostedDoc)
@@ -160,7 +157,7 @@ export class HostedDocsService {
     const key = `docs/${randomUUID()}.pdf`;
     await this.s3.send(
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: assetsBucket(),
         Key: key,
         Body: file.buffer,
         ContentType: "application/pdf",
@@ -172,7 +169,7 @@ export class HostedDocsService {
   private async deleteFile(key: string): Promise<void> {
     try {
       await this.s3.send(
-        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+        new DeleteObjectCommand({ Bucket: assetsBucket(), Key: key }),
       );
     } catch (error) {
       this.logger.error(`Could not delete ${key}`, error);

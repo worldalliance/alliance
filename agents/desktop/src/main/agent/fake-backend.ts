@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { R, type Result } from "../../../../../common/src/result";
+import { type AgentEvent, AgentEventKind } from "../../shared/agent-event";
 import { SessionListeners } from "./listeners";
 import {
   type AgentBackend,
-  type AgentEvent,
-  AgentEventKind,
   type AgentEventListener,
   type AgentMessage,
   type AgentSession,
@@ -96,12 +95,11 @@ class FakeSession implements AgentSession {
       this.listeners.emit(event);
     }
     if (!signal.aborted) await setTimeout(this.params.stepDelayMs);
-    this.endTurn();
-  }
-
-  private endTurn(): void {
     this.turn = undefined;
-    this.listeners.emit({ kind: AgentEventKind.TurnEnded });
+    this.listeners.emit({
+      kind: AgentEventKind.TurnEnded,
+      interrupted: signal.aborted,
+    });
   }
 }
 

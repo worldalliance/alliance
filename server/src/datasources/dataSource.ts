@@ -12,6 +12,7 @@ import {
 import { DataSource } from "typeorm";
 import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
 import { AppTypeOrmLogger } from "../utils/typeorm-logger";
+import { poolOptions } from "./pool-options";
 import { SlugSubscriber } from "./slug.subscriber";
 
 export const connectionOptions = (): PostgresConnectionOptions => {
@@ -30,6 +31,7 @@ export const connectionOptions = (): PostgresConnectionOptions => {
     password: env("DB_PASSWORD"),
     database: env("DB_NAME"),
     useUTC: true,
+    ...poolOptions,
     maxQueryExecutionTime: 100,
     logging: ["error", "warn"],
     logger: new AppTypeOrmLogger(),

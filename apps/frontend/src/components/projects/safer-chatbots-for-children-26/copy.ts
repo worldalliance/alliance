@@ -21,7 +21,7 @@ The data will be used to improve how KORA evaluates the safety of large language
   },
   {
     heading: "How do I participate?",
-    body: `Sign up on this page. We expect the project to begin in Mid-November 2026.
+    body: `Sign up on this page. We expect the project to begin in December 2026.
 
 Participants will spend about an hour reviewing chatbot transcripts online. You can participate at your own pace.
 `,
@@ -56,7 +56,7 @@ export const HERO_IMAGES: WaitlistHeroImage[] = [
   },
 ];
 
-export const SIGNUP_NOTE = "The project will begin November 17th";
+export const SIGNUP_NOTE = "We expect the project to begin in December.";
 
 export const EXPERT_ROLE = "Expert advisor";
 

@@ -1,5 +1,6 @@
 import { omit } from "es-toolkit";
 import { R, type Result } from "../result";
+import { topologicalOrder } from "../topological-order";
 import {
   asCards,
   collectVariableResolutionFields,
@@ -140,30 +141,14 @@ export function optionsFormulaOrder(
   entries: readonly FormulaFieldEntry[],
 ): Result<FormulaFieldEntry[], string[]> {
   const byId = new Map(entries.map((entry) => [entry.field.id, entry]));
-  const ordered: FormulaFieldEntry[] = [];
-  const done = new Set<string>();
-  const path: string[] = [];
-  const visit = (id: string): string[] | undefined => {
-    if (done.has(id)) return undefined;
-    const start = path.indexOf(id);
-    if (start !== -1) return [...path.slice(start), id];
-    const entry = byId.get(id);
-    if (entry === undefined) return undefined;
-    path.push(id);
-    for (const dependency of dependencies(entry, entries)) {
-      const cycle = visit(dependency);
-      if (cycle !== undefined) return cycle;
-    }
-    path.pop();
-    done.add(id);
-    ordered.push(entry);
-    return undefined;
-  };
-  for (const entry of entries) {
-    const cycle = visit(entry.field.id);
-    if (cycle !== undefined) return R.failure(cycle);
-  }
-  return R.success(ordered);
+  return R.mapError(
+    topologicalOrder({
+      roots: byId.keys(),
+      itemOf: (id) => byId.get(id),
+      dependenciesOf: (entry) => dependencies(entry, entries),
+    }),
+    (cycle) => cycle.map((entry) => entry.field.id),
+  );
 }
 
 export function optionsCycleMessage(cycle: readonly string[]): string {

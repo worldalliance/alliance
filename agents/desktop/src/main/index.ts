@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, net, protocol } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { describeError } from "./describe-error";
 
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
@@ -23,6 +24,15 @@ function serveRenderer(request: Request): Promise<Response> {
   return net.fetch(pathToFileURL(file).toString());
 }
 
+function exitUnloaded(cause: string): void {
+  const message = `Alliance agent couldn't load its window: ${cause}`;
+  console.error(message);
+  if (!headless) {
+    dialog.showErrorBox("Alliance agent couldn't load its window", message);
+  }
+  app.exit(1);
+}
+
 function createWindow(): void {
   const window = new BrowserWindow({ width: 1200, height: 800, show: false });
   if (!headless) window.once("ready-to-show", () => window.show());
@@ -36,14 +46,14 @@ function createWindow(): void {
     (_event, errorCode, errorDescription, url, isMainFrame) => {
       // -3 is ERR_ABORTED: a reload or navigation replaced the load before it finished.
       if (!isMainFrame || errorCode === -3) return;
-      const message = `Alliance agent couldn't load its window: ${errorDescription} (${errorCode}) loading ${url}`;
-      console.error(message);
-      if (!headless) {
-        dialog.showErrorBox("Alliance agent couldn't load its window", message);
-      }
-      app.exit(1);
+      exitUnloaded(`${errorDescription} (${errorCode}) loading ${url}`);
     },
   );
+  window.webContents.on("preload-error", (_event, preloadPath, error) => {
+    // The stack says where the preload threw, which the exit leaves no devtools to show.
+    if (error instanceof Error) console.error(error);
+    exitUnloaded(`${describeError(error)} in ${preloadPath}`);
+  });
 
   // did-fail-load reports failures; the promise also rejects for aborted loads.
   // A packaged app ignores ELECTRON_RENDERER_URL, so its launch environment can't load a remote page.
@@ -57,6 +67,20 @@ function createWindow(): void {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+// The lock belongs to the user data folder, so each checkout's unpackaged app keeps its own, inside the checkout so it goes when the checkout does.
+if (!app.isPackaged && !app.commandLine.hasSwitch("user-data-dir"))
+  app.setPath("userData", path.join(app.getAppPath(), ".scratch/user-data"));
+
+// One process owns the files in the user data folder, so writes serialised in memory can't interleave.
+if (!app.requestSingleInstanceLock()) app.exit();
+
+app.on("second-instance", () => {
+  const [window] = BrowserWindow.getAllWindows();
+  if (!window) return createWindow();
+  if (window.isMinimized()) window.restore();
+  window.focus();
 });
 
 void app.whenReady().then(() => {

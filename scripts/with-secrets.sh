@@ -117,6 +117,27 @@ if fallback == "1":
         print(f"with-secrets.sh: using {name} from {found[name]}, not Parameter Store", file=sys.stderr)
     run_command(loaded)
 
+# A contributor without team credentials opts out of Parameter Store here; the
+# config validation of the app then requires only what they can supply.
+without = "ALLIANCE_WITHOUT_TEAM_SECRETS"
+setting = os.environ.get(without)
+if setting is None and loads_env_file:
+    env_files = [f"--env-file={os.path.join(repo_root, name)}" for name in bun_env_files]
+    # From the repo root, so the bunfig preload of the consumer does not run.
+    probe = subprocess.run(["bun", *env_files, "--print", f"process.env.{without} ?? \"\""], cwd=repo_root, capture_output=True, text=True)
+    if probe.returncode != 0:
+        fail(f"bun could not read {without} from the env files of {consumer}: {probe.stderr.strip()}")
+    setting = probe.stdout.strip()
+if setting not in (None, "", "0", "false", "1", "true"):
+    fail(f"{without} is {setting}; set it to 1 or 0")
+if setting is not None:
+    # A consumer that loads fewer env files than Bun, such as dotenv, still
+    # agrees with the store choice.
+    os.environ[without] = setting
+if setting in ("1", "true"):
+    print(f"with-secrets.sh: {without} is set, so {consumer} runs without the secrets in Parameter Store", file=sys.stderr)
+    run_command(loaded)
+
 takeover = f"secrets are read with the {profile} login, and static keys would take over from it"
 static = [name for name in static_keys if name in os.environ]
 if static:

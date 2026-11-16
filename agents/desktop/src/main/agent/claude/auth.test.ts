@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { R } from "../../../../../../common/src/result";
 import { isSignedInToClaude, signInToClaude } from "./auth";
-import { CaptureRecordKind } from "./testing/capture";
+import {
+  authStatusArgs,
+  authStatusReply,
+  CaptureRecordKind,
+} from "./testing/capture";
 import {
   hangingCli,
   replay,
@@ -19,31 +23,24 @@ describe("sign-in", () => {
       { kind: CaptureRecordKind.Out, text: out },
       { kind: CaptureRecordKind.Exit, code },
     ]);
+  const statusCapture = (signedIn: boolean) =>
+    writeCapture([
+      { kind: CaptureRecordKind.Start, args: authStatusArgs },
+      ...authStatusReply(signedIn),
+    ]);
 
   test("reads a signed-out status from its JSON despite the nonzero exit", async () => {
-    replay(
-      authCapture(
-        ["auth", "status", "--json"],
-        '{"loggedIn": false, "authMethod": "none"}',
-        1,
-      ),
-    );
+    replay(statusCapture(false));
     expect(await isSignedInToClaude(stubCli)).toEqual(R.success(false));
   });
 
   test("reads a signed-in status", async () => {
-    replay(
-      authCapture(
-        ["auth", "status", "--json"],
-        '{"loggedIn": true, "authMethod": "claude.ai"}',
-        0,
-      ),
-    );
+    replay(statusCapture(true));
     expect(await isSignedInToClaude(stubCli)).toEqual(R.success(true));
   });
 
   test("reports a status it can't read with the CLI's output", async () => {
-    replay(authCapture(["auth", "status", "--json"], "Not JSON", 0));
+    replay(authCapture(authStatusArgs, "Not JSON", 0));
     expect(await isSignedInToClaude(stubCli)).toEqual(
       R.failure(
         new Error(

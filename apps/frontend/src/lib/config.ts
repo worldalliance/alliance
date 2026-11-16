@@ -7,12 +7,13 @@ import {
   getWebSocketUrl as getWebSocketUrlShared,
 } from "@alliance/sharedweb/lib/config";
 import { webEnv } from "@alliance/sharedweb/lib/env";
+import { webEnvironment } from "@alliance/sharedweb/lib/runtimeConfig";
 
 // One vhost serves this app on both worldalliance.org and thealliance.org and
 // proxies /api and /socket.io on each. The auth cookie is SameSite=strict, so a
 // call aimed at the domain the user did not load carries no cookie. SSR has no
 // location and the dev server's API is on another port, so both keep the
-// build-time URL.
+// configured URL.
 const browserOrigin = (): string | null =>
   typeof window !== "undefined" && import.meta.env.MODE !== "development"
     ? window.location.origin
@@ -56,5 +57,5 @@ export const getBulkActionSSEUrl = (actionIds: number[]) => {
 };
 
 export const isFeatureEnabled = (feature: Features) => {
-  return isEnabled(feature, import.meta.env.MODE);
+  return isEnabled(feature, webEnvironment());
 };
