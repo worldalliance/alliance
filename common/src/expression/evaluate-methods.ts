@@ -109,6 +109,9 @@ const LIST_METHOD_BY_NAME: ReadonlyMap<string, ListMethod> = new Map(
   Object.entries(LIST_METHODS),
 );
 
+const listRule = (method: string) =>
+  (LIST_METHOD_BY_NAME.get(method) ?? PLAIN).rule;
+
 const TAKES_FUNCTION: Record<ListRule, boolean> = {
   [ListRule.Plain]: false,
   [ListRule.Concat]: false,
@@ -132,9 +135,7 @@ const IGNORES_ARGUMENTS_BESIDE_FUNCTION: Record<ListRule, boolean> = {
 };
 
 export const ignoresArgumentsBesideFunction = (method: string) =>
-  IGNORES_ARGUMENTS_BESIDE_FUNCTION[
-    (LIST_METHOD_BY_NAME.get(method) ?? PLAIN).rule
-  ];
+  IGNORES_ARGUMENTS_BESIDE_FUNCTION[listRule(method)];
 
 // Native `concat` keeps a list or record argument as it is, and `reduce` its
 // starting value.
@@ -150,9 +151,15 @@ const TAKES_OBJECTS: Record<ListRule, boolean> = {
 };
 
 // A list's `concat` keeps an unknown argument as an item, as `tsc` types it.
-const KEEPS_UNKNOWN_ARGUMENT: Record<ListRule, boolean> = {
-  ...TAKES_FUNCTION,
+const KEEPS_UNKNOWN_AS_ITEM: Record<ListRule, boolean> = {
+  [ListRule.Plain]: false,
   [ListRule.Concat]: true,
+  [ListRule.Join]: false,
+  [ListRule.Lookup]: false,
+  [ListRule.Predicate]: false,
+  [ListRule.EachItem]: false,
+  [ListRule.Reduce]: false,
+  [ListRule.Sort]: false,
 };
 
 const PRIMITIVE_ITEMS: Record<
@@ -169,6 +176,55 @@ const PRIMITIVE_ITEMS: Record<
   [ListRule.Sort]: (argCount) =>
     argCount === 0 ? SORTS_PRIMITIVES_ONLY : undefined,
 };
+
+const IS_PREDICATE: Record<ListRule, boolean> = {
+  [ListRule.Plain]: false,
+  [ListRule.Concat]: false,
+  [ListRule.Join]: false,
+  [ListRule.Lookup]: false,
+  [ListRule.Predicate]: true,
+  [ListRule.EachItem]: false,
+  [ListRule.Reduce]: false,
+  [ListRule.Sort]: false,
+};
+
+const IS_ITEM_LOOKUP: Record<ListRule, boolean> = {
+  [ListRule.Plain]: false,
+  [ListRule.Concat]: false,
+  [ListRule.Join]: false,
+  [ListRule.Lookup]: true,
+  [ListRule.Predicate]: false,
+  [ListRule.EachItem]: false,
+  [ListRule.Reduce]: false,
+  [ListRule.Sort]: false,
+};
+
+const COLLECTS_EACH_RESULT: Record<ListRule, boolean> = {
+  [ListRule.Plain]: false,
+  [ListRule.Concat]: false,
+  [ListRule.Join]: false,
+  [ListRule.Lookup]: false,
+  [ListRule.Predicate]: false,
+  [ListRule.EachItem]: true,
+  [ListRule.Reduce]: false,
+  [ListRule.Sort]: false,
+};
+
+// Rules for a list target; text methods of the same name follow none of them.
+export const isPredicateMethod = (method: string) =>
+  IS_PREDICATE[listRule(method)];
+
+export const isItemLookup = (method: string) =>
+  IS_ITEM_LOOKUP[listRule(method)];
+
+export const needsEveryItem = (method: string, argCount: number) =>
+  PRIMITIVE_ITEMS[listRule(method)](argCount) !== undefined;
+
+export const keepsUnknownAsItem = (method: string) =>
+  KEEPS_UNKNOWN_AS_ITEM[listRule(method)];
+
+export const collectsEachResult = (method: string) =>
+  COLLECTS_EACH_RESULT[listRule(method)];
 
 class UnknownResult extends Error {}
 
@@ -237,7 +293,9 @@ export function callMethod({
           : undefined
   )?.get(method);
   if (native === undefined) throw cantCall();
-  const keepsUnknown = list && KEEPS_UNKNOWN_ARGUMENT[listMethod.rule];
+  const keepsUnknown =
+    list &&
+    (TAKES_FUNCTION[listMethod.rule] || KEEPS_UNKNOWN_AS_ITEM[listMethod.rule]);
   if (!keepsUnknown && args.includes(null)) return null;
   if (list && primitivesOnly && list.includes(null)) return null;
   const self = list ? [...list] : target;

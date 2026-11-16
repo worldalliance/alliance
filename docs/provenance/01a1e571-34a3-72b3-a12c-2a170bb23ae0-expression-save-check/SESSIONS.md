@@ -27,3 +27,5 @@
 - claude:f530cbc5-dba9-42bd-983c-7712d5e2932b
 - claude:8d09fe17-c30c-4aa7-a5b5-726411048db1
 - claude:c8d5f068-7838-4b43-a8d1-65328df15769
+- claude:9adbd4f0-38a9-4ba3-bfef-53042765cabf
+- claude:4f8105cd-9263-4755-9056-852c60949351
