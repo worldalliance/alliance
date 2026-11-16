@@ -3,6 +3,7 @@ import {
   ActionActivityService,
   ActivityAlreadyExistsException,
 } from "../src/actions/action-activity.service";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   addDays,
@@ -10,6 +11,7 @@ import {
   type CohortDecisionFixtures,
 } from "./cohort-decision-fixtures";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
+import { holdUserLookups } from "./hold-user-lookups";
 
 describe("createActionActivity duplicates (e2e)", () => {
   let ctx: TestContext;
@@ -34,6 +36,8 @@ describe("createActionActivity duplicates (e2e)", () => {
       deadline: addDays(now, 3),
     });
     return {
+      member,
+      action,
       create: () =>
         ctx.app.get(ActionActivityService).createActionActivity({
           actionId: action.id,
@@ -51,5 +55,28 @@ describe("createActionActivity duplicates (e2e)", () => {
     await expect(create()).rejects.toBeInstanceOf(
       ActivityAlreadyExistsException,
     );
+  });
+
+  it("creates one activity when two creations race", async () => {
+    const { member, action, create } = await completion();
+    const lookup = holdUserLookups(ctx);
+
+    const results = await Promise.allSettled([create(), create()]);
+    lookup.mockRestore();
+
+    expect(results.map((result) => result.status).sort()).toEqual([
+      "fulfilled",
+      "rejected",
+    ]);
+    expect(
+      results.find((result) => result.status === "rejected")?.reason,
+    ).toBeInstanceOf(ActivityAlreadyExistsException);
+    expect(
+      await ctx.dataSource.getRepository(ActionActivity).countBy({
+        actionId: action.id,
+        userId: member.id,
+        type: ActionActivityType.USER_COMPLETED,
+      }),
+    ).toBe(1);
   });
 });

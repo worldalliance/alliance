@@ -21,6 +21,7 @@ import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 import { forumCompleterFixtures } from "./forum-action-completer-fixtures";
+import { holdUserLookups } from "./hold-user-lookups";
 
 describe("ForumActionCompleterWorker decisions and recovery (e2e)", () => {
   let ctx: TestContext;
@@ -257,5 +258,32 @@ describe("ForumActionCompleterWorker decisions and recovery (e2e)", () => {
       (await actionRepo.findOneByOrFail({ id: action.id }))
         .computedAutocompleteAt,
     ).not.toBeNull();
+  });
+
+  it("completes a responder once when two runs overlap", async () => {
+    const { action, responder } = await createUndecidedForumAction(new Date());
+    const sendMessage = jest
+      .spyOn(ctx.app.get(EventLogService), "sendMessage")
+      .mockResolvedValue(R.success(undefined));
+    const lookup = holdUserLookups(ctx);
+
+    await Promise.all([worker.autocompleteDue(), worker.autocompleteDue()]);
+    lookup.mockRestore();
+
+    expect(
+      await activityRepo.countBy({
+        actionId: action.id,
+        userId: responder.id,
+        type: ActionActivityType.USER_COMPLETED,
+      }),
+    ).toBe(1);
+    expect(
+      sendMessage.mock.calls.filter(
+        ([message]) =>
+          message.type === EventType.ForumActionAutocomplete &&
+          message.userId === responder.id,
+      ),
+    ).toHaveLength(1);
+    sendMessage.mockRestore();
   });
 });

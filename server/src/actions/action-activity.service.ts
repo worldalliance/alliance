@@ -131,15 +131,6 @@ export class ActionActivityService {
 
     const user = await this.userService.findOneOrFail(userId);
 
-    if (!ALLOW_DUPLICATE[type]) {
-      const existingActivity = await this.actionActivityRepository.findOne({
-        where: { actionId, userId, type },
-      });
-      if (existingActivity) {
-        throw new ActivityAlreadyExistsException();
-      }
-    }
-
     const activity = this.actionActivityRepository.create({
       type: type,
       actionId: actionId,
@@ -174,7 +165,20 @@ export class ActionActivityService {
               ]
             : []),
         ],
-        write: (manager) => manager.save(activity),
+        write: async (manager) => {
+          if (!ALLOW_DUPLICATE[type]) {
+            await manager.query(
+              "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+              [`action-activity:${actionId}:${userId}:${type}`],
+            );
+            if (
+              await manager.existsBy(ActionActivity, { actionId, userId, type })
+            ) {
+              throw new ActivityAlreadyExistsException();
+            }
+          }
+          return manager.save(activity);
+        },
       },
     );
 
