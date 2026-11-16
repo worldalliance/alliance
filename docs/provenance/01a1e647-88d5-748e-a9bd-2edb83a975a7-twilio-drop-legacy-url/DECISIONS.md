@@ -1,0 +1,3 @@
+- The precondition from ALL-2151, that the Twilio console points at thealliance.org, is taken from ALL-2138 being Done in Linear; the console itself was not checked. (agent decision)
+- The rejection log and alert name the single URL again, as before `01a1cd4c-60a2-76b5-8d19-aa7dacafa2c4-twilio-both-webhook-urls`. (agent decision)
+- The guard tests use the post-cutover environment: `APP_URL` thealliance.org, `ALT_APP_URL` worldalliance.org. (agent decision)
