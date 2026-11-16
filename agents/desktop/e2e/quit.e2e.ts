@@ -206,6 +206,8 @@ exit 1`,
     openingWaitMs: 500,
   });
   const saved = savedConversations();
+  // The window re-reads the list on an event from a conversation it hasn't listed, which would race the removal's read; once reloaded, it has listed this one.
+  await page.reload();
   // The removal reads the list first.
   const listRead = await holdNextListRead(page);
   writeFileSync(exit, "");

@@ -83,8 +83,10 @@ test("a sign-in cancelled after it finished in the browser leaves the sign-in pa
   await page.getByRole("button", { name: "Sign in to Claude" }).click();
   await expect.poll(() => existsSync(signedIn)).toBe(true);
   await page.getByRole("button", { name: "Cancel sign-in" }).click();
-  await expect(page.getByRole("heading")).toHaveCount(0);
-  await expect(page).toHaveTitle("Alliance agent");
+  await expect(
+    page.getByRole("heading", { name: "New conversation" }),
+  ).toBeVisible();
+  await expect(page).toHaveTitle("New conversation – Alliance agent");
   await app.close();
 });
 
@@ -166,8 +168,10 @@ test("a sign-in that finishes leaves the sign-in panel", async () => {
     ),
   });
   await page.getByRole("button", { name: "Sign in to Claude" }).click();
-  await expect(page.getByRole("heading")).toHaveCount(0);
-  await expect(page).toHaveTitle("Alliance agent");
+  await expect(
+    page.getByRole("heading", { name: "New conversation" }),
+  ).toBeVisible();
+  await expect(page).toHaveTitle("New conversation – Alliance agent");
   await app.close();
 });
 
@@ -204,9 +208,13 @@ test("a signed-out user is asked to sign in before starting", async () => {
 
 test("a signed-in user isn't asked to sign in", async () => {
   const { app, page } = await launch({ captures: [authStatusCapture(true)] });
-  await expect(page).toHaveTitle("Alliance agent");
-  await expect(page.getByRole("heading")).toHaveCount(0);
-  await expect(page.getByRole("button")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "New conversation" }),
+  ).toBeVisible();
+  await expect(page).toHaveTitle("New conversation – Alliance agent");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to Claude" }),
+  ).toHaveCount(0);
   await app.close();
 });
 
