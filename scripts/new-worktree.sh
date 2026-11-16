@@ -307,17 +307,14 @@ mkdir -p "$worktree_dir/.worktree"
 
 echo "==> copying local (untracked) config"
 
-# Drop copied port overrides that would point back to the source checkout. grep
-# exits 1 when every line is removed. Every file below is dotenv, so they all
-# go through this.
-strip_port_overrides() {
-  grep -Ev '^[[:space:]]*(export[[:space:]]+)?(SERVER_PORT|PORT|FRONTEND_PORT|ADMIN_PORT|MOBILE_PORT|ALLIANCE_DEV_[A-Z_]+_URL|EXPO_PUBLIC_ALLIANCE_API_PORT)=' "$1" || true
-}
+# Port overrides would point back to the source checkout.
+port_keys='SERVER_PORT|PORT|FRONTEND_PORT|ADMIN_PORT|MOBILE_PORT|ALLIANCE_DEV_[A-Z_]+_URL|EXPO_PUBLIC_ALLIANCE_API_PORT'
 
 for f in .env.devtools server/.env apps/frontend/.env.local apps/admin/.env.local apps/mobile/.env; do
   if [[ -f "$main_root/$f" ]]; then
     mkdir -p "$worktree_dir/$(dirname "$f")"
-    strip_port_overrides "$main_root/$f" > "$worktree_dir/$f"
+    bun "$repo_root/scripts/env-without-keys.ts" "$main_root/$f" "$port_keys" > "$worktree_dir/$f" ||
+      die "could not copy $f"
     echo "    $f"
   fi
 done

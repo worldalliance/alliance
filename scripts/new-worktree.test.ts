@@ -53,6 +53,31 @@ test(
 );
 
 test(
+  "new-worktree.sh leaves port overrides out of copied config",
+  () => {
+    appendFileSync(
+      join(f.main, "server", ".env"),
+      'SERVER_PORT=1\nexport PORT = 2\nALLIANCE_DEV_FRONTEND_URL: http://x\nMOBILE_PORT="4\n5"\n',
+    );
+    mkdirSync(join(f.main, "apps", "frontend"), { recursive: true });
+    writeFileSync(
+      join(f.main, "apps", "frontend", ".env.local"),
+      "FRONTEND_PORT=3\nVITE_KEPT=1\n",
+    );
+    expect(f.create("a").exitCode).toBe(0);
+    const env = readFileSync(join(f.dir("a"), "server", ".env"), "utf8");
+    expect(env).toContain("DB_PORT=5432\n");
+    expect(env).not.toMatch(
+      /^(SERVER_PORT|export PORT|ALLIANCE_DEV_|MOBILE_PORT|5")/m,
+    );
+    expect(
+      readFileSync(join(f.dir("a"), "apps", "frontend", ".env.local"), "utf8"),
+    ).toBe("VITE_KEPT=1\n");
+  },
+  TIMEOUT,
+);
+
+test(
   "new-worktree.sh sets the new branch's upstream as branch.autoSetupMerge says",
   () => {
     f.git(f.main, "config", "remote.origin.url", f.main);
