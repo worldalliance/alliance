@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { R } from "@alliance/common/result";
 import { NotFoundException } from "@nestjs/common";
 import { addMinutes } from "date-fns";
 import { ActionActivityService } from "src/actions/action-activity.service";
@@ -8,6 +9,8 @@ import { ActionCohortDecision } from "src/actions/entities/action-cohort-decisio
 import { Action } from "src/actions/entities/action.entity";
 import { CohortDecisionReason } from "src/actions/entities/cohort-decision-reason";
 import { ForumActionCompleterWorker } from "src/actions/forum-action-completer.worker";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
 import { CustomValidatorType } from "src/tasks/entities/customvalidator.entity";
 import {
   ContractEvent,
@@ -82,17 +85,22 @@ describe("ForumActionCompleterWorker decisions and recovery (e2e)", () => {
     expect(completionIds).not.toContain(decidedOut.id);
   });
 
-  const createUndecidedForumAction = async (now: Date) => {
-    const responder = await fx.createUser({
-      email: `undecided-${now.getTime()}@example.com`,
-      name: "Undecided",
-    });
+  const createSignedMember = async (now: Date, email: string) => {
+    const signer = await fx.createUser({ email, name: "Undecided" });
     await ctx.dataSource.getRepository(ContractEvent).save({
-      user: { id: responder.id },
+      user: { id: signer.id },
       type: ContractEventType.SIGNED,
       date: addMinutes(now, -20),
       contract: { id: ctx.defaultContractId },
     });
+    return signer;
+  };
+
+  const createUndecidedForumAction = async (now: Date) => {
+    const responder = await createSignedMember(
+      now,
+      `undecided-${now.getTime()}@example.com`,
+    );
     const postAuthor = await userRepo.findOneOrFail({
       where: { id: ctx.adminUserId },
     });
@@ -104,7 +112,7 @@ describe("ForumActionCompleterWorker decisions and recovery (e2e)", () => {
     const form = await fx.createFormWithValidator(validator.id);
     const action = await fx.createActionWithEvents({ formId: form.id, now });
     await fx.createComment({ author: responder, post, body: "Reply" });
-    return { action, responder };
+    return { action, post, responder };
   };
 
   it("decides the members the decision pass has not reached", async () => {
@@ -207,5 +215,47 @@ describe("ForumActionCompleterWorker decisions and recovery (e2e)", () => {
       (await actionRepo.findOneOrFail({ where: { id: action.id } }))
         .computedAutocompleteAt,
     ).toBeNull();
+  });
+
+  it("skips a responder who completed after the run loaded them and completes the next", async () => {
+    const now = new Date();
+    const { action, post, responder } = await createUndecidedForumAction(now);
+    const next = await createSignedMember(now, "next-responder@example.com");
+    await fx.createComment({ author: next, post, body: "Reply" });
+    const activities = ctx.app.get(ActionActivityService);
+    const completeAction = activities.completeAction.bind(activities);
+    const complete = jest
+      .spyOn(activities, "completeAction")
+      .mockImplementationOnce(async (actionId, userId, options) => {
+        expect(userId).toBe(responder.id);
+        await completeAction(actionId, userId, options);
+        return completeAction(actionId, userId, options);
+      });
+    const sendMessage = jest
+      .spyOn(ctx.app.get(EventLogService), "sendMessage")
+      .mockResolvedValue(R.success(undefined));
+
+    await worker.autocompleteDue();
+    complete.mockRestore();
+    const autocompleted = sendMessage.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message.type === EventType.ForumActionAutocomplete)
+      .map((message) => message.userId);
+    sendMessage.mockRestore();
+
+    for (const userId of [responder.id, next.id]) {
+      expect(
+        await activityRepo.countBy({
+          actionId: action.id,
+          userId,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+      ).toBe(1);
+    }
+    expect(autocompleted).toEqual([next.id]);
+    expect(
+      (await actionRepo.findOneByOrFail({ id: action.id }))
+        .computedAutocompleteAt,
+    ).not.toBeNull();
   });
 });

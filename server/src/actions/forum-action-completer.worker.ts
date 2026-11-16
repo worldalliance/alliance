@@ -32,7 +32,10 @@ import {
   type Repository,
 } from "typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
-import { ActionActivityService } from "./action-activity.service";
+import {
+  ActionActivityService,
+  ActivityAlreadyExistsException,
+} from "./action-activity.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/scheduled-plans.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -297,6 +300,12 @@ export class ForumActionCompleterWorker {
             blob: null,
           });
         } catch (error) {
+          if (error instanceof ActivityAlreadyExistsException) {
+            this.logger.log(
+              `Skipping completion for action ${action.id} user ${userId}, completed since the run loaded it`,
+            );
+            continue;
+          }
           if (error instanceof QueryFailedError) {
             this.logger.warn(
               `Skipping duplicate completion for action ${action.id} user ${userId}: ${error.message}`,
