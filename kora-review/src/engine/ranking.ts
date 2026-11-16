@@ -410,7 +410,7 @@ export function createRanking(ctx: RankingCtx) {
                 h(
                   "p",
                   { class: "q-l" },
-                  "Your first negative mark was at this line:",
+                  `Your first negative mark for Chatbot ${W} was at this line:`,
                 ),
                 h("blockquote", { class: "q-quote", id: "q3-quote" }, quote),
               ]
