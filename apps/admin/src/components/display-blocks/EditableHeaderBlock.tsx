@@ -1,10 +1,14 @@
 import type { HeaderBlock } from "@alliance/common/forms/display-blocks";
 import { cn } from "@alliance/shared/styles/util";
+import { useId } from "react";
+import { useSidebarSections } from "../form-canvas/sidebarSections";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
 export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
+  const hintId = useId();
+  const inSidebar = useSidebarSections() !== null;
   return (
     <DisplayBlockWrapper {...props}>
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
@@ -28,7 +32,14 @@ export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
                         : "text-sm",
             )}
             placeholder="Enter header text"
+            aria-describedby={inSidebar ? hintId : undefined}
           />
+          {inSidebar ? (
+            <p id={hintId} className="text-xs text-zinc-500">
+              Write headers in the active voice: “Select a date”, not “Date
+              selection”.
+            </p>
+          ) : null}
 
           {/* Compact level selector */}
           <div className="flex items-center gap-2">

@@ -16,3 +16,4 @@ Origins: **User** is the user's own request.
 - The dots are filled in, matching every other timeline-style component in the app. (User)
 - The outline shows no time estimate for its steps, and pages carry no time estimate. (User)
 - Web and mobile both show it, each fitting its platform (`apps/AGENTS.md` web-mobile parity). (User)
+- In the admin form builder, the sidebar's header block editor shows, under the header text field: "Write headers in the active voice: “Select a date”, not “Date selection”." The canvas's inline header editor doesn't show it. (User)
