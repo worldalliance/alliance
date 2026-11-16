@@ -12,9 +12,9 @@ ALL-2234 (step 1 of the plan) is done and ALL-2236 is blocked by ALL-2235, whose
 
 The advisory locks stay. Each cron's body moves into a public method (`sendDueReminders`, `autocompleteDue`, `suspendDue`, `dispatchDue`) that the `@Cron` method runs under the lock. The tests call the body twice at once without the lock, which is the state a lease takeover produces (ALL-2236).
 
-## 3. Contract reminders: the claim's time is the attempt owner
+## 3. Contract reminders: a conditional claim
 
-Each member is claimed with `UPDATE … WHERE contractReminderSentAt IS NULL`, and the send happens only when that update affects a row. A send that fails with `MailNotSentError` releases the claim only where `contractReminderSentAt` still equals the time this attempt wrote, so it cannot clear a newer run's claim. The timestamp serves as the owner, so no column is added. Nothing else writes `contractReminderSentAt`.
+Each member is claimed with `UPDATE … WHERE contractReminderSentAt IS NULL`, and the send happens only when that update affects a row. A send that fails with `MailNotSentError` clears the column again. No other run can claim the member between this attempt's claim and that release, since the column is set the whole time, so the release needs no owner check and no column is added. Nothing else writes `contractReminderSentAt`.
 
 ## 4. Forum autocomplete: atomic create-if-absent in `createActionActivity`
 

@@ -10,7 +10,7 @@ import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
 import { assignExperimentArm } from "src/notifs/experiment-assignment";
 import { User } from "src/user/entities/user.entity";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, IsNull, Repository } from "typeorm";
 import { LOCK_KEYS } from "../notifs/lock-keys";
 import { withPgAdvisoryLock } from "../notifs/lock-utils";
 
@@ -69,10 +69,13 @@ export class ContractReminderWorker {
           experiment: Experiment.ContractReminder,
           userId: user.id,
         });
-        // Marked before the send, so a lost write costs a missed reminder, not a second one.
-        await this.userRepository.update(user.id, {
-          contractReminderSentAt: new Date(),
-        });
+        // Claimed before the send, so a lost write costs a missed reminder,
+        // not a second one.
+        const claim = await this.userRepository.update(
+          { id: user.id, contractReminderSentAt: IsNull() },
+          { contractReminderSentAt: new Date() },
+        );
+        if (claim.affected !== 1) continue;
         const sent = await R.fromPromise(
           this.mailService.sendContractReminderEmail({
             userId: user.id,

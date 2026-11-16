@@ -26,6 +26,7 @@ import {
   giveActiveContract,
   TestContext,
 } from "./e2e-test-utils";
+import { rendezvous } from "./rendezvous";
 
 describe("ContractReminderWorker (e2e)", () => {
   let ctx: TestContext;
@@ -232,6 +233,31 @@ describe("ContractReminderWorker (e2e)", () => {
     await run();
 
     expect(await remindersTo(unmarked.email)).toHaveLength(1);
+  });
+
+  it("reminds once when two runs overlap", async () => {
+    const overlapped = await member({ email: "overlapped@example.com" });
+    const worker = ctx.app.get(ContractReminderWorker);
+    const userRepo = ctx.app.get<Repository<User>>(getRepositoryToken(User));
+    const createQueryBuilder = userRepo.createQueryBuilder.bind(userRepo);
+    const bothSelected = rendezvous({ parties: 2, timeoutMs: 5000 });
+    const select = jest
+      .spyOn(userRepo, "createQueryBuilder")
+      .mockImplementation((...args) => {
+        const builder = createQueryBuilder(...args);
+        const getMany = builder.getMany.bind(builder);
+        builder.getMany = async () => {
+          const users = await getMany();
+          await bothSelected();
+          return users;
+        };
+        return builder;
+      });
+
+    await Promise.all([worker.sendDueReminders(), worker.sendDueReminders()]);
+    select.mockRestore();
+
+    expect(await remindersTo(overlapped.email)).toHaveLength(1);
   });
 
   it("backfills from every past reminder to the member's current email", async () => {
