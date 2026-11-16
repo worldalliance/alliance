@@ -1,0 +1,31 @@
+/* DemiBold covers 600-1000 so KORA never renders heavier than 600. Glyphs outside these latin files fall back to the site's uncapped TT Neoris. */
+@font-face {
+  font-family: "Kora TT Neoris";
+  font-weight: 100 450;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Regular.latin.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "Kora TT Neoris";
+  font-weight: 100 1000;
+  font-style: italic;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Italic.latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Kora TT Neoris";
+  font-weight: 451 599;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-Medium.latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Kora TT Neoris";
+  font-weight: 600 1000;
+  font-style: normal;
+  font-display: swap;
+  src: url("/assets/fonts/redesign/TTNeoris-DemiBold.latin.woff2")
+    format("woff2");
+}
