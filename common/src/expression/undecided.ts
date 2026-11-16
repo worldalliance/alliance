@@ -10,19 +10,18 @@ import {
 import { BinaryOp, ExprKind, UnaryOp, children, type Expr } from "./tree";
 import { guards, readKey, readsGuardedBy } from "./undecided-guards";
 import {
+  NEVER_NULLISH,
+  UNREACHABLE_FALLBACK,
+  textMessage,
+  undecidedMessage,
+  type Culprit,
+} from "./undecided-messages";
+import {
   isNullableType,
   isYesNoType,
   sourceQueries,
   type Span,
 } from "./undecided-source";
-
-/** What a message says a result can be unknown without, as "`count`" or "an item of `marks`"; "" for a literal `null`. */
-export type Culprit = string;
-
-/** `tsc` calls the left of `??` never nullish. */
-const UNREACHABLE_FALLBACK = 2869;
-/** `tsc` calls the right of a `??` inside another `??` never nullish. */
-const NEVER_NULLISH = 2881;
 
 /** A `tsc` error at an operand, parentheses skipped, that the analysis needs gone. */
 export type Excused = Span & { code: number };
@@ -32,26 +31,6 @@ type Analysis = {
   excused: Excused[];
   /** Set when the whole result can be unknown or undecided. */
   root: Culprit | undefined;
-};
-
-export const undecidedMessage = ({
-  culprit,
-  yesNo,
-}: {
-  culprit: Culprit;
-  yesNo: boolean;
-}) => {
-  const advice = yesNo
-    ? "Add `?? false` or `?? true` to decide it then."
-    : "Add `?? …` to choose a value then.";
-  if (culprit === "") return `This can be undecided. ${advice}`;
-  return `This is undecided when ${culprit} has no value. ${advice}`;
-};
-
-const textMessage = (culprit: Culprit) => {
-  const advice = 'Add `?? "…"` to choose what they see instead.';
-  if (culprit === "") return `Members would see no text here. ${advice}`;
-  return `Members without a value for ${culprit} would see no text here. ${advice}`;
 };
 
 /**

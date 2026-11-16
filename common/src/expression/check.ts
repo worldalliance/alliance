@@ -24,12 +24,8 @@ import { dependencyOrder, reads } from "./dependencies";
 import { parseExpression } from "./parse";
 import { printExpression } from "./print";
 import { ExprKind, children, type Expr } from "./tree";
-import {
-  analyze,
-  undecidedMessage,
-  type Culprit,
-  type Excused,
-} from "./undecided";
+import { analyze, type Excused } from "./undecided";
+import { undecidedMessage, type Culprit } from "./undecided-messages";
 import { isNullableType, isYesNoType } from "./undecided-source";
 
 export enum Undecided {
