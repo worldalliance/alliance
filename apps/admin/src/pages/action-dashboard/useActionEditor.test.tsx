@@ -41,7 +41,7 @@ const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
       searchParams: new URLSearchParams(),
       setError: jest.fn(),
     });
-    return editor.worldallianceDialog;
+    return editor.contentDialog;
   };
   render(<Harness />, { wrapper: MemoryRouter });
   return {
@@ -129,6 +129,48 @@ describe("useActionEditor", () => {
       }
     },
   );
+
+  it("asks before saving a body with an absolute site link", async () => {
+    const { result, updateAction } = renderEditor({
+      body: "[Act](https://thealliance.org/actions/53)",
+    });
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    let submitted!: Promise<void>;
+    act(() => {
+      submitted = result.current.handleSubmit(submitEvent);
+    });
+    expect((await screen.findByRole("dialog")).textContent).toContain(
+      "Links to the site should be paths",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await act(() => submitted);
+
+    expect(updateAction).not.toHaveBeenCalled();
+  });
+
+  it("saves a reviewer link, thumbnail or plain-text field on the site without asking", async () => {
+    const { result, updateAction } = renderEditor({
+      reviewers: [{ name: "Staff", url: "https://thealliance.org/people" }],
+    });
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    for (const [name, value] of [
+      ["squareThumbnailImage", "https://thealliance.org/thumbnail"],
+      ["shortDescription", "Details at https://thealliance.org/faq"],
+    ]) {
+      // handleInputChange reads only the event's target.
+      act(() =>
+        result.current.handleInputChange({
+          target: { name, value, type: "text" },
+        } as React.ChangeEvent<HTMLInputElement>),
+      );
+    }
+
+    await act(() => result.current.handleSubmit(submitEvent));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(updateAction).toHaveBeenCalled();
+  });
 
   it("saves without asking when only an author's bio mentions worldalliance", async () => {
     const { result, updateAction } = renderEditor({

@@ -5,7 +5,6 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
-import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
   FORM_RESPONSES_BY_FORMS_MAX_BATCH,
@@ -264,9 +263,7 @@ describe("Tasks (e2e)", () => {
       (field) => field.id === "hero-image",
     );
     expect(imageField).toBeDefined();
-    expect(imageField.images[0].src).toBe(
-      `http://localhost:${devPorts(PortCaller.Server).server}/images/local-image-key`,
-    );
+    expect(imageField.images[0].src).toBe("local-image-key");
 
     const updateResponse = await request(ctx.app.getHttpServer())
       .put(`/tasks/updateForm/${formId}`)

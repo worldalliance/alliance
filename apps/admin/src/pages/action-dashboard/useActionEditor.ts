@@ -5,7 +5,7 @@ import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
-import { useWorldallianceConfirm } from "../../components/useWorldallianceConfirm";
+import { useContentConfirm } from "../../components/useContentConfirm";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
@@ -52,7 +52,7 @@ const draftOf = (input: {
   });
 
 // `form` also holds the fetched action's read-only fields, such as authors'
-// bios, so the worldalliance check covers only the fields edited here.
+// bios, so the save check covers only the fields edited here.
 const AUTHORED_FIELDS: Record<keyof CreateActionDto, boolean> = {
   name: true,
   shortDescription: true,
@@ -134,8 +134,7 @@ export function useActionEditor(params: {
   );
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
-  const { confirmSave, dialog: worldallianceDialog } =
-    useWorldallianceConfirm();
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
 
   useEffect(() => {
     if (isNew) {
@@ -324,7 +323,9 @@ export function useActionEditor(params: {
     const authored = Object.fromEntries(
       Object.entries(formData).filter(([key]) => AUTHORED_KEYS.has(key)),
     );
-    if (!(await confirmSave(authored))) return;
+    // The other authored fields are plain text, images, or reviewer urls the
+    // editor makes absolute, so only the body holds links a path can replace.
+    if (!(await confirmSave(authored, { siteLinksIn: formData.body }))) return;
 
     if (isNew) {
       const result = await R.fromPromise(
@@ -364,7 +365,7 @@ export function useActionEditor(params: {
       draftOf({ form, reviewerRows, cohortExpression, imageKey }) !==
         savedDraft,
     setStaffPreview,
-    worldallianceDialog,
+    contentDialog,
     form,
     reviewerRows,
     setReviewerRows,

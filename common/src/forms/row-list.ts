@@ -25,7 +25,7 @@ import {
   type TextRewrite,
 } from "./variable-interpolation";
 
-const rowPlaceholderPattern = () => /#\{row\.([A-Za-z0-9_]+)\}/g;
+export const rowPlaceholderPattern = () => /#\{row\.([A-Za-z0-9_]+)\}/g;
 
 const ROW_TEXT_PATHS: InterpolatedPaths = {
   displayFields: {

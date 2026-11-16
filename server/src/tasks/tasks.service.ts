@@ -167,7 +167,7 @@ export class TasksService {
       throw new NotFoundException("Form not found");
     }
 
-    return this.transformImageUrls(await this.transformContractFields(form));
+    return this.transformVideoSources(await this.transformContractFields(form));
   }
 
   /**
@@ -242,7 +242,7 @@ export class TasksService {
     }));
   }
 
-  async transformImageUrls(form: Form): Promise<Form> {
+  async transformVideoSources(form: Form): Promise<Form> {
     const snapshot = loadedFormSnapshot(form);
     form.formSnapshot = cloneFormSnapshotWithSchema(
       snapshot,

@@ -190,3 +190,23 @@ it.each([
     expect(putRequests).toBe(1);
   },
 );
+
+it("asks before saving an absolute site link, not a site path or a title", async () => {
+  renderPage();
+  const [link] = await screen.findAllByPlaceholderText("About link (optional)");
+  const [title] = await screen.findAllByPlaceholderText("Brief title");
+
+  fireEvent.change(title, { target: { value: "https://thealliance.org/x" } });
+  fireEvent.change(link, { target: { value: "//thealliance.org/team" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(dialog.textContent).toContain("//thealliance.org/team");
+  expect(dialog.textContent).not.toContain("https://thealliance.org/x");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  fireEvent.change(link, { target: { value: "/team" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(putRequests).toBe(1));
+  expect(screen.queryByRole("dialog")).toBeNull();
+});

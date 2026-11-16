@@ -6,7 +6,7 @@ import {
   thumbnailKey,
   uploadKeyInUrl,
 } from "@alliance/common/image-src";
-import { NodeEnv } from "@alliance/common/node-env";
+import { isDeployed } from "@alliance/common/node-env";
 import {
   GetObjectCommand,
   PutObjectCommand,
@@ -236,17 +236,18 @@ export function getImageSource(string: string) {
     return string;
   }
 
-  if (
-    env("NODE_ENV") === NodeEnv.Production ||
-    env("NODE_ENV") === NodeEnv.Staging
-  ) {
-    if (env("USE_CLOUDFRONT")) {
-      return `https://${requireEnv("CLOUDFRONT_DOMAIN")}/${string}`;
-    }
-    return `${env("APP_URL")}/api/images/${string}`;
+  if (isDeployed(env("NODE_ENV"))) {
+    return cloudfrontSrc(string) ?? `${env("APP_URL")}/api/images/${string}`;
   } else {
     return `http://localhost:${devPorts(PortCaller.Server).server}/images/${string}`;
   }
+}
+
+/** Where CloudFront serves an upload key, in a deployed environment that uses it. */
+export function cloudfrontSrc(key: string): string | undefined {
+  return isDeployed(env("NODE_ENV")) && env("USE_CLOUDFRONT")
+    ? `https://${requireEnv("CLOUDFRONT_DOMAIN")}/${key}`
+    : undefined;
 }
 
 /**

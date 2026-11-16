@@ -4,10 +4,26 @@ import { getImageSource } from "src/images/images.service";
 import type { FormSnapshot } from "./entities/formsnapshot.entity";
 import { formSchemaOf } from "./form-snapshot-schema";
 
-/** The schema getForm serves for a stored snapshot, without the contracts it fills in. */
+/**
+ * The schema getForm serves for a stored snapshot, without the contracts it
+ * fills in. Image sources go out as stored, upload keys included, for clients
+ * to resolve: an editor sends back what it was served, so a url here would be
+ * saved in place of the key.
+ */
 export function servedSchema(snapshot: FormSnapshot): FormSchema {
   const schema = structuredClone(formSchemaOf(snapshot));
-  const pages = schema.pages;
+  serveVideoSources(schema);
+  return schema;
+}
+
+/**
+ * `schema` with page image sources rendered as urls, the shape getForm served
+ * until it sent them as stored, which a legacy client may still echo.
+ * BACKCOMPAT(served-image-urls): goes with the schemaSnapshot submission
+ * branch, BACKCOMPAT(form-snapshot).
+ */
+export function withImageUrls(schema: FormSchema): FormSchema {
+  const rendered = structuredClone(schema);
   const transformElement = (field: Page["fields"][number]): void => {
     if (field.kind === "images") {
       field.images = field.images.map((image) => ({
@@ -21,11 +37,10 @@ export function servedSchema(snapshot: FormSnapshot): FormSchema {
       }
     }
   };
-  for (const page of pages) {
+  for (const page of rendered.pages) {
     page.fields.forEach(transformElement);
   }
-  serveVideoSources(schema);
-  return schema;
+  return rendered;
 }
 
 /** Mobile bundles older than useVideoSource's storage-url check would play an

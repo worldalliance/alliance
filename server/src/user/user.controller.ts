@@ -46,6 +46,7 @@ import {
   UpdateStaffDirectoryDto,
 } from "./dto/staff-directory.dto";
 import {
+  AdminUserListItemDto,
   DeleteUserAdminDto,
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
@@ -166,10 +167,10 @@ export class UserController {
 
   @Get("list")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: UserDto, isArray: true })
-  async listAdmin(): Promise<UserDto[]> {
+  @ApiOkResponse({ type: AdminUserListItemDto, isArray: true })
+  async listAdmin(): Promise<AdminUserListItemDto[]> {
     return (await this.userAdminService.findAllForAdminList()).map(
-      (user) => new UserDto(user),
+      (user) => new AdminUserListItemDto(user),
     );
   }
 

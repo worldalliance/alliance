@@ -2,6 +2,7 @@ import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import type React from "react";
+import { resolveImageSrc } from "../lib/imageSrc";
 
 const DEFAULT_USER_ICON_SRC = "/noun-user-icon.svg";
 
@@ -95,11 +96,12 @@ function AvatarProfile({
   /** Set alongside `size="override"` when the class renders under ~42px. */
   thumbnail?: boolean;
 }) {
+  const src = pfp ? resolveImageSrc(pfp) : null;
   return (
-    <Avatar size={size} className={className} key={pfp ?? "default"}>
-      {pfp ? (
+    <Avatar size={size} className={className} key={src ?? "default"}>
+      {src ? (
         <>
-          <AvatarImage src={thumbnail ? thumbnailSrc(pfp) : pfp} alt={alt} />
+          <AvatarImage src={thumbnail ? thumbnailSrc(src) : src} alt={alt} />
           <AvatarFallback>
             <img
               src={DEFAULT_USER_ICON_SRC}
