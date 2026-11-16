@@ -54,10 +54,7 @@ export default function KoraExamplePage() {
     <SiteRoot className="flex flex-col bg-white">
       <KoraNavbar hideNavLinks />
       <main className="flex flex-1 flex-col" style={{ paddingTop: NAV_HEIGHT }}>
-        <div
-          className="sticky z-30 flex flex-wrap items-center justify-between gap-3 bg-yellow-100 px-5 py-3 text-zinc-900"
-          style={{ top: NAV_HEIGHT }}
-        >
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-yellow-100 px-5 py-3 text-zinc-900">
           <p className="font-medium">{EXAMPLE_COPY.banner}</p>
           <Link to={KORA_PROJECT_PATH} className="min-h-6 underline">
             {EXAMPLE_COPY.back}

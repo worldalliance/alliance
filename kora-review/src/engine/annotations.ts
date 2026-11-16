@@ -17,6 +17,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     floatValue,
     fmt,
     h,
+    icon,
     iso,
     letter,
     markBadge,
@@ -26,6 +27,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     recompute,
     renderScore,
     res,
+    rootEl,
     sheetEl,
     shownSides,
     sideOf,
@@ -95,7 +97,8 @@ export function createAnnotations(ctx: AnnotationsCtx) {
         ),
         h(
           "button",
-          { type: "button", class: "link", onclick: toReplies },
+          { type: "button", class: "big ghost back-btn", onclick: toReplies },
+          icon("arrowUp"),
           "Back to the replies",
         ),
       );
@@ -155,7 +158,7 @@ export function createAnnotations(ctx: AnnotationsCtx) {
   function toReplies() {
     const first = $$(".bubble[tabindex]")[0];
     if (!first) return;
-    first.scrollIntoView({ block: "center" });
+    rootEl.scrollIntoView({ block: "start" });
     first.focus({ preventScroll: true });
   }
   function jumpTo(id: string) {

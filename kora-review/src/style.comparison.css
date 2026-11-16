@@ -83,6 +83,8 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
+  /* With the rules' 8px margin and the thread's 18px padding, 50px below the rules. */
+  margin-top: 24px;
 }
 .kora-review .opener-who {
   display: flex;
