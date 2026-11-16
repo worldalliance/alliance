@@ -1,8 +1,11 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
+import type { Queryable } from "src/datasources/advisory-lock";
+import { phoneNumberTransformer } from "src/utils/phone";
 import { User } from "./entities/user.entity";
 import {
   hasPassword,
   loadedUserTags,
+  lockPhoneNumber,
   memberWithReferral,
   referralLabel,
   textReachable,
@@ -125,6 +128,23 @@ describe("loadedUserTags", () => {
   it("throws when the tags aren't loaded", () => {
     expect(() => loadedUserTags({ id: 3, tags: undefined })).toThrow(
       "tags of user 3 not loaded",
+    );
+  });
+});
+
+describe("lockPhoneNumber", () => {
+  it("locks a number as the column stores it", async () => {
+    const keys: unknown[] = [];
+    const em: Queryable = {
+      queryRunner: { isTransactionActive: true },
+      query: async (_sql, parameters) => keys.push(...parameters),
+    };
+    const formats = ["+1 (415) 555-2671", "(415) 555-2671", "+14155552671"];
+    for (const phoneNumber of formats) {
+      await lockPhoneNumber(em, phoneNumber);
+    }
+    expect(keys).toEqual(
+      formats.map((n) => `phone-number:${phoneNumberTransformer.to(n)}`),
     );
   });
 });
