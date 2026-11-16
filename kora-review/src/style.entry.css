@@ -104,7 +104,7 @@
   gap: 6px;
 }
 .kora-review .field label {
-  font-weight: 700;
+  font-weight: 600;
 }
 .kora-review .field input,
 .kora-review textarea {
@@ -127,7 +127,7 @@
 .kora-review .err {
   color: var(--minus);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .kora-review .fine {
   font-size: 14px;
@@ -158,7 +158,7 @@
   border: 0;
   border-radius: 5px;
   background: transparent;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   color: var(--muted);
 }

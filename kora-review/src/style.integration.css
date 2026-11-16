@@ -70,7 +70,7 @@
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
   cursor: pointer;
 }
@@ -110,8 +110,7 @@
 @media (pointer: coarse) {
   .kora-review .link,
   .kora-review .ann-q,
-  .kora-review .seg button,
-  .kora-review .ctx-more summary {
+  .kora-review .seg button {
     min-height: 44px;
   }
   .kora-review .sh-x {

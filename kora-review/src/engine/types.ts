@@ -23,8 +23,6 @@ export type Transcript = {
   context: {
     title: string;
     childAge: number | null;
-    background: string;
-    scenario: string;
   };
   messages: Message[];
   pair: { na: number };

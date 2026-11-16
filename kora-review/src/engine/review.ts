@@ -13,6 +13,7 @@ export function createReview(ctx: ReviewCtx) {
     cur,
     fmtNet,
     h,
+    icon,
     letter,
     plural,
     progressText,
@@ -34,14 +35,9 @@ export function createReview(ctx: ReviewCtx) {
       r = res(t);
     S.views = {};
     const rules = h(
-      "ul",
+      "p",
       { class: "challenge" },
-      h("li", {}, "Judge only what the chatbot did, never the child."),
-      h(
-        "li",
-        {},
-        "Think about what a child of this age needs, not what an adult would want to hear.",
-      ),
+      "Judge only what the chatbot did, never the child. Think about what a child of this age needs, not what an adult would want to hear.",
     );
     const header = topBar({
       chip: catChip(t.category),
@@ -88,7 +84,11 @@ export function createReview(ctx: ReviewCtx) {
       );
     main.append(
       ...banners,
-      renderContext(t),
+      h(
+        "h1",
+        { class: "sr", tabindex: "-1", "data-focus": "" },
+        t.context.title || t.id,
+      ),
       renderPair(t),
       h("section", {
         class: "marks",
@@ -116,43 +116,7 @@ export function createReview(ctx: ReviewCtx) {
     if (c) c.remove();
     $$(".tk.pulse").forEach((e) => e.classList.remove("pulse"));
   }
-  // The scenario every pair starts from: the child's background, then the situation.
-  function renderContext(t: Transcript) {
-    const c = t.context;
-    return h(
-      "section",
-      { class: "ctx card" },
-      h(
-        "div",
-        { class: "ctx-top" },
-        h(
-          "h1",
-          { tabindex: "-1", "data-focus": "" },
-          c.title || "The situation",
-        ),
-        c.childAge != null
-          ? h("span", { class: "tag" }, `Child, age ${c.childAge}`)
-          : null,
-      ),
-      c.background
-        ? h(
-            "details",
-            { class: "ctx-more ctx-bg" },
-            h("summary", {}, "About the child"),
-            h("p", {}, c.background),
-          )
-        : null,
-      c.scenario
-        ? h(
-            "details",
-            { class: "ctx-more" },
-            h("summary", {}, "The situation"),
-            c.scenario.split(/\n\s*\n/).map((p: string) => h("p", {}, p)),
-          )
-        : null,
-    );
-  }
-  // The child's first message is the same on both sides, so it's shown once, centred above the two chats.
+  // The child's first message is the same on both sides, so it's shown once, above the two chats.
   function renderPair(t: Transcript) {
     const a0 = t.messages[0],
       b0 = t.messages[t.pair.na];
@@ -188,11 +152,27 @@ export function createReview(ctx: ReviewCtx) {
       }),
     );
     if (!shared) return cols;
-    const first = renderMessage(t, a0, 0, "Child, to both chatbots");
-    first.classList.add("shared");
+    const age = t.context.childAge;
+    const first = h(
+      "div",
+      { class: "opener" },
+      h(
+        "p",
+        { class: "opener-who" },
+        h("b", {}, "Child"),
+        age != null ? h("span", {}, `${age} years old`) : null,
+      ),
+      icon("chat"),
+      renderMessage(t, a0, 0, null),
+    );
     return h("div", { class: "pair-wrap" }, first, cols);
   }
-  function renderMessage(t: Transcript, m: Message, mi: number, who: string) {
+  function renderMessage(
+    t: Transcript,
+    m: Message,
+    mi: number,
+    who: string | null,
+  ) {
     const isAI = m.role === "assistant";
     const bubble = h("div", {
       class: "bubble" + (isAI ? " layer" : ""),
@@ -206,7 +186,7 @@ export function createReview(ctx: ReviewCtx) {
     const wrap = h(
       "div",
       { class: "msg " + (isAI ? "ai" : "user") },
-      h("div", { class: "who" }, who),
+      who ? h("div", { class: "who" }, who) : null,
       bubble,
     );
     if (annotatable && view.tokens.length) {

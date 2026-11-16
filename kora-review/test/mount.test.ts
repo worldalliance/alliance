@@ -124,7 +124,9 @@ describe("mountKoraReview", () => {
     await tick(50);
 
     // Reopened on the same pair, with the half-answered ranking below it.
-    expect(el.querySelector(".ctx h1")?.textContent).toBe("Essay due tomorrow");
+    expect(el.querySelector(".thread h1")?.textContent).toBe(
+      "Essay due tomorrow",
+    );
     // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
     const groups = [...rank().querySelectorAll(".seg")].map(
       (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
@@ -293,9 +295,10 @@ describe("mountKoraReview", () => {
     button("Got it", el.querySelector(".kr-intro")!).click();
     await tick(1300);
     const marks = () => el.querySelector(".marks") as HTMLElement;
-    expect(marks().textContent).toContain("No marks on Chatbot A.");
+    expect(marks().textContent).toContain("No marks yet.");
     const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
-    reply.focus();
+    button("Back to the replies", marks()).click();
+    expect(document.activeElement).toBe(reply);
     const press = (key: string, target: Element = reply) =>
       target.dispatchEvent(
         new KeyboardEvent("keydown", { key, bubbles: true }),
@@ -427,7 +430,7 @@ describe("mountKoraReview", () => {
     );
     button("Continue").click();
     await tick(10);
-    expect(el.querySelector(".ctx h1")?.textContent).toBe(
+    expect(el.querySelector(".thread h1")?.textContent).toBe(
       "Alone during a storm",
     );
     await handle!.flush();

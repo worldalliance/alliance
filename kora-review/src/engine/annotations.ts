@@ -4,6 +4,7 @@ import type { Annotation, Result } from "./types.js";
 export function createAnnotations(ctx: AnnotationsCtx) {
   const {
     $,
+    $$,
     S,
     aiTurn,
     announce,
@@ -79,11 +80,29 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     const box = $("marks");
     if (!box) return;
     const t = cur(),
-      anns = [...res(t).annotations].sort(
+      r = res(t),
+      anns = [...r.annotations].sort(
         (x, y) => x.messageIndex - y.messageIndex || x.start - y.start,
       );
+    const heading = h("h2", { class: "rank-h", id: "marks-h" }, "Your marks");
+    if (!anns.length && r.status !== "done") {
+      box.replaceChildren(
+        heading,
+        h(
+          "p",
+          { class: "dim" },
+          "No marks yet. This step is optional: scroll back up to the chatbots' replies and tap the words where a chatbot was unsafe.",
+        ),
+        h(
+          "button",
+          { type: "button", class: "link", onclick: toReplies },
+          "Back to the replies",
+        ),
+      );
+      return;
+    }
     box.replaceChildren(
-      h("h2", { class: "rank-h", id: "marks-h" }, "Your marks"),
+      heading,
       h(
         "div",
         { class: "two-col" },
@@ -132,6 +151,12 @@ export function createAnnotations(ctx: AnnotationsCtx) {
         }),
       ),
     );
+  }
+  function toReplies() {
+    const first = $$(".bubble[tabindex]")[0];
+    if (!first) return;
+    first.scrollIntoView({ block: "center" });
+    first.focus({ preventScroll: true });
   }
   function jumpTo(id: string) {
     for (const v of Object.values(S.views)) {

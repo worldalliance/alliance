@@ -68,8 +68,6 @@ export function createModel(ctx: ModelCtx) {
         context: {
           title: x.scenarioTitle || "",
           childAge: x.childAge ?? null,
-          background: x.childBackground || "",
-          scenario: x.scenario || "",
         },
         messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
         pair: { na: x.conversationA.length },

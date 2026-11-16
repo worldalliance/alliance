@@ -3,7 +3,7 @@
   gap: 6px;
 }
 .kora-review .q-l {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
   line-height: 1.35;
 }
@@ -103,7 +103,7 @@
 }
 .kora-review .slider-ls span.on {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 @media (max-width: 400px) {
   .kora-review .slider-ls {
@@ -135,7 +135,7 @@
 .kora-review .q-hint {
   font-size: 14px;
   color: var(--zero);
-  font-weight: 700;
+  font-weight: 600;
 }
 .kora-review .q .seg button {
   font-size: 14px;
@@ -161,7 +161,7 @@
   min-width: 0;
 }
 .kora-review .svq legend {
-  font-weight: 700;
+  font-weight: 600;
   padding: 0;
   margin-bottom: 6px;
 }
@@ -190,7 +190,7 @@
   border-radius: var(--r);
   border: 1.5px solid var(--line);
   background: var(--card);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
 }
 .kora-review .opt input:checked + span {

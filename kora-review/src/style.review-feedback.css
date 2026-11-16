@@ -24,6 +24,9 @@
   flex-direction: column;
   gap: 12px;
 }
+.kora-review .marks > .link {
+  align-self: flex-start;
+}
 .kora-review .rank {
   display: flex;
   flex-direction: column;
@@ -115,7 +118,7 @@
   position: relative;
 }
 .kora-review .sh-note label {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
 }
 .kora-review .sh-note textarea {
@@ -177,7 +180,7 @@
   border-radius: var(--r);
   padding: 4px 6px 4px 14px;
   min-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
   box-shadow: var(--shadow);
   max-width: calc(100% - 32px);
