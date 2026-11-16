@@ -1,3 +1,5 @@
+import { MATH_OBJECT_NAME } from "../forms/formula-allowlist";
+
 export enum ExprKind {
   Literal = "literal",
   Input = "input",
@@ -76,3 +78,43 @@ export type Expr =
       optional: boolean;
     }
   | { kind: ExprKind.Lambda; params: string[]; body: Expr };
+
+export function children(expr: Expr): readonly Expr[] {
+  switch (expr.kind) {
+    case ExprKind.Literal:
+    case ExprKind.Input:
+    case ExprKind.Ref:
+    case ExprKind.Param:
+      return [];
+    case ExprKind.List:
+      return expr.items;
+    case ExprKind.Record:
+      return expr.entries.map((entry) => entry.value);
+    case ExprKind.Template:
+      return expr.parts;
+    case ExprKind.Unary:
+      return [expr.operand];
+    case ExprKind.Binary:
+      return [expr.left, expr.right];
+    case ExprKind.Conditional:
+      return [expr.test, expr.consequent, expr.alternate];
+    case ExprKind.Member:
+      return [expr.target];
+    case ExprKind.Index:
+      return [expr.target, expr.index];
+    case ExprKind.Call:
+      return expr.args;
+    case ExprKind.Method:
+      return [expr.target, ...expr.args];
+    case ExprKind.Lambda:
+      return [expr.body];
+    default:
+      throw new Error(`unknown kind: ${expr satisfies never}`);
+  }
+}
+
+/** The `Math` function a call's `fn` names, as the parser writes it. */
+export function mathFunctionName(fn: string): string | undefined {
+  const prefix = `${MATH_OBJECT_NAME}.`;
+  return fn.startsWith(prefix) ? fn.slice(prefix.length) : undefined;
+}
