@@ -5,6 +5,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { max } from "date-fns";
 import { randomUUID } from "node:crypto";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
@@ -320,10 +321,7 @@ async function lockBuckets(
 ): Promise<void> {
   // Sorted, so two requests sharing buckets cannot deadlock.
   for (const bucket of limited.map((l) => l.bucket).sort()) {
-    await manager.query(
-      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-      [bucket],
-    );
+    await lockUntilCommit(manager, bucket);
   }
 }
 
