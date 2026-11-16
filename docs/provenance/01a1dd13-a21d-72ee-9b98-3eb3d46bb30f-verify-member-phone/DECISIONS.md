@@ -18,6 +18,7 @@ The work is planned as separate PRs, each with its Linear issue. This directory 
 - **The refusal names the cause.** EVIDENCE.md records that the two research reports differed on explicit against neutral wording; the neutral form implies the same fact and says less about what to do. "Linked to an account" follows the second report: an unverified record doesn't show whose the number is. The user was asked and had not chosen when the design moved to verification, so this is open to change. (agent decision)
 - **The profile update reads the member's row under its row lock.** It used to save a copy read before its write, and a save writes back every column that differs, so a STOP recorded meanwhile was undone. (agent decision)
 - **Every write that sets a phone number, or acts on its holders, first takes an advisory lock on the number**: the profile update on the number it sets, and so a form's phone answer; STOP and START; and verify, a later commit. Verify can then read a number's holders and move it with no other write setting it or updating its holders landing in between. A member leaving the number takes only their row lock. Each takes the lock before any account row lock. (agent decision)
+- **STOP and START record and announce the live members their update changed**, not those a read before it saw. A member can leave a number without its lock (the profile update and verify lock only the number they set), so a STOP to the old number can wait on that member's row and then find them gone. (agent decision)
 
 ## Settings
 

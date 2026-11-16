@@ -4,8 +4,36 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { User } from "src/user/entities/user.entity";
 import { lockPhoneNumber } from "src/user/user.utils";
-import type { Repository } from "typeorm";
+import type { EntityManager, Repository } from "typeorm";
+import { z } from "zod";
 import { MmsOptout } from "./mms-optout.entity";
+
+const changedRows = z.array(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    deletedAt: z.date().nullable(),
+  }),
+);
+
+/**
+ * Updates every account on the number, deleted ones included so a restored one
+ * keeps the opt-out, and returns the live accounts the update changed. A member
+ * who left the number while the update waited on their row is not among them.
+ */
+async function setUnsubscribed(
+  manager: EntityManager,
+  { phoneNumber, unsubscribed }: { phoneNumber: string; unsubscribed: boolean },
+): Promise<Pick<User, "id" | "name">[]> {
+  const { raw } = await manager
+    .createQueryBuilder()
+    .update(User)
+    .set({ phoneNumberUnsubscribed: unsubscribed })
+    .where({ phoneNumber })
+    .returning(`"id", "name", "deletedAt"`)
+    .execute();
+  return changedRows.parse(raw).filter((user) => user.deletedAt === null);
+}
 
 /** Handles E.164 numbers; asynchronous audits avoid Twilio retries. */
 @Injectable()
@@ -24,14 +52,11 @@ export class MmsUnsubService {
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
         await lockPhoneNumber(manager, phoneNumber);
-        const userRepository = manager.getRepository(User);
         const mmsOptoutRepository = manager.getRepository(MmsOptout);
-        const matchingUsers = await userRepository.findBy({ phoneNumber });
-        // Includes deleted accounts, so a restored one keeps the opt-out.
-        await userRepository.update(
-          { phoneNumber },
-          { phoneNumberUnsubscribed: true },
-        );
+        const matchingUsers = await setUnsubscribed(manager, {
+          phoneNumber,
+          unsubscribed: true,
+        });
 
         if (matchingUsers.length === 0) {
           return matchingUsers;
@@ -75,18 +100,11 @@ export class MmsUnsubService {
     phoneNumber: string,
     { rawBody }: { rawBody: string },
   ): Promise<void> {
-    // Read and write in one transaction, then log after commit so audits match
-    // the live members changed and failed writes never announce a resubscribe.
+    // Logs after commit, so a failed write never announces a resubscribe.
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
         await lockPhoneNumber(manager, phoneNumber);
-        const userRepository = manager.getRepository(User);
-        const matchingUsers = await userRepository.findBy({ phoneNumber });
-        await userRepository.update(
-          { phoneNumber },
-          { phoneNumberUnsubscribed: false },
-        );
-        return matchingUsers;
+        return setUnsubscribed(manager, { phoneNumber, unsubscribed: false });
       },
     );
 

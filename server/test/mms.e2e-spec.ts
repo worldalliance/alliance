@@ -246,11 +246,62 @@ describe("Inbound MMS keywords (e2e)", () => {
     await userRepo.softDelete(deleted.id);
 
     await inbound("+14155559002", "STOP").expect(201);
+    await drainEventLogs();
 
     expect(
       await userRepo.findOne({ where: { id: deleted.id }, withDeleted: true }),
     ).toMatchObject({ phoneNumberUnsubscribed: true });
+    expect(await optoutRepo.countBy({ user: { id: deleted.id } })).toBe(0);
+    expect(
+      await eventLogRepo.countBy({
+        event: EventType.SmsUnsubscribe,
+        message: "Unhandled SMS opt-out from +14155559002",
+      }),
+    ).toBe(1);
   });
+
+  it.each([
+    { keyword: "STOP", event: EventType.SmsUnsubscribe, flag: false },
+    { keyword: "START", event: EventType.SmsResubscribe, flag: true },
+  ])(
+    "audits no member who left the number while $keyword waited",
+    async ({ keyword, event, flag }) => {
+      const leaving = await userRepo.save(
+        userRepo.create({
+          email: `leaving-${keyword}@example.com`,
+          password: "pass",
+          name: "Leaving Member",
+          referralSource: ReferralSource.None,
+          phoneNumber: "+14155559003",
+          phoneNumberUnsubscribed: flag,
+        }),
+      );
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await runner.manager.update(User, leaving.id, {
+          phoneNumber: "+14155559004",
+        });
+        const sent = inbound("+14155559003", keyword).then((res) => res.status);
+        await waitForLockWait(ctx.dataSource);
+        await runner.commitTransaction();
+        expect(await sent).toBe(201);
+      } finally {
+        if (runner.isTransactionActive) await runner.rollbackTransaction();
+        await runner.release();
+      }
+      await drainEventLogs();
+
+      expect(await optoutRepo.countBy({ user: { id: leaving.id } })).toBe(0);
+      expect(
+        await eventLogRepo.countBy({ event, user: { id: leaving.id } }),
+      ).toBe(0);
+      expect(await userRepo.findOneByOrFail({ id: leaving.id })).toMatchObject({
+        phoneNumberUnsubscribed: flag,
+      });
+      await userRepo.delete(leaving.id);
+    },
+  );
 
   it("matches the member when STOP arrives in another format", async () => {
     const res = await inbound("(415) 555-9001", "STOP");
