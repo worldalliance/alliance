@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+
+# 10.0.4.27 is the app server, `terraform output app_server_private_ip`.
+scrape_configs:
+  - job_name: app_server_ssr
+    static_configs:
+      - targets: ["10.0.4.27:3000"]
+  - job_name: app_server_api
+    static_configs:
+      - targets: ["10.0.4.27:3005"]
+  - job_name: api_db_readiness
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ["http://10.0.4.27:3005/health/db"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

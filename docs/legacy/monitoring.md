@@ -1,8 +1,4 @@
-## Restarting monitoring if down:
-
-`ssh ec2-user@[monitoring-ip]`
-
-`cd prometheus && docker-compose up -d`
+Access, alerts and deploys are in [docs/monitoring.md](../monitoring.md), and the Prometheus, Grafana and Docker config in `deploy/monitoring/`. What follows is the host's original setup.
 
 ## Steps for setting up Prometheus / Grafana monitoring.
 

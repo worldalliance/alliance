@@ -110,6 +110,7 @@
     "@types/node": "^22.10.7",
     "@types/nodemailer": "^6.4.17",
     "@types/passport-local": "^1.0.38",
+    "@types/pg": "^8.23.1",
     "@types/sharp": "^0.31.1",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/rule-tester": "8.58.0",

@@ -19,10 +19,11 @@ import { CommunityModule } from "./community/community.module";
 import { env } from "./config/env";
 import { ContractModule } from "./contract/contract.module";
 import { CustomLinksModule } from "./custom-links/custom-links.module";
-import { connectionOptions } from "./datasources/dataSource";
+import { connectionOptions } from "./datasources/connection-options";
 import { EventLogModule } from "./eventlog/eventlog.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
+import { HealthModule } from "./health/health.module";
 import { HostedDocsModule } from "./hosted-docs/hosted-docs.module";
 import { ImagesModule } from "./images/images.module";
 import { KoraModule } from "./kora/kora.module";
@@ -86,6 +87,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     ClusterModule,
     TypeOrmModule.forRoot({ ...connectionOptions(), autoLoadEntities: true }),
     ScheduleModule.forRoot(),
+    HealthModule,
     ActionsModule,
     ActionPartnershipsModule,
     ImagesModule,

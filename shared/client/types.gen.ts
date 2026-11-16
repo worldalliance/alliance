@@ -10533,6 +10533,25 @@ export type ClusterUpdateAdminResponses = {
 
 export type ClusterUpdateAdminResponse = ClusterUpdateAdminResponses[keyof ClusterUpdateAdminResponses];
 
+export type HealthDbData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/health/db';
+};
+
+export type HealthDbErrors = {
+    503: HeyApiError;
+};
+
+export type HealthDbError = HealthDbErrors[keyof HealthDbErrors];
+
+export type HealthDbResponses = {
+    200: HealthCheckDto;
+};
+
+export type HealthDbResponse = HealthDbResponses[keyof HealthDbResponses];
+
 export type ActionsFindAllLoggedInData = {
     body?: never;
     path?: never;
