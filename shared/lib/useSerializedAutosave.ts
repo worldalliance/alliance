@@ -4,7 +4,11 @@ type SerializedAutosaveOptions<T> = {
   candidate: T | null;
   save: (candidate: T) => Promise<void>;
   onSaved: (candidate: T) => void;
-  errorMessage: (error: unknown) => string;
+  /**
+   * Returns the message to show, or null when the caller shows the failure
+   * itself. Either way the candidate is held.
+   */
+  onSaveFailed: (error: unknown, candidate: T) => string | null;
   debounceMs: number;
 };
 
@@ -25,15 +29,15 @@ export function useSerializedAutosave<T>({
   candidate,
   save,
   onSaved,
-  errorMessage,
+  onSaveFailed,
   debounceMs,
 }: SerializedAutosaveOptions<T>): SerializedAutosaveState {
   const saveRef = useRef(save);
   const onSavedRef = useRef(onSaved);
-  const errorMessageRef = useRef(errorMessage);
+  const onSaveFailedRef = useRef(onSaveFailed);
   saveRef.current = save;
   onSavedRef.current = onSaved;
-  errorMessageRef.current = errorMessage;
+  onSaveFailedRef.current = onSaveFailed;
 
   const active = useRef(false);
   const mounted = useRef(true);
@@ -105,7 +109,7 @@ export function useSerializedAutosave<T>({
             return;
           }
           failedCandidate.current = candidate;
-          setSaveError(errorMessageRef.current(error));
+          setSaveError(onSaveFailedRef.current(error, candidate));
         })
         .finally(() => {
           active.current = false;

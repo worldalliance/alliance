@@ -96,7 +96,7 @@ export function useSettingsAutosave(
           ),
         );
       },
-      errorMessage: (error) => {
+      onSaveFailed: (error) => {
         console.error("Failed to save settings:", error);
         return errorMessage({
           error,
