@@ -14,8 +14,9 @@ const LINE =
 export function withoutKeys(
   src: string,
   keyPattern: RegExp,
-): Result<string, string> {
+): Result<{ text: string; dropped: string[] }, string> {
   let lines = src.replace(/\r\n?/g, "\n");
+  const dropped = new Set<string>();
   // Removing an entry can join the lines around it into a new one for it.
   for (;;) {
     let text = "";
@@ -30,6 +31,7 @@ export function withoutKeys(
       const newline = lines.indexOf("\n", indices[2]?.[1] ?? keyEnd);
       text += lines.slice(kept, start);
       kept = newline === -1 ? lines.length : newline + 1;
+      dropped.add(key);
     }
     const out = text + lines.slice(kept);
     if (out === lines) break;
@@ -44,13 +46,20 @@ export function withoutKeys(
       "removing the entries changed others; the file or dotenv's grammar is beyond this script",
     );
   }
-  return R.success(lines);
+  return R.success({ text: lines, dropped: [...dropped] });
 }
 
 function main(): void {
-  const [file, pattern, ...extra] = process.argv.slice(2);
-  if (!file || !pattern || extra.length > 0) {
-    console.error("usage: bun scripts/env-without-keys.ts <file> <key-regex>");
+  const [file, pattern, mode, ...extra] = process.argv.slice(2);
+  if (
+    !file ||
+    !pattern ||
+    (mode !== undefined && mode !== "--names") ||
+    extra.length > 0
+  ) {
+    console.error(
+      "usage: bun scripts/env-without-keys.ts <file> <key-regex> [--names]",
+    );
     process.exit(2);
   }
   const result = withoutKeys(
@@ -61,7 +70,8 @@ function main(): void {
     console.error(`env-without-keys: ${file}: ${result.error}`);
     process.exit(1);
   }
-  process.stdout.write(result.value);
+  const { text, dropped } = result.value;
+  process.stdout.write(mode ? `${dropped.sort().join(", ")}\n` : text);
 }
 
 if (import.meta.main) main();

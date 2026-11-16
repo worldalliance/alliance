@@ -7,7 +7,7 @@ import { withoutKeys } from "./env-without-keys";
 
 const PORT = /^PORT$/;
 
-const strip = (src: string) => R.unwrap(withoutKeys(src, PORT));
+const strip = (src: string) => R.unwrap(withoutKeys(src, PORT)).text;
 
 test("withoutKeys removes every form dotenv reads as the key", () => {
   expect(
@@ -36,11 +36,15 @@ test("withoutKeys removes only the line of an unclosed quote", () => {
 });
 
 test("withoutKeys removes the key that removing an entry rejoins", () => {
-  expect(strip("PORT\nPORT=9\n= 4\nB=1\n")).toBe("B=1\n");
+  expect(withoutKeys("PORT\nPORT=9\n= 4\nB=1\n", PORT)).toEqual(
+    R.success({ text: "B=1\n", dropped: ["PORT"] }),
+  );
 });
 
 test("withoutKeys ignores a global pattern's last index", () => {
-  expect(R.unwrap(withoutKeys("PORT=1\nPORT=2\nPORT=3\n", /^PORT$/g))).toBe("");
+  expect(
+    R.unwrap(withoutKeys("PORT=1\nPORT=2\nPORT=3\n", /^PORT$/g)).text,
+  ).toBe("");
 });
 
 test("withoutKeys fails when removing an entry joins others into a new one", () => {
@@ -49,25 +53,31 @@ test("withoutKeys fails when removing an entry joins others into a new one", () 
   );
 });
 
+test("withoutKeys names each key it removed once", () => {
+  expect(
+    R.unwrap(withoutKeys("PORT=1\nA=1\nB=2\nPORT=3\n", /^(PORT|B)$/)).dropped,
+  ).toEqual(["PORT", "B"]);
+});
+
 const dir = mkdtempSync(join(tmpdir(), "env-without-keys-"));
 afterAll(() => rmSync(dir, { recursive: true }));
 
-const cli = (src: string, pattern: string) => {
+const cli = (src: string, ...args: string[]) => {
   const file = join(dir, ".env");
   writeFileSync(file, src);
   const run = Bun.spawnSync([
     process.execPath,
     join(import.meta.dir, "env-without-keys.ts"),
     file,
-    pattern,
+    ...args,
   ]);
   return { file, run };
 };
 
+const src = "XPORT=1\nPORT=2\nX=3\nAPORTB=4\n";
+
 test("the CLI matches only whole keys", () => {
-  expect(
-    cli("XPORT=1\nPORT=2\nX=3\nAPORTB=4\n", "PORT|X").run.stdout.toString(),
-  ).toBe("XPORT=1\nAPORTB=4\n");
+  expect(cli(src, "PORT|X").run.stdout.toString()).toBe("XPORT=1\nAPORTB=4\n");
 });
 
 test("the CLI exits 1 naming the file when withoutKeys fails", () => {
@@ -77,4 +87,15 @@ test("the CLI exits 1 naming the file when withoutKeys fails", () => {
   expect(run.stderr.toString()).toContain(
     `${file}: removing the entries changed others`,
   );
+});
+
+test("the CLI names the keys it removes, sorted", () => {
+  expect(cli("X=1\nPORT=2\n", "PORT|X", "--names").run.stdout.toString()).toBe(
+    "PORT, X\n",
+  );
+  expect(cli("A=1\n", "PORT", "--names").run.stdout.toString()).toBe("\n");
+});
+
+test("the CLI rejects an unknown flag", () => {
+  expect(cli(src, "PORT|X", "--name").run.exitCode).toBe(2);
 });
