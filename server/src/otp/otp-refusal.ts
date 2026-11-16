@@ -12,6 +12,8 @@ import type { OtpStartRefusal, OtpVerifyRefusal } from "./otp.service";
 const DELIVERY_FAILED_MESSAGE: Record<OtpPurpose, string> = {
   [OtpPurpose.KoraSignIn]:
     "We couldn’t send your code. Try again later or use another sign-in method.",
+  [OtpPurpose.PhoneVerification]:
+    "We couldn’t send a code to this number. Check the number or try again later.",
 };
 
 export const WRONG_CODE_MESSAGE = "That code isn’t correct. Try again.";

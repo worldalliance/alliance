@@ -42,6 +42,8 @@ export type PendingOtp = OtpContact & {
 
 type Throttled = { error: OtpError.Throttled; retryAt: Date };
 
+export type StartedOtp = { browserToken: string; pending: PendingOtp };
+
 export type OtpStartRefusal = Throttled | { error: OtpError.DeliveryFailed };
 
 export type OtpVerifyRefusal =
@@ -89,9 +91,7 @@ export class OtpService {
     contact: OtpContact;
     ip: string;
     webOtpHost: string | null;
-  }): Promise<
-    Result<{ browserToken: string; pending: PendingOtp }, OtpStartRefusal>
-  > {
+  }): Promise<Result<StartedOtp, OtpStartRefusal>> {
     const { purpose, contact, ip, webOtpHost } = params;
     const now = new Date();
     const browserToken = randomToken(32);

@@ -829,6 +829,7 @@ export type UserDto = {
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
+    phoneNumberVerified: boolean;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
     lastContractEvent?: ContractEventDto;
@@ -1039,6 +1040,7 @@ export type AdminUserListItemDto = {
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
+    phoneNumberVerified: boolean;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
     lastContractEvent?: ContractEventDto;
@@ -1106,6 +1108,7 @@ export type UserAdminDetailDto = {
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
+    phoneNumberVerified: boolean;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
     lastContractEvent?: ContractEventDto;
@@ -1495,6 +1498,34 @@ export type OnetimeInviteEdgeDto = {
     invitedUserId: number;
 };
 
+export type StartPhoneCodeDto = {
+    /**
+     * E.164
+     */
+    phoneNumber: string;
+};
+
+export type PendingPhoneCodeDto = {
+    /**
+     * Send back with the code to verify it
+     */
+    challengeToken: string;
+    /**
+     * Where the code went, partly hidden
+     */
+    maskedDestination: string;
+    resendAvailableAt: string;
+    expiresAt: string;
+};
+
+export type VerifyPhoneCodeDto = {
+    /**
+     * From the response that sent the code
+     */
+    challengeToken: string;
+    code: string;
+};
+
 export type StreamableFile = {
     [key: string]: unknown;
 };
@@ -1516,6 +1547,127 @@ export type RecordLinkOpeningDto = {
     destination: string;
     platform: LinkOpeningPlatform;
     observedAt: string;
+};
+
+export type NeedsReplyMemberDto = {
+    userId: number;
+    name: string;
+    /**
+     * The member's latest text that still needs a reply; STOP and START texts and handled texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the member's oldest text that no staff reply has followed and staff haven't marked handled arrived
+     */
+    waitingSince: string;
+};
+
+/**
+ * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+ */
+export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+
+export type MmsThreadEventKind = 'marked_handled' | 'marked_needs_reply';
+
+export type MmsThreadEventDto = {
+    id: number;
+    kind: MmsThreadEventKind;
+    /**
+     * Null while that staff member is deleted
+     */
+    markedByName: string | null;
+    createdAt: string;
+};
+
+export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
+
+export type MmsMediaDto = {
+    id: number;
+    contentType: string;
+    status: MmsMediaStatus;
+    /**
+     * Safe to render in an <img>
+     */
+    inline: boolean;
+};
+
+export type MmsMessageDto = {
+    id: number;
+    body: string;
+    direction: MmsDirection;
+    status: string;
+    errorCode: number | null;
+    errorMessage: string | null;
+    createdAt: string;
+    /**
+     * True for texts staff wrote, even once the sender is deleted; false for automated and inbound texts
+     */
+    sentByStaff: boolean;
+    sentByName: string | null;
+    /**
+     * Staff actions taken right after this text, oldest first
+     */
+    events: Array<MmsThreadEventDto>;
+    media: Array<MmsMediaDto>;
+};
+
+export type MmsThreadDto = {
+    phoneNumber: string | null;
+    /**
+     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
+     */
+    textable: boolean;
+    optedOut: boolean;
+    /**
+     * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+     */
+    replyState: ReplyState;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
+};
+
+export type SendStaffTextDto = {
+    body: string;
+};
+
+export type MarkThreadDto = {
+    /**
+     * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
+     */
+    throughId: number;
+};
+
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached' | 'phone_number_moved';
+
+export type EventLogUserDto = {
+    id: number;
+    displayName: string;
+};
+
+export type EventLogDto = {
+    id: string;
+    event: EventType;
+    message: string;
+    blob: {
+        [key: string]: unknown;
+    } | null;
+    createdAt: string;
+    userId: number | null;
+    user?: EventLogUserDto;
+};
+
+export type EventLogListDto = {
+    items: Array<EventLogDto>;
+    totalCount: number;
+    page: number;
+    limit: number;
+    totalPages: number;
 };
 
 export type GetShareLinkDto = {
@@ -1791,125 +1943,102 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type NeedsReplyMemberDto = {
-    userId: number;
-    name: string;
-    /**
-     * The member's latest text that still needs a reply; STOP and START texts and handled texts are skipped
-     */
-    lastMessageBody: string;
-    /**
-     * When the member's oldest text that no staff reply has followed and staff haven't marked handled arrived
-     */
-    waitingSince: string;
+export type ChannelDefaultsDto = {
+    inApp: boolean;
+    push: boolean;
+    text: boolean;
+    email: boolean;
 };
 
-/**
- * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
- */
-export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+export type NotificationKind = 'action_announced' | 'action_reminders' | 'missed_deadline' | 'action_updates' | 'group_members_with_uncompleted_tasks' | 'contract_suspended' | 'contract_reinstated' | 'comments_and_replies' | 'messages' | 'friend_requests' | 'friend_request_accepted' | 'likes' | 'group_member_joined' | 'member_joined_community' | 'community_assigned' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'new_member_referred' | 'recruiting_goals' | 'community_invite_created' | 'community_invite_accepted' | 'community_invite_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
-export type MmsThreadEventKind = 'marked_handled' | 'marked_needs_reply';
+export type NotificationSection = 'actions' | 'groups' | 'forum_and_messages' | 'friends_and_likes';
 
-export type MmsThreadEventDto = {
-    id: number;
-    kind: MmsThreadEventKind;
+export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
+
+export type NotificationCellDto = {
+    channel: NotificationChannel;
     /**
-     * Null while that staff member is deleted
+     * null follows the channel default
      */
-    markedByName: string | null;
-    createdAt: string;
+    override: boolean | null;
+    /**
+     * Whether the member wants this cell now
+     */
+    enabled: boolean;
+    editable: boolean;
 };
 
-export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
-
-export type MmsMediaDto = {
-    id: number;
-    contentType: string;
-    status: MmsMediaStatus;
+export type KindSettingsDto = {
+    kind: NotificationKind;
+    label: string;
+    section: NotificationSection;
+    required: boolean;
     /**
-     * Safe to render in an <img>
+     * What the kind says, with sample names
      */
-    inline: boolean;
+    example: string;
+    cells: Array<NotificationCellDto>;
 };
 
-export type MmsMessageDto = {
-    id: number;
-    body: string;
-    direction: MmsDirection;
-    status: string;
-    errorCode: number | null;
-    errorMessage: string | null;
-    createdAt: string;
+export type ChannelReachabilityDto = {
     /**
-     * True for texts staff wrote, even once the sender is deleted; false for automated and inbound texts
+     * A valid phone number is on file
      */
-    sentByStaff: boolean;
-    sentByName: string | null;
+    textablePhoneNumber: boolean;
     /**
-     * Staff actions taken right after this text, oldest first
+     * The number replied STOP
      */
-    events: Array<MmsThreadEventDto>;
-    media: Array<MmsMediaDto>;
+    textStopped: boolean;
 };
 
-export type MmsThreadDto = {
-    phoneNumber: string | null;
-    /**
-     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
-     */
-    textable: boolean;
-    optedOut: boolean;
-    /**
-     * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
-     */
-    replyState: ReplyState;
-    /**
-     * Up to 100 texts, oldest first: the newest, or those sent before `before`
-     */
-    messages: Array<MmsMessageDto>;
-    /**
-     * Older texts can be loaded with `before`
-     */
-    hasOlder: boolean;
+export type NotificationSettingsDto = {
+    defaults: ChannelDefaultsDto;
+    kinds: Array<KindSettingsDto>;
+    reachability: ChannelReachabilityDto;
 };
 
-export type SendStaffTextDto = {
-    body: string;
+export type UpdateChannelDefaultsDto = {
+    inApp?: boolean;
+    push?: boolean;
+    text?: boolean;
+    email?: boolean;
 };
 
-export type MarkThreadDto = {
+export type UpdateNotificationCellDto = {
+    kind: NotificationKind;
+    channel: NotificationChannel;
     /**
-     * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
+     * null removes the override so the cell follows the default
      */
-    throughId: number;
+    override: boolean | null;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
-
-export type EventLogUserDto = {
-    id: number;
-    displayName: string;
+export type UpdateNotificationSettingsDto = {
+    defaults?: UpdateChannelDefaultsDto;
+    cells?: Array<UpdateNotificationCellDto>;
 };
 
-export type EventLogDto = {
-    id: string;
-    event: EventType;
-    message: string;
-    blob: {
-        [key: string]: unknown;
-    } | null;
-    createdAt: string;
-    userId: number | null;
-    user?: EventLogUserDto;
+export type PreferenceSource = 'member' | 'migrated' | 'new_account';
+
+export type NotificationOverrideAdminDto = {
+    kind: NotificationKind;
+    label: string;
+    channel: NotificationChannel;
+    enabled: boolean;
+    source: PreferenceSource;
+    /**
+     * Whether the override decides a send; false on a kind the member can't set now, such as a leader-only kind for a member who leads no group
+     */
+    inEffect: boolean;
 };
 
-export type EventLogListDto = {
-    items: Array<EventLogDto>;
-    totalCount: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+export type NotificationSettingsAdminDto = {
+    defaults: ChannelDefaultsDto;
+    /**
+     * Every stored override, including ones on kinds the member can't see now
+     */
+    overrides: Array<NotificationOverrideAdminDto>;
 };
 
 export type CreateCommunityDto = {
@@ -2070,104 +2199,6 @@ export type CreateMessageDto = {
      */
     attachments?: Array<string>;
     replyToId?: string;
-};
-
-export type ChannelDefaultsDto = {
-    inApp: boolean;
-    push: boolean;
-    text: boolean;
-    email: boolean;
-};
-
-export type NotificationKind = 'action_announced' | 'action_reminders' | 'missed_deadline' | 'action_updates' | 'group_members_with_uncompleted_tasks' | 'contract_suspended' | 'contract_reinstated' | 'comments_and_replies' | 'messages' | 'friend_requests' | 'friend_request_accepted' | 'likes' | 'group_member_joined' | 'member_joined_community' | 'community_assigned' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'new_member_referred' | 'recruiting_goals' | 'community_invite_created' | 'community_invite_accepted' | 'community_invite_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
-
-export type NotificationSection = 'actions' | 'groups' | 'forum_and_messages' | 'friends_and_likes';
-
-export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
-
-export type NotificationCellDto = {
-    channel: NotificationChannel;
-    /**
-     * null follows the channel default
-     */
-    override: boolean | null;
-    /**
-     * Whether the member wants this cell now
-     */
-    enabled: boolean;
-    editable: boolean;
-};
-
-export type KindSettingsDto = {
-    kind: NotificationKind;
-    label: string;
-    section: NotificationSection;
-    required: boolean;
-    /**
-     * What the kind says, with sample names
-     */
-    example: string;
-    cells: Array<NotificationCellDto>;
-};
-
-export type ChannelReachabilityDto = {
-    /**
-     * A valid phone number is on file
-     */
-    textablePhoneNumber: boolean;
-    /**
-     * The number replied STOP
-     */
-    textStopped: boolean;
-};
-
-export type NotificationSettingsDto = {
-    defaults: ChannelDefaultsDto;
-    kinds: Array<KindSettingsDto>;
-    reachability: ChannelReachabilityDto;
-};
-
-export type UpdateChannelDefaultsDto = {
-    inApp?: boolean;
-    push?: boolean;
-    text?: boolean;
-    email?: boolean;
-};
-
-export type UpdateNotificationCellDto = {
-    kind: NotificationKind;
-    channel: NotificationChannel;
-    /**
-     * null removes the override so the cell follows the default
-     */
-    override: boolean | null;
-};
-
-export type UpdateNotificationSettingsDto = {
-    defaults?: UpdateChannelDefaultsDto;
-    cells?: Array<UpdateNotificationCellDto>;
-};
-
-export type PreferenceSource = 'member' | 'migrated' | 'new_account';
-
-export type NotificationOverrideAdminDto = {
-    kind: NotificationKind;
-    label: string;
-    channel: NotificationChannel;
-    enabled: boolean;
-    source: PreferenceSource;
-    /**
-     * Whether the override decides a send; false on a kind the member can't set now, such as a leader-only kind for a member who leads no group
-     */
-    inEffect: boolean;
-};
-
-export type NotificationSettingsAdminDto = {
-    defaults: ChannelDefaultsDto;
-    /**
-     * Every stored override, including ones on kinds the member can't see now
-     */
-    overrides: Array<NotificationOverrideAdminDto>;
 };
 
 export type ContractDescriptionItem = {
@@ -8131,6 +8162,52 @@ export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponses = {
 
 export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponse = UserOnetimeInviteGetOnetimeInvitesByRequesterResponses[keyof UserOnetimeInviteGetOnetimeInvitesByRequesterResponses];
 
+export type UserPhoneSendCodeData = {
+    body: StartPhoneCodeDto;
+    path?: never;
+    query?: never;
+    url: '/user/phone/code';
+};
+
+export type UserPhoneSendCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserPhoneSendCodeError = UserPhoneSendCodeErrors[keyof UserPhoneSendCodeErrors];
+
+export type UserPhoneSendCodeResponses = {
+    200: PendingPhoneCodeDto;
+};
+
+export type UserPhoneSendCodeResponse = UserPhoneSendCodeResponses[keyof UserPhoneSendCodeResponses];
+
+export type UserPhoneVerifyCodeData = {
+    body: VerifyPhoneCodeDto;
+    path?: never;
+    query?: never;
+    url: '/user/phone/code/verify';
+};
+
+export type UserPhoneVerifyCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserPhoneVerifyCodeError = UserPhoneVerifyCodeErrors[keyof UserPhoneVerifyCodeErrors];
+
+export type UserPhoneVerifyCodeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type UserPhoneVerifyCodeResponse = UserPhoneVerifyCodeResponses[keyof UserPhoneVerifyCodeResponses];
+
 export type ImagesGetImageData = {
     body?: never;
     path: {
@@ -8250,6 +8327,228 @@ export type LinkOpeningRecordResponses = {
 };
 
 export type LinkOpeningRecordResponse = LinkOpeningRecordResponses[keyof LinkOpeningRecordResponses];
+
+export type MmsHandleInboundMmsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms/inbound';
+};
+
+export type MmsHandleInboundMmsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type MmsHandleInboundMmsError = MmsHandleInboundMmsErrors[keyof MmsHandleInboundMmsErrors];
+
+export type MmsHandleInboundMmsResponses = {
+    200: string;
+};
+
+export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadNeedsReplyAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply';
+};
+
+export type MmsThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyAdminError = MmsThreadNeedsReplyAdminErrors[keyof MmsThreadNeedsReplyAdminErrors];
+
+export type MmsThreadNeedsReplyAdminResponses = {
+    200: Array<NeedsReplyMemberDto>;
+};
+
+export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+
+export type MmsThreadMediaAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/mms-threads/media/{id}';
+};
+
+export type MmsThreadMediaAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMediaAdminError = MmsThreadMediaAdminErrors[keyof MmsThreadMediaAdminErrors];
+
+export type MmsThreadGetThreadAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadGetThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetThreadAdminError = MmsThreadGetThreadAdminErrors[keyof MmsThreadGetThreadAdminErrors];
+
+export type MmsThreadGetThreadAdminResponses = {
+    200: MmsThreadDto;
+};
+
+export type MmsThreadGetThreadAdminResponse = MmsThreadGetThreadAdminResponses[keyof MmsThreadGetThreadAdminResponses];
+
+export type MmsThreadSendTextAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadSendTextAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendTextAdminError = MmsThreadSendTextAdminErrors[keyof MmsThreadSendTextAdminErrors];
+
+export type MmsThreadSendTextAdminResponses = {
+    200: MmsMessageDto;
+};
+
+export type MmsThreadSendTextAdminResponse = MmsThreadSendTextAdminResponses[keyof MmsThreadSendTextAdminResponses];
+
+export type MmsThreadMarkOptedOutAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/opt-out';
+};
+
+export type MmsThreadMarkOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkOptedOutAdminError = MmsThreadMarkOptedOutAdminErrors[keyof MmsThreadMarkOptedOutAdminErrors];
+
+export type MmsThreadMarkOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkOptedOutAdminResponse = MmsThreadMarkOptedOutAdminResponses[keyof MmsThreadMarkOptedOutAdminResponses];
+
+export type MmsThreadMarkHandledAdminData = {
+    body: MarkThreadDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/handled';
+};
+
+export type MmsThreadMarkHandledAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkHandledAdminError = MmsThreadMarkHandledAdminErrors[keyof MmsThreadMarkHandledAdminErrors];
+
+export type MmsThreadMarkHandledAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkHandledAdminResponse = MmsThreadMarkHandledAdminResponses[keyof MmsThreadMarkHandledAdminResponses];
+
+export type MmsThreadMarkNeedsReplyAdminData = {
+    body: MarkThreadDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/needs-reply';
+};
+
+export type MmsThreadMarkNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkNeedsReplyAdminError = MmsThreadMarkNeedsReplyAdminErrors[keyof MmsThreadMarkNeedsReplyAdminErrors];
+
+export type MmsThreadMarkNeedsReplyAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkNeedsReplyAdminResponse = MmsThreadMarkNeedsReplyAdminResponses[keyof MmsThreadMarkNeedsReplyAdminResponses];
+
+export type EventLogFindAllAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        eventType?: EventType;
+    };
+    url: '/eventlog';
+};
+
+export type EventLogFindAllAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type EventLogFindAllAdminError = EventLogFindAllAdminErrors[keyof EventLogFindAllAdminErrors];
+
+export type EventLogFindAllAdminResponses = {
+    200: EventLogListDto;
+};
+
+export type EventLogFindAllAdminResponse = EventLogFindAllAdminResponses[keyof EventLogFindAllAdminResponses];
+
+export type EventLogFindOneAdminData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/eventlog/{id}';
+};
+
+export type EventLogFindOneAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type EventLogFindOneAdminError = EventLogFindOneAdminErrors[keyof EventLogFindOneAdminErrors];
+
+export type EventLogFindOneAdminResponses = {
+    200: EventLogDto;
+};
+
+export type EventLogFindOneAdminResponse = EventLogFindOneAdminResponses[keyof EventLogFindOneAdminResponses];
 
 export type ShareUrlsGetShareLinkData = {
     body: GetShareLinkDto;
@@ -8989,227 +9288,73 @@ export type NotifsLinkClickResponses = {
 
 export type NotifsLinkClickResponse = NotifsLinkClickResponses[keyof NotifsLinkClickResponses];
 
-export type MmsHandleInboundMmsData = {
+export type NotificationSettingsGetData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/mms/inbound';
+    url: '/user/notification-settings';
 };
 
-export type MmsHandleInboundMmsErrors = {
+export type NotificationSettingsGetErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type MmsHandleInboundMmsError = MmsHandleInboundMmsErrors[keyof MmsHandleInboundMmsErrors];
+export type NotificationSettingsGetError = NotificationSettingsGetErrors[keyof NotificationSettingsGetErrors];
 
-export type MmsHandleInboundMmsResponses = {
-    200: string;
+export type NotificationSettingsGetResponses = {
+    200: NotificationSettingsDto;
 };
 
-export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+export type NotificationSettingsGetResponse = NotificationSettingsGetResponses[keyof NotificationSettingsGetResponses];
 
-export type MmsThreadNeedsReplyAdminData = {
-    body?: never;
+export type NotificationSettingsUpdateData = {
+    body: UpdateNotificationSettingsDto;
     path?: never;
     query?: never;
-    url: '/mms-threads/needs-reply';
+    url: '/user/notification-settings';
 };
 
-export type MmsThreadNeedsReplyAdminErrors = {
-    401: HeyApiError;
+export type NotificationSettingsUpdateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
 };
 
-export type MmsThreadNeedsReplyAdminError = MmsThreadNeedsReplyAdminErrors[keyof MmsThreadNeedsReplyAdminErrors];
+export type NotificationSettingsUpdateError = NotificationSettingsUpdateErrors[keyof NotificationSettingsUpdateErrors];
 
-export type MmsThreadNeedsReplyAdminResponses = {
-    200: Array<NeedsReplyMemberDto>;
+export type NotificationSettingsUpdateResponses = {
+    200: NotificationSettingsDto;
 };
 
-export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
 
-export type MmsThreadMediaAdminData = {
+export type NotificationSettingsGetAdminData = {
     body?: never;
     path: {
         id: number;
     };
     query?: never;
-    url: '/mms-threads/media/{id}';
+    url: '/user/userdetail/{id}/notification-settings';
 };
 
-export type MmsThreadMediaAdminErrors = {
-    401: HeyApiError;
-};
-
-export type MmsThreadMediaAdminError = MmsThreadMediaAdminErrors[keyof MmsThreadMediaAdminErrors];
-
-export type MmsThreadGetThreadAdminData = {
-    body?: never;
-    path: {
-        userId: number;
-    };
-    query?: {
-        /**
-         * Return texts sent before the text with this id
-         */
-        before?: number;
-    };
-    url: '/mms-threads/{userId}';
-};
-
-export type MmsThreadGetThreadAdminErrors = {
-    401: HeyApiError;
-};
-
-export type MmsThreadGetThreadAdminError = MmsThreadGetThreadAdminErrors[keyof MmsThreadGetThreadAdminErrors];
-
-export type MmsThreadGetThreadAdminResponses = {
-    200: MmsThreadDto;
-};
-
-export type MmsThreadGetThreadAdminResponse = MmsThreadGetThreadAdminResponses[keyof MmsThreadGetThreadAdminResponses];
-
-export type MmsThreadSendTextAdminData = {
-    body: SendStaffTextDto;
-    path: {
-        userId: number;
-    };
-    query?: never;
-    url: '/mms-threads/{userId}';
-};
-
-export type MmsThreadSendTextAdminErrors = {
-    401: HeyApiError;
-};
-
-export type MmsThreadSendTextAdminError = MmsThreadSendTextAdminErrors[keyof MmsThreadSendTextAdminErrors];
-
-export type MmsThreadSendTextAdminResponses = {
-    200: MmsMessageDto;
-};
-
-export type MmsThreadSendTextAdminResponse = MmsThreadSendTextAdminResponses[keyof MmsThreadSendTextAdminResponses];
-
-export type MmsThreadMarkOptedOutAdminData = {
-    body?: never;
-    path: {
-        userId: number;
-    };
-    query?: never;
-    url: '/mms-threads/{userId}/opt-out';
-};
-
-export type MmsThreadMarkOptedOutAdminErrors = {
-    401: HeyApiError;
-};
-
-export type MmsThreadMarkOptedOutAdminError = MmsThreadMarkOptedOutAdminErrors[keyof MmsThreadMarkOptedOutAdminErrors];
-
-export type MmsThreadMarkOptedOutAdminResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type MmsThreadMarkOptedOutAdminResponse = MmsThreadMarkOptedOutAdminResponses[keyof MmsThreadMarkOptedOutAdminResponses];
-
-export type MmsThreadMarkHandledAdminData = {
-    body: MarkThreadDto;
-    path: {
-        userId: number;
-    };
-    query?: never;
-    url: '/mms-threads/{userId}/handled';
-};
-
-export type MmsThreadMarkHandledAdminErrors = {
-    401: HeyApiError;
-};
-
-export type MmsThreadMarkHandledAdminError = MmsThreadMarkHandledAdminErrors[keyof MmsThreadMarkHandledAdminErrors];
-
-export type MmsThreadMarkHandledAdminResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type MmsThreadMarkHandledAdminResponse = MmsThreadMarkHandledAdminResponses[keyof MmsThreadMarkHandledAdminResponses];
-
-export type MmsThreadMarkNeedsReplyAdminData = {
-    body: MarkThreadDto;
-    path: {
-        userId: number;
-    };
-    query?: never;
-    url: '/mms-threads/{userId}/needs-reply';
-};
-
-export type MmsThreadMarkNeedsReplyAdminErrors = {
-    401: HeyApiError;
-};
-
-export type MmsThreadMarkNeedsReplyAdminError = MmsThreadMarkNeedsReplyAdminErrors[keyof MmsThreadMarkNeedsReplyAdminErrors];
-
-export type MmsThreadMarkNeedsReplyAdminResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type MmsThreadMarkNeedsReplyAdminResponse = MmsThreadMarkNeedsReplyAdminResponses[keyof MmsThreadMarkNeedsReplyAdminResponses];
-
-export type EventLogFindAllAdminData = {
-    body?: never;
-    path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-        eventType?: EventType;
-    };
-    url: '/eventlog';
-};
-
-export type EventLogFindAllAdminErrors = {
+export type NotificationSettingsGetAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type EventLogFindAllAdminError = EventLogFindAllAdminErrors[keyof EventLogFindAllAdminErrors];
+export type NotificationSettingsGetAdminError = NotificationSettingsGetAdminErrors[keyof NotificationSettingsGetAdminErrors];
 
-export type EventLogFindAllAdminResponses = {
-    200: EventLogListDto;
+export type NotificationSettingsGetAdminResponses = {
+    200: NotificationSettingsAdminDto;
 };
 
-export type EventLogFindAllAdminResponse = EventLogFindAllAdminResponses[keyof EventLogFindAllAdminResponses];
-
-export type EventLogFindOneAdminData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/eventlog/{id}';
-};
-
-export type EventLogFindOneAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type EventLogFindOneAdminError = EventLogFindOneAdminErrors[keyof EventLogFindOneAdminErrors];
-
-export type EventLogFindOneAdminResponses = {
-    200: EventLogDto;
-};
-
-export type EventLogFindOneAdminResponse = EventLogFindOneAdminResponses[keyof EventLogFindOneAdminResponses];
+export type NotificationSettingsGetAdminResponse = NotificationSettingsGetAdminResponses[keyof NotificationSettingsGetAdminResponses];
 
 export type CommunityCreateCommunityAdminData = {
     body: CreateCommunityDto;
@@ -10281,74 +10426,6 @@ export type MessageGetMessagesResponses = {
 };
 
 export type MessageGetMessagesResponse = MessageGetMessagesResponses[keyof MessageGetMessagesResponses];
-
-export type NotificationSettingsGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/notification-settings';
-};
-
-export type NotificationSettingsGetErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type NotificationSettingsGetError = NotificationSettingsGetErrors[keyof NotificationSettingsGetErrors];
-
-export type NotificationSettingsGetResponses = {
-    200: NotificationSettingsDto;
-};
-
-export type NotificationSettingsGetResponse = NotificationSettingsGetResponses[keyof NotificationSettingsGetResponses];
-
-export type NotificationSettingsUpdateData = {
-    body: UpdateNotificationSettingsDto;
-    path?: never;
-    query?: never;
-    url: '/user/notification-settings';
-};
-
-export type NotificationSettingsUpdateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type NotificationSettingsUpdateError = NotificationSettingsUpdateErrors[keyof NotificationSettingsUpdateErrors];
-
-export type NotificationSettingsUpdateResponses = {
-    200: NotificationSettingsDto;
-};
-
-export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
-
-export type NotificationSettingsGetAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/userdetail/{id}/notification-settings';
-};
-
-export type NotificationSettingsGetAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type NotificationSettingsGetAdminError = NotificationSettingsGetAdminErrors[keyof NotificationSettingsGetAdminErrors];
-
-export type NotificationSettingsGetAdminResponses = {
-    200: NotificationSettingsAdminDto;
-};
-
-export type NotificationSettingsGetAdminResponse = NotificationSettingsGetAdminResponses[keyof NotificationSettingsGetAdminResponses];
 
 export type ContractGetCurrentData = {
     body?: never;

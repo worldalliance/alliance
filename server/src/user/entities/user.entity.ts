@@ -121,6 +121,13 @@ export class User extends UserRetiredColumns {
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
 
+  @Column({
+    type: "timestamptz",
+    nullable: true,
+    comment: "When the member entered a code sent to phoneNumber",
+  })
+  phoneNumberVerifiedAt: Date | null;
+
   @Column({ default: false })
   phoneNumberUnsubscribed: boolean;
 

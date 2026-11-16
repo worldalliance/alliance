@@ -221,8 +221,10 @@ export class FormProfileAnswersService {
   }
 
   /**
-   * Saves first, so a number another live account holds, or takes
-   * mid-submission, is skipped before its welcome text goes out.
+   * BACKCOMPAT(phone-verification): saves a form's number without a code;
+   * remove once no client older than the code step is in use. Saves first, so
+   * a number another live account holds, or takes mid-submission, is skipped
+   * before its welcome text goes out.
    */
   private async savePhoneNumber(
     user: User,

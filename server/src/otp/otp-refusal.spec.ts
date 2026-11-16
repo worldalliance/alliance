@@ -26,6 +26,17 @@ describe("otpRefusalException", () => {
     });
   });
 
+  it("words a failed phone verification send for that purpose", () => {
+    expect(
+      otpRefusalException(
+        { error: OtpError.DeliveryFailed },
+        OtpPurpose.PhoneVerification,
+      ).message,
+    ).toBe(
+      "We couldn’t send a code to this number. Check the number or try again later.",
+    );
+  });
+
   it("says how long a throttled caller waits, rounding up", () => {
     const retryAt = new Date(
       Date.now() + milliseconds({ minutes: 4, seconds: 10 }),

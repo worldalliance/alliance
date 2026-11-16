@@ -4,6 +4,7 @@ import { OTP_TTL_MS } from "./otp-limits";
 /** What a code is for. Each has its own wording and its own challenges. */
 export enum OtpPurpose {
   KoraSignIn = "kora_sign_in",
+  PhoneVerification = "phone_verification",
 }
 
 export enum OtpChannel {
@@ -22,6 +23,10 @@ const OTP_COPY: Record<OtpPurpose, OtpCopy> = {
   [OtpPurpose.KoraSignIn]: {
     codeLabel: "sign-in code",
     emailAction: "continue to Safer Chatbots for Children",
+  },
+  [OtpPurpose.PhoneVerification]: {
+    codeLabel: "phone verification code",
+    emailAction: "confirm your phone number",
   },
 };
 
