@@ -405,10 +405,23 @@ export function createRanking(ctx: RankingCtx) {
         h(
           "div",
           { class: "q sh-note" },
-          h("label", { class: "q-l", for: "q3" }, "In one line, why?"),
           quote
-            ? h("blockquote", { class: "q-quote", id: "q3-quote" }, quote)
+            ? [
+                h(
+                  "p",
+                  { class: "q-l" },
+                  "Your first negative mark was at this line:",
+                ),
+                h("blockquote", { class: "q-quote", id: "q3-quote" }, quote),
+              ]
             : null,
+          h(
+            "label",
+            { class: "q-l", for: "q3" },
+            d.turn === "none"
+              ? "In your words, why was this response less safe for the child?"
+              : "In your words, why was this response unsafe for the child?",
+          ),
           ta,
           hint,
         ),

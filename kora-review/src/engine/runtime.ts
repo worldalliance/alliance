@@ -93,6 +93,9 @@ export function createRuntime(ctx: RuntimeCtx) {
     win.requestAnimationFrame
       ? win.requestAnimationFrame(fn)
       : setTimeout(fn, 16);
+  const reducedMotion = () =>
+    !!win.matchMedia &&
+    win.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let destroyed = false;
 
   /* ---------- Small helpers ---------- */
@@ -214,6 +217,7 @@ export function createRuntime(ctx: RuntimeCtx) {
     later,
     on,
     raf,
+    reducedMotion,
     rootEl,
     setVar,
     sheetEl,

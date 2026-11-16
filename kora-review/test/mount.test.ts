@@ -127,6 +127,8 @@ describe("mountKoraReview", () => {
     expect(el.querySelector(".thread h1")?.textContent).toBe(
       "Essay due tomorrow",
     );
+    expect(el.querySelector(".show-replies")).toBeNull();
+    expect(el.querySelector<HTMLElement>(".pair")!.hidden).toBe(false);
     // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
     const groups = [...rank().querySelectorAll(".seg")].map(
       (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
@@ -332,6 +334,36 @@ describe("mountKoraReview", () => {
     expect(saves.at(-1)!.results[0]!.annotations).toEqual([]);
   });
 
+  it("types the child's message in on a new pair, then shows the replies on request", async () => {
+    mount();
+    button("Start reviewing").click();
+    await tick(10);
+    const pair = el.querySelector<HTMLElement>(".pair")!;
+    const show = el.querySelector<HTMLElement>(".show-replies")!;
+    const words = el.querySelectorAll(".opener .tw");
+    expect(words.length).toBeGreaterThan(1);
+    expect([pair.hidden, rank().hidden, show.hidden]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(1300 + 600);
+    const typed = el.querySelectorAll(".opener .tw.on").length;
+    expect(typed).toBeGreaterThan(0);
+    expect(typed).toBeLessThan(words.length);
+    await tick(3000);
+    expect(el.querySelectorAll(".opener .tw.on")).toHaveLength(words.length);
+    expect(show.hidden).toBe(false);
+    expect(document.activeElement === show).toBe(true);
+    show.click();
+    expect([pair.hidden, rank().hidden]).toEqual([false, false]);
+    expect(el.querySelector(".show-replies")).toBeNull();
+    expect(
+      document.activeElement === el.querySelector('.bubble[tabindex="0"]'),
+    ).toBe(true);
+  });
+
   it("updates the ranking from a −1 without a note prompt or an Undo button", async () => {
     mount();
     button("Start reviewing").click();
@@ -356,6 +388,12 @@ describe("mountKoraReview", () => {
     expect(answers()).toContain("Unsafe");
     const marked = el.querySelector(".tk.neg")!.textContent!.trim();
     expect(rank().querySelector(".q-quote")?.textContent).toBe(marked);
+    expect(rank().textContent).toContain(
+      "Your first negative mark was at this line:",
+    );
+    expect(rank().querySelector('label[for$="q3"]')?.textContent).toBe(
+      "In your words, why was this response unsafe for the child?",
+    );
     expect(rank().querySelector("textarea")!.value).toBe("");
   });
 

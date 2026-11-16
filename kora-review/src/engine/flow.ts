@@ -22,15 +22,17 @@ export function createFlow(ctx: FlowCtx) {
     nextPendingIndex,
     on,
     progressText,
+    reducedMotion,
     refreshList,
     res,
     reviewed,
     restore,
     rootEl,
-    win,
   } = ctx;
   const closeSheet: Late["closeSheet"] = (...args) =>
     ctx.late().closeSheet(...args);
+  const playOpener: Late["playOpener"] = (...args) =>
+    ctx.late().playOpener(...args);
   const needsWarning: Late["needsWarning"] = (...args) =>
     ctx.late().needsWarning(...args);
   const renderExit: Late["renderExit"] = (...args) =>
@@ -98,12 +100,15 @@ export function createFlow(ctx: FlowCtx) {
     closeSheet();
     const t = cur();
     ensure(t).startedAt ||= iso();
-    renderReview();
+    renderReview(!wasStarted);
     toTop();
     if (doc.visibilityState !== "hidden") openedAt = Date.now();
     // The question intro is shown when the question changes, but not for a pair the reviewer has opened before.
     if (t.challenge !== S.lastChallenge && !wasStarted) showIntro(t);
-    else focusScreen();
+    else {
+      focusScreen();
+      playOpener();
+    }
     S.lastChallenge = t.challenge;
     changed();
   }
@@ -161,15 +166,13 @@ export function createFlow(ctx: FlowCtx) {
   function fadeIntro() {
     if (!intro || intro.el.classList.contains("fading")) return;
     intro.el.classList.add("fading");
-    const reduce =
-      win.matchMedia &&
-      win.matchMedia("(prefers-reduced-motion: reduce)").matches;
     intro.timer = later(
       () => {
         closeIntro();
         focusScreen();
+        playOpener();
       },
-      reduce ? 0 : INTRO_FADE_MS,
+      reducedMotion() ? 0 : INTRO_FADE_MS,
     );
   }
   function closeIntro() {

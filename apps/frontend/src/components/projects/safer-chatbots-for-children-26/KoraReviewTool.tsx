@@ -64,7 +64,7 @@ export function KoraReviewTool({
       <div
         ref={mountAt}
         data-kora-theme="light"
-        className="[--kora-font-family:var(--site-font-body)] [--kora-font-family-display:var(--site-font-body)] [--kora-top-offset:var(--site-nav-height)]"
+        className="flex flex-1 flex-col *:flex-1 [--kora-font-family:var(--site-font-body)] [--kora-font-family-display:var(--site-font-body)] [--kora-top-offset:var(--site-nav-height)]"
       />
     </>
   );

@@ -264,7 +264,8 @@ export const exportSchema: Record<string, unknown> = {
         q3_text: {
           type: "string",
           maxLength: 280,
-          description: "In one line, why.",
+          description:
+            "Why the weaker AI's response was unsafe, in the reviewer's words, after a `> ` quote of their first −1 mark on it when there is one.",
         },
         pairPosition: {
           type: "integer",
