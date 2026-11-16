@@ -36,7 +36,7 @@ Not chosen: counting every unsent row as coverage. That would let a sibling's fa
 
 ## 7. The forum autocomplete spec splits along fixtures and recovery
 
-The new overlap test would have pushed `server/test/forum-action-completer.worker.e2e-spec.ts` past its 650-line baseline waiver. A codex subagent proposed splits; this follows its option 2 with one change. Shared builders and cleanup move to `forum-action-completer-fixtures.ts`. The decision, recovery and overlap tests move to `forum-action-completer-recovery.e2e-spec.ts`, which keeps `createUndecidedForumAction` local. Both specs are under 500 lines, so the waiver is gone.
+The new overlap test would have pushed `server/test/forum-action-completer.worker.e2e-spec.ts` past its 650-line baseline waiver. A codex subagent proposed splits; this follows its option 2 with one change. Shared builders and cleanup move to `forum-action-completer-fixtures.ts`. The decision, recovery and overlap tests move to `forum-action-completer-decisions.e2e-spec.ts`, which keeps `createUndecidedForumAction` local. Both specs are under 500 lines, so the waiver is gone.
 
 ## 8. The migration carries only the new column
 
