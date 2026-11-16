@@ -40,6 +40,7 @@ export function createReview(ctx: ReviewCtx) {
   // A pair opened for the first time types the child's message in, and keeps the replies behind a button.
   let opening: {
     words: HTMLElement[];
+    dots: HTMLElement;
     button: HTMLElement;
     hidden: HTMLElement[];
   } | null = null;
@@ -125,8 +126,18 @@ export function createReview(ctx: ReviewCtx) {
       const hidden = [coach, cols, marks, rank].filter((e) => e !== null);
       for (const e of hidden) e.hidden = true;
       const bubble = opener.querySelector<HTMLElement>(".bubble");
+      const dots = h(
+        "span",
+        { class: "typing-dots", "aria-hidden": "true" },
+        h("span"),
+        h("span"),
+        h("span"),
+      );
+      const words = bubble ? splitWords(bubble) : [];
+      bubble?.prepend(dots);
       opening = {
-        words: bubble ? splitWords(bubble) : [],
+        words,
+        dots,
         button: showReplies,
         hidden,
       };
@@ -186,6 +197,7 @@ export function createReview(ctx: ReviewCtx) {
     const o = opening;
     if (!o) return;
     const done = () => {
+      o.dots.remove();
       for (const w of o.words) w.classList.add("on");
       o.button.hidden = false;
       const a = o.button.ownerDocument.activeElement;
@@ -203,6 +215,7 @@ export function createReview(ctx: ReviewCtx) {
         done();
         return;
       }
+      o.dots.remove();
       o.words[i++].classList.add("on");
       typer = later(next, step);
     };

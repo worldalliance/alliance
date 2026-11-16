@@ -355,9 +355,12 @@ describe("mountKoraReview", () => {
       true,
     ]);
     button("Got it", el.querySelector(".kr-intro")!).click();
-    await tick(1300 + 600);
+    await tick(1300 + 300);
+    expect(el.querySelector(".opener .typing-dots")).not.toBeNull();
+    await tick(300);
     const typed = el.querySelectorAll(".opener .tw.on").length;
     expect(typed).toBeGreaterThan(0);
+    expect(el.querySelector(".opener .typing-dots")).toBeNull();
     expect(typed).toBeLessThan(words.length);
     await tick(3000);
     expect(el.querySelectorAll(".opener .tw.on")).toHaveLength(words.length);

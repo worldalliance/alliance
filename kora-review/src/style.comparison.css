@@ -30,6 +30,40 @@
 .kora-review .opener .tw:not(.on) {
   display: none;
 }
+.kora-review .typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 1.7em;
+}
+.kora-review .bubble > .typing-dots + * {
+  margin-top: 0;
+}
+.kora-review .typing-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: kora-typing 1s ease-in-out infinite;
+}
+.kora-review .typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.kora-review .typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes kora-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: none;
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
 .kora-review .show-replies {
   flex: none;
   align-self: center;

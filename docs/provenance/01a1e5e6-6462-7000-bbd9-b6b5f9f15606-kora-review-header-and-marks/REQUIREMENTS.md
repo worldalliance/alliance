@@ -25,3 +25,4 @@ Each entry is user-originated unless it says otherwise.
 - The categories have no guide text (the responsible/failing sentences). The category intro shows when a pair's category differs from the previous pair's, unless the reviewer has opened that pair before. (agent-proposed, user-approved)
 - "Your marks" sits 50px below the section above it and has a black line underneath, like "Chatbot A" and "Chatbot B".
 - The pair ID in the header (for example `EX-clear-winners-23`) is hidden until the reviewer clicks a semi-transparent `#` beside it.
+- Before the child's message starts typing in, the empty bubble shows an animated "..." so the reviewer knows where to look.

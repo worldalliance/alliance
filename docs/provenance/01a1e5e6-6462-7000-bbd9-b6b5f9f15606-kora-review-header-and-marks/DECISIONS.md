@@ -31,3 +31,4 @@ All agent decisions.
 - With the guides gone, their [ … :+1: ] markup renderer, its styles and the transcript's `challenge` and `tagline` fields are deleted. The header rules' class is renamed from `challenge` to `rules`.
 - The 50px is the visible gap: the thread's 18px gap plus a 32px top margin on "Your marks". The underline copies the chatbot headings: 8px below the text, 2px solid ink.
 - The `#` is a button named "Pair ID" for screen readers, with `aria-expanded`; clicking it again hides the ID. It is at 40% opacity until hovered or open. Like the ID before it, it stays hidden below 900px wide.
+- The "..." is three bouncing dots, one text line tall so the bubble keeps its height when the first word replaces them, and hidden from screen readers. With reduced motion the whole message shows at once, so the dots never appear.
