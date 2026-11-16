@@ -1795,13 +1795,30 @@ export type NeedsReplyMemberDto = {
     userId: number;
     name: string;
     /**
-     * The member's latest text that still needs a reply; STOP and START texts are skipped
+     * The member's latest text that still needs a reply; STOP and START texts and handled texts are skipped
      */
     lastMessageBody: string;
     /**
-     * When the member's oldest text no staff reply has followed arrived
+     * When the member's oldest text that no staff reply has followed and staff haven't marked handled arrived
      */
     waitingSince: string;
+};
+
+/**
+ * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+ */
+export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+
+export type MmsThreadEventKind = 'marked_handled' | 'marked_needs_reply';
+
+export type MmsThreadEventDto = {
+    id: number;
+    kind: MmsThreadEventKind;
+    /**
+     * Null while that staff member is deleted
+     */
+    markedByName: string | null;
+    createdAt: string;
 };
 
 export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
@@ -1829,6 +1846,10 @@ export type MmsMessageDto = {
      */
     sentByStaff: boolean;
     sentByName: string | null;
+    /**
+     * Staff actions taken right after this text, oldest first
+     */
+    events: Array<MmsThreadEventDto>;
     media: Array<MmsMediaDto>;
 };
 
@@ -1839,6 +1860,10 @@ export type MmsThreadDto = {
      */
     textable: boolean;
     optedOut: boolean;
+    /**
+     * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+     */
+    replyState: ReplyState;
     /**
      * Up to 100 texts, oldest first: the newest, or those sent before `before`
      */
@@ -1851,6 +1876,13 @@ export type MmsThreadDto = {
 
 export type SendStaffTextDto = {
     body: string;
+};
+
+export type MarkThreadDto = {
+    /**
+     * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
+     */
+    throughId: number;
 };
 
 export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
@@ -9082,6 +9114,52 @@ export type MmsThreadMarkOptedOutAdminResponses = {
 };
 
 export type MmsThreadMarkOptedOutAdminResponse = MmsThreadMarkOptedOutAdminResponses[keyof MmsThreadMarkOptedOutAdminResponses];
+
+export type MmsThreadMarkHandledAdminData = {
+    body: MarkThreadDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/handled';
+};
+
+export type MmsThreadMarkHandledAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkHandledAdminError = MmsThreadMarkHandledAdminErrors[keyof MmsThreadMarkHandledAdminErrors];
+
+export type MmsThreadMarkHandledAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkHandledAdminResponse = MmsThreadMarkHandledAdminResponses[keyof MmsThreadMarkHandledAdminResponses];
+
+export type MmsThreadMarkNeedsReplyAdminData = {
+    body: MarkThreadDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/needs-reply';
+};
+
+export type MmsThreadMarkNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkNeedsReplyAdminError = MmsThreadMarkNeedsReplyAdminErrors[keyof MmsThreadMarkNeedsReplyAdminErrors];
+
+export type MmsThreadMarkNeedsReplyAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkNeedsReplyAdminResponse = MmsThreadMarkNeedsReplyAdminResponses[keyof MmsThreadMarkNeedsReplyAdminResponses];
 
 export type EventLogFindAllAdminData = {
     body?: never;

@@ -18,6 +18,7 @@ const textable = (phoneNumber: string): MmsThreadDto => ({
   phoneNumber,
   textable: true,
   optedOut: false,
+  replyState: "answered",
   messages: [],
   hasOlder: false,
 });

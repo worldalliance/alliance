@@ -16,9 +16,11 @@ import {
   mediaStatus,
   MmsMediaStatus,
 } from "../mms-media.service";
+import { MmsThreadEvent, MmsThreadEventKind } from "../mms-thread-event.entity";
 import {
   type MmsThread,
   type NeedsReplyMember,
+  ReplyState,
   THREAD_PAGE_SIZE,
 } from "../mms-thread.service";
 import { Mms } from "../mms.entity";
@@ -44,6 +46,31 @@ export class MmsMediaDto {
   }
 }
 
+export class MmsThreadEventDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty({ enum: MmsThreadEventKind, enumName: "MmsThreadEventKind" })
+  kind: MmsThreadEventKind;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Null while that staff member is deleted",
+  })
+  markedByName: string | null;
+
+  @ApiProperty({ type: Date })
+  createdAt: Date;
+
+  constructor(input: MmsThreadEvent) {
+    this.id = input.id;
+    this.kind = input.kind;
+    this.markedByName = input.markedBy?.name ?? null;
+    this.createdAt = input.createdAt;
+  }
+}
+
 export class MmsMessageDto extends PickType(Mms, [
   "id",
   "direction",
@@ -62,6 +89,13 @@ export class MmsMessageDto extends PickType(Mms, [
   @ApiProperty({ type: String, nullable: true })
   sentByName: string | null;
 
+  @ApiProperty({
+    type: () => MmsThreadEventDto,
+    isArray: true,
+    description: "Staff actions taken right after this text, oldest first",
+  })
+  events: MmsThreadEventDto[];
+
   @ApiProperty({ type: () => MmsMediaDto, isArray: true })
   media: MmsMediaDto[];
 
@@ -76,6 +110,9 @@ export class MmsMessageDto extends PickType(Mms, [
     this.createdAt = input.createdAt;
     this.sentByStaff = input.sentById !== null;
     this.sentByName = input.sentBy?.name ?? null;
+    this.events = (input.threadEvents ?? [])
+      .toSorted((a, b) => a.id - b.id)
+      .map((event) => new MmsThreadEventDto(event));
     this.media = (input.media ?? []).map((media) => new MmsMediaDto(media));
   }
 }
@@ -94,6 +131,14 @@ export class MmsThreadDto {
   optedOut: boolean;
 
   @ApiProperty({
+    enum: ReplyState,
+    enumName: "ReplyState",
+    description:
+      "Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)",
+  })
+  replyState: ReplyState;
+
+  @ApiProperty({
     type: () => MmsMessageDto,
     isArray: true,
     description: `Up to ${THREAD_PAGE_SIZE} texts, oldest first: the newest, or those sent before \`before\``,
@@ -107,6 +152,7 @@ export class MmsThreadDto {
     this.phoneNumber = input.phoneNumber;
     this.textable = input.textable;
     this.optedOut = input.optedOut;
+    this.replyState = input.replyState;
     this.messages = input.messages.map((message) => new MmsMessageDto(message));
     this.hasOlder = input.hasOlder;
   }
@@ -122,6 +168,17 @@ export class MmsThreadQueryDto {
   @Min(1)
   @Max(2_147_483_647)
   before?: number;
+}
+
+export class MarkThreadDto {
+  @ApiProperty({
+    description:
+      "The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply",
+  })
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
+  throughId: number;
 }
 
 export class SendStaffTextDto {
@@ -149,14 +206,14 @@ export class NeedsReplyMemberDto {
 
   @ApiProperty({
     description:
-      "The member's latest text that still needs a reply; STOP and START texts are skipped",
+      "The member's latest text that still needs a reply; STOP and START texts and handled texts are skipped",
   })
   lastMessageBody: string;
 
   @ApiProperty({
     type: Date,
     description:
-      "When the member's oldest text no staff reply has followed arrived",
+      "When the member's oldest text that no staff reply has followed and staff haven't marked handled arrived",
   })
   waitingSince: Date;
 

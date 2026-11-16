@@ -27,6 +27,7 @@ const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({
   createdAt: "2026-11-10T18:00:00Z",
   sentByStaff: false,
   sentByName: null,
+  events: [],
   media: [],
   ...overrides,
 });
@@ -85,6 +86,7 @@ beforeEach(() => {
     phoneNumber: "+14155550123",
     textable: true,
     optedOut: false,
+    replyState: "answered",
     messages: [
       message({ id: 1, body: "New action is live" }),
       message({ id: 2, direction: "inbound", body: "What do I do?" }),
@@ -104,6 +106,7 @@ beforeEach(() => {
     phoneNumber: "+14155550188",
     textable: true,
     optedOut: false,
+    replyState: "answered",
     messages: [message({ id: 6, direction: "inbound", body: "Hi" })],
     hasOlder: false,
   };
@@ -301,6 +304,7 @@ it("says in the thread that a member with no phone number can't be texted", asyn
     phoneNumber: null,
     textable: false,
     optedOut: false,
+    replyState: "answered",
     messages: [],
     hasOlder: false,
   };

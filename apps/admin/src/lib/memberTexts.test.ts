@@ -86,6 +86,7 @@ describe("mergeTexts", () => {
     createdAt,
     sentByStaff: false,
     sentByName: null,
+    events: [],
     media: [],
   });
 

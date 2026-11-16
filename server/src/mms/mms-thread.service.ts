@@ -8,9 +8,15 @@ import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
-import { In, type SelectQueryBuilder } from "typeorm";
+import {
+  type EntityManager,
+  In,
+  IsNull,
+  type SelectQueryBuilder,
+} from "typeorm";
 import { z } from "zod";
 import { MmsMedia } from "./mms-media.entity";
+import { MmsThreadEvent, MmsThreadEventKind } from "./mms-thread-event.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
 import { MmsService, type StaffSendFailure } from "./mms.service";
@@ -24,22 +30,39 @@ export type InboundText = {
   media: { url: string; contentType: string }[];
 };
 
+export enum ReplyState {
+  NeedsReply = "needs_reply",
+  Handled = "handled",
+  Answered = "answered",
+}
+
 export type MmsThread = {
   phoneNumber: string | null;
   textable: boolean;
   optedOut: boolean;
+  replyState: ReplyState;
   messages: Mms[];
   hasOlder: boolean;
 };
 
 export const THREAD_PAGE_SIZE = 100;
 
-const THREAD_RELATIONS = { sentBy: true, media: true } as const;
+const THREAD_RELATIONS = {
+  sentBy: true,
+  media: true,
+  threadEvents: { markedBy: true },
+} as const;
 
 export enum ThreadRefusal {
   MemberNotFound = "member_not_found",
   TextNotInThread = "text_not_in_thread",
 }
+
+export type ThreadMark = {
+  userId: number;
+  throughId: number;
+  adminId: number;
+};
 
 export type NeedsReplyMember = {
   user: User;
@@ -73,8 +96,8 @@ const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
   .filter(([, answers]) => answers)
   .map(([status]) => status);
 
-/** Inbound texts Needs reply counts and no staff reply has followed, from a
- * query aliased `inbound`. */
+/** Inbound texts Needs reply counts and no staff reply has followed, handled
+ * ones included, from a query aliased `inbound`. */
 const unanswered = (query: SelectQueryBuilder<Mms>) =>
   query
     .andWhere("inbound.direction = :inbound", {
@@ -186,14 +209,41 @@ export class MmsThreadService {
   }): Promise<Result<MmsThread, ThreadRefusal>> {
     const user = await this.findMember(params.userId);
     if (!user.ok) return user;
-    const page = await this.threadPage(user.value.phoneNumber, params.before);
+    const { phoneNumber } = user.value;
+    const page = await this.threadPage(phoneNumber, params.before);
     if (!page.ok) return page;
     return R.success({
-      phoneNumber: user.value.phoneNumber,
+      phoneNumber,
       textable: memberNumber(user.value).ok,
       optedOut: user.value.phoneNumberUnsubscribed,
+      replyState: phoneNumber
+        ? await this.replyState(phoneNumber)
+        : ReplyState.Answered,
       ...page.value,
     });
+  }
+
+  private async replyState(phoneNumber: string): Promise<ReplyState> {
+    const { handled } = z
+      .object({ handled: z.boolean().nullable() })
+      .parse(
+        await this.unansweredOf(phoneNumber)
+          .select('bool_and(inbound."handledEventId" IS NOT NULL)', "handled")
+          .getRawOne(),
+      );
+    if (handled === null) return ReplyState.Answered;
+    return handled ? ReplyState.Handled : ReplyState.NeedsReply;
+  }
+
+  private unansweredOf(
+    phoneNumber: string,
+    manager: EntityManager = this.mmsRepository.manager,
+  ) {
+    return unanswered(
+      manager
+        .createQueryBuilder(Mms, "inbound")
+        .where("inbound.memberPhoneNumber = :phoneNumber", { phoneNumber }),
+    );
   }
 
   private async inThread(phoneNumber: string | null, id: number) {
@@ -285,6 +335,84 @@ export class MmsThreadService {
     return R.success(undefined);
   }
 
+  /** Marks the member's unanswered texts up to `throughId`, the newest text
+   * staff could see, so one arriving meanwhile still needs a reply. */
+  async markHandled(params: ThreadMark): Promise<Result<void, ThreadRefusal>> {
+    return this.mark(params, async ({ manager, phoneNumber, record }) => {
+      const texts = await this.unansweredOf(phoneNumber, manager)
+        .select("inbound.id")
+        .andWhere('inbound."handledEventId" IS NULL')
+        .andWhere(
+          `(inbound."createdAt", inbound.id) <= (SELECT "createdAt", id FROM mms WHERE id = :throughId)`,
+          { throughId: params.throughId },
+        )
+        .orderBy("inbound.id")
+        .setLock("pessimistic_write")
+        .getMany();
+      if (texts.length === 0) return;
+      await manager.update(
+        Mms,
+        { id: In(texts.map((text) => text.id)), handledEventId: IsNull() },
+        { handledEventId: await record(MmsThreadEventKind.MarkedHandled) },
+      );
+    });
+  }
+
+  async markNeedsReply(
+    params: ThreadMark,
+  ): Promise<Result<void, ThreadRefusal>> {
+    return this.mark(params, async ({ manager, phoneNumber, record }) => {
+      const texts = await this.unansweredOf(phoneNumber, manager)
+        .select("inbound.id")
+        .andWhere('inbound."handledEventId" IS NOT NULL')
+        .orderBy("inbound.id")
+        .setLock("pessimistic_write")
+        .getMany();
+      if (texts.length === 0) return;
+      await record(MmsThreadEventKind.MarkedNeedsReply);
+      await manager.update(
+        Mms,
+        { id: In(texts.map((text) => text.id)) },
+        { handledEventId: null },
+      );
+    });
+  }
+
+  /** `apply` calls `record` only when it changes texts, so a mark that changes
+   * nothing leaves no history. `apply` locks the texts it reads in id order, so
+   * a concurrent mark of the same kind on the same number, from any member
+   * sharing it, waits and then finds them changed. A mark of the opposite kind
+   * reads the other texts and doesn't wait. */
+  private async mark(
+    params: ThreadMark,
+    apply: (input: {
+      manager: EntityManager;
+      phoneNumber: string;
+      record: (kind: MmsThreadEventKind) => Promise<number>;
+    }) => Promise<void>,
+  ): Promise<Result<void, ThreadRefusal>> {
+    const user = await this.findMember(params.userId);
+    if (!user.ok) return user;
+    const { phoneNumber } = user.value;
+    if (!phoneNumber || !(await this.inThread(phoneNumber, params.throughId))) {
+      return R.failure(ThreadRefusal.TextNotInThread);
+    }
+    await this.mmsRepository.manager.transaction(async (manager) => {
+      const record = async (kind: MmsThreadEventKind) => {
+        const event = await manager.save(
+          manager.create(MmsThreadEvent, {
+            kind,
+            afterMmsId: params.throughId,
+            markedById: params.adminId,
+          }),
+        );
+        return event.id;
+      };
+      await apply({ manager, phoneNumber, record });
+    });
+    return R.success(undefined);
+  }
+
   /** Longest-waiting first, timed from each number's oldest unanswered text.
    * STOP and START texts, which the webhook acts on and Twilio answers, neither
    * list a member nor hide an earlier text that needs a reply. */
@@ -312,8 +440,9 @@ export class MmsThreadService {
   }
 
   /** Per subscribed number, its oldest inbound text that no staff reply has
-   * followed, with the latest such text's body as `lastMessageBody`. The window
-   * runs before `DISTINCT ON` keeps each number's first row. */
+   * followed and staff haven't marked handled, with the latest such text's
+   * body as `lastMessageBody`. The window runs before `DISTINCT ON` keeps each
+   * number's first row. */
   private async unansweredTexts() {
     const rows = await unanswered(
       this.mmsRepository.createQueryBuilder("inbound"),
@@ -329,6 +458,7 @@ export class MmsThreadService {
         )`,
         "lastMessageBody",
       )
+      .andWhere('inbound."handledEventId" IS NULL')
       .andWhere(
         `inbound."memberPhoneNumber" IN (${this.subscribedMembers()
           .select("member.phoneNumber")
