@@ -2,7 +2,6 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import { envFileValue } from "../../common/src/dev-database";
 import { R, type Result } from "../../common/src/result";
 import awsLoginErrors from "../../scripts/aws-login-errors.json";
 import { type Context, describeProblems } from "./report";
@@ -34,11 +33,6 @@ enum Tool {
   Codex = "codex",
 }
 
-const envFile = path.resolve(import.meta.dir, "../../.env.devtools");
-const keyNames = {
-  accessKeyId: "AGENT_CHATS_AWS_ACCESS_KEY_ID",
-  secretAccessKey: "AGENT_CHATS_AWS_SECRET_ACCESS_KEY",
-} as const;
 const setupHint = "agents/README.md says how to set uploads up";
 const spoolDir = path.join(homedir(), ".alliance-agent-chats");
 const lockFile = path.join(spoolDir, "lock");
@@ -151,28 +145,6 @@ function loginCredentials(): Result<S3Credentials, string> {
     secretAccessKey: SecretAccessKey,
     sessionToken: SessionToken,
   });
-}
-
-// BACKCOMPAT(ALL-1964): remove with the contract step, once everyone has run
-// without ALLIANCE_SECRETS_ENV_FALLBACK.
-function envFileCredentials(): Result<S3Credentials, string> {
-  const accessKeyId = envFileValue(envFile, keyNames.accessKeyId);
-  const secretAccessKey = envFileValue(envFile, keyNames.secretAccessKey);
-  if (!accessKeyId || !secretAccessKey) {
-    return R.failure(
-      `${keyNames.accessKeyId} or ${keyNames.secretAccessKey} is missing from .env.devtools`,
-    );
-  }
-  return R.success({ accessKeyId, secretAccessKey });
-}
-
-function credentials(): Result<S3Credentials, string> {
-  const fallback = process.env.ALLIANCE_SECRETS_ENV_FALLBACK;
-  if (fallback !== undefined && fallback !== "1")
-    return R.failure(
-      `ALLIANCE_SECRETS_ENV_FALLBACK is ${fallback}; set it to 1 or unset it`,
-    );
-  return fallback === "1" ? envFileCredentials() : loginCredentials();
 }
 
 function fail(message: string): number {
@@ -317,7 +289,7 @@ async function uploader(): Promise<
   // s3.ts's dependencies until a worktree deleted meanwhile has taken them.
   const loaded = await R.fromPromise(import("./s3"));
   if (!loaded.ok) return R.failure({ error: loaded.error.message });
-  const creds = credentials();
+  const creds = loginCredentials();
   if (!creds.ok)
     return R.failure({ error: creds.error, credentialsFailed: true });
   const { chatsClient, putLatest } = loaded.value;
@@ -438,7 +410,7 @@ async function underLock(args: string[]): Promise<number> {
 }
 
 async function download(key: string): Promise<number> {
-  const creds = credentials();
+  const creds = loginCredentials();
   if (!creds.ok) return fail(`${creds.error}; ${setupHint}`);
   const { chatsClient, getObject } = await import("./s3");
   const s3 = chatsClient(creds.value);
@@ -451,7 +423,7 @@ async function download(key: string): Promise<number> {
 
 function check(): number {
   if (optedOut()) return 0;
-  const creds = credentials();
+  const creds = loginCredentials();
   const listing = listRequests(spoolDir);
   const needsWorker =
     (listing.ok && listing.value.requests.length > 0) ||

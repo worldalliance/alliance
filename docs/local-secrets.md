@@ -73,10 +73,6 @@ A team member never sets it: a missing key should stay a startup error.
 
 The daily login can't read them; [backend-secrets.md](backend-secrets.md) covers them.
 
-## Until the rollout finishes
+## Old copies in `.env` files
 
-The rollout fills `/alliance/dev/` with every key `scripts/dev-secrets.json` lists before the wrapper reaches `main`.
-
-`ALLIANCE_SECRETS_ENV_FALLBACK=1` skips Parameter Store and uses the secrets in your `.env` files, printing each key it falls back on, and switches transcript uploads back to the keys `agents/README.md` names. The server reads `server/.env` itself, so for it the wrapper only prints, naming the file Bun takes each key from: `server/.env` or its `.local`, `.development` or `.development.local` sibling. For other consumers it reads the env file with bash's `source`, as the Linear skill did with `.env.devtools`, exports each listed key the shell leaves unset or empty, and fails when bash reports an error in the file or a listed key is missing or empty. It goes away once everyone has run without it.
-
-To run without it, first delete `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from `server/.env`, which the wrapper refuses. Once that works, delete from `server/.env` every key `server/.env.example` doesn't list, and `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `AGENT_CHATS_AWS_ACCESS_KEY_ID` and `AGENT_CHATS_AWS_SECRET_ACCESS_KEY` from `.env.devtools`. Do the same in each worktree, since `scripts/new-worktree.sh` copies both files.
+Each checkout and worktree may still hold the shared dev secrets in plaintext from before Parameter Store. The wrapper's values take precedence over them; delete them: from `server/.env` every key `server/.env.example` doesn't list, and from `.env.devtools` `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `AGENT_CHATS_AWS_ACCESS_KEY_ID` and `AGENT_CHATS_AWS_SECRET_ACCESS_KEY`. Without team credentials, keep what `scripts/setup-without-team-secrets.ts` wrote.

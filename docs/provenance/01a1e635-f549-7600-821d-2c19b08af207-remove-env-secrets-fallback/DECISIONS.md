@@ -1,0 +1,4 @@
+# Decisions
+
+- **`scripts/dev-secrets.json` drops `loadsEnvFile`, and `envFile` becomes optional, present only for a consumer that loads that file itself** (agent decision). Once the fallback is gone, `with-secrets.sh` reads a consumer's env file only for consumers that load it: to refuse static AWS keys in it and to read `ALLIANCE_WITHOUT_TEAM_SECRETS` from it. `devtools`' `envFile` was read only by the fallback, so it is gone. The manifest and the wrapper live in the same checkout, so no reader sees one without the other; `scripts/check-parameter-drift.ts` and `server/src/config/env.spec.ts` read only `secrets`.
+- **The `docs/local-secrets.md` cleanup section stays as "Old copies in `.env` files"** (agent decision, for requirement 2), since checkouts set up before ALL-1964 can hold the plaintext copies until their owners delete them, and ALL-2209 rotates the ones whose exposure can't be ruled out.
