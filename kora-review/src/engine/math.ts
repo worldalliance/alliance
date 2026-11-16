@@ -359,7 +359,8 @@ export function createMath(ctx: MathCtx) {
       x != null &&
       x !== " " &&
       !(typeof x === "string" && (MATH_OPS.has(x) || x === "(" || x === "["));
-    const wrap = (t: string) => (t.length > 1 && /[^\w.]/.test(t) ? `(${t})` : t);
+    const wrap = (t: string) =>
+      t.length > 1 && /[^\w.]/.test(t) ? `(${t})` : t;
     for (const x of tree) {
       if (typeof x === "string") {
         const unary = (x === "−" || x === "+" || x === "±") && !operand(prev);

@@ -36,27 +36,25 @@ type: object
 additionalProperties: false
 required: [export, judgements, skips, reviewers]
 properties:
-
   export:
     $ref: "#/$defs/export_header"
 
   judgements:
     type: array
     description: One entry per completed pair. Only complete judgements are exported (3.1).
-    items: {$ref: "#/$defs/judgement"}
+    items: { $ref: "#/$defs/judgement" }
 
   skips:
     type: array
     description: One entry per hard-risk pair skipped from its content warning (3.3).
-    items: {$ref: "#/$defs/skip"}
+    items: { $ref: "#/$defs/skip" }
 
   reviewers:
     type: array
     description: One entry per reviewer, including reviewers with no completed pair.
-    items: {$ref: "#/$defs/reviewer"}
+    items: { $ref: "#/$defs/reviewer" }
 
 $defs:
-
   export_header:
     type: object
     description: >-
@@ -72,7 +70,7 @@ $defs:
       kind:
         enum: [midpoint, final]
         description: midpoint is the 4 December sanity check, final the 15 December delivery (section 9).
-      generated_at: {$ref: "#/$defs/timestamp"}
+      generated_at: { $ref: "#/$defs/timestamp" }
       spec_version:
         type: string
         description: Version of KORA_SPEC.md the platform built to.
@@ -85,19 +83,41 @@ $defs:
         additionalProperties: false
         required: [judgements, skips, reviewers]
         properties:
-          judgements: {type: integer, minimum: 0}
-          skips: {type: integer, minimum: 0}
-          reviewers: {type: integer, minimum: 0}
+          judgements: { type: integer, minimum: 0 }
+          skips: { type: integer, minimum: 0 }
+          reviewers: { type: integer, minimum: 0 }
         description: Row counts, for a transfer check against the three tables.
 
   judgement:
     type: object
     additionalProperties: false
-    x-propertyOrder: [pair_id, risk_id, pair_type, reviewer_id, position_of_a,
-      pair_position, first_time_on_risk, comprehension_answer, comprehension_pass,
-      attention_pass, q0_a, q0_b, q1, q2_turn, q3_text, time_ms_s1, time_ms_guide,
-      time_ms_s2, time_ms_s3, time_ms_s4, time_ms_s5, time_ms_pair, started_at,
-      completed_at]
+    x-propertyOrder:
+      [
+        pair_id,
+        risk_id,
+        pair_type,
+        reviewer_id,
+        position_of_a,
+        pair_position,
+        first_time_on_risk,
+        comprehension_answer,
+        comprehension_pass,
+        attention_pass,
+        q0_a,
+        q0_b,
+        q1,
+        q2_turn,
+        q3_text,
+        time_ms_s1,
+        time_ms_guide,
+        time_ms_s2,
+        time_ms_s3,
+        time_ms_s4,
+        time_ms_s5,
+        time_ms_pair,
+        started_at,
+        completed_at,
+      ]
     required:
       - pair_id
       - risk_id
@@ -124,7 +144,6 @@ $defs:
       - started_at
       - completed_at
     properties:
-
       pair_id:
         $ref: "#/$defs/pair_id"
       risk_id:
@@ -161,13 +180,13 @@ $defs:
           displayed position, which is randomised per reviewer (Annex B, E20).
           null on a practice pair, which Annex B ships without options.
       comprehension_pass:
-        oneOf: [{$ref: "#/$defs/flag"}, {type: "null"}]
+        oneOf: [{ $ref: "#/$defs/flag" }, { type: "null" }]
         description: >-
           1 when comprehension_answer equals the import's comprehension_correct.
           Recorded only; a wrong answer blocks nothing (section 8). null
           wherever comprehension_answer is null.
       attention_pass:
-        oneOf: [{$ref: "#/$defs/flag"}, {type: "null"}]
+        oneOf: [{ $ref: "#/$defs/flag" }, { type: "null" }]
         description: >-
           Attention pairs only; null on every other pair_type ("empty" in Annex
           D). 1 when q1 names the side the import marks in attention_expected_q1,
@@ -234,36 +253,35 @@ $defs:
         description: When screen 6 was submitted. Not before started_at.
 
     allOf:
-
       - description: attention_pass is filled on attention pairs and null everywhere else.
         if:
-          properties: {pair_type: {const: attention}}
+          properties: { pair_type: { const: attention } }
           required: [pair_type]
         then:
-          properties: {attention_pass: {$ref: "#/$defs/flag"}}
+          properties: { attention_pass: { $ref: "#/$defs/flag" } }
         else:
-          properties: {attention_pass: {type: "null"}}
+          properties: { attention_pass: { type: "null" } }
 
       - description: comprehension_pass is null exactly when comprehension_answer is.
         if:
-          properties: {comprehension_answer: {type: "null"}}
+          properties: { comprehension_answer: { type: "null" } }
           required: [comprehension_answer]
         then:
-          properties: {comprehension_pass: {type: "null"}}
+          properties: { comprehension_pass: { type: "null" } }
         else:
-          properties: {comprehension_pass: {$ref: "#/$defs/flag"}}
+          properties: { comprehension_pass: { $ref: "#/$defs/flag" } }
 
       - description: >-
           A practice pair ships without comprehension options, and every other
           pair carries them in the import (section 10), so the answer is null
           exactly on practice pairs.
         if:
-          properties: {pair_type: {const: practice}}
+          properties: { pair_type: { const: practice } }
           required: [pair_type]
         then:
-          properties: {comprehension_answer: {type: "null"}}
+          properties: { comprehension_answer: { type: "null" } }
         else:
-          properties: {comprehension_answer: {type: integer}}
+          properties: { comprehension_answer: { type: integer } }
 
   skip:
     type: object
@@ -275,11 +293,11 @@ $defs:
     x-propertyOrder: [pair_id, risk_id, reviewer_id, timestamp]
     required: [pair_id, risk_id, reviewer_id, timestamp]
     properties:
-      pair_id: {$ref: "#/$defs/pair_id"}
+      pair_id: { $ref: "#/$defs/pair_id" }
       risk_id:
         $ref: "#/$defs/risk_id"
         description: One of the hard risks of Annex C; no other pair can be skipped.
-      reviewer_id: {$ref: "#/$defs/reviewer_id"}
+      reviewer_id: { $ref: "#/$defs/reviewer_id" }
       timestamp:
         $ref: "#/$defs/timestamp"
         description: When the reviewer pressed "Skip this pair" on the warning screen (A4).
@@ -291,11 +309,35 @@ $defs:
       age_band and english are required at sign-up (section 5); the others are
       optional and null when the reviewer did not answer.
     additionalProperties: false
-    x-propertyOrder: [reviewer_id, created_at, is_parent, children_age_bands, country,
-      age_band, english, gender, education, ai_use, works_with_children,
-      opt_out_risks, consent_at, pairs_completed, share_units_completed,
-      share_reached_at, is_done, total_time_ms, exit_q1, exit_q2, exit_q3, exit_q4,
-      exit_q5, exit_q6, last_login_at, excluded]
+    x-propertyOrder:
+      [
+        reviewer_id,
+        created_at,
+        is_parent,
+        children_age_bands,
+        country,
+        age_band,
+        english,
+        gender,
+        education,
+        ai_use,
+        works_with_children,
+        opt_out_risks,
+        consent_at,
+        pairs_completed,
+        share_units_completed,
+        share_reached_at,
+        is_done,
+        total_time_ms,
+        exit_q1,
+        exit_q2,
+        exit_q3,
+        exit_q4,
+        exit_q5,
+        exit_q6,
+        last_login_at,
+        excluded,
+      ]
     required:
       - reviewer_id
       - created_at
@@ -324,8 +366,7 @@ $defs:
       - last_login_at
       - excluded
     properties:
-
-      reviewer_id: {$ref: "#/$defs/reviewer_id"}
+      reviewer_id: { $ref: "#/$defs/reviewer_id" }
       created_at:
         $ref: "#/$defs/timestamp"
         description: Sign-up. No later than 23 November 23:59 UTC, when sign-up closes (section 5).
@@ -336,7 +377,7 @@ $defs:
       children_age_bands:
         type: array
         uniqueItems: true
-        items: {enum: [under7, 7to10, 11to13, 14to17, prefer_not_to_say]}
+        items: { enum: [under7, 7to10, 11to13, 14to17, prefer_not_to_say] }
         description: >-
           Multi-select, asked only when is_parent is yes; empty otherwise. These
           bands are the reviewer's own children and are not the pairs' age_band
@@ -351,7 +392,8 @@ $defs:
         enum: [18to24, 25to34, 35to44, 45to54, 55plus, prefer_not_to_say]
         description: Reviewers are 18 or over; there is no band below 18 (section 5).
       english:
-        enum: [native_or_bilingual, fluent, comfortable, basic, prefer_not_to_say]
+        enum:
+          [native_or_bilingual, fluent, comfortable, basic, prefer_not_to_say]
         description: Self-reported English fluency. Conversations are in English (3.4).
 
       gender:
@@ -362,7 +404,15 @@ $defs:
           export and keeps a free-text route, which is why this is a string
           rather than an enum.
       education:
-        enum: [secondary, some_college, bachelor, postgraduate, prefer_not_to_say, null]
+        enum:
+          [
+            secondary,
+            some_college,
+            bachelor,
+            postgraduate,
+            prefer_not_to_say,
+            null,
+          ]
         description: Highest level of education.
       ai_use:
         enum: [never, monthly, weekly, daily, prefer_not_to_say, null]
@@ -374,7 +424,7 @@ $defs:
       opt_out_risks:
         type: array
         uniqueItems: true
-        items: {$ref: "#/$defs/risk_id"}
+        items: { $ref: "#/$defs/risk_id" }
         description: >-
           Risks the reviewer had unticked as of export time; the queue applied
           the list as it stood at each serve, so a judgement may exist on a risk
@@ -398,7 +448,7 @@ $defs:
           turns, 1.25 at 6, 1.5 at 8, derived from the pair's n_turns (section
           7). The share is 3.0; reviewers may go past it.
       share_reached_at:
-        oneOf: [{$ref: "#/$defs/timestamp"}, {type: "null"}]
+        oneOf: [{ $ref: "#/$defs/timestamp" }, { type: "null" }]
         description: When share_units_completed first reached 3.0; null for a reviewer who did not get there.
       is_done:
         $ref: "#/$defs/flag"
@@ -439,25 +489,24 @@ $defs:
           analysis and are not this flag (section 8).
 
     allOf:
-
       - description: children_age_bands is asked only of parents.
         if:
-          properties: {is_parent: {const: "yes"}}
+          properties: { is_parent: { const: "yes" } }
           required: [is_parent]
         then:
-          properties: {children_age_bands: {type: array, minItems: 1}}
+          properties: { children_age_bands: { type: array, minItems: 1 } }
         else:
-          properties: {children_age_bands: {type: array, maxItems: 0}}
+          properties: { children_age_bands: { type: array, maxItems: 0 } }
 
       - description: A reviewer with no completed pair has no time and no share.
         if:
-          properties: {pairs_completed: {const: 0}}
+          properties: { pairs_completed: { const: 0 } }
           required: [pairs_completed]
         then:
           properties:
-            share_units_completed: {const: 0}
-            total_time_ms: {const: 0}
-            share_reached_at: {type: "null"}
+            share_units_completed: { const: 0 }
+            total_time_ms: { const: 0 }
+            share_reached_at: { type: "null" }
 
   pair_id:
     type: string

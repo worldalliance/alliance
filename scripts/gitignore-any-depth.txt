@@ -3,6 +3,7 @@
 .gitignore:uploads/
 .gitignore:.worktree/
 .gitignore:.scratch/
+.gitignore:db_dumps/
 apps/mobile/.gitignore:node_modules/
 apps/mobile/.gitignore:.expo/
 apps/mobile/.gitignore:dist/
