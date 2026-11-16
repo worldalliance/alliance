@@ -10,6 +10,7 @@ import {
   openSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -45,6 +46,20 @@ function writeClaude(script: string): string {
   chmodSync(claude, 0o755);
   return claude;
 }
+
+/** A CLI that answers the version and sign-in checks through the stub and runs script as a session. */
+const sessionClaude = (script: string): string =>
+  writeClaude(`case "$1" in
+  --version|auth) exec "${process.env[claudeExecutableVariable]}" "$@";;
+esac
+${script}`);
+
+/** Resolves to whether Start succeeded, without waiting for the first turn. */
+const startNew = (page: Page): Promise<boolean> =>
+  page.evaluate(
+    (input) => window.agent.start(input).then((result) => result.ok),
+    { folder: workFolder(), firstMessage },
+  );
 
 const savedConversations = (): { id: string }[] =>
   JSON.parse(
@@ -164,6 +179,92 @@ test("quitting waits only so long for a conversation still starting", async () =
   await expect.poll(() => runningCount(claude), { timeout: 20_000 }).toBe(0);
 });
 
+async function startOnScript(params: {
+  script: string;
+  openingWaitMs: number;
+}) {
+  const claude = sessionClaude(params.script);
+  const { app, page } = await launch({
+    captures: [],
+    claude,
+    env: { ALLIANCE_AGENT_OPENING_WAIT_MS: String(params.openingWaitMs) },
+  });
+  let stderr = "";
+  app.process().stderr?.on("data", (chunk: Buffer) => (stderr += chunk));
+  expect(await startNew(page)).toBe(true);
+  return { app, page, claude, stderr: () => stderr };
+}
+
+test("quitting waits only so long for a new conversation's CLI to read its message", async () => {
+  const { app, claude, stderr } = await startOnScript({
+    script: "trap 'kill $!; exit 143' TERM\nsleep 30 & wait $!",
+    openingWaitMs: 500,
+  });
+  const quitAt = Date.now();
+  await app.close();
+  expect(Date.now() - quitAt).toBeLessThan(10_000);
+  expect(runningCount(claude)).toBe(0);
+  expect(stderr()).toContain(
+    "its CLI didn't read the first message within 0.5 s of the quit beginning",
+  );
+  expect(savedConversations()).toEqual([]);
+});
+
+test("quitting waits to remove a new conversation whose CLI exited before reading its message", async () => {
+  const exit = test.info().outputPath("exit");
+  const { app, page, stderr } = await startOnScript({
+    script: `read message
+while [ ! -e "${exit}" ]; do sleep 0.05; done
+exit 1`,
+    openingWaitMs: 500,
+  });
+  const saved = savedConversations();
+  // The removal reads the list first.
+  const listRead = await holdNextListRead(page);
+  writeFileSync(exit, "");
+  const fifo = await listRead();
+  const closed = app.waitForEvent("close");
+  await app.evaluate(({ app }) => app.quit());
+  writeFileSync(fifo, JSON.stringify({ version: 1, conversations: saved }));
+  closeSync(fifo);
+  await closed;
+  expect(stderr()).toContain("its CLI exited before reading the first message");
+  // A quit that exits before the removal writes leaves the FIFO, which reading would block on.
+  expect(
+    statSync(
+      test.info().outputPath("user-data", "conversations.json"),
+    ).isFile(),
+  ).toBe(true);
+  expect(savedConversations()).toEqual([]);
+});
+
+test("quitting keeps a new conversation whose CLI has read its message but sends nothing more", async () => {
+  const { app } = await startOnScript({
+    script: `trap 'kill $!; exit 143' TERM
+read message
+echo '{"type":"system","subtype":"init"}'
+sleep 30 & wait $!
+`,
+    openingWaitMs: 20_000,
+  });
+  const quitAt = Date.now();
+  await app.close();
+  expect(Date.now() - quitAt).toBeLessThan(15_000);
+  expect(savedConversations()).toHaveLength(1);
+});
+
+test("quitting keeps a new conversation whose CLI reads its message as the quit stops it", async () => {
+  const { app } = await startOnScript({
+    script: `stopped() { kill $!; read message; echo '{"type":"system","subtype":"init"}'; exit 143; }
+trap stopped TERM
+sleep 30 & wait $!
+`,
+    openingWaitMs: 500,
+  });
+  await app.close();
+  expect(savedConversations()).toHaveLength(1);
+});
+
 test("quitting closes live conversations without waiting for one still starting", async () => {
   const stub = process.env[claudeExecutableVariable];
   const exited = test.info().outputPath("session-exited");
@@ -280,32 +381,84 @@ exit $status
   ]);
 });
 
-test("a conversation still saving when the quit begins starts, and its CLI is closed", async () => {
-  const claude = trackedClaude();
+/** A CLI that boots slowly, noting when it is stopped before it has read its first message and when it outlives the app. */
+function slowBootClaude(): { claude: string; cutBeforeBoot: string } {
+  const claude = test.info().outputPath("claude");
+  const stub = process.env[claudeExecutableVariable];
+  const cutBeforeBoot = test.info().outputPath("cut-before-boot");
+  sessionClaude(`trap 'touch "${cutBeforeBoot}"; exit 143' TERM
+sleep 3 & wait $!
+trap - TERM
+"${stub}" "$@"
+status=$?
+sleep 1
+${noteOutlivedApp(claude)}
+exit $status
+`);
+  return { claude, cutBeforeBoot };
+}
+
+test("a conversation started just before the quit closes once its CLI has read its first message", async () => {
+  const { claude, cutBeforeBoot } = slowBootClaude();
+  const { app, page } = await launch({
+    captures: [captured("edit-and-interrupt-session")],
+    claude,
+  });
+  expect(await startNew(page)).toBe(true);
+  await app.close();
+  expect(existsSync(cutBeforeBoot)).toBe(false);
+  expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
+  expect(savedConversations()).toHaveLength(1);
+});
+
+test("a conversation still saving when the quit begins closes once its CLI has read its first message", async () => {
+  const { claude, cutBeforeBoot } = slowBootClaude();
   const { app, page } = await launch({
     captures: [captured("edit-and-interrupt-session")],
     claude,
   });
   // Start's save reads the list first.
   const listRead = await holdNextListRead(page);
-  const started = page.evaluate((input) => window.agent.start(input), {
-    folder: workFolder(),
-    firstMessage,
-  });
+  const started = startNew(page);
   const fifo = await listRead();
-  expect(runningCount(claude)).toBe(1);
   const closed = app.waitForEvent("close");
   await app.evaluate(({ app }) => app.quit());
   writeFileSync(fifo, JSON.stringify({ version: 1, conversations: [] }));
   closeSync(fifo);
-  const conversation = await started;
+  expect(await started).toBe(true);
   await closed;
+  expect(savedConversations()).toHaveLength(1);
+  expect(existsSync(cutBeforeBoot)).toBe(false);
   expect(runningCount(claude)).toBe(0);
   expect(outlivedApp(claude)).toBe(false);
-  expect(savedConversations().map((c) => c.id)).toEqual(
-    conversation.ok ? [conversation.value.id] : [],
-  );
-  expect(conversation.ok).toBe(true);
+});
+
+test("a conversation still saving when the quit begins closes without waiting for the sessions closing before it", async () => {
+  const stub = process.env[claudeExecutableVariable];
+  const first = test.info().outputPath("first");
+  const claude = sessionClaude(`"${stub}" "$@"
+status=$?
+if mkdir "${first}" 2>/dev/null; then sleep 8; fi
+exit $status
+`);
+  const { app, page } = await launch({
+    captures: [captured("edit-and-interrupt-session")],
+    claude,
+  });
+  await start(page);
+  const listRead = await holdNextListRead(page);
+  const started = startNew(page);
+  const fifo = await listRead();
+  expect(runningCount(claude)).toBe(2);
+  const closed = app.waitForEvent("close");
+  await app.evaluate(({ app }) => app.quit());
+  writeFileSync(fifo, JSON.stringify({ version: 1, conversations: [] }));
+  closeSync(fifo);
+  expect(await started).toBe(true);
+  // The first CLI takes 8 s to exit once closed.
+  await expect.poll(() => runningCount(claude), { timeout: 4_000 }).toBe(1);
+  await closed;
 });
 
 test("a resume still reading the saved conversations when the quit begins launches no CLI", async () => {
@@ -313,10 +466,7 @@ test("a resume still reading the saved conversations when the quit begins launch
   const launches = test.info().outputPath("launches");
   // A live session slow to exit keeps the quit going until the refused resume's result reaches the renderer.
   const claude = test.info().outputPath("claude");
-  writeClaude(`case "$1" in
-  --version|auth) exec "${stub}" "$@";;
-esac
-echo >> "${launches}"
+  sessionClaude(`echo >> "${launches}"
 "${stub}" "$@"
 status=$?
 sleep 1

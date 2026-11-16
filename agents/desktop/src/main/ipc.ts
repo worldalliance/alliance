@@ -71,7 +71,7 @@ async function checkFolder(folder: string): Promise<Result<void, Error>> {
     : R.failure(new Error(`${folder} isn't a folder.`));
 }
 
-/** Registers the renderer's handlers and returns the quit step: once called, it aborts a running sign-in and sign-in check, Start, Resume, SignIn and ClaudeStatus fail, and it closes every live session, and resolves when each of those CLIs has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions or sign-in CLIs still close. A new session whose CLI exits without reading its first message has its saved conversation removed, though a quit exits without waiting for that. findClaude runs on each call until it first succeeds, so a CLI installed while the app runs is found. */
+/** Registers the renderer's handlers and returns the quit step: once called, it aborts a running sign-in and sign-in check, Start, Resume, SignIn and ClaudeStatus fail, and it closes every live session, a new one once its CLI has read its first message or openingWaitMs has passed, and resolves when each of those CLIs has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions or sign-in CLIs still close. A new session whose CLI exits without reading its first message, quitting or not, has its saved conversation removed, which the quit waits for. findClaude runs on each call until it first succeeds, so a CLI installed while the app runs is found. */
 export function registerIpc(params: {
   findClaude: () => Result<Claude, Error>;
   conversations: ConversationStore;
@@ -82,6 +82,8 @@ export function registerIpc(params: {
   const { findClaude, conversations, rendererUrl, openingWaitMs } = params;
   const live = new Map<string, AgentSession>();
   const opening = new Set<Promise<unknown>>();
+  // Claude Code keeps no transcript for a CLI that exits before it reads its first message, so the quit closes these sessions once it has, or once openingWaitMs runs out. Each resolves once its CLI has read the message, or once it has exited and removing its saved conversation has been tried.
+  const newSessions = new WeakMap<AgentSession, Promise<void>>();
   const quitStarted = Promise.withResolvers<void>();
   const waitEnded = quitStarted.promise.then(() =>
     setTimeout(openingWaitMs, false),
@@ -133,6 +135,7 @@ export function registerIpc(params: {
     session.subscribe((event) =>
       toRenderer(IpcChannel.Event, { sessionId: session.id, event }),
     );
+    if (closing) closeForQuit(session);
   };
 
   const quittingError = () => new Error("Alliance agent is quitting.");
@@ -150,12 +153,27 @@ export function registerIpc(params: {
 
   // Closing stops a running turn, which would otherwise go on unseen while the quit waits.
   const closeForQuit = (session: AgentSession) =>
-    quitCloses.push(session.close());
+    quitCloses.push(
+      (async () => {
+        const removal = newSessions.get(session);
+        if (
+          removal &&
+          !(await Promise.race([
+            session.firstMessageRead.then(() => true),
+            waitEnded,
+          ]))
+        )
+          console.error(
+            `Closing session ${session.id} on quitting: its CLI didn't read the first message within ${openingWaitMs / 1000} s of the quit beginning.`,
+          );
+        await session.close();
+        await removal;
+      })(),
+    );
 
-  // A session that finishes opening once the quit began is closed at once, and waited for unless the opening wait has run out and the other sessions have closed.
+  // A session that finishes opening once the quit began joins live, so the quit closes it at once, and waits for it unless the opening wait has run out and the other sessions have closed.
   const refuse = (session: AgentSession) => {
     attach(session);
-    closeForQuit(session);
     return R.failure(quittingError());
   };
 
@@ -262,16 +280,14 @@ export function registerIpc(params: {
           await session.close();
           return saved;
         }
-        // Claude Code keeps no transcript for a CLI that exits before it reads its first message.
-        void removeIfUnread(session);
+        // During the quit, attach closes a session at once unless it is new.
+        newSessions.set(session, removeIfUnread(session));
         attach(session);
         const sent = session.send({ text: firstMessage, images: [] });
         if (!sent.ok)
           throw new Error(
             `A new session refused its first message: ${sent.error.message}`,
           );
-        // A quit that began while the conversation was saving closes it once its first message is written.
-        if (closing) closeForQuit(session);
         return R.success(conversation);
       }),
     );

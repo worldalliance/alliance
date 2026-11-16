@@ -13,7 +13,7 @@ import { registerIpc } from "./ipc";
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
 const headless = process.env.ALLIANCE_AGENT_HEADLESS === "1";
-// Caps the quit's wait for sessions still starting, which a hung network folder can stall. The quit hides the app first, so an endless wait would leave an invisible app holding the lock. The e2e tests shorten it.
+// Caps the quit's wait for sessions still starting, which a hung network folder can stall, and for each new session's CLI to read its first message, before which it keeps no transcript to resume. The quit hides the app first, so an endless wait would leave an invisible app holding the lock. The e2e tests shorten it.
 const openingWaitMs = z.coerce
   .number()
   .int()
