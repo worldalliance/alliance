@@ -26,3 +26,4 @@ Each entry is user-originated unless it says otherwise.
 - "Your marks" sits 50px below the section above it and has a black line underneath, like "Chatbot A" and "Chatbot B".
 - The pair ID in the header (for example `EX-clear-winners-23`) is hidden until the reviewer clicks a semi-transparent `#` beside it.
 - Before the child's message starts typing in, the empty bubble shows an animated "..." so the reviewer knows where to look.
+- The "<age> years old" line under "Child" beside the opener is larger and in the main text colour rather than faded grey.
