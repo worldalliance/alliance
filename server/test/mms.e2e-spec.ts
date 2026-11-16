@@ -6,6 +6,7 @@ import { Mms } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
 import { MmsService } from "src/mms/mms.service";
 import { ReferralSource, User } from "src/user/entities/user.entity";
+import { lockPhoneNumber } from "src/user/user.utils";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -13,6 +14,7 @@ import {
   createTestApp,
   eventually,
   TestContext,
+  waitForLockWait,
 } from "./e2e-test-utils";
 import { TWILIO_NUMBER } from "./mms-fixtures";
 
@@ -384,6 +386,34 @@ describe("Inbound MMS keywords (e2e)", () => {
 
     expect(await unsubscribed()).toBe(false);
   });
+
+  it.each([
+    { keyword: "STOP", before: false },
+    { keyword: "START", before: true },
+  ])(
+    "waits for the lock on the number before applying $keyword",
+    async ({ keyword, before }) => {
+      await userRepo.update(
+        { id: memberId },
+        { phoneNumberUnsubscribed: before },
+      );
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await lockPhoneNumber(runner.manager, "+14155559001");
+        const sent = inbound("+14155559001", keyword).then((res) => res.status);
+        await waitForLockWait(ctx.dataSource);
+        expect(await unsubscribed()).toBe(before);
+        await runner.commitTransaction();
+        expect(await sent).toBe(201);
+      } finally {
+        if (runner.isTransactionActive) await runner.rollbackTransaction();
+        await runner.release();
+      }
+
+      expect(await unsubscribed()).toBe(!before);
+    },
+  );
 
   it("accepts an opt-out from a number nobody has on file", async () => {
     const res = await inbound("+14155559999", "STOP");

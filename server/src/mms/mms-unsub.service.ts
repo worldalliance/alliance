@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { User } from "src/user/entities/user.entity";
+import { lockPhoneNumber } from "src/user/user.utils";
 import type { Repository } from "typeorm";
 import { MmsOptout } from "./mms-optout.entity";
 
@@ -22,6 +23,7 @@ export class MmsUnsubService {
   ): Promise<void> {
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
+        await lockPhoneNumber(manager, phoneNumber);
         const userRepository = manager.getRepository(User);
         const mmsOptoutRepository = manager.getRepository(MmsOptout);
         const matchingUsers = await userRepository.findBy({ phoneNumber });
@@ -77,6 +79,7 @@ export class MmsUnsubService {
     // the live members changed and failed writes never announce a resubscribe.
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
+        await lockPhoneNumber(manager, phoneNumber);
         const userRepository = manager.getRepository(User);
         const matchingUsers = await userRepository.findBy({ phoneNumber });
         await userRepository.update(

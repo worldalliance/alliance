@@ -62,7 +62,7 @@ import { UserAwayRange } from "./entities/user-away-range.entity";
 import { PHONE_NUMBER_INDEX, User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
 import { PhoneNumberTakenException } from "./phone-number-taken.exception";
-import { memberWithReferral } from "./user.utils";
+import { lockPhoneNumber, memberWithReferral } from "./user.utils";
 
 @Injectable()
 export class UserService {
@@ -192,21 +192,24 @@ export class UserService {
       await this.imagesService.resolvePhotoUpdate(profilePicture);
 
     try {
-      await writeUnderLive(this.dataSource.manager, {
-        saved: {
-          target: User,
-          id,
-          notFound: `User ${id} not found`,
-        },
-        write: async (em) => {
-          // Read under the row lock: a save writes back every column that
-          // differs, so a copy read earlier would undo a concurrent write.
-          const user = await em.findOneByOrFail(User, { id });
-          if (city !== undefined) user.city = city;
-          Object.assign(user, updateData);
-          if (nextPicture !== undefined) user.profilePicture = nextPicture;
-          return em.save(user);
-        },
+      await this.dataSource.transaction(async (manager) => {
+        if (data.phoneNumber) await lockPhoneNumber(manager, data.phoneNumber);
+        await writeUnderLive(manager, {
+          saved: {
+            target: User,
+            id,
+            notFound: `User ${id} not found`,
+          },
+          write: async (em) => {
+            // Read under the row lock: a save writes back every column that
+            // differs, so a copy read earlier would undo a concurrent write.
+            const user = await em.findOneByOrFail(User, { id });
+            if (city !== undefined) user.city = city;
+            Object.assign(user, updateData);
+            if (nextPicture !== undefined) user.profilePicture = nextPicture;
+            return em.save(user);
+          },
+        });
       });
     } catch (error) {
       if (isUniqueViolation(error, PHONE_NUMBER_INDEX)) {

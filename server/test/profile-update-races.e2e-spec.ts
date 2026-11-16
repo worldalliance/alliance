@@ -1,4 +1,5 @@
 import { User } from "src/user/entities/user.entity";
+import { lockPhoneNumber } from "src/user/user.utils";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -72,5 +73,25 @@ describe("A profile update racing other writes (e2e)", () => {
         phoneNumberUnsubscribed: true,
       }),
     );
+  });
+
+  it("waits for the lock on the number it sets", async () => {
+    const member = await createMember();
+    const phoneNumber = uniquePhone();
+    const runner = ctx.dataSource.createQueryRunner();
+    await runner.startTransaction();
+    try {
+      await lockPhoneNumber(runner.manager, phoneNumber);
+      const updated = update(member, { phoneNumber }).then((res) => res.status);
+      await waitForLockWait(ctx.dataSource);
+      expect((await reload(member)).phoneNumber).toBeNull();
+      await runner.commitTransaction();
+      expect(await updated).toBe(201);
+    } finally {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      await runner.release();
+    }
+
+    expect((await reload(member)).phoneNumber).toBe(phoneNumber);
   });
 });
