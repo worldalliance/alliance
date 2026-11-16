@@ -5,7 +5,7 @@
   border-radius: var(--r);
   border: 1.5px solid var(--line);
   background: var(--card);
-  font-weight: 700;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -44,7 +44,7 @@
   background: none;
   border: 0;
   color: var(--accent);
-  font-weight: 700;
+  font-weight: 600;
   min-height: 44px;
   padding: 0 6px;
   cursor: pointer;
@@ -148,24 +148,4 @@
 }
 .kora-review .dim {
   color: var(--muted);
-}
-.kora-review .cicon {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0 6px;
-  border-radius: 3px;
-  font: 700 13px/1.5 var(--f-mono);
-  vertical-align: 1px;
-  white-space: nowrap;
-}
-.kora-review .cicon .ic {
-  width: 15px;
-  height: 15px;
-}
-.kora-review .cicon.v-pos {
-  background: var(--plus-tint);
-}
-.kora-review .cicon.v-neg {
-  background: var(--minus-tint);
 }

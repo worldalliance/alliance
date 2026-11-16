@@ -116,7 +116,7 @@ export default function KoraReviewPage() {
       <KoraNavbar hideNavLinks />
       <main
         aria-busy={busy || undefined}
-        className="flex-1"
+        className="flex flex-1 flex-col"
         style={{ paddingTop: NAV_HEIGHT }}
       >
         {children}

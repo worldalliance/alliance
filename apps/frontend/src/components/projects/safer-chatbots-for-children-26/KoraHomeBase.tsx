@@ -45,7 +45,9 @@ function HeroSection({
           {HOME_COPY.rankedSoFar(totalRanked)}
         </p>
       )}
-      {hero.note && <p className="text-lg text-zinc-700">{hero.note}</p>}
+      {hero.note && (
+        <p className="max-w-2xl text-lg text-zinc-700">{hero.note}</p>
+      )}
       {action?.kind === HeroAction.Continue && (
         <Button to={KORA_REVIEW_PATH} color={ButtonColor.Black}>
           {action.label}

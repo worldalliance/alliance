@@ -21,13 +21,11 @@ export function createSheet(ctx: SheetCtx) {
     later,
     markBadge,
     on,
-    openEdit,
     overlapping,
     plural,
     raf,
     removeAnn,
     rootEl,
-    saveNote,
     selRange,
     setValue,
     setVar,
@@ -148,7 +146,6 @@ export function createSheet(ctx: SheetCtx) {
     {
       new: { label: "Mark selection", parts: sheetNew },
       edit: { label: "Edit mark", parts: sheetEdit },
-      note: { label: "Note", parts: sheetNote },
     };
   function sheetNew(): SheetPart[] {
     if (!S.sel) return [];
@@ -297,32 +294,6 @@ export function createSheet(ctx: SheetCtx) {
         ),
       ),
     ];
-  }
-  function sheetNote(): SheetPart[] {
-    const a = sheetAnn();
-    if (!a) return [];
-    return [
-      h("p", { class: "sh-prev" }, `“${clip(a.text, 120)}”`),
-      noteField(saveNote),
-      h(
-        "div",
-        { class: "sh-acts" },
-        h(
-          "button",
-          { type: "button", class: "big primary", onclick: saveNote },
-          "Save note",
-        ),
-        h(
-          "button",
-          { type: "button", class: "big ghost", onclick: () => openEdit(a.id) },
-          "Back",
-        ),
-      ),
-    ];
-  }
-  function sheetAnn() {
-    const id = S.sheet?.annId;
-    return id ? findAnn(id) : undefined;
   }
   /* ---------- Keyboard-aware sheet position on phones ---------- */
   if (win.visualViewport) {

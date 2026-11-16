@@ -218,32 +218,6 @@
   padding-left: 2px;
   font-style: italic;
 }
-.kora-review .ann-act {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-.kora-review .ann-ic {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  margin: -6px 0 -6px 2px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-  vertical-align: middle;
-  border-radius: 4px;
-}
-.kora-review .ann-ic .ic {
-  width: 16px;
-  height: 16px;
-}
-.kora-review .ann-ic:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
 .kora-review .tag {
   font: 700 11px var(--f-mono);
   padding: 2px 6px;

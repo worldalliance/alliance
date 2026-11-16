@@ -70,7 +70,7 @@
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
   cursor: pointer;
 }
@@ -91,7 +91,7 @@
   width: 100%;
 }
 
-/* Full-screen question intro, shown when the question changes */
+/* Full-screen category intro, shown when the category changes */
 .kora-review .kr-intro {
   position: fixed;
   inset: 0;
@@ -110,13 +110,8 @@
 @media (pointer: coarse) {
   .kora-review .link,
   .kora-review .ann-q,
-  .kora-review .seg button,
-  .kora-review .ctx-more summary {
+  .kora-review .seg button {
     min-height: 44px;
-  }
-  .kora-review .ann-ic {
-    width: 44px;
-    height: 44px;
   }
   .kora-review .sh-x {
     width: 44px;

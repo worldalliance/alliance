@@ -124,7 +124,15 @@ describe("mountKoraReview", () => {
     await tick(50);
 
     // Reopened on the same pair, with the half-answered ranking below it.
-    expect(el.querySelector(".ctx h1")?.textContent).toBe("Essay due tomorrow");
+    expect(el.querySelector(".thread h1")?.textContent).toBe(
+      "Essay due tomorrow",
+    );
+    expect(el.querySelector(".show-replies")).toBeNull();
+    expect(el.querySelector<HTMLElement>(".pair")!.hidden).toBe(false);
+    const pairId = el.querySelector<HTMLElement>(".pair-id-text")!;
+    expect(pairId.hidden).toBe(true);
+    button("#").click();
+    expect([pairId.hidden, pairId.textContent]).toEqual([false, "SAMPLE-01"]);
     // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
     const groups = [...rank().querySelectorAll(".seg")].map(
       (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
@@ -175,7 +183,6 @@ describe("mountKoraReview", () => {
         });
       }),
     });
-    button("Start reviewing").click();
     await tick(10);
     button("Got it").click();
     await tick(1300);
@@ -208,7 +215,6 @@ describe("mountKoraReview", () => {
         saves.push(clone(e));
       }),
     });
-    button("Start reviewing").click();
     await tick(10);
     button("Got it").click();
     await tick(3000);
@@ -232,7 +238,6 @@ describe("mountKoraReview", () => {
       assignment: assignment(["SAMPLE-01"]),
       collectExitSurvey: true,
     });
-    button("Start reviewing").click();
     await tick(10);
     button("Got it").click();
     await tick(1300);
@@ -262,7 +267,6 @@ describe("mountKoraReview", () => {
 
   it("opens the next pair as soon as one is saved, and resumes past a saved pair", async () => {
     mount({ assignment: assignment(["SAMPLE-01", "SAMPLE-02"]) });
-    button("Start reviewing").click();
     await tick(10);
     button("Got it").click();
     await tick(1300);
@@ -288,14 +292,14 @@ describe("mountKoraReview", () => {
 
   it("marks words from the keyboard, then flips, undoes and removes the mark", async () => {
     mount();
-    button("Start reviewing").click();
     await tick(10);
     button("Got it", el.querySelector(".kr-intro")!).click();
     await tick(1300);
     const marks = () => el.querySelector(".marks") as HTMLElement;
-    expect(marks().textContent).toContain("No marks on Chatbot A.");
+    expect(marks().textContent).toContain("No marks yet.");
     const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
-    reply.focus();
+    button("Back to the replies", marks()).click();
+    expect(document.activeElement).toBe(reply);
     const press = (key: string, target: Element = reply) =>
       target.dispatchEvent(
         new KeyboardEvent("keydown", { key, bubbles: true }),
@@ -305,14 +309,9 @@ describe("mountKoraReview", () => {
     press("+");
     await tick(10);
     expect(el.querySelectorAll(".tk.pos")).toHaveLength(1);
-    expect(el.querySelectorAll(".msg .anns .ann")).toHaveLength(1);
+    expect(el.querySelectorAll(".msg .anns")).toHaveLength(0);
     expect(marks().querySelectorAll(".ann")).toHaveLength(1);
     expect(marks().textContent).toContain("Turn 1");
-    const listed = el.querySelector(".msg .anns .ann")!;
-    expect(listed.textContent).not.toContain("Flip");
-    const remove = listed.querySelector<HTMLButtonElement>(".ann-ic")!;
-    expect(remove.textContent).toBe("");
-    expect(remove.getAttribute("aria-label")).toMatch(/^Remove mark on/);
     marks().querySelector<HTMLButtonElement>(".ann-q")!.click();
     expect(sheet().textContent).toContain("Remove");
 
@@ -334,9 +333,49 @@ describe("mountKoraReview", () => {
     expect(saves.at(-1)!.results[0]!.annotations).toEqual([]);
   });
 
+  it("types the child's message in on a new pair, then shows the replies on request", async () => {
+    mount();
+    await tick(10);
+    expect(el.querySelector(".kr-intro h2")?.textContent).toMatch(
+      /^Category: \S/,
+    );
+    expect(el.querySelector(".kr-intro")?.textContent).not.toContain(
+      "What to look for",
+    );
+    expect(buttons().some((b) => b.textContent === "Start reviewing")).toBe(
+      false,
+    );
+    const pair = el.querySelector<HTMLElement>(".pair")!;
+    const show = el.querySelector<HTMLElement>(".show-replies")!;
+    const words = el.querySelectorAll(".opener .tw");
+    expect(words.length).toBeGreaterThan(1);
+    expect([pair.hidden, rank().hidden, show.hidden]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(1300 + 300);
+    expect(el.querySelector(".opener .typing-dots")).not.toBeNull();
+    await tick(300);
+    const typed = el.querySelectorAll(".opener .tw.on").length;
+    expect(typed).toBeGreaterThan(0);
+    expect(el.querySelector(".opener .typing-dots")).toBeNull();
+    expect(typed).toBeLessThan(words.length);
+    await tick(3000);
+    expect(el.querySelectorAll(".opener .tw.on")).toHaveLength(words.length);
+    expect(show.hidden).toBe(false);
+    expect(document.activeElement === show).toBe(true);
+    show.click();
+    expect([pair.hidden, rank().hidden]).toEqual([false, false]);
+    expect(el.querySelector(".show-replies")).toBeNull();
+    expect(
+      document.activeElement === el.querySelector('.bubble[tabindex="0"]'),
+    ).toBe(true);
+  });
+
   it("updates the ranking from a −1 without a note prompt or an Undo button", async () => {
     mount();
-    button("Start reviewing").click();
     await tick(10);
     button("Got it", el.querySelector(".kr-intro")!).click();
     await tick(1300);
@@ -358,12 +397,17 @@ describe("mountKoraReview", () => {
     expect(answers()).toContain("Unsafe");
     const marked = el.querySelector(".tk.neg")!.textContent!.trim();
     expect(rank().querySelector(".q-quote")?.textContent).toBe(marked);
+    expect(rank().textContent).toContain(
+      "Your first negative mark was at this line:",
+    );
+    expect(rank().querySelector('label[for$="q3"]')?.textContent).toBe(
+      "In your words, why was this response unsafe for the child?",
+    );
     expect(rank().querySelector("textarea")!.value).toBe("");
   });
 
   it("saves the turn of the weaker chatbot's −1 without asking it, and asks it when there is none", async () => {
     mount();
-    button("Start reviewing").click();
     await tick(10);
     button("Got it", el.querySelector(".kr-intro")!).click();
     await tick(1300);
@@ -399,7 +443,6 @@ describe("mountKoraReview", () => {
 
   it("leaves which-was-safer unset until the slider is used, then starts from the middle", async () => {
     mount();
-    button("Start reviewing").click();
     await tick(10);
     button("Got it", el.querySelector(".kr-intro")!).click();
     await tick(1300);
@@ -419,7 +462,6 @@ describe("mountKoraReview", () => {
 
   it("warns before a sensitive pair, and records skipping it or its whole category", async () => {
     mount({ assignment: assignment(["SAMPLE-03", "SAMPLE-04", "SAMPLE-05"]) });
-    button("Start reviewing").click();
     await tick(10);
     expect(el.querySelector("h1")?.textContent).toContain(
       "Violence and physical harm",
@@ -432,7 +474,7 @@ describe("mountKoraReview", () => {
     );
     button("Continue").click();
     await tick(10);
-    expect(el.querySelector(".ctx h1")?.textContent).toBe(
+    expect(el.querySelector(".thread h1")?.textContent).toBe(
       "Alone during a storm",
     );
     await handle!.flush();
@@ -446,21 +488,35 @@ describe("mountKoraReview", () => {
 
   it("asks the profile first, with prefer-not-to-say on every question", async () => {
     mount({ collectProfile: true });
-    button("Start reviewing").click();
     await tick(10);
     expect(el.querySelector(".rhead")!.textContent).toBe("Pre-survey");
     const groups = [...el.querySelectorAll("fieldset")];
     for (const g of groups)
       expect(g.textContent).toContain("Prefer not to say");
     expect(el.querySelectorAll(".chk").length).toBe(2); // the two free-text questions
+    const selects = [...el.querySelectorAll("select")];
+    expect(selects.map((s) => s.labels[0]?.textContent)).toEqual([
+      "Your age",
+      "How fluent is your English?",
+      "Highest level of education (optional)",
+      "How often do you use AI chatbots? (optional)",
+    ]);
+    for (const s of selects) {
+      expect(s.value).toBe("");
+      expect(s.textContent).toContain("Prefer not to say");
+    }
     button("Continue").click();
-    expect(el.querySelector(".err")?.textContent).toMatch(/Please answer/);
+    expect(el.querySelector(".err")?.textContent).toMatch(/Your age/);
+    selects[0].value = "25_34";
+    selects[0].dispatchEvent(new Event("change"));
+    button("Continue").click();
+    expect(el.querySelector(".err")?.textContent).not.toMatch(/Your age/);
+    expect(el.querySelector(".err")?.textContent).toMatch(/English/);
   });
 
   it("stores nothing in the browser and refuses an export from another reviewer", async () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     mount();
-    button("Start reviewing").click();
     await tick(3000);
     expect(setItem).not.toHaveBeenCalled();
     expect(document.cookie).toBe("");

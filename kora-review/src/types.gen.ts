@@ -160,7 +160,7 @@ export interface KoraResult {
    */
   q2_turn?: number | "none";
   /**
-   * In one line, why.
+   * Why the weaker AI's response was unsafe, in the reviewer's words, after a `> ` quote of their first −1 mark on it when there is one.
    */
   q3_text?: string;
   /**

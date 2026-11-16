@@ -1,10 +1,3 @@
-/* Welcome */
-.kora-review .welcome {
-  padding-block: 28px 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
 .kora-review .brand {
   display: flex;
   align-items: center;
@@ -19,74 +12,10 @@
   letter-spacing: -0.02em;
   line-height: 1.02;
 }
-.kora-review .m-pos {
-  background: var(--plus-tint);
-  text-decoration: underline solid var(--plus) 4px;
-  text-underline-offset: 6px;
-  border-radius: 3px;
-  padding: 0 4px;
-}
-.kora-review .m-neg {
-  background: var(--minus-tint);
-  text-decoration: underline dashed var(--minus) 2.5px;
-  text-underline-offset: 7px;
-  border-radius: 3px;
-  padding: 0 4px;
-}
 .kora-review .lede {
   font-size: 18px;
   color: var(--muted);
   max-width: 60ch;
-}
-.kora-review .demo {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.kora-review .demo .bubble {
-  font-size: 17px;
-}
-.kora-review .demo-cap {
-  font-size: 14px;
-  color: var(--muted);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.kora-review .steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-  counter-reset: s;
-}
-.kora-review .steps li {
-  display: grid;
-  grid-template-columns: 32px 1fr;
-  gap: 12px;
-  align-items: start;
-  counter-increment: s;
-}
-.kora-review .steps li::before {
-  content: counter(s);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--ink);
-  color: var(--paper);
-  font: 800 15px var(--f-display);
-}
-.kora-review .steps b {
-  display: block;
-  font-family: var(--f-display);
-  font-size: 18px;
-}
-.kora-review .steps span {
-  color: var(--muted);
 }
 .kora-review .card {
   background: var(--card);
@@ -104,9 +33,10 @@
   gap: 6px;
 }
 .kora-review .field label {
-  font-weight: 700;
+  font-weight: 600;
 }
 .kora-review .field input,
+.kora-review .field select,
 .kora-review textarea {
   font: inherit;
   font-size: 16px;
@@ -119,6 +49,7 @@
   min-height: 48px;
 }
 .kora-review .field input:focus,
+.kora-review .field select:focus,
 .kora-review textarea:focus {
   outline: none;
   border-color: var(--accent);
@@ -127,7 +58,7 @@
 .kora-review .err {
   color: var(--minus);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .kora-review .fine {
   font-size: 14px;
@@ -158,7 +89,7 @@
   border: 0;
   border-radius: 5px;
   background: transparent;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   color: var(--muted);
 }

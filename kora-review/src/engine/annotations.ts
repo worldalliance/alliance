@@ -4,6 +4,7 @@ import type { Annotation, Result } from "./types.js";
 export function createAnnotations(ctx: AnnotationsCtx) {
   const {
     $,
+    $$,
     S,
     aiTurn,
     announce,
@@ -16,7 +17,6 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     floatValue,
     fmt,
     h,
-    icon,
     iso,
     letter,
     markBadge,
@@ -73,67 +73,6 @@ export function createAnnotations(ctx: AnnotationsCtx) {
             if (a.id === S.editing) g.classList.add("focus");
           }
       }
-      v.list.replaceChildren(
-        ...all.map((a) =>
-          h(
-            "li",
-            { class: "ann " + vcls(a.value) },
-            markBadge(a.value, "ann-v"),
-            a.orphaned
-              ? h(
-                  "span",
-                  { class: "ann-q", style: "cursor:default" },
-                  `“${a.text}”`,
-                )
-              : h(
-                  "button",
-                  {
-                    type: "button",
-                    class: "ann-q",
-                    onclick: () => openEdit(a.id),
-                  },
-                  `“${a.text}”`,
-                ),
-            a.orphaned ? h("span", { class: "tag" }, "Not found") : null,
-            h(
-              "span",
-              { class: "ann-act" },
-              h(
-                "button",
-                {
-                  type: "button",
-                  class: "ann-ic",
-                  onclick: () => removeAnn(a.id),
-                  "aria-label": `Remove mark on “${clip(a.text, 30)}”`,
-                  title: "Remove mark",
-                },
-                icon("trash"),
-              ),
-            ),
-            a.note
-              ? h(
-                  "span",
-                  { class: "ann-n" },
-                  a.note,
-                  a.orphaned
-                    ? null
-                    : h(
-                        "button",
-                        {
-                          type: "button",
-                          class: "ann-ic",
-                          onclick: () => editNote(a.id),
-                          "aria-label": `Edit note on “${clip(a.text, 30)}”`,
-                          title: "Edit note",
-                        },
-                        icon("pencil"),
-                      ),
-                )
-              : null,
-          ),
-        ),
-      );
-      v.list.hidden = !all.length;
     }
     renderMarks();
   }
@@ -141,11 +80,29 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     const box = $("marks");
     if (!box) return;
     const t = cur(),
-      anns = [...res(t).annotations].sort(
+      r = res(t),
+      anns = [...r.annotations].sort(
         (x, y) => x.messageIndex - y.messageIndex || x.start - y.start,
       );
+    const heading = h("h2", { class: "rank-h", id: "marks-h" }, "Your marks");
+    if (!anns.length && r.status !== "done") {
+      box.replaceChildren(
+        heading,
+        h(
+          "p",
+          { class: "dim" },
+          "No marks yet. This step is optional: scroll back up to the chatbots' replies and tap the words where a chatbot was unsafe.",
+        ),
+        h(
+          "button",
+          { type: "button", class: "link", onclick: toReplies },
+          "Back to the replies",
+        ),
+      );
+      return;
+    }
     box.replaceChildren(
-      h("h2", { class: "rank-h", id: "marks-h" }, "Your marks"),
+      heading,
       h(
         "div",
         { class: "two-col" },
@@ -194,6 +151,12 @@ export function createAnnotations(ctx: AnnotationsCtx) {
         }),
       ),
     );
+  }
+  function toReplies() {
+    const first = $$(".bubble[tabindex]")[0];
+    if (!first) return;
+    first.scrollIntoView({ block: "center" });
+    first.focus({ preventScroll: true });
   }
   function jumpTo(id: string) {
     for (const v of Object.values(S.views)) {
@@ -295,17 +258,6 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     );
     if (kb) view.bubble.focus({ preventScroll: true });
   }
-  function editNote(id: string) {
-    const a = findAnn(id);
-    if (!a) return;
-    S.sel = null;
-    S.editing = id;
-    S.noteDraft = a.note || "";
-    renderSel();
-    renderAnns();
-    openSheet("note", { annId: id });
-    focusNote();
-  }
   function annIn(r: Result, id: string) {
     const a = r.annotations.find((z) => z.id === id);
     if (!a) throw new Error(`no annotation ${id}`);
@@ -373,26 +325,10 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     closeSheet();
     toast(`Removed ${fmt(a.value)}`);
   }
-  function saveNote() {
-    const annId = S.sheet?.annId;
-    if (!annId || !findAnn(annId)) return;
-    const note = S.noteDraft.trim().slice(0, 140);
-    mutate((r) => {
-      const x = annIn(r, annId);
-      if (note) x.note = note;
-      else delete x.note;
-    });
-    S.editing = null;
-    S.noteDraft = "";
-    renderAnns();
-    closeSheet();
-    toast(note ? "Note saved" : "Note removed");
-  }
 
   return {
     applyNew,
     commitNote,
-    editNote,
     findAnn,
     flip,
     mutate,
@@ -401,7 +337,6 @@ export function createAnnotations(ctx: AnnotationsCtx) {
     overlapping,
     removeAnn,
     renderAnns,
-    saveNote,
     setValue,
     undo,
   };

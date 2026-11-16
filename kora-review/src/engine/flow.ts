@@ -8,7 +8,7 @@ export function createFlow(ctx: FlowCtx) {
     allReviewed,
     app,
     cancel,
-    challengeNodes,
+    catLabel,
     clamp,
     cur,
     isDestroyed,
@@ -22,15 +22,17 @@ export function createFlow(ctx: FlowCtx) {
     nextPendingIndex,
     on,
     progressText,
+    reducedMotion,
     refreshList,
     res,
     reviewed,
     restore,
     rootEl,
-    win,
   } = ctx;
   const closeSheet: Late["closeSheet"] = (...args) =>
     ctx.late().closeSheet(...args);
+  const playOpener: Late["playOpener"] = (...args) =>
+    ctx.late().playOpener(...args);
   const needsWarning: Late["needsWarning"] = (...args) =>
     ctx.late().needsWarning(...args);
   const renderExit: Late["renderExit"] = (...args) =>
@@ -43,8 +45,6 @@ export function createFlow(ctx: FlowCtx) {
     ctx.late().renderReview(...args);
   const renderWarning: Late["renderWarning"] = (...args) =>
     ctx.late().renderWarning(...args);
-  const renderWelcome: Late["renderWelcome"] = (...args) =>
-    ctx.late().renderWelcome(...args);
 
   const changed = () => {
     if (!isDestroyed() && S.mounted) o.onChange();
@@ -59,8 +59,7 @@ export function createFlow(ctx: FlowCtx) {
     S.editing = null;
     closeSheet();
     closeIntro();
-    if (screen === "welcome") renderWelcome();
-    else if (screen === "finish") renderFinish();
+    if (screen === "finish") renderFinish();
     else if (screen === "warning" && opts) renderWarning(opts);
     else if (screen === "profile") renderProfile();
     else if (screen === "exit") renderExit();
@@ -98,13 +97,16 @@ export function createFlow(ctx: FlowCtx) {
     closeSheet();
     const t = cur();
     ensure(t).startedAt ||= iso();
-    renderReview();
+    renderReview(!wasStarted);
     toTop();
     if (doc.visibilityState !== "hidden") openedAt = Date.now();
-    // The question intro is shown when the question changes, but not for a pair the reviewer has opened before.
-    if (t.challenge !== S.lastChallenge && !wasStarted) showIntro(t);
-    else focusScreen();
-    S.lastChallenge = t.challenge;
+    // The category intro is shown when the category changes, but not for a pair the reviewer has opened before.
+    if (t.category !== S.lastCategory && !wasStarted) showIntro(t);
+    else {
+      focusScreen();
+      playOpener();
+    }
+    S.lastCategory = t.category;
     changed();
   }
 
@@ -131,17 +133,11 @@ export function createFlow(ctx: FlowCtx) {
       h(
         "div",
         { class: "intro-in" },
-        h(
-          "div",
-          { class: "intro-label" },
-          h("span", {}, "What to look for"),
-          h("span", { class: "dim" }, progressText()),
-        ),
-        t.tagline ? h("div", { class: "intro-tag" }, t.tagline) : null,
+        h("div", { class: "intro-label" }, progressText()),
         h(
           "h2",
           { class: "intro-q", id: "intro-q" },
-          challengeNodes(t.challenge),
+          `Category: ${catLabel(t.category)}`,
         ),
         h(
           "p",
@@ -161,15 +157,13 @@ export function createFlow(ctx: FlowCtx) {
   function fadeIntro() {
     if (!intro || intro.el.classList.contains("fading")) return;
     intro.el.classList.add("fading");
-    const reduce =
-      win.matchMedia &&
-      win.matchMedia("(prefers-reduced-motion: reduce)").matches;
     intro.timer = later(
       () => {
         closeIntro();
         focusScreen();
+        playOpener();
       },
-      reduce ? 0 : INTRO_FADE_MS,
+      reducedMotion() ? 0 : INTRO_FADE_MS,
     );
   }
   function closeIntro() {
@@ -240,27 +234,23 @@ export function createFlow(ctx: FlowCtx) {
     restore(o.savedExport);
     refreshList();
     const saved = o.savedExport;
+    const fresh = !S.all.some((t) => res(t).startedAt);
     if (S.isDone) {
       go("finish");
       o.onComplete();
     } else if (allReviewed()) finishFlow();
-    else if (needsProfile() && !S.all.some((t) => res(t).startedAt))
-      go("welcome");
     else if (needsProfile()) go("profile");
     else {
       const i =
         saved && saved.currentTranscriptId
           ? S.list.findIndex((t) => t.id === saved.currentTranscriptId)
           : -1;
-      if (i >= 0 && !reviewed(res(S.list[i]))) {
-        openTranscript(i);
-      } else if (
-        S.all.some((t) => res(t).startedAt || res(t).status === "done")
-      )
-        startReviewing();
-      else go("welcome");
+      if (i >= 0 && !reviewed(res(S.list[i]))) openTranscript(i);
+      else startReviewing();
     }
     S.mounted = true;
+    // Boot changes don't save, so a first pair opened here saves its start once mounted.
+    if (fresh && S.screen === "review") changed();
   }
 
   const introShown = () => intro;

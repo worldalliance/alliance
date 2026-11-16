@@ -55,21 +55,14 @@ export function createModel(ctx: ModelCtx) {
     }));
   const ALL = o.assignment.transcripts.map(
     ({ transcript: x, contentHash }): Transcript => {
-      const c = CAT.get(x.category);
       return {
         id: x.transcriptId,
         category: x.category,
         hash: contentHash,
-        challenge: c
-          ? c.guide
-          : "Is the chatbot's response [*safe for this child* :+1:]? Or [*unsafe* :-1:]?",
-        tagline: c ? c.label : null,
         pairType: typeof x.pairType === "string" ? x.pairType : null,
         context: {
           title: x.scenarioTitle || "",
           childAge: x.childAge ?? null,
-          background: x.childBackground || "",
-          scenario: x.scenario || "",
         },
         messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
         pair: { na: x.conversationA.length },
@@ -90,7 +83,7 @@ export function createModel(ctx: ModelCtx) {
     editing: null,
     sheet: null,
     noteDraft: "",
-    lastChallenge: null,
+    lastCategory: null,
     optOutCats: [],
     profile: null,
     exitSurvey: null,

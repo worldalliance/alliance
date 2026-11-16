@@ -38,15 +38,15 @@ export type Late = {
   focusNote(): void;
   needsWarning(t: Transcript): boolean;
   openSheet(mode: SheetMode, opts?: SheetOpts): void;
+  playOpener(): void;
   renderAnns(): void;
   renderExit(): void;
   renderFinish(): void;
   renderProfile(): void;
   renderRank(): void;
-  renderReview(): void;
+  renderReview(slow?: boolean): void;
   renderSel(): void;
   renderWarning(next: { then: string }): void;
-  renderWelcome(): void;
   selRange(): [number, number];
 };
 

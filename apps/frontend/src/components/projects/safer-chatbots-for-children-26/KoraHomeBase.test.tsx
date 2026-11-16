@@ -80,8 +80,14 @@ test("offers a newcomer their first pairs and the example, without a table", asy
   ).toBe(KORA_EXAMPLE_PATH);
   expect(screen.queryByText(/ranked so far/)).toBeNull();
   expect(screen.queryByRole("table")).toBeNull();
+  const intro = screen.getByText(HOME_COPY.startIntro(10));
+  const startButton = screen.getByRole("button", { name: "Start ranking" });
+  expect(
+    intro.compareDocumentPosition(startButton) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
 
-  fireEvent.click(screen.getByRole("button", { name: "Start ranking" }));
+  fireEvent.click(startButton);
   await screen.findByText("Review page");
   expect(moreRequests).toBe(1);
 });

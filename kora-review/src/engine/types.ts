@@ -17,14 +17,10 @@ export type Transcript = {
   id: string;
   category: KoraCategory;
   hash: string;
-  challenge: string;
-  tagline: string | null;
   pairType: string | null;
   context: {
     title: string;
     childAge: number | null;
-    background: string;
-    scenario: string;
   };
   messages: Message[];
   pair: { na: number };
@@ -71,7 +67,6 @@ export type Result = Pick<
 
 export type Screen =
   | "boot"
-  | "welcome"
   | "profile"
   | "warning"
   | "review"
@@ -96,7 +91,7 @@ export type Words = {
 };
 
 /** A reply on the review screen, with its bubble and its list of marks. */
-export type View = Words & { bubble: HTMLElement; list: HTMLElement };
+export type View = Words & { bubble: HTMLElement };
 
 /** Token indexes within one message. */
 export type Selection = { mi: number; anchor: number; focus: number };
@@ -110,9 +105,9 @@ export type PairDraft = {
   reasonEdited: boolean;
 };
 
-export type SheetMode = "new" | "edit" | "note";
+export type SheetMode = "new" | "edit";
 
-export type SheetOpts = { kb?: boolean; annId?: string };
+export type SheetOpts = { kb?: boolean };
 
 export type SheetState = { mode: SheetMode } & SheetOpts;
 
@@ -128,7 +123,7 @@ export type State = {
   editing: string | null;
   sheet: SheetState | null;
   noteDraft: string;
-  lastChallenge: string | null;
+  lastCategory: string | null;
   optOutCats: KoraCategory[];
   profile: KoraProfile | null;
   exitSurvey: KoraExitSurvey | null;

@@ -8,6 +8,7 @@ type SurveyField = {
   q: string;
   opts?: Record<string, string>;
   multi?: boolean;
+  dropdown?: boolean;
   req?: boolean;
   text?: boolean;
   long?: boolean;
@@ -56,6 +57,7 @@ export function createSurveys(ctx: SurveysCtx) {
     {
       id: "age_band",
       q: "Your age",
+      dropdown: true,
       opts: {
         "18_24": "18 to 24",
         "25_34": "25 to 34",
@@ -68,6 +70,7 @@ export function createSurveys(ctx: SurveysCtx) {
     {
       id: "english",
       q: "How fluent is your English?",
+      dropdown: true,
       opts: {
         native: "Native or bilingual",
         fluent: "Fluent",
@@ -80,6 +83,7 @@ export function createSurveys(ctx: SurveysCtx) {
     {
       id: "education",
       q: "Highest level of education (optional)",
+      dropdown: true,
       opts: {
         secondary: "Secondary school or less",
         some_college: "Vocational or some college",
@@ -90,6 +94,7 @@ export function createSurveys(ctx: SurveysCtx) {
     {
       id: "ai_use",
       q: "How often do you use AI chatbots? (optional)",
+      dropdown: true,
       opts: {
         never: "Never",
         monthly: "Monthly",
@@ -216,6 +221,28 @@ export function createSurveys(ctx: SurveysCtx) {
           box,
           h("span", {}, PNTS_LABEL),
         ),
+      );
+    }
+    if (f.dropdown) {
+      const given = ans[f.id];
+      const sel = h(
+        "select",
+        {
+          id: "sv-" + f.id,
+          onchange: () => {
+            ans[f.id] = sel.value || undefined;
+          },
+        },
+        h("option", { value: "" }, "Choose an answer"),
+        Object.entries(f.opts ?? {}).map(([v, label]) =>
+          h("option", { value: v, selected: given === v }, label),
+        ),
+      );
+      return h(
+        "div",
+        { class: "field" },
+        h("label", { for: "sv-" + f.id }, f.q),
+        sel,
       );
     }
     return h(

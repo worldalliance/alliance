@@ -30,12 +30,30 @@ export function createPresentation(ctx: PresentationCtx) {
           params.chip,
           params.age ? h("span", { class: "cage" }, params.age) : null,
           h("span", { class: "grow" }),
-          params.pairId ? h("span", { class: "pair-id" }, params.pairId) : null,
+          params.pairId ? pairIdToggle(params.pairId) : null,
           h("span", { class: "prog" }, params.stage),
         ),
         params.below,
       ),
     );
+  }
+  function pairIdToggle(pairId: string) {
+    const id = h("span", { class: "pair-id-text", hidden: true }, pairId);
+    const toggle = h(
+      "button",
+      {
+        type: "button",
+        class: "pair-id-hash",
+        "aria-label": "Pair ID",
+        "aria-expanded": "false",
+        onclick: () => {
+          id.hidden = !id.hidden;
+          toggle.setAttribute("aria-expanded", String(!id.hidden));
+        },
+      },
+      "#",
+    );
+    return h("span", { class: "pair-id" }, toggle, id);
   }
   function brandMark() {
     return h(
@@ -44,50 +62,6 @@ export function createPresentation(ctx: PresentationCtx) {
       h("b", { class: "p" }, "+1"),
       h("b", { class: "n" }, "−1"),
     );
-  }
-
-  // Challenge markup. [ … ] marks a clause the way a +1 or −1 mark looks in a reply, coloured by the :+1: or :-1: inside it,
-  // which shows there as a small thumb. *text* is bold. Outside brackets, :+1: and :-1: are "+1"/"−1" chips.
-  function challengeNodes(text: string) {
-    const thumb = (v: number, small: boolean) =>
-      small
-        ? h(
-            "span",
-            {
-              class: "cthumb " + vcls(v),
-              role: "img",
-              "aria-label": v > 0 ? "(plus one)" : "(minus one)",
-            },
-            icon(v > 0 ? "up" : "down"),
-          )
-        : h(
-            "span",
-            { class: "cicon " + vcls(v) },
-            icon(v > 0 ? "up" : "down"),
-            v > 0 ? "+1" : "−1",
-          );
-    const inline = (str: string, small: boolean) =>
-      str
-        .split(/(\*[^*\n]+\*|:\+1:|:-1:)/)
-        .filter(Boolean)
-        .map((p) =>
-          p === ":+1:"
-            ? thumb(1, small)
-            : p === ":-1:"
-              ? thumb(-1, small)
-              : p.length > 2 && p[0] === "*" && p.endsWith("*")
-                ? h("b", {}, p.slice(1, -1))
-                : p,
-        );
-    return text
-      .split(/(\[[^\]]+\])/)
-      .filter(Boolean)
-      .map((p) => {
-        if (p[0] !== "[" || !p.endsWith("]")) return inline(p, false);
-        const inner = p.slice(1, -1),
-          v = inner.includes(":-1:") ? -1 : inner.includes(":+1:") ? 1 : 0;
-        return h("span", { class: "cspan " + vcls(v) }, inline(inner, true));
-      });
   }
 
   // A mark is +1, −1, or 0: a neutral note, shown with a pencil and counted towards neither side.
@@ -107,5 +81,5 @@ export function createPresentation(ctx: PresentationCtx) {
           h("span", { class: "sr" }, "Note:"),
         );
 
-  return { brandMark, catChip, challengeNodes, markBadge, markCls, topBar };
+  return { brandMark, catChip, markBadge, markCls, topBar };
 }
