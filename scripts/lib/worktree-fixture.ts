@@ -89,6 +89,7 @@ type ScriptParams = {
   args: string[];
   cwd?: string;
   checkout?: string;
+  env?: Record<string, string>;
 };
 
 export class WorktreeFixture {
@@ -157,7 +158,7 @@ export class WorktreeFixture {
     const [command, ...args] = this.command(params);
     const result = spawnSync(command, args, {
       cwd: params.cwd ?? this.main,
-      env: this.env(),
+      env: { ...this.env(), ...params.env },
       encoding: "utf8",
     });
     return {
@@ -173,7 +174,7 @@ export class WorktreeFixture {
     const base = join(this.state, `spawn-${++this.spawned}`);
     const proc = Bun.spawn(this.command(params), {
       cwd: params.cwd ?? this.main,
-      env: this.env(),
+      env: { ...this.env(), ...params.env },
       stdout: Bun.file(`${base}.out`),
       stderr: Bun.file(`${base}.err`),
     });
@@ -199,12 +200,17 @@ export class WorktreeFixture {
 
   create(
     name: string,
-    params: { cwd?: string; args?: string[] } = {},
+    params: {
+      cwd?: string;
+      args?: string[];
+      env?: Record<string, string>;
+    } = {},
   ): RunResult {
     return this.run({
       script: "new-worktree.sh",
       args: [name, ...(params.args ?? [])],
       cwd: params.cwd,
+      env: params.env,
     });
   }
 

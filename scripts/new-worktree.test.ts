@@ -78,6 +78,80 @@ test(
 );
 
 test(
+  "new-worktree.sh leaves team secrets out of copied config, except a contributor's own",
+  () => {
+    const serverEnv = join(f.main, "server", ".env");
+    appendFileSync(
+      serverEnv,
+      'JWT_SECRET=team\nexport SMTP_USER=team\nSMTP_PASSWORD = team\nTWILIO_AUTH_TOKEN: team\nAPPLE_PRIVATE_KEY_BASE64="team\nteam"\nAWS_ACCESS_KEY_ID=team\nKEPT=1\n',
+    );
+    writeFileSync(
+      join(f.main, ".env.devtools"),
+      "LINEAR_CLIENT_ID=team\nAGENT_CHATS_AWS_SECRET_ACCESS_KEY=team\nPOSTHOG_API_KEY=personal\n",
+    );
+    const created = f.create("a");
+    expect(created.exitCode).toBe(0);
+    expect(created.stdout).toContain(
+      "server/.env (left out secrets APPLE_PRIVATE_KEY_BASE64, AWS_ACCESS_KEY_ID, JWT_SECRET, SMTP_PASSWORD, SMTP_USER, TWILIO_AUTH_TOKEN)",
+    );
+    const env = readFileSync(join(f.dir("a"), "server", ".env"), "utf8");
+    expect(env).toContain("SOURCE=main");
+    expect(env).toContain("KEPT=1\n");
+    expect(env).not.toContain("team");
+    expect(readFileSync(join(f.dir("a"), ".env.devtools"), "utf8")).toBe(
+      "POSTHOG_API_KEY=personal\n",
+    );
+
+    expect(
+      f.create("shell", { env: { ALLIANCE_WITHOUT_TEAM_SECRETS: "1" } })
+        .exitCode,
+    ).toBe(0);
+    expect(
+      readFileSync(join(f.dir("shell"), "server", ".env"), "utf8"),
+    ).toContain("JWT_SECRET=team\n");
+
+    writeFileSync(
+      join(f.main, "server", ".env.local"),
+      "ALLIANCE_WITHOUT_TEAM_SECRETS=1\n",
+    );
+    expect(f.create("local").exitCode).toBe(0);
+    expect(
+      readFileSync(join(f.dir("local"), "server", ".env"), "utf8"),
+    ).toContain("JWT_SECRET=team\n");
+    rmSync(join(f.main, "server", ".env.local"));
+
+    appendFileSync(
+      serverEnv,
+      "CONTRIBUTOR=1\nALLIANCE_WITHOUT_TEAM_SECRETS=$CONTRIBUTOR\n",
+    );
+    expect(
+      f.create("off", { env: { ALLIANCE_WITHOUT_TEAM_SECRETS: "0" } }).exitCode,
+    ).toBe(0);
+    expect(
+      readFileSync(join(f.dir("off"), "server", ".env"), "utf8"),
+    ).not.toContain("JWT_SECRET=team");
+
+    const typo = f.create("typo", {
+      env: { ALLIANCE_WITHOUT_TEAM_SECRETS: "yes" },
+    });
+    expect(typo.exitCode).toBe(1);
+    expect(typo.stderr).toContain(
+      "ALLIANCE_WITHOUT_TEAM_SECRETS is yes; set it to 1 or 0",
+    );
+    expect(f.gone("typo")).toBe(true);
+
+    expect(f.create("b").exitCode).toBe(0);
+    expect(readFileSync(join(f.dir("b"), "server", ".env"), "utf8")).toContain(
+      "JWT_SECRET=team\n",
+    );
+    expect(readFileSync(join(f.dir("b"), ".env.devtools"), "utf8")).toBe(
+      "POSTHOG_API_KEY=personal\n",
+    );
+  },
+  TIMEOUT,
+);
+
+test(
   "new-worktree.sh sets the new branch's upstream as branch.autoSetupMerge says",
   () => {
     f.git(f.main, "config", "remote.origin.url", f.main);
