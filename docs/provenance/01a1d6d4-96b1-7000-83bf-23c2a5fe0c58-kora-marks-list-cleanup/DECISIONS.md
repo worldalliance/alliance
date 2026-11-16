@@ -1,0 +1,4 @@
+- "Remove the Flip option for the ranking" is read as the Flip button in the mark list under each reply, beside Remove and Edit note. The "Flip to ±1" button in the sheet that opens on a mark stays, so a mark's value can still be changed. Agent interpretation.
+- Remove uses Lucide's trash icon, the one the sheet's Remove button already uses. Neutral notes use Lucide's message-square-text, in their badge and on the sheet's Note button. Agent decision.
+- Both icon buttons keep an accessible name and gain a tooltip. They are 32px, or 44px on touch screens. Agent decision.
+- The section drops the `card` class, so its shadow, padding and rounded corners go along with its background and border. Agent decision.

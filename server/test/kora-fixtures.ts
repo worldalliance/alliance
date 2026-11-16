@@ -1,7 +1,13 @@
-import { KORA_PROJECT_PATH } from "@alliance/common/kora";
+import { KORA_PROJECT_PATH, KoraProjectStatus } from "@alliance/common/kora";
 import { R } from "@alliance/common/result";
+import { milliseconds } from "date-fns";
 import { GoogleOAuthClient } from "src/auth/oauth/google-oauth.client";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
+import {
+  KORA_PROJECT_ID,
+  KoraProject,
+} from "src/kora/entities/kora-project.entity";
+import type { KoraActor } from "src/kora/kora-batch-actions.service";
 import { KoraModule } from "src/kora/kora.module";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
@@ -51,8 +57,27 @@ export type KoraStateBody = {
   signupPending: boolean;
 };
 
+/** Tests synchronize the schema, so the row the KoraProject migration inserts is seeded here. */
+export async function setKoraProjectStatus(
+  ctx: TestContext,
+  status: KoraProjectStatus,
+): Promise<void> {
+  await ctx.dataSource
+    .getRepository(KoraProject)
+    .save({ id: KORA_PROJECT_ID, status });
+}
+
+export const koraClosesAt = (): Date =>
+  new Date(Date.now() + milliseconds({ days: 30 }));
+
+export const koraAdminActor = (ctx: TestContext): KoraActor => ({
+  id: ctx.adminUserId,
+  name: "Test Admin",
+});
+
 export async function koraHarness(): Promise<KoraHarness> {
   const ctx = await createTestApp([KoraModule]);
+  await setKoraProjectStatus(ctx, KoraProjectStatus.Pending);
   const sent = captureSentCodes(ctx);
 
   const post = (browser: TestAgent, path: string) =>

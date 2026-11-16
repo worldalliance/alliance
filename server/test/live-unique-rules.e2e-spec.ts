@@ -27,6 +27,8 @@ const UNIQUE_ACROSS_DELETED = [
   "FormSnapshot.hash",
   "Friend.acceptedNotif",
   "Friend.sentNotif",
+  "KoraReviewer.participantId",
+  "KoraReviewer.userId",
   "LinkOpening.openingId",
   "MessageTracking.trackingId",
   "Mms.twilioSid",

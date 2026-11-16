@@ -1,0 +1,230 @@
+/* Banners */
+.kora-review .banner {
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-size: 15px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+}
+.kora-review .banner.coach {
+  border-color: var(--hl);
+  background: color-mix(in srgb, var(--hl) 22%, var(--card));
+}
+.kora-review .banner .grow {
+  min-width: 0;
+}
+.kora-review .banner .link {
+  min-height: 32px;
+}
+.kora-review .marks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kora-review .rank {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.kora-review .rank-h,
+.kora-review .sh-title {
+  font-size: 22px;
+  font-weight: 800;
+}
+/* Bottom sheet */
+.kora-review .kr-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--kb);
+  z-index: calc(var(--kora-z-index, 0) + 40);
+  transform: translateY(105%);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+.kora-review .kr-sheet.open {
+  transform: none;
+  pointer-events: auto;
+}
+.kora-review .kr-sheet.lowered {
+  transform: translateY(105%);
+}
+.kora-review .sheet-card {
+  background: var(--card);
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 -10px 40px rgb(0 0 0 / 0.18);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  max-width: 672px;
+  margin: 0 auto;
+  max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px));
+  overflow-y: auto;
+}
+.kora-review .sheet-in {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-block: 10px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.kora-review .grip {
+  width: 40px;
+  height: 5px;
+  border-radius: 5px;
+  background: var(--line);
+  margin: 0 auto 2px;
+}
+.kora-review .sh-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.kora-review .sh-prev {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  max-height: 4.4em;
+  overflow: hidden;
+}
+.kora-review .sh-count {
+  font: 700 11px var(--f-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  padding-top: 3px;
+}
+.kora-review .sh-warn {
+  font-size: 14px;
+  color: var(--muted);
+}
+.kora-review .sh-acts {
+  display: flex;
+  gap: 10px;
+}
+.kora-review .sh-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: -4px;
+}
+.kora-review .sh-note {
+  display: grid;
+  gap: 6px;
+  position: relative;
+}
+.kora-review .sh-note label {
+  font-weight: 700;
+  font-size: 15px;
+}
+.kora-review .sh-note textarea {
+  resize: none;
+  min-height: 64px;
+  line-height: 1.4;
+}
+@media (max-width: 520px) {
+  .kora-review .sh-note textarea {
+    min-height: 88px;
+  }
+}
+/* room for the whole placeholder on phones */
+.kora-review .cnt {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font: 700 11px var(--f-mono);
+  color: var(--muted);
+}
+.kora-review .sh-notetext {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 15px;
+}
+.kora-review .sh-body {
+  font-size: 16px;
+}
+.kora-review .vbadge {
+  font: 800 18px/1 var(--f-display);
+  padding: 6px 9px;
+  border-radius: 4px;
+  flex: none;
+}
+.kora-review .vbadge.v-pos {
+  background: var(--plus-tint);
+}
+.kora-review .vbadge.v-neg {
+  background: var(--minus-tint);
+}
+/* Toasts */
+.kora-review .kr-toasts {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: calc(var(--kora-z-index, 0) + 50);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  bottom: calc(var(--sheet-h) + 12px + env(safe-area-inset-bottom, 0px));
+}
+.kora-review .toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--r);
+  padding: 4px 6px 4px 14px;
+  min-height: 44px;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: var(--shadow);
+  max-width: calc(100% - 32px);
+  animation: kora-rise 0.2s ease-out;
+}
+@keyframes kora-rise {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+}
+.kora-review .toast-v {
+  position: absolute;
+  z-index: calc(var(--kora-z-index, 0) + 50);
+  pointer-events: none;
+  font: 800 30px/1 var(--f-display);
+  padding: 8px 16px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  font-variant-numeric: tabular-nums;
+  animation: kora-hover-fade 1.6s ease-out both;
+}
+.kora-review .toast-v.v-pos {
+  background: var(--plus-tint);
+}
+.kora-review .toast-v.v-neg {
+  background: var(--minus-tint);
+}
+@keyframes kora-hover-fade {
+  0% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  12% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
+}
+.kora-review .big .ic.lg {
+  width: 30px;
+  height: 30px;
+}

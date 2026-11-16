@@ -9,6 +9,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { Guest } from "./entities/guest.entity";
 import { SpentToken } from "./entities/spent-token.entity";
+import { WebHandoff } from "./entities/web-handoff.entity";
 import { OAuthAccount } from "./oauth/oauth-account.entity";
 import { OAuthAuthService } from "./oauth/oauth-auth.service";
 import { OAuthCallbackService } from "./oauth/oauth-callback.service";
@@ -18,6 +19,8 @@ import { OAuthSessionService } from "./oauth/oauth-session.service";
 import { OAuthController } from "./oauth/oauth.controller";
 import { SessionModule } from "./session.module";
 import { SpentTokenService } from "./spent-token.service";
+import { WebHandoffController } from "./web-handoff.controller";
+import { WebHandoffService } from "./web-handoff.service";
 
 @Module({
   imports: [
@@ -32,16 +35,28 @@ import { SpentTokenService } from "./spent-token.service";
         signOptions: { expiresIn: "1d" },
       }),
     }),
-    TypeOrmModule.forFeature([User, Guest, OAuthAccount, SpentToken]),
+    TypeOrmModule.forFeature([
+      User,
+      Guest,
+      OAuthAccount,
+      SpentToken,
+      WebHandoff,
+    ]),
   ],
   providers: [
     AuthService,
     OAuthAuthService,
     OAuthCallbackService,
     OAuthSessionService,
+    WebHandoffService,
     SpentTokenService,
   ],
-  controllers: [AuthController, OAuthController, OAuthLinkController],
+  controllers: [
+    AuthController,
+    OAuthController,
+    OAuthLinkController,
+    WebHandoffController,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

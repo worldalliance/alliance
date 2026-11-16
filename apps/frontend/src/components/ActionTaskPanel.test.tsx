@@ -89,6 +89,7 @@ describe("ActionTaskPanel in staff preview", () => {
     renderPanel({
       action: makeAction({
         taskFormId: 7,
+        taskKind: "form",
         status: "draft",
         viewer: makeViewer({
           memberActionStarted: false,

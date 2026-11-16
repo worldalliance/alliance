@@ -3,6 +3,7 @@ import {
   memberActionPhase,
   type MemberActionPhase,
 } from "@alliance/common/actionEvent";
+import { ActionTaskKind } from "@alliance/common/actionTask";
 import {
   cohortExpressionSchema,
   type CohortExpression,
@@ -169,6 +170,17 @@ export class Action {
   @Min(0)
   @Max(2_147_483_647)
   timeEstimate: number | null;
+
+  @Column({
+    type: "enum",
+    enum: ActionTaskKind,
+    enumName: "ActionTaskKind",
+    default: ActionTaskKind.Form,
+  })
+  @ApiProperty({ enum: ActionTaskKind, enumName: "ActionTaskKind" })
+  @IsOptional()
+  @IsEnum(ActionTaskKind)
+  taskKind: ActionTaskKind;
 
   @Column({ type: "int", nullable: true })
   @ApiProperty({

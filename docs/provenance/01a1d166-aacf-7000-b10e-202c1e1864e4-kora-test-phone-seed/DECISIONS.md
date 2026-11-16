@@ -1,0 +1,8 @@
+# Decisions
+
+- **Every +1415555XXXX number is a test number, seeded or not.** The user deferred how an unseeded test number behaves (how, not whether). An unseeded one accepts `000000` and goes through the normal Kora signup that asks for a name, so new-signup flows are testable without SMS. Agent decision.
+- **The test-number rule lives in `server/src/otp/test-phone.ts` and applies to every `OtpPurpose`.** `OtpService` owns codes, delivery and limits, so the rule sits beside it; Kora sign-in is the only purpose today. Its environment gate is its own `Record<NodeEnv, boolean>` rather than `koraStagingTools`, which covers Kora admin tools, not sign-in. `isAnonymizedPhoneNumber` stays separate: it marks numbers that can't receive texts, a different contract. Agent decision.
+- **The test environment counts as non-production, so e2e tests exercise test numbers.** The shared `uniquePhone` fixture handed out +14155550100–0199, which would now get the fixed code and send no text; it uses area code 510 instead. Agent decision.
+- **The exemption covers the one-minute resend wait too**, alongside the per-contact and per-IP send limits and the per-IP verify limit, so an automated run can sign the same number in repeatedly. The five-wrong-guesses cap still applies. Agent interpretation of "exempt from the rate limits".
+- **`verify` reads the challenge before claiming the per-IP verify limit**, so it can tell a test number apart. Real numbers and unknown tokens are still throttled before any code comparison, as before. Agent decision.
+- **Seeded participants are named "Test participant 0000" to "Test participant 0999"**, verified at seed time, with no time zone. Agent decision.

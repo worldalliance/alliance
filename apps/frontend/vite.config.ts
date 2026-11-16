@@ -27,7 +27,12 @@ export default defineConfig({
   define: devViteDefine(),
   plugins: [!isStorybook && reactRouter(), tailwindcss(), imagetools()],
   optimizeDeps: {
-    exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
+    exclude: [
+      "@alliance/shared",
+      "@alliance/sharedweb",
+      "@alliance/common",
+      "@alliance/kora-review",
+    ],
   },
   build: {
     sourcemap: "hidden",
@@ -70,6 +75,7 @@ export default defineConfig({
       "@alliance/shared": sharedPkg,
       "@alliance/sharedweb": sharedWebPkg,
       "@alliance/common": path.join(commonPkg, "src"),
+      "@alliance/kora-review": path.join(monorepoRoot, "kora-review", "src"),
     },
   },
 });

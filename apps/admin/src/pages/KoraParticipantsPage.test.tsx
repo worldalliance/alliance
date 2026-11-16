@@ -13,6 +13,22 @@ const deleted: string[] = [];
 
 serveApi(
   routes({
+    "GET /kora/admin/batches": () => Response.json([]),
+    "GET /kora/admin/batches/events": () => Response.json([]),
+    "GET /kora/admin/results/answers": () =>
+      Response.json({
+        profiles: 0,
+        profile: [],
+        exitSurveys: 0,
+        exitSurvey: [],
+      }),
+    "GET /kora/admin/project": () =>
+      Response.json({
+        status: "pending",
+        canActivate: false,
+        toNotify: 0,
+        moreToNotify: 0,
+      }),
     "GET /kora/admin/participants": () =>
       loadStatus === 200
         ? Response.json(overview)
@@ -196,7 +212,7 @@ it("says when no one has signed up, rather than showing an empty table", async (
   renderPage();
   expect(await screen.findByText("No one has signed up yet.")).toBeTruthy();
   expect(
-    screen.getByRole("button", { name: "Export CSV" }).hasAttribute("disabled"),
+    screen.getByRole("button", { name: "export csv" }).hasAttribute("disabled"),
   ).toBe(true);
 });
 

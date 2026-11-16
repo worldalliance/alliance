@@ -8,12 +8,17 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { KoraBatches } from "../components/KoraBatches";
+import { KoraNotify } from "../components/KoraNotify";
+import { KoraProjectStatusControl } from "../components/KoraProjectStatusControl";
+import { KoraResults } from "../components/KoraResults";
 import SortHeader from "../components/SortHeader";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   abandonedMethod,
   buildKoraCsv,
   contactOf,
+  formatKoraDate,
   matchesSearch,
   participantMethods,
   ParticipantSort,
@@ -22,6 +27,7 @@ import {
   sortParticipants,
 } from "../lib/koraParticipants";
 import {
+  KoraNoticeKind,
   KoraRecordKind,
   useDeleteKoraRecordAdmin,
   useKoraParticipantsAdmin,
@@ -37,7 +43,6 @@ type Deleting = {
 
 const TITLE = <title>Kora participants - Admin</title>;
 const CELL = "px-3 py-2 align-top";
-const formatDate = (iso: string) => format(new Date(iso), "MMM d, yyyy h:mm a");
 
 const KoraParticipantsPage: React.FC = () => {
   const overview = useKoraParticipantsAdmin();
@@ -126,7 +131,7 @@ const KoraParticipantsPage: React.FC = () => {
       kind: KoraRecordKind.Participant,
       id: participant.id,
       title: `Delete ${participant.name}?`,
-      message: `Deletes ${participant.name}'s participant account and any abandoned signup or signup in progress for ${contactOf(participant)}, and signs them out on every device. This can't be undone.`,
+      message: `Deletes ${participant.name}'s participant account, their reviews and profile answers, and any abandoned signup or signup in progress for ${contactOf(participant)}, and signs them out on every device. This can't be undone.`,
       done: `Deleted ${participant.name}`,
     });
   const askDeleteAbandoned = (signup: KoraAdminAbandonedSignupDto) =>
@@ -142,25 +147,35 @@ const KoraParticipantsPage: React.FC = () => {
   return (
     <div className="p-5 space-y-6 max-w-6xl">
       {TITLE}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div>
+        <div className="flex items-baseline gap-2">
           <h1 className="font-bold text-lg">Kora participants</h1>
-          <p className="text-sm text-zinc-600">
-            People who signed up on the Safer Chatbots for Children project
-            page.
-          </p>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={
+              data.participants.length + data.abandonedSignups.length === 0
+            }
+            className="text-sm font-normal text-blue-700 underline hover:text-blue-900 disabled:text-zinc-400 disabled:no-underline"
+          >
+            <span aria-hidden="true">[</span>export csv
+            <span aria-hidden="true">]</span>
+          </button>
         </div>
-        <Button
-          color={ButtonColor.Black}
-          size="small"
-          onClick={exportCsv}
-          disabled={
-            data.participants.length + data.abandonedSignups.length === 0
-          }
-        >
-          Export CSV
-        </Button>
+        <p className="text-sm text-zinc-600">
+          People who signed up on the Safer Chatbots for Children project page.
+        </p>
       </div>
+
+      <KoraProjectStatusControl />
+
+      <KoraBatches />
+
+      <KoraNotify notice={KoraNoticeKind.Launch} />
+
+      <KoraNotify notice={KoraNoticeKind.More} />
+
+      <KoraResults />
 
       <dl className="flex flex-wrap gap-6 text-sm">
         <div>
@@ -256,7 +271,7 @@ const KoraParticipantsPage: React.FC = () => {
                     </td>
                     <td className={CELL}>{participant.timeZone ?? "—"}</td>
                     <td className={CELL}>
-                      {formatDate(participant.createdAt)}
+                      {formatKoraDate(participant.createdAt)}
                     </td>
                     <td className={CELL}>
                       <Button
@@ -309,7 +324,9 @@ const KoraParticipantsPage: React.FC = () => {
                   <tr key={signup.id}>
                     <td className={CELL}>{signup.destination}</td>
                     <td className={CELL}>{abandonedMethod(signup)}</td>
-                    <td className={CELL}>{formatDate(signup.verifiedAt)}</td>
+                    <td className={CELL}>
+                      {formatKoraDate(signup.verifiedAt)}
+                    </td>
                     <td className={CELL}>
                       {signup.recovered ? "Came back" : "Abandoned"}
                     </td>

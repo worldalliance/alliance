@@ -138,10 +138,22 @@ export const queryKeys = {
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
+  koraBatchesAdmin: () => ["koraBatchesList"] as const,
+  koraBatchEventsAdmin: () => ["koraBatchesEvents"] as const,
+  koraAssignmentExport: (assignmentId: string) =>
+    ["koraResultsAssignment", assignmentId] as const,
+  koraAnswersAdmin: () => ["koraResultsAnswers"] as const,
+  koraRandomTranscript: (batchId: string) =>
+    ["koraBatchesRandomTranscript", batchId] as const,
+  koraProject: () => ["koraProject"] as const,
+  koraProjectAdmin: () => ["koraAdminProject"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   koraParticipantCount: () => ["koraParticipantCount"] as const,
+  koraReview: () => ["koraReviewState"] as const,
+  koraHome: () => ["koraReviewHome"] as const,
   koraState: () => ["koraState"] as const,
+  webHandoff: () => ["webHandoffCreate"] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,

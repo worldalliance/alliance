@@ -1,0 +1,519 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://thealliance.org/kora/schemas/kora_pairs.schema.yaml
+title: KORA citizen-review pair file
+description: >-
+  A pair file for the KORA x Alliance citizen review, as described by Annex B
+  of KORA_SPEC.md. The root is the YAML form: a sequence of pairs. For the
+  JSONL form, validate each line against #/$defs/pair.
+
+  The risk and category enums and the per-risk category rules follow
+  categories_and_risks.yaml; change both together.
+
+  What this schema cannot check, and an import validator should: that conversation
+  lengths match n_turns and alternate child/ai; that the first child turn is
+  identical in A and B while the later ones diverge; that pair_id is unique;
+  that a file holds exactly one practice pair and one attention pair per risk.
+type: array
+minItems: 1
+items:
+  $ref: "#/$defs/pair"
+$defs:
+  pair:
+    type: object
+    additionalProperties: false
+    required:
+      - pair_id
+      - pair_type
+      - risk_id
+      - risk_category_id
+      - age_band
+      - child_age
+      - scenario_title
+      - child_background
+      - scenario
+      - n_turns
+      - conversation_a
+      - conversation_b
+    properties:
+      pair_id:
+        type: string
+        minLength: 1
+        pattern: ^[A-Za-z0-9][A-Za-z0-9._-]*$
+        description: Unique across the file, which the schema cannot check.
+      pair_type:
+        enum:
+          - scored
+          - consensus
+          - practice
+          - attention
+          - test
+      risk_id:
+        enum:
+          - violence_and_physical_harm
+          - self_harm_and_eating_disorders
+          - regulated_and_illegal_activities
+          - sexual_content_age_inappropriate
+          - sexual_violence_and_abuse
+          - sexual_grooming_and_boundary_violations
+          - unsafe_sexual_guidance
+          - fear_trauma_and_distress
+          - mental_health_mishandling
+          - grooming_and_manipulation
+          - parasocial_attachment_and_emotional_dependency
+          - factual_hallucinations_and_misinformation
+          - academic_dishonesty_and_misuse
+          - hate_speech_and_discrimination
+          - bias_and_stereotyping
+          - radicalization_and_extremism
+          - undermining_authority_and_trust
+          - harmful_social_norms_and_behavior
+          - domestic_harm_neglect_and_home_instability
+          - risky_online_behaviors_and_commercial_exploitation
+          - cybersecurity
+          - privacy_and_personal_data_protection
+          - cognitive_mismatch
+          - cognitive_atrophy_and_dependency
+          - rigid_worldview_shaping
+          - sensorimotor_displacement
+        description: Slug from categories_and_risks.yaml.
+      risk_category_id:
+        enum:
+          - bias_hate_and_societal_harm
+          - developmental_risk
+          - educational_and_epistemic_integrity
+          - online_safety
+          - physical_and_legal_safety
+          - psychological_and_emotional_safety
+          - sexual_content_exploitation_and_predation
+          - social_family_and_behavioral_influence
+        description: Must be the category that owns risk_id; enforced per risk below.
+      age_band:
+        enum:
+          - 7to9
+          - 10to12
+          - 13to17
+      child_age:
+        type: integer
+        minimum: 7
+        maximum: 17
+      scenario_title:
+        type: string
+        minLength: 1
+      child_background:
+        type: string
+        minLength: 1
+      scenario:
+        type: string
+        minLength: 1
+      n_turns:
+        type: integer
+        minimum: 1
+        description: >-
+          AI turns per conversation. The platform reads turn count from here,
+          never a hard-coded list (3.4).
+      conversation_a:
+        $ref: "#/$defs/conversation"
+      conversation_b:
+        $ref: "#/$defs/conversation"
+      comprehension_options:
+        type: array
+        minItems: 4
+        maxItems: 4
+        uniqueItems: true
+        items:
+          type: string
+          minLength: 1
+        description: >-
+          Exactly four answers to screen 1, in import order. Order is
+          randomised per reviewer at display time.
+      comprehension_correct:
+        type: integer
+        minimum: 0
+        maximum: 3
+        description: 0-based index into comprehension_options.
+      attention_expected_q1:
+        enum:
+          - a
+          - b
+        description: >-
+          Attention pairs only: the conversation, in import order, a reviewer
+          paying attention should call safer.
+      feedback_text:
+        type: string
+        minLength: 1
+        description: The practice pair only.
+      note:
+        type: string
+        description: Free-text provenance note. Not read by the platform.
+    allOf:
+      - if:
+          properties:
+            pair_type:
+              const: attention
+          required:
+            - pair_type
+        then:
+          required:
+            - attention_expected_q1
+        else:
+          properties:
+            attention_expected_q1: false
+      - if:
+          properties:
+            pair_type:
+              const: practice
+          required:
+            - pair_type
+        then:
+          required:
+            - feedback_text
+        else:
+          properties:
+            feedback_text: false
+      - if:
+          properties:
+            pair_type:
+              enum:
+                - scored
+                - consensus
+                - attention
+          required:
+            - pair_type
+        then:
+          required:
+            - comprehension_options
+            - comprehension_correct
+      - if:
+          required:
+            - comprehension_options
+        then:
+          required:
+            - comprehension_correct
+      - if:
+          required:
+            - comprehension_correct
+        then:
+          required:
+            - comprehension_options
+      - if:
+          properties:
+            age_band:
+              const: 7to9
+          required:
+            - age_band
+        then:
+          properties:
+            child_age:
+              type: integer
+              minimum: 7
+              maximum: 9
+      - if:
+          properties:
+            age_band:
+              const: 10to12
+          required:
+            - age_band
+        then:
+          properties:
+            child_age:
+              type: integer
+              minimum: 10
+              maximum: 12
+      - if:
+          properties:
+            age_band:
+              const: 13to17
+          required:
+            - age_band
+        then:
+          properties:
+            child_age:
+              type: integer
+              minimum: 13
+              maximum: 17
+      - if:
+          properties:
+            risk_id:
+              const: violence_and_physical_harm
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: physical_and_legal_safety
+      - if:
+          properties:
+            risk_id:
+              const: self_harm_and_eating_disorders
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: physical_and_legal_safety
+      - if:
+          properties:
+            risk_id:
+              const: regulated_and_illegal_activities
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: physical_and_legal_safety
+      - if:
+          properties:
+            risk_id:
+              const: sexual_content_age_inappropriate
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: sexual_content_exploitation_and_predation
+      - if:
+          properties:
+            risk_id:
+              const: sexual_violence_and_abuse
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: sexual_content_exploitation_and_predation
+      - if:
+          properties:
+            risk_id:
+              const: sexual_grooming_and_boundary_violations
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: sexual_content_exploitation_and_predation
+      - if:
+          properties:
+            risk_id:
+              const: unsafe_sexual_guidance
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: sexual_content_exploitation_and_predation
+      - if:
+          properties:
+            risk_id:
+              const: fear_trauma_and_distress
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: psychological_and_emotional_safety
+      - if:
+          properties:
+            risk_id:
+              const: mental_health_mishandling
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: psychological_and_emotional_safety
+      - if:
+          properties:
+            risk_id:
+              const: grooming_and_manipulation
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: psychological_and_emotional_safety
+      - if:
+          properties:
+            risk_id:
+              const: parasocial_attachment_and_emotional_dependency
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: psychological_and_emotional_safety
+      - if:
+          properties:
+            risk_id:
+              const: factual_hallucinations_and_misinformation
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: educational_and_epistemic_integrity
+      - if:
+          properties:
+            risk_id:
+              const: academic_dishonesty_and_misuse
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: educational_and_epistemic_integrity
+      - if:
+          properties:
+            risk_id:
+              const: hate_speech_and_discrimination
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: bias_hate_and_societal_harm
+      - if:
+          properties:
+            risk_id:
+              const: bias_and_stereotyping
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: bias_hate_and_societal_harm
+      - if:
+          properties:
+            risk_id:
+              const: radicalization_and_extremism
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: bias_hate_and_societal_harm
+      - if:
+          properties:
+            risk_id:
+              const: undermining_authority_and_trust
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: social_family_and_behavioral_influence
+      - if:
+          properties:
+            risk_id:
+              const: harmful_social_norms_and_behavior
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: social_family_and_behavioral_influence
+      - if:
+          properties:
+            risk_id:
+              const: domestic_harm_neglect_and_home_instability
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: social_family_and_behavioral_influence
+      - if:
+          properties:
+            risk_id:
+              const: risky_online_behaviors_and_commercial_exploitation
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: online_safety
+      - if:
+          properties:
+            risk_id:
+              const: cybersecurity
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: online_safety
+      - if:
+          properties:
+            risk_id:
+              const: privacy_and_personal_data_protection
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: online_safety
+      - if:
+          properties:
+            risk_id:
+              const: cognitive_mismatch
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: developmental_risk
+      - if:
+          properties:
+            risk_id:
+              const: cognitive_atrophy_and_dependency
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: developmental_risk
+      - if:
+          properties:
+            risk_id:
+              const: rigid_worldview_shaping
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: developmental_risk
+      - if:
+          properties:
+            risk_id:
+              const: sensorimotor_displacement
+          required:
+            - risk_id
+        then:
+          properties:
+            risk_category_id:
+              const: developmental_risk
+  conversation:
+    type: array
+    minItems: 2
+    description: >-
+      One complete conversation: n_turns AI turns and the child turns around
+      them, alternating child, ai, child, ai, starting with a child turn and
+      ending with an AI turn. JSON Schema cannot tie the length to n_turns or
+      express the alternation, so an import validator checks both.
+    items:
+      $ref: "#/$defs/turn"
+  turn:
+    type: object
+    additionalProperties: false
+    required:
+      - role
+      - text
+    properties:
+      role:
+        enum:
+          - child
+          - ai
+        description: Who is speaking.
+      text:
+        type: string
+        minLength: 1
+        description: The message, verbatim.

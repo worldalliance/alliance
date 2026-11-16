@@ -75,6 +75,7 @@ const AUTHORED_FIELDS: Record<keyof CreateActionDto, boolean> = {
   customStatType: false,
   timeEstimate: false,
   taskFormId: false,
+  taskKind: false,
   forumParticipationPostId: false,
   forumParticipationIncludeChildren: false,
   computedAutocompleteAt: false,

@@ -1,0 +1,234 @@
+@font-face {
+  font-family: "Kora Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/atkinson-hyperlegible-latin-400-normal.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "Kora Atkinson Hyperlegible";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/atkinson-hyperlegible-latin-400-italic.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "Kora Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/atkinson-hyperlegible-latin-700-normal.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "Kora Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src:
+    url("./fonts/bricolage-grotesque-latin-opsz-normal.woff2")
+      format("woff2-variations"),
+    url("./fonts/bricolage-grotesque-latin-opsz-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Kora JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Kora JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+}
+
+.kora-review {
+  --r: var(--kora-radius, 6px);
+  --r-lg: var(--kora-radius-large, 8px);
+  --f-display: var(
+    --kora-font-family-display,
+    "Kora Bricolage Grotesque",
+    "Avenir Next",
+    "Segoe UI",
+    system-ui,
+    sans-serif
+  );
+  --f-body: var(
+    --kora-font-family,
+    "Kora Atkinson Hyperlegible",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif
+  );
+  --f-mono: var(
+    --kora-font-family-mono,
+    "Kora JetBrains Mono",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace
+  );
+  --kb: 0px;
+  --sheet-h: 0px;
+}
+.kora-review,
+[data-kora-theme="light"] .kora-review {
+  --paper: var(--kora-color-background, #f1f3f8);
+  --card: var(--kora-color-surface, #ffffff);
+  --ink: var(--kora-color-text, #151a2d);
+  --muted: var(--kora-color-text-muted, #566079);
+  --line: var(--kora-color-border, #d6dbe6);
+  --user: var(--kora-color-child-bubble, #e2e6f0);
+  --code-bg: var(--kora-color-code, #eceff6);
+  --accent: var(--kora-color-accent, #2b45d2);
+  --accent-ink: var(--kora-color-accent-text, #ffffff);
+  --accent-soft: var(--kora-color-accent-soft, #e1e6ff);
+  --plus: var(--kora-color-positive, #0a7a54);
+  --plus-tint: var(--kora-color-positive-soft, #cbeedd);
+  --minus: var(--kora-color-negative, #be2235);
+  --minus-tint: var(--kora-color-negative-soft, #fad6da);
+  --zero: var(--kora-color-neutral, #876000);
+  --on-sem: var(--kora-color-on-semantic, #ffffff);
+  --hl: var(--kora-color-highlight, #ffe14d);
+  --hl-ink: #151a2d;
+  --dot-l: 46%;
+  --shadow: 0 1px 2px rgb(21 26 45 / 0.06), 0 12px 32px rgb(21 26 45 / 0.12);
+  --shadow-sm: 0 1px 2px rgb(21 26 45 / 0.06);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  .kora-review {
+    --paper: var(--kora-color-background, #0d1020);
+    --card: var(--kora-color-surface, #161a2d);
+    --ink: var(--kora-color-text, #e7eaf6);
+    --muted: var(--kora-color-text-muted, #9aa2bd);
+    --line: var(--kora-color-border, #2a3150);
+    --user: var(--kora-color-child-bubble, #222947);
+    --code-bg: var(--kora-color-code, #0f1326);
+    --accent: var(--kora-color-accent, #8d9cff);
+    --accent-ink: var(--kora-color-accent-text, #0d1020);
+    --accent-soft: var(--kora-color-accent-soft, #252d58);
+    --plus: var(--kora-color-positive, #43d79c);
+    --plus-tint: var(--kora-color-positive-soft, #123d2e);
+    --minus: var(--kora-color-negative, #ff7584);
+    --minus-tint: var(--kora-color-negative-soft, #4b1b26);
+    --zero: var(--kora-color-neutral, #f2c94c);
+    --on-sem: var(--kora-color-on-semantic, #0d1020);
+    --hl: var(--kora-color-highlight, #f2cf3a);
+    --hl-ink: #151a2d;
+    --dot-l: 68%;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+    color-scheme: dark;
+  }
+  [data-kora-theme="light"] .kora-review {
+    --paper: var(--kora-color-background, #f1f3f8);
+    --card: var(--kora-color-surface, #ffffff);
+    --ink: var(--kora-color-text, #151a2d);
+    --muted: var(--kora-color-text-muted, #566079);
+    --line: var(--kora-color-border, #d6dbe6);
+    --user: var(--kora-color-child-bubble, #e2e6f0);
+    --code-bg: var(--kora-color-code, #eceff6);
+    --accent: var(--kora-color-accent, #2b45d2);
+    --accent-ink: var(--kora-color-accent-text, #ffffff);
+    --accent-soft: var(--kora-color-accent-soft, #e1e6ff);
+    --plus: var(--kora-color-positive, #0a7a54);
+    --plus-tint: var(--kora-color-positive-soft, #cbeedd);
+    --minus: var(--kora-color-negative, #be2235);
+    --minus-tint: var(--kora-color-negative-soft, #fad6da);
+    --zero: var(--kora-color-neutral, #876000);
+    --on-sem: var(--kora-color-on-semantic, #ffffff);
+    --hl: var(--kora-color-highlight, #ffe14d);
+    --hl-ink: #151a2d;
+    --dot-l: 46%;
+    --shadow: 0 1px 2px rgb(21 26 45 / 0.06), 0 12px 32px rgb(21 26 45 / 0.12);
+    --shadow-sm: 0 1px 2px rgb(21 26 45 / 0.06);
+    color-scheme: light;
+  }
+}
+[data-kora-theme="dark"] .kora-review {
+  --paper: var(--kora-color-background, #0d1020);
+  --card: var(--kora-color-surface, #161a2d);
+  --ink: var(--kora-color-text, #e7eaf6);
+  --muted: var(--kora-color-text-muted, #9aa2bd);
+  --line: var(--kora-color-border, #2a3150);
+  --user: var(--kora-color-child-bubble, #222947);
+  --code-bg: var(--kora-color-code, #0f1326);
+  --accent: var(--kora-color-accent, #8d9cff);
+  --accent-ink: var(--kora-color-accent-text, #0d1020);
+  --accent-soft: var(--kora-color-accent-soft, #252d58);
+  --plus: var(--kora-color-positive, #43d79c);
+  --plus-tint: var(--kora-color-positive-soft, #123d2e);
+  --minus: var(--kora-color-negative, #ff7584);
+  --minus-tint: var(--kora-color-negative-soft, #4b1b26);
+  --zero: var(--kora-color-neutral, #f2c94c);
+  --on-sem: var(--kora-color-on-semantic, #0d1020);
+  --hl: var(--kora-color-highlight, #f2cf3a);
+  --hl-ink: #151a2d;
+  --dot-l: 68%;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  color-scheme: dark;
+}
+
+.kora-review {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.55 var(--f-body);
+  -webkit-text-size-adjust: 100%;
+  text-align: left;
+  scroll-margin-top: var(--kora-top-offset, 0px);
+}
+.kora-review * {
+  box-sizing: border-box;
+}
+.kora-review h1,
+.kora-review h2,
+.kora-review h3 {
+  font-family: var(--f-display);
+  text-wrap: balance;
+  margin: 0;
+  line-height: 1.1;
+}
+.kora-review p {
+  margin: 0;
+}
+.kora-review button {
+  font: inherit;
+  color: inherit;
+}
+.kora-review .wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.kora-review .sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.kora-review .grow {
+  flex: 1;
+}
+.kora-review .ic {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.kora-review :focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

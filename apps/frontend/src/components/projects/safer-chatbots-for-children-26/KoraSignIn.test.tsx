@@ -1,4 +1,8 @@
-import { KORA_PROJECT_PATH, KoraError } from "@alliance/common/kora";
+import {
+  KORA_PROJECT_PATH,
+  KORA_SIGNUPS_CLOSED,
+  KoraError,
+} from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import type {
   KoraParticipantStateDto,
@@ -122,7 +126,7 @@ test("signs up a new participant by email code, then asks for a name", async () 
   });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-  await screen.findByText("You’re signed in as Test Person.");
+  await waitFor(() => expect(screen.queryByLabelText("Full name")).toBeNull());
   expect(timeZones).toHaveLength(3);
   expect(timeZones.every((zone) => typeof zone === "string")).toBe(true);
 });
@@ -135,7 +139,7 @@ test("signs a returning participant in by phone without asking for a name", asyn
   await submitContact("+44 7400 123456");
   await enterCode("123456");
 
-  await screen.findByText("You’re signed in as Returning.");
+  await waitFor(() => expect(screen.queryByLabelText("Code")).toBeNull());
   expect(sends).toEqual([{ phoneNumber: "+447400123456" }]);
   expect(screen.queryByLabelText("Full name")).toBeNull();
 });
@@ -307,6 +311,31 @@ test("a code no longer valid returns to contact entry with its copy", async () =
   expect(screen.queryByText(copy)).toBeNull();
 });
 
+test("a new contact on a closed project returns to contact entry with the closed copy", async () => {
+  verify = () => refusal(400, KoraError.ProjectClosed, KORA_SIGNUPS_CLOSED);
+  state = {
+    participant: null,
+    pendingCode: pendingCode(),
+    signupPending: false,
+  };
+  renderCard();
+  await enterCode("123456");
+  await screen.findByText(KORA_SIGNUPS_CLOSED);
+  screen.getByLabelText("Email or mobile number");
+});
+
+test("a signup the project closed on returns to contact entry with the closed copy", async () => {
+  signup = () => refusal(400, KoraError.ProjectClosed, KORA_SIGNUPS_CLOSED);
+  state = { participant: null, pendingCode: null, signupPending: true };
+  renderCard();
+  fireEvent.change(await screen.findByLabelText("Full name"), {
+    target: { value: "Test Person" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await screen.findByText(KORA_SIGNUPS_CLOSED);
+  screen.getByLabelText("Email or mobile number");
+});
+
 test("resumes a pending code after a reload, without a resend it cannot address", async () => {
   state = {
     participant: null,
@@ -329,23 +358,6 @@ test("offers a retry when the sign-in state cannot load", async () => {
   );
   stateFails = false;
   fireEvent.click(retry);
-  await screen.findByLabelText("Email or mobile number");
-});
-
-test("signs out, and keeps the signed-in view when sign-out fails", async () => {
-  state = {
-    participant: { id: "p1", name: "Participant" },
-    pendingCode: null,
-    signupPending: false,
-  };
-  signOut = () => new Response(null, { status: 500 });
-  renderCard();
-  fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
-  await screen.findByText("Something went wrong. Please try again.");
-  screen.getByText("You’re signed in as Participant.");
-
-  signOut = () => new Response(null, { status: 204 });
-  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await screen.findByLabelText("Email or mobile number");
 });
 

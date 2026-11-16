@@ -84,6 +84,7 @@ it("lists each action's unfinished checklist items", async () => {
     ...api.served[2],
     body: "",
     taskFormId: null,
+    taskKind: "form",
     project: null,
   };
   renderPanel();

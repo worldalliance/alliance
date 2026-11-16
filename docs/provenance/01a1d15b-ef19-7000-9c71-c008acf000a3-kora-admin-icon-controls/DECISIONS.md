@@ -1,0 +1,6 @@
+- The preview button keeps "Preview a random transcript" as its accessible name and tooltip, since the icons alone don't say what it does. (agent decision)
+- Icons: Pending `Hourglass`, Active `CirclePlay`, Closed `Lock`. (agent decision)
+- The bar stays a radio group, so arrow keys, screen readers and the confirm-before-change dialog work as before. The note that Active needs transcripts still shows below the bar while Active is unavailable. (agent decision)
+- The focus ring is blue so it shows on both the selected (black) and unselected (white) segments. (agent decision)
+- The bar is capped at `max-w-3xl`, wide enough that no description wraps. (agent decision)
+- The confirm dialog keeps its longer per-status text. (agent decision)

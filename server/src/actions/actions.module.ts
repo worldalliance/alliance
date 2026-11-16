@@ -96,6 +96,7 @@ import { GeneralUpdatesController } from "./general-updates.controller";
 import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
+import { KoraActionListener } from "./kora-action.listener";
 import { MemberActionsService } from "./member-actions.service";
 import { ProjectActionsController } from "./project-actions.controller";
 import { ProjectActionsService } from "./project-actions.service";
@@ -170,6 +171,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
   ],
   providers: [
     ActionsService,
+    KoraActionListener,
     ActionResponseCountsService,
     ProjectsService,
     ProjectActionsService,

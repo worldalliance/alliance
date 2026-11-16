@@ -15,6 +15,7 @@ import { noop } from "@alliance/shared/lib/constants";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useMemo, type RefObject } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
+import KoraActionTask from "./KoraActionTask";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   userRelation: UserActionRelation;
@@ -91,6 +92,15 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       </p>
     );
   }, [actionError]);
+
+  switch (action.taskKind) {
+    case "kora_review":
+      return <KoraActionTask action={action} />;
+    case "form":
+      break;
+    default:
+      action.taskKind satisfies never;
+  }
 
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (

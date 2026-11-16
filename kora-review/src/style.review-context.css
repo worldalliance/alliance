@@ -1,0 +1,189 @@
+/* Review header */
+.kora-review .rhead {
+  position: sticky;
+  top: calc(var(--kora-top-offset, 0px) + env(safe-area-inset-top, 0px));
+  z-index: calc(var(--kora-z-index, 0) + 20);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.kora-review .rrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  min-width: 0;
+}
+.kora-review .rrow .iconbtn:first-child {
+  margin-left: -10px;
+}
+.kora-review .rrow .chip {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.kora-review .pair-id {
+  font: 500 12px var(--f-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 8px;
+}
+@media (max-width: 899px) {
+  .kora-review .pair-id {
+    display: none;
+  }
+}
+.kora-review .prog {
+  font: 700 18px var(--f-body);
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.kora-review .score {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 11px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  min-height: 36px;
+  flex: none;
+}
+.kora-review .score .sv {
+  display: flex;
+}
+.kora-review .score .sv .ic {
+  width: 21px;
+  height: 21px;
+  stroke-width: 2.3;
+}
+.kora-review .score .sn {
+  font: 700 12px/1 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.kora-review .challenge {
+  background: var(--accent-soft);
+  border-radius: var(--r);
+  padding: 7px 12px 8px;
+  margin-bottom: 8px;
+  font: 700 15px/1.3 var(--f-display);
+  color: var(--ink);
+}
+.kora-review .rrow .cage {
+  font: 700 12px/1.2 var(--f-body);
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.kora-review .challenge p {
+  font-weight: 400;
+}
+.kora-review .challenge b,
+.kora-review .intro-q b {
+  font-weight: 800;
+}
+.kora-review .cspan,
+.kora-review .cspan.v-pos,
+.kora-review .cspan.v-neg,
+.kora-review .cspan.v-zero {
+  color: inherit;
+}
+.kora-review .cspan {
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.kora-review .cspan.v-pos {
+  background: var(--plus-tint);
+  text-decoration: underline solid var(--plus) 2px;
+  text-underline-offset: 4px;
+}
+.kora-review .cspan.v-neg {
+  background: var(--minus-tint);
+  text-decoration: underline dashed var(--minus) 1.5px;
+  text-underline-offset: 4px;
+}
+.kora-review .cspan.v-zero {
+  background: var(--accent-soft);
+}
+.kora-review .cthumb {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-left: 2px;
+}
+.kora-review .cthumb .ic {
+  width: 1em;
+  height: 1em;
+}
+.kora-review .challenge .cicon {
+  font-size: 11px;
+  vertical-align: 1px;
+  padding: 0 4px;
+}
+.kora-review .challenge .cicon .ic {
+  width: 12px;
+  height: 12px;
+}
+/* Full-screen question intro, shown when the question changes */
+.kora-review .intro-in {
+  margin: auto;
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: max(32px, env(safe-area-inset-top, 0px))
+    max(16px, env(safe-area-inset-right, 0px))
+    max(32px, env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+}
+.kora-review .intro-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font: 700 12px var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.kora-review .intro-q {
+  font-size: clamp(28px, 7.5vw, 40px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.kora-review .intro-q .cicon {
+  font-size: 0.55em;
+  vertical-align: 0.25em;
+  padding: 2px 8px;
+}
+.kora-review .intro-q .cicon .ic {
+  width: 1.1em;
+  height: 1.1em;
+}
+.kora-review .intro-q .cspan.v-pos {
+  text-decoration-thickness: 3px;
+  text-underline-offset: 7px;
+}
+.kora-review .intro-q .cspan.v-neg {
+  text-decoration-thickness: 2.5px;
+  text-underline-offset: 7px;
+}
+.kora-review .intro-q .cthumb {
+  vertical-align: -0.1em;
+}
+.kora-review .intro-hint {
+  font-size: 17px;
+  color: var(--muted);
+}
+.kora-review .intro-tag {
+  font: 800 clamp(20px, 5vw, 26px)/1.1 var(--f-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: -12px;
+}

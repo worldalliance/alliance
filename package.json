@@ -9,6 +9,7 @@
     "apps/mobile",
     "citesting",
     "common",
+    "kora-review",
     "server",
     "shared",
     "sharedweb"

@@ -1,0 +1,239 @@
+/* Thread */
+.kora-review .thread {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-block: 18px
+    calc(120px + var(--sheet-h) + env(safe-area-inset-bottom, 0px));
+}
+.kora-review .msg {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.kora-review .msg.user {
+  align-items: flex-end;
+}
+.kora-review .who {
+  font: 700 11px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-inline: 8px;
+}
+.kora-review .bubble {
+  position: relative;
+  padding: 12px 16px;
+  font-size: 17px;
+  line-height: 1.7;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.kora-review .msg.user .bubble {
+  background: var(--user);
+  border-radius: 10px 10px 3px 10px;
+  max-width: 86%;
+}
+.kora-review .msg.ai .bubble {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px 10px 10px 3px;
+  box-shadow: var(--shadow-sm);
+}
+.kora-review .bubble > * + * {
+  margin-top: 10px;
+}
+.kora-review .bubble ul,
+.kora-review .bubble ol {
+  margin-block: 0;
+  padding-left: 22px;
+}
+.kora-review .bubble li + li {
+  margin-top: 4px;
+}
+.kora-review .bubble pre {
+  margin-block: 0;
+  background: var(--code-bg);
+  border-radius: 5px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font: 14px/1.6 var(--f-mono);
+  white-space: pre;
+}
+.kora-review .bubble code {
+  font-family: var(--f-mono);
+  font-size: 0.86em;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.kora-review .bubble pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+.kora-review .bubble em {
+  font-style: italic;
+}
+.kora-review .bubble .md-h {
+  font-family: var(--f-display);
+  font-weight: 800;
+  line-height: 1.3;
+}
+.kora-review .bubble .md-h1 {
+  font-size: 22px;
+}
+.kora-review .bubble .md-h2 {
+  font-size: 20px;
+}
+.kora-review .bubble .md-h3 {
+  font-size: 18px;
+}
+.kora-review .bubble .md-h4 {
+  font-size: 17px;
+}
+.kora-review .bubble hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin-block: 14px;
+}
+.kora-review .bubble blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+.kora-review .bubble blockquote p + p {
+  margin-top: 6px;
+}
+.kora-review .bubble li.sub {
+  margin-left: 22px;
+  list-style-type: circle;
+}
+.kora-review .bubble .md-table {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.kora-review .bubble .md-table table {
+  font-size: 15px;
+  line-height: 1.5;
+  min-width: 100%;
+}
+.kora-review .bubble .md-table th,
+.kora-review .bubble .md-table td {
+  white-space: normal;
+  vertical-align: top;
+  padding: 6px 10px;
+  min-width: 96px;
+}
+.kora-review .bubble .md-table th {
+  font: 700 14px/1.4 var(--f-body);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  background: var(--code-bg);
+}
+.kora-review .bubble .md-table tr:last-child td {
+  border-bottom: 0;
+}
+.kora-review .lnk {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: not-allowed;
+}
+.kora-review .empty {
+  color: var(--muted);
+}
+.kora-review .sys {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-lg);
+  padding: 4px 14px;
+  font-size: 15px;
+  color: var(--muted);
+}
+.kora-review .sys summary {
+  cursor: pointer;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  font: 700 12px var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.kora-review .sys p {
+  padding-bottom: 10px;
+}
+/* Tokens */
+.kora-review .layer {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.kora-review .math {
+  font-family:
+    "Cambria Math", "STIX Two Math", "Latin Modern Math", Cambria,
+    "Times New Roman", serif;
+  font-size: 1.08em;
+}
+.kora-review .math .mfrac,
+.kora-review .math .mbox,
+.kora-review .math .msqrt {
+  white-space: nowrap;
+}
+.kora-review .math i {
+  font-style: italic;
+  padding-right: 0.04em;
+}
+.kora-review .math .mo {
+  padding: 0 0.22em;
+}
+.kora-review .math .mfn,
+.kora-review .math .mtext {
+  font-family: var(--f-body);
+  font-size: 0.93em;
+  font-style: normal;
+}
+.kora-review .math .mfrac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 0.9em;
+  line-height: 1.15;
+  margin: 0 0.1em;
+}
+.kora-review .math .mnum {
+  padding: 0 0.15em 0.05em;
+  border-bottom: 1.5px solid currentColor;
+}
+.kora-review .math .mden {
+  padding: 0.05em 0.15em 0;
+}
+.kora-review .math .mbox {
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  margin: 0 0.1em;
+}
+.kora-review .math .mrad,
+.kora-review .math .mover {
+  border-top: 1.5px solid currentColor;
+  padding-top: 0.05em;
+}
+.kora-review .math sup,
+.kora-review .math sub {
+  font-size: 0.72em;
+}
+.kora-review .math.display {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.5em auto;
+  padding: 0.15em 0.4em;
+  font-size: 1.15em;
+  white-space: nowrap;
+}

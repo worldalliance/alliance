@@ -1,0 +1,113 @@
+/* Review timer */
+/* Narrow phones: a smaller timer and, for pairs, just the two icons in the header chip (the nets stay on each chat's heading) */
+@media (max-width: 520px) {
+  .kora-review .rrow {
+    gap: 4px;
+  }
+}
+/* Pairs: the scenario, then two AIs side by side (stacked on narrow screens) */
+.kora-review .wrap.wide {
+  max-width: 1180px;
+}
+.kora-review .v-pair {
+  color: var(--accent);
+}
+.kora-review .ctx {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 16px;
+}
+.kora-review .ctx-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kora-review .ctx h1,
+.kora-review .ctx h2 {
+  font-size: 20px;
+}
+/* Collapsed sections of the scenario card: [+] opens, [-] closes */
+.kora-review .ctx-more summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--accent);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+}
+.kora-review .ctx-more summary::-webkit-details-marker {
+  display: none;
+}
+.kora-review .ctx-more summary::after {
+  content: "[+]";
+  font: 700 14px var(--f-mono);
+}
+.kora-review .ctx-more[open] summary::after {
+  content: "[−]";
+}
+.kora-review .ctx-more p + p {
+  margin-top: 10px;
+}
+.kora-review .ctx-bg p {
+  color: var(--muted);
+}
+.kora-review .rules {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.kora-review .pair {
+  display: grid;
+  gap: 32px;
+}
+@media (min-width: 900px) {
+  .kora-review .pair {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+.kora-review .pair-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.kora-review .msg.user.shared {
+  align-items: center;
+  text-align: left;
+}
+.kora-review .msg.user.shared .bubble {
+  max-width: min(640px, 100%);
+  border-radius: var(--r-lg);
+  font-size: 19.5px;
+}
+.kora-review .side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.kora-review .side-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+}
+.kora-review .side-h h2 {
+  font-size: 22px;
+  font-weight: 800;
+  flex: 1;
+}
+.kora-review .score.sm {
+  min-height: 30px;
+  padding: 0 9px;
+}
+.kora-review .score.sm .sv .ic {
+  width: 18px;
+  height: 18px;
+}

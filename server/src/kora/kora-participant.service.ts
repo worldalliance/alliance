@@ -1,4 +1,4 @@
-import { KoraError } from "@alliance/common/kora";
+import { KoraError, KoraProjectStatus } from "@alliance/common/kora";
 import { OAuthError, type OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
@@ -30,6 +30,7 @@ import {
   KoraParticipant,
 } from "./entities/kora-participant.entity";
 import { clearCookie, KoraCookie } from "./kora-cookies";
+import { KoraProjectService } from "./kora-project.service";
 
 const SIGNUP_TTL_MS = milliseconds({ minutes: 10 });
 
@@ -46,6 +47,8 @@ export type ContactVerified =
   | { signupToken: string; signupTtlMs: number };
 
 type ProviderIdentity = { provider: OAuthProvider; subject: string };
+
+export type KoraClosedRefusal = { error: KoraError.ProjectClosed };
 
 function contactColumns(contact: OtpContact): {
   email: string | null;
@@ -135,14 +138,21 @@ export class KoraParticipantService {
     @InjectRepository(KoraParticipantOAuthIdentity)
     private readonly identities: Repository<KoraParticipantOAuthIdentity>,
     private readonly otpService: OtpService,
+    private readonly projectService: KoraProjectService,
   ) {}
+
+  private async closed(): Promise<boolean> {
+    return (
+      (await this.projectService.project()).status === KoraProjectStatus.Closed
+    );
+  }
 
   async verifyCode(params: {
     codeToken: string;
     code: string;
     ip: string;
     timeZone: string | null;
-  }): Promise<Result<ContactVerified, OtpVerifyRefusal>> {
+  }): Promise<Result<ContactVerified, OtpVerifyRefusal | KoraClosedRefusal>> {
     const verified = await this.otpService.verify({
       purpose: OtpPurpose.KoraSignIn,
       browserToken: params.codeToken,
@@ -163,6 +173,9 @@ export class KoraParticipantService {
         method: verified.value.channel,
       });
     }
+    if (await this.closed()) {
+      return R.failure({ error: KoraError.ProjectClosed });
+    }
     return R.success(
       await this.openSignup({ contact: verified.value, identity: null }),
     );
@@ -175,7 +188,9 @@ export class KoraParticipantService {
   async verifyProvider(params: {
     profile: OAuthProfile;
     timeZone: string | null;
-  }): Promise<Result<ContactVerified, OAuthError.EmailNotVerified>> {
+  }): Promise<
+    Result<ContactVerified, OAuthError.EmailNotVerified | OAuthError.NoAccount>
+  > {
     const { profile, timeZone } = params;
     if (!profile.emailVerified) {
       return R.failure(OAuthError.EmailNotVerified);
@@ -222,6 +237,9 @@ export class KoraParticipantService {
         method: profile.provider,
       });
     }
+    if (await this.closed()) {
+      return R.failure(OAuthError.NoAccount);
+    }
     const name = profile.name
       ?.trim()
       .slice(0, KORA_PARTICIPANT_NAME_MAX_LENGTH);
@@ -248,7 +266,12 @@ export class KoraParticipantService {
     signupToken: string;
     name: string;
     timeZone: string | null;
-  }): Promise<Result<SignedIn, KoraError.SignupExpired>> {
+  }): Promise<
+    Result<SignedIn, KoraError.SignupExpired | KoraError.ProjectClosed>
+  > {
+    if (await this.closed()) {
+      return R.failure(KoraError.ProjectClosed);
+    }
     return this.dataSource.transaction(async (manager) => {
       const consumed = await manager
         .createQueryBuilder()

@@ -1,0 +1,204 @@
+.kora-review .q {
+  display: grid;
+  gap: 6px;
+}
+.kora-review .q-l {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.kora-review .two-col {
+  display: grid;
+  gap: 12px;
+}
+.kora-review .rank .two-col {
+  row-gap: 32px;
+}
+@media (min-width: 900px) {
+  .kora-review .two-col {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+/* The label row is inset by half the thumb, so its 0, 1/3, 2/3 and 100% points sit under the stops. */
+.kora-review .slider {
+  --thumb: 24px;
+  display: grid;
+  gap: 6px;
+}
+.kora-review .slider input {
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.kora-review .slider input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--muted);
+}
+.kora-review .slider input::-moz-range-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--muted);
+}
+.kora-review .slider input::-webkit-slider-thumb {
+  appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc((6px - var(--thumb)) / 2);
+  border-radius: 50%;
+  border: 3px solid var(--paper);
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.kora-review .slider input::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid var(--paper);
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.kora-review .slider input[data-unset]::-webkit-slider-thumb {
+  opacity: 0;
+}
+.kora-review .slider input[data-unset]::-moz-range-thumb {
+  opacity: 0;
+}
+.kora-review .slider input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r);
+}
+.kora-review .slider-ls {
+  position: relative;
+  height: 1.3em;
+  margin-inline: calc(var(--thumb) / 2);
+  font-size: 14px;
+  color: var(--muted);
+}
+.kora-review .slider-ls span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.kora-review .slider-ls span:nth-child(1) {
+  left: 0;
+  transform: translateX(calc(var(--thumb) / -2));
+}
+.kora-review .slider-ls span:nth-child(2) {
+  left: calc(100% / 3);
+}
+.kora-review .slider-ls span:nth-child(3) {
+  left: calc(200% / 3);
+}
+.kora-review .slider-ls span:nth-child(4) {
+  right: 0;
+  transform: translateX(calc(var(--thumb) / 2));
+}
+.kora-review .slider-ls span.on {
+  color: var(--ink);
+  font-weight: 700;
+}
+@media (max-width: 400px) {
+  .kora-review .slider-ls {
+    height: 2.6em;
+  }
+  .kora-review .slider-ls span {
+    width: min-content;
+    white-space: normal;
+    text-align: center;
+  }
+  .kora-review .slider-ls span:nth-child(1) {
+    text-align: left;
+  }
+  .kora-review .slider-ls span:nth-child(4) {
+    text-align: right;
+  }
+}
+.kora-review .q-quote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--minus);
+  background: var(--minus-tint);
+  border-radius: 0 var(--r) var(--r) 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.kora-review .q-hint {
+  font-size: 14px;
+  color: var(--zero);
+  font-weight: 700;
+}
+.kora-review .q .seg button {
+  font-size: 14px;
+  min-height: 44px;
+  padding: 0 4px;
+  line-height: 1.2;
+}
+.kora-review .q select {
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r);
+  padding: 0 12px;
+  min-height: 48px;
+  width: 100%;
+}
+.kora-review .svq {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.kora-review .svq legend {
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 6px;
+}
+.kora-review .opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kora-review .opt {
+  position: relative;
+}
+.kora-review .opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.kora-review .opt span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  font-weight: 700;
+  font-size: 15px;
+}
+.kora-review .opt input:checked + span {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.kora-review .opt input:focus-visible + span {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,4 +1,8 @@
-import { KORA_PROJECT_PATH } from "@alliance/common/kora";
+import {
+  KORA_EXAMPLE_PATH,
+  KORA_PROJECT_PATH,
+  KORA_REVIEW_PATH,
+} from "@alliance/common/kora";
 import { WAITLIST_UNSUBSCRIBE_PATH } from "@alliance/common/waitlist";
 import {
   type RouteConfig,
@@ -34,6 +38,14 @@ export default [
   route(
     KORA_PROJECT_PATH,
     "components/projects/safer-chatbots-for-children-26/SaferChatbotsForChildren26.tsx",
+  ),
+  route(
+    KORA_REVIEW_PATH,
+    "components/projects/safer-chatbots-for-children-26/KoraReviewPage.tsx",
+  ),
+  route(
+    KORA_EXAMPLE_PATH,
+    "components/projects/safer-chatbots-for-children-26/KoraExamplePage.tsx",
   ),
   route("/safer-chatbots", "pages/static/SaferChatbotsRedirect.tsx"),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),

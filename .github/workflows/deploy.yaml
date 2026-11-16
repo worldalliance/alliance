@@ -50,6 +50,7 @@ jobs:
           [
             server,
             common,
+            kora-review,
             shared,
             sharedweb,
             apps/frontend,
@@ -219,6 +220,7 @@ jobs:
           [
             server,
             common,
+            kora-review,
             shared,
             sharedweb,
             apps/frontend,

@@ -1,4 +1,4 @@
-import { KoraError } from "@alliance/common/kora";
+import { KORA_SIGNUPS_CLOSED, KoraError } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import { R } from "@alliance/common/result";
 import {
@@ -35,8 +35,10 @@ import {
   StartKoraCodeDto,
   VerifyKoraCodeDto,
 } from "./dto/kora-participant.dto";
+import { KoraProjectDto } from "./dto/kora-project.dto";
 import { clearCookie, KoraCookie, setCookie } from "./kora-cookies";
 import { KoraParticipantService } from "./kora-participant.service";
+import { KoraProjectService } from "./kora-project.service";
 import { KoraSessionService } from "./kora-session.service";
 
 const PURPOSE = OtpPurpose.KoraSignIn;
@@ -49,6 +51,12 @@ function contactOf(dto: StartKoraCodeDto): OtpContact {
     return { channel: OtpChannel.Sms, destination: dto.phoneNumber };
   }
   throw new BadRequestException(INVALID_CONTACT);
+}
+
+function signupsClosedException(): BadRequestException {
+  return new BadRequestException(KORA_SIGNUPS_CLOSED, {
+    description: KoraError.ProjectClosed,
+  });
 }
 
 function clientIp(req: Request): string {
@@ -69,6 +77,7 @@ export class KoraController {
     private readonly participantService: KoraParticipantService,
     private readonly sessionService: KoraSessionService,
     private readonly otpService: OtpService,
+    private readonly projectService: KoraProjectService,
   ) {}
 
   @Get("participants/count")
@@ -77,6 +86,14 @@ export class KoraController {
   @ApiOkResponse({ type: KoraParticipantCountDto })
   async participantCount(): Promise<KoraParticipantCountDto> {
     return new KoraParticipantCountDto(await this.participantService.count());
+  }
+
+  @Get("project")
+  @UseGuards(AuthOptionalGuard)
+  @Public()
+  @ApiOkResponse({ type: KoraProjectDto })
+  async project(): Promise<KoraProjectDto> {
+    return new KoraProjectDto(await this.projectService.project());
   }
 
   /** Everything the sign-in card needs to resume after a reload. */
@@ -162,6 +179,10 @@ export class KoraController {
       timeZone: dto.timeZone ?? null,
     });
     if (!verified.ok) {
+      if (verified.error.error === KoraError.ProjectClosed) {
+        clearCookie(res, KoraCookie.Code);
+        throw signupsClosedException();
+      }
       throw otpRefusalException(verified.error);
     }
     clearCookie(res, KoraCookie.Code);
@@ -205,10 +226,17 @@ export class KoraController {
       : R.failure(KoraError.SignupExpired);
     clearCookie(res, KoraCookie.Signup);
     if (!completed.ok) {
-      throw new BadRequestException(
-        "Your verification has expired. Verify your contact again.",
-        { description: KoraError.SignupExpired },
-      );
+      switch (completed.error) {
+        case KoraError.SignupExpired:
+          throw new BadRequestException(
+            "Your verification has expired. Verify your contact again.",
+            { description: KoraError.SignupExpired },
+          );
+        case KoraError.ProjectClosed:
+          throw signupsClosedException();
+        default:
+          throw new Error(`unknown error: ${completed.error satisfies never}`);
+      }
     }
     const { participant, signedUp, method } = completed.value;
     await this.sessionService.begin({

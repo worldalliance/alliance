@@ -13,6 +13,7 @@ const api = serveApi(
           name: "Call your rep",
           usersCompleted: 3,
           taskFormId: 10,
+          taskKind: "form",
           variantFormIds: [11],
           onboarding: false,
           memberActionDeadline: null,

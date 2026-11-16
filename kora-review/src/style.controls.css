@@ -1,0 +1,171 @@
+/* Buttons */
+.kora-review .btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.kora-review .btn.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+.kora-review .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.kora-review .iconbtn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r);
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+}
+.kora-review .iconbtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.kora-review .iconbtn:not(:disabled):active {
+  background: var(--accent-soft);
+}
+.kora-review .link {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0 6px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.kora-review .link.quiet {
+  color: var(--muted);
+}
+.kora-review .big {
+  flex: 1;
+  min-height: 56px;
+  padding: 0 14px;
+  border-radius: var(--r-lg);
+  border: 0;
+  font: 800 20px/1 var(--f-display);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.kora-review .big .ic {
+  width: 22px;
+  height: 22px;
+}
+.kora-review .big.plus {
+  background: var(--plus);
+  color: var(--on-sem);
+}
+.kora-review .big.minus {
+  background: var(--minus);
+  color: var(--on-sem);
+}
+.kora-review .big.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.kora-review .big.ghost {
+  background: transparent;
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+  font-size: 17px;
+}
+.kora-review .big:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.kora-review .big:not(:disabled):active {
+  transform: translateY(1px);
+}
+/* Brand + chips */
+.kora-review .mark {
+  display: inline-flex;
+  border-radius: 4px;
+  overflow: hidden;
+  font: 800 13px/1 var(--f-display);
+  box-shadow: var(--shadow-sm);
+}
+.kora-review .mark b {
+  padding: 6px 7px;
+}
+.kora-review .mark .p {
+  background: var(--plus);
+  color: var(--on-sem);
+}
+.kora-review .mark .n {
+  background: var(--minus);
+  color: var(--on-sem);
+}
+.kora-review .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font: 700 12px/1.4 var(--f-mono);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kora-review .chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--h, 228) 62% var(--dot-l));
+  flex: none;
+}
+.kora-review .v-pos {
+  color: var(--plus);
+}
+.kora-review .v-neg {
+  color: var(--minus);
+}
+.kora-review .v-zero {
+  color: var(--zero);
+}
+.kora-review .dim {
+  color: var(--muted);
+}
+.kora-review .cicon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font: 700 13px/1.5 var(--f-mono);
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.kora-review .cicon .ic {
+  width: 15px;
+  height: 15px;
+}
+.kora-review .cicon.v-pos {
+  background: var(--plus-tint);
+}
+.kora-review .cicon.v-neg {
+  background: var(--minus-tint);
+}
