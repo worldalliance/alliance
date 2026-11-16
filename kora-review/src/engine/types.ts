@@ -17,8 +17,6 @@ export type Transcript = {
   id: string;
   category: KoraCategory;
   hash: string;
-  challenge: string;
-  tagline: string | null;
   pairType: string | null;
   context: {
     title: string;
@@ -125,7 +123,7 @@ export type State = {
   editing: string | null;
   sheet: SheetState | null;
   noteDraft: string;
-  lastChallenge: string | null;
+  lastCategory: string | null;
   optOutCats: KoraCategory[];
   profile: KoraProfile | null;
   exitSurvey: KoraExitSurvey | null;

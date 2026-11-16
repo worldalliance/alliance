@@ -8,7 +8,7 @@ export function createFlow(ctx: FlowCtx) {
     allReviewed,
     app,
     cancel,
-    challengeNodes,
+    catLabel,
     clamp,
     cur,
     isDestroyed,
@@ -100,13 +100,13 @@ export function createFlow(ctx: FlowCtx) {
     renderReview(!wasStarted);
     toTop();
     if (doc.visibilityState !== "hidden") openedAt = Date.now();
-    // The question intro is shown when the question changes, but not for a pair the reviewer has opened before.
-    if (t.challenge !== S.lastChallenge && !wasStarted) showIntro(t);
+    // The category intro is shown when the category changes, but not for a pair the reviewer has opened before.
+    if (t.category !== S.lastCategory && !wasStarted) showIntro(t);
     else {
       focusScreen();
       playOpener();
     }
-    S.lastChallenge = t.challenge;
+    S.lastCategory = t.category;
     changed();
   }
 
@@ -133,17 +133,11 @@ export function createFlow(ctx: FlowCtx) {
       h(
         "div",
         { class: "intro-in" },
-        h(
-          "div",
-          { class: "intro-label" },
-          h("span", {}, "What to look for"),
-          h("span", { class: "dim" }, progressText()),
-        ),
-        t.tagline ? h("div", { class: "intro-tag" }, t.tagline) : null,
+        h("div", { class: "intro-label" }, progressText()),
         h(
           "h2",
           { class: "intro-q", id: "intro-q" },
-          challengeNodes(t.challenge),
+          `Category: ${catLabel(t.category)}`,
         ),
         h(
           "p",

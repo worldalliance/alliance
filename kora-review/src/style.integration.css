@@ -91,7 +91,7 @@
   width: 100%;
 }
 
-/* Full-screen question intro, shown when the question changes */
+/* Full-screen category intro, shown when the category changes */
 .kora-review .kr-intro {
   position: fixed;
   inset: 0;

@@ -149,23 +149,3 @@
 .kora-review .dim {
   color: var(--muted);
 }
-.kora-review .cicon {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0 6px;
-  border-radius: 3px;
-  font: 700 13px/1.5 var(--f-mono);
-  vertical-align: 1px;
-  white-space: nowrap;
-}
-.kora-review .cicon .ic {
-  width: 15px;
-  height: 15px;
-}
-.kora-review .cicon.v-pos {
-  background: var(--plus-tint);
-}
-.kora-review .cicon.v-neg {
-  background: var(--minus-tint);
-}

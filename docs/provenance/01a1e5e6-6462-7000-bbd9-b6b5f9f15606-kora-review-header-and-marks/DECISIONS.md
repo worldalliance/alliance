@@ -27,3 +27,7 @@ All agent decisions.
 - Without the welcome screen, the tool opens on the pre-survey when one is needed, otherwise on the first unreviewed pair (and its question intro). Its example demo, step list and "Start reviewing" button go with it.
 - Boot changes don't save, so when the tool opens the very first pair while mounting, it saves once mounting finishes, keeping that pair's start time as clicking "Start reviewing" used to.
 - The intro paragraph shows wherever the hero's button reads "Start ranking": an open batch with nothing ranked yet, and a ready batch with no finished one before it. <N> is that batch's pair count. It isn't shown with "Continue ranking" or "Rank another N", nor on the example page's closing "Start ranking" button, which has no batch to count.
+- The intro keeps the "N of M reviewed" progress line above the category, since only the "What to look for" label was asked to go.
+- With the guides gone, their [ … :+1: ] markup renderer, its styles and the transcript's `challenge` and `tagline` fields are deleted. The header rules' class is renamed from `challenge` to `rules`.
+- The 50px is the visible gap: the thread's 18px gap plus a 32px top margin on "Your marks". The underline copies the chatbot headings: 8px below the text, 2px solid ink.
+- The `#` is a button named "Pair ID" for screen readers, with `aria-expanded`; clicking it again hides the ID. It is at 40% opacity until hovered or open. Like the ID before it, it stays hidden below 900px wide.

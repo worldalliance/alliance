@@ -129,6 +129,10 @@ describe("mountKoraReview", () => {
     );
     expect(el.querySelector(".show-replies")).toBeNull();
     expect(el.querySelector<HTMLElement>(".pair")!.hidden).toBe(false);
+    const pairId = el.querySelector<HTMLElement>(".pair-id-text")!;
+    expect(pairId.hidden).toBe(true);
+    button("#").click();
+    expect([pairId.hidden, pairId.textContent]).toEqual([false, "SAMPLE-01"]);
     // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
     const groups = [...rank().querySelectorAll(".seg")].map(
       (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
@@ -332,7 +336,12 @@ describe("mountKoraReview", () => {
   it("types the child's message in on a new pair, then shows the replies on request", async () => {
     mount();
     await tick(10);
-    expect(el.querySelector(".kr-intro")).not.toBeNull();
+    expect(el.querySelector(".kr-intro h2")?.textContent).toMatch(
+      /^Category: \S/,
+    );
+    expect(el.querySelector(".kr-intro")?.textContent).not.toContain(
+      "What to look for",
+    );
     expect(buttons().some((b) => b.textContent === "Start reviewing")).toBe(
       false,
     );
