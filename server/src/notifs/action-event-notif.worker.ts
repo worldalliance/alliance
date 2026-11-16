@@ -118,70 +118,73 @@ export class ActionEventNotifWorker {
       this.dataSource,
       PROCESS_ONE_LOCK_KEY1,
       PROCESS_ONE_LOCK_KEY2,
-      async () => {
-        const now = new Date();
-        const windowStart = new Date(
-          now.getTime() - NOTIFICATION_LOOKBACK_WINDOW_MS,
-        );
-
-        const duePlans = await this.missedSuitePlans.dropClaimedPlans(
-          await this.reminderService.evaluateNotifications(windowStart, now),
-        );
-        const closedSuites = await this.missedSuitePlans.findClosedSuitesFor(
-          duePlans,
-          now,
-        );
-        const skippedByGroup = new Map<
-          number,
-          { problem: string; count: number }
-        >();
-        const skip = (plan: NotificationPlan, problem: string) =>
-          skippedByGroup.set(plan.group.id, {
-            problem,
-            count: (skippedByGroup.get(plan.group.id)?.count ?? 0) + 1,
-          });
-        for (const plan of duePlans) {
-          const resolution = resolveMissedSuitePlan({
-            group: plan.group,
-            userId: plan.user.id,
-            closedSuites,
-          });
-          switch (resolution.kind) {
-            case MissedSuitePlanKind.Ordinary:
-              await this.processOne(plan);
-              break;
-            case MissedSuitePlanKind.NoSuite:
-              skip(plan, "has no suite");
-              break;
-            case MissedSuitePlanKind.SuiteOpen:
-              skip(
-                plan,
-                `suite ${resolution.suite.id} has not closed: a required action has a later deadline than this group, or none`,
-              );
-              break;
-            case MissedSuitePlanKind.Due:
-              await this.processMissedSuite(
-                plan,
-                resolution.suite,
-                resolution.standing,
-              );
-              break;
-            default:
-              throw new Error(
-                `unknown missed-suite plan kind: ${resolution satisfies never}`,
-              );
-          }
-        }
-        for (const [groupId, { problem, count }] of skippedByGroup) {
-          this.logger.error(
-            `missed-suite reminder group ${groupId} ${problem}; skipped ${count} member(s)`,
-          );
-        }
-      },
+      () => this.dispatchDue(),
     );
 
     if (ran === null) {
       this.logger.log("processOne skipped bc of lock");
+    }
+  }
+
+  /** Skips the lock and the delivery gate; production runs it through dispatchDueNotifs. */
+  async dispatchDue() {
+    const now = new Date();
+    const windowStart = new Date(
+      now.getTime() - NOTIFICATION_LOOKBACK_WINDOW_MS,
+    );
+
+    const duePlans = await this.missedSuitePlans.dropClaimedPlans(
+      await this.reminderService.evaluateNotifications(windowStart, now),
+    );
+    const closedSuites = await this.missedSuitePlans.findClosedSuitesFor(
+      duePlans,
+      now,
+    );
+    const skippedByGroup = new Map<
+      number,
+      { problem: string; count: number }
+    >();
+    const skip = (plan: NotificationPlan, problem: string) =>
+      skippedByGroup.set(plan.group.id, {
+        problem,
+        count: (skippedByGroup.get(plan.group.id)?.count ?? 0) + 1,
+      });
+    for (const plan of duePlans) {
+      const resolution = resolveMissedSuitePlan({
+        group: plan.group,
+        userId: plan.user.id,
+        closedSuites,
+      });
+      switch (resolution.kind) {
+        case MissedSuitePlanKind.Ordinary:
+          await this.processOne(plan);
+          break;
+        case MissedSuitePlanKind.NoSuite:
+          skip(plan, "has no suite");
+          break;
+        case MissedSuitePlanKind.SuiteOpen:
+          skip(
+            plan,
+            `suite ${resolution.suite.id} has not closed: a required action has a later deadline than this group, or none`,
+          );
+          break;
+        case MissedSuitePlanKind.Due:
+          await this.processMissedSuite(
+            plan,
+            resolution.suite,
+            resolution.standing,
+          );
+          break;
+        default:
+          throw new Error(
+            `unknown missed-suite plan kind: ${resolution satisfies never}`,
+          );
+      }
+    }
+    for (const [groupId, { problem, count }] of skippedByGroup) {
+      this.logger.error(
+        `missed-suite reminder group ${groupId} ${problem}; skipped ${count} member(s)`,
+      );
     }
   }
 
