@@ -71,6 +71,10 @@ export enum ReferralSource {
   None = "none",
 }
 
+// TODO(ALL-2259): pass to @Index on phoneNumber once a migration creates the
+// index; until then no write raises it.
+export const PHONE_NUMBER_INDEX = "UQ_user_phone_number_live";
+
 @Check(
   "CHK_user_referral_fields",
   `("referredByCampaignId" IS NULL OR "referralSource" = 'campaign')
