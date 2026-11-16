@@ -6330,9 +6330,9 @@ export type UserUpdateData = {
 
 export type UserUpdateErrors = {
     /**
-     * Default error response for hey-api
+     * Another live account holds the phone number
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type UserUpdateError = UserUpdateErrors[keyof UserUpdateErrors];

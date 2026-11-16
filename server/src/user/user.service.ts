@@ -36,6 +36,7 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { isUniqueViolation } from "src/utils/db-errors";
 import type {
   Relations,
   Repository as TypedRepository,
@@ -58,8 +59,9 @@ import {
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
 import { UserAwayRange } from "./entities/user-away-range.entity";
-import { User } from "./entities/user.entity";
+import { PHONE_NUMBER_INDEX, User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
+import { PhoneNumberTakenException } from "./phone-number-taken.exception";
 import { memberWithReferral } from "./user.utils";
 
 @Injectable()
@@ -207,14 +209,21 @@ export class UserService {
       user.profilePicture = nextPicture;
     }
 
-    await writeUnderLive(this.dataSource.manager, {
-      saved: {
-        target: User,
-        id,
-        notFound: `User ${id} not found`,
-      },
-      write: (manager) => manager.save(user),
-    });
+    try {
+      await writeUnderLive(this.dataSource.manager, {
+        saved: {
+          target: User,
+          id,
+          notFound: `User ${id} not found`,
+        },
+        write: (manager) => manager.save(user),
+      });
+    } catch (error) {
+      if (isUniqueViolation(error, PHONE_NUMBER_INDEX)) {
+        throw new PhoneNumberTakenException();
+      }
+      throw error;
+    }
 
     return this.findOneOrFail(id, {
       contractEvents: true,
