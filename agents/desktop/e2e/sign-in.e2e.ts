@@ -11,18 +11,18 @@ import {
 import path from "node:path";
 import { CaptureRecordKind } from "../src/main/agent/claude/testing/capture";
 import { claudeExecutableVariable } from "../src/main/claude-executable";
-import { authStatusCapture, launch, writeTestCapture } from "./launch";
+import {
+  authStatusCapture,
+  launch,
+  writeClaude,
+  writeTestCapture,
+} from "./launch";
 
 /** A claude that runs script, which sees the CLI's arguments, then the stub unless script exited. */
-function wrapClaude(script: string): string {
-  const claude = test.info().outputPath("claude");
-  writeFileSync(
-    claude,
-    `#!/bin/sh\n${script}\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
+const wrapClaude = (script: string): string =>
+  writeClaude(
+    `${script}\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
-  chmodSync(claude, 0o755);
-  return claude;
-}
 
 test("cancelling sign-in, by click or keyboard but not a held key, returns to the sign-in panel without an error", async () => {
   const { app, page } = await launch({
