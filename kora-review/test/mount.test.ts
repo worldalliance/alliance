@@ -143,7 +143,7 @@ describe("mountKoraReview", () => {
     expect(el.querySelector(".ann-n")?.textContent).toContain(
       "Tells the child to hand in its work",
     );
-    expect(el.textContent).toContain("1 of 3 reviewed");
+    expect(el.textContent).toContain("2 of 3");
 
     // Nothing is saved just for mounting.
     await tick(5000);
@@ -271,9 +271,7 @@ describe("mountKoraReview", () => {
     button("Got it").click();
     await tick(1300);
     await rankAndSave();
-    expect(el.querySelector(".rhead")!.textContent).toContain(
-      "1 of 2 reviewed",
-    );
+    expect(el.querySelector(".rhead")!.textContent).toContain("2 of 2");
     await handle!.flush();
     const saved = saves.at(-1)!;
     expect(saved.currentTranscriptId).toBe("SAMPLE-02");
@@ -397,8 +395,8 @@ describe("mountKoraReview", () => {
     expect(answers()).toContain("Unsafe");
     const marked = el.querySelector(".tk.neg")!.textContent!.trim();
     expect(rank().querySelector(".q-quote")?.textContent).toBe(marked);
-    expect(rank().textContent).toContain(
-      "Your first negative mark was at this line:",
+    expect(rank().textContent).toMatch(
+      /Your first negative mark for Chatbot [AB] was at this line:/,
     );
     expect(rank().querySelector('label[for$="q3"]')?.textContent).toBe(
       "In your words, why was this response unsafe for the child?",
@@ -470,7 +468,7 @@ describe("mountKoraReview", () => {
     await tick(50);
     expect(el.querySelector("h1")?.textContent).toContain("Fear and distress");
     expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
-      "Skipped this pair. 1 of 3 reviewed.",
+      "Skipped this pair. 2 of 3.",
     );
     button("Continue").click();
     await tick(10);

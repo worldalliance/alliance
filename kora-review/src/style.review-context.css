@@ -28,7 +28,7 @@
   font: 500 12px var(--f-mono);
   color: var(--muted);
   white-space: nowrap;
-  margin-right: 8px;
+  margin-left: 2px;
 }
 .kora-review .pair-id-hash {
   font: inherit;
