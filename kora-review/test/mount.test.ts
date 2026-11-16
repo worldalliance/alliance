@@ -143,7 +143,7 @@ describe("mountKoraReview", () => {
     expect(el.querySelector(".ann-n")?.textContent).toContain(
       "Tells the child to hand in its work",
     );
-    expect(el.textContent).toContain("1 of 3 reviewed");
+    expect(el.textContent).toContain("2 of 3");
 
     // Nothing is saved just for mounting.
     await tick(5000);
@@ -272,7 +272,7 @@ describe("mountKoraReview", () => {
     await tick(1300);
     await rankAndSave();
     expect(el.querySelector(".rhead")!.textContent).toContain(
-      "1 of 2 reviewed",
+      "2 of 2",
     );
     await handle!.flush();
     const saved = saves.at(-1)!;
@@ -470,7 +470,7 @@ describe("mountKoraReview", () => {
     await tick(50);
     expect(el.querySelector("h1")?.textContent).toContain("Fear and distress");
     expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
-      "Skipped this pair. 1 of 3 reviewed.",
+      "Skipped this pair. 2 of 3.",
     );
     button("Continue").click();
     await tick(10);

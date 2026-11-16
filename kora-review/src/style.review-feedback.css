@@ -29,8 +29,15 @@
   padding-bottom: 8px;
   border-bottom: 2px solid var(--ink);
 }
-.kora-review .marks > .link {
+.kora-review .marks > .back-btn {
+  flex: none;
   align-self: flex-start;
+  min-height: 44px;
+  padding: 0 16px;
+}
+.kora-review .back-btn .ic {
+  width: 18px;
+  height: 18px;
 }
 .kora-review .rank {
   display: flex;

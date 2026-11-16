@@ -209,8 +209,12 @@ export function createModel(ctx: ModelCtx) {
   }
   const reviewed = (r: Result) => r.status === "done" || r.optedOut;
   const reviewedCount = () => S.all.filter((t) => reviewed(res(t))).length;
-  const progressText = () => `${reviewedCount()} of ${S.all.length} reviewed`;
   const allReviewed = () => S.all.every((t) => reviewed(res(t)));
+  // Only unreviewed pairs open, so the current pair is always reviewed + 1.
+  const progressText = () =>
+    allReviewed()
+      ? `${S.all.length} of ${S.all.length} reviewed`
+      : `${reviewedCount() + 1} of ${S.all.length}`;
 
   /* ---------- Restore from the host's saved export ---------- */
   function reanchor(t: Transcript, r: Result) {
