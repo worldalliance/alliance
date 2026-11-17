@@ -369,3 +369,14 @@ describe("close", () => {
     expect(session.close()).toBe(session.close());
   });
 });
+
+test("a fake session reads its first message with its first send, and none once closed first", async () => {
+  const backend = createFakeBackend({ script: demoScript, stepDelayMs: 0 });
+  const read = R.unwrap(await backend.start({ cwd: "/" }));
+  R.unwrap(read.send({ text: "Hello", images: [] }));
+  expect(await read.firstMessageRead).toBe(true);
+  await read.close();
+  const closed = R.unwrap(await backend.start({ cwd: "/" }));
+  await closed.close();
+  expect(await closed.firstMessageRead).toBe(false);
+});

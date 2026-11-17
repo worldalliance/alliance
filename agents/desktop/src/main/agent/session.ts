@@ -26,6 +26,8 @@ export interface AgentSession {
   readonly id: string;
   /** True from a successful send until the turn's TurnEnded, whose listeners can already send again. */
   readonly turnRunning: boolean;
+  /** Resolves true once this session's CLI has read its first message, or false if the CLI exits before that. A started session's CLI keeps a transcript from that point; a resumed session's transcript already exists, so for it this says only whether its CLI read a message. */
+  readonly firstMessageRead: Promise<boolean>;
   /** Fails while a turn is running. Emits no event before returning. */
   send(message: AgentMessage): Result<void, Error>;
   /** Asks the running turn to stop. Emits no event before returning, and send fails until the turn's TurnEnded. The interrupt itself emits no Error. A no-op between turns. */

@@ -224,6 +224,15 @@ describe("parseClaudeLine", () => {
     );
   });
 
+  test("maps the init line to MessageRead and other system lines to no events", () => {
+    expect(line({ type: "system", subtype: "init" })).toEqual(
+      R.success({ kind: ClaudeLineKind.MessageRead }),
+    );
+    expect(line({ type: "system", subtype: "hook_started" })).toEqual(
+      R.success({ kind: ClaudeLineKind.Events, events: [] }),
+    );
+  });
+
   test("ignores event types it doesn't use", () => {
     expect(line({ type: "rate_limit_event" })).toEqual(
       R.success({ kind: ClaudeLineKind.Events, events: [] }),
