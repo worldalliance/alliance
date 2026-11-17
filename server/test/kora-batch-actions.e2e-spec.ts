@@ -50,11 +50,12 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
   });
 
   it("retires a batch: unrated pairs leave, new assignments skip it, and reactivating brings it back", async () => {
-    const older = await upload(4, { prefix: "A", perAssignment: 2 });
-    const newer = await upload(4, { prefix: "B", perAssignment: 4 });
+    const older = await upload(2, { prefix: "A", perAssignment: 2 });
+    const newer = await upload(2, { prefix: "B", perAssignment: 4 });
     const reviewer = await participant();
     const first = await state(reviewer);
-    const [rated] = ids(first.assignment);
+    expect(ids(first.assignment)).toHaveLength(4);
+    const [rated] = ids(first.assignment).filter((id) => id.startsWith("B"));
     await save(
       reviewer,
       first.assignment?.id ?? "",
@@ -66,10 +67,8 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
 
     const after = await state(reviewer);
     const kept = ids(after.assignment);
-    expect(kept.filter((id) => id.startsWith("B"))).toEqual(
-      rated.startsWith("B") ? [rated] : [],
-    );
-    expect(kept).toContain(rated);
+    expect(kept.filter((id) => id.startsWith("B"))).toEqual([rated]);
+    expect(kept).toHaveLength(3);
 
     const fresh = await state(await participant());
     expect(batchesOf(ids(fresh.assignment))).toEqual(new Set(["A"]));
