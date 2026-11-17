@@ -4,6 +4,7 @@ import { checkExpression } from "./check";
 import {
   catalog,
   condition,
+  groupCondition,
   named,
   passes,
   problems,
@@ -105,14 +106,16 @@ describe("types", () => {
   test.each(["marks[0]", 'items.find(item => item.name === "a")?.score'])(
     "a missing lookup in %s fits a consumer that takes a missing value",
     (text) => {
-      passes(text, {
-        type: { kind: TypeKind.Nullable, inner: { kind: TypeKind.Number } },
-      });
+      expect(
+        passes(text, { ...variable, type: { kind: TypeKind.Number } })
+          .mayBeUnknown,
+      ).toBe(true);
     },
   );
 
   test("a missing lookup inside a list fits a list that takes missing items", () => {
     passes("[marks[0]]", {
+      ...variable,
       type: {
         kind: TypeKind.List,
         item: { kind: TypeKind.Nullable, inner: { kind: TypeKind.Number } },
@@ -149,6 +152,10 @@ describe("types", () => {
   test("a method called, or a field named like one, passes", () => {
     passes('[" x".trim(), ({ trim: "v" }).trim]', variable);
   });
+
+  test("a list filtered by a comparison keeps its items' type", () => {
+    passes('["a", "b"].filter((k) => k === "a").includes("b")');
+  });
 });
 
 test("a catalog name starting with __ is the check's own and throws", () => {
@@ -182,7 +189,25 @@ test("a named expression whose name isn't an identifier throws naming it", () =>
   ).toThrow("`a b` doesn't read back as a name.");
 });
 
+test("a function result tsc rejects gets no undecided report", () => {
+  expect(problems("marks.reduce((a, m) => m, 0) > 1")).toEqual([
+    {
+      message:
+        "Type 'number | null' is not assignable to type 'number'. Type 'null' is not assignable to type 'number'.",
+      at: "m",
+    },
+  ]);
+  expect(
+    passes("marks.reduce((a, m) => m, count) ?? 0", variable).mayBeUnknown,
+  ).toBe(false);
+});
+
 describe("named expressions", () => {
+  const isCalifornia = named({
+    id: "1",
+    name: "isCalifornia",
+    text: 'state === "CA"',
+  });
   const scores = named({
     id: "2",
     name: "scores",
@@ -195,6 +220,55 @@ describe("named expressions", () => {
       ...condition,
       named: [x],
     });
+  });
+
+  test("an undecided named expression needs handling where it's used", () => {
+    expect(
+      problems("isCalifornia ? 1 : 2", { ...variable, named: [isCalifornia] }),
+    ).toContainEqual({
+      message:
+        "This is undecided when `isCalifornia` has no value. Add `?? false` or `?? true` to decide it then.",
+      at: "isCalifornia",
+    });
+    expect(
+      passes("isCalifornia", { ...groupCondition, named: [isCalifornia] })
+        .mayBeUnknown,
+    ).toBe(true);
+    expect(
+      passes("isCalifornia ?? false", { ...condition, named: [isCalifornia] })
+        .mayBeUnknown,
+    ).toBe(false);
+  });
+
+  test("a named expression always decided needs no handling where it's used", () => {
+    const decision = named({
+      id: "3",
+      name: "decision",
+      text: "true ? true : null",
+    });
+    expect(
+      passes("decision ? 1 : 2", { ...variable, named: [decision] }).type,
+    ).toBe("number");
+  });
+
+  test("a named expression tsc calls never missing keeps its fallback where the analysis finds it can be", () => {
+    const und = named({
+      id: "3",
+      name: "und",
+      text: '((state === "CA") ?? false) === (count === 1)',
+    });
+    expect(passes("und", { ...variable, named: [und] }).mayBeUnknown).toBe(
+      true,
+    );
+  });
+
+  test("isUnknown guards a named expression", () => {
+    expect(
+      passes("isUnknown(isCalifornia) ? 0 : isCalifornia ? 1 : 2", {
+        ...variable,
+        named: [isCalifornia],
+      }).type,
+    ).toBe("number");
   });
 
   test("a named expression can read another named expression", () => {
@@ -217,6 +291,19 @@ describe("named expressions", () => {
     );
     expect(passes("region", { ...variable, ...scope }).type).toBe("string");
     expect(passes('"US"', variable).type).toBe("string");
+  });
+
+  test("named expressions chain", () => {
+    const top = named({
+      id: "3",
+      name: "top",
+      text: "scores.some(score => score > 5)",
+      others: [scores],
+    });
+    expect(
+      passes("top && total > 1", { ...condition, named: [scores, top] })
+        .mayBeUnknown,
+    ).toBe(false);
   });
 
   test("a removed input a named expression reads is reported under its name", () => {
@@ -261,4 +348,11 @@ describe("named expressions", () => {
       },
     ]);
   });
+});
+
+test("a guard on the left of a `??` in a chain decides the chain", () => {
+  expect(
+    passes('((!isUnknown(state) && count === 1) ?? true) && state === "CA"')
+      .mayBeUnknown,
+  ).toBe(false);
 });

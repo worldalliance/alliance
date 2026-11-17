@@ -42,7 +42,9 @@ export type InputDefinition = {
 
 /**
  * An engineer-defined function's signature; hosts bind its implementation.
- * Its name doesn't start with `__`, as an input id doesn't.
+ * Its name doesn't start with `__`, as an input id doesn't. It gives the same
+ * result for the same arguments within one evaluation, since the save check
+ * lets a guard on a call cover the same call repeated.
  */
 export type FunctionDefinition = {
   name: string;

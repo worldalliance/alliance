@@ -2,6 +2,15 @@
 
 ## Measurements
 
+### `tsc` and missing values in text (typescript 5.9.3, `strict`, `noUncheckedIndexedAccess`, the formula library from `common/src/forms/formula-lib.ts` as the only lib; 2026-11-12)
+
+Method: a scratch program compiled `declare const s: string | null; declare const n: number | null; declare const list: { a: string | null }[]` and the expressions below, printing every diagnostic with its span.
+
+- `"x" + s` and `` `hi ${s}` `` check clean, so `tsc` lets a nullable value into text.
+- `(s === "CA") ?? false` fails with TS2869, located on the left operand `s === "CA"`.
+- `list[0].a` fails with TS2532 "Object is possibly 'undefined'"; `isUnknown(list[0]) ? null : list[0].a` checks clean, so `tsc` narrows a repeated literal index after the guard.
+- `n + 1` fails with TS18047; `!isUnknown(n) && n > 5` checks clean.
+
 ### TypeScript's document registry across language services (typescript 5.9.3; 2026-11-12)
 
 Method: two save checks in one process, each a new language service sharing one `ts.createDocumentRegistry()`, writing different text to the same file name at version 1.

@@ -1,7 +1,13 @@
 import { R } from "../result";
 import { TypeKind, type Catalog, type ValueType } from "./catalog";
-import { checkExpression } from "./check";
-import { problems, string, variable } from "./check-test-support";
+import { Undecided, checkExpression } from "./check";
+import {
+  groupCondition,
+  passes,
+  problems,
+  string,
+  variable,
+} from "./check-test-support";
 
 const recordCatalog = {
   inputs: [],
@@ -218,14 +224,16 @@ test("a record with a numeric field name passes for a record", () => {
     checkExpression({
       source: "pair",
       scope,
-      rule: { type: pair },
+      rule: { type: pair, undecided: Undecided.Allowed },
     }).ok,
   ).toBe(true);
 });
 
 test("a line the brand alone told apart from the one before is left out", () => {
   const type: ValueType = { kind: TypeKind.Record, fields: { name: string } };
-  expect(problems("items[0] ?? 1", { type })).toEqual([
+  expect(
+    problems("items[0] ?? 1", { type, undecided: Undecided.Allowed }),
+  ).toEqual([
     {
       message:
         "Type '{ name: string; score: number | null; } | 1' is not assignable to type '{ name: string; }'. Type 'number' is not assignable to type '{ name: string; }'.",
@@ -289,3 +297,13 @@ test("a message keeps the spacing inside text values", () => {
     ),
   );
 });
+
+test.each([
+  'items.some(item => item.score === 1 || isUnknown(item["score"]))',
+  'items.some(item => item["score"] === 1 || isUnknown(item.score))',
+])(
+  "a guard on a key written as text decides the field it names in %s",
+  (text) => {
+    expect(passes(text, groupCondition).mayBeUnknown).toBe(false);
+  },
+);

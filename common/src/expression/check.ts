@@ -3,6 +3,7 @@ import { compilerMessage } from "../forms/formula-messages";
 import { unionParts } from "../forms/formula-renderable";
 import { R, type Result } from "../result";
 import {
+  TypeKind,
   type Diagnostic,
   type NamedExpression,
   type Scope,
@@ -10,7 +11,9 @@ import {
 } from "./catalog";
 import {
   INTERNAL_PREFIX,
+  KNOWN_WRAPPER,
   NAMED_WRAPPER,
+  UNDECIDED_WRAPPER,
   World,
   typeScriptType,
   withoutListBrand,
@@ -21,10 +24,34 @@ import { dependencyOrder, reads } from "./dependencies";
 import { parseExpression } from "./parse";
 import { printExpression } from "./print";
 import { ExprKind, children, type Expr } from "./tree";
+import {
+  analyze,
+  isNullableType,
+  isYesNoType,
+  undecidedMessage,
+  type Culprit,
+  type Excused,
+} from "./undecided";
+
+export enum Undecided {
+  /** The consumer handles an unknown result itself, as a split group's fallback does. */
+  Allowed = "allowed",
+  /** An unknown result needs an inline `??`, as visibility and required-if do. */
+  NeedsFallback = "needsFallback",
+}
+
+const NEEDS_FALLBACK: Record<Undecided, boolean> = {
+  [Undecided.Allowed]: false,
+  [Undecided.NeedsFallback]: true,
+};
 
 export type ResultRule = {
-  /** The result must fit this type; unset accepts any type. */
-  type?: ValueType;
+  /**
+   * The result, when it has a value, must fit this type; unset accepts any
+   * type. Whether it may lack one is `undecided`'s, so the type isn't nullable.
+   */
+  type?: Exclude<ValueType, { kind: TypeKind.Nullable }>;
+  undecided: Undecided;
 };
 
 const METHOD_VALUE = "A method can't be used as a value. Call it with `(…)`.";
@@ -36,23 +63,33 @@ export type CheckedExpression = {
   /**
    * `tsc`'s type of the result as TypeScript text, for display, widened as a
    * named expression's is when the rule asks for no type. It names
-   * `undefined` where a lookup can miss, which the language writes as `null`.
+   * `undefined` where a lookup can miss, which the language writes as `null`,
+   * and can leave out an unknown `mayBeUnknown` reports; it names no missing
+   * value where `mayBeUnknown` is false.
    */
   type: string;
+  /** Whether the result can be unknown or undecided. */
+  mayBeUnknown: boolean;
 };
 
 const RESULT = `${INTERNAL_PREFIX}result`;
+// `initializer` finds the expression by this layout.
+const CLOSE = "\n);";
 
 type Placed = {
   file: string;
   offset: number;
   text: string;
   named?: NamedExpression;
+  excused: Excused[];
 };
 
 /**
  * The save check: `tsc` over declarations generated from the catalog, with the
- * expression's named expressions declared before it.
+ * expression's named expressions declared before it, plus the analysis that
+ * requires a fallback wherever a result can be undecided. A named expression
+ * whose result can be undecided is declared as possibly `null`, so `tsc`
+ * narrows a guarded reference to it.
  */
 export function checkExpression({
   source,
@@ -147,14 +184,17 @@ export function checkExpression({
   const converterDiagnostics: Diagnostic[] = [];
   const placed: Placed[] = [];
 
-  const place = (entry: Omit<Placed, "offset">, prefix: string) => {
-    world.write(entry.file, `${prefix}${entry.text}\n);`);
-    const done = { ...entry, offset: prefix.length };
+  const place = (
+    entry: Omit<Placed, "offset" | "excused">,
+    { prefix, suffix = CLOSE }: { prefix: string; suffix?: string },
+  ) => {
+    world.write(entry.file, `${prefix}${entry.text}${suffix}`);
+    const done = { ...entry, offset: prefix.length, excused: [] };
     placed.push(done);
     return done;
   };
 
-  const convertPlaced = (at: Placed) => {
+  const analyzePlaced = (at: Placed) => {
     const program = world.program();
     const file = program.getSourceFile(at.file);
     const expression = file && initializer(file);
@@ -183,36 +223,70 @@ export function checkExpression({
         diagnostics.push(relative({ message: METHOD_VALUE, ...span }, at));
       }
     }
-    return { ...converted.value, expression };
+    const analysis = analyze({
+      ...converted.value,
+      checker,
+      file,
+      offset: at.offset,
+    });
+    at.excused = analysis.excused;
+    diagnostics.push(
+      ...analysis.diagnostics.map((d) => ({
+        ...d,
+        namedExpression: at.named?.name,
+      })),
+    );
+    return { ...converted.value, analysis, expression, program };
   };
 
   for (const [index, named] of order.value.entries()) {
-    convertPlaced(
-      place(
-        {
-          file: `/named-${index}.ts`,
-          text: printExpression(named.tree, names),
-          named,
-        },
-        `const ${named.name} = ${NAMED_WRAPPER}(\n`,
-      ),
+    const at = place(
+      {
+        file: `/named-${index}.ts`,
+        text: printExpression(named.tree, names),
+        named,
+      },
+      { prefix: `const ${named.name} = ${NAMED_WRAPPER}(\n` },
     );
+    const result = analyzePlaced(at);
+    if (result === undefined) continue;
+    const unknown = result.analysis.root !== undefined;
+    const type = result.program
+      .getTypeChecker()
+      .getTypeAtLocation(result.expression);
+    if (isNullableType(type) !== unknown) {
+      const wrapper = unknown ? UNDECIDED_WRAPPER : KNOWN_WRAPPER;
+      const prefix = `const ${named.name} = ${wrapper}(\n`;
+      world.write(at.file, `${prefix}${at.text}${CLOSE}`);
+      at.offset = prefix.length;
+    }
   }
 
-  const expected = rule.type && typeScriptType(rule.type, { asTarget: true });
+  // `!` leaves the result's unknown to the analysis, so `tsc` checks only its
+  // type and names no `null` in a mismatch.
   const rootAt = place(
     { file: "/root.ts", text },
-    expected === undefined
-      ? `const ${RESULT} = ${NAMED_WRAPPER}(\n`
-      : `const ${RESULT}: ${expected} = (\n`,
+    rule.type === undefined
+      ? { prefix: `const ${RESULT} = ${NAMED_WRAPPER}(\n` }
+      : {
+          prefix: `const ${RESULT}: ${typeScriptType(rule.type, { asTarget: true })} = (\n`,
+          suffix: "\n)!;",
+        },
   );
-  const checked = convertPlaced(rootAt);
+  const checked = analyzePlaced(rootAt);
   const checker = world.program().getTypeChecker();
 
   for (const at of placed) {
     for (const diagnostic of world.diagnostics(at.file)) {
       const start = (diagnostic.start ?? 0) - at.offset;
       const end = start + (diagnostic.length ?? 0);
+      const excused = at.excused.find(
+        (span) =>
+          span.code === diagnostic.code &&
+          span.start === start &&
+          span.end === end,
+      );
+      if (excused !== undefined) continue;
       const located =
         start < 0 ? { start: 0, end: at.text.length } : { start, end };
       const reported = converterDiagnostics.some(
@@ -231,20 +305,42 @@ export function checkExpression({
     }
   }
 
-  if (checked === undefined || diagnostics.length > 0) {
-    return R.failure(sorted(diagnostics));
-  }
+  if (checked === undefined) return R.failure(sorted(diagnostics));
+  const culprit: Culprit | undefined = checked.analysis.root;
   // The wrapper around an untyped result widens it.
   const { parent } = checked.expression;
-  const result = ts.isCallExpression(parent) ? parent : checked.expression;
+  const type = checker.getTypeAtLocation(
+    ts.isCallExpression(parent) ? parent : checked.expression,
+  );
+  // A fallback can't fix a result of the wrong type, which `tsc` reports.
+  const declared = ts.findAncestor(
+    checked.expression,
+    ts.isVariableDeclaration,
+  );
+  const fits =
+    declared?.type === undefined ||
+    checker.isTypeAssignableTo(
+      checker.getNonNullableType(type),
+      checker.getTypeAtLocation(declared.type),
+    );
+  if (culprit !== undefined && fits && NEEDS_FALLBACK[rule.undecided]) {
+    diagnostics.push({
+      message: undecidedMessage({ culprit, yesNo: isYesNoType(type) }),
+      start: 0,
+      end: text.length,
+    });
+  }
+  if (diagnostics.length > 0) return R.failure(sorted(diagnostics));
+
   return R.success({
     tree: checked.tree,
     text,
     type: checker.typeToString(
-      checker.getTypeAtLocation(result),
+      culprit === undefined ? checker.getNonNullableType(type) : type,
       undefined,
       ts.TypeFormatFlags.NoTruncation,
     ),
+    mayBeUnknown: culprit !== undefined,
   });
 }
 
@@ -306,7 +402,11 @@ function initializer(file: ts.SourceFile): ts.Expression | undefined {
   const [statement] = file.statements;
   if (statement === undefined || !ts.isVariableStatement(statement))
     return undefined;
-  const value = statement.declarationList.declarations[0]?.initializer;
+  const declared = statement.declarationList.declarations[0]?.initializer;
+  const value =
+    declared !== undefined && ts.isNonNullExpression(declared)
+      ? declared.expression
+      : declared;
   if (value === undefined) return undefined;
   if (ts.isCallExpression(value)) return value.arguments[0];
   return ts.isParenthesizedExpression(value) ? value.expression : undefined;

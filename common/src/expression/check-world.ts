@@ -53,6 +53,8 @@ export function typeScriptType(
 /** Starts every name the check declares for itself. */
 export const INTERNAL_PREFIX = "__";
 export const NAMED_WRAPPER = `${INTERNAL_PREFIX}named`;
+export const UNDECIDED_WRAPPER = `${INTERNAL_PREFIX}undecided`;
+export const KNOWN_WRAPPER = `${INTERNAL_PREFIX}known`;
 // Every list has it and no record can, as record fields are text.
 const LIST_BRAND = `${INTERNAL_PREFIX}list`;
 
@@ -127,10 +129,17 @@ function declarations(catalog: Catalog): string {
   return [
     `declare function ${IS_UNKNOWN}(value: unknown): value is null | undefined;`,
     `declare const ${LIST_BRAND}: unique symbol;`,
-    `interface Array<T> { readonly [${LIST_BRAND}]: true }`,
+    `interface Array<T> {`,
+    `  readonly [${LIST_BRAND}]: true;`,
+    // So `marks.filter(m => !isUnknown(m))` has items that can't be missing,
+    // while a predicate `tsc` infers from `k === "a"` keeps the items' type.
+    `  filter(fn: (item: T, index: number, list: T[]) => item is T & {}): (T & {})[];`,
+    `}`,
     // Widens a literal as `let` would, so `const region = "US"` is a string,
     // while a `const` keeps narrowing inside functions.
     `declare function ${NAMED_WRAPPER}<T>(value: T): T extends infer U ? U : never;`,
+    `declare function ${UNDECIDED_WRAPPER}<T>(value: T): (T extends infer U ? U : never) | null;`,
+    `declare function ${KNOWN_WRAPPER}<T>(value: T): (T extends infer U ? U : never) & {};`,
     ...catalog.inputs.map(
       (input) => `declare const ${input.id}: ${typeScriptType(input.type)};`,
     ),

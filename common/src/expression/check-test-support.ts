@@ -5,7 +5,7 @@ import {
   type NamedExpression,
   type ValueType,
 } from "./catalog";
-import { checkExpression, type ResultRule } from "./check";
+import { Undecided, checkExpression, type ResultRule } from "./check";
 import { parseExpression } from "./parse";
 
 export const string: ValueType = { kind: TypeKind.String };
@@ -15,6 +15,8 @@ const nullable = (inner: ValueType): ValueType => ({
   kind: TypeKind.Nullable,
   inner,
 });
+
+const maybe = nullable(boolean);
 
 export const catalog: Catalog = {
   inputs: [
@@ -66,11 +68,40 @@ export const catalog: Catalog = {
       ],
       returns: number,
     },
+    {
+      name: "flags",
+      params: [{ name: "flags", type: { kind: TypeKind.List, item: maybe } }],
+      returns: string,
+    },
+    {
+      name: "flagged",
+      params: [
+        {
+          name: "row",
+          type: { kind: TypeKind.Record, fields: { flag: maybe } },
+        },
+      ],
+      returns: string,
+    },
+    {
+      name: "sum",
+      params: [
+        { name: "numbers", type: { kind: TypeKind.List, item: number } },
+      ],
+      returns: number,
+    },
   ],
 };
 
-export const condition: ResultRule = { type: boolean };
-export const variable: ResultRule = {};
+export const condition: ResultRule = {
+  type: boolean,
+  undecided: Undecided.NeedsFallback,
+};
+export const groupCondition: ResultRule = {
+  type: boolean,
+  undecided: Undecided.Allowed,
+};
+export const variable: ResultRule = { undecided: Undecided.Allowed };
 
 export const named = ({
   id,
