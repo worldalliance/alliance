@@ -292,7 +292,7 @@ export function KoraWelcome({
             rel="noreferrer"
             className="underline"
           >
-            KoraBench
+            KORA
           </a>
           , needs human reviewers to review scenarios and chatbot transcripts
           and provide insight about which chat services are failing to provide

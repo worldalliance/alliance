@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "server",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["ALLIANCE_WITHOUT_TEAM_SECRETS=1", "bun", "run", "server:dev"],
+      "port": 3005
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "PATH=\"$HOME/.local/node/bin:$PATH\" exec bun run frontend:dev"],
+      "port": 5173
+    }
+  ]
+}
