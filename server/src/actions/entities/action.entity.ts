@@ -242,10 +242,18 @@ export class Action {
   @IsDefined()
   visibilityMode: VisibilityMode;
 
-  @Column({ default: 0 })
+  /** ActionParticipantsService writes it; `update: false` keeps a
+   * whole-entity save from restoring a stale count. */
+  @Column({ default: 0, update: false })
   @ApiProperty()
   @Allow()
   usersJoined: number;
+
+  /** Orders recomputations of `usersJoined`; one lands only over an older one. */
+  @Column({ type: "bigint", update: false, generated: "increment" })
+  @IsOptional()
+  @IsEmpty()
+  usersJoinedComputation: string;
 
   @Column({ default: 0 })
   @ApiProperty({

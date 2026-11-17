@@ -377,6 +377,7 @@ export class ExportActionDto extends OmitType(Action, [
   "memberActionPhase",
   "status",
   "usersJoined",
+  "usersJoinedComputation",
   "usersCompleted",
   "formVariants",
   "legacyReviewers",
