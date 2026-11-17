@@ -4,12 +4,9 @@ import { R } from "@alliance/common/result";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
-import {
-  loadedUserCommunities,
-  loadedUserTags,
-  User,
-} from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
+import { loadedUserCommunities, loadedUserTags } from "src/user/user.utils";
 import { In, IsNull, type Repository } from "typeorm";
 import {
   CustomValidatorResponse,

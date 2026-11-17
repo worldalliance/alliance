@@ -4,7 +4,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { loadedUserTags, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
+import { loadedUserTags } from "src/user/user.utils";
 import {
   canMissActionDeadline,
   computeMissedActionDeadline,

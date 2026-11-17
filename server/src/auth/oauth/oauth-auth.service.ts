@@ -16,8 +16,9 @@ import {
   softDeleteWhere,
   updateLive,
 } from "src/datasources/soft-delete";
-import { hasPassword, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
+import { hasPassword } from "src/user/user.utils";
 import { requestContext } from "src/utils/request-context";
 import { Not, type Repository } from "typeorm";
 import { z } from "zod";

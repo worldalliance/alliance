@@ -321,7 +321,12 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
 
   it("leaves an account deleted while its profile is edited", async () => {
     const user = await member({ name: "Before" });
-    deleteAfterUserLoad({ ctx, deleted: user });
+    jest
+      .spyOn(ctx.app.get(ImagesService), "resolvePhotoUpdate")
+      .mockImplementationOnce(async () => {
+        await userRepo.softDelete(user.id);
+        return undefined;
+      });
 
     await expect(
       userService.update(user.id, { name: "After" }),

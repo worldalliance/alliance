@@ -8,6 +8,7 @@ import {
   type QueryDeepPartialEntity,
 } from "typeorm";
 import type { ForeignKeyMetadata } from "typeorm/metadata/ForeignKeyMetadata";
+import { assertTransaction } from "./advisory-lock";
 
 type RowId = number | string;
 
@@ -303,13 +304,6 @@ export async function updateLive<
     throw new NotFoundException(params.notFound);
   }
   return affected === 1;
-}
-
-// Outside a transaction the lock ends with its own statement.
-function assertTransaction(manager: EntityManager): void {
-  if (!manager.queryRunner?.isTransactionActive) {
-    throw new Error("row locks need an active transaction");
-  }
 }
 
 /** The ids among `ids` whose `target` rows are live, each {@link lockLive |

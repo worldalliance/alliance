@@ -39,14 +39,10 @@ import {
   findSuspensionEndedBy,
   isContractActiveAt,
 } from "src/user/entities/contract-event.entity";
-import {
-  ReferralSource,
-  User,
-  loadedUserCommunities,
-} from "src/user/entities/user.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
 import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
-import { memberWithReferral } from "src/user/user.utils";
+import { loadedUserCommunities, memberWithReferral } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
 import {
   claimReinstatement,

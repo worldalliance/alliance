@@ -9,7 +9,8 @@ import type { ActionActivity } from "src/actions/entities/action-activity.entity
 import { Action, loadedActionEvents } from "src/actions/entities/action.entity";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { loadedUserTags, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
+import { loadedUserTags } from "src/user/user.utils";
 import { findLeast } from "src/utils/filter";
 import type { Repository } from "typeorm";
 

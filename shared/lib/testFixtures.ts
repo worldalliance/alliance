@@ -309,6 +309,7 @@ export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
     name: "Ada Member",
     email: "ada@example.com",
     phoneNumber: null,
+    phoneNumberVerified: false,
     preferredReminderTime: null,
     timeZone: null,
     customCityString: null,

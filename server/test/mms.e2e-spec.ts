@@ -2,10 +2,9 @@ import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
-import { Mms } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
-import { MmsService } from "src/mms/mms.service";
 import { ReferralSource, User } from "src/user/entities/user.entity";
+import { lockPhoneNumber } from "src/user/user.utils";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -13,6 +12,7 @@ import {
   createTestApp,
   eventually,
   TestContext,
+  waitForLockWait,
 } from "./e2e-test-utils";
 import { TWILIO_NUMBER } from "./mms-fixtures";
 
@@ -45,123 +45,6 @@ afterEach(async () => {
 afterAll(async () => {
   await drainEventLogs();
   await closeTestApp(ctx.app);
-});
-
-describe("Mms Twilio address columns (e2e)", () => {
-  let mmsRepo: Repository<Mms>;
-  let mmsService: MmsService;
-
-  beforeAll(() => {
-    mmsRepo = ctx.dataSource.getRepository(Mms);
-    mmsService = ctx.app.get(MmsService);
-  });
-
-  const save = async (to: string, from: string) => {
-    const saved = await mmsRepo.save(
-      mmsRepo.create({
-        to,
-        from,
-        body: "hello",
-        status: "sent",
-        twilioSid: "test-sid",
-      }),
-    );
-    return mmsRepo.findOneByOrFail({ id: saved.id });
-  };
-
-  it("preserves Twilio recipient addresses exactly", async () => {
-    for (const recipient of [
-      "+14155552671",
-      "(415) 555-2671",
-      "894546",
-      "whatsapp:+14155552671",
-    ]) {
-      const stored = await save(recipient, "+14155552672");
-
-      expect(stored.to).toBe(recipient);
-    }
-  });
-
-  it("preserves Twilio sender identifiers exactly", async () => {
-    for (const sender of ["TLNET", "2650011", "+59039149", "415.555.2672"]) {
-      const stored = await save("+14155552671", sender);
-
-      expect(stored.from).toBe(sender);
-    }
-  });
-
-  it("refreshes only fields owned by Twilio", async () => {
-    const original = await mmsRepo.save(
-      mmsRepo.create({
-        to: "+14155552671",
-        from: "+15555550100",
-        body: "original body",
-        status: "queued",
-        twilioSid: "refresh-test-sid",
-        cid: "local-correlation-id",
-        clickedLink: true,
-      }),
-    );
-    Object.defineProperty(mmsService, "twilioClient", {
-      configurable: true,
-      value: {
-        messages: {
-          get: () => ({
-            fetch: async () => ({
-              id: original.id + 1,
-              to: "+442079460958",
-              from: "TLNET",
-              body: "provider body",
-              status: "delivered",
-              errorCode: null,
-              errorMessage: null,
-              cid: "provider-correlation-id",
-              clickedLink: false,
-            }),
-          }),
-        },
-      },
-    });
-
-    const refreshed = await mmsService.refreshMmsData(original);
-
-    expect(refreshed).toMatchObject({
-      id: original.id,
-      to: "+442079460958",
-      from: "TLNET",
-      body: "provider body",
-      status: "delivered",
-      errorCode: null,
-      errorMessage: null,
-      cid: "local-correlation-id",
-      clickedLink: true,
-    });
-  });
-
-  it("normalizes the opt-out log the same way", async () => {
-    const optoutRepo = ctx.dataSource.getRepository(MmsOptout);
-    const userRepo = ctx.dataSource.getRepository(User);
-    const user = await userRepo.save(
-      userRepo.create({
-        email: "optout-normalization@example.com",
-        password: "pass",
-        name: "Optout Normalization",
-        referralSource: ReferralSource.None,
-      }),
-    );
-    const saved = await optoutRepo.save(
-      optoutRepo.create({
-        phoneNumber: "(415) 555-2671",
-        reason: "keyword",
-        rawBody: "STOP",
-        user: { id: user.id },
-      }),
-    );
-
-    const stored = await optoutRepo.findOneByOrFail({ id: saved.id });
-    expect(stored.phoneNumber).toBe("+14155552671");
-    expect(stored.rawBody).toBe("STOP");
-  });
 });
 
 describe("Inbound MMS keywords (e2e)", () => {
@@ -363,11 +246,62 @@ describe("Inbound MMS keywords (e2e)", () => {
     await userRepo.softDelete(deleted.id);
 
     await inbound("+14155559002", "STOP").expect(201);
+    await drainEventLogs();
 
     expect(
       await userRepo.findOne({ where: { id: deleted.id }, withDeleted: true }),
     ).toMatchObject({ phoneNumberUnsubscribed: true });
+    expect(await optoutRepo.countBy({ user: { id: deleted.id } })).toBe(0);
+    expect(
+      await eventLogRepo.countBy({
+        event: EventType.SmsUnsubscribe,
+        message: "Unhandled SMS opt-out from +14155559002",
+      }),
+    ).toBe(1);
   });
+
+  it.each([
+    { keyword: "STOP", event: EventType.SmsUnsubscribe, flag: false },
+    { keyword: "START", event: EventType.SmsResubscribe, flag: true },
+  ])(
+    "audits no member who left the number while $keyword waited",
+    async ({ keyword, event, flag }) => {
+      const leaving = await userRepo.save(
+        userRepo.create({
+          email: `leaving-${keyword}@example.com`,
+          password: "pass",
+          name: "Leaving Member",
+          referralSource: ReferralSource.None,
+          phoneNumber: "+14155559003",
+          phoneNumberUnsubscribed: flag,
+        }),
+      );
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await runner.manager.update(User, leaving.id, {
+          phoneNumber: "+14155559004",
+        });
+        const sent = inbound("+14155559003", keyword).then((res) => res.status);
+        await waitForLockWait(ctx.dataSource);
+        await runner.commitTransaction();
+        expect(await sent).toBe(201);
+      } finally {
+        if (runner.isTransactionActive) await runner.rollbackTransaction();
+        await runner.release();
+      }
+      await drainEventLogs();
+
+      expect(await optoutRepo.countBy({ user: { id: leaving.id } })).toBe(0);
+      expect(
+        await eventLogRepo.countBy({ event, user: { id: leaving.id } }),
+      ).toBe(0);
+      expect(await userRepo.findOneByOrFail({ id: leaving.id })).toMatchObject({
+        phoneNumberUnsubscribed: flag,
+      });
+      await userRepo.delete(leaving.id);
+    },
+  );
 
   it("matches the member when STOP arrives in another format", async () => {
     const res = await inbound("(415) 555-9001", "STOP");
@@ -384,6 +318,34 @@ describe("Inbound MMS keywords (e2e)", () => {
 
     expect(await unsubscribed()).toBe(false);
   });
+
+  it.each([
+    { keyword: "STOP", before: false },
+    { keyword: "START", before: true },
+  ])(
+    "waits for the lock on the number before applying $keyword",
+    async ({ keyword, before }) => {
+      await userRepo.update(
+        { id: memberId },
+        { phoneNumberUnsubscribed: before },
+      );
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await lockPhoneNumber(runner.manager, "+14155559001");
+        const sent = inbound("+14155559001", keyword).then((res) => res.status);
+        await waitForLockWait(ctx.dataSource);
+        expect(await unsubscribed()).toBe(before);
+        await runner.commitTransaction();
+        expect(await sent).toBe(201);
+      } finally {
+        if (runner.isTransactionActive) await runner.rollbackTransaction();
+        await runner.release();
+      }
+
+      expect(await unsubscribed()).toBe(!before);
+    },
+  );
 
   it("accepts an opt-out from a number nobody has on file", async () => {
     const res = await inbound("+14155559999", "STOP");

@@ -5,6 +5,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { max } from "date-fns";
 import { randomUUID } from "node:crypto";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
@@ -40,6 +41,8 @@ export type PendingOtp = OtpContact & {
 };
 
 type Throttled = { error: OtpError.Throttled; retryAt: Date };
+
+export type StartedOtp = { browserToken: string; pending: PendingOtp };
 
 export type OtpStartRefusal = Throttled | { error: OtpError.DeliveryFailed };
 
@@ -87,10 +90,8 @@ export class OtpService {
     purpose: OtpPurpose;
     contact: OtpContact;
     ip: string;
-    webOtpHost: string;
-  }): Promise<
-    Result<{ browserToken: string; pending: PendingOtp }, OtpStartRefusal>
-  > {
+    webOtpHost: string | null;
+  }): Promise<Result<StartedOtp, OtpStartRefusal>> {
     const { purpose, contact, ip, webOtpHost } = params;
     const now = new Date();
     const browserToken = randomToken(32);
@@ -287,7 +288,7 @@ export class OtpService {
     purpose: OtpPurpose;
     contact: OtpContact;
     code: string;
-    webOtpHost: string;
+    webOtpHost: string | null;
   }): Promise<boolean> {
     const { purpose, contact, code, webOtpHost } = params;
     switch (contact.channel) {
@@ -320,10 +321,7 @@ async function lockBuckets(
 ): Promise<void> {
   // Sorted, so two requests sharing buckets cannot deadlock.
   for (const bucket of limited.map((l) => l.bucket).sort()) {
-    await manager.query(
-      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-      [bucket],
-    );
+    await lockUntilCommit(manager, bucket);
   }
 }
 

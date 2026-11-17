@@ -71,6 +71,10 @@ export enum ReferralSource {
   None = "none",
 }
 
+// TODO(ALL-2259): pass to @Index on phoneNumber once a migration creates the
+// index; until then no write raises it.
+export const PHONE_NUMBER_INDEX = "UQ_user_phone_number_live";
+
 @Check(
   "CHK_user_referral_fields",
   `("referredByCampaignId" IS NULL OR "referralSource" = 'campaign')
@@ -116,6 +120,13 @@ export class User extends UserRetiredColumns {
   })
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
+
+  @Column({
+    type: "timestamptz",
+    nullable: true,
+    comment: "When the member entered a code sent to phoneNumber",
+  })
+  phoneNumberVerifiedAt: Date | null;
 
   @Column({ default: false })
   phoneNumberUnsubscribed: boolean;
@@ -571,24 +582,4 @@ export class User extends UserRetiredColumns {
 
   @DeleteDateColumnTz()
   deletedAt: Date | null;
-}
-
-export function hasPassword(user: Pick<User, "password">): boolean {
-  return Boolean(user.password);
-}
-
-export function loadedUserTags(
-  user: Pick<User, "id" | "tags">,
-): Relation<Tag>[] {
-  if (!user.tags) {
-    throw new Error(`tags of user ${user.id} not loaded`);
-  }
-  return user.tags;
-}
-
-export function loadedUserCommunities(user: User): Relation<Community>[] {
-  if (!user.communities) {
-    throw new Error(`communities of user ${user.id} not loaded`);
-  }
-  return user.communities;
 }

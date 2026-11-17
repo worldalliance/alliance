@@ -30,8 +30,9 @@ import {
   findLastContractEvent,
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
-import { hasPassword, User } from "../entities/user.entity";
+import { User } from "../entities/user.entity";
 import type { ReferrerResolution } from "../referral.service";
+import { hasPassword } from "../user.utils";
 
 export type FriendStatusDtoArgs = {
   status: FriendStatus;
@@ -259,6 +260,10 @@ export class UserDto extends PickType(User, [
 
   @ApiProperty()
   @Allow()
+  phoneNumberVerified: boolean;
+
+  @ApiProperty()
+  @Allow()
   hasActiveContract: boolean;
 
   @ApiPropertyOptional({ type: ContractEventDto, isArray: true })
@@ -286,6 +291,7 @@ export class UserDto extends PickType(User, [
     this.name = user.name;
     this.email = user.email;
     this.phoneNumber = user.phoneNumber;
+    this.phoneNumberVerified = user.phoneNumberVerifiedAt !== null;
     this.preferredReminderTime = user.preferredReminderTime;
     this.timeZone = user.timeZone;
     this.shareEmailWithCommunityLead = user.shareEmailWithCommunityLead;
