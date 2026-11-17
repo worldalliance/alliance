@@ -39,6 +39,7 @@ Always read and apply:
 
 Read before the matching task:
 
+- Asking a question per **Open questions**, every set of them, before sending → `(root)/agents/skills/consult/SKILL.md`
 - Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/agents/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/agents/skills/implement/SKILL.md`
 - Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
