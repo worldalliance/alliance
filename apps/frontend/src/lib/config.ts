@@ -9,11 +9,9 @@ import {
 import { webEnv } from "@alliance/sharedweb/lib/env";
 import { webEnvironment } from "@alliance/sharedweb/lib/runtimeConfig";
 
-// One vhost serves this app on both worldalliance.org and thealliance.org and
-// proxies /api and /socket.io on each. The auth cookie is SameSite=strict, so a
-// call aimed at the domain the user did not load carries no cookie. SSR has no
-// location and the dev server's API is on another port, so both keep the
-// configured URL.
+// The auth cookie is SameSite=strict, so a call aimed at a domain other than
+// the page's carries no cookie. SSR has no location and the dev server's API is
+// on another port, so both keep the configured URL.
 const browserOrigin = (): string | null =>
   typeof window !== "undefined" && import.meta.env.MODE !== "development"
     ? window.location.origin
