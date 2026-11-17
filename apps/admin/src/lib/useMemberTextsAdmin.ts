@@ -1,5 +1,7 @@
 import {
   mmsThreadGetThreadAdmin,
+  mmsThreadMarkHandledAdmin,
+  mmsThreadMarkNeedsReplyAdmin,
   mmsThreadMarkOptedOutAdmin,
   mmsThreadNeedsReplyAdmin,
   mmsThreadSendTextAdmin,
@@ -47,6 +49,8 @@ const threadQuery = (userId: number) =>
 
 const OPT_OUT_KEY = ["markOptedOutAdmin"];
 
+type ThreadMark = { userId: number; throughId: number };
+
 /** Mutations take the member's id, so one that settles after the page moves
  * to another member still acts on, and updates the cache of, the member it
  * was made for. */
@@ -65,11 +69,15 @@ export function useMemberTextsAdmin(userId: number) {
         throwOnError: true,
       }).then((r) => r.data),
     onSuccess: async (message, input) => {
-      await patch(threadQuery(input.userId).queryKey, (prev) =>
+      const { queryKey } = threadQuery(input.userId);
+      await patch(queryKey, (prev) =>
         prev.messages.some((m) => m.id === message.id)
           ? prev
           : { ...prev, messages: [...prev.messages, message] },
       );
+      // An undelivered text doesn't answer the member, so only the server
+      // knows the reply state now.
+      void queryClient.invalidateQueries({ queryKey });
       void invalidateNeedsReply();
     },
   });
@@ -104,10 +112,40 @@ export function useMemberTextsAdmin(userId: number) {
     select: (mutation) => mutation.state.variables,
   });
 
+  const afterReplyStateChange = (memberId: number) =>
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: threadQuery(memberId).queryKey,
+      }),
+      invalidateNeedsReply(),
+    ]);
+
+  const markHandled = useMutation({
+    mutationFn: (input: ThreadMark) =>
+      mmsThreadMarkHandledAdmin({
+        path: { userId: input.userId },
+        body: { throughId: input.throughId },
+        throwOnError: true,
+      }),
+    onSettled: (_, __, input) => afterReplyStateChange(input.userId),
+  });
+
+  const markNeedsReply = useMutation({
+    mutationFn: (input: ThreadMark) =>
+      mmsThreadMarkNeedsReplyAdmin({
+        path: { userId: input.userId },
+        body: { throughId: input.throughId },
+        throwOnError: true,
+      }),
+    onSettled: (_, __, input) => afterReplyStateChange(input.userId),
+  });
+
   return {
     thread,
     send,
     markOptedOut,
     markingOptedOut: pendingOptOuts.includes(userId),
+    markHandled,
+    markNeedsReply,
   };
 }

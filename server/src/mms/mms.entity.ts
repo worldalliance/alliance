@@ -17,6 +17,7 @@ import {
   UpdateDateColumnTz,
 } from "../datasources/basecolumns";
 import { MmsMedia } from "./mms-media.entity";
+import { MmsThreadEvent } from "./mms-thread-event.entity";
 
 export enum MmsDirection {
   Inbound = "inbound",
@@ -96,6 +97,21 @@ export class Mms {
 
   @Column({ type: "int", nullable: true, comment: "Staff member who wrote it" })
   sentById: number | null;
+
+  @ManyToOne(() => MmsThreadEvent, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "handledEventId" })
+  handledEvent?: Relation<MmsThreadEvent> | null;
+
+  @Column({
+    type: "int",
+    nullable: true,
+    comment:
+      "The mark handled that took this inbound text off Needs reply without a reply",
+  })
+  handledEventId: number | null;
+
+  @OneToMany(() => MmsThreadEvent, (event) => event.afterMms)
+  threadEvents?: Relation<MmsThreadEvent>[];
 
   @OneToMany(() => MmsMedia, (media) => media.mms)
   media?: Relation<MmsMedia>[];

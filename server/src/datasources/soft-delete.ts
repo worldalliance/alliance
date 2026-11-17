@@ -33,6 +33,8 @@ const KEPT_REFERENCES: ReadonlySet<string> = new Set([
   "User.referredByShareUrl",
   // A staff text keeps its sender, so it never reads as automated.
   "Mms.sentBy",
+  // A mark handled or needs reply keeps who made it, as its history records.
+  "MmsThreadEvent.markedBy",
 ]);
 
 function isKeptReference(foreignKey: ForeignKeyMetadata): boolean {
