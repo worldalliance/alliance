@@ -21,6 +21,17 @@ fi
 # The wrapper exports what it loads; a child gets only the logins passed to it.
 export -n "${SYNC_KEYS[@]}" "${SERVER_KEYS[@]}"
 
+# curl reads these from a config line, where a quote, backslash or line break
+# would end the URL or add options.
+URL_PATTERN='^https?://[^"\[:space:]]+$'
+for key in SLACK_WEBHOOK_URL HEALTHCHECK_URL; do
+  if [[ ! ${!key} =~ $URL_PATTERN ]]; then
+    echo "${SECRETS_PATH}${key} is not an http(s) URL without quotes, \
+backslashes or whitespace." >&2
+    exit 1
+  fi
+done
+
 if ! command -v jq >/dev/null; then
   echo "jq is not installed; the sync needs it to post results to Slack." >&2
   exit 1
@@ -40,7 +51,7 @@ notify_slack() {
     --retry 3 --retry-connrefused \
     --header 'Content-Type: application/json' \
     --data "$(jq -nc --arg text "$1" '{text: $text}')" \
-    "$SLACK_WEBHOOK_URL" >/dev/null \
+    --config - <<<"url = \"${SLACK_WEBHOOK_URL}\"" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not post to Slack."
 }
 
@@ -50,7 +61,7 @@ notify_slack() {
 ping_healthcheck() {
   unlocked curl --silent --show-error --fail --max-time 10 \
     --retry 3 --retry-connrefused --retry-max-time 30 \
-    "${HEALTHCHECK_URL%/}${1:-}" >/dev/null \
+    --config - <<<"url = \"${HEALTHCHECK_URL%/}${1:-}\"" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
 }
 
@@ -134,10 +145,14 @@ skipping this one."
 fi
 
 # The deploy holds ~/migrate.lock while it replaces ~/nest-backend, which
-# deployed-db-name.ts and its node_modules come from.
+# deployed-db-name.ts and its node_modules come from. The anonymize scripts and
+# the RDS certificate bundle are read after this lock is released, so they are
+# copied out under it.
+SYNC_FILES=/home/ec2-user/sync_prod_to_staging.files
+RDS_BUNDLE=rds-us-west-2-bundle.pem
 if ! true >>"$MIGRATE_LOCK"; then
   abort_before_start "cannot write ~/migrate.lock; the sync needs it to read \
-its database names."
+its database names and copy its files out of ~/nest-backend."
 fi
 db_name_of() {
   unlocked /home/ec2-user/.bun/bin/bun \
@@ -146,7 +161,8 @@ db_name_of() {
 {
   if ! flock -w 900 201; then
     abort_before_start "a backend deploy held ~/migrate.lock for 15 minutes, \
-so the sync could not read its database names."
+so the sync could not read its database names or copy its files out of \
+~/nest-backend."
   fi
   if ! PROD_DB_NAME=$(db_name_of production) \
     || ! STAGING_DB_NAME=$(db_name_of staging) \
@@ -154,6 +170,13 @@ so the sync could not read its database names."
     abort_before_start "could not read both database names through \
 ~/nest-backend/scripts/deployed-db-name.ts, which failed or printed an empty \
 name; the sync's journal on the staging host has any error."
+  fi
+  if ! rm -rf "$SYNC_FILES/anonymize" || ! mkdir -p "$SYNC_FILES" \
+    || ! cp -R /home/ec2-user/nest-backend/scripts/anonymize \
+      /home/ec2-user/nest-backend/server/src/config/$RDS_BUNDLE \
+      "$SYNC_FILES/"; then
+    abort_before_start "could not copy scripts/anonymize and the RDS \
+certificate bundle from ~/nest-backend to ${SYNC_FILES}."
   fi
 } 201>>"$MIGRATE_LOCK"
 
@@ -167,6 +190,7 @@ ${SECRETS_PATH}. Staging still holds the data from its previous successful sync.
 }
 trap report_startup_failure EXIT
 
+# shellcheck disable=SC2016 # a regex, not an expansion
 BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
 if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
   echo "${SECRETS_PATH}STAGING_PASSWORD_HASH is not a bcrypt hash." >&2
@@ -183,14 +207,16 @@ SCRATCH_DB="${STAGING_DB_NAME}_sync"
 # libpq takes the logins from there rather than argv or a password file on disk.
 prod_pg() {
   PGHOST=$PROD_DB_HOST PGUSER=$PROD_DB_USER PGPASSWORD=$PROD_DB_PASSWORD \
-    PGDATABASE=$PROD_DB_NAME "$@"
+    PGDATABASE=$PROD_DB_NAME PGSSLMODE=verify-full \
+    PGSSLROOTCERT="$SYNC_FILES/$RDS_BUNDLE" "$@"
 }
 
 staging_pg() {
   local database=$1
   shift
   PGHOST=$STAGING_DB_HOST PGUSER=$STAGING_DB_USER PGPASSWORD=$STAGING_DB_PASSWORD \
-    PGDATABASE=$database "$@"
+    PGDATABASE=$database PGSSLMODE=verify-full \
+    PGSSLROOTCERT="$SYNC_FILES/$RDS_BUNDLE" "$@"
 }
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -280,9 +306,15 @@ unlocked staging_pg "$SCRATCH_DB" pg_restore \
 STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
+# The hash goes in on stdin, where ps can't show it. BCRYPT_PATTERN admits no
+# quote or backslash, which is what keeps it inside the quotes.
 unlocked staging_pg "$SCRATCH_DB" psql -v ON_ERROR_STOP=1 --single-transaction \
-  -v password_hash="$STAGING_PASSWORD_HASH" \
-  -f /home/ec2-user/nest-backend/scripts/anonymize/anonymize.sql
+  -f - <<SQL
+\set password_hash '${STAGING_PASSWORD_HASH}'
+\set in_anonymize_dir
+\cd '${SYNC_FILES}/anonymize'
+\i anonymize.sql
+SQL
 
 # The backend deploy holds this lock from replacing ~/nest-backend until the new
 # code passes its health check or rolls back, so it can't migrate the database

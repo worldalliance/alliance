@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -27,14 +29,21 @@ const SECRETS: Record<string, string> = {
 };
 
 const PG_TOOL = `
-  echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE" >> "$STATE/pg"
+  echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE | $PGSSLMODE $PGSSLROOTCERT" >> "$STATE/pg"
   [ "$(basename "$0")" != "\${PG_FAILS:-}" ]`;
+
+const HELD_LOCK = `
+  held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
+    || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')`;
 
 // Unless FLOCK_OK is set, flock exits 1, so a run the guard lets through stops
 // at the lock and posts "another sync is already running". FLOCK_FAILS names
 // the one flock call that still fails.
 const STUBS: Record<string, string> = {
-  curl: `echo "$*" >> "$STATE/curl"`,
+  curl: `echo "$*" >> "$STATE/curl-argv"; { echo "$*"; cat; } >> "$STATE/curl"`,
+  cp: `${HELD_LOCK}
+    echo "cp $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
+    PATH="\${PATH#*:}" exec cp "$@"`,
   date: `
     if [ "$*" = "-u +%s" ]; then echo "$FAKE_EPOCH"; else PATH="\${PATH#*:}" exec date "$@"; fi`,
   flock: `
@@ -43,7 +52,7 @@ const STUBS: Record<string, string> = {
   aws: `echo "aws $*" >> "$STATE/aws"`,
   pg_dump: PG_TOOL,
   pg_restore: PG_TOOL,
-  psql: `cat > /dev/null; ${PG_TOOL}`,
+  psql: `cat >> "$STATE/psql-stdin"; ${PG_TOOL}`,
   env: `echo "$*" >> "$STATE/env"; exec /usr/bin/env "$@"`,
   "secrets_run.sh": `
     echo "$*" >> "$STATE/secrets_run"
@@ -53,9 +62,7 @@ const STUBS: Record<string, string> = {
       export "$name=$value"
     done < "$STATE/secrets"
     exec "$@"`,
-  ".bun/bin/bun": `
-    held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
-      || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')
+  ".bun/bin/bun": `${HELD_LOCK}
     echo "bun $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
     [ -z "\${BUN_FAILS:-}" ] || exit 1
     [ "$2" = "\${BUN_EMPTY:-}" ] || echo "\${2}_db"`,
@@ -63,6 +70,9 @@ const STUBS: Record<string, string> = {
     echo "bunx $* | $DB_HOST $DB_NAME $DB_USERNAME $DB_PASSWORD" >> "$STATE/pg"
     env > "$STATE/bunx-env"`,
 };
+
+const ANONYMIZE = "nest-backend/scripts/anonymize";
+const RDS_BUNDLE = "nest-backend/server/src/config/rds-us-west-2-bundle.pem";
 
 let home: string;
 let bin: string;
@@ -81,14 +91,12 @@ beforeEach(() => {
     readFileSync(SOURCE, "utf8").replaceAll("/home/ec2-user", home),
   );
   chmodSync(script, 0o755);
-  writeFileSync(
-    join(state, "secrets"),
-    Object.entries(SECRETS)
-      .map(([name, value]) => `${name}=${value}\0`)
-      .join(""),
-  );
+  writeSecrets();
   mkdirSync(join(home, ".bun/bin"), { recursive: true });
-  mkdirSync(join(home, "nest-backend/server"), { recursive: true });
+  mkdirSync(join(home, "nest-backend/server/src/config"), { recursive: true });
+  writeFileSync(join(home, RDS_BUNDLE), "-- bundle\n");
+  mkdirSync(join(home, ANONYMIZE), { recursive: true });
+  writeFileSync(join(home, ANONYMIZE, "anonymize.sql"), "-- anonymize\n");
   for (const [name, body] of Object.entries(STUBS)) {
     const path =
       name.includes("/") || name.endsWith(".sh")
@@ -98,6 +106,15 @@ beforeEach(() => {
     chmodSync(path, 0o755);
   }
 });
+
+function writeSecrets(overrides: Record<string, string> = {}) {
+  writeFileSync(
+    join(state, "secrets"),
+    Object.entries({ ...SECRETS, ...overrides })
+      .map(([name, value]) => `${name}=${value}\0`)
+      .join(""),
+  );
+}
 
 afterEach(() => {
   rmSync(home, { recursive: true });
@@ -139,7 +156,7 @@ function run(params: {
   const result = Bun.spawnSync(["bash", script], { stdin: "ignore", env });
   const curl = readState("curl");
   rmSync(join(state, "curl"), { force: true });
-  return { exitCode: result.exitCode, curl };
+  return { exitCode: result.exitCode, curl, stderr: result.stderr.toString() };
 }
 
 const recordedDay = () =>
@@ -275,11 +292,37 @@ test("sync_prod_to_staging.sh loads its secrets once, through the wrapper", () =
   );
 });
 
+test.each([
+  ["SLACK_WEBHOOK_URL", 'http://slack.invalid/a"b'],
+  ["HEALTHCHECK_URL", "http://hc.invalid/check\nwrite-out = x"],
+  ["SLACK_WEBHOOK_URL", "http://slack.invalid/a\\"],
+])(
+  "sync_prod_to_staging.sh refuses a %s curl's config would misread",
+  (key, url) => {
+    writeSecrets({ [key]: url });
+    const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(`${key} is not an http(s) URL`);
+    expect(readState("curl-argv")).toBe("");
+  },
+);
+
+test("sync_prod_to_staging.sh refuses a STAGING_PASSWORD_HASH that isn't bcrypt before psql sees it", () => {
+  writeSecrets({ STAGING_PASSWORD_HASH: "x' \\! touch PWNED \\echo '" });
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain(
+    "STAGING_PASSWORD_HASH is not a bcrypt hash.",
+  );
+  expect(readState("psql-stdin")).toBe("");
+  expect(readState("pg")).toBe("");
+});
+
 test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of argv", () => {
   const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
   expect(result.exitCode).toBe(0);
   expect(result.curl).toContain("Sync completed successfully.");
-  expect(result.curl).toEndWith("http://hc.invalid/check\n");
+  expect(result.curl).toEndWith('url = "http://hc.invalid/check"\n');
   const pg = readState("pg");
   const steps = pg.split("\n").filter(Boolean);
   expect(steps.map((line) => line.split(" ")[0])).toEqual([
@@ -290,23 +333,38 @@ test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of
     "bunx",
     "psql",
   ]);
-  expect(steps[0]).toEndWith("| prod.invalid reader prod-secret production_db");
-  expect(steps[1]).toEndWith("| staging.invalid admin staging-secret postgres");
+  const login = (line: string) => line.split(" | ")[1];
+  expect(login(steps[0])).toBe("prod.invalid reader prod-secret production_db");
+  expect(login(steps[1])).toBe("staging.invalid admin staging-secret postgres");
   expect(steps[2]).toContain("--dbname=staging_db_sync");
-  expect(steps[2]).toEndWith(
-    "| staging.invalid admin staging-secret staging_db_sync",
+  expect(login(steps[2])).toBe(
+    "staging.invalid admin staging-secret staging_db_sync",
   );
-  expect(steps[3]).toEndWith(
-    "| staging.invalid admin staging-secret staging_db_sync",
+  expect(login(steps[3])).toBe(
+    "staging.invalid admin staging-secret staging_db_sync",
   );
   expect(steps[4]).toEndWith(
     "| staging.invalid staging_db_sync admin staging-secret",
   );
-  expect(steps[5]).toEndWith("| staging.invalid admin staging-secret postgres");
+  expect(login(steps[5])).toBe("staging.invalid admin staging-secret postgres");
+  const tls = `verify-full ${home}/sync_prod_to_staging.files/rds-us-west-2-bundle.pem`;
+  for (const line of steps.filter((step) => !step.startsWith("bunx"))) {
+    expect(line).toEndWith(`| ${tls}`);
+  }
   for (const line of steps) {
     const argv = line.split(" | ")[0];
     expect(argv).not.toContain("secret");
+    expect(argv).not.toContain(SECRETS.STAGING_PASSWORD_HASH);
   }
+  expect(readState("psql-stdin")).toContain(
+    `\\set password_hash '${SECRETS.STAGING_PASSWORD_HASH}'\n` +
+      `\\set in_anonymize_dir\n\\cd '${home}/sync_prod_to_staging.files/anonymize'\n\\i anonymize.sql\n`,
+  );
+  const curlArgv = readState("curl-argv");
+  expect(curlArgv).toContain("--config -");
+  expect(curlArgv).not.toContain("slack.invalid");
+  expect(curlArgv).not.toContain("hc.invalid");
+  expect(result.curl).toContain('url = "http://slack.invalid"');
   expect(readState("env")).not.toContain("secret");
   const migrationEnv = readState("bunx-env");
   expect(migrationEnv).toContain("DB_PASSWORD=staging-secret");
@@ -326,16 +384,51 @@ test("sync_prod_to_staging.sh drops the scratch database when a step before the 
   expect(result.curl).toContain("FAILED during restore");
   const steps = readState("pg").split("\n").filter(Boolean);
   expect(steps.at(-1)).toBe(
-    "psql -q -c DROP DATABASE IF EXISTS staging_db_sync WITH (FORCE); | staging.invalid admin staging-secret postgres",
+    `psql -q -c DROP DATABASE IF EXISTS staging_db_sync WITH (FORCE); | staging.invalid admin staging-secret postgres | verify-full ${home}/sync_prod_to_staging.files/rds-us-west-2-bundle.pem`,
   );
 });
 
-test("sync_prod_to_staging.sh reads the production, then the staging database name under ~/migrate.lock", () => {
+test("sync_prod_to_staging.sh reads its database names and copies the files it needs later under ~/migrate.lock", () => {
   run({ at: "15:00", env: { FLOCK_OK: "1" } });
   const helper = join(home, "nest-backend/scripts/deployed-db-name.ts");
   expect(readState("calls")).toStartWith(
-    `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n`,
+    `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n` +
+      `cp -R ${join(home, ANONYMIZE)} ${join(home, RDS_BUNDLE)} ${home}/sync_prod_to_staging.files/ under migrate.lock\n`,
   );
+});
+
+test.each([
+  ["scripts/anonymize", ANONYMIZE],
+  ["the RDS bundle", RDS_BUNDLE],
+])(
+  "sync_prod_to_staging.sh reports %s missing from ~/nest-backend",
+  (_, path) => {
+    rmSync(join(home, path), { recursive: true });
+    const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+    expect(result.exitCode).toBe(1);
+    expect(result.curl).toContain(
+      "could not copy scripts/anonymize and the RDS certificate bundle",
+    );
+    expect(result.curl).toContain("http://hc.invalid/check/fail");
+    expect(readState("pg")).toBe("");
+  },
+);
+
+test("the anonymize scripts read only files beside them, which the sync copies with them", () => {
+  const dir = join(import.meta.dir, "anonymize");
+  const sql = readdirSync(dir)
+    .filter((name) => name.endsWith(".sql"))
+    .map((name) => readFileSync(join(dir, name), "utf8"))
+    .join("\n");
+  const reads = [
+    ...sql.matchAll(/^\\(?:ir?\s+|copy\s.*\sFROM\s+)'?([^'\s]+)/gim),
+  ].map((match) => match[1]);
+  expect(reads).toContain("scrub_contacts.sql");
+  expect(reads).toContain("first_names.txt");
+  for (const file of reads) {
+    expect(file).not.toContain("/");
+    expect(existsSync(join(dir, file))).toBe(true);
+  }
 });
 
 test.each([
