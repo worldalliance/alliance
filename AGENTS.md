@@ -39,6 +39,7 @@ Always read and apply:
 
 Read before the matching task:
 
+- Asking a question per **Open questions**, every set of them, before sending → `(root)/agents/skills/consult/SKILL.md`
 - Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/agents/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/agents/skills/implement/SKILL.md`
 - Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
@@ -103,6 +104,10 @@ Ask before running a git command that writes. Read-only ones (`git diff`, `git s
 Follow the user's intended request in context. Requests to explain, evaluate, compare, or justify authorize investigation and an answer; they do not by themselves authorize changes. Requests to perform work authorize that work, including when phrased as questions. Asking about a recommendation neither rejects it nor approves an alternative.
 
 For example, after you suggest X, "Why X?" asks you to explain your reasoning. It does not mean the user is against X. Explain the recommendation and revise it only where the reasoning fails.
+
+## The problem behind the request
+
+Before building what was asked, name the problem it solves and look past the request: an alternative to it, making it automatic or unnecessary, the larger system that is actually broken. Raise a materially better alternative with the user before acting on it. Brief subagents, and write skills, with purpose, context and constraints, leaving the method to their judgement; spell out steps only where order or safety demands it. When uncertain or stuck, bring in a subagent or the user rather than pressing on alone.
 
 ## Open questions
 
