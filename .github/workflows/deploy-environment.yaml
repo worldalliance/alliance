@@ -47,6 +47,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.commit }}
+      - name: Refuse while production is frozen
+        if: inputs.environment == 'production'
+        uses: ./.github/actions/dirty-check
+        with:
+          check: empty
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -60,7 +65,8 @@ jobs:
             deployed-config.env
             web-config.json
 
-  # After deployed-config, so a config failure deploys nothing.
+  # After deployed-config, so a config failure or the production freeze
+  # deploys nothing.
   guard:
     needs: deployed-config
     runs-on: ubuntu-latest
