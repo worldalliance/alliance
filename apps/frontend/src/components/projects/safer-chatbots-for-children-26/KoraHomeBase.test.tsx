@@ -8,7 +8,13 @@ import {
 import type { KoraHomeDto, KoraUserBatchDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  getDefaultNormalizer,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { beforeEach, expect, test } from "bun:test";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { HOME_COPY } from "./copy";
@@ -80,7 +86,9 @@ test("offers a newcomer their first pairs and the example, without a table", asy
   ).toBe(KORA_EXAMPLE_PATH);
   expect(screen.queryByText(/ranked so far/)).toBeNull();
   expect(screen.queryByRole("table")).toBeNull();
-  const intro = screen.getByText(HOME_COPY.startIntro(10));
+  const intro = screen.getByText(HOME_COPY.startIntro(10), {
+    normalizer: getDefaultNormalizer({ collapseWhitespace: false }),
+  });
   const startButton = screen.getByRole("button", { name: "Start ranking" });
   expect(
     intro.compareDocumentPosition(startButton) &

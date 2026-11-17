@@ -25,7 +25,7 @@ test("asks for the whole open user-batch before any pair is ranked", () => {
     heading: "Rank 10 pairs by November 30",
     action: { kind: HeroAction.Continue, label: "Start ranking" },
     note: expect.stringMatching(
-      /^You have 10 pairs of conversations to review\./,
+      /^You will review 10 pairs of conversations\./,
     ),
   });
 });
@@ -76,7 +76,7 @@ test("offers a fresh start after a closed user-batch", () => {
     heading: "Rank 10 pairs by November 30",
     action: { kind: HeroAction.Start, label: "Start ranking" },
     note: expect.stringMatching(
-      /^You have 10 pairs of conversations to review\./,
+      /^You will review 10 pairs of conversations\./,
     ),
   });
 });

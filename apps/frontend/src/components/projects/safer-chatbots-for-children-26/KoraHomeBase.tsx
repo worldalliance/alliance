@@ -46,7 +46,9 @@ function HeroSection({
         </p>
       )}
       {hero.note && (
-        <p className="max-w-2xl text-lg text-zinc-700">{hero.note}</p>
+        <p className="max-w-2xl whitespace-pre-line text-lg text-zinc-700">
+          {hero.note}
+        </p>
       )}
       {action?.kind === HeroAction.Continue && (
         <Button to={KORA_REVIEW_PATH} color={ButtonColor.Black}>
