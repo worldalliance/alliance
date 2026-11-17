@@ -587,9 +587,10 @@ jobs:
           echo "API health ok"
 
   # Apart from the build, so the frontend's build dependencies never run where
-  # id-token: write reaches the environment role's Expo token. Every step, not
-  # the job, continues on error, and the steps' timeouts sum to less than the
-  # job's: a failed job inside a called workflow may fail the calling job,
+  # id-token: write reaches the environment role's Expo token. A promotion
+  # uploads staging's source maps to production's PostHog project. Every step,
+  # not the job, continues on error, and the steps' timeouts sum to less than
+  # the job's: a failed job inside a called workflow may fail the calling job,
   # which Deploy alerts on.
   upload-react-sourcemaps:
     runs-on: ubuntu-latest

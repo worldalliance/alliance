@@ -182,3 +182,22 @@ jobs:
 
   mobile-bundle-check:
     uses: ./.github/workflows/mobile-bundle-check.yaml
+
+  # One job standing for every check and build, which promotion's required
+  # list (.github/actions/promote/promote.sh) names.
+  passed:
+    runs-on: ubuntu-latest
+    needs:
+      - dirty-check
+      - build-react-app
+      - build-admin-frontend
+      - test-backend-e2e
+      - test-unit
+      - migrations-drift-check
+      - typecheck
+      - format-check
+      - gitignore-check
+      - actionlint
+      - mobile-bundle-check
+    steps:
+      - run: echo "all checks passed"

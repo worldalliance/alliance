@@ -1,0 +1,32 @@
+name: Promote
+description: >-
+  Output what production deploys from a commit's fully green staging Deploy
+  run, or no run when there is none to reuse, so the production run builds
+  the commit itself. Fails only when it can't tell. The job needs
+  `actions: read` and `contents: read`.
+
+inputs:
+  commit:
+    description: Full SHA of the commit to promote.
+    required: true
+
+outputs:
+  run-id:
+    description: The staging run whose artifacts production deploys; empty when the production run builds the commit itself.
+    value: ${{ steps.promote.outputs.run_id }}
+  artifact-ids:
+    description: JSON object of the ids of the artifacts production deploys from that run, by name.
+    value: ${{ steps.promote.outputs.artifact_ids }}
+  details:
+    description: JSON naming that run and the ids of the artifacts deployed from it.
+    value: ${{ steps.promote.outputs.details }}
+
+runs:
+  using: composite
+  steps:
+    - id: promote
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        COMMIT: ${{ inputs.commit }}
+      run: bash "$GITHUB_ACTION_PATH/promote.sh"

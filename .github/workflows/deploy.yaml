@@ -9,7 +9,32 @@ env:
   env_name: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
 jobs:
+  # A production push deploys what its commit's fully green staging run
+  # built, and otherwise checks and builds the commit itself.
+  promote:
+    if: github.ref_name == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      run-id: ${{ steps.promote.outputs.run-id }}
+      artifact-ids: ${{ steps.promote.outputs.artifact-ids }}
+      details: ${{ steps.promote.outputs.details }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+
+      - id: promote
+        uses: ./.github/actions/promote
+        with:
+          commit: ${{ github.sha }}
+
   checks:
+    needs: promote
+    if: ${{ !cancelled() && (github.ref_name != 'production' || (needs.promote.result == 'success' && !needs.promote.outputs.run-id)) }}
     uses: ./.github/workflows/deploy-checks.yaml
     with:
       environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
@@ -17,7 +42,10 @@ jobs:
   # Checks run outside the lock. The group name is fixed, not built from
   # github.workflow, so other workflows deploying an environment can share it.
   deploy:
-    needs: checks
+    needs:
+      - promote
+      - checks
+    if: ${{ !cancelled() && (needs.checks.result == 'success' || needs.promote.outputs.run-id) }}
     concurrency:
       group: deploy-${{ github.ref_name == 'production' && 'production' || 'staging' }}
       queue: max
@@ -30,6 +58,9 @@ jobs:
     with:
       environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
       commit: ${{ github.sha }}
+      artifacts-run-id: ${{ needs.promote.outputs.run-id }}
+      artifact-ids: ${{ needs.promote.outputs.artifact-ids || '{}' }}
+      details: ${{ needs.promote.outputs.details || '{}' }}
 
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
