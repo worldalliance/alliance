@@ -2,7 +2,7 @@ name: Deploy checks
 
 # The checks and builds a deploy gates on. The builds upload the
 # react-build and admin-build artifacts deploy-environment.yaml deploys, and
-# the react-assets source maps deploy.yaml uploads to PostHog.
+# the react-assets source maps it uploads to PostHog.
 
 on:
   workflow_call:

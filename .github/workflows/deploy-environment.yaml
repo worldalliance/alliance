@@ -1,9 +1,10 @@
 name: Deploy environment
 
 # Deploys a commit whose checks and builds already passed in the calling run,
-# reading that run's artifacts, then smoke-checks it and records the result
-# as a GitHub deployment. The caller holds the environment's deploy lock
-# around the whole call.
+# reading that run's artifacts and the commit's deployed config, then
+# smoke-checks it, uploads its source maps and records the result as a GitHub
+# deployment. The caller holds the environment's deploy lock around the whole
+# call.
 
 on:
   workflow_call:
@@ -25,13 +26,38 @@ env:
   env_name: ${{ inputs.environment }}
 
 jobs:
+  # An artifact, not job outputs: Actions drops a job output that matches any
+  # secret's value.
+  deployed-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/deployed-config.ts "$env_name" > deployed-config.env
+      - run: bun scripts/web-runtime-config.ts "$env_name" > web-config.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deployed-config
+          path: |
+            deployed-config.env
+            web-config.json
+
+  # After deployed-config, so a config failure deploys nothing.
   guard:
+    needs: deployed-config
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
     # A partial re-run keeps these outputs from the attempt that ran the
-    # guard, so every later job refuses to run in any other attempt.
+    # guard, so every later job but the source map upload refuses to run in
+    # any other attempt.
     outputs:
       deployment_id: ${{ steps.guard.outputs.deployment_id }}
       attempt: ${{ github.run_attempt }}
@@ -524,6 +550,64 @@ jobs:
             if [ "$status" != 200 ]; then echo "https://$host/api/ answered $status"; exit 1; fi
           done
           echo "API health ok"
+
+  # Apart from the build, so the frontend's build dependencies never run where
+  # id-token: write reaches the environment role's Expo token. Every step, not
+  # the job, continues on error, and the steps' timeouts sum to less than the
+  # job's: a failed job inside a called workflow may fail the calling job,
+  # which Deploy alerts on.
+  upload-react-sourcemaps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: guard
+    if: ${{ needs.guard.outputs.deployment_id }}
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Code
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - name: Read deployed config
+        id: config
+        continue-on-error: true
+        timeout-minutes: 1
+        uses: ./.github/actions/deployed-config
+
+      - name: Read CI secrets
+        id: aws
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ env.env_name }}
+          parameters: ci/deploy/POSTHOG_SOURCEMAP_KEY
+
+      - name: Download Assets
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/download-artifact@v4
+        with:
+          name: react-assets
+          path: react-assets
+
+      - name: Install PostHog CLI
+        continue-on-error: true
+        timeout-minutes: 1
+        uses: ./.github/actions/posthog-cli
+
+      - name: Upload source maps to PostHog
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').POSTHOG_SOURCEMAP_KEY }}
+        run: posthog-cli sourcemap upload --directory react-assets
 
   # Runs after the backend is live so the OTA bundle never talks to an API
   # older than itself.
