@@ -159,7 +159,7 @@ export function EditableListField({
       />
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           “Add item” button text
         </label>
         <input
@@ -169,13 +169,13 @@ export function EditableListField({
             onUpdate({ addButtonLabel: e.target.value || undefined })
           }
           placeholder="e.g. Add item (leave blank for default)"
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         />
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-xs text-gray-700 mb-1">
+          <label className="block text-xs text-zinc-700 mb-1">
             Default number of cards
           </label>
           <input
@@ -189,11 +189,11 @@ export function EditableListField({
               })
             }
             min={0}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Min cards</label>
+          <label className="block text-xs text-zinc-700 mb-1">Min cards</label>
           <input
             type="number"
             value={field.min ?? 0}
@@ -205,11 +205,11 @@ export function EditableListField({
               });
             }}
             min={0}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Max cards</label>
+          <label className="block text-xs text-zinc-700 mb-1">Max cards</label>
           <input
             type="number"
             value={field.max ?? ""}
@@ -220,12 +220,12 @@ export function EditableListField({
             }
             min={0}
             placeholder="No limit"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Fields in each card
         </label>
         <div className="space-y-2">
@@ -251,7 +251,7 @@ export function EditableListField({
                 if (k) addSubField(k);
                 e.target.value = "";
               }}
-              className="w-full px-2 py-1.5 text-sm border border-dashed border-gray-300 rounded bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none pr-8"
+              className="w-full px-2 py-1.5 text-sm border border-dashed border-zinc-300 rounded-md bg-zinc-50 focus:outline-hidden focus:ring-1 focus:ring-blue-500 appearance-none pr-8"
             >
               <option value="">+ Add field to card</option>
               {SUB_FIELD_KINDS.map((k) => (
@@ -260,7 +260,7 @@ export function EditableListField({
                 </option>
               ))}
             </select>
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400">
               +
             </span>
           </div>
@@ -269,10 +269,10 @@ export function EditableListField({
 
       {subFields.length > 0 && field.output?.output && (
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             Hide in output view
           </label>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-zinc-500 mb-2">
             Selected fields will not appear when this list is shown in output
             views.
           </p>
@@ -282,7 +282,7 @@ export function EditableListField({
               return (
                 <label
                   key={sub.id}
-                  className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"
+                  className="flex items-center gap-2 text-sm text-zinc-700 cursor-pointer"
                 >
                   <input
                     type="checkbox"
@@ -296,7 +296,7 @@ export function EditableListField({
                           next.length > 0 ? next : undefined,
                       });
                     }}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded-md border-zinc-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span>{elementInternalDescriptor(sub)}</span>
                 </label>
@@ -308,18 +308,18 @@ export function EditableListField({
 
       {/* Prefill from previous answer */}
       {subFields.length > 0 && (
-        <div className="border-t border-gray-200 pt-3 space-y-2">
-          <label className="block text-xs font-medium text-gray-700">
+        <div className="border-t border-zinc-200 pt-3 space-y-2">
+          <label className="block text-xs font-medium text-zinc-700">
             Prefill from previous answer
           </label>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-zinc-500">
             Pre-populate this list with items from a previously submitted list
             field.
           </p>
 
           {/* Source Form */}
           <div>
-            <label className="block text-xs text-gray-700 mb-1">
+            <label className="block text-xs text-zinc-700 mb-1">
               Source Form
             </label>
             <select
@@ -339,7 +339,7 @@ export function EditableListField({
                   });
                 }
               }}
-              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="">None</option>
               {prefillForms.map((f) => (
@@ -351,7 +351,7 @@ export function EditableListField({
             {formListFailed && (
               <FormPickerError
                 reason={FormPickerErrorReason.FormList}
-                className="text-[11px] mt-1"
+                className="text-xs mt-1"
               />
             )}
           </div>
@@ -359,7 +359,7 @@ export function EditableListField({
           {/* Source List Field */}
           {field.prefillFromPreviousAnswer?.sourceFormId && (
             <div>
-              <label className="block text-xs text-gray-700 mb-1">
+              <label className="block text-xs text-zinc-700 mb-1">
                 Source List Field
               </label>
               <select
@@ -374,7 +374,7 @@ export function EditableListField({
                     },
                   });
                 }}
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select a list field...</option>
                 {prefillSourceListFields.map((f) => (
@@ -386,7 +386,7 @@ export function EditableListField({
               {prefillSourceError && (
                 <FormPickerError
                   reason={prefillSourceError}
-                  className="text-[11px] mt-1"
+                  className="text-xs mt-1"
                 />
               )}
             </div>
@@ -396,7 +396,7 @@ export function EditableListField({
           {field.prefillFromPreviousAnswer?.sourceFieldId &&
             sourceSubFields.length > 0 && (
               <div>
-                <label className="block text-xs text-gray-700 mb-1">
+                <label className="block text-xs text-zinc-700 mb-1">
                   Source Sub-field (to read from)
                 </label>
                 <select
@@ -412,7 +412,7 @@ export function EditableListField({
                       },
                     });
                   }}
-                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">Select a sub-field...</option>
                   {sourceSubFields.map((sf) => (
@@ -427,7 +427,7 @@ export function EditableListField({
           {/* Target Sub-field */}
           {field.prefillFromPreviousAnswer?.sourceSubFieldId && (
             <div>
-              <label className="block text-xs text-gray-700 mb-1">
+              <label className="block text-xs text-zinc-700 mb-1">
                 Target Sub-field (to write into)
               </label>
               <select
@@ -440,7 +440,7 @@ export function EditableListField({
                     },
                   });
                 }}
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select a sub-field...</option>
                 {subFields.map((sf) => (

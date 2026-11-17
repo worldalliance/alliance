@@ -101,7 +101,7 @@ const TestPushNotification: React.FC = () => {
         </label>
         <textarea
           id="message"
-          className="w-full min-h-28 border border-zinc-300 rounded px-3 py-2 text-sm"
+          className="w-full min-h-28 border border-zinc-300 rounded-md px-3 py-2 text-sm"
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           placeholder="Type a test notification message"
@@ -119,8 +119,8 @@ const TestPushNotification: React.FC = () => {
         {sending && (
           <p className="text-sm text-zinc-500">Sending push notification...</p>
         )}
-        {error && <p className="text-red-500 text-[10pt] mt-1">{error}</p>}
-        {success && <p className="text-green text-[10pt] mt-1">{success}</p>}
+        {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+        {success && <p className="text-green text-sm mt-1">{success}</p>}
       </div>
       {respData && (
         <pre className="text-sm text-zinc-500">

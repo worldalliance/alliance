@@ -101,14 +101,14 @@ export function PageSettings({
   return (
     <SectionPanels
       content={
-        <label className="block text-xs font-medium text-gray-700">
+        <label className="block text-xs font-medium text-zinc-700">
           Page title
           <input
             type="text"
             value={page.title ?? ""}
             onChange={(event) => onUpdate({ title: event.target.value })}
             placeholder="Page title"
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm font-normal focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </label>
       }

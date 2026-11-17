@@ -143,7 +143,7 @@ export function AddRuleMenu({
   return (
     <>
       <Menu.Root>
-        <Menu.Trigger className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
+        <Menu.Trigger className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100">
           <Plus size={12} aria-hidden />
           Add rule
         </Menu.Trigger>
@@ -157,14 +157,14 @@ export function AddRuleMenu({
             >
               {label}
               {create === null && unavailable && (
-                <span className="text-gray-400">({unavailable})</span>
+                <span className="text-zinc-400">({unavailable})</span>
               )}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </Menu.Root>
       {formsFailed && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-red-600">
+        <span className="inline-flex items-center gap-1 text-xs text-red-600">
           Could not load forms
           <RetryButton onClick={refetchForms} />
         </span>

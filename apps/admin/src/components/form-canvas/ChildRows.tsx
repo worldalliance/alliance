@@ -43,7 +43,7 @@ export function neighborMoves<T>(
 
 export function ChildRows({ children }: { children: ReactNode }) {
   return (
-    <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
+    <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200">
       {children}
     </ul>
   );
@@ -72,7 +72,7 @@ export function ChildRow({
           type="button"
           onClick={onSelect}
           title={label}
-          className="min-w-0 flex-1 truncate rounded px-1 py-1 text-left text-sm text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-w-0 flex-1 truncate rounded-md px-1 py-1 text-left text-sm text-zinc-800 hover:bg-zinc-50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           {label}
         </button>

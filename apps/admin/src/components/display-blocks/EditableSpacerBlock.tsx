@@ -10,7 +10,7 @@ export function EditableSpacerBlock(props: BaseDisplayBlockProps<SpacerBlock>) {
         <div className="space-y-2">
           {/* Compact size selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Size:</span>
+            <span className="text-xs text-zinc-500">Size:</span>
             <select
               value={activeBlock.size || "md"}
               onChange={(e) =>
@@ -18,7 +18,7 @@ export function EditableSpacerBlock(props: BaseDisplayBlockProps<SpacerBlock>) {
                   size: e.target.value as "xs" | "sm" | "md" | "lg" | "xl",
                 })
               }
-              className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs border border-zinc-300 rounded-md px-1 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="xs">XS</option>
               <option value="sm">SM</option>

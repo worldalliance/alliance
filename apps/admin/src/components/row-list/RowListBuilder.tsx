@@ -48,8 +48,8 @@ export function RowListBuilder({
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-gray-900">Rows</h2>
-        <p className="text-xs text-gray-600">
+        <h2 className="text-sm font-semibold text-zinc-900">Rows</h2>
+        <p className="text-xs text-zinc-600">
           Each member is given one row, the one fewest members hold, and keeps
           it. Use a row&apos;s values in text, labels, prefilled answers and
           link URLs as <code>#{"{row.field}"}</code>. Members never see the list
@@ -86,7 +86,7 @@ export function RowListBuilder({
             </Button>
           )}
           {list && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-zinc-500">
               {list.rows.length} rows
             </span>
           )}
@@ -95,10 +95,10 @@ export function RowListBuilder({
 
       {list && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">
+          <h2 className="text-sm font-semibold text-zinc-900">
             Fields that identify a row
           </h2>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-zinc-600">
             Together they must be unique. Editing a row&apos;s other fields
             later reaches the members who already hold it.
           </p>
@@ -119,14 +119,14 @@ export function RowListBuilder({
 
       {list && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">
+          <h2 className="text-sm font-semibold text-zinc-900">
             Show only for some rows
           </h2>
-          <div className="divide-y divide-gray-200 border border-gray-200 rounded bg-white">
+          <div className="divide-y divide-zinc-200 border border-zinc-200 rounded-md bg-white">
             {conditionableItems(schema).map((item) => (
               <div key={`${item.where}:${item.id}`} className="p-3 space-y-1">
-                <div className="text-xs text-gray-500">{item.where}</div>
-                <div className="text-sm text-gray-900">{item.label}</div>
+                <div className="text-xs text-zinc-500">{item.where}</div>
+                <div className="text-sm text-zinc-900">{item.label}</div>
                 <RowConditionEditor
                   itemLabel={item.label}
                   list={list}

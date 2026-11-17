@@ -89,12 +89,12 @@ const CompletionRateCharts: React.FC<{
   );
 
   const absoluteToggle = (
-    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 md:ml-auto">
+    <label className="flex items-center gap-2 text-xs font-semibold text-zinc-600 md:ml-auto">
       <input
         type="checkbox"
         checked={completionRateAbsolute}
         onChange={(event) => setCompletionRateAbsolute(event.target.checked)}
-        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-400"
+        className="h-4 w-4 rounded-md border-zinc-300 text-green-600 focus:ring-green-400"
       />
       Absolute
     </label>

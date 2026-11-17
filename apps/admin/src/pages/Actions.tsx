@@ -209,7 +209,7 @@ const ActionsList: React.FC = () => {
                           zIndex.raised,
                         )}
                       >
-                        <span className="mt-0.5 rounded bg-zinc-200 px-1 text-[10px] uppercase text-zinc-600">
+                        <span className="mt-0.5 rounded-md bg-zinc-200 px-1 text-xs uppercase text-zinc-600">
                           {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
                         </span>
                         {action.name}

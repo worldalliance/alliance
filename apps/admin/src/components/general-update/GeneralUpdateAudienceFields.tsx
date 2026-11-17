@@ -49,16 +49,16 @@ const GeneralUpdateAudienceFields: React.FC<Props> = ({
       <div className="space-y-6">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-zinc-700">
               Participating Tags
             </label>
           </div>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-zinc-500 mb-3">
             Updates without tags will not be shown to any users, unless Manual
             User Cohort is enabled.
           </p>
           {tagsLoading ? (
-            <p className="text-sm text-gray-500">Loading tags...</p>
+            <p className="text-sm text-zinc-500">Loading tags...</p>
           ) : availableTags.length ? (
             <div className="grid gap-2 sm:grid-cols-4">
               {availableTags.map((tag) => {
@@ -70,21 +70,21 @@ const GeneralUpdateAudienceFields: React.FC<Props> = ({
                       "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
                       checked
                         ? "border-blue-400 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300",
+                        : "border-zinc-200 hover:border-zinc-300",
                     )}
                   >
                     <input
                       type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="mt-0.5 h-4 w-4 rounded-md border-zinc-300 text-blue-600 focus:ring-blue-500"
                       checked={checked}
                       onChange={() => handleToggleTag(tag.id)}
                     />
                     <span className="flex flex-col min-w-0">
-                      <span className="font-medium text-gray-800">
+                      <span className="font-medium text-zinc-800">
                         {tag.name}
                       </span>
                       {tag.publicDisplayName && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-zinc-500">
                           {tag.publicDisplayName}
                         </span>
                       )}
@@ -94,7 +94,7 @@ const GeneralUpdateAudienceFields: React.FC<Props> = ({
               })}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-zinc-500">
               No tags available. Create one in the tags dashboard.
             </p>
           )}
@@ -102,7 +102,7 @@ const GeneralUpdateAudienceFields: React.FC<Props> = ({
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-zinc-700">
               Manual User Cohort{" "}
               {form.useManualCohort
                 ? `(${form.manualCohortUserIds.length})`
@@ -121,9 +121,9 @@ const GeneralUpdateAudienceFields: React.FC<Props> = ({
                       : [],
                   }))
                 }
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded-md"
               />
-              <span className="text-gray-700">Enable</span>
+              <span className="text-zinc-700">Enable</span>
             </label>
           </div>
           {form.useManualCohort ? (
@@ -136,7 +136,7 @@ const GeneralUpdateAudienceFields: React.FC<Props> = ({
               label="Select users"
             />
           ) : (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               Enable to manually select specific users for this update.
             </p>
           )}

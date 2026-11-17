@@ -43,9 +43,9 @@ const ActionStatusBucketFilter = ({
               }
               onChange(next);
             }}
-            className="flex cursor-default select-none items-center gap-2 rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-zinc-100"
+            className="flex cursor-default select-none items-center gap-2 rounded-md px-3 py-2 text-sm outline-hidden data-[highlighted]:bg-zinc-100"
           >
-            <span className="flex size-4 items-center justify-center rounded border border-zinc-300">
+            <span className="flex size-4 items-center justify-center rounded-md border border-zinc-300">
               <Menu.CheckboxItemIndicator>
                 <Check size={12} />
               </Menu.CheckboxItemIndicator>

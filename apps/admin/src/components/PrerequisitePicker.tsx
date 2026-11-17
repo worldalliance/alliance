@@ -17,7 +17,7 @@ const PrerequisitePicker: React.FC<{
   return (
     <div className="space-y-2">
       {value.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-zinc-500">
           No prerequisites. Members are decided without waiting on other
           actions.
         </p>
@@ -26,7 +26,7 @@ const PrerequisitePicker: React.FC<{
           {value.map((id) => (
             <li
               key={id}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-gray-50 px-2 py-1 text-sm"
+              className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-sm"
             >
               {nameOf(id)}
               <button
@@ -34,7 +34,7 @@ const PrerequisitePicker: React.FC<{
                 aria-label={`Remove prerequisite ${nameOf(id)}`}
                 title="Remove prerequisite"
                 onClick={() => onChange(value.filter((other) => other !== id))}
-                className="text-gray-500 hover:text-red-600"
+                className="text-zinc-500 hover:text-red-600"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -50,7 +50,7 @@ const PrerequisitePicker: React.FC<{
           const id = parseInt(e.target.value);
           if (id) onChange([...value, id]);
         }}
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
       >
         <option value="">
           {loading ? "Loading actions…" : "Add prerequisite..."}

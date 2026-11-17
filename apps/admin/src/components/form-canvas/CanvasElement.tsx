@@ -233,14 +233,14 @@ export function CanvasElement({
         title="Drag to reorder"
         aria-hidden="true"
         className={cn(
-          "absolute -left-6 top-2 cursor-grab rounded p-0.5 text-gray-400 opacity-0 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing group-hover/element:opacity-100",
+          "absolute -left-6 top-2 cursor-grab rounded-md p-0.5 text-zinc-400 opacity-0 hover:bg-zinc-100 hover:text-zinc-600 active:cursor-grabbing group-hover/element:opacity-100",
           selected && "opacity-100",
         )}
       >
         <GripVertical className="h-4 w-4" />
       </span>
       {shown && (
-        <span className="absolute -top-2.5 left-3 z-10 max-w-[70%] truncate rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm">
+        <span className="absolute -top-2.5 left-3 z-10 max-w-[70%] truncate rounded-md bg-blue-600 px-1.5 py-0.5 text-xs font-medium text-white shadow-sm">
           Editing content for {shown.label}
         </span>
       )}

@@ -372,20 +372,20 @@ export function FormulaEditor({
     <>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-gray-500">Inputs</p>
+          <p className="text-xs font-medium text-zinc-500">Inputs</p>
           <button
             type="button"
             onClick={addInput}
             disabled={!canAddInput}
             title="Add input"
             aria-label="Add input"
-            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-40"
+            className="p-1 text-zinc-400 hover:text-blue-600 disabled:opacity-40"
           >
             <Plus size={16} />
           </button>
         </div>
         {inputNames.length === 0 ? (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-zinc-500">
             {!canAddInput
               ? "Add a question field to the form first."
               : "No inputs yet."}
@@ -440,7 +440,7 @@ export function FormulaEditor({
 
       <div className="space-y-1">
         <div className="flex items-center gap-1.5">
-          <label className="block text-xs font-medium text-gray-500">
+          <label className="block text-xs font-medium text-zinc-500">
             Formula
           </label>
           <button
@@ -448,7 +448,7 @@ export function FormulaEditor({
             onClick={() => setHelpOpen(true)}
             title="What you can write here"
             aria-label="What you can write here"
-            className="text-gray-400 hover:text-gray-600"
+            className="text-zinc-400 hover:text-zinc-600"
           >
             <Info size={13} />
           </button>

@@ -92,8 +92,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   return (
     <div
       className={cn(
-        "absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer",
-        projectHovered && "bg-gray-50",
+        "absolute border-b border-zinc-100 hover:bg-zinc-50 cursor-pointer",
+        projectHovered && "bg-zinc-50",
       )}
       onClick={() => navigate(`/actions/${action.id}`)}
       onMouseEnter={() => onProjectHover(action.project?.id ?? null)}
@@ -131,7 +131,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
 
         // Shared background color
         const barColor =
-          phase.status === "member_action" ? memberActionColor : "#ddd"; // gray-100
+          phase.status === "member_action" ? memberActionColor : "#ddd";
 
         // Check if this is the last phase and if it extends beyond current time
         const isLastPhase = phaseIndex === phases.length - 1;

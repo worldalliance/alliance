@@ -15,7 +15,7 @@ export function FieldLabelEditor({
 }: FieldLabelEditorProps) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">
+      <label className="block text-xs font-medium text-zinc-700 mb-1">
         {label}
       </label>
       <VariableTextField
@@ -24,7 +24,7 @@ export function FieldLabelEditor({
         value={value ?? ""}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+        className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 resize-y"
       />
     </div>
   );

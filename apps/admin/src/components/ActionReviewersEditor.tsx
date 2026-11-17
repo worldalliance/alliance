@@ -51,8 +51,8 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
   onReviewersChange,
 }) => (
   <div>
-    <p className="text-sm font-medium text-gray-700">Reviewed By</p>
-    <p className="text-xs text-gray-500 mt-0.5 mb-2">
+    <p className="text-sm font-medium text-zinc-700">Reviewed By</p>
+    <p className="text-xs text-zinc-500 mt-0.5 mb-2">
       External reviewers (not members) shown as “Reviewed by” on the action
       page. Link is optional (website, LinkedIn, …).
     </p>
@@ -70,7 +70,7 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
                 ),
               )
             }
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+            className="flex-1 px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
           <input
             type="text"
@@ -91,7 +91,7 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
                 }),
               )
             }
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+            className="flex-1 px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
           <select
             value={reviewerIconSelectValue(reviewer)}
@@ -104,7 +104,7 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
                 ),
               )
             }
-            className="px-2 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-2 py-2 border border-zinc-300 rounded-md bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="auto">
               Icon: Auto
@@ -127,7 +127,7 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
             onClick={() =>
               onReviewersChange(reviewers.filter((r) => r.key !== reviewer.key))
             }
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            className="px-3 py-2 border border-zinc-300 rounded-md text-sm text-zinc-700 hover:bg-zinc-50"
           >
             Remove
           </button>
@@ -138,7 +138,7 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
         onClick={() =>
           onReviewersChange([...reviewers, { key: makeTempId(), name: "" }])
         }
-        className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="px-3 py-2 border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50"
       >
         + Add reviewer
       </button>

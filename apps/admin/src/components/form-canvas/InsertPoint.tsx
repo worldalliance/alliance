@@ -122,7 +122,7 @@ export function InsertPoint({
           type="button"
           onClick={onOpen}
           aria-expanded={mode !== null}
-          className="flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex items-center gap-1 rounded-md border border-dashed border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:border-blue-400 hover:text-blue-700 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           Add element
@@ -138,7 +138,7 @@ export function InsertPoint({
             title="Add element here"
             aria-expanded={mode !== null}
             className={cn(
-              "relative z-10 flex h-6 w-6 items-center justify-center rounded-full border border-blue-500 bg-white text-blue-600 shadow transition-opacity hover:bg-blue-50 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 group-hover/insert:opacity-100",
+              "relative z-10 flex h-6 w-6 items-center justify-center rounded-full border border-blue-500 bg-white text-blue-600 shadow transition-opacity hover:bg-blue-50 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 group-hover/insert:opacity-100",
               mode === null && "opacity-0",
             )}
           >
@@ -187,7 +187,7 @@ function ElementSearch({
   );
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white shadow-lg">
+    <div className="rounded-md border border-zinc-200 bg-white shadow-lg">
       <input
         type="text"
         value={query}
@@ -203,12 +203,12 @@ function ElementSearch({
         }}
         aria-label="Search elements"
         placeholder="Search questions and content…"
-        className="w-full rounded-t-md border-b border-gray-200 px-3 py-2 text-sm focus:outline-none"
+        className="w-full rounded-t-md border-b border-zinc-200 px-3 py-2 text-sm focus:outline-hidden"
         autoFocus
       />
       <div className="max-h-64 overflow-y-auto">
         {results.length === 0 ? (
-          <p className="px-3 py-2 text-sm text-gray-500">
+          <p className="px-3 py-2 text-sm text-zinc-500">
             No matching elements
           </p>
         ) : (
@@ -217,9 +217,9 @@ function ElementSearch({
               key={`${element.type}-${element.id}`}
               type="button"
               onClick={() => onPick(element)}
-              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-hidden"
             >
-              <span className="font-medium text-gray-900">{element.name}</span>
+              <span className="font-medium text-zinc-900">{element.name}</span>
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-xs",
@@ -278,7 +278,7 @@ function CopyElementPicker({
             commitSelection();
           }
         }}
-        className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+        className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-purple-500"
       >
         <option value="" disabled>
           {hasCopyableElements
@@ -315,7 +315,7 @@ function CopyElementPicker({
       <button
         type="button"
         onClick={onCancel}
-        className="text-gray-400 hover:text-gray-600"
+        className="text-zinc-400 hover:text-zinc-600"
         title="Cancel"
         aria-label="Cancel copy"
       >

@@ -136,7 +136,7 @@ const inputModeType = (mode: VariableInputMode): string =>
     : `${VARIABLE_INPUT_TYPE[mode]} | undefined`;
 
 const Code = ({ children }: { children: ReactNode }) => (
-  <span className="font-mono text-[11px]">{children}</span>
+  <span className="font-mono text-xs">{children}</span>
 );
 
 const DocLink = ({ href, children }: { href: string; children: ReactNode }) => (
@@ -144,7 +144,7 @@ const DocLink = ({ href, children }: { href: string; children: ReactNode }) => (
     href={href}
     target="_blank"
     rel="noreferrer"
-    className="underline decoration-dotted underline-offset-2 hover:text-gray-900"
+    className="underline decoration-dotted underline-offset-2 hover:text-zinc-900"
   >
     {children}
   </a>
@@ -174,7 +174,7 @@ const MemberLinks = ({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-1.5">
-      <h3 className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
+      <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
         {title}
       </h3>
       {children}
@@ -191,7 +191,7 @@ function ReferenceRow({
 }) {
   return (
     <div className="flex gap-3">
-      <span className="w-16 shrink-0 font-medium text-gray-500">{label}</span>
+      <span className="w-16 shrink-0 font-medium text-zinc-500">{label}</span>
       <p className="flex-1">{children}</p>
     </div>
   );
@@ -209,7 +209,7 @@ function SnippetButton({
       type="button"
       onClick={() => onInsert(snippet)}
       title="Insert into the formula"
-      className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-left font-mono text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+      className="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-left font-mono text-zinc-600 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-900"
     >
       {snippet}
     </button>
@@ -270,21 +270,21 @@ export function VariableHelpModal({
           {RESULT_DESCRIPTION[result]}
         </ModalDescription>
       </ModalHeader>
-      <ModalBody className="max-h-[70vh] space-y-5 overflow-y-auto text-sm text-gray-700">
+      <ModalBody className="max-h-[70vh] space-y-5 overflow-y-auto text-sm text-zinc-700">
         <Section title="Your inputs">
           {inputs.length === 0 ? (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               This formula reads no inputs yet.
             </p>
           ) : (
             <table className="w-full border-collapse text-left align-top text-xs">
               <tbody>
                 {inputs.map(({ name, type, example }) => (
-                  <tr key={name} className="border-t border-gray-100">
-                    <td className="w-14 py-1.5 pr-3 align-top font-mono text-gray-900">
+                  <tr key={name} className="border-t border-zinc-100">
+                    <td className="w-14 py-1.5 pr-3 align-top font-mono text-zinc-900">
                       {name}
                     </td>
-                    <td className="py-1.5 pr-3 align-top font-mono text-gray-500">
+                    <td className="py-1.5 pr-3 align-top font-mono text-zinc-500">
                       {type}
                     </td>
                     <td className="w-64 py-1.5 align-top">
@@ -304,7 +304,7 @@ export function VariableHelpModal({
             <table className="w-full border-collapse text-left align-top text-xs">
               <tbody>
                 {recipes.map(({ purpose, snippet }) => (
-                  <tr key={snippet} className="border-t border-gray-100">
+                  <tr key={snippet} className="border-t border-zinc-100">
                     <td className="py-1.5 pr-3 align-top">{purpose}</td>
                     <td className="w-64 py-1.5 align-top">
                       <SnippetButton snippet={snippet} onInsert={onInsert} />
@@ -368,32 +368,32 @@ export function VariableHelpModal({
               {DOCUMENTED_MODES.map((mode) => {
                 const help = INPUT_MODE_HELP[mode];
                 return (
-                  <tr key={mode} className="border-t border-gray-100 text-xs">
-                    <td className="w-32 py-2 pr-4 align-top font-mono text-gray-600">
+                  <tr key={mode} className="border-t border-zinc-100 text-xs">
+                    <td className="w-32 py-2 pr-4 align-top font-mono text-zinc-600">
                       {kindsForMode(mode).join(", ")}
                     </td>
-                    <td className="py-2 align-top text-gray-600">
-                      <p className="font-mono text-gray-900">
+                    <td className="py-2 align-top text-zinc-600">
+                      <p className="font-mono text-zinc-900">
                         {inputModeType(mode)}
                       </p>
                       <p>{help.notes}</p>
-                      <p className="font-mono text-gray-500">
+                      <p className="font-mono text-zinc-500">
                         {help.example("input1")}
                       </p>
                     </td>
                   </tr>
                 );
               })}
-              <tr className="border-t border-gray-100 text-xs">
-                <td className="w-32 py-2 pr-4 align-top font-mono text-gray-600">
+              <tr className="border-t border-zinc-100 text-xs">
+                <td className="w-32 py-2 pr-4 align-top font-mono text-zinc-600">
                   list
                 </td>
-                <td className="py-2 align-top text-gray-600">
-                  <p className="font-mono text-gray-900">
+                <td className="py-2 align-top text-zinc-600">
+                  <p className="font-mono text-zinc-900">
                     {"{ name: string | undefined; … }[]"}
                   </p>
                   <p>{LIST_INPUT_HELP.notes}</p>
-                  <p className="font-mono text-gray-500">
+                  <p className="font-mono text-zinc-500">
                     {LIST_INPUT_HELP.example("input1", "name")}
                   </p>
                 </td>
@@ -408,7 +408,7 @@ export function VariableHelpModal({
             list: <Code>number | undefined</Code> becomes{" "}
             <Code>(number | undefined)[]</Code>. {SOURCE_INPUT_HELP.notes}
           </p>
-          <p className="font-mono text-xs text-gray-500">
+          <p className="font-mono text-xs text-zinc-500">
             {SOURCE_INPUT_HELP.example({
               input: "input1",
               each: "answer * 2",

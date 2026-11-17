@@ -243,7 +243,7 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
                   {entry.tags.map((tag) => (
                     <span
                       key={tag.id}
-                      className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700"
+                      className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700"
                     >
                       {tag.name}
                     </span>

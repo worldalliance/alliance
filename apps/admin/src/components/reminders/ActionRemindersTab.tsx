@@ -352,7 +352,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   if (!memberEvents.length) {
     return (
       <Card style={CardStyle.White}>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-zinc-600">
           No member action events yet. Add a member action event to schedule
           reminders.
         </p>

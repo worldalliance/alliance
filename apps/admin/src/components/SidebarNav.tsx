@@ -19,7 +19,7 @@ const isOnPage = (pathname: string, to: string) =>
   pathname === to || (to !== "/" && pathname.startsWith(`${to}/`));
 
 const ROW =
-  "flex items-center gap-2 text-[15px] text-gray-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded transition-colors";
+  "flex items-center gap-2 text-sm text-zinc-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded-md transition-colors";
 
 const NotifBadge = ({ count }: { count?: number | null }) => {
   const label = count === null ? "!" : formatBadgeCount(count ?? 0);

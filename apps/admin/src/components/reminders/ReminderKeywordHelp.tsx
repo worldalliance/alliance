@@ -25,8 +25,8 @@ const ReminderKeywordHelp: React.FC = () => {
   return (
     <div
       className={cn(
-        "border border-gray-200 rounded-md bg-zinc-100",
-        !keywordsHelpExpanded && "hover:border-gray-300",
+        "border border-zinc-200 rounded-md bg-zinc-100",
+        !keywordsHelpExpanded && "hover:border-zinc-300",
       )}
     >
       <button

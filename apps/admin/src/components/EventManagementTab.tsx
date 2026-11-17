@@ -56,10 +56,10 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           sortByDateDescending(action.events).map((event) => (
             <div
               key={event.id}
-              className="border border-gray-200 rounded-lg p-3 bg-white"
+              className="border border-zinc-200 rounded-lg p-3 bg-white"
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium text-gray-900 text-sm">
+                <h3 className="font-medium text-zinc-900 text-sm">
                   {event.title}
                 </h3>
                 <span
@@ -73,12 +73,12 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
               </div>
 
               {event.description && (
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-zinc-600 mb-2">
                   {event.description}
                 </p>
               )}
 
-              <div className="text-xs text-gray-500 space-y-1">
+              <div className="text-xs text-zinc-500 space-y-1">
                 <div>
                   Date:{" "}
                   {new Date(event.date).toLocaleString(undefined, {
@@ -94,7 +94,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
             </div>
           ))
         ) : (
-          <div className="text-sm text-gray-500 text-center py-4">
+          <div className="text-sm text-zinc-500 text-center py-4">
             No events created yet. Add an event to change the action status.
           </div>
         )}

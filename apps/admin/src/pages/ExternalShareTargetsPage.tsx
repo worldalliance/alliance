@@ -153,7 +153,7 @@ const ExternalShareTargetsPage: React.FC = () => {
           <FormField label="Name">
             <input
               type="text"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm"
+              className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
               value={newTarget.name}
               onChange={(event) => {
                 setError(null);
@@ -165,7 +165,7 @@ const ExternalShareTargetsPage: React.FC = () => {
           <FormField label="URL">
             <input
               type="text"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm font-mono"
+              className="border border-zinc-300 rounded-md px-3 py-2 text-sm font-mono"
               value={newTarget.url}
               onChange={(event) => {
                 setError(null);
@@ -182,7 +182,7 @@ const ExternalShareTargetsPage: React.FC = () => {
           <FormField label="Parameter name">
             <input
               type="text"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm font-mono"
+              className="border border-zinc-300 rounded-md px-3 py-2 text-sm font-mono"
               value={newTarget.paramName}
               onChange={(event) => {
                 setError(null);
@@ -337,7 +337,7 @@ const TargetCard: React.FC<TargetCardProps> = ({
             <FormField label="Name">
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
                 value={values.name}
                 onChange={(event) =>
                   setValues((prev) => ({ ...prev, name: event.target.value }))
@@ -347,7 +347,7 @@ const TargetCard: React.FC<TargetCardProps> = ({
             <FormField label="URL">
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm font-mono"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm font-mono"
                 value={values.url}
                 onChange={(event) =>
                   setValues((prev) => ({ ...prev, url: event.target.value }))
@@ -362,7 +362,7 @@ const TargetCard: React.FC<TargetCardProps> = ({
             <FormField label="Parameter name">
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm font-mono"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm font-mono"
                 value={values.paramName}
                 onChange={(event) =>
                   setValues((prev) => ({

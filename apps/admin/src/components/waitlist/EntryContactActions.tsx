@@ -52,7 +52,7 @@ const CopyableLink: React.FC<{ label: string; url: string }> = ({
           aria-label={label}
           value={url}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 text-sm"
+          className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm"
         />
         <button
           type="button"

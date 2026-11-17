@@ -65,7 +65,7 @@ function renderSubFieldEditor<K extends ListSubFieldKind>(
   ) : (
     <SectionPanels
       content={
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-zinc-500">
           No settings to edit for this kind of question.
         </p>
       }
@@ -259,7 +259,7 @@ function childView({
             <SectionPanels
               content={
                 <div>
-                  <span className="mb-1 block text-xs font-medium text-gray-700">
+                  <span className="mb-1 block text-xs font-medium text-zinc-700">
                     Section title
                   </span>
                   <VariableTextField
@@ -267,7 +267,7 @@ function childView({
                     onChange={(title) => updateSection(() => ({ title }))}
                     aria-label="Section title"
                     placeholder="Section title"
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               }

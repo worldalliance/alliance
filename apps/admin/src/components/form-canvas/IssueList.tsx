@@ -222,7 +222,7 @@ export function IssueList({
           "flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium",
           count > 0
             ? "text-red-700 hover:bg-red-50"
-            : "text-gray-600 hover:bg-gray-100",
+            : "text-zinc-600 hover:bg-zinc-100",
         )}
       >
         {count > 0 ? (
@@ -246,10 +246,10 @@ export function IssueList({
           tabIndex={-1}
           aria-label="Issues"
           role="region"
-          className="absolute right-0 top-full z-30 mt-1 max-h-[60vh] w-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-left shadow-lg focus:outline-none"
+          className="absolute right-0 top-full z-30 mt-1 max-h-[60vh] w-96 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-lg focus:outline-hidden"
         >
           <div className="mb-2 flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-sm font-semibold text-zinc-900">
               {count === 0
                 ? "No issues"
                 : gate
@@ -261,13 +261,13 @@ export function IssueList({
               onClick={closeAndReturn}
               aria-label="Close issues"
               title="Close issues"
-              className="rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="rounded-md p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
           {sources.pending > 0 && (
-            <p role="status" className="mb-2 text-xs text-gray-600">
+            <p role="status" className="mb-2 text-xs text-zinc-600">
               Loading the questions of {withCount(sources.pending, "form")} that
               formulas read. Some issues may clear once they load.
             </p>
@@ -278,7 +278,7 @@ export function IssueList({
               <button
                 type="button"
                 onClick={sources.onRetry}
-                className="rounded border border-red-300 px-1.5 py-0.5 font-medium hover:bg-red-50"
+                className="rounded-md border border-red-300 px-1.5 py-0.5 font-medium hover:bg-red-50"
               >
                 Retry
               </button>
@@ -287,7 +287,7 @@ export function IssueList({
           <ul className="space-y-1">
             {loadFailure && (
               <li className="rounded-md px-2 py-1 text-sm">
-                <span className="block font-medium text-gray-900">
+                <span className="block font-medium text-zinc-900">
                   The form didn&apos;t load
                 </span>
                 <span className="block text-red-700">
@@ -296,7 +296,7 @@ export function IssueList({
                 <button
                   type="button"
                   onClick={loadFailure.onRetry}
-                  className="mt-1 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                  className="mt-1 rounded-md border border-red-300 px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50"
                 >
                   {loadFailure.retryLabel}
                 </button>
@@ -305,7 +305,7 @@ export function IssueList({
             {rows.map(({ location, message, onGo }, index) => {
               const body = (
                 <>
-                  <span className="block truncate font-medium text-gray-900">
+                  <span className="block truncate font-medium text-zinc-900">
                     {location}
                   </span>
                   <span className="block text-red-700">{message}</span>
@@ -320,7 +320,7 @@ export function IssueList({
                         onGo();
                         onOpenChange(false);
                       }}
-                      className="block w-full rounded-md px-2 py-1 text-left text-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      className="block w-full rounded-md px-2 py-1 text-left text-sm hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                       {body}
                     </button>

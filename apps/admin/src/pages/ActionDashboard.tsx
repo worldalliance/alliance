@@ -161,7 +161,7 @@ const ActionDashboard: React.FC = () => {
               )}
             </div>
             <div className="flex flex-col">
-              <h1 className="text-[#111] text-[16pt] font-bold">
+              <h1 className="text-zinc-900 text-xl font-bold">
                 {isNew ? "Create New Action" : `${action?.name}`}
               </h1>
               {action && (
@@ -180,13 +180,13 @@ const ActionDashboard: React.FC = () => {
           </div>
           <button
             onClick={handleCancel}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
+            className="px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800 text-nowrap mr-5"
           >
             ← Back
           </button>
         </div>
       </div>
-      <p className="p-2 border border-gray-200 mb-4 mx-5">
+      <p className="p-2 border border-zinc-200 mb-4 mx-5">
         Please see{" "}
         <a
           className="text-green underline"
@@ -201,7 +201,7 @@ const ActionDashboard: React.FC = () => {
         <div
           ref={errorRef}
           role="alert"
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4"
         >
           {errorMessage}
         </div>
@@ -219,7 +219,7 @@ const ActionDashboard: React.FC = () => {
         // Existing Action Dashboard
         <div className="space-y-4 flex-1 min-h-0 mx-5">
           {/* Tab Navigation */}
-          <div className="border-b border-gray-200">
+          <div className="border-b border-zinc-200">
             <nav className="-mb-px flex space-x-8 flex-wrap">
               {tabData.map((tab) => (
                 <button
@@ -229,7 +229,7 @@ const ActionDashboard: React.FC = () => {
                     "py-2 px-1 border-b-2 text-sm text-nowrap",
                     activeTab === tab.key
                       ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
+                      : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300",
                   )}
                 >
                   {tab.label}

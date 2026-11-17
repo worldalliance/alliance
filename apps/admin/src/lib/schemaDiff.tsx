@@ -168,7 +168,7 @@ export const SchemaDiffView: React.FC<{ before: unknown; after: unknown }> = ({
         {showFullJson ? "Hide full JSON diff" : "Show full JSON diff"}
       </button>
       {showFullJson && (
-        <div className="max-h-96 overflow-auto rounded border border-zinc-200 text-xs">
+        <div className="max-h-96 overflow-auto rounded-md border border-zinc-200 text-xs">
           <ReactDiffViewer
             oldValue={oldText}
             newValue={newText}

@@ -56,7 +56,7 @@ const UpdateRow = ({
     </td>
     <td className="px-3 py-2">
       <span
-        className={cn("rounded px-1.5 py-0.5 text-xs", STATUS_BADGE[status])}
+        className={cn("rounded-md px-1.5 py-0.5 text-xs", STATUS_BADGE[status])}
       >
         {status === ActionUpdateStatus.Scheduled && update.visibleAt
           ? `Publishes ${formatDateTime(new Date(update.visibleAt))}`

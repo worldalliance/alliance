@@ -53,7 +53,7 @@ export function EditableAccordionBlock(
 
         return (
           <div className="space-y-3">
-            <label className="flex items-center gap-2 text-xs text-gray-600">
+            <label className="flex items-center gap-2 text-xs text-zinc-600">
               <input
                 type="checkbox"
                 checked={activeBlock.singleOpen ?? false}
@@ -120,7 +120,7 @@ export function EditableAccordionBlock(
                             { focus: true },
                           );
                         }}
-                        className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="text-xs border border-zinc-300 rounded-md px-2 py-1 text-zinc-700 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="" disabled>
                           Add block…

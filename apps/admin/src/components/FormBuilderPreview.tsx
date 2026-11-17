@@ -84,7 +84,7 @@ export function FormBuilderPreview({
         previewUserError={previewUserError}
       />
       {list && list.rows.length > 0 && (
-        <label className="mb-4 flex items-center gap-2 text-sm text-gray-700">
+        <label className="mb-4 flex items-center gap-2 text-sm text-zinc-700">
           Preview as row
           <select
             value={Math.min(rowIndex, list.rows.length - 1)}
@@ -107,7 +107,7 @@ export function FormBuilderPreview({
           initialPageIndex={pageIndex}
         />
       ) : isLoadingPreviewUsers ? (
-        <p className="text-sm text-gray-500">Loading the member…</p>
+        <p className="text-sm text-zinc-500">Loading the member…</p>
       ) : (
         previewUsersQuery.data && (
           <p className="text-sm text-red-500">

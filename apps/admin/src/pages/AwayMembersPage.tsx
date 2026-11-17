@@ -41,7 +41,7 @@ const AwayMembersPage = () => {
               onChange={({ date }) =>
                 date && setAwayWindow((prev) => ({ ...prev, [end]: date }))
               }
-              inputClassName="rounded border border-zinc-300 px-2 py-1"
+              inputClassName="rounded-md border border-zinc-300 px-2 py-1"
             />
             <span className="text-xs text-zinc-500">
               {inLaunchZone(awayWindow[end])}

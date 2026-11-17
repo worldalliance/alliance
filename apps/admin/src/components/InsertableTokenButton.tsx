@@ -27,10 +27,10 @@ export function InsertableTokenButton({
         event.dataTransfer.setData("text/plain", item.token);
       }}
       onClick={onInsert}
-      className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+      className="w-full rounded-md border border-zinc-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
     >
-      <div className="font-medium text-gray-900">{item.label}</div>
-      <div className="mt-1 text-xs text-gray-500">
+      <div className="font-medium text-zinc-900">{item.label}</div>
+      <div className="mt-1 text-xs text-zinc-500">
         {item.token} · {item.pageTitle}
       </div>
     </button>

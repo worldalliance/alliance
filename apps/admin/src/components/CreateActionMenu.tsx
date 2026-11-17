@@ -48,7 +48,7 @@ const CreateActionMenu = () => {
       <Menu.Trigger
         aria-label="Create"
         title="Create"
-        className="shrink-0 rounded border border-green bg-green p-1 text-white hover:bg-[#4d8c1d] cursor-pointer"
+        className="shrink-0 rounded-md border border-green bg-green p-1 text-white hover:bg-[#4d8c1d] cursor-pointer"
       >
         <Plus size={16} />
       </Menu.Trigger>

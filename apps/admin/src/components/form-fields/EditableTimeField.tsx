@@ -26,7 +26,7 @@ export function EditableTimeField({
         checked={field.required}
         onChange={(checked) => onUpdate({ required: checked })}
       />
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-zinc-500">
         Collects a time in 12-hour format (e.g. 7:30 PM).
       </p>
     </FieldWrapper>

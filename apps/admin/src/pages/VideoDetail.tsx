@@ -97,7 +97,7 @@ const VideoDetail: React.FC = () => {
             <p className="text-sm text-zinc-500">No segments found.</p>
           ) : (
             <>
-              <div className="max-h-64 overflow-y-auto border rounded">
+              <div className="max-h-64 overflow-y-auto border rounded-md">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-zinc-500 uppercase border-b sticky top-0 bg-white">
                     <tr>

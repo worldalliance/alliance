@@ -35,7 +35,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   sms_unsubscribe: "bg-orange-100 text-orange-800",
   sms_inbound: "bg-purple-100 text-purple-800",
   sms_failure: "bg-red-100 text-red-700",
-  forum_action_autocomplete: "bg-yellow-100 text-yellow-800",
+  forum_action_autocomplete: "bg-amber-100 text-amber-800",
   action_comment: "bg-indigo-100 text-indigo-800",
   admin_role_changed: "bg-pink-100 text-pink-800",
 };
@@ -138,7 +138,7 @@ const EventLogPage: React.FC = () => {
         <h2 className="text-xl font-semibold">Event Log</h2>
         <div className="flex items-center gap-3">
           <select
-            className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 focus:outline-none focus:border-black"
+            className="text-sm border border-zinc-300 text-black bg-white px-3 rounded-md py-2 focus:outline-hidden focus:border-black"
             value={eventTypeFilter}
             onChange={(e) => {
               setEventTypeFilter(e.target.value as EventType | "");
@@ -219,7 +219,7 @@ const EventLogPage: React.FC = () => {
                             className={cn(
                               "text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap",
                               EVENT_TYPE_COLORS[event.event] ??
-                                "bg-gray-100 text-gray-800",
+                                "bg-zinc-100 text-zinc-800",
                             )}
                           >
                             {formatEventType(event.event)}

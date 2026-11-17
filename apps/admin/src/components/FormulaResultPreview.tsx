@@ -17,18 +17,18 @@ export function ResultPreview({
   switch (result) {
     case FormulaResult.Text:
       return (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-zinc-500">
           Result:{" "}
           <span className="font-mono">
             {(preview.value.ok && preview.value.value) || "—"}
           </span>{" "}
-          <span className="text-gray-400">&middot; {type}</span>
+          <span className="text-zinc-400">&middot; {type}</span>
         </p>
       );
     case FormulaResult.Options: {
       const options = preview.value.ok ? preview.value.value : [];
       return (
-        <div className="space-y-1 text-xs text-gray-500">
+        <div className="space-y-1 text-xs text-zinc-500">
           <p>
             {options.length === 0
               ? "No options with these sample answers."
@@ -39,13 +39,13 @@ export function ResultPreview({
               {options.map((option) => (
                 <li
                   key={option.value}
-                  className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5"
+                  className="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5"
                 >
                   {option.category && (
-                    <span className="text-gray-400">{option.category}: </span>
+                    <span className="text-zinc-400">{option.category}: </span>
                   )}
                   {option.label}{" "}
-                  <span className="font-mono text-gray-400">
+                  <span className="font-mono text-zinc-400">
                     {option.value}
                   </span>
                 </li>

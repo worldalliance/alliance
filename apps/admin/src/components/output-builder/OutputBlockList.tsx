@@ -137,7 +137,7 @@ export function OutputBlockList({
   return (
     <div className="space-y-4">
       {view.blocks.length === 0 && (
-        <div className="text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-6 text-center">
+        <div className="text-sm text-zinc-500 border border-dashed border-zinc-300 rounded-lg p-6 text-center">
           No blocks added yet. Use the controls above to add display or output
           blocks.
         </div>

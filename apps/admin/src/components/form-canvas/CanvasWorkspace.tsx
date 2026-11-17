@@ -72,7 +72,7 @@ export function CanvasWorkspace({
   }, [settingsKey, restoreSettingsFocus]);
 
   const trackedSettings = (
-    <div ref={settingsRef} tabIndex={-1} className="focus:outline-none">
+    <div ref={settingsRef} tabIndex={-1} className="focus:outline-hidden">
       {settings}
     </div>
   );
@@ -82,7 +82,7 @@ export function CanvasWorkspace({
       {wide ? (
         <nav
           aria-label="Outline"
-          className="w-60 shrink-0 overflow-y-auto border-r border-gray-200 bg-white"
+          className="w-60 shrink-0 overflow-y-auto border-r border-zinc-200 bg-white"
         >
           {outline}
         </nav>
@@ -112,7 +112,7 @@ export function CanvasWorkspace({
               aria-label="Open outline"
               title="Open outline"
               aria-expanded={drawer === DrawerKind.Outline}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <PanelLeft className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -122,7 +122,7 @@ export function CanvasWorkspace({
               aria-label="Open settings"
               title="Open settings"
               aria-expanded={drawer === DrawerKind.Settings}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <PanelRight className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -133,7 +133,7 @@ export function CanvasWorkspace({
       {wide ? (
         <aside
           aria-label="Settings"
-          className="w-[26rem] shrink-0 overflow-y-auto border-l border-gray-200 bg-white"
+          className="w-[26rem] shrink-0 overflow-y-auto border-l border-zinc-200 bg-white"
         >
           {trackedSettings}
         </aside>
@@ -214,7 +214,7 @@ function Drawer({
       tabIndex={-1}
       onKeyDown={handleKeyDown}
       className={cn(
-        "absolute inset-y-0 z-40 flex w-full flex-col border-gray-200 bg-white shadow-xl focus:outline-none",
+        "absolute inset-y-0 z-40 flex w-full flex-col border-zinc-200 bg-white shadow-xl focus:outline-hidden",
         className,
       )}
     >
@@ -224,7 +224,7 @@ function Drawer({
           onClick={onClose}
           aria-label={`Close ${label.toLowerCase()}`}
           title={`Close ${label.toLowerCase()}`}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

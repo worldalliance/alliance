@@ -192,7 +192,7 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
                       v{entry.snapshotId}
                     </span>
                     {entry.isCurrent && (
-                      <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                      <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold tracking-wide text-white uppercase">
                         Current
                       </span>
                     )}

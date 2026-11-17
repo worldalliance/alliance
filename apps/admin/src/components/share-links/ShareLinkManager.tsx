@@ -218,7 +218,7 @@ const ShareLinkManager: React.FC<{
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-zinc-700">Kind</label>
             <select
-              className="border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
+              className="border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white"
               value={selectedKind}
               onChange={(event) =>
                 handleKindChange(event.target.value as TargetKind)
@@ -248,7 +248,7 @@ const ShareLinkManager: React.FC<{
           )}
           <input
             type="text"
-            className="border border-zinc-300 rounded px-3 py-2 text-sm"
+            className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
             placeholder="Label (optional) — e.g. recruit's name"
             value={labelDraft}
             onChange={(event) => setLabelDraft(event.target.value)}

@@ -169,7 +169,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster }) => {
               <input
                 type="text"
                 autoFocus
-                className="border border-zinc-300 rounded px-2 py-1 text-base font-semibold flex-1 max-w-sm"
+                className="border border-zinc-300 rounded-md px-2 py-1 text-base font-semibold flex-1 max-w-sm"
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={(e) => {

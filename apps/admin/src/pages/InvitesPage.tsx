@@ -85,7 +85,7 @@ const InvitesPage = () => {
               <div>
                 <label
                   htmlFor="invitee"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-zinc-700 mb-1"
                 >
                   Invitee
                 </label>
@@ -93,7 +93,7 @@ const InvitesPage = () => {
                   type="text"
                   name="invitee"
                   placeholder="preferably a first name capitalized"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>
               <UserSelect
@@ -128,14 +128,14 @@ const InvitesPage = () => {
           </p>
         )}
         {invitesPerMember.length > 0 && (
-          <details className="mt-5 rounded-lg border border-gray-200 bg-white">
+          <details className="mt-5 rounded-lg border border-zinc-200 bg-white">
             <summary className="cursor-pointer select-none px-5 py-4 font-semibold">
               Invites per Member
             </summary>
             <div className="px-5 pb-4">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b border-gray-200">
+                  <tr className="text-left text-zinc-500 border-b border-zinc-200">
                     <th className="pb-2 font-semibold">Member</th>
                     <th className="pb-2 text-right font-semibold">Sent</th>
                     <th className="pb-2 text-right font-semibold">Accepted</th>
@@ -145,7 +145,7 @@ const InvitesPage = () => {
                   {invitesPerMember.map((member) => (
                     <tr
                       key={member.invitingUser.id}
-                      className="border-b border-gray-100 last:border-b-0"
+                      className="border-b border-zinc-100 last:border-b-0"
                     >
                       <td className="py-2">
                         <div className="flex flex-row gap-2 items-center">
@@ -205,7 +205,7 @@ const InvitesPage = () => {
                     />
                     <p>
                       {invite.invitingUser?.displayName}{" "}
-                      <span className="text-gray-500"> inviting </span>{" "}
+                      <span className="text-zinc-500"> inviting </span>{" "}
                       {invite.invitedUserId ? (
                         <a
                           href={memberProfileUrl(invite.invitedUserId)}
@@ -220,7 +220,7 @@ const InvitesPage = () => {
                     </p>
                   </div>
                   <div className="flex flex-row gap-3 items-center">
-                    <p className="text-gray-500">{invite.code}</p>
+                    <p className="text-zinc-500">{invite.code}</p>
                     <p
                       className={
                         onetimeInviteStatusDisplay[invite.status].textClass
@@ -235,7 +235,7 @@ const InvitesPage = () => {
                       className="cursor-pointer active:scale-85 transition-all duration-100"
                       onClick={() => void copyInviteLink(invite.code)}
                     >
-                      <Copy className="h-4 w-4 text-gray-500" />
+                      <Copy className="h-4 w-4 text-zinc-500" />
                     </button>
                   </div>
                 </div>

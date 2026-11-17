@@ -63,13 +63,13 @@ const LoginPage: React.FC = () => {
           <div className="p-8 bg-white rounded-md border border-zinc-300">
             {checkingServer ? (
               <div className="text-center py-6">
-                <p className="text-gray-600">Checking server status...</p>
+                <p className="text-zinc-600">Checking server status...</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <input
-                    className="w-full rounded-md border border-gray-300 p-3"
+                    className="w-full rounded-md border border-zinc-300 p-3"
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
@@ -81,7 +81,7 @@ const LoginPage: React.FC = () => {
                 </div>
                 <div>
                   <input
-                    className="w-full rounded-md border border-gray-300 p-3"
+                    className="w-full rounded-md border border-zinc-300 p-3"
                     type="password"
                     value={formData.password}
                     onChange={handleChange}

@@ -60,7 +60,7 @@ export function SharedVisibilityNotice({
           onClick={openGroup}
           aria-label="Edit in group settings"
           title="Edit in group settings"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
         >
           <Settings2 className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -69,7 +69,7 @@ export function SharedVisibilityNotice({
           onClick={detach}
           aria-label="Edit visibility separately"
           title="Edit visibility separately"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
         >
           <Unlink className="h-4 w-4" aria-hidden="true" />
         </button>

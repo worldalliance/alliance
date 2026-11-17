@@ -20,7 +20,7 @@ type RuleProps<K extends Condition["kind"]> = {
   onChange: (condition: ConditionOf<K>) => void;
 };
 
-const LABEL_CLASS = "block text-xs text-gray-700 mb-1";
+const LABEL_CLASS = "block text-xs text-zinc-700 mb-1";
 
 const DEVICE_LABELS: Record<DeviceVisibilityTarget, string> = {
   mobile: "Mobile",
@@ -56,7 +56,7 @@ export function DeviceRule({ condition, onChange }: RuleProps<"deviceType">) {
     <div className="space-y-1">
       <span className={LABEL_CLASS}>Show on device types</span>
       {DEVICE_VISIBILITY_TARGETS.map((target) => (
-        <label key={target} className="flex items-center text-xs text-gray-700">
+        <label key={target} className="flex items-center text-xs text-zinc-700">
           <input
             type="checkbox"
             className="mr-2"
@@ -77,7 +77,7 @@ export function DeviceRule({ condition, onChange }: RuleProps<"deviceType">) {
         </label>
       ))}
       {selected.size === 0 && (
-        <p className="text-[11px] text-red-500">
+        <p className="text-xs text-red-500">
           Select at least one device type to make this rule effective.
         </p>
       )}
@@ -162,7 +162,7 @@ export function FirstContractSignedRule({
           onChange({ ...condition, date: parsed.toISOString() });
         }}
       />
-      <p className="text-[11px] text-gray-400">
+      <p className="text-xs text-zinc-400">
         Shown in your local timezone. Users who have never signed a contract
         match neither option.
       </p>
@@ -175,7 +175,7 @@ export function CompletedActionsRule({
   onChange,
 }: RuleProps<"completedActionCount">) {
   return (
-    <label className="flex items-center gap-2 text-xs text-gray-700">
+    <label className="flex items-center gap-2 text-xs text-zinc-700">
       At least
       <input
         type="number"
@@ -230,7 +230,7 @@ export function OutputBlockRule({
         ))}
       </select>
       {isMissing && (
-        <p className="text-[11px] text-red-500">
+        <p className="text-xs text-red-500">
           Referenced block was deleted. Pick another block or remove this rule.
         </p>
       )}

@@ -38,11 +38,11 @@ export function ExternalShareTargetSelect({
 
   return (
     <div className="space-y-1">
-      <label className="block text-xs font-medium text-gray-700 mb-1">
+      <label className="block text-xs font-medium text-zinc-700 mb-1">
         {label}
       </label>
       {isPending ? (
-        <p className="text-xs text-gray-500">Loading targets…</p>
+        <p className="text-xs text-zinc-500">Loading targets…</p>
       ) : !targets ? (
         <p className="text-xs text-red-600">
           {externalShareTargetsLoadError(loadError)}
@@ -60,7 +60,7 @@ export function ExternalShareTargetSelect({
               onClear();
             }
           }}
-          className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="bg-white w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         >
           <option value="">Select a target…</option>
           {targets.map((target) => (
@@ -73,11 +73,11 @@ export function ExternalShareTargetSelect({
           )}
         </select>
       ) : (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-zinc-500">
           No external share targets configured yet.
         </p>
       )}
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-zinc-500">
         {description}
         {description ? " " : ""}
         <Link to="/share-targets" className="text-blue-600 hover:underline">

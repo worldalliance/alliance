@@ -77,7 +77,7 @@ const OrganizationsPage: React.FC = () => {
           <label className="flex flex-col text-sm text-zinc-700">
             New organization
             <input
-              className="border border-zinc-300 rounded px-2 py-1 mt-1"
+              className="border border-zinc-300 rounded-md px-2 py-1 mt-1"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               readOnly={create.isPending}
@@ -109,7 +109,7 @@ const OrganizationsPage: React.FC = () => {
             <label className="flex flex-col text-sm text-zinc-700">
               Existing campaign
               <select
-                className="border border-zinc-300 rounded px-2 py-1 mt-1"
+                className="border border-zinc-300 rounded-md px-2 py-1 mt-1"
                 value={designateId}
                 onChange={(e) => setDesignateId(e.target.value)}
               >

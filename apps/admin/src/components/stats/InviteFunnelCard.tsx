@@ -47,8 +47,9 @@ const InviteFunnelCard: React.FC = () => {
     const maxValue = Math.max(1, ...bars.map((b) => b.value));
 
     const barAreaWidth = width - margin.left - margin.right;
-    const barWidth = Math.min(80, barAreaWidth / bars.length - 16);
-    const totalBarsWidth = bars.length * barWidth + (bars.length - 1) * 16;
+    const barGap = 40;
+    const barWidth = Math.min(80, barAreaWidth / bars.length - barGap);
+    const totalBarsWidth = bars.length * barWidth + (bars.length - 1) * barGap;
     const offsetX = margin.left + (barAreaWidth - totalBarsWidth) / 2;
 
     const yScale = scaleLinear()
@@ -64,6 +65,7 @@ const InviteFunnelCard: React.FC = () => {
       height,
       margin,
       barWidth,
+      barGap,
       offsetX,
       yScale,
       yTicks,
@@ -72,14 +74,14 @@ const InviteFunnelCard: React.FC = () => {
   }, [inviteFunnel]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-zinc-200">
+        <h3 className="font-semibold text-zinc-900">
           Invite Conversion Funnel
         </h3>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">From</label>
+            <label className="text-xs font-semibold text-zinc-600">From</label>
             <input
               type="date"
               value={inviteFunnelRange.start}
@@ -89,11 +91,11 @@ const InviteFunnelCard: React.FC = () => {
                   start: e.target.value,
                 }))
               }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">To</label>
+            <label className="text-xs font-semibold text-zinc-600">To</label>
             <input
               type="date"
               value={inviteFunnelRange.end}
@@ -103,14 +105,14 @@ const InviteFunnelCard: React.FC = () => {
                   end: e.target.value,
                 }))
               }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
           <button
             onClick={() =>
               setInviteFunnelRange(recentInviteFunnelRange(new Date(), 7))
             }
-            className="px-3 py-1 rounded-md text-xs border border-gray-300 bg-white hover:border-gray-400"
+            className="px-3 py-1 rounded-md text-xs border border-zinc-300 bg-white hover:border-zinc-400"
           >
             Last 7 days
           </button>
@@ -118,7 +120,7 @@ const InviteFunnelCard: React.FC = () => {
       </div>
       <div className="relative p-4">
         {inviteFunnelLoading && (
-          <p className="text-sm text-gray-600">Loading invite funnel...</p>
+          <p className="text-sm text-zinc-600">Loading invite funnel...</p>
         )}
         {inviteFunnelError && (
           <p className="text-sm text-red-600">
@@ -151,7 +153,7 @@ const InviteFunnelCard: React.FC = () => {
                   y={inviteFunnelGeometry.yScale(tick)}
                   textAnchor="end"
                   dominantBaseline="middle"
-                  className="fill-gray-500 text-xs"
+                  className="fill-zinc-500 text-xs"
                 >
                   {tick}
                 </text>
@@ -161,7 +163,8 @@ const InviteFunnelCard: React.FC = () => {
             {inviteFunnelGeometry.bars.map((bar, idx) => {
               const x =
                 inviteFunnelGeometry.offsetX +
-                idx * (inviteFunnelGeometry.barWidth + 16);
+                idx *
+                  (inviteFunnelGeometry.barWidth + inviteFunnelGeometry.barGap);
               const barHeight =
                 inviteFunnelGeometry.yScale(0) -
                 inviteFunnelGeometry.yScale(bar.value);
@@ -181,7 +184,7 @@ const InviteFunnelCard: React.FC = () => {
                     x={x + inviteFunnelGeometry.barWidth / 2}
                     y={y - 6}
                     textAnchor="middle"
-                    className="fill-gray-700 text-xs font-semibold"
+                    className="fill-zinc-700 text-xs font-semibold"
                   >
                     {bar.value}
                   </text>
@@ -190,7 +193,7 @@ const InviteFunnelCard: React.FC = () => {
                       x={x + inviteFunnelGeometry.barWidth / 2}
                       y={y - 18}
                       textAnchor="middle"
-                      className="fill-gray-400 text-[10px]"
+                      className="fill-zinc-400 text-xs"
                     >
                       {Math.round(
                         (bar.value / inviteFunnelGeometry.bars[idx - 1].value) *
@@ -207,7 +210,7 @@ const InviteFunnelCard: React.FC = () => {
                       16
                     }
                     textAnchor="middle"
-                    className="fill-gray-600 text-[11px]"
+                    className="fill-zinc-600 text-xs"
                   >
                     {bar.label}
                   </text>

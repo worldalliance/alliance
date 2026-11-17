@@ -170,14 +170,14 @@ const GeneralUpdatePage: React.FC = () => {
           }
           rows={1}
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+          className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
         />
       </FormSection>
 
       <FormSection title="Priority">
         <a
           href="/priority"
-          className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="inline-flex items-center px-3 py-2 border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 bg-white hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
         >
           Manage priority
         </a>
@@ -200,14 +200,14 @@ const GeneralUpdatePage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate("/general-updates")}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium"
+          className="px-4 py-2 border border-zinc-300 rounded-md text-zinc-700 hover:bg-zinc-50 text-sm font-medium"
           disabled={saving}
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium"
+          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium"
           disabled={saving}
         >
           {saving
@@ -244,7 +244,7 @@ const GeneralUpdatePage: React.FC = () => {
         </p>
         <button
           onClick={() => navigate("/general-updates")}
-          className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          className="mt-4 px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800"
         >
           ← Back
         </button>
@@ -291,24 +291,24 @@ const GeneralUpdatePage: React.FC = () => {
       <title>{pageTitle} - Admin</title>
       {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
-        <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
+        <h1 className="text-zinc-900 text-xl font-bold">{pageTitle}</h1>
         <button
           onClick={() => navigate("/general-updates")}
-          className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
+          className="px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800 text-nowrap mr-5"
         >
           ← Back to General Updates
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 mx-5 mt-4">
           {error}
         </div>
       )}
 
       <div className="space-y-4 flex-1 min-h-0 mx-5">
         {!isNew && (
-          <div className="border-b border-gray-200">
+          <div className="border-b border-zinc-200">
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => onTabChange("details")}
@@ -316,7 +316,7 @@ const GeneralUpdatePage: React.FC = () => {
                   "py-2 px-1 border-b-2 text-sm",
                   selectedTab === "details"
                     ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
+                    : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300",
                 )}
               >
                 General Update Details
@@ -327,7 +327,7 @@ const GeneralUpdatePage: React.FC = () => {
                   "py-2 px-1 border-b-2 text-sm",
                   selectedTab === "content"
                     ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
+                    : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300",
                 )}
               >
                 Content

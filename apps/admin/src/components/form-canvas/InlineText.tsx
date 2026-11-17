@@ -104,7 +104,7 @@ export function EditTextButton({
       aria-label={label}
       title={`${label} (Enter)`}
       className={cn(
-        "flex h-6 w-6 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-600 shadow-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+        "flex h-6 w-6 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-600 shadow-sm hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500",
         className,
       )}
     >
@@ -147,7 +147,7 @@ export function InlineTextEditor({
 
   const multiline = lines === TextLines.Multiple;
   const inputClassName = cn(
-    "w-full rounded-md border border-blue-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500",
+    "w-full rounded-md border border-blue-300 bg-white px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-blue-500",
     multiline && "resize-none",
     className,
   );

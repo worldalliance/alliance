@@ -21,7 +21,7 @@ const LaunchCheck: React.FC<
         />
       ) : (
         <AlertTriangle
-          className="size-5 text-yellow-600"
+          className="size-5 text-amber-600"
           aria-label="Needs attention"
         />
       )}

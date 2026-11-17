@@ -164,10 +164,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
       <FormSection title="Settings">
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-gray-700">Priority</p>
+            <p className="text-sm font-medium text-zinc-700">Priority</p>
             <a
               href="/priority"
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="inline-flex items-center px-3 py-2 border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 bg-white hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               Manage priority
             </a>
@@ -242,7 +242,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium"
+            className="px-4 py-2 border border-zinc-300 rounded-md text-zinc-700 hover:bg-zinc-50 text-sm font-medium"
             disabled={saving}
           >
             Cancel
@@ -260,7 +260,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
         )} */}
         <button
           type="submit"
-          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
+          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
           disabled={saving || saveDisabled || imageUploading}
         >
           {imageUploading

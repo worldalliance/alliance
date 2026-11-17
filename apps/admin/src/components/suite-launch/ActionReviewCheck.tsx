@@ -59,7 +59,7 @@ const UnfinishedItems = ({
     <p
       className={cn(
         "flex items-center gap-1 text-xs",
-        dismissed ? "text-zinc-400" : "text-yellow-700",
+        dismissed ? "text-zinc-400" : "text-amber-700",
       )}
     >
       {dismissed ? "Unfinished (dismissed): " : "Unfinished: "}
@@ -170,7 +170,7 @@ const ActionReviewCheck = ({
                   )}
                 </p>
                 {notes.length > 0 && (
-                  <p className="text-xs text-yellow-700">{notes.join(" · ")}</p>
+                  <p className="text-xs text-amber-700">{notes.join(" · ")}</p>
                 )}
                 {unready.length > 0 && (
                   <UnfinishedItems

@@ -243,14 +243,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         </p>
       )}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 mb-1">
           Member Action Event
         </label>
         <select
           value={selectedEventId ?? ""}
           onChange={(event) => handleEventSelection(event.target.value)}
           disabled={disableEventSelection}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+          className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm disabled:bg-zinc-100 disabled:text-zinc-500"
         >
           <option value="" disabled>
             Select an event
@@ -266,19 +266,19 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Reminder name
           </label>
           <input
             type="text"
             value={name}
             onChange={(event) => updateDraft({ name: event.target.value })}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
             placeholder="admin-only identifier"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Timing mode
           </label>
           <select
@@ -288,7 +288,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
                 timingMode: event.target.value as ReminderGroupTimingMode,
               })
             }
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
           >
             {TIMING_MODE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -306,7 +306,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 mb-1">
           Recipients
         </label>
         <select
@@ -316,7 +316,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
               cohortType: event.target.value as ReminderCohortType,
             })
           }
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+          className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
         >
           {COHORT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -328,14 +328,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
       {cohortType === "tag" && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             User tag
           </label>
           <select
             value={selectedTagId ?? ""}
             onChange={(event) => updateDraft({ userTagId: event.target.value })}
             disabled={loadingUserTags}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm disabled:bg-zinc-100 disabled:text-zinc-500"
           >
             <option value="" disabled>
               {loadingUserTags ? "Loading tags…" : "Select a tag"}
@@ -350,7 +350,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             <p className="mt-2 text-xs text-red-600">{userTagsError}</p>
           )}
           {!loadingUserTags && !userTagsError && userTags.length === 0 && (
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-zinc-500">
               No tags available. Create a tag before scheduling.
             </p>
           )}

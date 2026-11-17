@@ -106,10 +106,10 @@ function QuoteBlockEditor({
                 : "(Optional) Select user by name or id"
             }
             disabled={isLoadingUsers}
-            className="w-full border border-zinc-300 rounded px-3 py-2 text-sm bg-white disabled:bg-zinc-50 disabled:text-zinc-500"
+            className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white disabled:bg-zinc-50 disabled:text-zinc-500"
           />
           {query && filteredUsers.length > 0 && (
-            <div className="border border-zinc-200 rounded bg-white max-h-48 overflow-y-auto absolute left-0 w-full z-10 mt-1 shadow-sm">
+            <div className="border border-zinc-200 rounded-md bg-white max-h-48 overflow-y-auto absolute left-0 w-full z-10 mt-1 shadow-sm">
               {filteredUsers.map((user) => (
                 <button
                   type="button"
@@ -139,7 +139,7 @@ function QuoteBlockEditor({
         multiline
         value={activeBlock.text}
         onChange={(text) => onUpdate({ text })}
-        className="w-full text-gray-900 border-none outline-none !bg-transparent resize-none whitespace-pre-wrap"
+        className="w-full text-zinc-900 border-none outline-hidden !bg-transparent resize-none whitespace-pre-wrap"
         placeholder="Enter quote text"
         rows={Math.max(2, activeBlock.text.split("\n").length)}
         style={{ resize: "vertical" }}

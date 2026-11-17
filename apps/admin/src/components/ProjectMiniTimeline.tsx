@@ -74,7 +74,7 @@ const ProjectMiniTimeline = ({
           />
         )}
       </div>
-      <div className="flex justify-between text-[10px] text-zinc-400">
+      <div className="flex justify-between text-xs text-zinc-400">
         <span>{format(start, "MMM d, yyyy")}</span>
         <span>{format(end, "MMM d, yyyy")}</span>
       </div>

@@ -287,7 +287,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
             >
               {/* Date grid header - sticky */}
               <div
-                className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20 py-3"
+                className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-20 py-3"
                 style={{ width: `${chartWidth}px`, height: "50px" }}
               >
                 {ticks.map(({ date, left }) => {
@@ -298,7 +298,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                       key={date.getTime()}
                       onClick={() => scrollToWeek(date)}
                       aria-label={`Scroll to actions active in week ${weekNumber}`}
-                      className="absolute border-l border-gray-200 text-xs text-left text-gray-500 px-1 flex flex-col justify-center cursor-pointer hover:bg-gray-100"
+                      className="absolute border-l border-zinc-200 text-xs text-left text-zinc-500 px-1 flex flex-col justify-center cursor-pointer hover:bg-zinc-100"
                       style={{
                         left: `${left}px`,
                         width: `${pixelsPerWeek}px`,
@@ -306,7 +306,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                         bottom: 0,
                       }}
                     >
-                      <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-gray-200">
+                      <div className="absolute inset-0 flex items-center justify-center text-[31.5px] leading-none text-zinc-200">
                         {weekNumber}
                       </div>
                       <div>
@@ -332,7 +332,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 {ticks.map(({ date, left }) => (
                   <div
                     key={date.getTime()}
-                    className="absolute border-l border-gray-100"
+                    className="absolute border-l border-zinc-100"
                     style={{
                       left: `${left}px`,
                       top: 0,

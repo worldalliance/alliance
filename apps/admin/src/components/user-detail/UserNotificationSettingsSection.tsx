@@ -32,7 +32,7 @@ export default function UserNotificationSettingsSection({
   return (
     <section
       aria-labelledby={headingId}
-      className="border border-zinc-200 rounded p-3"
+      className="border border-zinc-200 rounded-md p-3"
     >
       <h2 id={headingId} className="text-sm font-semibold text-zinc-700 mb-2">
         Notification settings

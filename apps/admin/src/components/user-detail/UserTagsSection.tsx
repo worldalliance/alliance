@@ -76,7 +76,7 @@ export default function UserTagsSection({
   }
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Tags ({userTags.length})
       </h2>
@@ -92,7 +92,7 @@ export default function UserTagsSection({
             <label
               key={tag.id}
               className={cn(
-                "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
+                "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded-md",
                 pending && "opacity-50",
               )}
             >
@@ -101,7 +101,7 @@ export default function UserTagsSection({
                 checked={checked}
                 disabled={pending}
                 onChange={(e) => handleTagToggle(tag.id, e.target.checked)}
-                className="rounded"
+                className="rounded-md"
               />
               <span className={checked ? "text-zinc-900" : "text-zinc-500"}>
                 {tag.name}

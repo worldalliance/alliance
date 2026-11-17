@@ -188,10 +188,10 @@ const StaffDirectoryPage: React.FC = () => {
                   <img
                     src={item.profilePicture}
                     alt=""
-                    className="w-8 h-8 rounded object-cover shrink-0"
+                    className="w-8 h-8 rounded-md object-cover shrink-0"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded bg-zinc-200 shrink-0" />
+                  <div className="w-8 h-8 rounded-md bg-zinc-200 shrink-0" />
                 )}
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <Link
@@ -209,7 +209,7 @@ const StaffDirectoryPage: React.FC = () => {
                         handleTitleChange(item.id, e.target.value)
                       }
                       placeholder="Brief title"
-                      className="flex-1 min-w-0 text-sm border border-zinc-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                      className="flex-1 min-w-0 text-sm border border-zinc-200 rounded-md px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-zinc-400"
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
                     />
@@ -220,7 +220,7 @@ const StaffDirectoryPage: React.FC = () => {
                         handleLinkChange(item.id, e.target.value)
                       }
                       placeholder="About link (optional)"
-                      className="flex-1 min-w-0 text-sm border border-zinc-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                      className="flex-1 min-w-0 text-sm border border-zinc-200 rounded-md px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-zinc-400"
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
                     />

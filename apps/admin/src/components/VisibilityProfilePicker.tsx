@@ -173,7 +173,7 @@ export function VisibilityProfilePicker({
         </SelectableCardGroup>
       )}
       {unsavedValidators && (
-        <p className="text-xs text-yellow-700">
+        <p className="text-xs text-amber-700">
           Save the form to group members by its new validators; until then they
           fail for everyone.
         </p>

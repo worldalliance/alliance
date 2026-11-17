@@ -20,7 +20,8 @@ import EmailPreviewPanel from "./EmailPreviewPanel";
 import EmailSendActions from "./EmailSendActions";
 import EmailTemplateControls from "./EmailTemplateControls";
 
-const FIELD_CLASS = "w-full rounded border border-zinc-300 px-2 py-1 text-sm";
+const FIELD_CLASS =
+  "w-full rounded-md border border-zinc-300 px-2 py-1 text-sm";
 
 type EmailComposerProps = {
   selectedIds: ReadonlySet<number>;
@@ -150,7 +151,7 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
           <button
             key={placeholder}
             type="button"
-            className="rounded border border-zinc-300 px-2 py-0.5 font-mono text-xs hover:bg-zinc-50"
+            className="rounded-md border border-zinc-300 px-2 py-0.5 font-mono text-xs hover:bg-zinc-50"
             onClick={() => insert(placeholder)}
           >
             {waitlistEmailToken(placeholder)}

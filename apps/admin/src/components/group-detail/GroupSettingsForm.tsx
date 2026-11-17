@@ -111,7 +111,7 @@ const GroupSettingsForm: React.FC<GroupSettingsFormProps> = ({
           <input
             id="group-name"
             type="text"
-            className="border border-zinc-300 rounded px-3 py-2 text-sm"
+            className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
             value={formValues.name}
             maxLength={COMMUNITY_NAME_MAX_LENGTH}
             onChange={(event) =>
@@ -135,7 +135,7 @@ const GroupSettingsForm: React.FC<GroupSettingsFormProps> = ({
           </label>
           <textarea
             id="group-description"
-            className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
+            className="border border-zinc-300 rounded-md px-3 py-2 text-sm min-h-[80px]"
             value={formValues.description}
             maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
             onChange={(event) =>
@@ -234,7 +234,7 @@ const GroupSettingsForm: React.FC<GroupSettingsFormProps> = ({
                 id="maxCapacity"
                 type="number"
                 min={1}
-                className="mt-2 border border-zinc-300 rounded px-3 py-2 text-sm w-full bg-white"
+                className="mt-2 border border-zinc-300 rounded-md px-3 py-2 text-sm w-full bg-white"
                 value={formValues.maxCapacity ?? ""}
                 onChange={(event) => {
                   const value = event.target.value;

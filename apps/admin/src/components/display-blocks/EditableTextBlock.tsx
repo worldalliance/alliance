@@ -13,7 +13,7 @@ export function EditableTextBlock(props: BaseDisplayBlockProps<TextBlock>) {
             multiline
             value={activeBlock.text}
             onChange={(text) => handleUpdate({ text })}
-            className="w-full text-gray-900 border-none outline-none bg-transparent resize-none whitespace-pre-wrap"
+            className="w-full text-zinc-900 border-none outline-hidden bg-transparent resize-none whitespace-pre-wrap"
             placeholder="Enter text content"
             style={{ resize: "vertical" }}
           />

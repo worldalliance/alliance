@@ -218,7 +218,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           value={eventForm.newStatus}
           onChange={handleEventInputChange}
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
         >
           {Object.entries(ACTION_STATUS_LABELS).map(([key, label]) => {
             return (
@@ -239,7 +239,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
             id="useCustomName"
             checked={useCustomName}
             onChange={(e) => setUseCustomName(e.target.checked)}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded-md"
           />
           <label htmlFor="useCustomName" className="ml-2 block text-black">
             Use custom name
@@ -269,7 +269,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 onChange={handleEventInputChange}
                 required={useCustomName}
                 placeholder="e.g., Launch Event, Office Action"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -287,7 +287,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 onChange={handleEventInputChange}
                 rows={2}
                 placeholder="Describe what happened or what this event represents"
-                className="bg-white w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-white w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </>
@@ -306,7 +306,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
             id="launchNow"
             checked={launchNow}
             onChange={(e) => setLaunchNow(e.target.checked)}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded-md"
           />
           <label htmlFor="launchNow" className="ml-2 block text-black">
             Launch now
@@ -344,14 +344,14 @@ const CreateEventForm = (props: CreateEventFormProps) => {
               id="deadlineExists"
               checked={useDeadlineEvent}
               onChange={(e) => setUseDeadlineEvent(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded-md"
             />
             <label htmlFor="deadlineExists" className="ml-2 block text-black">
               Automatically create deadline event
             </label>
           </div>
 
-          <p className="text-sm text-gray-600 mb-1">
+          <p className="text-sm text-zinc-600 mb-1">
             This will create a second action event after the launch of this one,
             providing a deadline for members.
           </p>
@@ -391,7 +391,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                       e.target.value as "office_action" | "completed",
                     )
                   }
-                  className="w-full max-w-80 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full max-w-80 px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="office_action">
                     {ACTION_STATUS_LABELS.office_action}
@@ -410,12 +410,12 @@ const CreateEventForm = (props: CreateEventFormProps) => {
         type="submit"
         disabled={creatingEvent}
         className={cn(
-          "w-full px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200",
+          "w-full px-4 py-2 rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 transition-all duration-200",
           creatingEvent
-            ? "bg-gray-400 text-white cursor-not-allowed"
+            ? "bg-zinc-400 text-white cursor-not-allowed"
             : eventCreatedSuccess
               ? "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500"
-              : "bg-[#333] text-white hover:bg-[#444] focus:ring-blue-500",
+              : "bg-zinc-800 text-white hover:bg-zinc-700 focus:ring-blue-500",
         )}
       >
         {creatingEvent ? (

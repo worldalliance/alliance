@@ -97,7 +97,7 @@ export function SidebarSections({
         ref={tabsRef}
         role="tablist"
         aria-label="Settings sections"
-        className="flex border-b border-gray-200 px-4"
+        className="flex border-b border-zinc-200 px-4"
         onKeyDown={handleKeyDown}
       >
         {sections.map((section) => (
@@ -111,10 +111,10 @@ export function SidebarSections({
             tabIndex={section === active ? 0 : -1}
             onClick={() => onSelect(section)}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+              "-mb-px border-b-2 px-3 py-2 text-sm font-medium focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500",
               section === active
                 ? "border-blue-600 text-blue-700"
-                : "border-transparent text-gray-500 hover:text-gray-700",
+                : "border-transparent text-zinc-500 hover:text-zinc-700",
             )}
           >
             {SECTION_LABELS[section]}

@@ -166,7 +166,7 @@ const ContractPage: React.FC = () => {
         </p>
         <button
           onClick={() => navigate("/contracts")}
-          className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          className="mt-4 px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800"
         >
           ← Back
         </button>
@@ -185,32 +185,32 @@ const ContractPage: React.FC = () => {
       <title>{pageTitle} - Admin</title>
       {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
-        <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
+        <h1 className="text-zinc-900 text-xl font-bold">{pageTitle}</h1>
         <button
           onClick={() => navigate("/contracts")}
-          className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
+          className="px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800 text-nowrap mr-5"
         >
           ← Back to Contracts
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 mx-5 mt-4">
           {error}
         </div>
       )}
 
       <div className="flex-1 min-h-0 mx-5 overflow-y-auto pb-6">
         <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-          <div className="border border-gray-200 rounded-lg bg-white">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-              <h3 className="text-sm font-semibold text-gray-900">Details</h3>
+          <div className="border border-zinc-200 rounded-lg bg-white">
+            <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-50 rounded-t-lg">
+              <h3 className="text-sm font-semibold text-zinc-900">Details</h3>
             </div>
             <div className="p-4 space-y-6">
               <div>
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-zinc-700 mb-1"
                 >
                   Name
                 </label>
@@ -222,13 +222,13 @@ const ContractPage: React.FC = () => {
                     setForm((prev) => ({ ...prev, name: e.target.value }))
                   }
                   placeholder={`Contract #${contract?.id ?? "—"}`}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                 />
               </div>
               <div>
                 <label
                   htmlFor="markdown"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-zinc-700 mb-1"
                 >
                   Content
                 </label>
@@ -241,21 +241,21 @@ const ContractPage: React.FC = () => {
                     }
                     minRows={3}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
+                    className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
                   />
                 )}
                 {isNew && form.markdown && (
-                  <p className="text-xs text-gray-500 mt-0.5">Preview:</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Preview:</p>
                 )}
                 {form.markdown && (
-                  <div className="w-full px-3 py-2 border border-gray-200 rounded-md max-h-96 overflow-y-auto">
+                  <div className="w-full px-3 py-2 border border-zinc-200 rounded-md max-h-96 overflow-y-auto">
                     <AppMarkdownWrapper markdownContent={form.markdown} />
                   </div>
                 )}
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-zinc-700">
                     Description
                   </p>
                   <button
@@ -266,25 +266,25 @@ const ContractPage: React.FC = () => {
                         description: [...prev.description, newDescriptionRow()],
                       }))
                     }
-                    className="p-1 text-gray-400 hover:text-blue-600"
+                    className="p-1 text-zinc-400 hover:text-blue-600"
                     title="Add point"
                     aria-label="Add point"
                   >
                     <Plus size={16} />
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mb-2">
+                <p className="text-xs text-zinc-500 mb-2">
                   Markdown points with optional subtext, shown with the
                   contract.
                 </p>
                 {form.description.length === 0 ? (
-                  <p className="text-xs text-gray-500">No points yet.</p>
+                  <p className="text-xs text-zinc-500">No points yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {form.description.map((row) => (
                       <div
                         key={row.key}
-                        className="border border-gray-200 rounded-md p-3 space-y-2"
+                        className="border border-zinc-200 rounded-md p-3 space-y-2"
                       >
                         <div className="flex items-start gap-2">
                           <FormTextarea
@@ -301,7 +301,7 @@ const ContractPage: React.FC = () => {
                             }
                             minRows={1}
                             placeholder="Point"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
+                            className="flex-1 px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
                           />
                           <button
                             type="button"
@@ -313,7 +313,7 @@ const ContractPage: React.FC = () => {
                                 ),
                               }))
                             }
-                            className="p-1 text-gray-400 hover:text-red-600 shrink-0"
+                            className="p-1 text-zinc-400 hover:text-red-600 shrink-0"
                             title="Remove point"
                             aria-label="Remove point"
                           >
@@ -334,7 +334,7 @@ const ContractPage: React.FC = () => {
                           }
                           minRows={2}
                           placeholder="Subtext"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
+                          className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
                         />
                         <FormTextarea
                           value={row.adminNotes}
@@ -351,11 +351,11 @@ const ContractPage: React.FC = () => {
                           minRows={2}
                           placeholder="Admin notes (only visible in the admin panel)"
                           aria-label="Admin notes"
-                          className="w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-amber-50 text-sm"
+                          className="w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-amber-50 text-sm"
                         />
                         {(row.point.trim() !== "" ||
                           row.subtext.trim() !== "") && (
-                          <div className="px-3 py-2 border border-gray-200 rounded-md">
+                          <div className="px-3 py-2 border border-zinc-200 rounded-md">
                             {row.point.trim() !== "" && (
                               <div className="font-semibold">
                                 <AppMarkdownWrapper
@@ -380,7 +380,7 @@ const ContractPage: React.FC = () => {
                   <div>
                     <label
                       htmlFor="startDate"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-zinc-700 mb-1"
                     >
                       Start Date
                     </label>
@@ -395,7 +395,7 @@ const ContractPage: React.FC = () => {
                             startDate: e.target.value,
                           }))
                         }
-                        className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                        className="flex-1 min-w-0 px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                       />
                       {form.startDate && (
                         <button
@@ -403,7 +403,7 @@ const ContractPage: React.FC = () => {
                           onClick={() =>
                             setForm((prev) => ({ ...prev, startDate: "" }))
                           }
-                          className="px-3 py-2 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 text-sm font-medium shrink-0"
+                          className="px-3 py-2 border border-zinc-300 rounded-md text-zinc-600 hover:bg-zinc-50 text-sm font-medium shrink-0"
                           title="Clear start date"
                         >
                           Clear
@@ -414,7 +414,7 @@ const ContractPage: React.FC = () => {
                   <div>
                     <label
                       htmlFor="endDate"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-zinc-700 mb-1"
                     >
                       End Date
                     </label>
@@ -429,7 +429,7 @@ const ContractPage: React.FC = () => {
                             endDate: e.target.value,
                           }))
                         }
-                        className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                        className="flex-1 min-w-0 px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                       />
                       {form.endDate && (
                         <button
@@ -437,7 +437,7 @@ const ContractPage: React.FC = () => {
                           onClick={() =>
                             setForm((prev) => ({ ...prev, endDate: "" }))
                           }
-                          className="px-3 py-2 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 text-sm font-medium shrink-0"
+                          className="px-3 py-2 border border-zinc-300 rounded-md text-zinc-600 hover:bg-zinc-50 text-sm font-medium shrink-0"
                           title="Clear end date"
                         >
                           Clear
@@ -454,14 +454,14 @@ const ContractPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate("/contracts")}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium"
+              className="px-4 py-2 border border-zinc-300 rounded-md text-zinc-700 hover:bg-zinc-50 text-sm font-medium"
               disabled={saving}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium"
+              className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium"
               disabled={saving}
             >
               {saving

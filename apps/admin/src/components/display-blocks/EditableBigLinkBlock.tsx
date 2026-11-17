@@ -98,7 +98,7 @@ function OptionRow<T extends string>({
           aria-pressed={selected === value}
           onClick={() => onSelect(value)}
           className={cn(
-            "p-1.5 rounded border",
+            "p-1.5 rounded-md border",
             selected === value
               ? "border-blue-500 bg-blue-50 text-blue-700"
               : "border-zinc-200 text-zinc-500 hover:border-zinc-400",
@@ -139,14 +139,14 @@ export function EditableBigLinkBlock({
           <VariableTextField
             value={activeBlock.text}
             onChange={(text) => handleUpdate({ text })}
-            className="w-full text-gray-900 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full text-zinc-900 border border-zinc-300 rounded-md px-3 py-2 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder="Link label"
           />
           <VariableTextField
             multiline
             value={activeBlock.body ?? ""}
             onChange={(body) => handleUpdate({ body: body || undefined })}
-            className="w-full text-sm text-gray-900 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full text-sm text-zinc-900 border border-zinc-300 rounded-md px-3 py-2 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder="Body text (optional)"
             rows={1}
           />
@@ -246,7 +246,7 @@ function LinkSourceFields({
           type="text"
           value={block.url}
           onChange={(e) => onUpdate({ url: e.target.value })}
-          className="w-full text-zinc-600 text-sm border border-zinc-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full text-zinc-600 text-sm border border-zinc-300 rounded-md px-3 py-2 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           placeholder="/path or https://..."
         />
       )}

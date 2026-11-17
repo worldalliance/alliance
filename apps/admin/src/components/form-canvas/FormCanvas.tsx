@@ -75,8 +75,8 @@ type FormCanvasProps = {
 
 function TaskFlowStepNote({ step }: { step: FlowStepPreview }) {
   return (
-    <div className="mb-4 rounded-md bg-gray-50 px-3 py-2 text-sm">
-      <p className="flex items-center gap-x-2 text-gray-700">
+    <div className="mb-4 rounded-md bg-zinc-50 px-3 py-2 text-sm">
+      <p className="flex items-center gap-x-2 text-zinc-700">
         <ListOrdered size={14} aria-hidden />
         {step.label}
       </p>
@@ -177,13 +177,13 @@ export function FormCanvas({
   const segments = pageSegments(fields, groups);
   const pageSelected = selected.kind === CanvasTargetKind.Page;
   const pageDescription = page.description && (
-    <span className="mt-1 block text-gray-600">{page.description}</span>
+    <span className="mt-1 block text-zinc-600">{page.description}</span>
   );
 
   return (
     <div
       ref={ref}
-      className="mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white px-10 py-8"
+      className="mx-auto max-w-2xl rounded-lg border border-zinc-200 bg-white px-10 py-8"
       onDragOver={acceptDrop}
       onDrop={drop}
     >
@@ -198,7 +198,7 @@ export function FormCanvas({
                 lines={TextLines.Single}
                 label="Page title"
                 onStop={inline.stop}
-                className="text-xl font-semibold text-gray-900"
+                className="text-xl font-semibold text-zinc-900"
               />
               {pageDescription}
             </div>
@@ -215,14 +215,14 @@ export function FormCanvas({
               aria-label={`Page settings: ${pageTitle(page)}`}
               aria-pressed={pageSelected}
               className={cn(
-                "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500",
                 selectionRing(pageSelected),
               )}
             >
               <span
                 className={cn(
                   "block text-xl font-semibold",
-                  page.title ? "text-gray-900" : "text-gray-400",
+                  page.title ? "text-zinc-900" : "text-zinc-400",
                 )}
               >
                 {pageTitle(page)}
@@ -263,7 +263,7 @@ export function FormCanvas({
       )}
       {step && <TaskFlowStepNote step={step} />}
       {fields.length === 0 && (
-        <p className="py-8 text-center text-sm text-gray-500">
+        <p className="py-8 text-center text-sm text-zinc-500">
           {displayOnly
             ? "This update is empty. Add some content to get started."
             : "This page is empty. Add a question or some content to get started."}
@@ -310,13 +310,13 @@ export function FormCanvas({
                         onExtend && (() => onExtend({ start, end }, group)),
                     })}
                     aria-pressed={groupSelected}
-                    className="block w-full rounded py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="block w-full rounded-md py-2 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     <span className="block text-xs font-medium uppercase tracking-wide text-amber-800">
                       Shared visibility · {withCount(end - start, "element")}
                     </span>
                     {formula && (
-                      <span className="block break-words text-sm text-gray-700">
+                      <span className="block break-words text-sm text-zinc-700">
                         Shown when {summarize(formula)}
                       </span>
                     )}

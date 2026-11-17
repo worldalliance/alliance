@@ -48,7 +48,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
       {action.project && (
         <Link
           to={stepPath(action)}
-          className="flex items-center gap-x-1 rounded border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50"
+          className="flex items-center gap-x-1 rounded-md border border-zinc-300 bg-white px-3 text-sm hover:bg-zinc-50"
         >
           Open in project
         </Link>

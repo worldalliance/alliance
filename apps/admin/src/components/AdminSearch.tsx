@@ -97,7 +97,7 @@ const SearchPalette = ({ onClose }: { onClose: () => void }) => {
           onKeyDown={onKeyDown}
           placeholder="Pages, actions, suites, members, forms, groups"
           aria-label="Search"
-          className="w-full py-3 text-sm outline-none"
+          className="w-full py-3 text-sm outline-hidden"
         />
       </div>
       <ul ref={listRef} className="max-h-[50vh] overflow-y-auto py-1">
@@ -164,7 +164,7 @@ const AdminSearch = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-500 hover:border-zinc-400"
+        className="flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-500 hover:border-zinc-400"
       >
         <Search size={14} aria-hidden />
         Search

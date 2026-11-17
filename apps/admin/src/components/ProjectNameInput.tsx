@@ -25,7 +25,7 @@ export function ProjectNameInput({
         type="text"
         aria-label={placeholder}
         placeholder={placeholder}
-        className="w-64 border border-gray-2 rounded px-3 py-1.5 text-sm"
+        className="w-64 border border-zinc-300 rounded-md px-3 py-1.5 text-sm"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         // Read-only rather than disabled, so a failed save leaves focus here.

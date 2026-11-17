@@ -311,7 +311,7 @@ export function FormOutline({
       ) : (
         <>
           <div className="flex items-center justify-between px-2 pb-1">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Pages
             </h2>
             <button
@@ -319,7 +319,7 @@ export function FormOutline({
               onClick={onAddPage}
               aria-label="Add page"
               title="Add page"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -347,7 +347,7 @@ export function FormOutline({
                   {open && (
                     <div className="ml-3 pl-1">
                       {page.fields.length === 0 ? (
-                        <p className="px-2 py-1 text-xs text-gray-400">
+                        <p className="px-2 py-1 text-xs text-zinc-400">
                           No elements
                         </p>
                       ) : (

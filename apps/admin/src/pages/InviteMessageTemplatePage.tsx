@@ -73,7 +73,7 @@ const InviteMessageTemplatePage = () => {
                 maxLength={INVITE_MESSAGE_TEMPLATE_MAX_LENGTH}
                 value={template}
                 onChange={(event) => setTemplate(event.target.value)}
-                className="w-full resize-y rounded border border-zinc-300 bg-white p-3 font-normal focus:border-zinc-500 focus:outline-none"
+                className="w-full resize-y rounded-md border border-zinc-300 bg-white p-3 font-normal focus:border-zinc-500 focus:outline-hidden"
               />
             </label>
             <div className="flex items-center justify-between gap-4">

@@ -62,9 +62,7 @@ function TypedValue({
       />
       <p
         className={
-          value === ""
-            ? "text-[11px] text-red-600"
-            : "text-[11px] text-gray-500"
+          value === "" ? "text-xs text-red-600" : "text-xs text-zinc-500"
         }
       >
         {value === ""

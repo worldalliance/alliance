@@ -13,7 +13,7 @@ import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const inputBase =
-  "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
+  "w-full border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500";
 const inputText = cn(inputBase, "px-3 py-1.5");
 const inputPad = cn(inputBase, "px-3 py-2");
 
@@ -183,8 +183,8 @@ export function AggregateBuilder({
     value: AggregateViewValue,
     key: "numerator" | "denominator",
   ) => (
-    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-      <p className="text-sm font-medium text-gray-700">{label}</p>
+    <div className="border border-zinc-200 rounded-lg p-4 space-y-3">
+      <p className="text-sm font-medium text-zinc-700">{label}</p>
       <select
         value={value.type}
         onChange={(event) => {
@@ -235,7 +235,7 @@ export function AggregateBuilder({
           disabled={availableFields.length === 0}
           className={cn(
             inputPad,
-            "bg-white disabled:bg-gray-100 disabled:text-gray-400",
+            "bg-white disabled:bg-zinc-100 disabled:text-zinc-400",
           )}
         >
           {availableFields.length > 0 ? (
@@ -254,17 +254,17 @@ export function AggregateBuilder({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mx-auto w-full max-w-4xl">
+      <div className="bg-white rounded-lg border border-zinc-200 p-6 mx-auto w-full max-w-4xl">
         <div className="mb-6 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-zinc-900">
               Aggregate views
             </h2>
             <Button onClick={addView} color={ButtonColor.Blue}>
               Add aggregate view
             </Button>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-zinc-600">
             Configure action-level summary visuals from form responses.
           </p>
         </div>
@@ -284,7 +284,7 @@ export function AggregateBuilder({
                         "px-3 py-1.5 rounded-l-md border text-sm",
                         isActive
                           ? "bg-blue-100 text-blue-700 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200",
+                          : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200",
                       )}
                     >
                       View {index + 1}
@@ -294,7 +294,7 @@ export function AggregateBuilder({
                       onClick={() => removeView(view.id)}
                       className={cn(
                         "px-2 py-1.5 rounded-r-md border border-l-0 text-sm",
-                        "bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 border-gray-200",
+                        "bg-zinc-100 text-zinc-500 hover:text-red-500 hover:bg-red-50 border-zinc-200",
                       )}
                     >
                       <X size={16} strokeWidth={2.25} />
@@ -308,7 +308,7 @@ export function AggregateBuilder({
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-zinc-600 mb-1">
                       Title
                     </label>
                     <input
@@ -322,7 +322,7 @@ export function AggregateBuilder({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-zinc-600 mb-1">
                       Caption
                     </label>
                     <input
@@ -337,7 +337,7 @@ export function AggregateBuilder({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">
+                  <label className="block text-xs text-zinc-600 mb-1">
                     Display type
                   </label>
                   <select
@@ -370,7 +370,7 @@ export function AggregateBuilder({
             ) : null}
           </>
         ) : (
-          <div className="text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-8">
+          <div className="text-center text-sm text-zinc-500 border border-dashed border-zinc-300 rounded-lg p-8">
             No aggregate views yet. Click &ldquo;Add aggregate view&rdquo; to
             get started.
           </div>

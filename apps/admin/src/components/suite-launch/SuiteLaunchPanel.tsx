@@ -243,12 +243,12 @@ const SuiteLaunchPanel = ({
       </div>
       {saving ? (
         !read.ok && (
-          <p className="text-sm text-yellow-800">
+          <p className="text-sm text-amber-800">
             {"Saved launch progress couldn't be read, so this starts over."}
           </p>
         )
       ) : (
-        <p className="text-sm text-yellow-800">
+        <p className="text-sm text-amber-800">
           {
             "This browser isn't saving launch progress, so a reload starts over."
           }
@@ -351,7 +351,7 @@ const SuiteLaunchPanel = ({
       )}
 
       {blockers.length > 0 && (
-        <ul className="list-disc pl-5 text-sm text-yellow-800">
+        <ul className="list-disc pl-5 text-sm text-amber-800">
           {blockers.map(({ message, section }) => (
             <li key={message}>
               {section ? (

@@ -36,7 +36,7 @@ export const selectionRing = (selected: boolean) =>
 
 /** A button covering an item, so a click anywhere on it selects it. */
 export const SELECT_OVERLAY =
-  "absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+  "absolute inset-0 rounded-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500";
 
 /** Links inside an interactive block lead respondents away; authoring stays. */
 const blockLinks = (event: MouseEvent) => {

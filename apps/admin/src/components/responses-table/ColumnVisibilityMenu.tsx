@@ -70,7 +70,7 @@ const ColumnVisibilityMenu: React.FC<ColumnVisibilityMenuProps> = ({
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
               placeholder="Find a column…"
-              className="min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 text-sm focus:border-black focus:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm focus:border-black focus:outline-hidden"
             />
             <button
               type="button"
@@ -96,7 +96,7 @@ const ColumnVisibilityMenu: React.FC<ColumnVisibilityMenuProps> = ({
               matching.map((column) => (
                 <label
                   key={column.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-zinc-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-50"
                 >
                   <input
                     type="checkbox"

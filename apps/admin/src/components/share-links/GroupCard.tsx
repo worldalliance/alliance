@@ -101,7 +101,7 @@ const ShareUrlRow: React.FC<{
       <div className="shrink-0 pt-0.5">
         <span
           className={cn(
-            "text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded",
+            "text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md",
             row.duplicate
               ? "text-blue-700 bg-blue-100"
               : "text-zinc-700 bg-zinc-100",
@@ -115,7 +115,7 @@ const ShareUrlRow: React.FC<{
           <div className="flex flex-row items-center gap-2">
             <input
               type="text"
-              className="flex-1 border border-zinc-300 rounded px-2 py-1 text-sm"
+              className="flex-1 border border-zinc-300 rounded-md px-2 py-1 text-sm"
               placeholder="Label"
               maxLength={SHARE_URL_LABEL_MAX_LENGTH}
               value={draft}
@@ -176,7 +176,7 @@ const ShareUrlRow: React.FC<{
         )}
         <p className="text-xs text-zinc-600 font-mono break-all">{row.url}</p>
         {row.sid && (
-          <p className="text-[11px] text-zinc-400 font-mono">{row.sid}</p>
+          <p className="text-xs text-zinc-400 font-mono">{row.sid}</p>
         )}
         {row.kind === "invite" && (
           <p className="text-xs font-medium text-green">

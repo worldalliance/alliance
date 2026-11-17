@@ -21,9 +21,9 @@ import {
 import { useRefusalToast } from "../lib/useRefusalToast";
 
 const INITIAL_LINK = { label: "", slug: "", destination: "" };
-const INPUT_CLASS = "border border-zinc-300 rounded px-2 py-1 mt-1";
+const INPUT_CLASS = "border border-zinc-300 rounded-md px-2 py-1 mt-1";
 const INLINE_CLASS =
-  "w-full border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded px-1 py-0.5";
+  "w-full border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded-md px-1 py-0.5";
 
 const CustomLinksPage: React.FC = () => {
   const links = useCustomLinksAdmin();

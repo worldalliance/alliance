@@ -18,7 +18,7 @@ export function FormJsonButton({
         onClick();
       }}
       className={cn(
-        "flex items-center justify-center text-gray-500 hover:text-blue-600",
+        "flex items-center justify-center text-zinc-500 hover:text-blue-600",
         className,
       )}
       title={label}

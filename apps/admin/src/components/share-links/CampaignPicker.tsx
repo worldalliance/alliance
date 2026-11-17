@@ -36,7 +36,7 @@ const CampaignPicker: React.FC<{
         <label className="text-xs font-medium text-zinc-700">Campaign</label>
         {loadError && <p className="text-xs text-red-500">{loadError}</p>}
         <select
-          className="border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
+          className="border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white"
           value={selectedCampaignId ?? ""}
           onChange={(event) =>
             onSelect(event.target.value ? Number(event.target.value) : null)
@@ -57,7 +57,7 @@ const CampaignPicker: React.FC<{
         <div className="flex flex-row items-center gap-2">
           <input
             type="text"
-            className="border border-zinc-300 rounded px-3 py-2 text-sm flex-1"
+            className="border border-zinc-300 rounded-md px-3 py-2 text-sm flex-1"
             placeholder="Campaign name — e.g. Spring fundraiser"
             value={newCampaignName}
             onChange={(event) => onNewCampaignNameChange(event.target.value)}
@@ -83,7 +83,7 @@ const CampaignPicker: React.FC<{
           Invite page description
           <input
             type="text"
-            className="border border-zinc-300 rounded px-3 py-2 text-sm w-full mt-1 font-normal"
+            className="border border-zinc-300 rounded-md px-3 py-2 text-sm w-full mt-1 font-normal"
             placeholder="Shown under Create an account — e.g. Join us this spring"
             value={newCampaignInvitePageDescription}
             onChange={(event) =>

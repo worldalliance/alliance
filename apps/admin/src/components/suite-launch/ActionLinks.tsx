@@ -9,7 +9,7 @@ import {
 } from "../../lib/linkedSelection";
 
 export const iconControlClass =
-  "rounded p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-black";
+  "rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-black";
 
 const NewTabLink = ({
   to,

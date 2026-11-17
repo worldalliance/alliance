@@ -81,7 +81,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 mb-1">
           Email Subject
         </label>
         <TextareaWithHighlights
@@ -95,7 +95,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
 
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Email Message
           </label>
           <Button
@@ -146,7 +146,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
 
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Text Message
           </label>
           <Button
@@ -191,7 +191,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
       </div>
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Push Message
           </label>
           <Button

@@ -88,12 +88,12 @@ export function OutputPreview({
   );
 
   return (
-    <div className="border-t border-gray-200 pt-6 mt-6">
+    <div className="border-t border-zinc-200 pt-6 mt-6">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-900">Output preview</h3>
+        <h3 className="text-sm font-medium text-zinc-900">Output preview</h3>
       </div>
       {view.blocks.length > 0 ? (
-        <div className="border-t border-gray-200 pt-2">
+        <div className="border-t border-zinc-200 pt-2">
           <OutputRenderer
             submission={{
               id: 0,
@@ -110,7 +110,7 @@ export function OutputPreview({
           />
         </div>
       ) : (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-zinc-500">
           Add at least one block to see a preview.
         </p>
       )}

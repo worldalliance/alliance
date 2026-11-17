@@ -63,7 +63,7 @@ const NewProjectActionDialog = ({
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <label htmlFor={descriptionId} className="text-sm">
             Short description
@@ -73,7 +73,7 @@ const NewProjectActionDialog = ({
             value={shortDescription}
             onChange={(e) => setShortDescription(e.target.value)}
             rows={2}
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           {create.isError && (
             <p role="alert" className="text-sm text-red-600">

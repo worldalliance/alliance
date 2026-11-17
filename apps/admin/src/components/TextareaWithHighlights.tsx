@@ -200,7 +200,7 @@ export default function TextareaWithHighlight({
           "text-sm leading-6",
           "p-3",
           "overflow-auto",
-          "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+          "focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
           !editable && "!border-0 !resize-none",
           textareaClassName,
         )}

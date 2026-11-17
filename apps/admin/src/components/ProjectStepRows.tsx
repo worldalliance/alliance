@@ -43,7 +43,7 @@ const NextStep = ({
       return (
         <Link
           to={`${stepPath(step)}#${ActionEditorSection.Release}`}
-          className="rounded border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50"
+          className="rounded-md border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50"
         >
           Schedule release
         </Link>
@@ -83,7 +83,7 @@ const StartStaffTestingButton = ({
           : undefined
       }
       onClick={() => onStartStaffTesting(step)}
-      className="rounded border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400"
+      className="rounded-md border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400"
     >
       Start staff testing
     </button>
@@ -127,7 +127,7 @@ const ProjectStepRows = ({
             </span>
             <Link
               to={stepPath(step)}
-              className="min-w-0 flex-1 rounded hover:bg-zinc-50"
+              className="min-w-0 flex-1 rounded-md hover:bg-zinc-50"
             >
               <div className="truncate text-sm font-medium text-black">
                 {step.name}
@@ -176,14 +176,14 @@ const ProjectStepRows = ({
                   </span>
                 )}
               </div>
-              <div className="h-1 w-full rounded bg-zinc-100">
+              <div className="h-1 w-full rounded-md bg-zinc-100">
                 <div
-                  className="h-1 rounded bg-emerald-500"
+                  className="h-1 rounded-md bg-emerald-500"
                   style={{ width: percent(completions / maxCompletions) }}
                 />
               </div>
               {detailed && (
-                <div className="text-[11px] text-zinc-400">
+                <div className="text-xs text-zinc-400">
                   {step.usersWontComplete} won&apos;t · {step.usersDismissed}{" "}
                   dismissed
                 </div>
@@ -194,7 +194,7 @@ const ProjectStepRows = ({
                 type="button"
                 aria-label={`Remove "${step.name}" from project`}
                 title="Remove from project"
-                className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
                 onClick={() => onRemove(step)}
               >
                 <X size={14} />

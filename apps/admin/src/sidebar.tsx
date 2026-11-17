@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-page">
       <div
-        className="overflow-y-auto max-h-screen overflow-x-hidden flex flex-col justify-between relative transition-all duration-100 bg-[#f4f4f4]"
+        className="overflow-y-auto max-h-screen overflow-x-hidden flex flex-col justify-between relative transition-all duration-100 bg-zinc-100"
         style={{
           width: `${sidebarWidth}px`,
           ...(isSidebarOpen
@@ -69,8 +69,8 @@ const Sidebar: React.FC = () => {
         >
           <h1
             className={cn(
-              "text-[14pt] font-bold pb-0",
-              isProd ? "text-red-500" : "text-gray-900",
+              "text-lg font-bold pb-0",
+              isProd ? "text-red-500" : "text-zinc-900",
             )}
           >
             Alliance Admin
@@ -84,12 +84,12 @@ const Sidebar: React.FC = () => {
         </div>
         {isSidebarOpen && (
           <div className="flex flex-row justify-between items-center p-3 px-5 pb-8">
-            <p className="text-sm text-gray-800 truncate">{user?.email}</p>
+            <p className="text-sm text-zinc-800 truncate">{user?.email}</p>
             <button
               type="button"
               aria-label="Log out"
               title="Log out"
-              className="shrink-0 rounded p-1.5 text-zinc-700 hover:bg-zinc-200 hover:text-black cursor-pointer"
+              className="shrink-0 rounded-md p-1.5 text-zinc-700 hover:bg-zinc-200 hover:text-black cursor-pointer"
               onClick={logout}
             >
               <LogOut size={16} />

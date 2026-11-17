@@ -115,7 +115,7 @@ export default function TextComposer({
         maxRows={8}
         aria-describedby={describedBy}
         aria-invalid={tooLong || blankShown}
-        className="w-full rounded border border-zinc-300 p-2 text-sm"
+        className="w-full rounded-md border border-zinc-300 p-2 text-sm"
       />
       <div
         id={`${inputId}-hint`}
@@ -145,7 +145,7 @@ export default function TextComposer({
       {quietWarning && (
         <div
           role="alert"
-          className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
+          className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
         >
           <p>
             It&apos;s {quietWarning} for {memberName}. Texts between{" "}

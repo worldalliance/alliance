@@ -174,17 +174,17 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
         <button
           type="button"
           onClick={() => setMenuOpen((prev) => !prev)}
-          className="p-1 text-gray-600 hover:text-gray-600 rounded hover:bg-gray-100"
+          className="p-1 text-zinc-600 hover:text-zinc-600 rounded-md hover:bg-zinc-100"
         >
           <EllipsisVertical size={20} />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+          <div className="absolute right-0 mt-1 w-52 bg-white border border-zinc-200 rounded-md shadow-lg py-1">
             <button
               type="button"
               onClick={handleCopyExpression}
               disabled={!value}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:hover:bg-white"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-zinc-700 hover:bg-zinc-50 disabled:text-zinc-300 disabled:hover:bg-white"
             >
               <Copy className="h-3.5 w-3.5" />
               Copy expression
@@ -192,7 +192,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             <button
               type="button"
               onClick={handlePasteExpression}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-zinc-700 hover:bg-zinc-50"
             >
               <ClipboardPaste className="h-3.5 w-3.5" />
               Paste expression
@@ -201,7 +201,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
               type="button"
               onClick={handleCopyComplement}
               disabled={!value}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:hover:bg-white"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-zinc-700 hover:bg-zinc-50 disabled:text-zinc-300 disabled:hover:bg-white"
             >
               <CopyMinus className="h-3.5 w-3.5" />
               Copy complement cohort
@@ -211,7 +211,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
       </div>
       {!value ? (
         <div className="space-y-2">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-zinc-500">
             No cohort set — no users will participate. Add a condition to target
             users.
           </p>
@@ -219,7 +219,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             <button
               type="button"
               onClick={handleAddTagPreset}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-zinc-700 bg-white border border-zinc-300 rounded-md hover:bg-zinc-50"
             >
               <Plus className="h-3 w-3" />
               Add Condition
@@ -247,7 +247,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
           </div>
         </>
       )}
-      <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+      <div className="border border-zinc-300 rounded-md p-3 bg-zinc-50">
         <CohortVisualization
           expression={value}
           selectedSubExpression={selectedSubExpr}
@@ -256,7 +256,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
         />
       </div>
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm text-gray-500">
+        <label className="flex items-center gap-2 text-sm text-zinc-500">
           <input
             type="checkbox"
             checked={compareEnabled}
@@ -266,7 +266,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
                 setCompareActionId(null);
               }
             }}
-            className="h-4 w-4 rounded border-gray-300"
+            className="h-4 w-4 rounded-md border-zinc-300"
           />
           Compare to another action
         </label>
@@ -280,7 +280,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
               );
               setSelectedSubExpr(null);
             }}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
           >
             <option value="">
               {props.actionsLoading

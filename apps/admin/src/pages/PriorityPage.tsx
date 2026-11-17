@@ -275,9 +275,9 @@ const PriorityPage: React.FC = () => {
             setShowAll(e.target.checked);
             setReorder(null);
           }}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded-md"
         />
-        <span className="text-sm font-medium text-gray-900">Show all</span>
+        <span className="text-sm font-medium text-zinc-900">Show all</span>
       </label>
       {error && <p className="text-red-500">{error}</p>}
       <div className="text-sm text-zinc-600 space-y-1">
@@ -363,7 +363,7 @@ const PriorityPage: React.FC = () => {
                     )}
                     <span
                       className={cn(
-                        "text-xs px-2 py-0.5 rounded shrink-0",
+                        "text-xs px-2 py-0.5 rounded-md shrink-0",
                         item.type === "action"
                           ? "bg-blue-100 text-blue-800"
                           : "bg-amber-100 text-amber-800",
@@ -387,7 +387,7 @@ const PriorityPage: React.FC = () => {
                           : `/general-updates/${item.id}`
                       }
                       onClick={(e) => e.stopPropagation()}
-                      className="ml-auto shrink-0 rounded px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900 transition-colors"
+                      className="ml-auto shrink-0 rounded-md px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900 transition-colors"
                     >
                       View
                     </Link>

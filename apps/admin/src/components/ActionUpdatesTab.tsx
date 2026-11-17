@@ -308,7 +308,7 @@ const ActionUpdatesTab = ({
               <>
                 {!update.visibleAt && (
                   <span
-                    className="flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800"
+                    className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800"
                     title="Not visible to members until its content is saved"
                   >
                     <EyeOff className="w-3 h-3" aria-hidden />

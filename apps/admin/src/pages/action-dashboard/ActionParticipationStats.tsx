@@ -48,7 +48,7 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
                   : 0}
                 %
               </p>
-              <p className="text-xs text-gray-500">Completion Rate</p>
+              <p className="text-xs text-zinc-500">Completion Rate</p>
             </div>
           </div>
         </Card>
@@ -59,7 +59,7 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
             </div>
             <div>
               <p className="text-2xl font-bold">{action.usersJoined}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-zinc-500">
                 {action.optional ? "Able to complete" : "Expected to complete"}
               </p>
             </div>
@@ -72,7 +72,7 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
             </div>
             <div>
               <p className="text-2xl font-bold">{action.usersCompleted}</p>
-              <p className="text-xs text-gray-500">Completed</p>
+              <p className="text-xs text-zinc-500">Completed</p>
             </div>
           </div>
         </Card>
@@ -85,14 +85,14 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
               <p className="text-2xl font-bold">
                 {actionStats?.usersWithdrawn ?? 0}
               </p>
-              <p className="text-xs text-gray-500">Withdrawn</p>
+              <p className="text-xs text-zinc-500">Withdrawn</p>
             </div>
           </div>
         </Card>
         {incompleteUsers.length > 0 && !action.optional && (
           <Card
             style={CardStyle.White}
-            className="!p-4 cursor-pointer hover:bg-gray-50"
+            className="!p-4 cursor-pointer hover:bg-zinc-50"
             onClick={() => setIncompleteUsersExpanded(!incompleteUsersExpanded)}
           >
             <div className="flex items-center gap-3">
@@ -101,12 +101,12 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
               </div>
               <div>
                 <p className="text-2xl font-bold">{incompleteUsers.length}</p>
-                <p className="text-xs text-gray-500">Failed to Complete</p>
+                <p className="text-xs text-zinc-500">Failed to Complete</p>
               </div>
               {incompleteUsersExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-400 ml-auto" />
+                <ChevronUp className="h-4 w-4 text-zinc-400 ml-auto" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-400 ml-auto" />
+                <ChevronDown className="h-4 w-4 text-zinc-400 ml-auto" />
               )}
             </div>
           </Card>
@@ -114,14 +114,14 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
         {action.optional && (
           <Card style={CardStyle.White} className="!p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <EyeOff className="h-5 w-5 text-gray-600" />
+              <div className="p-2 bg-zinc-100 rounded-lg">
+                <EyeOff className="h-5 w-5 text-zinc-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
                   {actionStats?.usersDismissed ?? 0}
                 </p>
-                <p className="text-xs text-gray-500">Dismissed</p>
+                <p className="text-xs text-zinc-500">Dismissed</p>
               </div>
             </div>
           </Card>
@@ -131,18 +131,18 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
 
     {incompleteUsersExpanded && incompleteUsers.length > 0 && (
       <Card style={CardStyle.White}>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+        <h3 className="text-sm font-semibold text-zinc-700 mb-3">
           Users Who Failed to Complete
         </h3>
-        <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
+        <ul className="divide-y divide-zinc-200 max-h-64 overflow-y-auto">
           {incompleteUsers.map((user) => (
             <li key={user.id} className="py-2">
               <a
                 href={`/users/${user.id}`}
-                className="flex items-center gap-2 hover:bg-gray-50 px-2 py-1 rounded"
+                className="flex items-center gap-2 hover:bg-zinc-50 px-2 py-1 rounded-md"
               >
                 <AvatarProfile pfp={user.profilePicture} size="small" />
-                <span className="text-sm font-medium text-gray-800 hover:text-blue-600">
+                <span className="text-sm font-medium text-zinc-800 hover:text-blue-600">
                   {user.displayName}
                 </span>
               </a>

@@ -34,13 +34,13 @@ const MemberReliabilityCard: React.FC = () => {
   }, [applyMemberReliabilityWeeks, memberReliabilityWeeksInput]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 md:flex-row md:items-end md:justify-between">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">
+          <h3 className="font-semibold text-zinc-900">
             Member Reliability by Assignment Week
           </h3>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-zinc-500">
             Completed actions only. New members begin with the first
             member-action week after signing.
           </p>
@@ -53,7 +53,7 @@ const MemberReliabilityCard: React.FC = () => {
           }}
         >
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-gray-600">
+            <span className="text-xs font-semibold text-zinc-600">
               Completed action weeks
             </span>
             <input
@@ -64,7 +64,7 @@ const MemberReliabilityCard: React.FC = () => {
               onChange={(event) =>
                 setMemberReliabilityWeeksInput(event.target.value)
               }
-              className="w-32 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-32 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400"
             />
           </label>
           <button
@@ -83,7 +83,7 @@ const MemberReliabilityCard: React.FC = () => {
           </div>
         )}
         {memberReliabilityLoading && !memberReliabilityWindow ? (
-          <p className="text-sm text-gray-600">Loading reliability...</p>
+          <p className="text-sm text-zinc-600">Loading reliability...</p>
         ) : memberReliabilityWindow ? (
           <div className="grid gap-3 md:grid-cols-2">
             {(
@@ -102,16 +102,16 @@ const MemberReliabilityCard: React.FC = () => {
             ).map(([title, description, rate]) => (
               <div
                 key={title}
-                className="rounded-md border border-gray-200 p-4"
+                className="rounded-md border border-zinc-200 p-4"
               >
-                <div className="text-sm font-semibold text-gray-900">
+                <div className="text-sm font-semibold text-zinc-900">
                   {title}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">{description}</p>
-                <div className="mt-3 text-3xl font-bold text-gray-900">
+                <p className="mt-1 text-xs text-zinc-500">{description}</p>
+                <div className="mt-3 text-3xl font-bold text-zinc-900">
                   {(rate.completionRate * 100).toFixed(1)}%
                 </div>
-                <div className="mt-1 text-sm text-gray-600">
+                <div className="mt-1 text-sm text-zinc-600">
                   {rate.completedCount} completed / {rate.assignedCount}{" "}
                   assigned
                 </div>

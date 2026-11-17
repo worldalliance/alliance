@@ -25,7 +25,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { Plus, Trash2 } from "lucide-react";
 
 const inputBase =
-  "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
+  "w-full border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500";
 export const inputText = cn(inputBase, "px-3 py-1.5");
 export const inputPad = cn(inputBase, "px-3 py-2");
 
@@ -278,7 +278,7 @@ export function ListPropertyNames({
   return (
     <>
       {subFields.length === 0 ? (
-        <p className="text-[10px] text-gray-500">
+        <p className="text-xs text-zinc-500">
           No sub-field a formula can read.{" "}
           <span className="font-mono">{inputName}.length</span> still counts the
           rows.
@@ -288,7 +288,7 @@ export function ListPropertyNames({
           {subFields.map((sub) => (
             <label
               key={sub.id}
-              className="flex items-center gap-1.5 text-xs text-gray-500"
+              className="flex items-center gap-1.5 text-xs text-zinc-500"
             >
               {sub.label || "(no label)"}
               <input
@@ -314,7 +314,7 @@ export function ListPropertyNames({
         </div>
       )}
       {propertyErrors.map((message, index) => (
-        <p key={index} className="text-[10px] text-red-500">
+        <p key={index} className="text-xs text-red-500">
           {message}
         </p>
       ))}
@@ -338,7 +338,7 @@ function SampleRows({ inputName, field, rows, onRowsChange }: SampleRowsProps) {
     <div className="space-y-1">
       {rows.map((row, index) => (
         <div key={index} className="flex flex-wrap items-center gap-2">
-          <span className="w-10 shrink-0 text-[10px] text-gray-500">
+          <span className="w-10 shrink-0 text-xs text-zinc-500">
             row {index + 1}
           </span>
           {subFields.map((sub) => (
@@ -356,7 +356,7 @@ function SampleRows({ inputName, field, rows, onRowsChange }: SampleRowsProps) {
             onClick={() => onRowsChange(rows.filter((_, i) => i !== index))}
             title="Remove sample row"
             aria-label={`Remove sample row ${index + 1} of ${inputName}`}
-            className="p-1 text-gray-400 hover:text-red-500"
+            className="p-1 text-zinc-400 hover:text-red-500"
           >
             <Trash2 size={12} />
           </button>
@@ -367,7 +367,7 @@ function SampleRows({ inputName, field, rows, onRowsChange }: SampleRowsProps) {
         onClick={() => onRowsChange([...rows, {}])}
         title="Add sample row"
         aria-label={`Add sample row to ${inputName}`}
-        className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
+        className="flex items-center gap-1 p-1 text-xs text-zinc-400 hover:text-blue-600"
       >
         <Plus size={12} />
         {rows.length === 0 && "sample row"}
@@ -465,7 +465,7 @@ export function SubmissionSamples({
     <div className="pl-16 space-y-1">
       {submissions.map((sample, index) => (
         <div key={index} className="flex flex-wrap items-start gap-2">
-          <span className="w-20 shrink-0 pt-1.5 text-[10px] text-gray-500">
+          <span className="w-20 shrink-0 pt-1.5 text-xs text-zinc-500">
             submission {index + 1}
           </span>
           {editor(index, sample)}
@@ -474,7 +474,7 @@ export function SubmissionSamples({
             onClick={() => onChange(submissions.filter((_, i) => i !== index))}
             title="Remove sample submission"
             aria-label={`Remove sample submission ${index + 1} of ${inputName}`}
-            className="p-1 text-gray-400 hover:text-red-500"
+            className="p-1 text-zinc-400 hover:text-red-500"
           >
             <Trash2 size={12} />
           </button>
@@ -485,7 +485,7 @@ export function SubmissionSamples({
         onClick={() => onChange([...submissions, undefined])}
         title="Add sample submission"
         aria-label={`Add sample submission to ${inputName}`}
-        className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
+        className="flex items-center gap-1 p-1 text-xs text-zinc-400 hover:text-blue-600"
       >
         <Plus size={12} />
         {submissions.length === 0 && "sample submission"}

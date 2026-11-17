@@ -103,7 +103,7 @@ export function EditableVideoBlock({
               accept=".m3u8,.ts,.vtt"
               onChange={(event) => handleFileChange(event, handleUpdate)}
               disabled={isUploading}
-              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+              className="flex-1 px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
             />
             {isUploading && (
               <span className="text-xs text-blue-600">Uploading...</span>
@@ -113,14 +113,14 @@ export function EditableVideoBlock({
           {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
 
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-gray-600">
+            <label className="block text-xs font-medium text-zinc-600">
               Caption
             </label>
             <VariableTextField
               value={activeBlock.caption ?? ""}
               onChange={(caption) => handleUpdate({ caption })}
               placeholder="Add an optional caption"
-              className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-zinc-300 rounded-md px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             />
           </div>
 

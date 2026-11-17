@@ -52,7 +52,7 @@ const NewProject = () => {
       type="button"
       aria-label="New project"
       title="New project"
-      className="rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+      className="rounded-md border border-zinc-300 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
       onClick={() => setNaming(true)}
     >
       <Plus size={16} />

@@ -153,7 +153,7 @@ const ActionSuitePage = () => {
       </Card>
       {error && <p className="text-red-500">{error}</p>}
       <div className="space-y-5 flex-1 overflow-y-auto pt-0">
-        <p className="text-sm text-gray-500">Actions ordered by priority</p>
+        <p className="text-sm text-zinc-500">Actions ordered by priority</p>
         {suite?.actions
           .slice()
           .sort((a, b) => b.priority - a.priority)

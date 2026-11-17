@@ -120,9 +120,9 @@ const ActionCompletionBarsChart: React.FC<{
   }, [hoveredActionBar, actionBarsGeometry]);
 
   return (
-    <div className="relative overflow-visible rounded-xl border border-gray-200 bg-white">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">
+    <div className="relative overflow-visible rounded-xl border border-zinc-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
+        <h3 className="text-lg font-semibold text-zinc-900">
           Action Completion Stats
         </h3>
         <button
@@ -135,7 +135,7 @@ const ActionCompletionBarsChart: React.FC<{
       </div>
       <div className="relative p-4">
         {actionStatsLoading && actionStats.length === 0 && (
-          <p className="text-sm text-gray-600">Loading action stats...</p>
+          <p className="text-sm text-zinc-600">Loading action stats...</p>
         )}
         {actionStatsLoadFailed && (
           <p className="text-sm text-red-600">Unable to load action stats.</p>
@@ -148,7 +148,7 @@ const ActionCompletionBarsChart: React.FC<{
         {!actionStatsLoading &&
           !actionStatsLoadFailed &&
           actionStats.length === 0 && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-zinc-600">
               No action stats available. Click Recalculate to generate.
             </p>
           )}
@@ -200,7 +200,7 @@ const ActionCompletionBarsChart: React.FC<{
                       20
                     }
                     textAnchor="middle"
-                    className="fill-gray-600 text-xs"
+                    className="fill-zinc-600 text-xs"
                   >
                     {tick}
                   </text>
@@ -258,8 +258,8 @@ const ActionCompletionBarsChart: React.FC<{
                     className={cn(
                       "text-xs",
                       isHovered
-                        ? "fill-gray-900 font-semibold"
-                        : "fill-gray-700",
+                        ? "fill-zinc-900 font-semibold"
+                        : "fill-zinc-700",
                     )}
                   >
                     {action.actionName.length > 25
@@ -330,7 +330,7 @@ const ActionCompletionBarsChart: React.FC<{
                     }
                     y={y + actionBarsGeometry.barHeight / 2}
                     dominantBaseline="middle"
-                    className="fill-gray-600 text-xs"
+                    className="fill-zinc-600 text-xs"
                   >
                     {action.usersCompleted}/{totalExpected}{" "}
                     {totalExpected > 0 ? `(${displayRate}%)` : ""}
@@ -343,37 +343,37 @@ const ActionCompletionBarsChart: React.FC<{
 
         {hoveredActionBar && hoveredActionTooltipTop !== null && (
           <div
-            className="absolute right-4 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[200px] pointer-events-none"
+            className="absolute right-4 z-20 bg-white border border-zinc-200 rounded-lg shadow-lg p-4 min-w-[200px] pointer-events-none"
             style={{
               top: `calc(${hoveredActionTooltipTop}% - 8px)`,
               transform: "translateY(-100%)",
             }}
           >
-            <p className="font-semibold text-gray-900 mb-2 max-w-[350px]">
+            <p className="font-semibold text-zinc-900 mb-2 max-w-[350px]">
               {hoveredActionBar.action.actionName}
             </p>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Completed:</span>
+                <span className="text-zinc-600">Completed:</span>
                 <span className="font-medium text-green-600">
                   {hoveredActionBar.action.usersCompleted}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Withdrawn:</span>
+                <span className="text-zinc-600">Withdrawn:</span>
                 <span className="font-medium text-orange-600">
                   {hoveredActionBar.action.usersWithdrawn ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Joined:</span>
-                <span className="font-medium text-gray-700">
+                <span className="text-zinc-600">Joined:</span>
+                <span className="font-medium text-zinc-700">
                   {hoveredActionBar.action.usersJoined}
                 </span>
               </div>
               <div className="flex justify-between border-t pt-1 mt-1">
-                <span className="text-gray-600">Rate:</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-zinc-600">Rate:</span>
+                <span className="font-semibold text-zinc-900">
                   {hoveredActionBar.action.usersJoined > 0
                     ? `${Math.round(
                         (hoveredActionBar.action.usersCompleted /
@@ -390,19 +390,19 @@ const ActionCompletionBarsChart: React.FC<{
 
       <div className="flex items-center gap-6 px-4 pb-4">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-green-600" />
-          <span className="text-sm text-gray-600">Completed</span>
+          <div className="w-4 h-4 rounded-md bg-green-600" />
+          <span className="text-sm text-zinc-600">Completed</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-orange-500" />
-          <span className="text-sm text-gray-600">Withdrawn</span>
+          <div className="w-4 h-4 rounded-md bg-orange-500" />
+          <span className="text-sm text-zinc-600">Withdrawn</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-gray-300" />
-          <span className="text-sm text-gray-600">Expected total</span>
+          <div className="w-4 h-4 rounded-md bg-zinc-300" />
+          <span className="text-sm text-zinc-600">Expected total</span>
         </div>
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 rounded" viewBox="0 0 16 16">
+          <svg className="w-4 h-4 rounded-md" viewBox="0 0 16 16">
             <defs>
               <pattern
                 id="legend-stripes"
@@ -417,7 +417,7 @@ const ActionCompletionBarsChart: React.FC<{
             </defs>
             <rect width="16" height="16" rx="2" fill="url(#legend-stripes)" />
           </svg>
-          <span className="text-sm text-gray-600">In progress</span>
+          <span className="text-sm text-zinc-600">In progress</span>
         </div>
       </div>
     </div>

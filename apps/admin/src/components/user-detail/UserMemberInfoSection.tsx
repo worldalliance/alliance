@@ -12,7 +12,7 @@ export default function UserMemberInfoSection({
   user: UserAdminDetailDto;
 }) {
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">Member Info</h2>
       <div className="space-y-3 text-sm">
         <div>

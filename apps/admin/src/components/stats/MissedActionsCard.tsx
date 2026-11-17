@@ -37,11 +37,11 @@ const MissedActionsCard: React.FC = () => {
   }, [missedActions]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 md:flex-row md:items-end md:justify-between">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">Recent missed actions</h3>
-          <p className="text-xs text-gray-500">
+          <h3 className="font-semibold text-zinc-900">Recent missed actions</h3>
+          <p className="text-xs text-zinc-500">
             Active members whose most recent completed non-optional action was
             missed.
           </p>
@@ -58,13 +58,13 @@ const MissedActionsCard: React.FC = () => {
       <div className="grid gap-4 p-4 md:grid-cols-2">
         {!missedActionsRequested ? null : missedActionsLoading &&
           !missedActions ? (
-          <p className="text-sm text-gray-600">Loading missed actions...</p>
+          <p className="text-sm text-zinc-600">Loading missed actions...</p>
         ) : missedActionGroups && !missedActionsError ? (
           missedActionGroups.map(({ title, members }) => (
-            <div key={title} className="rounded-md border border-gray-200 p-4">
+            <div key={title} className="rounded-md border border-zinc-200 p-4">
               <div className="flex items-baseline justify-between gap-3">
-                <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
-                <span className="text-3xl font-bold text-gray-900">
+                <h4 className="text-sm font-semibold text-zinc-900">{title}</h4>
+                <span className="text-3xl font-bold text-zinc-900">
                   {members.length}
                 </span>
               </div>
@@ -81,19 +81,19 @@ const MissedActionsCard: React.FC = () => {
                       >
                         {member.name}
                       </a>
-                      <span className="shrink-0 text-xs text-gray-500">
+                      <span className="shrink-0 text-xs text-zinc-500">
                         {member.lastActionName}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-3 text-sm text-gray-500">No members.</p>
+                <p className="mt-3 text-sm text-zinc-500">No members.</p>
               )}
             </div>
           ))
         ) : (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-zinc-600">
             {adminRefusalMessage(
               missedActionsError,
               "Unable to load missed actions.",

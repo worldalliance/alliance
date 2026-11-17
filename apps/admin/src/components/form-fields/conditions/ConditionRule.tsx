@@ -140,27 +140,27 @@ export function ConditionRule({
   return (
     <li
       aria-label={`Rule ${name}`}
-      className="space-y-2 rounded border border-gray-200 bg-white p-3"
+      className="space-y-2 rounded-md border border-zinc-200 bg-white p-3"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-gray-700">
+        <span className="text-xs font-medium text-zinc-700">
           {ruleTitle(condition)}
           {showName && (
-            <code className="ml-2 rounded bg-gray-100 px-1 font-normal text-gray-600">
+            <code className="ml-2 rounded-md bg-zinc-100 px-1 font-normal text-zinc-600">
               {name}
             </code>
           )}
         </span>
         <button
           type="button"
-          className="text-[11px] text-gray-500 hover:text-red-500"
+          className="text-xs text-zinc-500 hover:text-red-500"
           onClick={onRemove}
         >
           Remove rule
         </button>
       </div>
       {unreferenced && (
-        <p className="text-[11px] text-amber-600">
+        <p className="text-xs text-amber-600">
           The expression doesn&apos;t use {name} yet.
         </p>
       )}

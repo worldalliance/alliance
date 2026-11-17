@@ -23,14 +23,14 @@ export function EditablePhoneField({
       />
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Placeholder
         </label>
         <input
           type="text"
           value={field.placeholder || ""}
           onChange={(e) => onUpdate({ placeholder: e.target.value })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           placeholder="Enter placeholder text"
         />
       </div>

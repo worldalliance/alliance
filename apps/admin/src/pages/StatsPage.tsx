@@ -142,7 +142,7 @@ const StatsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-6 md:p-8 space-y-6 text-gray-900">
+    <div className="p-6 md:p-8 space-y-6 text-zinc-900">
       <AggregateStatsCard
         actionStats={actionStats}
         parsedContractStatusHistory={parsedContractStatusHistory}
@@ -167,29 +167,29 @@ const StatsPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div className="flex flex-wrap gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-600">
+            <label className="text-xs font-semibold text-zinc-600">
               Start date
             </label>
             <input
               type="date"
               value={startInput}
               onChange={(e) => setStartInput(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-600">
+            <label className="text-xs font-semibold text-zinc-600">
               End date
             </label>
             <input
               type="date"
               value={endInput}
               onChange={(e) => setEndInput(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-600 opacity-0">
+            <label className="text-xs font-semibold text-zinc-600 opacity-0">
               Update
             </label>
             <button
@@ -203,13 +203,13 @@ const StatsPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleQuickRange(7)}
-            className="px-4 py-2 rounded-md text-sm border border-gray-300 bg-white hover:border-gray-400"
+            className="px-4 py-2 rounded-md text-sm border border-zinc-300 bg-white hover:border-zinc-400"
           >
             Last 7 days
           </button>
           <button
             onClick={() => handleQuickRange(30)}
-            className="px-4 py-2 rounded-md text-sm border border-gray-300 bg-white hover:border-gray-400"
+            className="px-4 py-2 rounded-md text-sm border border-zinc-300 bg-white hover:border-zinc-400"
           >
             Last 30 days
           </button>
@@ -220,9 +220,9 @@ const StatsPage: React.FC = () => {
           {error}
         </div>
       )}
-      {loading && <p className="text-sm text-gray-600">Loading daily stats…</p>}
+      {loading && <p className="text-sm text-zinc-600">Loading daily stats…</p>}
       {!loading && !statsError && parsedStats.length === 0 && (
-        <p className="text-sm text-gray-600">No daily stats for this range.</p>
+        <p className="text-sm text-zinc-600">No daily stats for this range.</p>
       )}
 
       <ActionCompletionBarsChart
@@ -246,17 +246,17 @@ const StatsPage: React.FC = () => {
 
       <TimeToChurnCard />
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-zinc-200 rounded-lg overflow-hidden">
         <button
           onClick={() => setDailyStatsTableOpen(!dailyStatsTableOpen)}
-          className="w-full px-4 py-3 bg-gray-50 flex items-center justify-between hover:bg-gray-100 transition-colors"
+          className="w-full px-4 py-3 bg-zinc-50 flex items-center justify-between hover:bg-zinc-100 transition-colors"
         >
-          <span className="font-semibold text-gray-900">
+          <span className="font-semibold text-zinc-900">
             Daily Stats ({parsedStats.length} days)
           </span>
           <svg
             className={cn(
-              "w-5 h-5 text-gray-500 transition-transform",
+              "w-5 h-5 text-zinc-500 transition-transform",
               dailyStatsTableOpen && "rotate-180",
             )}
             fill="none"
@@ -273,9 +273,9 @@ const StatsPage: React.FC = () => {
         </button>
         {dailyStatsTableOpen && (
           <div className="overflow-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr className="text-gray-600">
+            <table className="min-w-full divide-y divide-zinc-200 text-sm">
+              <thead className="bg-zinc-50">
+                <tr className="text-zinc-600">
                   <th className="px-4 py-3 text-left font-semibold">Date</th>
                   <th className="px-4 py-3 text-left font-semibold">
                     Actions completed
@@ -297,13 +297,13 @@ const StatsPage: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-zinc-100 bg-white">
                 {[...parsedStats].reverse().map((day) => (
                   <tr
                     key={day.dayId}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-zinc-50 transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">
                       {fullDateFormatter.format(day.parsedDate)}
                     </td>
                     <td className="px-4 py-3">{day.actionsCompleted}</td>
@@ -321,17 +321,17 @@ const StatsPage: React.FC = () => {
       </div>
 
       {actionStats.length > 0 && (
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="border border-zinc-200 rounded-lg overflow-hidden">
           <button
             onClick={() => setActionStatsTableOpen(!actionStatsTableOpen)}
-            className="w-full px-4 py-3 bg-gray-50 flex items-center justify-between hover:bg-gray-100 transition-colors"
+            className="w-full px-4 py-3 bg-zinc-50 flex items-center justify-between hover:bg-zinc-100 transition-colors"
           >
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-zinc-900">
               Action Stats ({actionStats.length} actions)
             </span>
             <svg
               className={cn(
-                "w-5 h-5 text-gray-500 transition-transform",
+                "w-5 h-5 text-zinc-500 transition-transform",
                 actionStatsTableOpen && "rotate-180",
               )}
               fill="none"
@@ -348,9 +348,9 @@ const StatsPage: React.FC = () => {
           </button>
           {actionStatsTableOpen && (
             <div className="overflow-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr className="text-gray-600">
+              <table className="min-w-full divide-y divide-zinc-200 text-sm">
+                <thead className="bg-zinc-50">
+                  <tr className="text-zinc-600">
                     <th className="px-4 py-3 text-left font-semibold">
                       Action
                     </th>
@@ -368,13 +368,13 @@ const StatsPage: React.FC = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-zinc-100 bg-white">
                   {actionStats.map((action) => (
                     <tr
                       key={action.actionId}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-zinc-50 transition-colors"
                     >
-                      <td className="px-4 py-3 font-medium text-gray-900">
+                      <td className="px-4 py-3 font-medium text-zinc-900">
                         {action.actionName}
                       </td>
                       <td className="px-4 py-3 text-green-600 font-medium">
@@ -388,17 +388,17 @@ const StatsPage: React.FC = () => {
                               action.completionRate >= 0.9
                                 ? "text-green-600 font-medium"
                                 : action.completionRate >= 0.7
-                                  ? "text-yellow-600"
+                                  ? "text-amber-600"
                                   : "text-red-600"
                             }
                           >
                             {Math.round(action.completionRate * 100)}%
                           </span>
                         ) : (
-                          <span className="text-gray-400">N/A</span>
+                          <span className="text-zinc-400">N/A</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">
                         {action.memberActionStartDate
                           ? new Date(
                               action.memberActionStartDate,

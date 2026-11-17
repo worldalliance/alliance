@@ -61,7 +61,7 @@ export function EditableRangeField({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             Number of options
           </label>
           <input
@@ -70,12 +70,12 @@ export function EditableRangeField({
             max={MAX_RANGE_OPTION_COUNT}
             value={field.optionCount}
             onChange={(event) => handleOptionCountChange(event.target.value)}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             Default selection (optional)
           </label>
           <input
@@ -85,12 +85,12 @@ export function EditableRangeField({
             value={defaultValue}
             onChange={(event) => handleDefaultValueChange(event.target.value)}
             placeholder="None"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             Start label (optional)
           </label>
           <input
@@ -98,12 +98,12 @@ export function EditableRangeField({
             value={field.startLabel ?? ""}
             onChange={(event) => onUpdate({ startLabel: event.target.value })}
             placeholder="e.g. Not likely"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             End label (optional)
           </label>
           <input
@@ -111,7 +111,7 @@ export function EditableRangeField({
             value={field.endLabel ?? ""}
             onChange={(event) => onUpdate({ endLabel: event.target.value })}
             placeholder="e.g. Most likely"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>

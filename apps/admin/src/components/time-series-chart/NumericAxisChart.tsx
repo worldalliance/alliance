@@ -152,7 +152,7 @@ export const NumericAxisChart: React.FC<
                 x={numericGeometry.xScale(tick)}
                 y={numericGeometry.height - numericGeometry.margin.bottom + 24}
                 textAnchor="middle"
-                className="fill-gray-600 text-xs"
+                className="fill-zinc-600 text-xs"
               >
                 {props.xAxisFormat ? props.xAxisFormat(tick) : tick}
               </text>
@@ -181,7 +181,7 @@ export const NumericAxisChart: React.FC<
                 x={numericGeometry.xScale(props.getXValue(hoveredPoint))}
                 y={numericGeometry.margin.top - 6}
                 textAnchor="middle"
-                className="fill-gray-600 text-xs font-medium"
+                className="fill-zinc-600 text-xs font-medium"
               >
                 {props.getHoverXLabel(hoveredPoint)}
               </text>
@@ -239,13 +239,13 @@ export const NumericAxisChart: React.FC<
 
       {numericHoverContent && hoveredSeries && (
         <div className="absolute top-14 left-30 pointer-events-none">
-          <p className="font-semibold text-gray-900 mb-1 text-sm">
+          <p className="font-semibold text-zinc-900 mb-1 text-sm">
             {numericHoverContent.title}
           </p>
           <div className="space-y-0.5 text-sm">
             {numericHoverContent.items.map((item) => (
               <div key={item.label} className="flex items-center gap-1.5">
-                <span className="text-gray-500">{item.label}:</span>
+                <span className="text-zinc-500">{item.label}:</span>
                 <span
                   className="font-medium"
                   style={{ color: item.color ?? "#111827" }}

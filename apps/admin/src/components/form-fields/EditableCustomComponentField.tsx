@@ -256,7 +256,7 @@ export function EditableCustomComponentField({
       const inputId = `custom-config-${configField.name}`;
       return (
         <div key={configField.name} className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-gray-700">
+          <div className="flex items-center gap-2 text-sm text-zinc-700">
             <input
               type="checkbox"
               id={inputId}
@@ -269,7 +269,7 @@ export function EditableCustomComponentField({
             <label htmlFor={inputId}>{label}</label>
           </div>
           {description && (
-            <p className="text-xs text-gray-500">{description}</p>
+            <p className="text-xs text-zinc-500">{description}</p>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
@@ -279,7 +279,7 @@ export function EditableCustomComponentField({
     if (configField.type === "number") {
       return (
         <div key={configField.name} className="space-y-1">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             {label}
           </label>
           <input
@@ -288,11 +288,11 @@ export function EditableCustomComponentField({
             onChange={(event) =>
               handleNumberChange(configField.name, event.target.value)
             }
-            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder={`Enter ${label.toLowerCase()}`}
           />
           {description && (
-            <p className="text-xs text-gray-500">{description}</p>
+            <p className="text-xs text-zinc-500">{description}</p>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
@@ -301,7 +301,7 @@ export function EditableCustomComponentField({
 
     return (
       <div key={configField.name} className="space-y-1">
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           {label}
         </label>
         <input
@@ -310,10 +310,10 @@ export function EditableCustomComponentField({
           onChange={(event) =>
             handleStringChange(configField.name, event.target.value)
           }
-          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           placeholder={`Enter ${label.toLowerCase()}`}
         />
-        {description && <p className="text-xs text-gray-500">{description}</p>}
+        {description && <p className="text-xs text-zinc-500">{description}</p>}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
     );
@@ -332,20 +332,20 @@ export function EditableCustomComponentField({
       />
 
       {customComponentRegistry.length === 0 ? (
-        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           No custom components are registered. Please add one to the registry to
           use this field type.
         </div>
       ) : (
         <div className="space-y-2">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-zinc-700 mb-1">
               Custom Component
             </label>
             <select
               value={field.componentId || customComponentRegistry[0].id}
               onChange={(event) => handleComponentChange(event.target.value)}
-              className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="bg-white w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               {customComponentRegistry.map((component) => (
                 <option key={component.id} value={component.id}>
@@ -354,7 +354,7 @@ export function EditableCustomComponentField({
               ))}
             </select>
             {selectedComponent?.description && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-zinc-500">
                 {selectedComponent.description}
               </p>
             )}
@@ -367,7 +367,7 @@ export function EditableCustomComponentField({
 
           {selectedComponent?.configFields?.length ? (
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-zinc-700 mb-1">
                 Component Configuration
               </label>
               <div className="space-y-3">

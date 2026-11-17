@@ -32,7 +32,7 @@ const SettingToggle: React.FC<{
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-zinc-300"
+        className="w-4 h-4 rounded-md border-zinc-300"
       />
       <span className="text-sm font-medium">{label}</span>
     </label>
@@ -219,7 +219,7 @@ const PostsManagementPage: React.FC = () => {
                       type="button"
                       onClick={() => handleSelectPost(post)}
                       className={cn(
-                        "text-left border rounded px-3 py-2",
+                        "text-left border rounded-md px-3 py-2",
                         selectedPost?.id === post.id
                           ? "border-blue bg-blue/10"
                           : "border-zinc-200 hover:bg-zinc-50",
@@ -310,7 +310,7 @@ const PostsManagementPage: React.FC = () => {
                           value={expertLabel}
                           onChange={(e) => setExpertLabel(e.target.value)}
                           placeholder="Expert"
-                          className="w-full border border-zinc-300 rounded px-3 py-2 text-sm"
+                          className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
                         />
                         <p className="text-xs text-zinc-500 mt-1">
                           Custom badge label (e.g., &quot;AMA Guest&quot;,
@@ -367,7 +367,7 @@ const PostsManagementPage: React.FC = () => {
                               )
                             }
                             placeholder="Tag name"
-                            className="flex-1 border border-zinc-300 rounded px-3 py-2 text-sm"
+                            className="flex-1 border border-zinc-300 rounded-md px-3 py-2 text-sm"
                           />
                           <button
                             type="button"

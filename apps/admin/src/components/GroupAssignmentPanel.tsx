@@ -435,7 +435,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                     </label>
                     <select
                       id={`member-${member.id}-group`}
-                      className="border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
+                      className="border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white"
                       value={selection}
                       onChange={handleSelectionChange(member.id)}
                       disabled={loadingCommunities}

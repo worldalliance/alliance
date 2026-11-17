@@ -14,11 +14,11 @@ export const EnumFilterSelect = <E extends string>({
   onChange: (value: E) => void;
 }) => (
   <label className="flex items-center gap-1.5">
-    <span className="text-xs font-medium text-gray-600">{label}</span>
+    <span className="text-xs font-medium text-zinc-600">{label}</span>
     <select
       value={value}
       onChange={(e) => onChange(z.enum(values).parse(e.target.value))}
-      className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
+      className="rounded-md border border-zinc-300 px-2 py-1 text-xs bg-white"
     >
       {Object.values(values).map((v) => (
         <option key={v} value={v}>

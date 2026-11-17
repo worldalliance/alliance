@@ -57,7 +57,7 @@ export default function InviteLinksPage() {
           Type
           <select
             aria-label="Invite link type"
-            className="ml-2 border rounded px-2 py-1"
+            className="ml-2 border rounded-md px-2 py-1"
             value={kind ?? ""}
             onChange={(event) => {
               setKind(
@@ -80,7 +80,7 @@ export default function InviteLinksPage() {
           Sort
           <select
             aria-label="Sort invite links"
-            className="ml-2 border rounded px-2 py-1"
+            className="ml-2 border rounded-md px-2 py-1"
             value={sort}
             onChange={(event) => {
               setSort(sortSchema.parse(event.target.value));

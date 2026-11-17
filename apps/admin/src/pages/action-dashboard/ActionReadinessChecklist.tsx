@@ -55,9 +55,9 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
           <ListChecks className="mt-0.5 h-5 w-5 text-green" strokeWidth={3} />
           <h2 className="text-lg font-semibold">Checklist</h2>
           {checklistCollapsed ? (
-            <ChevronDown className="h-5 w-5 text-gray-500" />
+            <ChevronDown className="h-5 w-5 text-zinc-500" />
           ) : (
-            <ChevronUp className="h-5 w-5 text-gray-500" />
+            <ChevronUp className="h-5 w-5 text-zinc-500" />
           )}
         </div>
         <span
@@ -65,24 +65,24 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
             "rounded-full px-3 py-1 text-sm font-medium",
             readinessComplete
               ? "bg-green/20 text-green-800"
-              : "bg-yellow-100 text-yellow-800",
+              : "bg-amber-100 text-amber-800",
           )}
         >
           {readinessReadyCount}/{readinessTotalCount} ready
         </span>
       </button>
       {!checklistCollapsed && (
-        <ul className="mt-4 divide-y divide-gray-200">
+        <ul className="mt-4 divide-y divide-zinc-200">
           {readinessChecklist.map((item) => (
             <li key={item.id} className="flex items-center gap-3 py-4">
               {item.isReady ? (
                 <CheckIcon className="h-5 w-5 text-green" strokeWidth={3} />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
               )}
-              <p className="text-sm font-medium text-gray-900">{item.label}</p>
+              <p className="text-sm font-medium text-zinc-900">{item.label}</p>
               {item.required && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-zinc-500">
                   Required for staff testing
                 </span>
               )}

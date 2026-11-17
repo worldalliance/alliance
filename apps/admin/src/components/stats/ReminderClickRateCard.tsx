@@ -59,14 +59,14 @@ const ReminderClickRateCard: React.FC = () => {
   );
 
   return (
-    <div className="relative overflow-hidden rounded border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">
+    <div className="relative overflow-hidden rounded-md border border-zinc-200 bg-white">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-zinc-200">
+        <h3 className="font-semibold text-zinc-900">
           Reminder Link Click Rate by Action
         </h3>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">From</label>
+            <label className="text-xs font-semibold text-zinc-600">From</label>
             <input
               type="date"
               value={reminderClickRateRange.start}
@@ -76,11 +76,11 @@ const ReminderClickRateCard: React.FC = () => {
                   start: event.target.value,
                 }))
               }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">To</label>
+            <label className="text-xs font-semibold text-zinc-600">To</label>
             <input
               type="date"
               value={reminderClickRateRange.end}
@@ -90,7 +90,7 @@ const ReminderClickRateCard: React.FC = () => {
                   end: event.target.value,
                 }))
               }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
         </div>
@@ -98,7 +98,7 @@ const ReminderClickRateCard: React.FC = () => {
       <div className="relative p-4">
         {reminderGroupClickRatesLoading &&
           filteredReminderGroupClickRatePoints.length === 0 && (
-            <p className="text-sm text-gray-600">Loading...</p>
+            <p className="text-sm text-zinc-600">Loading...</p>
           )}
         {reminderGroupClickRatesLoadFailed && (
           <p className="text-sm text-red-600">
@@ -108,7 +108,7 @@ const ReminderClickRateCard: React.FC = () => {
         {!reminderGroupClickRatesLoading &&
           !reminderGroupClickRatesLoadFailed &&
           filteredReminderGroupClickRatePoints.length === 0 && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-zinc-600">
               No sent reminder groups with email/text link clicks in this date
               range.
             </p>
@@ -129,19 +129,19 @@ const ReminderClickRateCard: React.FC = () => {
         )}
 
         {hoveredReminderActionBar && (
-          <div className="absolute right-4 top-4 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[250px] pointer-events-none">
-            <p className="font-semibold text-gray-900 max-w-[260px]">
+          <div className="absolute right-4 top-4 z-20 bg-white border border-zinc-200 rounded-lg shadow-lg p-3 min-w-[250px] pointer-events-none">
+            <p className="font-semibold text-zinc-900 max-w-[260px]">
               {hoveredReminderActionBar.bar.actionName}
             </p>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Channel</span>
-                <span className="font-medium text-gray-900 capitalize">
+                <span className="text-zinc-600">Channel</span>
+                <span className="font-medium text-zinc-900 capitalize">
                   {hoveredReminderActionBar.channel}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Click rate</span>
+                <span className="text-zinc-600">Click rate</span>
                 <span
                   className={cn(
                     "font-medium",
@@ -153,21 +153,21 @@ const ReminderClickRateCard: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Reminder groups averaged</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-zinc-600">Reminder groups averaged</span>
+                <span className="font-medium text-zinc-900">
                   {hoveredReminderActionBar.bar.reminderGroupCount}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Clicked / Sent</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-zinc-600">Clicked / Sent</span>
+                <span className="font-medium text-zinc-900">
                   {hoveredReminderActionBar.bar.clickedCount}/
                   {hoveredReminderActionBar.bar.sentCount}
                 </span>
               </div>
-              <div className="flex justify-between gap-4 border-t border-gray-100 pt-1 mt-1">
-                <span className="text-gray-600">Action ID</span>
-                <span className="font-medium text-gray-900">
+              <div className="flex justify-between gap-4 border-t border-zinc-100 pt-1 mt-1">
+                <span className="text-zinc-600">Action ID</span>
+                <span className="font-medium text-zinc-900">
                   {hoveredReminderActionBar.bar.actionId}
                 </span>
               </div>

@@ -82,7 +82,7 @@ export function EditableChoiceField({
 
       {field.kind === "multiselect" && (
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-700">
+          <label className="block text-xs font-medium text-zinc-700">
             Display
             <select
               value={multiSelectDisplay(field)}
@@ -95,7 +95,7 @@ export function EditableChoiceField({
                 }
                 onUpdate(MULTISELECT_DISPLAYS[display].flags);
               }}
-              className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm font-normal focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               {Object.entries(MULTISELECT_DISPLAYS).map(
                 ([value, { label }]) => (
@@ -111,7 +111,7 @@ export function EditableChoiceField({
 
       {field.kind === "multiselect" && (
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-700">
+          <label className="block text-xs font-medium text-zinc-700">
             Max selections (optional)
           </label>
           <input
@@ -131,7 +131,7 @@ export function EditableChoiceField({
               }
               onUpdate({ maxSelections: Math.floor(parsed) });
             }}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder="No limit"
           />
         </div>

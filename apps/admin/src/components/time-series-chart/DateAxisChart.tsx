@@ -167,7 +167,7 @@ export const DateAxisChart: React.FC<DateAxisProps & { height: number }> = (
               x={dateGeometry.xScale(tick)}
               y={dateGeometry.height - dateGeometry.margin.bottom + 24}
               textAnchor="middle"
-              className="fill-gray-600 text-xs"
+              className="fill-zinc-600 text-xs"
             >
               {dateFormatter.format(tick)}
             </text>
@@ -233,7 +233,7 @@ export const DateAxisChart: React.FC<DateAxisProps & { height: number }> = (
                   dateGeometry.width - 320,
                 )}
                 y={dateGeometry.margin.top + 32}
-                className="fill-gray-900 text-sm font-semibold"
+                className="fill-zinc-900 text-sm font-semibold"
               >
                 {hoverContent.title}
               </text>
@@ -258,7 +258,7 @@ export const DateAxisChart: React.FC<DateAxisProps & { height: number }> = (
                   <text
                     x={item.color ? 16 : 0}
                     y={0}
-                    className="fill-gray-700 text-xs"
+                    className="fill-zinc-700 text-xs"
                   >
                     {item.label}
                   </text>
@@ -266,7 +266,7 @@ export const DateAxisChart: React.FC<DateAxisProps & { height: number }> = (
                     x={288}
                     y={0}
                     textAnchor="end"
-                    className="fill-gray-900 text-xs font-semibold"
+                    className="fill-zinc-900 text-xs font-semibold"
                   >
                     {item.value}
                   </text>

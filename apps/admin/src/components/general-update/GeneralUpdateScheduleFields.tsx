@@ -54,11 +54,11 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveSuite(suiteId)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 hover:border-zinc-300 focus:outline-hidden focus:ring-1 focus:ring-zinc-400 cursor-pointer"
                       aria-label={`Remove ${name}`}
                     >
                       {name}
-                      <span aria-hidden className="text-gray-500">
+                      <span aria-hidden className="text-zinc-500">
                         <X className="w-4 h-4" />
                       </span>
                     </button>
@@ -68,7 +68,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
             </ul>
           )}
           {suites.isPending ? (
-            <p className="text-sm text-gray-500">Loading suites...</p>
+            <p className="text-sm text-zinc-500">Loading suites...</p>
           ) : suites.isLoadingError ? (
             <p className="text-sm text-red-600">Failed to load suites.</p>
           ) : availableSuites.length ? (
@@ -85,7 +85,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
                     handleAddSuite(Number(v));
                   }
                 }}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Add a suite...</option>
                 {availableSuites
@@ -98,7 +98,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
               </select>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No suites available.</p>
+            <p className="text-sm text-zinc-500">No suites available.</p>
           )}
         </div>
       </FormSection>
@@ -112,7 +112,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
             <div>
               <label
                 htmlFor="startDate"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1"
               >
                 Start Date
               </label>
@@ -126,13 +126,13 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
                     startDate: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
               />
             </div>
             <div>
               <label
                 htmlFor="endDate"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1"
               >
                 End Date
               </label>
@@ -146,7 +146,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
                     endDate: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
               />
             </div>
           </div>

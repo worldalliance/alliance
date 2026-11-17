@@ -47,7 +47,7 @@ const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
         </button>
         <EmailRetryActions batch={batch} />
       </div>
-      <pre className="whitespace-pre-wrap rounded border border-zinc-200 bg-white p-2 font-sans">
+      <pre className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white p-2 font-sans">
         {batch.body}
       </pre>
       {detail.isPending && <p className="text-zinc-500">Loading…</p>}

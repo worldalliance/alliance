@@ -34,7 +34,7 @@ const CHIP_COLORS: Record<LeafCondition["type"], string | null> = {
   Staff: null,
 };
 
-const CHIP = "rounded border border-black/10 px-1 leading-4 shrink-0";
+const CHIP = "rounded-md border border-black/10 px-1 leading-4 shrink-0";
 
 const ActionTimelineRowMeta = ({
   status,
@@ -50,7 +50,7 @@ const ActionTimelineRowMeta = ({
     <span
       className={cn(
         CHIP,
-        "bg-zinc-100 text-[10px] font-medium uppercase text-zinc-600",
+        "bg-zinc-100 text-xs font-medium uppercase text-zinc-600",
       )}
     >
       {STATUS_SHORT[status]}

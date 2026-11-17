@@ -50,33 +50,33 @@ export function EditablePreviousAnswerBlock({
         <div className="space-y-3">
           <div className="font-medium">Previous Answer Block</div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Title (optional)
             </label>
             <VariableTextField
               value={activeBlock.title ?? ""}
               onChange={(title) => handleUpdate({ title })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               placeholder="Display title"
             />
           </div>
 
           {/* Empty text */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Empty state text (optional)
             </label>
             <VariableTextField
               value={activeBlock.emptyText ?? ""}
               onChange={(emptyText) => handleUpdate({ emptyText })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               placeholder={DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT}
             />
           </div>
 
           {/* Form picker */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Source Form
             </label>
             <select
@@ -89,7 +89,7 @@ export function EditablePreviousAnswerBlock({
                   visibleSubFieldIds: [],
                 });
               }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select a form...</option>
               {forms.map((f) => (
@@ -109,7 +109,7 @@ export function EditablePreviousAnswerBlock({
           {/* Field picker */}
           {activeBlock.sourceFormId > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
                 Source Field
               </label>
               <select
@@ -120,7 +120,7 @@ export function EditablePreviousAnswerBlock({
                     visibleSubFieldIds: [],
                   })
                 }
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select a field...</option>
                 {sourceFields.map((f) => (
@@ -136,7 +136,7 @@ export function EditablePreviousAnswerBlock({
           )}
 
           {/* Field label visibility */}
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
             <input
               type="checkbox"
               checked={activeBlock.showLabel ?? true}
@@ -149,7 +149,7 @@ export function EditablePreviousAnswerBlock({
           {/* Sub-field visibility (list fields only) */}
           {isListField && listSubFields.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
                 Visible sub-fields (uncheck to hide)
               </label>
               <div className="space-y-1">
@@ -161,7 +161,7 @@ export function EditablePreviousAnswerBlock({
                   return (
                     <label
                       key={subField.id}
-                      className="flex items-center gap-2 text-sm text-gray-700"
+                      className="flex items-center gap-2 text-sm text-zinc-700"
                     >
                       <input
                         type="checkbox"

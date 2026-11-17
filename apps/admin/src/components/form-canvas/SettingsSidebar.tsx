@@ -54,14 +54,14 @@ export function SettingsSidebar({
           onClick={parent.onSelect}
           aria-label={`Back to ${parent.label}`}
           title={`Back to ${parent.label}`}
-          className="mx-2 mt-2 flex max-w-full items-center gap-1 rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="mx-2 mt-2 flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <ChevronLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate">{parent.label}</span>
         </button>
       )}
-      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-        <h2 className="min-w-0 truncate text-sm font-semibold text-gray-900">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3">
+        <h2 className="min-w-0 truncate text-sm font-semibold text-zinc-900">
           {heading}
         </h2>
         {headingActions && (

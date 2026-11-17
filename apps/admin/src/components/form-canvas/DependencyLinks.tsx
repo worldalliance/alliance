@@ -61,12 +61,12 @@ const rolesNote = (roles: readonly DependencyRole[]) =>
     : ` (${roles.map((role) => ROLE_LABELS[role]).join(", ")})`;
 
 const LINK =
-  "min-w-0 truncate text-left text-sm text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+  "min-w-0 truncate text-left text-sm text-blue-700 hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500";
 
 function LinkList({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
         {label}
       </h3>
       <ul aria-label={label} className="space-y-1">
@@ -156,13 +156,13 @@ export function DependencyLinks({
   };
 
   return (
-    <div className="space-y-3 border-t border-gray-200 pt-3">
+    <div className="space-y-3 border-t border-zinc-200 pt-3">
       {sources.length > 0 && (
         <LinkList label="Depends on">
           {sources.map((source) => (
             <li
               key={`${source.sourceFormId}/${source.fieldId}`}
-              className="flex items-baseline gap-1 text-sm text-gray-500"
+              className="flex items-baseline gap-1 text-sm text-zinc-500"
             >
               {sourceLink(source)}
             </li>
@@ -171,7 +171,7 @@ export function DependencyLinks({
       )}
       {entries &&
         (entries.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-zinc-500">
             No conditions on this form read this question.
           </p>
         ) : (
@@ -180,7 +180,7 @@ export function DependencyLinks({
               entry.kind === DependentEntryKind.Single ? (
                 <li
                   key={JSON.stringify(entry.dependent.place)}
-                  className="flex items-baseline gap-1 text-sm text-gray-500"
+                  className="flex items-baseline gap-1 text-sm text-zinc-500"
                 >
                   {placeLink(entry.dependent)}
                 </li>
@@ -206,7 +206,7 @@ export function DependencyLinks({
                     {entry.members.map((member) => (
                       <li
                         key={JSON.stringify(member.place)}
-                        className="flex items-baseline gap-1 text-sm text-gray-500"
+                        className="flex items-baseline gap-1 text-sm text-zinc-500"
                       >
                         {placeLink(member)}
                       </li>

@@ -48,7 +48,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
   const anchorSelector = anchorApplies(timingMode) &&
     (anchorCandidates.length > 0 || timingAnchorEventId !== null) && (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-zinc-700 mb-1">
           Relative to
         </label>
         <select
@@ -60,7 +60,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
                 : null,
             })
           }
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+          className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
         >
           <option value="">This action&apos;s deadline</option>
           {anchorIsStale && (
@@ -91,7 +91,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
     <>
       {timingMode === "absolute" && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Send at
           </label>
           <DateTimePicker
@@ -108,7 +108,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
       {timingMode === "from_deadline" && (
         <>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               hours to deadline
             </label>
             <input
@@ -120,7 +120,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
                   sendAtHoursFromDeadline: value === "" ? NaN : Number(value),
                 });
               }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
             />
           </div>
           {anchorSelector}
@@ -130,7 +130,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
       {timingMode === "within_range" && (
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Send range start
             </label>
             <DateTimePicker
@@ -143,7 +143,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Send range end
             </label>
             <DateTimePicker
@@ -164,7 +164,7 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
             <div className="md:col-span-2">{anchorSelector}</div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Window starts (hours before deadline)
             </label>
             <input
@@ -177,11 +177,11 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
                   relativeRangeStartHours: value === "" ? NaN : Number(value),
                 });
               }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Window ends (hours before deadline)
             </label>
             <input
@@ -194,14 +194,14 @@ const ReminderScheduleFields: React.FC<ReminderScheduleFieldsProps> = ({
                   relativeRangeEndHours: value === "" ? NaN : Number(value),
                 });
               }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
             />
           </div>
         </div>
       )}
 
       {timingMode === "event_launch" && (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-zinc-600">
           Reminders send when the member action event begins (i.e. announcement)
         </p>
       )}

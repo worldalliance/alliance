@@ -77,7 +77,7 @@ export default function UserRolesSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">Roles</h2>
       {roleMutationError && (
         <p className="text-xs text-red-500 mb-2">{roleMutationError}</p>
@@ -85,7 +85,7 @@ export default function UserRolesSection({
       <div className="space-y-1">
         <label
           className={cn(
-            "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
+            "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded-md",
             isStaffPending && "opacity-50",
           )}
         >
@@ -94,7 +94,7 @@ export default function UserRolesSection({
             checked={user.staff}
             disabled={isStaffPending}
             onChange={(e) => handleStaffToggle(e.target.checked)}
-            className="rounded"
+            className="rounded-md"
           />
           <span className={user.staff ? "text-zinc-900" : "text-zinc-500"}>
             Staff
@@ -102,7 +102,7 @@ export default function UserRolesSection({
         </label>
         <label
           className={cn(
-            "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
+            "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded-md",
             isAmbassadorPending && "opacity-50",
           )}
         >
@@ -111,7 +111,7 @@ export default function UserRolesSection({
             checked={user.ambassador}
             disabled={isAmbassadorPending}
             onChange={(e) => handleAmbassadorToggle(e.target.checked)}
-            className="rounded"
+            className="rounded-md"
           />
           <span className={user.ambassador ? "text-zinc-900" : "text-zinc-500"}>
             Ambassador
@@ -119,7 +119,7 @@ export default function UserRolesSection({
         </label>
         <label
           className={cn(
-            "flex items-center gap-2 text-sm px-1 py-0.5 rounded",
+            "flex items-center gap-2 text-sm px-1 py-0.5 rounded-md",
             isSelf ? "cursor-not-allowed" : "cursor-pointer hover:bg-zinc-50",
             isAdminPending && "opacity-50",
           )}
@@ -130,7 +130,7 @@ export default function UserRolesSection({
             checked={user.admin}
             disabled={isAdminPending || isSelf}
             onChange={(e) => handleAdminToggle(e.target.checked)}
-            className="rounded"
+            className="rounded-md"
           />
           <span className={user.admin ? "text-zinc-900" : "text-zinc-500"}>
             Admin

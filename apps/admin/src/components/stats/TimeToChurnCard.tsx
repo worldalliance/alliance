@@ -78,16 +78,16 @@ const TimeToChurnCard: React.FC = () => {
   }, [churnDurationsWeeks]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-gray-200">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-zinc-200">
         <div className="flex flex-col">
-          <h3 className="text-lg font-semibold text-gray-900">Time to churn</h3>
-          <span className="text-xs text-gray-500">
+          <h3 className="text-lg font-semibold text-zinc-900">Time to churn</h3>
+          <span className="text-xs text-zinc-500">
             From signing to last completed action
           </span>
         </div>
         {!timeToChurnError && (
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-zinc-500">
             {timeToChurnSamples.length > 0
               ? `${timeToChurnSamples.length} churned members`
               : "No churned members yet"}
@@ -96,17 +96,17 @@ const TimeToChurnCard: React.FC = () => {
       </div>
       <div className="relative p-4 pb-2">
         {timeToChurnError ? (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-zinc-600">
             {adminRefusalMessage(
               timeToChurnError,
               "Unable to load time to churn.",
             )}
           </p>
         ) : timeToChurnLoading ? (
-          <p className="text-sm text-gray-600">Loading time to churn...</p>
+          <p className="text-sm text-zinc-600">Loading time to churn...</p>
         ) : (
           churnDurationsWeeks.length === 0 && (
-            <p className="text-sm text-gray-600">No churned members yet.</p>
+            <p className="text-sm text-zinc-600">No churned members yet.</p>
           )
         )}
         {churnHistogramGeometry && churnDurationsWeeks.length > 0 && (
@@ -133,7 +133,7 @@ const TimeToChurnCard: React.FC = () => {
                     y={churnHistogramGeometry.yScale(tick)}
                     textAnchor="end"
                     dominantBaseline="middle"
-                    className="fill-gray-500 text-xs"
+                    className="fill-zinc-500 text-xs"
                   >
                     {tick}
                   </text>
@@ -159,7 +159,7 @@ const TimeToChurnCard: React.FC = () => {
                       24
                     }
                     textAnchor="middle"
-                    className="fill-gray-600 text-xs"
+                    className="fill-zinc-600 text-xs"
                   >
                     {tick.label}
                   </text>
@@ -210,7 +210,7 @@ const TimeToChurnCard: React.FC = () => {
               }
               y={churnHistogramGeometry.height - 12}
               textAnchor="middle"
-              className="fill-gray-500 text-xs"
+              className="fill-zinc-500 text-xs"
             >
               Weeks since signing
             </text>

@@ -106,7 +106,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         aria-label="Search name, email, or phone"
         placeholder="Search name, email, or phone"
         maxLength={200}
-        className="rounded border border-zinc-300 px-2 py-1 text-sm w-56"
+        className="rounded-md border border-zinc-300 px-2 py-1 text-sm w-56"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -177,7 +177,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         <input
           type="date"
           aria-label="Joined on or after"
-          className="rounded border border-zinc-300 px-1 py-0.5"
+          className="rounded-md border border-zinc-300 px-1 py-0.5"
           value={toDateInput(filter.joinedFrom)}
           onChange={(e) => {
             const joinedFrom = fromDateInput(e.target.value);
@@ -188,7 +188,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         <input
           type="date"
           aria-label="Joined on or before"
-          className="rounded border border-zinc-300 px-1 py-0.5"
+          className="rounded-md border border-zinc-300 px-1 py-0.5"
           value={toEndDateInput(filter.joinedBefore)}
           onChange={(e) => {
             const joinedBefore = fromEndDateInput(e.target.value);
@@ -199,7 +199,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         />
       </label>
       {filter.referrerIds?.length ? (
-        <span className="flex items-center gap-1 rounded bg-zinc-200 px-2 py-1 text-sm">
+        <span className="flex items-center gap-1 rounded-md bg-zinc-200 px-2 py-1 text-sm">
           Referred by{" "}
           {filter.referrerIds.length === 1
             ? "one entry"

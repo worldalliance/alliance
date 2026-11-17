@@ -72,12 +72,12 @@ export function OptionCategoriesEditor({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <label className="block text-xs font-medium text-gray-700">
+        <label className="block text-xs font-medium text-zinc-700">
           Categories
         </label>
         <button
           onClick={addCategory}
-          className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-2 py-1 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600"
           type="button"
         >
           Add Category
@@ -94,8 +94,8 @@ export function OptionCategoriesEditor({
                 value={category.name}
                 onChange={(event) => renameCategory(index, event.target.value)}
                 className={cn(
-                  "flex-1 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
-                  categoryErrors[index] ? "border-red-500" : "border-gray-300",
+                  "flex-1 px-2 py-1 text-xs border rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500",
+                  categoryErrors[index] ? "border-red-500" : "border-zinc-300",
                 )}
                 placeholder="Category name"
               />
@@ -104,7 +104,7 @@ export function OptionCategoriesEditor({
                   type="button"
                   onClick={() => moveCategory(index, index - 1)}
                   disabled={index === 0}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="px-1 py-0.5 text-xs rounded-md border border-zinc-300 text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-100"
                   aria-label="Move category up"
                   title="Move up"
                 >
@@ -114,7 +114,7 @@ export function OptionCategoriesEditor({
                   type="button"
                   onClick={() => moveCategory(index, index + 1)}
                   disabled={index === categories.length - 1}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="px-1 py-0.5 text-xs rounded-md border border-zinc-300 text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-100"
                   aria-label="Move category down"
                   title="Move down"
                 >
@@ -132,7 +132,7 @@ export function OptionCategoriesEditor({
               </button>
             </div>
             {categoryErrors[index] && (
-              <p className="mt-1 text-[11px] text-red-500">
+              <p className="mt-1 text-xs text-red-500">
                 {categoryErrors[index]}; the form won&apos;t save until this is
                 fixed.
               </p>

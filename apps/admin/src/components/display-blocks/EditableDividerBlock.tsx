@@ -12,7 +12,7 @@ export function EditableDividerBlock(
         <div className="space-y-2">
           {/* Compact thickness selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Thickness:</span>
+            <span className="text-xs text-zinc-500">Thickness:</span>
             <select
               value={activeBlock.thickness || "thin"}
               onChange={(e) =>
@@ -24,7 +24,7 @@ export function EditableDividerBlock(
                     | "thick",
                 })
               }
-              className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs border border-zinc-300 rounded-md px-1 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="hairline">Hairline</option>
               <option value="thin">Thin</option>

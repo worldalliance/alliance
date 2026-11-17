@@ -277,16 +277,16 @@ const InviteGraphPage = () => {
   ) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Loading graph...</p>
+        <p className="text-zinc-500">Loading graph...</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col w-full h-screen">
-      <div className="p-4 border-b border-gray-200 shrink-0">
+      <div className="p-4 border-b border-zinc-200 shrink-0">
         <h2 className="text-lg font-bold">Invite Graph</h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-zinc-500">
           {users.length} users, {inviteEdges.length} used invites,{" "}
           {campaignAttributedCount} from campaigns
           {matchCount !== null && ` \u2014 ${matchCount} matching filters`}
@@ -301,7 +301,7 @@ const InviteGraphPage = () => {
       )}
 
       {/* Filters */}
-      <div className="px-4 py-2 border-b border-gray-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
+      <div className="px-4 py-2 border-b border-zinc-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
         <EnumFilterSelect
           label="Contract"
           values={ContractFilter}
@@ -317,9 +317,9 @@ const InviteGraphPage = () => {
             type="checkbox"
             checked={isolateSubgraph}
             onChange={(e) => setIsolateSubgraph(e.target.checked)}
-            className="rounded border-gray-300"
+            className="rounded-md border-zinc-300"
           />
-          <span className="text-xs font-medium text-gray-600">
+          <span className="text-xs font-medium text-zinc-600">
             Isolate subgraph
           </span>
         </label>
@@ -334,7 +334,7 @@ const InviteGraphPage = () => {
           </button>
         )}
 
-        <div className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+        <div className="ml-auto flex items-center gap-3 text-xs text-zinc-500">
           {LEGEND.map((item) => (
             <span key={item.kind} className="flex items-center gap-1">
               <span
