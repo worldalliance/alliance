@@ -67,4 +67,4 @@ The purpose of deduplication is to put things that should change together in one
 
 `actionlint` from the repo root after editing `.github/workflows/`; CI and deploys fail on its findings. Without `shellcheck` on `PATH` it skips the shell in `run:` blocks and still passes; `brew install actionlint shellcheck`.
 
-`shellcheck .github/actions/*/*.sh .github/scripts/*.sh scripts/deploy_backend.sh scripts/deploy_monitoring.sh scripts/secrets_run.sh scripts/with-secrets.sh deploy/nginx/*.sh` after editing any of them; actionlint skips those scripts, and CI and deploys run it too.
+`shellcheck` on the scripts the "Lint Shell Scripts" step in `.github/workflows/actionlint.yaml` names, with that step's command, after editing any of them; actionlint skips those scripts, and CI and deploys run it too.

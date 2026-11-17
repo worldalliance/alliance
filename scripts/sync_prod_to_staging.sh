@@ -167,6 +167,7 @@ ${SECRETS_PATH}. Staging still holds the data from its previous successful sync.
 }
 trap report_startup_failure EXIT
 
+# shellcheck disable=SC2016 # a regex, not an expansion
 BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
 if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
   echo "${SECRETS_PATH}STAGING_PASSWORD_HASH is not a bcrypt hash." >&2
