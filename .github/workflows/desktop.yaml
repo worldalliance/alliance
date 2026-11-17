@@ -40,6 +40,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Check Codex Protocol Types
+        run: bun scripts/codex-protocol.ts check
+
       # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces
       # Electron's sandbox needs, so Electron would abort at launch.
       - name: Allow Electron's Sandbox
