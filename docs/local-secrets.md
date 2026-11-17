@@ -51,7 +51,13 @@ rm .scratch/value.txt
 
 The order matters because the store is shared: the wrapper fails when a key the manifest lists is missing from the store, and checkouts whose manifest doesn't list it yet ignore it. The daily login can only read, so step 1 needs an admin login. The `parameter-drift` workflow fails when the store and the schemas disagree, so it reports the new key until step 2 merges.
 
-To remove a secret, drop it from `scripts/dev-secrets.json`, and for `server` from `setFor[NodeEnv.Development]` and `teamOnlyKeys`, which server tests compare with the manifest, then delete the parameter once that merges: until then the wrapper on `main` requires it. Branches and worktrees from before the merge still list it, so deleting it stops their server from starting until they merge `main`; tell the team before you delete it. Remove it from the server schema too only if `inDeployedStore` in `server/src/config/env.ts` keeps it out of the staging and production paths; otherwise follow the removal steps in [backend-secrets.md](backend-secrets.md), since dropping the field makes those paths report it as not in `inDeployedStore`. The removal PR's own `parameter-drift` run, and `main`'s after it merges, report the key as not in `scripts/dev-secrets.json` until you delete it; that's expected. Dispatch the workflow on `main` afterwards to clear it.
+To remove a secret:
+
+1. Move it from `secrets` to `retiring` under its consumer in `scripts/dev-secrets.json`, and for `server` drop it from `setFor[NodeEnv.Development]` and `teamOnlyKeys`, which server tests compare with the manifest. Remove it from the server schema too only if `inDeployedStore` in `server/src/config/env.ts` keeps it out of the staging and production paths; otherwise follow the removal steps in [backend-secrets.md](backend-secrets.md), since dropping the field makes those paths report it as not in `inDeployedStore`.
+2. Once that merges, delete the parameter. Branches and worktrees from before the merge still list it under `secrets`, so deleting it stops their server from starting until they merge `main`; tell the team before you delete it.
+3. Drop it from `retiring`.
+
+The `parameter-drift` workflow allows a `retiring` key in the store without requiring it, and the wrapper neither requires nor loads it, so the workflow stays green through each step.
 
 Only secrets go in the store. Non-secret development settings are in `developmentEnv` in `common/src/deployed-config.ts`, and per-checkout keys (`DB_*`, `APP_URL`, `ADMIN_URL`, `NODE_ENV`, `TZ`) stay in `server/.env`. Per-person keys, such as `POSTHOG_API_KEY`, stay in `.env.devtools`.
 
