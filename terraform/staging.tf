@@ -214,8 +214,6 @@ resource "aws_cloudfront_response_headers_policy" "staging_cors" {
       items = [
         "https://staging.thealliance.org",
         "https://admin.staging.thealliance.org",
-        "https://staging.worldalliance.org",
-        "https://admin.staging.worldalliance.org",
       ]
     }
     access_control_allow_methods {
@@ -246,8 +244,6 @@ resource "aws_cloudfront_response_headers_policy" "staging_images_immutable" {
       items = [
         "https://staging.thealliance.org",
         "https://admin.staging.thealliance.org",
-        "https://staging.worldalliance.org",
-        "https://admin.staging.worldalliance.org",
       ]
     }
     access_control_allow_methods {
