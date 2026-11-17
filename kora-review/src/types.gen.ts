@@ -87,7 +87,7 @@ export interface KoraExport {
   profile: KoraProfile | null;
   exitSurvey: KoraExitSurvey | null;
   /**
-   * Categories the reviewer chose to skip for the rest of the assignment.
+   * Categories the reviewer chose to skip, in this assignment or an earlier one. Pairs in them are not assigned to the reviewer again.
    */
   optOutCategories: KoraCategory[];
   /**

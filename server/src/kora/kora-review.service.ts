@@ -41,6 +41,7 @@ import {
   koraHome,
   type KoraOffer,
 } from "./kora-home";
+import { COUNTED_REVIEWS, OPEN_BATCH } from "./kora-pool";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
 import { koraAjv } from "./kora-upload";
@@ -56,13 +57,9 @@ export type KoraSaveRefusal =
   | { error: KoraSaveError.NotFound }
   | { error: KoraSaveError.Invalid; reason: string };
 
-export const KORA_RELEASE_AFTER_DAYS = 7;
-
 const validExport = koraAjv().compile(exportSchema);
 
 type BatchCandidate = Candidate & { closesAt: Date | null };
-
-const OPEN_BATCH = `b."retiredAt" IS NULL AND (b."closesAt" IS NULL OR b."closesAt" > now())`;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -159,7 +156,7 @@ export class KoraReviewService {
       );
       return R.failure({ error: KoraSaveError.Invalid, reason: checked.error });
     }
-    const { statuses, profileAnswered } = checked.value;
+    const { statuses, profileAnswered, optOutCategories } = checked.value;
     const completed = [...statuses.values()].every(
       (s) => s !== KoraReviewStatus.Pending,
     );
@@ -194,6 +191,14 @@ export class KoraReviewService {
         );
       }
       if (completion) await logCompletion(manager, completion);
+      if (optOutCategories.length > 0) {
+        await manager.query(
+          `UPDATE "kora_reviewer" SET "optOutCategories" = ARRAY(
+             SELECT DISTINCT unnest("optOutCategories" || $2::text[]) ORDER BY 1
+           ) WHERE "id" = $1`,
+          [reviewer.id, optOutCategories],
+        );
+      }
       if (profileAnswered && !reviewer.profileAnsweredAt) {
         await manager.update(
           KoraReviewer,
@@ -279,6 +284,7 @@ export class KoraReviewService {
       phase,
       reviewerId: reviewer.id,
       collectProfile: reviewer.profileAnsweredAt === null,
+      optOutCategories: reviewer.optOutCategories,
       reviewed,
       extraReviews,
       assignment: null,
@@ -390,9 +396,8 @@ export class KoraReviewService {
   }
 
   /**
-   * Transcripts in open batches this reviewer hasn't had, with how many
-   * reviews each still needs: its target, less finished reviews, less pending
-   * ones in assignments saved within the release window and not yet closed.
+   * Transcripts in open batches this reviewer hasn't had, outside the
+   * categories they opted out of, with how many reviews each still needs.
    */
   private async candidates(
     manager: EntityManager,
@@ -400,15 +405,7 @@ export class KoraReviewService {
   ): Promise<BatchCandidate[]> {
     const rows: BatchCandidate[] = await manager.query(
       `SELECT t."id", t."category", b."closesAt",
-           b."reviewsPerTranscript" - (
-             SELECT COUNT(*)::int FROM "kora_assignment_transcript" at
-             JOIN "kora_assignment" a ON a."id" = at."assignmentId"
-             WHERE at."transcriptId" = t."id" AND a."deletedAt" IS NULL
-               AND (at."status" = $2 OR (at."status" = $3
-                 AND a."completedAt" IS NULL
-                 AND a."lastActivityAt" > now() - make_interval(days => $4)
-                 AND (a."closesAt" IS NULL OR a."closesAt" > now())))
-           ) AS "deficit"
+           b."reviewsPerTranscript" - ${COUNTED_REVIEWS} AS "deficit"
          FROM "kora_transcript" t
          JOIN "kora_batch" b ON b."id" = t."batchId"
          WHERE ${OPEN_BATCH} AND NOT EXISTS (
@@ -416,13 +413,11 @@ export class KoraReviewService {
            JOIN "kora_assignment" a ON a."id" = mine."assignmentId"
            WHERE mine."transcriptId" = t."id" AND a."reviewerId" = $1
              AND a."deletedAt" IS NULL
+         ) AND NOT EXISTS (
+           SELECT 1 FROM "kora_reviewer" r
+           WHERE r."id" = $1 AND t."category" = ANY(r."optOutCategories")
          )`,
-      [
-        reviewerId,
-        KoraReviewStatus.Done,
-        KoraReviewStatus.Pending,
-        KORA_RELEASE_AFTER_DAYS,
-      ],
+      [reviewerId],
     );
     return rows.filter((r) => r.deficit > 0);
   }

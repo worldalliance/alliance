@@ -7,6 +7,7 @@ import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import type {
   KoraAdminAbandonedSignup,
+  KoraAdminCategory,
   KoraAdminOverview,
 } from "./dto/kora-admin.dto";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
@@ -16,6 +17,7 @@ import {
   KoraParticipant,
   participantContact,
 } from "./entities/kora-participant.entity";
+import { COUNTED_REVIEWS, OPEN_BATCH } from "./kora-pool";
 
 export enum KoraAdminError {
   NotFound = "not_found",
@@ -84,6 +86,23 @@ export class KoraAdminService {
       })),
       abandonedSignups: markRecovered(participants, abandoned),
     };
+  }
+
+  /** Categories in open batches, those needing the most reviews first. */
+  categories(): Promise<KoraAdminCategory[]> {
+    return this.dataSource.query(
+      `SELECT t."category",
+         COUNT(*)::int AS "pairs",
+         SUM(GREATEST(b."reviewsPerTranscript" - ${COUNTED_REVIEWS}, 0))::int AS "reviewsNeeded",
+         (SELECT COUNT(*)::int FROM "kora_reviewer" r
+           WHERE r."deletedAt" IS NULL AND t."category" = ANY(r."optOutCategories")
+         ) AS "optedOut"
+       FROM "kora_transcript" t
+       JOIN "kora_batch" b ON b."id" = t."batchId"
+       WHERE ${OPEN_BATCH}
+       GROUP BY t."category"
+       ORDER BY "reviewsNeeded" DESC, t."category"`,
+    );
   }
 
   /**

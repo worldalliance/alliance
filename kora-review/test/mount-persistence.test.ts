@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "bun:test";
-import { KoraSaveState, type KoraExport } from "../src/index.js";
+import { KoraCategory, KoraSaveState, type KoraExport } from "../src/index.js";
+import { parseKoraExport } from "../src/parse.js";
 import { SAMPLE_EXPORT as sampleExport } from "../src/sample-export.js";
 import {
   button,
@@ -145,5 +146,18 @@ describe("mountKoraReview: saving and resuming", () => {
     const other = clone(sampleExport) as unknown as KoraExport;
     other.reviewer.id = "someone-else";
     expect(() => mount({ savedExport: other })).toThrow(/different reviewerId/);
+  });
+
+  it("repeats opt-outs from earlier assignments in the export", async () => {
+    const saved = parseKoraExport(clone(sampleExport));
+    mount({ savedExport: saved, optOutCategories: [KoraCategory.Violence] });
+    await tick(50);
+    const safe = [
+      ...rank().querySelectorAll('button[aria-pressed="true"]'),
+    ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
+    safe.click();
+    await handle!.flush();
+    expectValid(saves[0]!);
+    expect(saves[0]!.optOutCategories).toEqual([KoraCategory.Violence]);
   });
 });

@@ -84,7 +84,7 @@ export function createModel(ctx: ModelCtx) {
     sheet: null,
     noteDraft: "",
     lastCategory: null,
-    optOutCats: [],
+    optOutCats: [...o.optOutCategories],
     profile: null,
     exitSurvey: null,
     isDone: false,
@@ -297,9 +297,9 @@ export function createModel(ctx: ModelCtx) {
       recompute(r);
       S.results[t.id] = r;
     }
-    S.optOutCats = Array.isArray(saved.optOutCategories)
-      ? [...saved.optOutCategories]
-      : [];
+    S.optOutCats = [
+      ...new Set([...o.optOutCategories, ...saved.optOutCategories]),
+    ];
     S.profile = saved.profile ? clone(saved.profile) : null;
     S.exitSurvey = saved.exitSurvey ? clone(saved.exitSurvey) : null;
     S.isDone = !!saved.isDone;

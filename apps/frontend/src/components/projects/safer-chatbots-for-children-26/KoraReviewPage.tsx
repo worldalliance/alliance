@@ -1,5 +1,6 @@
 import { KORA_PROJECT_PATH, KoraReviewPhase } from "@alliance/common/kora";
 import {
+  parseKoraCategories,
   parseKoraExport,
   parseKoraTranscript,
 } from "@alliance/kora-review/parse";
@@ -55,10 +56,16 @@ function ReviewTool({
               : null,
             collectProfile: state.collectProfile,
             collectExitSurvey: !assignment.extra,
+            optOutCategories: parseKoraCategories(state.optOutCategories),
             save: (exported) => saveKoraExport(assignment.id, { ...exported }),
           }
         : null,
-    [assignment, state.reviewerId, state.collectProfile],
+    [
+      assignment,
+      state.reviewerId,
+      state.collectProfile,
+      state.optOutCategories,
+    ],
   );
   return (
     options && <KoraReviewTool options={options} onComplete={onComplete} />

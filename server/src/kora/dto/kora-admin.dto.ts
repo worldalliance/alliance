@@ -83,3 +83,42 @@ export class KoraAdminOverviewDto {
     );
   }
 }
+
+export type KoraAdminCategory = {
+  category: string;
+  pairs: number;
+  reviewsNeeded: number;
+  optedOut: number;
+};
+
+export class KoraAdminCategoryDto {
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty({ description: "Pairs in open batches" })
+  pairs: number;
+
+  @ApiProperty({
+    description: "Reviews its pairs still need to reach their targets",
+  })
+  reviewsNeeded: number;
+
+  @ApiProperty({ description: "Reviewers who opted out of it" })
+  optedOut: number;
+
+  constructor(input: KoraAdminCategory) {
+    this.category = input.category;
+    this.pairs = input.pairs;
+    this.reviewsNeeded = input.reviewsNeeded;
+    this.optedOut = input.optedOut;
+  }
+}
+
+export class KoraAdminCategoriesDto {
+  @ApiProperty({ type: () => KoraAdminCategoryDto, isArray: true })
+  categories: KoraAdminCategoryDto[];
+
+  constructor(input: KoraAdminCategory[]) {
+    this.categories = input.map((c) => new KoraAdminCategoryDto(c));
+  }
+}

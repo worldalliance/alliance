@@ -51,6 +51,16 @@ describe("checkExport", () => {
       ["T2", KoraReviewStatus.OptedOut],
     ]);
     expect(result.value.profileAnswered).toBe(true);
+    expect(result.value.optOutCategories).toEqual([]);
+  });
+
+  it("reads the categories the reviewer opted out of", () => {
+    const result = check({
+      ...build({ optedOut: ["T2"] }),
+      optOutCategories: ["fear_trauma_and_distress"],
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.value.optOutCategories).toEqual(["fear_trauma_and_distress"]);
   });
 
   it("refuses an export for another reviewer or assignment", () => {

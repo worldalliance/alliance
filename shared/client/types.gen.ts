@@ -5472,6 +5472,26 @@ export type KoraAdminOverviewDto = {
     abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
 };
 
+export type KoraAdminCategoryDto = {
+    category: string;
+    /**
+     * Pairs in open batches
+     */
+    pairs: number;
+    /**
+     * Reviews its pairs still need to reach their targets
+     */
+    reviewsNeeded: number;
+    /**
+     * Reviewers who opted out of it
+     */
+    optedOut: number;
+};
+
+export type KoraAdminCategoriesDto = {
+    categories: Array<KoraAdminCategoryDto>;
+};
+
 export type KoraBatchDto = {
     id: string;
     transcriptsPerAssignment: number;
@@ -5556,6 +5576,10 @@ export type KoraReviewStateDto = {
      */
     reviewerId: string;
     collectProfile: boolean;
+    /**
+     * Categories the reviewer opted out of in any assignment
+     */
+    optOutCategories: Array<string>;
     /**
      * Has finished at least one assignment
      */
@@ -16828,6 +16852,28 @@ export type KoraAdminOverviewResponses = {
 };
 
 export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
+
+export type KoraAdminCategoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/categories';
+};
+
+export type KoraAdminCategoriesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminCategoriesError = KoraAdminCategoriesErrors[keyof KoraAdminCategoriesErrors];
+
+export type KoraAdminCategoriesResponses = {
+    200: KoraAdminCategoriesDto;
+};
+
+export type KoraAdminCategoriesResponse = KoraAdminCategoriesResponses[keyof KoraAdminCategoriesResponses];
 
 export type KoraAdminDeleteParticipantData = {
     body?: never;

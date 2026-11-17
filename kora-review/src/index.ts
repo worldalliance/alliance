@@ -3,7 +3,7 @@
 import { createEngine } from "./engine.js";
 import { createSaver } from "./saver.js";
 import { CATEGORY_IDS, SCHEMA_VERSION } from "./schemas.js";
-import type { KoraExport, KoraTranscript } from "./types.gen.js";
+import type { KoraCategory, KoraExport, KoraTranscript } from "./types.gen.js";
 
 export { exportSchema, SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
 export { KoraCategory } from "./types.gen.js";
@@ -29,6 +29,8 @@ export interface KoraReviewOptions {
   collectProfile: boolean;
   /** Ask the exit survey when the assignment is complete. */
   collectExitSurvey: boolean;
+  /** Categories the reviewer opted out of in earlier assignments, repeated in this export's `optOutCategories`. */
+  optOutCategories?: KoraCategory[];
   /** Persist the whole export. Rejects when the host refuses the save. */
   save: (exported: KoraExport) => Promise<void>;
   /** Called once, when every transcript is done or opted out and any exit survey is answered. */
@@ -182,6 +184,7 @@ export function mountKoraReview(
     savedExport: options.savedExport,
     collectProfile: !!options.collectProfile,
     collectExitSurvey: !!options.collectExitSurvey,
+    optOutCategories: options.optOutCategories ?? [],
     onChange: () => saver.changed(),
     onComplete,
     // The page is being hidden (tab switch, app backgrounded, webview closing): save now rather than in 2 s.

@@ -12,7 +12,7 @@ import {
   type KoraHarness,
 } from "./kora-fixtures";
 import { koraExport } from "./kora-pairs";
-import { koraReviewClient } from "./kora-review-fixtures";
+import { koraReviewClient, type ReviewState } from "./kora-review-fixtures";
 import { forgetRateEvents } from "./otp-fixtures";
 
 describe("Kora reviews (e2e)", () => {
@@ -172,6 +172,42 @@ describe("Kora reviews (e2e)", () => {
     expect((await state(browser)).assignment?.id).toBe(s.assignment?.id);
     await finish(browser, s);
     expect((await more(browser)).phase).toBe(KoraReviewPhase.NoneLeft);
+  });
+
+  it("never gives a reviewer pairs from a category they opted out of again", async () => {
+    await upload(8, { reviews: 1 });
+    const browser = await participant();
+    const first = await state(browser);
+    const fear = "fear_trauma_and_distress";
+    const inFear = (s: ReviewState) =>
+      (s.assignment?.transcripts ?? [])
+        .filter((t) => t.transcript.category === fear)
+        .map((t) => t.transcript.transcriptId);
+    const done = ids(first.assignment).filter(
+      (id) => !inFear(first).includes(id),
+    );
+    await save(browser, first.assignment?.id ?? "", {
+      ...exportOf(first, { done, optedOut: inFear(first) }),
+      optOutCategories: [fear],
+    }).expect(200);
+
+    const extra = await more(browser);
+    expect(extra.optOutCategories).toEqual([fear]);
+    expect(ids(extra.assignment).length).toBeGreaterThan(0);
+    expect(inFear(extra)).toEqual([]);
+
+    const categories = (
+      await request(h.ctx.app.getHttpServer())
+        .get("/kora/admin/categories")
+        .set("Authorization", `Bearer ${h.ctx.adminAccessToken}`)
+        .expect(200)
+    ).body.categories;
+    expect(categories).toContainEqual({
+      category: fear,
+      pairs: 4,
+      reviewsNeeded: 4,
+      optedOut: 1,
+    });
   });
 
   it("keeps a member's reviewer apart from any participant's", async () => {

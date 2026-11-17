@@ -1,4 +1,5 @@
 import {
+  koraAdminCategories,
   koraBatchesDelete,
   koraBatchesDeletionImpact,
   koraBatchesEvents,
@@ -24,12 +25,23 @@ export function useKoraBatchesAdmin() {
   });
 }
 
+export function useKoraCategoriesAdmin() {
+  return useQuery({
+    queryKey: queryKeys.koraCategoriesAdmin(),
+    queryFn: () =>
+      koraAdminCategories({ throwOnError: true }).then(
+        (r) => r.data.categories,
+      ),
+  });
+}
+
 function useRefreshBatches() {
   const queryClient = useQueryClient();
   return () =>
     Promise.all(
       [
         queryKeys.koraBatchesAdmin(),
+        queryKeys.koraCategoriesAdmin(),
         queryKeys.koraBatchEventsAdmin(),
         queryKeys.koraProjectAdmin(),
       ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),

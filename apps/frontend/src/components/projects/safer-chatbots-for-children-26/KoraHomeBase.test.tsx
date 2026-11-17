@@ -43,6 +43,7 @@ serveApi(
             phase: KoraReviewPhase.Reviewing,
             reviewerId: "rv1",
             collectProfile: true,
+            optOutCategories: [],
             reviewed: false,
             extraReviews: 0,
           });

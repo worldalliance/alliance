@@ -28,6 +28,7 @@ const reviewing = (extra = false): KoraReviewStateDto => ({
   phase: KoraReviewPhase.Reviewing,
   reviewerId: "rv1",
   collectProfile: true,
+  optOutCategories: [],
   reviewed: extra,
   extraReviews: 0,
   assignment: {
@@ -45,6 +46,7 @@ const summary = (
   phase,
   reviewerId: "rv1",
   collectProfile: false,
+  optOutCategories: [],
   reviewed,
   extraReviews,
 });

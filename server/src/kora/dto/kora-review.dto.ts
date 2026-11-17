@@ -16,6 +16,7 @@ export type KoraReviewState = {
   phase: KoraReviewPhase;
   reviewerId: string;
   collectProfile: boolean;
+  optOutCategories: string[];
   reviewed: boolean;
   extraReviews: number;
   assignment: KoraLoadedAssignment | null;
@@ -54,6 +55,13 @@ export class KoraReviewStateDto {
   @ApiProperty()
   collectProfile: boolean;
 
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    description: "Categories the reviewer opted out of in any assignment",
+  })
+  optOutCategories: string[];
+
   @ApiProperty({ description: "Has finished at least one assignment" })
   reviewed: boolean;
 
@@ -67,6 +75,7 @@ export class KoraReviewStateDto {
     this.phase = input.phase;
     this.reviewerId = input.reviewerId;
     this.collectProfile = input.collectProfile;
+    this.optOutCategories = input.optOutCategories;
     this.reviewed = input.reviewed;
     this.extraReviews = input.extraReviews;
     if (input.assignment) {

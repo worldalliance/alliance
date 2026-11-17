@@ -24,6 +24,7 @@ export type ReviewState = {
   phase: KoraReviewPhase;
   reviewerId: string;
   collectProfile: boolean;
+  optOutCategories: string[];
   extraReviews: number;
   assignment?: ReviewAssignment;
 };
