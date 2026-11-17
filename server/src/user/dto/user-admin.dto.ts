@@ -15,7 +15,8 @@ import {
   OnetimeInvite,
 } from "../entities/onetime-invite.entity";
 import { Tag } from "../entities/tag.entity";
-import { loadedUserTags, ReferralSource, User } from "../entities/user.entity";
+import { ReferralSource, User } from "../entities/user.entity";
+import { loadedUserTags } from "../user.utils";
 import { UserDto } from "./user.dto";
 
 export type UserAdminInvitedBy =

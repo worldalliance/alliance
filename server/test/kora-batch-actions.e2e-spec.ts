@@ -59,27 +59,46 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
   });
 
   it("retires a batch: unrated pairs leave, new assignments skip it, and reactivating brings it back", async () => {
-    const older = await upload(4, { prefix: "A", perAssignment: 2 });
-    const newer = await upload(4, { prefix: "B", perAssignment: 4 });
+    const older = await upload(2, { prefix: "A", perAssignment: 2 });
+    const newer = await upload(2, { prefix: "B", perAssignment: 4 });
     const reviewer = await participant();
     const first = await state(reviewer);
-    const [rated] = ids(first.assignment);
-    await save(
-      reviewer,
-      first.assignment?.id ?? "",
-      exportOf(first, { done: [rated] }),
-    ).expect(200);
-    const unrated = await next(reviewer, first.assignment?.id ?? "");
+    const id = first.assignment?.id ?? "";
+    const given = [...(first.assignment?.transcripts ?? [])];
+    const rateGiven = () => {
+      const all = {
+        ...first,
+        assignment: first.assignment && {
+          ...first.assignment,
+          transcripts: given,
+        },
+      };
+      return save(
+        reviewer,
+        id,
+        exportOf(all, { done: ids(all.assignment) }),
+      ).expect(200);
+    };
+    const givenIds = () => given.map((t) => t.transcript.transcriptId);
+    while (!givenIds().some((t) => t.startsWith("B"))) {
+      await rateGiven();
+      const t = await next(reviewer, id);
+      if (!t) throw new Error("ran out before a B pair");
+      given.push(t);
+    }
+    await rateGiven();
+    const rated = givenIds();
+    const unrated = await next(reviewer, id);
 
     const retired = await admin("post", `/batches/${newer}/retire`).expect(200);
     expect(retired.body.retiredAt).not.toBeNull();
 
     const kept = ids((await state(reviewer)).assignment);
-    expect(kept[0]).toBe(rated);
-    expect(kept.slice(1).filter((id) => id.startsWith("B"))).toEqual([]);
-    if (unrated?.transcript.transcriptId.startsWith("A")) {
-      expect(kept).toContain(unrated.transcript.transcriptId);
-    }
+    expect(kept.slice(0, rated.length)).toEqual(rated);
+    const unratedB = unrated?.transcript.transcriptId.startsWith("B")
+      ? [unrated.transcript.transcriptId]
+      : [];
+    for (const b of unratedB) expect(kept).not.toContain(b);
 
     const fresh = await state(await participant());
     expect(batchesOf(ids(fresh.assignment))).toEqual(new Set(["A"]));

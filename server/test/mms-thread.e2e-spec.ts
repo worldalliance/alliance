@@ -259,6 +259,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
       phoneNumber: null,
       textable: false,
       optedOut: false,
+      replyState: "answered",
       messages: [],
       hasOlder: false,
     });

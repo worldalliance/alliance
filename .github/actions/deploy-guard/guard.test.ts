@@ -21,6 +21,7 @@ function guard(env: Record<string, string>) {
       GITHUB_OUTPUT: output,
       GITHUB_STEP_SUMMARY: join(dir, "summary"),
       ENVIRONMENT: "staging",
+      DETAILS: "{}",
       COMMIT,
       RUN_URL: "https://github.com/o/r/actions/runs/7/attempts/1",
       ...env,
@@ -64,6 +65,7 @@ describe("guard.sh on staging", () => {
       auto_merge: false,
       required_contexts: [],
       production_environment: false,
+      payload: {},
     });
   });
 
@@ -142,12 +144,17 @@ describe("guard.sh on staging", () => {
 });
 
 describe("guard.sh on production", () => {
-  test("deploys the production branch's tip", () => {
-    const result = guard({ ENVIRONMENT: "production", FAKE_TIP: COMMIT });
+  test("deploys the production branch's tip, recording the details", () => {
+    const result = guard({
+      ENVIRONMENT: "production",
+      DETAILS: '{"staging_run":"run"}',
+      FAKE_TIP: COMMIT,
+    });
     expectDeploys(result);
     expect(result.body).toMatchObject({
       environment: "production-live",
       production_environment: true,
+      payload: { staging_run: "run" },
     });
   });
 
@@ -184,6 +191,16 @@ test.each(["", "cccccccc"])(
     });
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("commit must be a full SHA");
+    expect(result.calls).toBe("");
+  },
+);
+
+test.each(['"x"', "[]", "null", "not json", "{} {}"])(
+  "guard.sh fails on details %s, not a JSON object",
+  (details) => {
+    const result = guard({ DETAILS: details });
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("details must be a JSON object");
     expect(result.calls).toBe("");
   },
 );

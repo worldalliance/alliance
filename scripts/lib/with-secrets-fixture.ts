@@ -39,11 +39,7 @@ export function withSecretsFixture() {
     writeFileSync(
       join(repo, "scripts/dev-secrets.json"),
       JSON.stringify({
-        server: {
-          envFile: "server.env",
-          loadsEnvFile: false,
-          secrets: ["ONE", "TWO"],
-        },
+        server: { secrets: ["ONE", "TWO"] },
       }),
     );
     writeFileSync(
@@ -105,7 +101,6 @@ export function withSecretsFixture() {
       JSON.stringify({
         server: {
           envFile: "server.env",
-          loadsEnvFile: true,
           secrets: ["ONE", "TWO"],
         },
       }),

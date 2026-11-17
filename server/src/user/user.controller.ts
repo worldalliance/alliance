@@ -17,7 +17,11 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse, ApiUnauthorizedResponse } from "@nestjs/swagger";
+import {
+  ApiConflictResponse,
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { IsNotEmpty, IsString } from "class-validator";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtRequest } from "src/auth/tokens";
@@ -101,6 +105,9 @@ export class UserController {
   @Post("update")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ProfileDto })
+  @ApiConflictResponse({
+    description: "Another live account holds the phone number",
+  })
   async update(
     @Body() updateActionDto: UpdateProfileDto,
     @Request() req: JwtRequest,
@@ -109,14 +116,6 @@ export class UserController {
       await this.userService.update(req.user.sub, updateActionDto),
     );
   }
-
-  // BACKCOMPAT(ALL-2200): web tabs loaded on a legacy host before the cutover
-  // still call this; remove once the access logs show no POST /api/user/switch-domain.
-  @Post("switch-domain")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ description: "No-op since the cutover" })
-  @ApiUnauthorizedResponse()
-  async switchDomain(): Promise<void> {}
 
   @Get("mylocation")
   @UseGuards(AuthGuard)

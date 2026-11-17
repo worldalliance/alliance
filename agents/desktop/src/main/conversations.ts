@@ -55,6 +55,10 @@ export class ConversationStore {
     return this.update((all) => [conversation, ...all]);
   }
 
+  remove(id: string): Promise<Result<void, Error>> {
+    return this.update((all) => all.filter((c) => c.id !== id));
+  }
+
   // Writes run one at a time, each on the list the previous one left.
   private update(
     change: (all: Conversation[]) => Conversation[],

@@ -194,12 +194,21 @@ END $$;
 \set seed 1
 SELECT set_config('anonymize.seed', :'seed', true);
 
+-- \copy resolves a relative path against psql's working directory, not this
+-- file's folder as \ir does, so the sync \cd's into its copy of this folder
+-- and sets in_anonymize_dir.
+-- BACKCOMPAT(anonymize-cwd): a sync script from before the copy does neither.
+-- Remove once the staging host's ~/sync_prod_to_staging.sh sets it.
+\if :{?in_anonymize_dir}
+\else
+\cd /home/ec2-user/nest-backend/scripts/anonymize
+\endif
 CREATE TEMP TABLE first_name (id SERIAL PRIMARY KEY, name TEXT NOT NULL)
   ON COMMIT DROP;
 CREATE TEMP TABLE last_name (id SERIAL PRIMARY KEY, name TEXT NOT NULL)
   ON COMMIT DROP;
-\copy first_name (name) FROM '/home/ec2-user/nest-backend/scripts/anonymize/first_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
-\copy last_name (name) FROM '/home/ec2-user/nest-backend/scripts/anonymize/last_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy first_name (name) FROM 'first_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy last_name (name) FROM 'last_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
 
 UPDATE "user" u
 SET "name" = f.name || ' ' || l.name
@@ -215,7 +224,7 @@ CREATE TEMP TABLE dracula_sentence (
   words INT NOT NULL CHECK (words > 0),
   body  TEXT NOT NULL
 ) ON COMMIT DROP;
-\copy dracula_sentence (words, body) FROM '/home/ec2-user/nest-backend/scripts/anonymize/dracula_words.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy dracula_sentence (words, body) FROM 'dracula_words.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
 CREATE INDEX ON dracula_sentence (words);
 
 -- Sentences totalling the answer's word count, chained when no single sentence

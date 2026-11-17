@@ -32,6 +32,7 @@ export type KoraHarness = {
   ) => request.Test;
   state: (browser: TestAgent) => Promise<KoraStateBody>;
   lastCode: () => string;
+  lastText: () => string;
   /** Requests and verifies a code, leaving a new contact awaiting a name. */
   verified: (browser: TestAgent, contact: Contact) => Promise<void>;
   /** A participant signed in on `browser`. */
@@ -90,6 +91,7 @@ export async function koraHarness(): Promise<KoraHarness> {
     signup: (browser, body) => post(browser, "/kora/signup").send(body),
     state: async (browser) => (await browser.get("/kora/me").expect(200)).body,
     lastCode: sent.lastCode,
+    lastText: sent.lastText,
     verified: async (browser, contact) => {
       await harness.sendCode(browser, contact).expect(200);
       const res = await harness

@@ -110,6 +110,7 @@ describe("the fake backend's demo session", () => {
       {
         kind: AgentEventKind.Error,
         message: "The fake session's script has no more turns.",
+        needsResume: false,
       },
       { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
@@ -335,6 +336,7 @@ describe("close", () => {
       {
         kind: AgentEventKind.Error,
         message: `The fake session ${session.id} is closed.`,
+        needsResume: true,
       },
       { kind: AgentEventKind.TurnEnded, interrupted: false },
     ]);
@@ -368,4 +370,15 @@ describe("close", () => {
     const { session } = await startDemo();
     expect(session.close()).toBe(session.close());
   });
+});
+
+test("a fake session reads its first message with its first send, and none once closed first", async () => {
+  const backend = createFakeBackend({ script: demoScript, stepDelayMs: 0 });
+  const read = R.unwrap(await backend.start({ cwd: "/" }));
+  R.unwrap(read.send({ text: "Hello", images: [] }));
+  expect(await read.firstMessageRead).toBe(true);
+  await read.close();
+  const closed = R.unwrap(await backend.start({ cwd: "/" }));
+  await closed.close();
+  expect(await closed.firstMessageRead).toBe(false);
 });

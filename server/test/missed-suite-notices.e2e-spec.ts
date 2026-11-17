@@ -23,7 +23,6 @@ import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
-import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import {
   ActionEventNotif,
   ActionEventNotifType,
@@ -38,6 +37,7 @@ import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import {
@@ -292,39 +292,48 @@ describe("missed-suite notices (e2e)", () => {
     );
   });
 
-  it("sends no notice once its group is deleted after planning", async () => {
-    const closed = await createClosedSuite("Gone", ago({ minutes: 10 }), [
-      "Missed task",
-    ]);
-    const group = await createMissedSuiteGroup(closed);
-    const reminders = ctx.app.get(ActionEventReminderService);
-    const evaluate = reminders.evaluateNotifications.bind(reminders);
-    let plannedCount = 0;
-    const planned = jest
-      .spyOn(reminders, "evaluateNotifications")
-      .mockImplementation(async (...window) => {
-        const plans = await evaluate(...window);
-        plannedCount += plans.filter(
-          (plan) => plan.group.id === group.id,
-        ).length;
-        await groupRepo.softDelete(group.id);
-        return plans;
-      });
+  it.each([
+    [
+      "group",
+      (_: ClosedSuite, group: ReminderGroup) => groupRepo.softDelete(group.id),
+    ],
+    ["suite", (closed: ClosedSuite) => suiteRepo.softDelete(closed.suite.id)],
+  ] as const)(
+    "sends no notice once its %s is deleted after planning",
+    async (_, softDelete) => {
+      const closed = await createClosedSuite("Gone", ago({ minutes: 10 }), [
+        "Missed task",
+      ]);
+      const group = await createMissedSuiteGroup(closed);
+      const plans = ctx.app.get(MissedSuitePlanService);
+      const findClosedSuitesFor = plans.findClosedSuitesFor.bind(plans);
+      let plannedCount = 0;
+      const planned = jest
+        .spyOn(plans, "findClosedSuitesFor")
+        .mockImplementation(async (duePlans, now) => {
+          const closedSuites = await findClosedSuitesFor(duePlans, now);
+          plannedCount += duePlans.filter(
+            (plan) => plan.group.id === group.id,
+          ).length;
+          await softDelete(closed, group);
+          return closedSuites;
+        });
 
-    try {
-      await dispatch();
-    } finally {
-      planned.mockRestore();
-    }
+      try {
+        await dispatch();
+      } finally {
+        planned.mockRestore();
+      }
 
-    expect(plannedCount).toBe(1);
-    expect(
-      await notifRepo.count({
-        where: { type: ActionEventNotifType.MissedDeadline },
-        withDeleted: true,
-      }),
-    ).toBe(0);
-  });
+      expect(plannedCount).toBe(1);
+      expect(
+        await notifRepo.count({
+          where: { type: ActionEventNotifType.MissedDeadline },
+          withDeleted: true,
+        }),
+      ).toBe(0);
+    },
+  );
 
   it("totals the missed tasks' time estimates for #{tasktime}", async () => {
     await setArm(ExperimentArm.Control);

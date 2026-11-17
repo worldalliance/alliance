@@ -20,6 +20,8 @@ export const claudeSessionArgs = [
 export enum ClaudeLineKind {
   Events = "events",
   TurnEnded = "turn_ended",
+  /** The CLI's init line, which it writes once it has read a turn's message. Claude Code keeps the session's transcript from then on. */
+  MessageRead = "message_read",
 }
 
 export type TurnEvent = Exclude<AgentEvent, { kind: AgentEventKind.TurnEnded }>;
@@ -27,7 +29,8 @@ export type TurnEvent = Exclude<AgentEvent, { kind: AgentEventKind.TurnEnded }>;
 export type ClaudeLine =
   | { kind: ClaudeLineKind.Events; events: TurnEvent[] }
   /** error is unset for a turn that succeeded. An interrupted turn carries one too. */
-  | { kind: ClaudeLineKind.TurnEnded; error: string | undefined };
+  | { kind: ClaudeLineKind.TurnEnded; error: string | undefined }
+  | { kind: ClaudeLineKind.MessageRead };
 
 const typed = z.looseObject({ type: z.string() });
 const textBlock = z.object({ type: z.literal("text"), text: z.string() });
@@ -75,6 +78,7 @@ const user = z.object({
   ...fromMainConversation,
   message: z.object({ content: z.union([z.string(), z.array(typed)]) }),
 });
+const system = z.looseObject({ subtype: z.string().optional() });
 const result = z.object({
   subtype: z.string(),
   is_error: z.boolean(),
@@ -106,6 +110,10 @@ export function parseClaudeLine(line: string): Result<ClaudeLine, Error> {
 
 function toClaudeLine(value: { type: string }): ClaudeLine {
   switch (value.type) {
+    case "system":
+      return system.parse(value).subtype === "init"
+        ? { kind: ClaudeLineKind.MessageRead }
+        : noEvents;
     case "stream_event": {
       const { parent_tool_use_id, event } = streamEvent.parse(value);
       if (parent_tool_use_id !== null || event.type !== "content_block_delta")

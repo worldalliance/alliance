@@ -8,6 +8,7 @@ import {
   type QueryDeepPartialEntity,
 } from "typeorm";
 import type { ForeignKeyMetadata } from "typeorm/metadata/ForeignKeyMetadata";
+import { assertTransaction } from "./advisory-lock";
 
 type RowId = number | string;
 
@@ -33,6 +34,8 @@ const KEPT_REFERENCES: ReadonlySet<string> = new Set([
   "User.referredByShareUrl",
   // A staff text keeps its sender, so it never reads as automated.
   "Mms.sentBy",
+  // A mark handled or needs reply keeps who made it, as its history records.
+  "MmsThreadEvent.markedBy",
 ]);
 
 function isKeptReference(foreignKey: ForeignKeyMetadata): boolean {
@@ -301,13 +304,6 @@ export async function updateLive<
     throw new NotFoundException(params.notFound);
   }
   return affected === 1;
-}
-
-// Outside a transaction the lock ends with its own statement.
-function assertTransaction(manager: EntityManager): void {
-  if (!manager.queryRunner?.isTransactionActive) {
-    throw new Error("row locks need an active transaction");
-  }
 }
 
 /** The ids among `ids` whose `target` rows are live, each {@link lockLive |

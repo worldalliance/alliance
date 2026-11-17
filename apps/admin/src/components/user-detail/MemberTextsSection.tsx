@@ -2,6 +2,7 @@ import type {
   MmsMediaDto,
   MmsMessageDto,
   MmsThreadDto,
+  MmsThreadEventKind,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -21,9 +22,14 @@ export default function MemberTextsSection({
 }: {
   member: { id: number; name: string; timeZone: string | null };
 }) {
-  const { thread, send, markOptedOut, markingOptedOut } = useMemberTextsAdmin(
-    member.id,
-  );
+  const {
+    thread,
+    send,
+    markOptedOut,
+    markingOptedOut,
+    markHandled,
+    markNeedsReply,
+  } = useMemberTextsAdmin(member.id);
   const { confirm, showToast } = useToast();
   const optedOutShown = Boolean(
     thread.data?.phoneNumber && thread.data.optedOut,
@@ -61,6 +67,34 @@ export default function MemberTextsSection({
     }
   };
 
+  const handledControl = replyControl({
+    thread: thread.data,
+    markingHandled:
+      markHandled.isPending && markHandled.variables.userId === member.id,
+    markingNeedsReply:
+      markNeedsReply.isPending && markNeedsReply.variables.userId === member.id,
+  });
+
+  const handleReplyControl = async () => {
+    const latest = thread.data?.messages.at(-1);
+    if (!handledControl || handledControl.pending || !latest) return;
+    try {
+      const mark = { userId: member.id, throughId: latest.id };
+      await (handledControl.handled ? markNeedsReply : markHandled).mutateAsync(
+        mark,
+      );
+    } catch (thrown) {
+      showToast({
+        variant: ToastVariant.Error,
+        title: handledControl.handled
+          ? `Problem marking ${member.name}'s texts as needing a reply`
+          : `Problem marking ${member.name}'s texts handled`,
+        message: adminRefusalMessage(thrown, "Try again."),
+        durationMs: null,
+      });
+    }
+  };
+
   return (
     <section className="border border-zinc-200 rounded p-3">
       <div
@@ -77,26 +111,38 @@ export default function MemberTextsSection({
             className="mb-0"
           />
         </div>
-        {optedOutShown ? (
-          <span
-            ref={optedOutBadge}
-            tabIndex={-1}
-            className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800"
-          >
-            Opted out
-          </span>
-        ) : (
-          thread.data?.textable && (
+        <div className="flex items-center gap-2">
+          {handledControl && (
             <Button
               size="small"
               color={ButtonColor.White}
-              onClick={handleMarkOptedOut}
-              disabled={markingOptedOut}
+              onClick={handleReplyControl}
+              aria-disabled={handledControl.pending}
             >
-              {markingOptedOut ? "Marking opted out…" : "Mark opted out"}
+              {handledControl.label}
             </Button>
-          )
-        )}
+          )}
+          {optedOutShown ? (
+            <span
+              ref={optedOutBadge}
+              tabIndex={-1}
+              className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800"
+            >
+              Opted out
+            </span>
+          ) : (
+            thread.data?.textable && (
+              <Button
+                size="small"
+                color={ButtonColor.White}
+                onClick={handleMarkOptedOut}
+                disabled={markingOptedOut}
+              >
+                {markingOptedOut ? "Marking opted out…" : "Mark opted out"}
+              </Button>
+            )
+          )}
+        </div>
       </div>
       {thread.data ? (
         <>
@@ -140,8 +186,37 @@ export default function MemberTextsSection({
   );
 }
 
-/** The small Button's height, so the header doesn't grow when the opt-out
- * control arrives. */
+const replyControl = (params: {
+  thread: MmsThreadDto | undefined;
+  markingHandled: boolean;
+  markingNeedsReply: boolean;
+}) => {
+  const { thread, markingHandled, markingNeedsReply } = params;
+  if (!thread || thread.optedOut) return null;
+  switch (thread.replyState) {
+    case "needs_reply":
+      return {
+        handled: false,
+        pending: markingHandled,
+        label: markingHandled ? "Marking handled…" : "Mark handled",
+      };
+    case "handled":
+      return {
+        handled: true,
+        pending: markingNeedsReply,
+        label: markingNeedsReply ? "Marking needs reply…" : "Mark needs reply",
+      };
+    case "answered":
+      return null;
+    default:
+      throw new Error(
+        `unknown reply state: ${thread.replyState satisfies never}`,
+      );
+  }
+};
+
+/** The small Button's height, so the header doesn't grow when its controls
+ * arrive. */
 const HEADER_HEIGHT = "min-h-[2.125rem]";
 
 /** The thread pane keeps its size and the composer area reserves the idle
@@ -294,39 +369,47 @@ function Message({
 }) {
   const { outbound, author, status } = side(message, memberName);
   return (
-    <div
-      data-text-id={message.id}
-      className={cn("flex", outbound ? "justify-end" : "justify-start")}
-    >
-      <div className="max-w-[80%]">
-        <div
-          className={cn(
-            "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
-            outbound ? "bg-zinc-800 text-white" : "bg-zinc-100 text-zinc-900",
-          )}
-        >
-          {message.body}
-          {message.media.map((media) => (
-            <Attachment key={media.id} media={media} author={author} />
-          ))}
+    <>
+      <div
+        data-text-id={message.id}
+        className={cn("flex", outbound ? "justify-end" : "justify-start")}
+      >
+        <div className="max-w-[80%]">
+          <div
+            className={cn(
+              "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
+              outbound ? "bg-zinc-800 text-white" : "bg-zinc-100 text-zinc-900",
+            )}
+          >
+            {message.body}
+            {message.media.map((media) => (
+              <Attachment key={media.id} media={media} author={author} />
+            ))}
+          </div>
+          <p
+            className={cn(
+              "mt-0.5 text-xs text-zinc-600",
+              outbound && "text-right",
+            )}
+          >
+            {author} · {sentAt(new Date(message.createdAt))}
+            {status && (
+              <span className={cn(status.failed && "text-red-700 font-medium")}>
+                {" · "}
+                {status.label}
+                {status.failed && status.reason && `: ${status.reason}`}
+              </span>
+            )}
+          </p>
         </div>
-        <p
-          className={cn(
-            "mt-0.5 text-xs text-zinc-600",
-            outbound && "text-right",
-          )}
-        >
-          {author} · {sentAt(new Date(message.createdAt))}
-          {status && (
-            <span className={cn(status.failed && "text-red-700 font-medium")}>
-              {" · "}
-              {status.label}
-              {status.failed && status.reason && `: ${status.reason}`}
-            </span>
-          )}
-        </p>
       </div>
-    </div>
+      {message.events.map((event) => (
+        <p key={event.id} className="text-center text-xs text-zinc-600">
+          {EVENT_LABEL[event.kind]} by {event.markedByName ?? "Deleted user"} ·{" "}
+          {sentAt(new Date(event.createdAt))}
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -346,6 +429,11 @@ function side(message: MmsMessageDto, memberName: string) {
       );
   }
 }
+
+const EVENT_LABEL: Record<MmsThreadEventKind, string> = {
+  marked_handled: "Marked handled",
+  marked_needs_reply: "Marked needs reply",
+};
 
 const sentAt = (date: Date): string =>
   format(date, isThisYear(date) ? "MMM d, h:mm a" : "MMM d, yyyy, h:mm a");

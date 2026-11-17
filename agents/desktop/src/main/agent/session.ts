@@ -20,12 +20,14 @@ export type AgentMessage = {
 
 export type AgentEventListener = (event: AgentEvent) => void;
 
-/** One conversation with a CLI in one worktree, whose turns emit AgentEvents. A CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way; a caller recovers from any Error by resuming, which returns this same session while it is still live. */
+/** One conversation with a CLI in one worktree, whose turns emit AgentEvents. A CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way. Resume returns a new live session after an Error with needsResume, and this same session while it is still live. */
 export interface AgentSession {
   /** The CLI's own session id, unchanged by resume. */
   readonly id: string;
   /** True from a successful send until the turn's TurnEnded, whose listeners can already send again. */
   readonly turnRunning: boolean;
+  /** Resolves true once this session's CLI has read its first message, or false if the CLI exits before that. A started session's CLI keeps a transcript from that point; a resumed session's transcript already exists, so for it this says only whether its CLI read a message. */
+  readonly firstMessageRead: Promise<boolean>;
   /** Fails while a turn is running. Emits no event before returning. */
   send(message: AgentMessage): Result<void, Error>;
   /** Asks the running turn to stop. Emits no event before returning, and send fails until the turn's TurnEnded. The interrupt itself emits no Error. A no-op between turns. */

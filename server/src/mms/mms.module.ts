@@ -7,6 +7,7 @@ import { User } from "src/user/entities/user.entity";
 import { MmsMedia } from "./mms-media.entity";
 import { MmsMediaService } from "./mms-media.service";
 import { MmsOptout } from "./mms-optout.entity";
+import { MmsThreadEvent } from "./mms-thread-event.entity";
 import { MmsThreadController } from "./mms-thread.controller";
 import { MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
@@ -17,7 +18,7 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Mms, MmsMedia, MmsOptout, User]),
+    TypeOrmModule.forFeature([Mms, MmsMedia, MmsOptout, MmsThreadEvent, User]),
     forwardRef(() => EventLogModule),
     LinkTrackingModule,
     S3Module,

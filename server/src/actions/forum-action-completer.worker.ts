@@ -32,7 +32,10 @@ import {
   type Repository,
 } from "typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
-import { ActionActivityService } from "./action-activity.service";
+import {
+  ActionActivityService,
+  ActivityAlreadyExistsException,
+} from "./action-activity.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/scheduled-plans.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -77,53 +80,56 @@ export class ForumActionCompleterWorker {
       this.dataSource,
       PROCESS_ONE_LOCK_KEY1,
       PROCESS_ONE_LOCK_KEY2,
-      async () => {
-        const now = new Date();
-        const targetDeadlineMs = now.getTime() + AUTOCOMPLETE_TARGET_OFFSET_MS;
-        const windowStartMs = targetDeadlineMs - AUTOCOMPLETE_WINDOW_MS;
-        const windowEndMs = targetDeadlineMs + AUTOCOMPLETE_WINDOW_MS;
-
-        const actions = await this.actionRepository
-          .find({
-            where: {
-              isForumParticipationAction: true,
-              computedAutocompleteAt: IsNull(),
-            },
-            relations: { events: true },
-          })
-          .then((rows) => rows.map(parseAction));
-
-        for (const action of actions) {
-          const { event: memberActionEvent, deadlineEvent } =
-            action.memberActionPhase;
-
-          // Only act while the action is currently mid-member-action: it has
-          // started and its closing event hasn't happened yet.
-          if (
-            !memberActionEvent ||
-            !hasTakenEffect(memberActionEvent.date, now) ||
-            !deadlineEvent ||
-            hasMemberActionDeadlinePassed(deadlineEvent.date, now)
-          ) {
-            continue;
-          }
-
-          const deadlineMs = deadlineEvent.date.getTime();
-          if (deadlineMs < windowStartMs || deadlineMs > windowEndMs) {
-            continue;
-          }
-
-          await this.processAction({
-            action,
-            memberActionEvent,
-            runAt: now,
-          });
-        }
-      },
+      () => this.autocompleteDue(),
     );
 
     if (ran === null) {
       this.logger.log("autocompleteForumActions skipped bc of lock");
+    }
+  }
+
+  /** Skips the lock; production runs it through autocompleteForumActions. */
+  async autocompleteDue() {
+    const now = new Date();
+    const targetDeadlineMs = now.getTime() + AUTOCOMPLETE_TARGET_OFFSET_MS;
+    const windowStartMs = targetDeadlineMs - AUTOCOMPLETE_WINDOW_MS;
+    const windowEndMs = targetDeadlineMs + AUTOCOMPLETE_WINDOW_MS;
+
+    const actions = await this.actionRepository
+      .find({
+        where: {
+          isForumParticipationAction: true,
+          computedAutocompleteAt: IsNull(),
+        },
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
+
+    for (const action of actions) {
+      const { event: memberActionEvent, deadlineEvent } =
+        action.memberActionPhase;
+
+      // Only act while the action is currently mid-member-action: it has
+      // started and its closing event hasn't happened yet.
+      if (
+        !memberActionEvent ||
+        !hasTakenEffect(memberActionEvent.date, now) ||
+        !deadlineEvent ||
+        hasMemberActionDeadlinePassed(deadlineEvent.date, now)
+      ) {
+        continue;
+      }
+
+      const deadlineMs = deadlineEvent.date.getTime();
+      if (deadlineMs < windowStartMs || deadlineMs > windowEndMs) {
+        continue;
+      }
+
+      await this.processAction({
+        action,
+        memberActionEvent,
+        runAt: now,
+      });
     }
   }
 
@@ -294,6 +300,12 @@ export class ForumActionCompleterWorker {
             blob: null,
           });
         } catch (error) {
+          if (error instanceof ActivityAlreadyExistsException) {
+            this.logger.log(
+              `Skipping completion for action ${action.id} user ${userId}, completed since the run loaded it`,
+            );
+            continue;
+          }
           if (error instanceof QueryFailedError) {
             this.logger.warn(
               `Skipping duplicate completion for action ${action.id} user ${userId}: ${error.message}`,

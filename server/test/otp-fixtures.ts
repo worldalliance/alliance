@@ -24,12 +24,15 @@ export type SentCodes = {
   /** The code in the most recent message, by email or text. */
   lastCode: () => string;
   count: () => number;
+  /** The most recent delivered text. */
+  lastText: () => string;
   failDelivery: () => void;
 };
 
 /** Stubs email and text delivery, keeping each code sent. */
 export function captureSentCodes(ctx: TestContext): SentCodes {
   const codes: string[] = [];
+  const texts: string[] = [];
   let failNext = false;
   const deliver = <T>(code: string, sent: T) => {
     if (failNext) {
@@ -48,9 +51,11 @@ export function captureSentCodes(ctx: TestContext): SentCodes {
     );
   jest
     .spyOn(ctx.app.get(MmsService), "sendUnrecordedText")
-    .mockImplementation(async ({ body }) =>
-      deliver(/#(\d{6})$/.exec(body)?.[1] ?? "", { sid: "sid" }),
-    );
+    .mockImplementation(async ({ body }) => {
+      const sent = deliver(/\d{6}/.exec(body)?.[0] ?? "", { sid: "sid" });
+      if (R.isSuccess(sent)) texts.push(body);
+      return sent;
+    });
   return {
     lastCode: () => {
       const code = codes.at(-1);
@@ -58,6 +63,11 @@ export function captureSentCodes(ctx: TestContext): SentCodes {
       return code;
     },
     count: () => codes.length,
+    lastText: () => {
+      const text = texts.at(-1);
+      if (!text) throw new Error("no text was sent");
+      return text;
+    },
     failDelivery: () => {
       failNext = true;
     },

@@ -1,6 +1,7 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService, type WaitlistEmailType } from "src/mail/mail.service";
@@ -139,10 +140,7 @@ export class WaitlistMailService {
    */
   private claim(email: string, dailyCap: number): Promise<MailClaim> {
     return this.dataSource.transaction(async (manager) => {
-      await manager.query(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-        ["waitlist-mail-allowance"],
-      );
+      await lockUntilCommit(manager, "waitlist-mail-allowance");
       const [row] = await manager.query(
         `SELECT
           EXISTS (

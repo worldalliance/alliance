@@ -28,6 +28,7 @@ import type { Response } from "express";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import {
+  MarkThreadDto,
   MmsMessageDto,
   MmsThreadDto,
   MmsThreadQueryDto,
@@ -61,7 +62,7 @@ const refusalException: Record<
 > = {
   [ThreadRefusal.MemberNotFound]: () =>
     new NotFoundException("Member not found"),
-  [ThreadRefusal.BeforeNotInThread]: () =>
+  [ThreadRefusal.TextNotInThread]: () =>
     new BadRequestException("That text isn't in this thread."),
   [StaffTextRefusal.NoPhoneNumber]: () =>
     new BadRequestException("This member has no phone number."),
@@ -143,6 +144,38 @@ export class MmsThreadController {
   ): Promise<void> {
     const marked = await this.threadService.markOptedOut({
       userId,
+      adminId: req.user.sub,
+    });
+    if (!marked.ok) throw refusalException[marked.error]();
+  }
+
+  @Post(":userId/handled")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async markHandledAdmin(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() body: MarkThreadDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    const marked = await this.threadService.markHandled({
+      userId,
+      throughId: body.throughId,
+      adminId: req.user.sub,
+    });
+    if (!marked.ok) throw refusalException[marked.error]();
+  }
+
+  @Post(":userId/needs-reply")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async markNeedsReplyAdmin(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() body: MarkThreadDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    const marked = await this.threadService.markNeedsReply({
+      userId,
+      throughId: body.throughId,
       adminId: req.user.sub,
     });
     if (!marked.ok) throw refusalException[marked.error]();

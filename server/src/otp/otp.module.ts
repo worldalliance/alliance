@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
@@ -10,7 +10,7 @@ import { OtpService } from "./otp.service";
   imports: [
     TypeOrmModule.forFeature([OtpChallenge, OtpRateEvent]),
     MailModule,
-    MmsModule,
+    forwardRef(() => MmsModule),
   ],
   providers: [OtpService],
   exports: [OtpService],

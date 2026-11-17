@@ -114,8 +114,9 @@ const NeedsReplyPage = () => {
         </div>
         <p className="text-sm text-zinc-600">
           Members with a text no staff member has answered yet, longest waiting
-          first. A member leaves the list once someone replies from their page
-          or they opt out of texts, and comes back if that reply fails to send.
+          first. A member leaves the list once someone replies from their page,
+          marks their texts handled there, or they opt out of texts. They come
+          back if that reply fails to send or they text again.
         </p>
       </div>
       <div {...listProps}>

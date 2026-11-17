@@ -31,7 +31,7 @@ Turns "Action updates" texts and emails off for every account, except where the 
 ## Secrets
 
 `with-secrets.sh <consumer> <command...>`
-Runs a command with the consumer's dev secrets from `/alliance/dev/<consumer>/` in AWS SSM Parameter Store, read with the person's `alliance-dev` login. `dev-secrets.json` lists each consumer's keys. Setup, adding a secret and the fallback flag: `docs/local-secrets.md`.
+Runs a command with the consumer's dev secrets from `/alliance/dev/<consumer>/` in AWS SSM Parameter Store, read with the person's `alliance-dev` login. `dev-secrets.json` lists each consumer's keys. Setup and adding a secret: `docs/local-secrets.md`.
 
 `setup-without-team-secrets.ts`
 Writes `server/.env` for running the server without team credentials and prints the seeded admin's login. See `docs/local-secrets.md`.
@@ -52,13 +52,13 @@ Run on that environment's backend host from `~/nest-backend`, not locally; the d
 Run by `parameter-drift.yaml`. Lists the parameter names under `/alliance` in AWS SSM Parameter Store and fails when a path lacks a key its schema or `dev-secrets.json` requires, or holds one undeclared there or in `SHARED_KEYS`, or when a name outside the CI paths is under no path it checks. `--required` prints each path's required keys and needs no AWS login. See `docs/backend-secrets.md`.
 
 `deployed-config.ts <staging|production>`
-Prints the values from `common/src/deployed-config.ts` the deploy workflow's web build and verification jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.
+Prints the values from `common/src/deployed-config.ts` that `deploy-environment.yaml`'s deploy, verification and source map jobs read, as `KEY=value` lines for `GITHUB_OUTPUT`.
 
 `deployed-db-name.ts <staging|production>`
 Prints the environment's `DB_NAME` from `common/src/deployed-config.ts`. The deploy ships it to the backend host, for the scripts there that need a database name.
 
 `web-runtime-config.ts <staging|production>`
-Prints the environment's web runtime config from `common/src/web-runtime-config.ts` as JSON. The deploy workflow uploads it, and the admin host serves it as `/config.json`.
+Prints the environment's web runtime config from `common/src/web-runtime-config.ts` as JSON. `deploy-environment.yaml` uploads it, and the admin host serves it as `/config.json`.
 
 ## Other
 

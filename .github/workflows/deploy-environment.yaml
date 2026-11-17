@@ -1,9 +1,10 @@
 name: Deploy environment
 
-# Deploys a commit whose checks and builds already passed in the calling run,
-# reading that run's artifacts, then smoke-checks it and records the result
-# as a GitHub deployment. The caller holds the environment's deploy lock
-# around the whole call.
+# Deploys a commit whose checks and builds already passed, with its deployed
+# config and the build artifacts of the calling run or of the run that checked
+# it, then smoke-checks it, uploads its source maps and records the result as a
+# GitHub deployment. The caller holds the environment's deploy lock around the
+# whole call.
 
 on:
   workflow_call:
@@ -13,9 +14,21 @@ on:
         type: string
         required: true
       commit:
-        description: Full SHA of the calling run's commit, whose artifacts this deploys.
+        description: Full SHA of the commit to deploy.
         type: string
         required: true
+      artifacts-run-id:
+        description: The run whose build artifacts to deploy, which must have built `commit`; empty for the calling run.
+        type: string
+        default: ""
+      artifact-ids:
+        description: JSON object of the ids of artifacts-run-id's react-build, admin-build and react-assets artifacts, by name; a missing id fails the download that needs it.
+        type: string
+        default: "{}"
+      details:
+        description: JSON object recorded as the deployment's payload.
+        type: string
+        default: "{}"
 
 permissions:
   contents: read
@@ -25,13 +38,44 @@ env:
   env_name: ${{ inputs.environment }}
 
 jobs:
+  # An artifact, not job outputs: Actions drops a job output that matches any
+  # secret's value.
+  deployed-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Refuse while production is frozen
+        if: inputs.environment == 'production'
+        uses: ./.github/actions/dirty-check
+        with:
+          check: empty
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/deployed-config.ts "$env_name" > deployed-config.env
+      - run: bun scripts/web-runtime-config.ts "$env_name" > web-config.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deployed-config
+          path: |
+            deployed-config.env
+            web-config.json
+
+  # After deployed-config, so a config failure or the production freeze
+  # deploys nothing.
   guard:
+    needs: deployed-config
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
     # A partial re-run keeps these outputs from the attempt that ran the
-    # guard, so every later job refuses to run in any other attempt.
+    # guard, so every later job but the source map upload refuses to run in
+    # any other attempt.
     outputs:
       deployment_id: ${{ steps.guard.outputs.deployment_id }}
       attempt: ${{ github.run_attempt }}
@@ -46,6 +90,7 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           commit: ${{ inputs.commit }}
+          details: ${{ inputs.details }}
 
   deploy-nest-backend:
     runs-on: ubuntu-latest
@@ -167,6 +212,7 @@ jobs:
       - deploy-nest-backend
     environment: ${{ inputs.environment }}-hosts
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -181,10 +227,19 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
+      # Another run's artifacts download by the ids recorded for them, so an
+      # artifact a later attempt re-uploaded fails the download instead of
+      # being deployed. A missing id fails too, instead of fetching every
+      # artifact. merge-multiple puts a by-id download where a by-name one
+      # lands, not in a directory named for the artifact.
       - name: Download React Build Artifact
         uses: actions/download-artifact@v4
         with:
-          name: react-build
+          name: ${{ !inputs.artifacts-run-id && 'react-build' || '' }}
+          artifact-ids: ${{ inputs.artifacts-run-id && (fromJSON(inputs.artifact-ids)['react-build'] || 'none') || '' }}
+          merge-multiple: true
+          run-id: ${{ inputs.artifacts-run-id }}
+          github-token: ${{ inputs.artifacts-run-id && github.token || '' }}
 
       - name: Deploy frontend SSR on EC2
         uses: ./.github/actions/run-on-host
@@ -288,6 +343,7 @@ jobs:
       - deploy-react-app
     environment: ${{ inputs.environment }}-hosts
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -302,10 +358,15 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
+      # Selected as in deploy-react-app's download.
       - name: Download Admin Build Artifact
         uses: actions/download-artifact@v4
         with:
-          name: admin-build
+          name: ${{ !inputs.artifacts-run-id && 'admin-build' || '' }}
+          artifact-ids: ${{ inputs.artifacts-run-id && (fromJSON(inputs.artifact-ids)['admin-build'] || 'none') || '' }}
+          merge-multiple: true
+          run-id: ${{ inputs.artifacts-run-id }}
+          github-token: ${{ inputs.artifacts-run-id && github.token || '' }}
 
       - name: Deploy admin on EC2
         uses: ./.github/actions/run-on-host
@@ -524,6 +585,71 @@ jobs:
             if [ "$status" != 200 ]; then echo "https://$host/api/ answered $status"; exit 1; fi
           done
           echo "API health ok"
+
+  # Apart from the build, so the frontend's build dependencies never run where
+  # id-token: write reaches the environment role's Expo token. A promotion
+  # uploads staging's source maps to production's PostHog project. Every step,
+  # not the job, continues on error, and the steps' timeouts sum to less than
+  # the job's: a failed job inside a called workflow may fail the calling job,
+  # which Deploy alerts on.
+  upload-react-sourcemaps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: guard
+    if: ${{ needs.guard.outputs.deployment_id }}
+    environment: ${{ inputs.environment }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Code
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - name: Read deployed config
+        id: config
+        continue-on-error: true
+        timeout-minutes: 1
+        uses: ./.github/actions/deployed-config
+
+      - name: Read CI secrets
+        id: aws
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: ./.github/actions/aws
+        with:
+          role: ${{ env.env_name }}
+          parameters: ci/deploy/POSTHOG_SOURCEMAP_KEY
+
+      # Selected as in deploy-react-app's download.
+      - name: Download Assets
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ !inputs.artifacts-run-id && 'react-assets' || '' }}
+          artifact-ids: ${{ inputs.artifacts-run-id && (fromJSON(inputs.artifact-ids)['react-assets'] || 'none') || '' }}
+          merge-multiple: true
+          path: react-assets
+          run-id: ${{ inputs.artifacts-run-id }}
+          github-token: ${{ inputs.artifacts-run-id && github.token || '' }}
+
+      - name: Install PostHog CLI
+        continue-on-error: true
+        timeout-minutes: 1
+        uses: ./.github/actions/posthog-cli
+
+      - name: Upload source maps to PostHog
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').POSTHOG_SOURCEMAP_KEY }}
+        run: posthog-cli sourcemap upload --directory react-assets
 
   # Runs after the backend is live so the OTA bundle never talks to an API
   # older than itself.

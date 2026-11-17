@@ -10,6 +10,14 @@ import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { appArgs } from "./app-args";
+import { start } from "./ipc-helpers";
+import {
+  captured,
+  launch,
+  outlivedApp,
+  runningCount,
+  trackedClaude,
+} from "./launch";
 
 const electronPath: string = createRequire(import.meta.url)("electron");
 
@@ -26,6 +34,26 @@ test("a window that fails to load reports the error and exits", async () => {
   const [code] = await once(child, "exit");
   expect(code).toBe(1);
   expect(stderr).toContain("Alliance agent couldn't load its window");
+});
+
+test("a window that fails to load closes every conversation's CLI before the app exits", async () => {
+  const claude = trackedClaude();
+  const { app, page } = await launch({
+    captures: [captured("edit-and-interrupt-session")],
+    claude,
+  });
+  await start(page);
+  const exited = once(app.process(), "exit");
+  await app.evaluate(
+    ({ BrowserWindow }) =>
+      void BrowserWindow.getAllWindows()[0]
+        ?.loadURL("app://renderer/missing.html")
+        .catch(() => undefined),
+  );
+  const [code] = await exited;
+  expect(code).toBe(1);
+  expect(runningCount(claude)).toBe(0);
+  expect(outlivedApp(claude)).toBe(false);
 });
 
 async function failPreload(

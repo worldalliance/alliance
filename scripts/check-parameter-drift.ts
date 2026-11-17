@@ -70,13 +70,35 @@ function requiredKeys(nodeEnv: NodeEnv.Staging | NodeEnv.Production): string[] {
   return result.error.map((line) => line.slice(0, -missingSuffix.length));
 }
 
+const devManifest = z.record(
+  z.string(),
+  z.object({
+    secrets: z.array(z.string()),
+    retiring: z.array(z.string()).default([]),
+  }),
+);
+
+export function devExpectations(manifest: unknown): Expected[] {
+  return Object.entries(devManifest.parse(manifest)).map(
+    ([consumer, { secrets, retiring }]) => {
+      const both = retiring.filter((key) => secrets.includes(key));
+      if (both.length > 0) {
+        throw new Error(
+          `${consumer} lists ${both.join(", ")} in both secrets and retiring`,
+        );
+      }
+      return {
+        prefix: `${DEV_PREFIX}${consumer}/`,
+        required: new Set(secrets),
+        allowed: new Set([...secrets, ...retiring]),
+        allowedBy: "scripts/dev-secrets.json",
+      };
+    },
+  );
+}
+
 export function expectations(): Expected[] {
-  const dev = Object.entries(devSecrets).map(([consumer, { secrets }]) => ({
-    prefix: `${DEV_PREFIX}${consumer}/`,
-    required: new Set(secrets),
-    allowed: new Set(secrets),
-    allowedBy: "scripts/dev-secrets.json",
-  }));
+  const dev = devExpectations(devSecrets);
   const deployed = [
     { store: "staging", nodeEnv: NodeEnv.Staging },
     { store: "prod", nodeEnv: NodeEnv.Production },

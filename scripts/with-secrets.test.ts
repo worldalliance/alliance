@@ -50,6 +50,25 @@ test("runs the command without a stored key the manifest does not list, naming i
   expect(readFileSync(out, "utf8")).toBe("unset");
 });
 
+test("neither requires, exports nor names a retiring key", () => {
+  writeFileSync(
+    join(fx.repo, "scripts/dev-secrets.json"),
+    JSON.stringify({ server: { secrets: ["ONE", "TWO"], retiring: ["OLD"] } }),
+  );
+  const out = join(fx.dir, "old");
+  const stored = fx.run({
+    parameters: [
+      ...ONE_AND_TWO,
+      { Name: "/alliance/dev/server/OLD", Value: "old" },
+    ],
+    args: ["server", "bash", "-c", `printf %s "\${OLD-unset}" > "${out}"`],
+  });
+  expect(stored.exitCode).toBe(0);
+  expect(stored.stderr).toBe("");
+  expect(readFileSync(out, "utf8")).toBe("unset");
+  expect(fx.run({}).exitCode).toBe(0);
+});
+
 test("refuses to override a variable that is already set, naming it", () => {
   const { exitCode, stderr, log } = fx.run({ env: { TWO: "from-shell" } });
   expect(exitCode).toBe(1);
@@ -232,35 +251,27 @@ test("rejects an unknown consumer", () => {
   expect(stderr).toContain("unknown consumer nope; expected one of server\n");
 });
 
-test("rejects a consumer whose manifest entry leaves out a field", () => {
+test("rejects a consumer whose manifest entry has no secrets", () => {
   writeFileSync(
     join(fx.repo, "scripts/dev-secrets.json"),
-    JSON.stringify({ server: { envFile: "server.env", secrets: ["ONE"] } }),
+    JSON.stringify({ server: { envFile: "server.env" } }),
   );
   const { exitCode, stderr, log } = fx.run({});
   expect(exitCode).toBe(1);
   expect(stderr).toBe(
-    "with-secrets.sh: scripts/dev-secrets.json: consumer server lacks loadsEnvFile\n",
+    "with-secrets.sh: scripts/dev-secrets.json: consumer server lacks secrets\n",
   );
   expect(log).toBe("");
 });
 
-test("rejects a loadsEnvFile that is not a boolean", () => {
+test("rejects an envFile that is not a path", () => {
   writeFileSync(
     join(fx.repo, "scripts/dev-secrets.json"),
-    JSON.stringify({
-      server: {
-        envFile: "server.env",
-        loadsEnvFile: "false",
-        secrets: ["ONE"],
-      },
-    }),
+    JSON.stringify({ server: { envFile: true, secrets: ["ONE"] } }),
   );
   const { exitCode, stderr, log } = fx.run({});
   expect(exitCode).toBe(1);
-  expect(stderr).toContain(
-    "consumer server loadsEnvFile must be true or false",
-  );
+  expect(stderr).toContain("consumer server envFile must be a path");
   expect(log).toBe("");
 });
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   awsScript,
@@ -117,21 +117,4 @@ test("check names aws output that is not JSON", async () => {
   expect(JSON.parse((await run(["check"])).stdout).systemMessage).toContain(
     "aws configure export-credentials printed something other than JSON",
   );
-});
-
-test("check names a fallback flag other than 1", async () => {
-  const { stdout } = await run(["check"], "", {
-    ALLIANCE_SECRETS_ENV_FALLBACK: "true",
-  });
-  expect(JSON.parse(stdout).systemMessage).toContain(
-    "ALLIANCE_SECRETS_ENV_FALLBACK is true",
-  );
-});
-
-test("the fallback flag never runs aws", async () => {
-  writeFileSync(join(dir, "aws"), `#!/usr/bin/env bash\ntouch "${dir}/ran"\n`);
-  expect(
-    await run(["check"], "", { ALLIANCE_SECRETS_ENV_FALLBACK: "1" }),
-  ).toMatchObject({ exitCode: 0, stderr: "" });
-  expect(existsSync(join(dir, "ran"))).toBe(false);
 });

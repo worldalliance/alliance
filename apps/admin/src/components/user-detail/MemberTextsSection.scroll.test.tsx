@@ -25,6 +25,7 @@ const text = (id: number): MmsMessageDto => ({
   createdAt: new Date(Date.UTC(2026, 10, 1, 0, id)).toISOString(),
   sentByStaff: false,
   sentByName: null,
+  events: [],
   media: [],
 });
 
@@ -32,6 +33,7 @@ const page = (ids: number[], hasOlder: boolean): MmsThreadDto => ({
   phoneNumber: "+14155550123",
   textable: true,
   optedOut: false,
+  replyState: "answered",
   messages: ids.map(text),
   hasOlder,
 });

@@ -56,6 +56,15 @@ describe("ConversationStore", () => {
     expect(await store.find("z")).toEqual({ ok: true, value: undefined });
   });
 
+  test("removes a conversation by id", async () => {
+    const store = new ConversationStore(storeFile());
+    await store.add(conversation("a"));
+    await store.add(conversation("b"));
+    expect(await store.remove("a")).toEqual({ ok: true, value: undefined });
+    const listed = await store.list();
+    expect(listed.ok && listed.value.map((c) => c.id)).toEqual(["b"]);
+  });
+
   test("a file it can't read names the file", async () => {
     const file = storeFile();
     mkdirSync(file, { recursive: true });

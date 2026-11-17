@@ -15,9 +15,10 @@ import {
 import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserService } from "src/user/user.service";
 import type { Repository as TypedRepository } from "src/utils/Repository";
-import { Brackets, type Repository } from "typeorm";
+import { Brackets, type EntityManager, type Repository } from "typeorm";
 import { loadedActionEventAction } from "../actions/entities/action-event.entity";
-import { loadedUserCommunities, User } from "../user/entities/user.entity";
+import { User } from "../user/entities/user.entity";
+import { loadedUserCommunities } from "../user/user.utils";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
 import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
@@ -34,6 +35,9 @@ export interface MissedDeadlineCandidate {
   resolutionEventId: number;
   resolutionDate: Date;
 }
+
+const COUNTS_AS_COVERAGE =
+  '(notif.sent = true OR notif."deliveryPending" = true)';
 
 export const NOTIFICATION_LOOKBACK_WINDOW_MS = milliseconds({ hours: 3 });
 
@@ -87,17 +91,17 @@ export class ActionEventReminderService {
   /**
    * Users who must not receive this group's notification because they were
    * already notified. Without `excludePreviouslyNotified`: those with a sent
-   * notif for this group. With it: those whose sent notifs on the same
-   * member-action event already covered every task this group could tell
-   * them about — a legacy notif (null `notifiedActionIds`) counts as having
-   * covered everything, and otherwise the notifs' covered action ids must
-   * include the group's whole task scope. Users with *partial* coverage stay
-   * in the plans; the worker re-filters per task at send time and skips them
-   * if nothing new remains, so this plan-time pass only has to be safe, not
-   * exact. Uses the event id denormalized onto the notif so the answer
+   * notif for this group. With it: those whose sent or still-delivering notifs
+   * on the same member-action event already covered every task this group could
+   * tell them about — a legacy notif (null `notifiedActionIds`) counts as
+   * having covered everything, and otherwise the notifs' covered action ids
+   * must include the group's whole task scope. Users with *partial* coverage
+   * stay in the plans; the worker re-filters per task at send time and skips
+   * them if nothing new remains, so this plan-time pass only has to be safe,
+   * not exact. Uses the event id denormalized onto the notif so the answer
    * survives the originating group's deletion — and since group-leads nudges
-   * are written without the event stamp, they never count as having
-   * personally notified their recipient.
+   * are written without the event stamp, they never count as having personally
+   * notified their recipient.
    */
   private async findAlreadyNotifiedUserIds(
     group: ReminderGroup,
@@ -114,7 +118,7 @@ export class ActionEventReminderService {
 
     const rows = await this.actionEventNotifRepository
       .createQueryBuilder("notif")
-      .where("notif.sent = true")
+      .where(COUNTS_AS_COVERAGE)
       .andWhere('notif."memberActionEventId" = :eventId', {
         eventId: loadedReminderGroupMemberActionEvent(group).id,
       })
@@ -144,26 +148,26 @@ export class ActionEventReminderService {
   }
 
   /**
-   * The covered-action-id sets of every sent notif that personally notified
-   * this user on this member-action event (a null entry is a legacy notif
-   * that counts as having covered everything). Fetched per plan at send time
-   * so a sibling send from the same dispatch cycle — invisible to the
-   * plan-time snapshot, since plans are dispatched in `scheduledFor` order —
-   * is accounted for, without suppressing the catch-up when the sibling plan
-   * never actually sent.
+   * The covered-action-id sets of every sent or still-delivering notif that
+   * personally notified this user on this member-action event (a null entry
+   * is a legacy notif that counts as having covered everything). Fetched per
+   * plan at send time so a sibling send from the same dispatch cycle, or from
+   * an overlapping run, is accounted for, without suppressing the catch-up
+   * when the sibling plan never actually sent.
    */
-  async findSentNotifCoverage(
-    userId: number,
-    eventId: number,
+  async findNotifCoverage(
+    manager: EntityManager,
+    params: { userId: number; eventId: number },
   ): Promise<Array<number[] | null>> {
-    const notifs = await this.actionEventNotifRepository.find({
-      where: {
-        user: { id: userId },
-        memberActionEvent: { id: eventId },
-        sent: true,
-      },
-      select: { id: true, notifiedActionIds: true },
-    });
+    const notifs = await manager
+      .createQueryBuilder(ActionEventNotif, "notif")
+      .select(["notif.id", "notif.notifiedActionIds"])
+      .where(COUNTS_AS_COVERAGE)
+      .andWhere('notif."userId" = :userId', { userId: params.userId })
+      .andWhere('notif."memberActionEventId" = :eventId', {
+        eventId: params.eventId,
+      })
+      .getMany();
     return notifs.map((notif) => notif.notifiedActionIds);
   }
 
@@ -407,7 +411,7 @@ export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
 /**
  * The tasks a user hasn't been personally notified about yet, given the
  * covered-action-id sets of their prior sent notifs on the event
- * (`findSentNotifCoverage`). A `null` coverage entry is a legacy notif from
+ * (`findNotifCoverage`). A `null` coverage entry is a legacy notif from
  * before per-task tracking existed and counts as having covered everything.
  */
 export function tasksNotYetNotified<T extends { id: number }>(
@@ -446,7 +450,7 @@ export function comparePlansForDispatch(
  * event will actually send, covering every task the user could be told about,
  * and hides the catch-up accordingly. Real sends don't use this — a plan can
  * skip or fail, so the worker re-derives the not-yet-notified task set per
- * plan at send time (`findSentNotifCoverage` + `tasksNotYetNotified`) instead.
+ * plan at send time (`findNotifCoverage` + `tasksNotYetNotified`) instead.
  *
  * Expects `plans` sorted by `scheduledFor` ascending; keeps the earliest plan
  * per user + member-action event.

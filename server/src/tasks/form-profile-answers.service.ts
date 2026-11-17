@@ -16,6 +16,7 @@ import { MmsService } from "src/mms/mms.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
+import { PhoneNumberTakenException } from "src/user/phone-number-taken.exception";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
 import { env } from "../config/env";
@@ -117,8 +118,9 @@ export class FormProfileAnswersService {
 
   /**
    * Copies auto-extract answers onto the member's profile, texting the welcome
-   * MMS to the extracted phone number if the member has not opted in. Throws
-   * on an invalid time zone before any side effect.
+   * MMS to the extracted phone number if the member has not opted in. A phone
+   * number another account holds is skipped, so the member finishes the form
+   * without it. Throws on an invalid time zone before any side effect.
    */
   async applyProfileAnswers({
     user,
@@ -151,10 +153,9 @@ export class FormProfileAnswersService {
 
       if (R.isFailure(parsed)) {
         this.logger.warn(`Could not parse phone number: ${phoneNumber}`);
-      } else {
+      } else if (await this.savePhoneNumber(user, parsed.value)) {
         const normalized = parsed.value;
         this.logger.log(`Valid phone number: ${normalized}`);
-        userUpdates.phoneNumber = normalized;
 
         if (!user.optInMms) {
           const mms = await this.mmsService.sendMms({
@@ -216,6 +217,29 @@ export class FormProfileAnswersService {
 
     if (Object.keys(userUpdates).length > 0) {
       await this.userService.update(user.id, userUpdates);
+    }
+  }
+
+  /**
+   * BACKCOMPAT(phone-verification): saves a form's number without a code;
+   * remove once no client older than the code step is in use. Saves first, so
+   * a number another live account holds, or takes mid-submission, is skipped
+   * before its welcome text goes out.
+   */
+  private async savePhoneNumber(
+    user: User,
+    phoneNumber: string,
+  ): Promise<boolean> {
+    if (phoneNumber === user.phoneNumber) return true;
+    try {
+      await this.userService.update(user.id, { phoneNumber });
+      return true;
+    } catch (error) {
+      if (!(error instanceof PhoneNumberTakenException)) throw error;
+      this.logger.warn(
+        `Not saving user ${user.id}'s phone number: another account holds it`,
+      );
+      return false;
     }
   }
 }
