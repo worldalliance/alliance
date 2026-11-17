@@ -3,11 +3,13 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsObject } from "class-validator";
 import type { KoraTranscript } from "../entities/kora-transcript.entity";
 import type { KoraHome, KoraUserBatch } from "../kora-home";
+import type { KoraSaved } from "../kora-review.service";
 import { KoraTranscriptPreviewDto } from "./kora-batch.dto";
 
 export type KoraLoadedAssignment = {
   id: string;
   extra: boolean;
+  size: number;
   transcripts: KoraTranscript[];
   savedExport: Record<string, unknown> | null;
 };
@@ -29,7 +31,14 @@ export class KoraReviewAssignmentDto {
   @ApiProperty({ description: "Requested after finishing an earlier one" })
   extra: boolean;
 
-  @ApiProperty({ type: () => KoraTranscriptPreviewDto, isArray: true })
+  @ApiProperty({ description: "How many transcripts the assignment asks for" })
+  size: number;
+
+  @ApiProperty({
+    type: () => KoraTranscriptPreviewDto,
+    isArray: true,
+    description: "Those given so far; the next comes from the next endpoint",
+  })
   transcripts: KoraTranscriptPreviewDto[];
 
   @ApiProperty({ type: "object", additionalProperties: true, nullable: true })
@@ -38,6 +47,7 @@ export class KoraReviewAssignmentDto {
   constructor(input: KoraLoadedAssignment) {
     this.id = input.id;
     this.extra = input.extra;
+    this.size = input.size;
     this.transcripts = input.transcripts.map(
       (t) => new KoraTranscriptPreviewDto(t),
     );
@@ -91,11 +101,33 @@ export class SaveKoraExportDto {
 }
 
 export class KoraExportSavedDto {
-  @ApiProperty({ description: "Every transcript is done or opted out" })
+  @ApiProperty({ description: "The assignment is finished" })
   completed: boolean;
 
-  constructor(input: { completed: boolean }) {
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    description:
+      "Transcripts no longer in the assignment whose results the save dropped; the tool removes them",
+  })
+  removed: string[];
+
+  constructor(input: KoraSaved) {
     this.completed = input.completed;
+    this.removed = input.removed;
+  }
+}
+
+export class KoraNextTranscriptDto {
+  @ApiProperty({
+    type: () => KoraTranscriptPreviewDto,
+    nullable: true,
+    description: "Null once the assignment is full or nothing is left to give",
+  })
+  next: KoraTranscriptPreviewDto | null;
+
+  constructor(input: KoraTranscript | null) {
+    this.next = input ? new KoraTranscriptPreviewDto(input) : null;
   }
 }
 

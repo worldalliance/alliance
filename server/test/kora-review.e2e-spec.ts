@@ -1,5 +1,6 @@
 import { KoraProjectStatus, KoraReviewPhase } from "@alliance/common/kora";
 import { milliseconds } from "date-fns";
+import { KoraAssignmentTranscript } from "src/kora/entities/kora-assignment-transcript.entity";
 import { KoraAssignment } from "src/kora/entities/kora-assignment.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
@@ -12,14 +13,26 @@ import {
   type KoraHarness,
 } from "./kora-fixtures";
 import { koraExport } from "./kora-pairs";
-import { koraReviewClient, type ReviewState } from "./kora-review-fixtures";
+import {
+  koraReviewClient,
+  type ReviewTranscript,
+} from "./kora-review-fixtures";
 import { forgetRateEvents } from "./otp-fixtures";
 
 describe("Kora reviews (e2e)", () => {
   let h: KoraHarness;
 
-  const { state, more, save, ids, exportOf, finish, participant, upload } =
-    koraReviewClient(() => h);
+  const {
+    state,
+    more,
+    save,
+    next,
+    ids,
+    exportOf,
+    finish,
+    participant,
+    upload,
+  } = koraReviewClient(() => h);
 
   beforeAll(async () => {
     h = await koraHarness();
@@ -40,7 +53,7 @@ describe("Kora reviews (e2e)", () => {
     await request(h.ctx.app.getHttpServer()).get("/kora/review").expect(401);
   });
 
-  it("gives a first visit an assignment, and the same one on return", async () => {
+  it("gives a first visit one pair, the next when asked, and the same ones on return", async () => {
     await upload(5);
     const browser = await participant();
 
@@ -48,18 +61,27 @@ describe("Kora reviews (e2e)", () => {
     expect(first).toMatchObject({
       phase: KoraReviewPhase.Reviewing,
       collectProfile: true,
-      assignment: { extra: false, savedExport: null },
+      assignment: { extra: false, size: 3, savedExport: null },
     });
-    expect(first.assignment?.transcripts).toHaveLength(3);
+    expect(first.assignment?.transcripts).toHaveLength(1);
     expect(first.assignment?.transcripts[0].contentHash).toMatch(/^sha256:/);
+    const id = first.assignment?.id ?? "";
 
-    const partial = exportOf(first, { done: [ids(first.assignment)[0]] });
-    expect(
-      (await save(browser, first.assignment?.id ?? "", partial).expect(200))
-        .body,
-    ).toEqual({ completed: false });
+    expect(await next(browser, id)).toEqual(first.assignment?.transcripts[0]);
+    const partial = exportOf(first, { done: ids(first.assignment) });
+    expect((await save(browser, id, partial).expect(200)).body).toEqual({
+      completed: false,
+      removed: [],
+    });
+    const second = await next(browser, id);
+    expect(second?.transcript.transcriptId).not.toBe(ids(first.assignment)[0]);
+
     const again = await state(browser);
-    expect(again.assignment?.id).toBe(first.assignment?.id);
+    expect(again.assignment?.id).toBe(id);
+    expect(ids(again.assignment)).toEqual([
+      ...ids(first.assignment),
+      second?.transcript.transcriptId,
+    ]);
     expect(again.assignment?.savedExport).toMatchObject({
       currentTranscriptId: partial.currentTranscriptId,
     });
@@ -90,28 +112,18 @@ describe("Kora reviews (e2e)", () => {
   it("finishes, then offers extra reviews from transcripts it hasn't seen, and counts them", async () => {
     await upload(6);
     const browser = await participant();
-    const first = await state(browser);
-    expect((await finish(browser, first)).body).toEqual({ completed: true });
+    const first = await finish(browser, await state(browser));
+    expect(first.body).toEqual({ completed: true, removed: [] });
+    expect(first.given).toHaveLength(3);
     expect((await state(browser)).phase).toBe(KoraReviewPhase.Finished);
 
     const extra = await more(browser);
     expect(extra.assignment?.extra).toBe(true);
-    expect(
-      ids(extra.assignment).some((id) => ids(first.assignment).includes(id)),
-    ).toBe(false);
-    await save(
-      browser,
-      extra.assignment?.id ?? "",
-      exportOf(extra, {
-        done: ids(extra.assignment).slice(0, 2),
-        optedOut: ids(extra.assignment).slice(2),
-      }),
-    ).expect(200);
-
-    const after = await state(browser);
-    expect(after).toMatchObject({
+    const second = await finish(browser, extra);
+    expect(second.given.some((id) => first.given.includes(id))).toBe(false);
+    expect(await state(browser)).toMatchObject({
       phase: KoraReviewPhase.Finished,
-      extraReviews: 2,
+      extraReviews: 3,
     });
   });
 
@@ -140,24 +152,35 @@ describe("Kora reviews (e2e)", () => {
     expect((await state(two)).phase).toBe(KoraReviewPhase.NoneLeft);
   });
 
-  it("releases an untouched assignment's transcripts after seven days", async () => {
-    await upload(2, { reviews: 1 });
+  it("releases a pair left unchanged for a day, swapping it on the reviewer's return", async () => {
+    await upload(2, { reviews: 1, perAssignment: 1 });
     const one = await participant();
     const held = await state(one);
+    const heldId = ids(held.assignment)[0];
+    await save(one, held.assignment?.id ?? "", exportOf(held)).expect(200);
     const two = await participant();
-    expect((await state(two)).phase).toBe(KoraReviewPhase.NoneLeft);
+    const other = await state(two);
+    expect(ids(other.assignment)).not.toContain(heldId);
+    await finish(two, other);
+    const three = await participant();
+    expect((await state(three)).phase).toBe(KoraReviewPhase.NoneLeft);
 
     await h.ctx.dataSource
-      .getRepository(KoraAssignment)
+      .getRepository(KoraAssignmentTranscript)
       .update(
-        { id: held.assignment?.id },
-        { lastActivityAt: new Date(Date.now() - milliseconds({ days: 8 })) },
+        { assignmentId: held.assignment?.id },
+        { lastActivityAt: new Date(Date.now() - milliseconds({ hours: 25 })) },
       );
-    await h.ctx.dataSource.getRepository(KoraAssignment).delete({
-      reviewerId: (await state(two)).reviewerId,
-    });
-    expect((await state(two)).phase).toBe(KoraReviewPhase.Reviewing);
-    await finish(one, held);
+    expect(ids((await state(three)).assignment)).toEqual([heldId]);
+
+    const stale = await save(
+      one,
+      held.assignment?.id ?? "",
+      exportOf(held, { done: [heldId] }),
+    ).expect(200);
+    expect(stale.body).toEqual({ completed: false, removed: [heldId] });
+    const back = await state(one);
+    expect(back.phase).toBe(KoraReviewPhase.NoneLeft);
   });
 
   it("waits for the project to be active, then lets an unfinished assignment finish after it closes", async () => {
@@ -179,22 +202,37 @@ describe("Kora reviews (e2e)", () => {
     const browser = await participant();
     const first = await state(browser);
     const fear = "fear_trauma_and_distress";
-    const inFear = (s: ReviewState) =>
-      (s.assignment?.transcripts ?? [])
-        .filter((t) => t.transcript.category === fear)
-        .map((t) => t.transcript.transcriptId);
-    const done = ids(first.assignment).filter(
-      (id) => !inFear(first).includes(id),
-    );
-    await save(browser, first.assignment?.id ?? "", {
-      ...exportOf(first, { done, optedOut: inFear(first) }),
+    const id = first.assignment?.id ?? "";
+    await save(browser, id, {
+      ...exportOf(first, { done: ids(first.assignment) }),
       optOutCategories: [fear],
     }).expect(200);
 
-    const extra = await more(browser);
-    expect(extra.optOutCategories).toEqual([fear]);
-    expect(ids(extra.assignment).length).toBeGreaterThan(0);
-    expect(inFear(extra)).toEqual([]);
+    const given: ReviewTranscript[] = [];
+    for (let t = await next(browser, id); t; t = await next(browser, id)) {
+      given.push(t);
+      await save(browser, id, {
+        ...exportOf(
+          {
+            ...first,
+            assignment: first.assignment && {
+              ...first.assignment,
+              transcripts: [...(first.assignment?.transcripts ?? []), ...given],
+            },
+          },
+          {
+            done: [
+              ...ids(first.assignment),
+              ...given.map((g) => g.transcript.transcriptId),
+            ],
+          },
+        ),
+        optOutCategories: [fear],
+      }).expect(200);
+    }
+    expect(given.length).toBeGreaterThan(0);
+    expect(given.filter((t) => t.transcript.category === fear)).toEqual([]);
+    expect((await state(browser)).optOutCategories).toEqual([fear]);
 
     const categories = (
       await request(h.ctx.app.getHttpServer())
@@ -205,7 +243,8 @@ describe("Kora reviews (e2e)", () => {
     expect(categories).toContainEqual({
       category: fear,
       pairs: 4,
-      reviewsNeeded: 4,
+      reviewsNeeded:
+        first.assignment?.transcripts[0].transcript.category === fear ? 3 : 4,
       optedOut: 1,
     });
   });

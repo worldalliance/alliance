@@ -93,3 +93,21 @@ export function checkExport(params: {
       : [],
   });
 }
+
+/** Transcripts whose result differs from the one in the previous export. */
+export function changedResults(
+  previous: unknown,
+  exported: Record<string, unknown>,
+): Set<string> {
+  const before = new Map(
+    resultsOf(fields(previous)).map((r) => [
+      String(r.transcriptId),
+      JSON.stringify(r),
+    ]),
+  );
+  return new Set(
+    resultsOf(exported)
+      .filter((r) => before.get(String(r.transcriptId)) !== JSON.stringify(r))
+      .map((r) => String(r.transcriptId)),
+  );
+}

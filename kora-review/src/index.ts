@@ -1,6 +1,6 @@
 // Public API of korabench-review: mount KORA's transcript review tool into a host page.
 // The host owns identity, storage and networking. The tool reads only what it is given and writes only through save().
-import { createEngine } from "./engine.js";
+import { createEngine, type Engine } from "./engine.js";
 import { createSaver } from "./saver.js";
 import { CATEGORY_IDS, SCHEMA_VERSION } from "./schemas.js";
 import type { KoraCategory, KoraExport, KoraTranscript } from "./types.gen.js";
@@ -31,8 +31,17 @@ export interface KoraReviewOptions {
   collectExitSurvey: boolean;
   /** Categories the reviewer opted out of in earlier assignments, repeated in this export's `optOutCategories`. */
   optOutCategories?: KoraCategory[];
-  /** Persist the whole export. Rejects when the host refuses the save. */
-  save: (exported: KoraExport) => Promise<void>;
+  /**
+   * Persist the whole export. Rejects when the host refuses the save. May
+   * resolve with pairs the host took out of the assignment, which the tool
+   * drops without a word.
+   */
+  save: (exported: KoraExport) => Promise<KoraSaveResult | void>;
+  /**
+   * Give the reviewer their next pair, or null when the assignment is full or
+   * there is nothing more to give. Called after the current pairs are saved.
+   */
+  next: () => Promise<KoraAssignedTranscript | null>;
   /** Called once, when every transcript is done or opted out and any exit survey is answered. */
   onComplete: () => void;
   /** Called when a save rejects and when a later save succeeds, so the host can show and clear its error. */
@@ -42,7 +51,15 @@ export interface KoraReviewOptions {
 export interface KoraAssignment {
   /** Identifies this assignment. The host generates it; it is echoed as the export's batchId. */
   batchId: string;
+  /** How many pairs the assignment asks for. */
+  size: number;
+  /** The pairs given so far; the rest come from `next`. */
   transcripts: KoraAssignedTranscript[];
+}
+
+export interface KoraSaveResult {
+  /** Transcript ids no longer in the assignment. */
+  removed: string[];
 }
 
 export interface KoraAssignedTranscript {
@@ -85,6 +102,21 @@ function checkTurns(turns: unknown, where: string): void {
   if (!ai) fail(`${where} has no ai turn to review.`);
 }
 
+function checkAssigned(item: KoraAssignedTranscript, where: string): void {
+  if (!item || !item.transcript) fail(`${where}.transcript is missing.`);
+  const t = item.transcript;
+  if (typeof t.transcriptId !== "string" || !t.transcriptId)
+    fail(`${where}.transcript.transcriptId must be a non-empty string.`);
+  if (!CATEGORY_SET.has(t.category))
+    fail(
+      `${where}.transcript.category "${String(t.category)}" is not a known category.`,
+    );
+  if (typeof item.contentHash !== "string" || !HASH.test(item.contentHash))
+    fail(`${where}.contentHash must look like "sha256:<64 hex digits>".`);
+  checkTurns(t.conversationA, `${where}.transcript.conversationA`);
+  checkTurns(t.conversationB, `${where}.transcript.conversationB`);
+}
+
 // A light structural check so a mistake fails loudly at mount rather than mid-review.
 // The host's server-side validation against transcriptSchema and exportSchema is the real contract check.
 function validate(element: unknown, o: KoraReviewOptions): void {
@@ -93,32 +125,28 @@ function validate(element: unknown, o: KoraReviewOptions): void {
   if (!o || typeof o !== "object") fail("options are required.");
   if (typeof o.reviewerId !== "string" || !o.reviewerId.trim())
     fail("reviewerId must be a non-empty string.");
-  for (const k of ["save", "onComplete", "onSaveStateChange"] as const) {
+  for (const k of [
+    "save",
+    "next",
+    "onComplete",
+    "onSaveStateChange",
+  ] as const) {
     if (typeof o[k] !== "function") fail(`${k} must be a function.`);
   }
   const a = o.assignment;
   if (!a || typeof a.batchId !== "string" || !a.batchId)
     fail("assignment.batchId must be a non-empty string.");
+  if (!Number.isInteger(a.size) || a.size < 1)
+    fail("assignment.size must be a positive integer.");
   if (!Array.isArray(a.transcripts) || a.transcripts.length === 0)
     fail("assignment.transcripts must be a non-empty array.");
   const seen = new Set<string>();
   for (const [i, item] of a.transcripts.entries()) {
-    const where = `assignment.transcripts[${i}]`;
-    if (!item || !item.transcript) fail(`${where}.transcript is missing.`);
-    const t = item.transcript;
-    if (typeof t.transcriptId !== "string" || !t.transcriptId)
-      fail(`${where}.transcript.transcriptId must be a non-empty string.`);
-    if (seen.has(t.transcriptId))
-      fail(`transcriptId "${t.transcriptId}" appears twice in the assignment.`);
-    seen.add(t.transcriptId);
-    if (!CATEGORY_SET.has(t.category))
-      fail(
-        `${where}.transcript.category "${String(t.category)}" is not a known category.`,
-      );
-    if (typeof item.contentHash !== "string" || !HASH.test(item.contentHash))
-      fail(`${where}.contentHash must look like "sha256:<64 hex digits>".`);
-    checkTurns(t.conversationA, `${where}.transcript.conversationA`);
-    checkTurns(t.conversationB, `${where}.transcript.conversationB`);
+    checkAssigned(item, `assignment.transcripts[${i}]`);
+    const id = item.transcript.transcriptId;
+    if (seen.has(id))
+      fail(`transcriptId "${id}" appears twice in the assignment.`);
+    seen.add(id);
   }
   const s = o.savedExport;
   if (s != null) {
@@ -148,15 +176,19 @@ export function mountKoraReview(
   validate(element, options);
   let unmounted = false;
   let completed = false;
-  let engine: { buildExport: () => KoraExport; destroy: () => void } | null =
-    null;
+  let engine: Engine | null = null;
 
   const saver = createSaver<KoraExport>({
     build: () => {
       if (!engine) throw new Error("Not mounted.");
       return engine.buildExport();
     },
-    save: (exported) => options.save(exported),
+    save: async (exported) => {
+      const saved = await options.save(exported);
+      if (saved && saved.removed.length > 0 && !unmounted) {
+        engine?.remove(saved.removed);
+      }
+    },
     onFailed: () => {
       if (!unmounted) options.onSaveStateChange(KoraSaveState.Failed);
     },
@@ -185,6 +217,12 @@ export function mountKoraReview(
     collectProfile: !!options.collectProfile,
     collectExitSurvey: !!options.collectExitSurvey,
     optOutCategories: options.optOutCategories ?? [],
+    next: async () => {
+      await saver.flush();
+      const item = await options.next();
+      if (item) checkAssigned(item, "next()");
+      return item;
+    },
     onChange: () => saver.changed(),
     onComplete,
     // The page is being hidden (tab switch, app backgrounded, webview closing): save now rather than in 2 s.

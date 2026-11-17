@@ -61,34 +61,51 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
     options: { finish: boolean; profile?: boolean },
   ) => {
     const s: State = (await browser.get("/kora/review").expect(200)).body;
-    const ids = s.assignment.transcripts.map((t) => t.transcript.transcriptId);
-    await browser
-      .put(`/kora/review/assignments/${s.assignment.id}/export`)
-      .set("Origin", ORIGIN)
-      .send({
-        export: {
-          ...koraExport({
-            reviewerId: s.reviewerId,
-            assignmentId: s.assignment.id,
-            transcripts: s.assignment.transcripts,
-            done: options.finish ? ids : [],
-            profile: options.profile,
-          }),
-          ...(options.finish
-            ? {
-                exitSurvey: {
-                  exit_q1: "very",
-                  exit_q2: null,
-                  exit_q3: null,
-                  exit_q4: null,
-                  exit_q5: null,
-                  exit_q6: null,
-                },
-              }
-            : {}),
-        },
-      })
-      .expect(200);
+    const transcripts = [...s.assignment.transcripts];
+    const send = (exitSurvey: boolean) =>
+      browser
+        .put(`/kora/review/assignments/${s.assignment.id}/export`)
+        .set("Origin", ORIGIN)
+        .send({
+          export: {
+            ...koraExport({
+              reviewerId: s.reviewerId,
+              assignmentId: s.assignment.id,
+              transcripts,
+              done: options.finish
+                ? transcripts.map((t) => t.transcript.transcriptId)
+                : [],
+              profile: options.profile,
+            }),
+            ...(exitSurvey
+              ? {
+                  exitSurvey: {
+                    exit_q1: "very",
+                    exit_q2: null,
+                    exit_q3: null,
+                    exit_q4: null,
+                    exit_q5: null,
+                    exit_q6: null,
+                  },
+                }
+              : {}),
+          },
+        })
+        .expect(200);
+    await send(false);
+    if (!options.finish) return;
+    for (;;) {
+      const { next } = (
+        await browser
+          .post(`/kora/review/assignments/${s.assignment.id}/next`)
+          .set("Origin", ORIGIN)
+          .expect(200)
+      ).body;
+      if (!next) break;
+      transcripts.push(next);
+      await send(false);
+    }
+    await send(true);
   };
   const participant = async () => {
     const browser = h.browser();

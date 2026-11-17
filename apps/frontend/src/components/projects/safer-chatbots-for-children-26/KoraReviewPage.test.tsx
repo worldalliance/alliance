@@ -34,6 +34,7 @@ const reviewing = (extra = false): KoraReviewStateDto => ({
   assignment: {
     id: "as1",
     extra,
+    size: 1,
     transcripts: [{ transcript: sampleTranscript, contentHash: HASH }],
     savedExport: null,
   },

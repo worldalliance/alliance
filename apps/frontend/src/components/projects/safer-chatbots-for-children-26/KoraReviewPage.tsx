@@ -19,7 +19,11 @@ import { REVIEW_COPY } from "./copy";
 import { KoraNavbar } from "./KoraNavbar";
 import { type KoraToolOptions, KoraReviewTool } from "./KoraReviewTool";
 import { useKoraParticipant } from "./useKoraParticipant";
-import { saveKoraExport, useKoraReview } from "./useKoraReview";
+import {
+  nextKoraTranscript,
+  saveKoraExport,
+  useKoraReview,
+} from "./useKoraReview";
 
 export const SIGN_IN_TO_REVIEW = `${KORA_PROJECT_PATH}?next=review`;
 
@@ -46,6 +50,7 @@ function ReviewTool({
             reviewerId: state.reviewerId,
             assignment: {
               batchId: assignment.id,
+              size: assignment.size,
               transcripts: assignment.transcripts.map((t) => ({
                 transcript: parseKoraTranscript(t.transcript),
                 contentHash: t.contentHash,
@@ -58,6 +63,7 @@ function ReviewTool({
             collectExitSurvey: !assignment.extra,
             optOutCategories: parseKoraCategories(state.optOutCategories),
             save: (exported) => saveKoraExport(assignment.id, { ...exported }),
+            next: () => nextKoraTranscript(assignment.id),
           }
         : null,
     [

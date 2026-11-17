@@ -33,8 +33,17 @@ const past = () => new Date(Date.now() - 60_000);
 describe("Kora home base (e2e)", () => {
   let h: KoraHarness;
 
-  const { state, more, save, ids, exportOf, finish, participant, upload } =
-    koraReviewClient(() => h);
+  const {
+    state,
+    more,
+    save,
+    next,
+    ids,
+    exportOf,
+    finish,
+    participant,
+    upload,
+  } = koraReviewClient(() => h);
   const home = async (browser: TestAgent): Promise<Home> =>
     (await browser.get("/kora/review/home").expect(200)).body;
   const assignments = () => h.ctx.dataSource.getRepository(KoraAssignment);
@@ -82,11 +91,27 @@ describe("Kora home base (e2e)", () => {
 
     const started = await more(browser);
     expect(started.assignment?.extra).toBe(false);
-    const [first, second] = ids(started.assignment);
+    const id = started.assignment?.id ?? "";
+    const [first] = ids(started.assignment);
+    await save(browser, id, exportOf(started, { done: [first] })).expect(200);
+    const second = await next(browser, id);
+    const both = {
+      ...started,
+      assignment: started.assignment && {
+        ...started.assignment,
+        transcripts: [
+          ...started.assignment.transcripts,
+          ...(second ? [second] : []),
+        ],
+      },
+    };
     await save(
       browser,
-      started.assignment?.id ?? "",
-      exportOf(started, { done: [first], optedOut: [second] }),
+      id,
+      exportOf(both, {
+        done: [first],
+        optedOut: [second?.transcript.transcriptId ?? ""],
+      }),
     ).expect(200);
     expect(await home(browser)).toEqual({
       totalRanked: 1,
@@ -120,6 +145,12 @@ describe("Kora home base (e2e)", () => {
     await upload(2, { perAssignment: 2, reviews: 1 });
     const one = await participant();
     const held = await state(one);
+    await save(
+      one,
+      held.assignment?.id ?? "",
+      exportOf(held, { done: ids(held.assignment) }),
+    ).expect(200);
+    expect(await next(one, held.assignment?.id ?? "")).not.toBeNull();
     const two = await participant();
     expect((await home(two)).userBatches).toEqual([]);
 

@@ -30,14 +30,16 @@ const handle = mountKoraReview(document.getElementById("review")!, {
   reviewerId: "rv_8f3a2c71", // opaque; never a name, email or phone number
   assignment: {
     batchId: "asg_2026_11_10_001", // echoed as the export's batchId
+    size: 10, // how many pairs the assignment asks for
     transcripts: [
-      { transcript, contentHash: "sha256:…" }, // one per assigned pair, in the order to show them
+      { transcript, contentHash: "sha256:…" }, // the pairs given so far, in the order to show them
     ],
   },
   savedExport: storedExportOrNull, // resume exactly where the reviewer left off
   collectProfile: true, // false once this reviewer has answered the profile questions
   collectExitSurvey: true,
-  save: (exported) => api.saveExport(exported), // reject to refuse; the tool keeps everything and retries
+  save: (exported) => api.saveExport(exported), // reject to refuse; may resolve with { removed: [ids] }
+  next: () => api.nextPair(), // the next { transcript, contentHash }, or null when there are no more
   onComplete: () => showThankYou(), // once per mount
   onSaveStateChange: (s) => setSaveError(s === KoraSaveState.Failed),
 });
@@ -54,9 +56,10 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 | Export                                         | What it is                                                                                                                                                                                               |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `mountKoraReview(element, options)`            | Adds the tool inside `element` and returns a `KoraReviewHandle`. Throws a `TypeError` for malformed options, a `savedExport` from another `reviewerId` or `batchId`, or a `schemaVersion` it can't read. |
-| `KoraReviewOptions`                            | `reviewerId`, `assignment`, `savedExport`, `collectProfile`, `collectExitSurvey`, `optOutCategories` (optional), `save`, `onComplete`, `onSaveStateChange`.                                              |
-| `KoraAssignment`, `KoraAssignedTranscript`     | `{ batchId, transcripts: [{ transcript, contentHash }] }`. `contentHash` is `"sha256:<64 hex>"` and is echoed unchanged.                                                                                 |
+| `KoraReviewOptions`                            | `reviewerId`, `assignment`, `savedExport`, `collectProfile`, `collectExitSurvey`, `optOutCategories` (optional), `save`, `next`, `onComplete`, `onSaveStateChange`.                                      |
+| `KoraAssignment`, `KoraAssignedTranscript`     | `{ batchId, size, transcripts: [{ transcript, contentHash }] }`. `contentHash` is `"sha256:<64 hex>"` and is echoed unchanged.                                                                           |
 | `KoraReviewHandle`                             | `flush()` saves anything pending now and rejects if that save fails. `unmount()` removes the tool and its listeners; unsaved changes are dropped, so flush first.                                        |
+| `KoraSaveResult`                               | What `save` may resolve with: `{ removed }`, transcript ids no longer in the assignment.                                                                                                                 |
 | `KoraSaveState`                                | `Saved` and `Failed`.                                                                                                                                                                                    |
 | `transcriptSchema`, `exportSchema`             | JSON Schema draft 2020-12 objects.                                                                                                                                                                       |
 | `SCHEMA_VERSION`                               | `2`.                                                                                                                                                                                                     |
@@ -68,9 +71,11 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 - **Resume exactly.** With a `savedExport`, the tool reopens the same pair with the same marks and any half-answered ranking questions, with the ranking sheet open if it was.
 - **Saving.** About two seconds after the last change (a mark, an answer, an opt-out, moving between pairs), `save` gets the complete export. Never more than one save is in flight; changes made during a save are saved when it settles. When the page is hidden (tab switch, app backgrounded) a pending save goes out straight away.
 - **Failed saves.** A rejected save loses nothing. The tool calls `onSaveStateChange(Failed)`, retries on the next change or `flush()`, and calls `onSaveStateChange(Saved)` after the next success. It shows no error of its own: that's the host's.
-- **Progress** is shown as "N of M reviewed", where a pair counts once it's ranked or skipped. There's no time estimate.
+- **One pair at a time.** The host gives the pairs so far; once they're all ranked or skipped and fewer than `size` have been given, the tool saves, then calls `next` and shows "Loading the next pair…". A rejected `next` shows "Couldn't load the next pair" with Try again. `null` means there are no more, and the assignment finishes with what was given.
+- **Removed pairs.** When `save` resolves with `removed` ids, those pairs leave the tool and its exports without a message; a reviewer on one moves to the next.
+- **Progress** is shown as "N of M reviewed" against `size`, where a pair counts once it's ranked or skipped. There's no time estimate.
 - **Content warnings.** Before each pair in a sensitive category, the reviewer can continue, skip that pair (`optedOut: true`), or skip every pair in the category (added to `optOutCategories`). The host passes earlier opt-outs back as the `optOutCategories` option so later exports keep them.
-- **Completion.** When every pair is ranked or skipped, the tool asks the exit survey (if `collectExitSurvey`), sets `isDone`, saves, and then calls `onComplete`, once per mount. Mounting with an export that's already `isDone` shows the summary and calls `onComplete` once. The host shows the thank-you and any "review more" choice; to start another assignment, unmount and mount again with the new assignment and `savedExport: null`.
+- **Completion.** When every pair is ranked or skipped and `size` pairs were given or `next` gave null, the tool asks the exit survey (if `collectExitSurvey`), sets `isDone`, saves, and then calls `onComplete`, once per mount. Mounting with an export that's already `isDone` shows the summary and calls `onComplete` once. The host shows the thank-you and any "review more" choice; to start another assignment, unmount and mount again with the new assignment and `savedExport: null`.
 - **Profile.** With `collectProfile`, the profile questions come before the first pair. The optional questions have a "Prefer not to say" answer; the required ones don't.
 
 ## Theming

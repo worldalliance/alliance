@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pairs come one at a time. `assignment.size` says how many the assignment asks for, `assignment.transcripts` holds those given so far, and the new required `next` option fetches each further one after a save, or returns null when there are no more. A failed `next` shows Try again.
+- `save` may resolve with `{ removed }` (`KoraSaveResult`): pairs taken out of the assignment, which the tool drops without a message.
+- The content warning no longer counts the pairs left on its topic, which the tool can't know, and always offers to skip the whole topic.
 - New `optOutCategories` mount option: categories the reviewer opted out of in earlier assignments. The export's `optOutCategories` repeats them alongside this assignment's own.
 - New `parseKoraCategories` in `@alliance/kora-review/parse`, and `CATEGORIES` exported from `@alliance/kora-review/categories`.
 - The content warning says skipping every pair on a topic also skips it in later batches.

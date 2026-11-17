@@ -5563,6 +5563,13 @@ export type KoraReviewAssignmentDto = {
      * Requested after finishing an earlier one
      */
     extra: boolean;
+    /**
+     * How many transcripts the assignment asks for
+     */
+    size: number;
+    /**
+     * Those given so far; the next comes from the next endpoint
+     */
     transcripts: Array<KoraTranscriptPreviewDto>;
     savedExport: {
         [key: string]: unknown;
@@ -5624,9 +5631,20 @@ export type SaveKoraExportDto = {
 
 export type KoraExportSavedDto = {
     /**
-     * Every transcript is done or opted out
+     * The assignment is finished
      */
     completed: boolean;
+    /**
+     * Transcripts no longer in the assignment whose results the save dropped; the tool removes them
+     */
+    removed: Array<string>;
+};
+
+export type KoraNextTranscriptDto = {
+    /**
+     * Null once the assignment is full or nothing is left to give
+     */
+    next: KoraTranscriptPreviewDto | null;
 };
 
 export type KoraExportsDto = {
@@ -17230,6 +17248,30 @@ export type KoraReviewSaveResponses = {
 };
 
 export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
+
+export type KoraReviewNextData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/next';
+};
+
+export type KoraReviewNextErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewNextError = KoraReviewNextErrors[keyof KoraReviewNextErrors];
+
+export type KoraReviewNextResponses = {
+    200: KoraNextTranscriptDto;
+};
+
+export type KoraReviewNextResponse = KoraReviewNextResponses[keyof KoraReviewNextResponses];
 
 export type KoraResultsExportsData = {
     body?: never;

@@ -24,13 +24,14 @@ import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
-import { type Candidate, pickAssignment } from "./kora-assignment-pick";
 import {
+  completionOf,
   emitMemberReviewed,
   type KoraCompletion,
   logCompletion,
 } from "./kora-completion";
 import {
+  changedResults,
   checkExport,
   resultTranscriptIds,
   withoutResultsFor,
@@ -41,7 +42,14 @@ import {
   koraHome,
   type KoraOffer,
 } from "./kora-home";
-import { COUNTED_REVIEWS, OPEN_BATCH } from "./kora-pool";
+import {
+  bindNext,
+  candidates,
+  earliestClose,
+  heldRows,
+  newestOpenBatch,
+  releaseExpired,
+} from "./kora-pool";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
 import { koraAjv } from "./kora-upload";
@@ -53,13 +61,13 @@ export enum KoraSaveError {
   Invalid = "invalid",
 }
 
+export type KoraSaved = { completed: boolean; removed: string[] };
+
 export type KoraSaveRefusal =
   | { error: KoraSaveError.NotFound }
   | { error: KoraSaveError.Invalid; reason: string };
 
 const validExport = koraAjv().compile(exportSchema);
-
-type BatchCandidate = Candidate & { closesAt: Date | null };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -125,55 +133,56 @@ export class KoraReviewService {
     identity: KoraIdentity;
     assignmentId: string;
     exported: Record<string, unknown>;
-  }): Promise<Result<{ completed: boolean }, KoraSaveRefusal>> {
+  }): Promise<Result<KoraSaved, KoraSaveRefusal>> {
     const reviewer = await this.reviewerFor(params.identity);
-    const assignment = await this.dataSource.manager.findOneBy(KoraAssignment, {
-      id: params.assignmentId,
-      reviewerId: reviewer.id,
-    });
-    if (!assignment) return R.failure({ error: KoraSaveError.NotFound });
-    const rows = await this.dataSource.manager.find(KoraAssignmentTranscript, {
-      where: { assignmentId: assignment.id },
-      relations: { transcript: true },
-    });
-    const exported = withoutResultsFor(
-      params.exported,
-      await this.droppedFrom(params.exported, rows),
-    );
-    const checked = checkExport({
-      exported,
-      validate: validExport,
-      reviewerId: reviewer.id,
-      assignmentId: assignment.id,
-      transcripts: rows.map((row) => ({
-        id: row.transcriptId,
-        contentHash: loadedTranscript(row).contentHash,
-      })),
-    });
-    if (!checked.ok) {
-      this.logger.warn(
-        `Refused Kora export for assignment ${assignment.id}: it ${checked.error}`,
-      );
-      return R.failure({ error: KoraSaveError.Invalid, reason: checked.error });
-    }
-    const { statuses, profileAnswered, optOutCategories } = checked.value;
-    const completed = [...statuses.values()].every(
-      (s) => s !== KoraReviewStatus.Pending,
-    );
-    const completion: KoraCompletion | null =
-      completed && assignment.completedAt === null
-        ? {
-            assignmentId: assignment.id,
-            reviewerId: reviewer.id,
-            userId: reviewer.userId,
-            extra: assignment.extra,
-            ratingCount: [...statuses.values()].filter(
-              (s) => s === KoraReviewStatus.Done,
-            ).length,
-          }
-        : null;
-    await this.dataSource.transaction(async (manager) => {
+    const outcome = await this.dataSource.transaction(async (manager) => {
+      await lockReviewer(manager, reviewer.id);
+      const assignment = await manager.findOneBy(KoraAssignment, {
+        id: params.assignmentId,
+        reviewerId: reviewer.id,
+      });
+      if (!assignment) {
+        return R.failure<KoraSaveRefusal>({ error: KoraSaveError.NotFound });
+      }
+      await releaseExpired(manager, assignment.id);
+      const held = await heldRows(manager, assignment.id);
+      const { removed, dropped } = await this.droppedFrom(manager, {
+        exported: params.exported,
+        assignmentId: assignment.id,
+        held,
+      });
+      const exported = withoutResultsFor(params.exported, dropped);
+      const checked = checkExport({
+        exported,
+        validate: validExport,
+        reviewerId: reviewer.id,
+        assignmentId: assignment.id,
+        transcripts: held.map((row) => ({
+          id: row.transcriptId,
+          contentHash: loadedTranscript(row).contentHash,
+        })),
+      });
+      if (!checked.ok) {
+        this.logger.warn(
+          `Refused Kora export for assignment ${assignment.id}: it ${checked.error}`,
+        );
+        return R.failure<KoraSaveRefusal>({
+          error: KoraSaveError.Invalid,
+          reason: checked.error,
+        });
+      }
+      const { statuses, profileAnswered, optOutCategories } = checked.value;
+      const size = await this.sizeOf(manager, assignment);
+      const completed =
+        assignment.completedAt !== null ||
+        (held.length >= size &&
+          [...statuses.values()].every((s) => s !== KoraReviewStatus.Pending));
+      const completion =
+        completed && assignment.completedAt === null
+          ? completionOf({ assignment, reviewer, statuses: statuses.values() })
+          : null;
       const now = new Date();
+      const changed = changedResults(assignment.export, exported);
       await manager.update(
         KoraAssignment,
         { id: assignment.id },
@@ -187,7 +196,9 @@ export class KoraReviewService {
         await manager.update(
           KoraAssignmentTranscript,
           { assignmentId: assignment.id, transcriptId },
-          { status },
+          changed.has(transcriptId)
+            ? { status, lastActivityAt: now }
+            : { status },
         );
       }
       if (completion) await logCompletion(manager, completion);
@@ -206,9 +217,78 @@ export class KoraReviewService {
           { profileAnsweredAt: now },
         );
       }
+      return R.success({ saved: { completed, removed }, completion });
     });
-    if (completion) emitMemberReviewed(this.events, completion);
-    return R.success({ completed });
+    if (!outcome.ok) return outcome;
+    if (outcome.value.completion) {
+      emitMemberReviewed(this.events, outcome.value.completion);
+    }
+    return R.success(outcome.value.saved);
+  }
+
+  /**
+   * Gives the reviewer their next transcript in the assignment, or null once
+   * it is full or nothing is left to give, which finishes it.
+   */
+  async next(params: {
+    identity: KoraIdentity;
+    assignmentId: string;
+  }): Promise<Result<KoraTranscript | null, KoraSaveError.NotFound>> {
+    const reviewer = await this.reviewerFor(params.identity);
+    const outcome = await this.dataSource.transaction(async (manager) => {
+      await lockReviewer(manager, reviewer.id);
+      const assignment = await manager.findOneBy(KoraAssignment, {
+        id: params.assignmentId,
+        reviewerId: reviewer.id,
+      });
+      if (!assignment) return null;
+      if (assignment.completedAt) return { transcript: null, completion: null };
+      const transcript = await bindNext(manager, {
+        assignment,
+        size: await this.sizeOf(manager, assignment),
+      });
+      const completion = transcript
+        ? null
+        : await this.finish(manager, { assignment, reviewer });
+      return { transcript, completion };
+    });
+    if (!outcome) return R.failure(KoraSaveError.NotFound);
+    if (outcome.completion) emitMemberReviewed(this.events, outcome.completion);
+    return R.success(outcome.transcript);
+  }
+
+  /**
+   * Marks an assignment with nothing more to give finished, once none of its
+   * transcripts is pending. Only one that holds a transcript credits the
+   * member, as finishing it themselves would.
+   */
+  private async finish(
+    manager: EntityManager,
+    params: { assignment: KoraAssignment; reviewer: KoraReviewer },
+  ): Promise<KoraCompletion | null> {
+    const held = await heldRows(manager, params.assignment.id);
+    if (held.some((r) => r.status === KoraReviewStatus.Pending)) return null;
+    await manager.update(
+      KoraAssignment,
+      { id: params.assignment.id },
+      { completedAt: new Date() },
+    );
+    const completion = completionOf({
+      ...params,
+      statuses: held.map((r) => r.status),
+    });
+    await logCompletion(manager, completion);
+    return held.length > 0 ? completion : null;
+  }
+
+  private async sizeOf(
+    manager: EntityManager,
+    assignment: KoraAssignment,
+  ): Promise<number> {
+    const batch = await manager.findOneByOrFail(KoraBatch, {
+      id: assignment.schemaBatchId,
+    });
+    return batch.transcriptsPerAssignment;
   }
 
   private async reviewerFor(identity: KoraIdentity): Promise<KoraReviewer> {
@@ -225,24 +305,42 @@ export class KoraReviewService {
   }
 
   /**
-   * Results for transcripts a retire or delete took out of the assignment,
-   * which a reviewer whose tool loaded before it still sends.
+   * Results to drop for transcripts no longer in the assignment, released or
+   * taken out by a retire or delete, which a tool loaded before still sends.
+   * The save reports them so the tool swaps them.
    */
   private async droppedFrom(
-    exported: Record<string, unknown>,
-    rows: KoraAssignmentTranscript[],
-  ): Promise<Set<string>> {
-    const assigned = new Set(rows.map((row) => row.transcriptId));
-    const unassigned = resultTranscriptIds(exported).filter(
-      (id) => !assigned.has(id),
+    manager: EntityManager,
+    params: {
+      exported: Record<string, unknown>;
+      assignmentId: string;
+      held: KoraAssignmentTranscript[];
+    },
+  ): Promise<{ removed: string[]; dropped: Set<string> }> {
+    const heldIds = new Set(params.held.map((row) => row.transcriptId));
+    const unheld = resultTranscriptIds(params.exported).filter(
+      (id) => !heldIds.has(id),
     );
-    if (unassigned.length === 0) return new Set();
-    const live = await this.dataSource.manager.find(KoraTranscript, {
-      where: { id: In(unassigned), batch: { retiredAt: IsNull() } },
+    if (unheld.length === 0) return { removed: [], dropped: new Set() };
+    const releasedRows = await manager.find(KoraAssignmentTranscript, {
+      where: {
+        assignmentId: params.assignmentId,
+        transcriptId: In(unheld),
+        status: KoraReviewStatus.Released,
+      },
+      select: { transcriptId: true },
+    });
+    const released = releasedRows.map((r) => r.transcriptId);
+    const live = await manager.find(KoraTranscript, {
+      where: { id: In(unheld), batch: { retiredAt: IsNull() } },
       select: { id: true },
     });
     const liveIds = new Set(live.map((t) => t.id));
-    return new Set(unassigned.filter((id) => !liveIds.has(id)));
+    const dropped = new Set([
+      ...released,
+      ...unheld.filter((id) => !liveIds.has(id)),
+    ]);
+    return { removed: [...dropped], dropped };
   }
 
   private unfinished(manager: EntityManager, reviewerId: string) {
@@ -296,15 +394,18 @@ export class KoraReviewService {
     reviewer: KoraReviewer,
     assignment: KoraAssignment,
   ): Promise<KoraReviewState> {
-    const rows = await manager.find(KoraAssignmentTranscript, {
-      where: { assignmentId: assignment.id },
-      relations: { transcript: true },
-      order: { position: "ASC" },
-    });
+    const size = await this.sizeOf(manager, assignment);
+    await bindNext(manager, { assignment, size });
+    const held = await heldRows(manager, assignment.id);
+    if (held.length === 0) {
+      await this.finish(manager, { assignment, reviewer });
+      return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
+    }
     const loaded: KoraLoadedAssignment = {
       id: assignment.id,
       extra: assignment.extra,
-      transcripts: rows.map(loadedTranscript),
+      size,
+      transcripts: held.map(loadedTranscript),
       savedExport: asRecord(assignment.export),
     };
     return {
@@ -317,18 +418,9 @@ export class KoraReviewService {
     manager: EntityManager,
     reviewer: KoraReviewer,
   ): Promise<KoraReviewState> {
-    const newest = await this.newestOpenBatch(manager);
-    const candidates = newest
-      ? await this.candidates(manager, reviewer.id)
-      : [];
-    const picked = newest
-      ? pickAssignment({
-          candidates,
-          size: newest.transcriptsPerAssignment,
-          random: Math.random,
-        })
-      : [];
-    if (!newest || picked.length === 0) {
+    const newest = await newestOpenBatch(manager);
+    const available = newest ? await candidates(manager, reviewer.id) : [];
+    if (!newest || available.length === 0) {
       return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
     }
     const assignment = await manager.save(KoraAssignment, {
@@ -337,41 +429,24 @@ export class KoraReviewService {
       schemaBatchId: newest.id,
       export: null,
       lastActivityAt: new Date(),
-      closesAt: earliestClose(picked),
+      closesAt: earliestClose(available),
       completedAt: null,
     });
-    await manager.insert(
-      KoraAssignmentTranscript,
-      picked.map((c, position) => ({
-        assignmentId: assignment.id,
-        transcriptId: c.id,
-        position,
-        status: KoraReviewStatus.Pending,
-      })),
-    );
     return this.reviewing(manager, reviewer, assignment);
-  }
-
-  private newestOpenBatch(manager: EntityManager): Promise<KoraBatch | null> {
-    return manager
-      .createQueryBuilder(KoraBatch, "b")
-      .where(OPEN_BATCH)
-      .orderBy(`b."createdAt"`, "DESC")
-      .getOne();
   }
 
   private async offer(
     manager: EntityManager,
     reviewerId: string,
   ): Promise<KoraOffer | null> {
-    const newest = await this.newestOpenBatch(manager);
+    const newest = await newestOpenBatch(manager);
     if (!newest) return null;
-    const candidates = await this.candidates(manager, reviewerId);
-    if (candidates.length === 0) return null;
+    const available = await candidates(manager, reviewerId);
+    if (available.length === 0) return null;
     return {
       releasedAt: newest.createdAt,
-      closesAt: earliestClose(candidates),
-      size: Math.min(newest.transcriptsPerAssignment, candidates.length),
+      closesAt: earliestClose(available),
+      size: Math.min(newest.transcriptsPerAssignment, available.length),
     };
   }
 
@@ -382,57 +457,26 @@ export class KoraReviewService {
     return manager.query(
       `SELECT a."id", a."createdAt", a."closesAt", a."completedAt",
          MAX(b."createdAt") AS "releasedAt",
-         COUNT(at."transcriptId")::int AS "total",
-         COUNT(at."transcriptId") FILTER (WHERE at."status" <> $2)::int AS "progress",
+         CASE WHEN a."completedAt" IS NULL THEN MAX(sb."transcriptsPerAssignment")
+           ELSE COUNT(at."transcriptId") FILTER (WHERE at."status" <> $4) END::int AS "total",
+         COUNT(at."transcriptId") FILTER (WHERE at."status" NOT IN ($2, $4))::int AS "progress",
          COUNT(at."transcriptId") FILTER (WHERE at."status" = $3)::int AS "ranked"
        FROM "kora_assignment" a
+       JOIN "kora_batch" sb ON sb."id" = a."schemaBatchId"
        LEFT JOIN "kora_assignment_transcript" at ON at."assignmentId" = a."id"
        LEFT JOIN "kora_transcript" t ON t."id" = at."transcriptId"
        LEFT JOIN "kora_batch" b ON b."id" = t."batchId"
        WHERE a."reviewerId" = $1 AND a."deletedAt" IS NULL
        GROUP BY a."id"`,
-      [reviewerId, KoraReviewStatus.Pending, KoraReviewStatus.Done],
+      [
+        reviewerId,
+        KoraReviewStatus.Pending,
+        KoraReviewStatus.Done,
+        KoraReviewStatus.Released,
+      ],
     );
   }
-
-  /**
-   * Transcripts in open batches this reviewer hasn't had, outside the
-   * categories they opted out of, with how many reviews each still needs.
-   */
-  private async candidates(
-    manager: EntityManager,
-    reviewerId: string,
-  ): Promise<BatchCandidate[]> {
-    const rows: BatchCandidate[] = await manager.query(
-      `SELECT t."id", t."category", b."closesAt",
-           b."reviewsPerTranscript" - ${COUNTED_REVIEWS} AS "deficit"
-         FROM "kora_transcript" t
-         JOIN "kora_batch" b ON b."id" = t."batchId"
-         WHERE ${OPEN_BATCH} AND NOT EXISTS (
-           SELECT 1 FROM "kora_assignment_transcript" mine
-           JOIN "kora_assignment" a ON a."id" = mine."assignmentId"
-           WHERE mine."transcriptId" = t."id" AND a."reviewerId" = $1
-             AND a."deletedAt" IS NULL
-         ) AND NOT EXISTS (
-           SELECT 1 FROM "kora_reviewer" r
-           WHERE r."id" = $1 AND t."category" = ANY(r."optOutCategories")
-         )`,
-      [reviewerId],
-    );
-    return rows.filter((r) => r.deficit > 0);
-  }
 }
-
-function earliestClose(candidates: BatchCandidate[]): Date | null {
-  return candidates.reduce<Date | null>(
-    (earliest, c) =>
-      c.closesAt && (!earliest || c.closesAt < earliest)
-        ? c.closesAt
-        : earliest,
-    null,
-  );
-}
-
 function loadedTranscript(row: KoraAssignmentTranscript): KoraTranscript {
   if (!row.transcript) {
     throw new Error(`transcript ${row.transcriptId} wasn't loaded`);

@@ -19,6 +19,7 @@ export default function KoraTranscriptPreviewPage() {
       reviewerId: "admin-preview",
       assignment: {
         batchId: `preview-${batchId}`,
+        size: 1,
         transcripts: [
           {
             transcript: parseKoraTranscript(preview.data.transcript),
@@ -30,6 +31,7 @@ export default function KoraTranscriptPreviewPage() {
       collectProfile: false,
       collectExitSurvey: false,
       save: () => Promise.resolve(),
+      next: () => Promise.resolve(null),
       onComplete: () => {},
       onSaveStateChange: () => {},
     });

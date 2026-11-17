@@ -86,28 +86,36 @@ describe("Kora review actions (e2e)", () => {
       .agent(ctx.app.getHttpServer())
       .set("Authorization", `Bearer ${ctx.accessToken}`)
       .set("Origin", ORIGIN);
-  const rate = async (
-    agent: ReturnType<typeof member>,
-    pick: (ids: string[]) => string[],
-  ) => {
+  /** Rates the first `count` pairs the assignment gives, asking for each next one as the tool does. */
+  const rate = async (agent: ReturnType<typeof member>, count: number) => {
     const state = (await agent.get("/kora/review").expect(200)).body;
-    const transcripts = state.assignment.transcripts;
-    await agent
-      .put(`/kora/review/assignments/${state.assignment.id}/export`)
-      .send({
-        export: koraExport({
-          reviewerId: state.reviewerId,
-          assignmentId: state.assignment.id,
-          transcripts,
-          done: pick(
-            transcripts.map(
-              (t: { transcript: { transcriptId: string } }) =>
-                t.transcript.transcriptId,
-            ),
-          ),
-        }),
-      })
-      .expect(200);
+    const id: string = state.assignment.id;
+    const transcripts: {
+      transcript: { transcriptId: string; category: string };
+      contentHash: string;
+    }[] = [...state.assignment.transcripts];
+    const send = () =>
+      agent
+        .put(`/kora/review/assignments/${id}/export`)
+        .send({
+          export: koraExport({
+            reviewerId: state.reviewerId,
+            assignmentId: id,
+            transcripts,
+            done: transcripts.map((t) => t.transcript.transcriptId),
+          }),
+        })
+        .expect(200);
+    await send();
+    while (transcripts.length < count) {
+      const { next } = (
+        await agent.post(`/kora/review/assignments/${id}/next`).expect(200)
+      ).body;
+      if (!next) return id;
+      transcripts.push(next);
+      await send();
+    }
+    return id;
   };
   const eventuallyCompleted = async (actionId: number) => {
     for (let i = 0; i < 50 && !(await completed(actionId)); i++) {
@@ -123,25 +131,26 @@ describe("Kora review actions (e2e)", () => {
       ActionTaskKind.KoraReview,
     );
     const other = await liveAction("Some form action", ActionTaskKind.Form);
-    await rate(member(), (ids) => ids);
+    await rate(member(), 2);
 
     expect(await eventuallyCompleted(kora.id)).toBe(true);
     expect(await completed(other.id)).toBe(false);
   });
 
-  it("completes a member's Kora actions when a retire finishes their first assignment", async () => {
+  it("completes a member's Kora actions when, after a retire, nothing is left to give them", async () => {
     const batch = await uploadTwo();
     const kora = await liveAction(
       "Review chatbot transcripts",
       ActionTaskKind.KoraReview,
     );
-    await rate(member(), (ids) => ids.slice(0, 1));
+    const id = await rate(member(), 1);
     expect(await completed(kora.id)).toBe(false);
 
     const retired = await ctx.app
       .get(KoraBatchActionsService)
       .retire({ batchId: batch.id, actor: koraAdminActor(ctx) });
     expect(retired.ok).toBe(true);
+    await member().post(`/kora/review/assignments/${id}/next`).expect(200);
 
     expect(await eventuallyCompleted(kora.id)).toBe(true);
   });

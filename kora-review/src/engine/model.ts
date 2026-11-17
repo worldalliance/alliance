@@ -1,5 +1,5 @@
 import { CATEGORIES } from "../categories.js";
-import type { KoraTurn } from "../index.js";
+import type { KoraAssignedTranscript, KoraTurn } from "../index.js";
 import { SCHEMA_VERSION } from "../schemas.js";
 import type { KoraAnnotation, KoraExport, KoraResult } from "../types.gen.js";
 import type { ModelCtx } from "./context.js";
@@ -53,27 +53,29 @@ export function createModel(ctx: ModelCtx) {
       role: m.role === "ai" ? "assistant" : "user",
       content: m.text,
     }));
-  const ALL = o.assignment.transcripts.map(
-    ({ transcript: x, contentHash }): Transcript => {
-      return {
-        id: x.transcriptId,
-        category: x.category,
-        hash: contentHash,
-        pairType: typeof x.pairType === "string" ? x.pairType : null,
-        context: {
-          title: x.scenarioTitle || "",
-          childAge: x.childAge ?? null,
-        },
-        messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
-        pair: { na: x.conversationA.length },
-      };
+  const toTranscript = ({
+    transcript: x,
+    contentHash,
+  }: KoraAssignedTranscript): Transcript => ({
+    id: x.transcriptId,
+    category: x.category,
+    hash: contentHash,
+    pairType: typeof x.pairType === "string" ? x.pairType : null,
+    context: {
+      title: x.scenarioTitle || "",
+      childAge: x.childAge ?? null,
     },
-  );
+    messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
+    pair: { na: x.conversationA.length },
+  });
+  const ALL = o.assignment.transcripts.map(toTranscript);
 
   /* ---------- State ---------- */
   const S: State = {
     all: ALL,
-    list: ALL,
+    list: [...ALL],
+    size: o.assignment.size,
+    exhausted: false,
     results: {},
     history: {},
     screen: "boot",
@@ -209,12 +211,14 @@ export function createModel(ctx: ModelCtx) {
   }
   const reviewed = (r: Result) => r.status === "done" || r.optedOut;
   const reviewedCount = () => S.all.filter((t) => reviewed(res(t))).length;
-  const allReviewed = () => S.all.every((t) => reviewed(res(t)));
+  const needsMore = () => !S.exhausted && S.all.length < S.size;
+  const allReviewed = () =>
+    !needsMore() && S.all.every((t) => reviewed(res(t)));
   // Only unreviewed pairs open, so the current pair is always reviewed + 1.
   const progressText = () =>
     allReviewed()
       ? `${S.all.length} of ${S.all.length} reviewed`
-      : `${reviewedCount() + 1} of ${S.all.length}`;
+      : `${reviewedCount() + 1} of ${S.size}`;
 
   /* ---------- Restore from the host's saved export ---------- */
   function reanchor(t: Transcript, r: Result) {
@@ -308,6 +312,21 @@ export function createModel(ctx: ModelCtx) {
   const refreshList = () => {
     S.list = S.all.filter((t) => !res(t).optedOut || res(t).status === "done");
   };
+  function addTranscript(item: KoraAssignedTranscript): Transcript {
+    const t = toTranscript(item);
+    S.all.push(t);
+    refreshList();
+    return t;
+  }
+  function removeTranscripts(ids: string[]) {
+    const gone = new Set(ids);
+    S.all = S.all.filter((t) => !gone.has(t.id));
+    for (const id of gone) {
+      delete S.results[id];
+      delete S.history[id];
+    }
+    refreshList();
+  }
 
   /* ---------- Export: everything, in the shape exportSchema describes ---------- */
   function buildExport(): KoraExport {
@@ -392,6 +411,7 @@ export function createModel(ctx: ModelCtx) {
     S,
     aiTurn,
     aiTurns,
+    addTranscript,
     allReviewed,
     buildExport,
     callOf,
@@ -408,12 +428,14 @@ export function createModel(ctx: ModelCtx) {
     iso,
     letter,
     newId,
+    needsMore,
     nextPendingIndex,
     other,
     plural,
     progressText,
     recompute,
     refreshList,
+    removeTranscripts,
     res,
     restore,
     reviewed,

@@ -1,12 +1,19 @@
+import type {
+  KoraAssignedTranscript,
+  KoraSaveResult,
+} from "@alliance/kora-review";
+import { parseKoraTranscript } from "@alliance/kora-review/parse";
 import {
   koraReviewHome,
   koraReviewMore,
+  koraReviewNext,
   koraReviewSave,
   koraReviewState,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export function useKoraReview(enabled: boolean) {
   const queryClient = useQueryClient();
@@ -26,18 +33,34 @@ export function useKoraReview(enabled: boolean) {
   });
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.koraReview() });
+  // The tool adds pairs as it goes, so a cached state is stale once the page leaves.
+  useEffect(
+    () => () => queryClient.removeQueries({ queryKey: queryKeys.koraReview() }),
+    [queryClient],
+  );
   return { query, more, refresh };
 }
 
 export const saveKoraExport = (
   assignmentId: string,
   exported: Record<string, unknown>,
-): Promise<void> =>
+): Promise<KoraSaveResult> =>
   koraReviewSave({
     path: { id: assignmentId },
     body: { export: exported },
     throwOnError: true,
-  }).then(() => undefined);
+  }).then((res) => ({ removed: res.data.removed }));
+
+export const nextKoraTranscript = (
+  assignmentId: string,
+): Promise<KoraAssignedTranscript | null> =>
+  koraReviewNext({ path: { id: assignmentId }, throwOnError: true }).then(
+    ({ data: { next } }) =>
+      next && {
+        transcript: parseKoraTranscript(next.transcript),
+        contentHash: next.contentHash,
+      },
+  );
 
 export function useKoraHome() {
   return useQuery({

@@ -28,6 +28,7 @@ export const assignment = (
   batchId = "sample-assignment-1",
 ): KoraAssignment => ({
   batchId,
+  size: ids.length,
   transcripts: ids.map((id) => {
     const t = pairs.find((p) => p.transcriptId === id)!;
     return { transcript: t, contentHash: hash(t) };
@@ -48,6 +49,7 @@ export function mount(over: Partial<KoraReviewOptions> = {}) {
     save: vi.fn(async (e: KoraExport) => {
       saves.push(clone(e));
     }),
+    next: vi.fn(async () => null),
     onComplete: vi.fn(),
     onSaveStateChange: vi.fn(),
     ...over,
