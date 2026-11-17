@@ -107,7 +107,7 @@ For example, after you suggest X, "Why X?" asks you to explain your reasoning. I
 
 ## The problem behind the request
 
-Before building what was asked, name the problem it solves and look past the request: an alternative to it, making it automatic or unnecessary, the larger system that is actually broken. Raise a materially better alternative with the user before acting on it. Brief subagents with purpose, context and constraints, leaving the method to their judgement; spell out steps only where order or safety demands it. When uncertain or stuck, bring in a subagent or the user rather than pressing on alone.
+Before building what was asked, name the problem it solves and look past the request: an alternative to it, making it automatic or unnecessary, the larger system that is actually broken. Raise a materially better alternative with the user before acting on it. Brief subagents, and write skills, with purpose, context and constraints, leaving the method to their judgement; spell out steps only where order or safety demands it. When uncertain or stuck, bring in a subagent or the user rather than pressing on alone.
 
 ## Open questions
 
