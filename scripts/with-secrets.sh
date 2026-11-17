@@ -53,6 +53,7 @@ entry = consumers[consumer]
 if "secrets" not in entry:
     fail(f"scripts/dev-secrets.json: consumer {consumer} lacks secrets")
 expected = set(entry["secrets"])
+retiring = set(entry.get("retiring", []))
 # A consumer with an envFile loads that file itself.
 env_file = entry.get("envFile")
 if env_file is not None and not isinstance(env_file, str):
@@ -136,7 +137,7 @@ missing = sorted(expected - stored.keys())
 if missing:
     fail(f"{prefix} is missing {listed(missing)}")
 # The store is shared, so a key a newer checkout lists must not stop this one.
-undeclared = sorted(stored.keys() - expected)
+undeclared = sorted(stored.keys() - expected - retiring)
 if undeclared:
     print(f"with-secrets.sh: ignoring {listed(undeclared)} in {prefix}, which scripts/dev-secrets.json does not list", file=sys.stderr)
 os.environ.update({name: stored[name] for name in expected})

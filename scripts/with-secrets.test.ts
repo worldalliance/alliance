@@ -50,6 +50,25 @@ test("runs the command without a stored key the manifest does not list, naming i
   expect(readFileSync(out, "utf8")).toBe("unset");
 });
 
+test("neither requires, exports nor names a retiring key", () => {
+  writeFileSync(
+    join(fx.repo, "scripts/dev-secrets.json"),
+    JSON.stringify({ server: { secrets: ["ONE", "TWO"], retiring: ["OLD"] } }),
+  );
+  const out = join(fx.dir, "old");
+  const stored = fx.run({
+    parameters: [
+      ...ONE_AND_TWO,
+      { Name: "/alliance/dev/server/OLD", Value: "old" },
+    ],
+    args: ["server", "bash", "-c", `printf %s "\${OLD-unset}" > "${out}"`],
+  });
+  expect(stored.exitCode).toBe(0);
+  expect(stored.stderr).toBe("");
+  expect(readFileSync(out, "utf8")).toBe("unset");
+  expect(fx.run({}).exitCode).toBe(0);
+});
+
 test("refuses to override a variable that is already set, naming it", () => {
   const { exitCode, stderr, log } = fx.run({ env: { TWO: "from-shell" } });
   expect(exitCode).toBe(1);

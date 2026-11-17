@@ -7,6 +7,7 @@ import {
   DB_SYNC_KEYS,
   DB_SYNC_PREFIX,
   DEV_PREFIX,
+  devExpectations,
   expectations,
   findDrift,
   SHARED_PREFIX,
@@ -97,22 +98,39 @@ test("allows the listed shared keys without requiring them", () => {
 
 const sorted = (keys: Iterable<string>) => [...keys].sort();
 
-test("expects exactly each dev consumer's manifest secrets", () => {
+test("requires exactly each dev consumer's manifest secrets", () => {
   expect(
     expectations()
       .filter(({ prefix }) => prefix.startsWith(DEV_PREFIX))
-      .map(({ prefix, required, allowed }) => [
-        prefix,
-        sorted(required),
-        sorted(allowed),
-      ]),
+      .map(({ prefix, required }) => [prefix, sorted(required)]),
   ).toEqual(
     Object.entries(devSecrets).map(([consumer, { secrets }]) => [
       `${DEV_PREFIX}${consumer}/`,
       sorted(secrets),
-      sorted(secrets),
     ]),
   );
+});
+
+test("allows a dev consumer's retiring keys without requiring them", () => {
+  const expected = devExpectations({
+    server: { envFile: "server/.env", secrets: ["ONE"], retiring: ["OLD"] },
+  });
+  for (const names of [["ONE", "OLD"], ["ONE"]])
+    expect(
+      findDrift({
+        names: names.map((key) => `/alliance/dev/server/${key}`),
+        expected,
+      }),
+    ).toEqual([]);
+  expect(findDrift({ names: ["/alliance/dev/server/OLD"], expected })).toEqual([
+    "/alliance/dev/server/ONE is missing",
+  ]);
+});
+
+test("rejects a dev key listed as both a secret and retiring", () => {
+  expect(() =>
+    devExpectations({ server: { secrets: ["ONE"], retiring: ["ONE"] } }),
+  ).toThrow("server lists ONE in both secrets and retiring");
 });
 
 test("deployed paths require the uncommitted keys and allow only the deployed store's", () => {
