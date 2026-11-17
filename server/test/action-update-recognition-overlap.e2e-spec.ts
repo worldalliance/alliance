@@ -22,15 +22,15 @@ describe("action update recognition when deliveries overlap (e2e)", () => {
 
   const pauseFirstText = () => {
     const mms = fixture.ctx.app.get(MmsService);
-    const sendMms = mms.sendMms.bind(mms);
+    const sendMmsResult = mms.sendMmsResult.bind(mms);
     const textStarted = Promise.withResolvers<void>();
     const resume = Promise.withResolvers<void>();
     const texts = jest
-      .spyOn(mms, "sendMms")
+      .spyOn(mms, "sendMmsResult")
       .mockImplementationOnce(async (params) => {
         textStarted.resolve();
         await resume.promise;
-        return sendMms(params);
+        return sendMmsResult(params);
       });
     const emails = jest.spyOn(
       fixture.ctx.app.get(MailService),

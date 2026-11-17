@@ -28,6 +28,7 @@ import { PushService } from "src/push/push.service";
 import { actionUrl } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import { textReachable } from "src/user/user.utils";
+import { mailSendError, SendErrorKind } from "src/utils/send-error";
 import { DataSource, In, Raw, type EntityManager } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import {
@@ -57,6 +58,13 @@ const UNSENT_SINCE_STARTED = {
   textStartedAt: `"mmsId" IS NULL AND "textFailedAt" IS NULL`,
   emailStartedAt: `"mailId" IS NULL AND "emailFailedAt" IS NULL`,
 } as const;
+
+const PROVES_NOT_SENT: Record<SendErrorKind, boolean> = {
+  [SendErrorKind.NotHandedOver]: true,
+  [SendErrorKind.Refused]: true,
+  [SendErrorKind.RefusedForNow]: true,
+  [SendErrorKind.Unknown]: false,
+};
 
 const anyOf = (ids: readonly number[]) =>
   Raw((column) => `${column} = ANY(:ids)`, { ids });
@@ -430,14 +438,17 @@ export class ActionUpdateRecognitionService {
         textReachable(user) &&
         (await start("textStartedAt"))
       ) {
-        const mms = await this.mmsService.sendMms({
+        const text = await this.mmsService.sendMmsResult({
           to: user.phoneNumber,
           userId: user.id,
           body: copy.sms,
           mediaUrls: [],
           tracking,
         });
-        await record(mms ? { mms } : { textFailedAt: new Date() });
+        if (text.ok) await record({ mms: text.value });
+        else if (PROVES_NOT_SENT[text.error]) {
+          await record({ textFailedAt: new Date() });
+        }
       }
       if (
         channels.includes(NotificationChannel.Email) &&
@@ -458,7 +469,9 @@ export class ActionUpdateRecognitionService {
             `emailing action update exposure ${exposure.id} failed`,
             mail.error,
           );
-          await record({ emailFailedAt: new Date() });
+          if (PROVES_NOT_SENT[mailSendError(mail.error)]) {
+            await record({ emailFailedAt: new Date() });
+          }
         }
       }
     }

@@ -1,6 +1,7 @@
 /* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { recognitionCopySchema } from "@alliance/common/action-update-copy";
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { R } from "@alliance/common/result";
 import { addDays } from "date-fns";
 import { ActionUpdateRecognitionWorker } from "src/actions/action-update-recognition.worker";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -24,6 +25,7 @@ import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { Push } from "src/push/push.entity";
 import { User } from "src/user/entities/user.entity";
+import { SendErrorKind } from "src/utils/send-error";
 import {
   setUpRecognition,
   type RecognitionFixture,
@@ -34,6 +36,12 @@ import {
   setPreference,
   type TestContext,
 } from "./e2e-test-utils";
+
+const refusal = Object.assign(new Error("rejected"), {
+  code: "EENVELOPE",
+  responseCode: 550,
+  command: "RCPT TO",
+});
 
 describe("action update recognition (e2e)", () => {
   let ctx: TestContext;
@@ -476,7 +484,7 @@ describe("action update recognition (e2e)", () => {
     const mail = ctx.app.get(MailService);
     const send = jest
       .spyOn(mail, "sendCustomHtmlEmail")
-      .mockRejectedValueOnce(new Error("rejected"));
+      .mockRejectedValueOnce(refusal);
     try {
       await deliverAll();
     } finally {
@@ -499,15 +507,15 @@ describe("action update recognition (e2e)", () => {
     const id = await createUpdate();
     await notify(id).expect(200);
     const mms = ctx.app.get(MmsService);
-    const sendMms = mms.sendMms.bind(mms);
+    const sendMmsResult = mms.sendMmsResult.bind(mms);
     const send = jest
-      .spyOn(mms, "sendMms")
+      .spyOn(mms, "sendMmsResult")
       .mockImplementationOnce(async (params) => {
         await ctx.dataSource.query(
           `UPDATE action_update_exposure SET "deliveryClaimedAt" = now() + interval '1 second' WHERE "userId" = $1`,
           [retaken.id],
         );
-        return sendMms(params);
+        return sendMmsResult(params);
       });
     try {
       await recognition.deliverPrepared();
@@ -527,15 +535,15 @@ describe("action update recognition (e2e)", () => {
     const id = await createUpdate();
     await notify(id).expect(200);
     const mms = ctx.app.get(MmsService);
-    const sendMms = mms.sendMms.bind(mms);
+    const sendMmsResult = mms.sendMmsResult.bind(mms);
     const send = jest
-      .spyOn(mms, "sendMms")
+      .spyOn(mms, "sendMmsResult")
       .mockImplementationOnce(async (params) => {
         await ctx.dataSource.query(
           `UPDATE action_update_exposure SET "deletedAt" = now() WHERE "userId" = $1`,
           [deleted.id],
         );
-        return sendMms(params);
+        return sendMmsResult(params);
       });
     try {
       await recognition.deliverPrepared();
@@ -555,24 +563,50 @@ describe("action update recognition (e2e)", () => {
     expect(skipped.mms).toBeNull();
   });
 
-  it("records a failed text apart from one never attempted", async () => {
-    const member = await createMember();
-    const id = await createUpdate();
-    await notify(id).expect(200);
-    const send = jest
-      .spyOn(ctx.app.get(MmsService), "sendMms")
-      .mockResolvedValueOnce(null);
-    try {
-      await deliverAll();
-    } finally {
-      send.mockRestore();
-    }
+  it.each([
+    { send: "both are refused", text: SendErrorKind.Refused, email: refusal },
+    {
+      send: "their outcome is unknown",
+      text: SendErrorKind.Unknown,
+      email: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+    },
+    { send: "the text is refused", text: SendErrorKind.Refused, email: null },
+  ])(
+    "marks a text and an email failed only when provably not sent, and resends neither when $send",
+    async ({ text, email }) => {
+      const member = await createMember();
+      const id = await createUpdate();
+      await notify(id).expect(200);
+      const texts = jest
+        .spyOn(ctx.app.get(MmsService), "sendMmsResult")
+        .mockResolvedValueOnce(R.failure(text));
+      const mail = ctx.app.get(MailService);
+      const emails = jest.spyOn(mail, "sendCustomHtmlEmail");
+      if (email) emails.mockRejectedValueOnce(email);
+      try {
+        await deliverAll();
+        await ctx.dataSource.query(
+          `UPDATE action_update_exposure SET "deliveredAt" = NULL, "deliveryClaimedAt" = NULL WHERE "userId" = $1`,
+          [member.id],
+        );
+        await deliverAll();
+        expect(texts).toHaveBeenCalledTimes(1);
+        expect(emails).toHaveBeenCalledTimes(1);
+      } finally {
+        texts.mockRestore();
+        emails.mockRestore();
+      }
 
-    const exposure = await exposureOf(id, member.id);
-    expect(exposure.mms).toBeNull();
-    expect(exposure.textFailedAt).not.toBeNull();
-    expect(exposure.emailFailedAt).toBeNull();
-  });
+      const exposure = await exposureOf(id, member.id);
+      const refused = text === SendErrorKind.Refused;
+      expect(exposure.mms).toBeNull();
+      expect(exposure.mail === null).toBe(email !== null);
+      expect(exposure.textStartedAt).not.toBeNull();
+      expect(exposure.emailStartedAt).not.toBeNull();
+      expect(exposure.textFailedAt !== null).toBe(refused);
+      expect(exposure.emailFailedAt !== null).toBe(refused && email !== null);
+    },
+  );
 
   it("prepares scheduled updates once due, and never legacy ones", async () => {
     const member = await createMember();

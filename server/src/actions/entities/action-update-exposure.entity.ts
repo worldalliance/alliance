@@ -94,11 +94,11 @@ export class ActionUpdateExposure {
   @Column({ type: "timestamptz", nullable: true })
   textStartedAt: Date | null;
 
-  /** Set when the email was attempted and failed, so `mail` stays null. */
+  /** Set when the email provably wasn't sent, so `mail` stays null. */
   @Column({ type: "timestamptz", nullable: true })
   emailFailedAt: Date | null;
 
-  /** Set when the text was attempted and failed, so `mms` stays null. */
+  /** Set when the text provably wasn't sent, so `mms` stays null. */
   @Column({ type: "timestamptz", nullable: true })
   textFailedAt: Date | null;
 
