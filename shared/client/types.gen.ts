@@ -5731,10 +5731,6 @@ export type AuthLoginErrors = {
      * Review account, which signs in on staging
      */
     403: HeyApiError;
-    /**
-     * Migrated account signing in on the legacy domain
-     */
-    409: HeyApiError;
 };
 
 export type AuthLoginError = AuthLoginErrors[keyof AuthLoginErrors];

@@ -3,7 +3,7 @@ import {
   REVIEW_SIGN_IN_FAILED_PARAM,
   REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
 } from "@alliance/common/review-account";
-import { ACCOUNT_MOVED_MESSAGE, STAGING_SITE_URL } from "@alliance/common/url";
+import { STAGING_SITE_URL } from "@alliance/common/url";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -93,8 +93,6 @@ afterEach(() => {
   loginReply = signedIn;
   inviteState = "valid";
   campaignDescription = "Join us this spring";
-  window.sessionStorage.clear();
-  window.happyDOM.setURL("https://test.alliance/login");
 });
 
 const noop = () => Promise.resolve();
@@ -268,54 +266,6 @@ describe("AccountStep", () => {
     );
 
     expect(screen.getByText("Handed over.")).toBeDefined();
-  });
-
-  it("sends a migrated account to the new domain instead of signing it in", async () => {
-    window.happyDOM.setURL("https://worldalliance.org/login?redirect=%2Ftasks");
-    loginReply = () =>
-      Response.json(
-        { statusCode: 409, message: ACCOUNT_MOVED_MESSAGE },
-        { status: 409 },
-      );
-    render(<Harness />);
-
-    fillWithoutReact("moved@example.com", "s3cret");
-    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
-
-    await waitFor(() => {
-      expect(window.location.href).toBe(
-        "https://thealliance.org/login?redirect=%2Ftasks",
-      );
-    });
-    expect(onLogin).not.toHaveBeenCalled();
-  });
-
-  it("stops hopping a migrated account once one hop has bounced back", async () => {
-    window.happyDOM.setURL("https://worldalliance.org/login?redirect=%2Ftasks");
-    window.sessionStorage.setItem(
-      "domain-migration-redirected",
-      String(Date.now()),
-    );
-    loginReply = () =>
-      Response.json(
-        { statusCode: 409, message: ACCOUNT_MOVED_MESSAGE },
-        { status: 409 },
-      );
-    render(<Harness />);
-
-    fillWithoutReact("moved@example.com", "s3cret");
-    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
-
-    const link = await screen.findByRole("link", {
-      name: "Log in at thealliance.org",
-    });
-    expect(link.getAttribute("href")).toBe(
-      "https://thealliance.org/login?redirect=%2Ftasks",
-    );
-    expect(window.location.href).toBe(
-      "https://worldalliance.org/login?redirect=%2Ftasks",
-    );
-    expect(onLogin).not.toHaveBeenCalled();
   });
 
   it("posts a review account's credentials to staging instead of signing it in", async () => {

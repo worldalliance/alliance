@@ -81,13 +81,6 @@ export const preferNewDomain = (
   );
 
 /**
- * What `POST /auth/login` refuses a migrated member with when they sign in on
- * {@link ALLIANCE_LEGACY_DOMAIN} for a cookie session. The web login matches on
- * it to send them to {@link ALLIANCE_DOMAIN} instead.
- */
-export const ACCOUNT_MOVED_MESSAGE = `this account has moved to ${ALLIANCE_DOMAIN}`;
-
-/**
  * The hosts the web app answers on, per deploy/nginx/alliance.conf. A host
  * outside this list — `admin.`, or one added later — is not the web app.
  */
