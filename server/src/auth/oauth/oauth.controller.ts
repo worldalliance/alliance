@@ -1,5 +1,4 @@
 import {
-  OAuthError,
   oauthErrorMessage,
   OAuthIntent,
   OAuthProvider,
@@ -167,12 +166,12 @@ export class OAuthController {
     @ProviderParam() provider: OAuthProvider,
     @Body() body: MobileIdentityTokenDto,
   ): Promise<MobileOAuthSignInDto> {
-    const profile = await this.clients
-      .get(provider)
-      .verifyIdentityToken(body.identityToken);
+    const profile = await this.clients.verifyIdentityToken({
+      provider,
+      identityToken: body.identityToken,
+    });
     if (!profile.ok) {
-      console.error("oauth identity token rejected", profile.error);
-      return new MobileOAuthSignInDto(R.failure(OAuthError.Failed));
+      return new MobileOAuthSignInDto(profile);
     }
     const signedIn = await this.oauth.signIn(profile.value);
     if (!signedIn.ok) {
