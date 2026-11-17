@@ -23,6 +23,7 @@ jobs:
       queue: max
     uses: ./.github/workflows/deploy-environment.yaml
     permissions:
+      actions: read
       contents: read
       deployments: write
       id-token: write

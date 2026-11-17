@@ -44,7 +44,8 @@ esac
 production_environment=false
 [ "$ENVIRONMENT" != production ] || production_environment=true
 # required_contexts is empty because the checks gating this deploy already
-# passed in this run; GitHub would otherwise demand every commit status.
+# passed, in this run or the one whose artifacts it deploys; GitHub would
+# otherwise demand every commit status.
 id=$(jq -n --arg ref "$COMMIT" --arg environment "$record" --argjson production "$production_environment" \
   '{ref: $ref, environment: $environment, auto_merge: false, required_contexts: [], production_environment: $production}' \
   | gh api -X POST "$repo/deployments" --input - --jq .id)
