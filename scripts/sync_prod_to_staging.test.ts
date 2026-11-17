@@ -29,7 +29,7 @@ const SECRETS: Record<string, string> = {
 };
 
 const PG_TOOL = `
-  echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE" >> "$STATE/pg"
+  echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE | $PGSSLMODE $PGSSLROOTCERT" >> "$STATE/pg"
   [ "$(basename "$0")" != "\${PG_FAILS:-}" ]`;
 
 const HELD_LOCK = `
@@ -72,6 +72,7 @@ const STUBS: Record<string, string> = {
 };
 
 const ANONYMIZE = "nest-backend/scripts/anonymize";
+const RDS_BUNDLE = "nest-backend/server/src/config/rds-us-west-2-bundle.pem";
 
 let home: string;
 let bin: string;
@@ -92,7 +93,8 @@ beforeEach(() => {
   chmodSync(script, 0o755);
   writeSecrets();
   mkdirSync(join(home, ".bun/bin"), { recursive: true });
-  mkdirSync(join(home, "nest-backend/server"), { recursive: true });
+  mkdirSync(join(home, "nest-backend/server/src/config"), { recursive: true });
+  writeFileSync(join(home, RDS_BUNDLE), "-- bundle\n");
   mkdirSync(join(home, ANONYMIZE), { recursive: true });
   writeFileSync(join(home, ANONYMIZE, "anonymize.sql"), "-- anonymize\n");
   for (const [name, body] of Object.entries(STUBS)) {
@@ -331,19 +333,24 @@ test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of
     "bunx",
     "psql",
   ]);
-  expect(steps[0]).toEndWith("| prod.invalid reader prod-secret production_db");
-  expect(steps[1]).toEndWith("| staging.invalid admin staging-secret postgres");
+  const login = (line: string) => line.split(" | ")[1];
+  expect(login(steps[0])).toBe("prod.invalid reader prod-secret production_db");
+  expect(login(steps[1])).toBe("staging.invalid admin staging-secret postgres");
   expect(steps[2]).toContain("--dbname=staging_db_sync");
-  expect(steps[2]).toEndWith(
-    "| staging.invalid admin staging-secret staging_db_sync",
+  expect(login(steps[2])).toBe(
+    "staging.invalid admin staging-secret staging_db_sync",
   );
-  expect(steps[3]).toEndWith(
-    "| staging.invalid admin staging-secret staging_db_sync",
+  expect(login(steps[3])).toBe(
+    "staging.invalid admin staging-secret staging_db_sync",
   );
   expect(steps[4]).toEndWith(
     "| staging.invalid staging_db_sync admin staging-secret",
   );
-  expect(steps[5]).toEndWith("| staging.invalid admin staging-secret postgres");
+  expect(login(steps[5])).toBe("staging.invalid admin staging-secret postgres");
+  const tls = `verify-full ${home}/sync_prod_to_staging.files/rds-us-west-2-bundle.pem`;
+  for (const line of steps.filter((step) => !step.startsWith("bunx"))) {
+    expect(line).toEndWith(`| ${tls}`);
+  }
   for (const line of steps) {
     const argv = line.split(" | ")[0];
     expect(argv).not.toContain("secret");
@@ -377,7 +384,7 @@ test("sync_prod_to_staging.sh drops the scratch database when a step before the 
   expect(result.curl).toContain("FAILED during restore");
   const steps = readState("pg").split("\n").filter(Boolean);
   expect(steps.at(-1)).toBe(
-    "psql -q -c DROP DATABASE IF EXISTS staging_db_sync WITH (FORCE); | staging.invalid admin staging-secret postgres",
+    `psql -q -c DROP DATABASE IF EXISTS staging_db_sync WITH (FORCE); | staging.invalid admin staging-secret postgres | verify-full ${home}/sync_prod_to_staging.files/rds-us-west-2-bundle.pem`,
   );
 });
 
@@ -386,18 +393,26 @@ test("sync_prod_to_staging.sh reads its database names and copies the files it n
   const helper = join(home, "nest-backend/scripts/deployed-db-name.ts");
   expect(readState("calls")).toStartWith(
     `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n` +
-      `cp -R ${join(home, ANONYMIZE)} ${home}/sync_prod_to_staging.files/ under migrate.lock\n`,
+      `cp -R ${join(home, ANONYMIZE)} ${join(home, RDS_BUNDLE)} ${home}/sync_prod_to_staging.files/ under migrate.lock\n`,
   );
 });
 
-test("sync_prod_to_staging.sh reports files it can't copy from ~/nest-backend", () => {
-  rmSync(join(home, ANONYMIZE), { recursive: true });
-  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
-  expect(result.exitCode).toBe(1);
-  expect(result.curl).toContain("could not copy scripts/anonymize");
-  expect(result.curl).toContain("http://hc.invalid/check/fail");
-  expect(readState("pg")).toBe("");
-});
+test.each([
+  ["scripts/anonymize", ANONYMIZE],
+  ["the RDS bundle", RDS_BUNDLE],
+])(
+  "sync_prod_to_staging.sh reports %s missing from ~/nest-backend",
+  (_, path) => {
+    rmSync(join(home, path), { recursive: true });
+    const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+    expect(result.exitCode).toBe(1);
+    expect(result.curl).toContain(
+      "could not copy scripts/anonymize and the RDS certificate bundle",
+    );
+    expect(result.curl).toContain("http://hc.invalid/check/fail");
+    expect(readState("pg")).toBe("");
+  },
+);
 
 test("the anonymize scripts read only files beside them, which the sync copies with them", () => {
   const dir = join(import.meta.dir, "anonymize");

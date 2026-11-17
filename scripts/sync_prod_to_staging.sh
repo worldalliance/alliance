@@ -145,9 +145,11 @@ skipping this one."
 fi
 
 # The deploy holds ~/migrate.lock while it replaces ~/nest-backend, which
-# deployed-db-name.ts and its node_modules come from. The anonymize step runs
-# after this lock is released, so its files are copied out under it.
+# deployed-db-name.ts and its node_modules come from. The anonymize scripts and
+# the RDS certificate bundle are read after this lock is released, so they are
+# copied out under it.
 SYNC_FILES=/home/ec2-user/sync_prod_to_staging.files
+RDS_BUNDLE=rds-us-west-2-bundle.pem
 if ! true >>"$MIGRATE_LOCK"; then
   abort_before_start "cannot write ~/migrate.lock; the sync needs it to read \
 its database names and copy its files out of ~/nest-backend."
@@ -170,9 +172,11 @@ so the sync could not read its database names or copy its files out of \
 name; the sync's journal on the staging host has any error."
   fi
   if ! rm -rf "$SYNC_FILES/anonymize" || ! mkdir -p "$SYNC_FILES" \
-    || ! cp -R /home/ec2-user/nest-backend/scripts/anonymize "$SYNC_FILES/"; then
-    abort_before_start "could not copy scripts/anonymize from ~/nest-backend \
-to ${SYNC_FILES}."
+    || ! cp -R /home/ec2-user/nest-backend/scripts/anonymize \
+      /home/ec2-user/nest-backend/server/src/config/$RDS_BUNDLE \
+      "$SYNC_FILES/"; then
+    abort_before_start "could not copy scripts/anonymize and the RDS \
+certificate bundle from ~/nest-backend to ${SYNC_FILES}."
   fi
 } 201>>"$MIGRATE_LOCK"
 
@@ -203,14 +207,16 @@ SCRATCH_DB="${STAGING_DB_NAME}_sync"
 # libpq takes the logins from there rather than argv or a password file on disk.
 prod_pg() {
   PGHOST=$PROD_DB_HOST PGUSER=$PROD_DB_USER PGPASSWORD=$PROD_DB_PASSWORD \
-    PGDATABASE=$PROD_DB_NAME "$@"
+    PGDATABASE=$PROD_DB_NAME PGSSLMODE=verify-full \
+    PGSSLROOTCERT="$SYNC_FILES/$RDS_BUNDLE" "$@"
 }
 
 staging_pg() {
   local database=$1
   shift
   PGHOST=$STAGING_DB_HOST PGUSER=$STAGING_DB_USER PGPASSWORD=$STAGING_DB_PASSWORD \
-    PGDATABASE=$database "$@"
+    PGDATABASE=$database PGSSLMODE=verify-full \
+    PGSSLROOTCERT="$SYNC_FILES/$RDS_BUNDLE" "$@"
 }
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
