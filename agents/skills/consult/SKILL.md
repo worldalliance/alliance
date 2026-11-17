@@ -15,4 +15,10 @@ A fact only the user knows, such as how they work, goes to them first, without a
 
 Each new set of questions gets its own round, since the agents cover only what they saw.
 
-Every option, the recommendation included, names what backs it in words the user can follow without having seen the agents' reports: research, with its root `AGENTS.md` **Established practice** category and link, the user's earlier words, or agent judgement, saying whose: the brainstormer's, the second opinion's or yours. Say what the round changed, name any agent that failed with its error, and show a disagreement with the claim each side rests on instead of spawning agents until they agree.
+Every option but "I don't care", the recommendation included, opens with a code span of one- or two-character labels for what backs it, such as `` `V U Me` ``, so the user can weigh it at a glance without having seen the agents' reports. A one-line legend of the labels the message uses follows the root `AGENTS.md` **Open questions** preamble.
+
+- Research, by root `AGENTS.md` **Established practice** category: `S` formal standard, `V` vendor recommendation, `R` research-backed practice, `C` common practice. The option's text links the source and says what it actually checked.
+- `U`: the user's earlier words.
+- Agent judgement: `B` the brainstormer, `O` the second opinion, `Me` you.
+
+Say what the round changed, name any agent that failed with its error, and show a disagreement with the claim each side rests on instead of spawning agents until they agree.
