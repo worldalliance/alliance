@@ -88,9 +88,11 @@ The nightly sync (`scripts/sync_prod_to_staging.sh`, `docs/legacy/monitoring.md`
 
 The staging host can't read production's server path, but it does hold that read-only production login.
 
+The sync hands its logins, the password hash and the Slack and healthcheck URLs to its commands through the environment or stdin, never argv, which `ps` shows every user on the host.
+
 The database names come from `common/src/deployed-config.ts`. `DB_SYNC_KEYS` in `scripts/check-parameter-drift.ts` lists the `db-sync` keys, and the `parameter-drift` workflow checks them like the server's. Change one with the console or CLI steps above, under `/alliance/staging/db-sync/<NAME>`; the next run reads it. The sync fails on a listed key the path lacks, and the workflow on a key it holds that `DB_SYNC_KEYS` doesn't list. So to add a key, create the parameter first, then merge its name into `SYNC_KEYS` in the script and `DB_SYNC_KEYS`; `main`'s workflow reports it until the merge. To remove one, merge its removal and deploy staging, then delete the parameter; `main`'s workflow reports it until the deletion. Dispatch the workflow on `main` after each store edit.
 
-When the sync can't read its parameters, it stops before it can post to Slack, so the missing healthcheck ping is the alert, and `sudo journalctl -u alliance-prod-to-staging-sync.service` shows the error.
+When the sync can't read its parameters, or the Slack or healthcheck URL isn't a plain http(s) URL, it stops before it can post to Slack, so the missing healthcheck ping is the alert, and `sudo journalctl -u alliance-prod-to-staging-sync.service` shows the error.
 
 ## Database access from the backend hosts
 

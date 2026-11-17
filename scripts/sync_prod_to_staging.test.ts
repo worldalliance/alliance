@@ -34,7 +34,7 @@ const PG_TOOL = `
 // at the lock and posts "another sync is already running". FLOCK_FAILS names
 // the one flock call that still fails.
 const STUBS: Record<string, string> = {
-  curl: `echo "$*" >> "$STATE/curl"`,
+  curl: `echo "$*" >> "$STATE/curl-argv"; { echo "$*"; cat; } >> "$STATE/curl"`,
   date: `
     if [ "$*" = "-u +%s" ]; then echo "$FAKE_EPOCH"; else PATH="\${PATH#*:}" exec date "$@"; fi`,
   flock: `
@@ -43,7 +43,7 @@ const STUBS: Record<string, string> = {
   aws: `echo "aws $*" >> "$STATE/aws"`,
   pg_dump: PG_TOOL,
   pg_restore: PG_TOOL,
-  psql: `cat > /dev/null; ${PG_TOOL}`,
+  psql: `cat >> "$STATE/psql-stdin"; ${PG_TOOL}`,
   env: `echo "$*" >> "$STATE/env"; exec /usr/bin/env "$@"`,
   "secrets_run.sh": `
     echo "$*" >> "$STATE/secrets_run"
@@ -81,12 +81,7 @@ beforeEach(() => {
     readFileSync(SOURCE, "utf8").replaceAll("/home/ec2-user", home),
   );
   chmodSync(script, 0o755);
-  writeFileSync(
-    join(state, "secrets"),
-    Object.entries(SECRETS)
-      .map(([name, value]) => `${name}=${value}\0`)
-      .join(""),
-  );
+  writeSecrets();
   mkdirSync(join(home, ".bun/bin"), { recursive: true });
   mkdirSync(join(home, "nest-backend/server"), { recursive: true });
   for (const [name, body] of Object.entries(STUBS)) {
@@ -98,6 +93,15 @@ beforeEach(() => {
     chmodSync(path, 0o755);
   }
 });
+
+function writeSecrets(overrides: Record<string, string> = {}) {
+  writeFileSync(
+    join(state, "secrets"),
+    Object.entries({ ...SECRETS, ...overrides })
+      .map(([name, value]) => `${name}=${value}\0`)
+      .join(""),
+  );
+}
 
 afterEach(() => {
   rmSync(home, { recursive: true });
@@ -139,7 +143,7 @@ function run(params: {
   const result = Bun.spawnSync(["bash", script], { stdin: "ignore", env });
   const curl = readState("curl");
   rmSync(join(state, "curl"), { force: true });
-  return { exitCode: result.exitCode, curl };
+  return { exitCode: result.exitCode, curl, stderr: result.stderr.toString() };
 }
 
 const recordedDay = () =>
@@ -275,11 +279,37 @@ test("sync_prod_to_staging.sh loads its secrets once, through the wrapper", () =
   );
 });
 
+test.each([
+  ["SLACK_WEBHOOK_URL", 'http://slack.invalid/a"b'],
+  ["HEALTHCHECK_URL", "http://hc.invalid/check\nwrite-out = x"],
+  ["SLACK_WEBHOOK_URL", "http://slack.invalid/a\\"],
+])(
+  "sync_prod_to_staging.sh refuses a %s curl's config would misread",
+  (key, url) => {
+    writeSecrets({ [key]: url });
+    const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(`${key} is not an http(s) URL`);
+    expect(readState("curl-argv")).toBe("");
+  },
+);
+
+test("sync_prod_to_staging.sh refuses a STAGING_PASSWORD_HASH that isn't bcrypt before psql sees it", () => {
+  writeSecrets({ STAGING_PASSWORD_HASH: "x' \\! touch PWNED \\echo '" });
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain(
+    "STAGING_PASSWORD_HASH is not a bcrypt hash.",
+  );
+  expect(readState("psql-stdin")).toBe("");
+  expect(readState("pg")).toBe("");
+});
+
 test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of argv", () => {
   const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
   expect(result.exitCode).toBe(0);
   expect(result.curl).toContain("Sync completed successfully.");
-  expect(result.curl).toEndWith("http://hc.invalid/check\n");
+  expect(result.curl).toEndWith('url = "http://hc.invalid/check"\n');
   const pg = readState("pg");
   const steps = pg.split("\n").filter(Boolean);
   expect(steps.map((line) => line.split(" ")[0])).toEqual([
@@ -306,7 +336,17 @@ test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of
   for (const line of steps) {
     const argv = line.split(" | ")[0];
     expect(argv).not.toContain("secret");
+    expect(argv).not.toContain(SECRETS.STAGING_PASSWORD_HASH);
   }
+  expect(readState("psql-stdin")).toContain(
+    `\\set password_hash '${SECRETS.STAGING_PASSWORD_HASH}'\n` +
+      `\\i '${home}/nest-backend/scripts/anonymize/anonymize.sql'\n`,
+  );
+  const curlArgv = readState("curl-argv");
+  expect(curlArgv).toContain("--config -");
+  expect(curlArgv).not.toContain("slack.invalid");
+  expect(curlArgv).not.toContain("hc.invalid");
+  expect(result.curl).toContain('url = "http://slack.invalid"');
   expect(readState("env")).not.toContain("secret");
   const migrationEnv = readState("bunx-env");
   expect(migrationEnv).toContain("DB_PASSWORD=staging-secret");

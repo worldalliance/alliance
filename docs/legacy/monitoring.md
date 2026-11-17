@@ -175,7 +175,7 @@ For node-exporter, we need to update `prometheus.yml` on the monitoring instance
 
 Before swapping the copy in, it runs the migrations of the backend deployed at `~/nest-backend/server` against it, since prod's schema lags staging's code. From that migration through the swap it holds `~/migrate.lock`, which the backend deploy holds from replacing `~/nest-backend` until the new code passes its health check or rolls back, so a deploy can't migrate the database the swap drops. It also takes the lock briefly at startup, to read its database names from `~/nest-backend/scripts/deployed-db-name.ts` while no deploy is replacing it.
 
-Slack covers the runs that live long enough to post. The switch covers the ones that don't: a SIGKILL, a dead host, a timer that never fires, Parameter Store parameters it can't read. All of those send nothing, and the check alerts on the ping that never arrives.
+Slack covers the runs that live long enough to post. The switch covers the ones that don't: a SIGKILL, a dead host, a timer that never fires, Parameter Store parameters it can't read or a Slack or healthcheck URL it refuses. All of those send nothing, and the check alerts on the ping that never arrives.
 
 The start and the outcome carry the run's timestamp, as in `prod → staging (20260901_020000)`, which is how you tell which start an outcome belongs to hours later. That same string names the dump file in the journal, so a message in Slack leads to its own lines in the log. A failure before the sync starts has no start to pair with and posts untagged.
 

@@ -21,6 +21,17 @@ fi
 # The wrapper exports what it loads; a child gets only the logins passed to it.
 export -n "${SYNC_KEYS[@]}" "${SERVER_KEYS[@]}"
 
+# curl reads these from a config line, where a quote, backslash or line break
+# would end the URL or add options.
+URL_PATTERN='^https?://[^"\[:space:]]+$'
+for key in SLACK_WEBHOOK_URL HEALTHCHECK_URL; do
+  if [[ ! ${!key} =~ $URL_PATTERN ]]; then
+    echo "${SECRETS_PATH}${key} is not an http(s) URL without quotes, \
+backslashes or whitespace." >&2
+    exit 1
+  fi
+done
+
 if ! command -v jq >/dev/null; then
   echo "jq is not installed; the sync needs it to post results to Slack." >&2
   exit 1
@@ -40,7 +51,7 @@ notify_slack() {
     --retry 3 --retry-connrefused \
     --header 'Content-Type: application/json' \
     --data "$(jq -nc --arg text "$1" '{text: $text}')" \
-    "$SLACK_WEBHOOK_URL" >/dev/null \
+    --config - <<<"url = \"${SLACK_WEBHOOK_URL}\"" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not post to Slack."
 }
 
@@ -50,7 +61,7 @@ notify_slack() {
 ping_healthcheck() {
   unlocked curl --silent --show-error --fail --max-time 10 \
     --retry 3 --retry-connrefused --retry-max-time 30 \
-    "${HEALTHCHECK_URL%/}${1:-}" >/dev/null \
+    --config - <<<"url = \"${HEALTHCHECK_URL%/}${1:-}\"" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
 }
 
@@ -281,9 +292,13 @@ unlocked staging_pg "$SCRATCH_DB" pg_restore \
 STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
+# The hash goes in on stdin, where ps can't show it. BCRYPT_PATTERN admits no
+# quote or backslash, which is what keeps it inside the quotes.
 unlocked staging_pg "$SCRATCH_DB" psql -v ON_ERROR_STOP=1 --single-transaction \
-  -v password_hash="$STAGING_PASSWORD_HASH" \
-  -f /home/ec2-user/nest-backend/scripts/anonymize/anonymize.sql
+  -f - <<SQL
+\set password_hash '${STAGING_PASSWORD_HASH}'
+\i '/home/ec2-user/nest-backend/scripts/anonymize/anonymize.sql'
+SQL
 
 # The backend deploy holds this lock from replacing ~/nest-backend until the new
 # code passes its health check or rolls back, so it can't migrate the database
