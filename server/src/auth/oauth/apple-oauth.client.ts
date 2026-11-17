@@ -98,14 +98,14 @@ export function appleTokenFailure(error: unknown): Error {
 
 @Injectable()
 export class AppleOAuthClient implements OAuthClient {
-  private config(): AppleConfig {
+  private settings(): AppleConfig | null {
     const teamId = env("APPLE_TEAM_ID");
     const keyId = env("APPLE_KEY_ID");
     const servicesId = env("APPLE_SERVICES_ID");
     const bundleIds = env("APPLE_BUNDLE_ID");
     const privateKey = env("APPLE_PRIVATE_KEY_BASE64");
     if (!teamId || !keyId || !servicesId || !bundleIds?.length || !privateKey) {
-      throw new ServiceUnavailableException("Apple sign-in is not configured");
+      return null;
     }
     return {
       teamId,
@@ -114,6 +114,18 @@ export class AppleOAuthClient implements OAuthClient {
       bundleIds,
       privateKey: Buffer.from(privateKey, "base64").toString(),
     };
+  }
+
+  private config(): AppleConfig {
+    const settings = this.settings();
+    if (!settings) {
+      throw new ServiceUnavailableException("Apple sign-in is not configured");
+    }
+    return settings;
+  }
+
+  isConfigured(): boolean {
+    return this.settings() !== null;
   }
 
   authorizationUrl(params: { redirectUri: string; state: string }): string {
