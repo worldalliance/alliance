@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { EmailStatus, type Mail } from "src/mail/mail.entity";
-import { MailNotSentError, MailService } from "src/mail/mail.service";
+import { MailService } from "src/mail/mail.service";
 import { LOCK_KEYS } from "src/notifs/lock-keys";
 import { withPgSessionLock } from "src/notifs/lock-utils";
 import {
@@ -19,6 +19,7 @@ import {
   waitlistUnsubscribeLink,
   withRef,
 } from "src/search/approutes";
+import { mailSendError, SendErrorKind } from "src/utils/send-error";
 import { DataSource, LessThan } from "typeorm";
 import {
   WaitlistEmailRecipient,
@@ -58,79 +59,35 @@ export type SendOutcome = {
   stopsRun: boolean;
 };
 
-// A refusal of this recipient, or of this message, fails the recipient. A
-// temporary refusal of either also stops the run, since the next message may
-// meet it too; failing rather than retrying keeps one message from holding up
-// the queue. Any other 4xx or 5xx reply, such as to the greeting, login, or
-// sender, or a 421 closing the session wherever it comes, refuses the session,
-// and the codes below, a failed connect, and nodemailer's connect and greeting
-// timeouts, which only their messages tell apart from a timeout after sending,
-// mean nothing reached the server: those leave the recipient for a later run,
-// since failing it would fail every recipient after it too. Any other error may
-// have come after the server took the message, including ECONNECTION without a
-// reply, which nodemailer also reports for a connection dropped after the
-// message was sent.
-const NOT_YET_SENT_CODES = new Set(["EAUTH", "EDNS"]);
-const SESSION_CLOSING_CODE = 421;
-const NOT_YET_SENT_TIMEOUTS = new Set([
-  "Connection timeout",
-  "Greeting never received",
-]);
-const MESSAGE_ERROR_CODES = new Set(["EENVELOPE", "EMESSAGE"]);
-
-type SendErrorClass = Pick<SendOutcome, "status" | "stopsRun">;
-
-function classifySendError(error: unknown): SendErrorClass {
-  const waits: SendErrorClass = {
+// A refused message fails the recipient. A temporary refusal also stops the
+// run, since the next message may meet it too; failing rather than retrying
+// keeps one message from holding up the queue. A message never handed over
+// leaves the recipient for a later run, since failing it would fail every
+// recipient after it too.
+const SEND_ERROR_OUTCOMES: Record<
+  SendErrorKind,
+  Pick<SendOutcome, "status" | "stopsRun">
+> = {
+  [SendErrorKind.NotHandedOver]: {
     status: WaitlistEmailRecipientStatus.Pending,
     stopsRun: true,
-  };
-  const fails: SendErrorClass = {
+  },
+  [SendErrorKind.Refused]: {
     status: WaitlistEmailRecipientStatus.Failed,
     stopsRun: false,
-  };
-  const uncertain: SendErrorClass = {
+  },
+  [SendErrorKind.RefusedForNow]: {
+    status: WaitlistEmailRecipientStatus.Failed,
+    stopsRun: true,
+  },
+  [SendErrorKind.Unknown]: {
     status: WaitlistEmailRecipientStatus.Uncertain,
     stopsRun: true,
-  };
-  if (error instanceof MailNotSentError) return waits;
-  if (typeof error !== "object" || error === null) return uncertain;
-  const field = (name: string): unknown =>
-    name in error ? Reflect.get(error, name) : undefined;
-  const code = field("code");
-  const command = field("command");
-  const responseCode = field("responseCode");
-  if (typeof code === "string" && NOT_YET_SENT_CODES.has(code)) return waits;
-  if (field("syscall") === "connect") return waits;
-  if (
-    code === "ETIMEDOUT" &&
-    error instanceof Error &&
-    NOT_YET_SENT_TIMEOUTS.has(error.message)
-  ) {
-    return waits;
-  }
-  if (typeof responseCode === "number" && responseCode >= 400) {
-    if (
-      (command === "RCPT TO" || command === "DATA") &&
-      responseCode !== SESSION_CLOSING_CODE
-    ) {
-      return { ...fails, stopsRun: responseCode < 500 };
-    }
-    return waits;
-  }
-  // Raised before the server was asked, about this message's envelope or size.
-  if (
-    typeof code === "string" &&
-    MESSAGE_ERROR_CODES.has(code) &&
-    typeof responseCode !== "number"
-  ) {
-    return fails;
-  }
-  return uncertain;
-}
+  },
+};
 
 const sendErrorOutcome = (error: unknown): SendOutcome => ({
-  ...classifySendError(error),
+  ...SEND_ERROR_OUTCOMES[mailSendError(error)],
   error: error instanceof Error ? error.message : String(error),
 });
 
