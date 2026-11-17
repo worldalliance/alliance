@@ -28,4 +28,9 @@ export type AgentEvent =
       /** True when an interrupt or close stopped the turn. */
       interrupted: boolean;
     }
-  | { kind: AgentEventKind.Error; message: string };
+  | {
+      kind: AgentEventKind.Error;
+      message: string;
+      /** True when the session was no longer live when the Error was reported, so it takes another message only once resumed. A CLI that exits after a false one is reported with true: in the same turn while that turn is still running, otherwise on the next send. */
+      needsResume: boolean;
+    };

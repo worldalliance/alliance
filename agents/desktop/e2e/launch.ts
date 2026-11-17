@@ -78,13 +78,27 @@ export function workFolder(): string {
   return folder;
 }
 
+/** Writes script as this test's claude, an sh script. */
+export function writeClaude(script: string): string {
+  const claude = test.info().outputPath("claude");
+  writeFileSync(claude, `#!/bin/sh\n${script}`);
+  chmodSync(claude, 0o755);
+  return claude;
+}
+
+/** A CLI that answers the version and sign-in checks through the stub and runs script as a session. */
+export const sessionClaude = (script: string): string =>
+  writeClaude(`case "$1" in
+  --version|auth) exec "${process.env[claudeExecutableVariable]}" "$@";;
+esac
+${script}`);
+
+/** Exits as a session starts, before reading any message. */
+export const unreadingClaude = (): string => sessionClaude("exit 1");
+
 /** Runs the stub under this test's own path, so the test can count the CLIs it started, and exits a second after the stub, even one stopped by SIGTERM, as a CLI running its session-end hooks does. On exit it notes for outlivedApp whether the app had already gone. */
 export function trackedClaude(): string {
-  const file = test.info().outputPath("claude");
-  writeFileSync(
-    file,
-    `#!/bin/sh
-trap 'term=1; [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null' TERM
+  return writeClaude(`trap 'term=1; [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null' TERM
 # sh gives a background child /dev/null as stdin, so the stub reads this script's stdin from fd 3.
 exec 3<&0
 status=143
@@ -100,17 +114,14 @@ if [ -z "$term" ]; then
   pid=
 fi
 sleep 1
-${noteOutlivedApp(file)}
+${noteOutlivedApp}
 exit $status
-`,
-  );
-  chmodSync(file, 0o755);
-  return file;
+`);
 }
 
 /** Shell for a wrapper's last step that notes when the CLI outlived the app that started it. */
-export const noteOutlivedApp = (claude: string): string =>
-  `kill -0 $PPID 2>/dev/null || touch "${claude}.outlived-app"`;
+export const noteOutlivedApp =
+  'kill -0 $PPID 2>/dev/null || touch "$0.outlived-app"';
 
 export const outlivedApp = (claude: string): boolean =>
   existsSync(`${claude}.outlived-app`);

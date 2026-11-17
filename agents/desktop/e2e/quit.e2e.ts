@@ -2,7 +2,6 @@ import { expect, type Page, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { once } from "node:events";
 import {
-  chmodSync,
   closeSync,
   constants,
   existsSync,
@@ -24,8 +23,10 @@ import {
   noteOutlivedApp,
   outlivedApp,
   runningCount,
+  sessionClaude,
   trackedClaude,
   workFolder,
+  writeClaude,
 } from "./launch";
 
 // page.evaluate callbacks run in the renderer, where the preload defines window.agent.
@@ -39,20 +40,6 @@ const savedConversation = () => ({
   title: "Resumable",
   startedAt: "2026-11-10T12:00:00.000Z",
 });
-
-function writeClaude(script: string): string {
-  const claude = test.info().outputPath("claude");
-  writeFileSync(claude, `#!/bin/sh\n${script}`);
-  chmodSync(claude, 0o755);
-  return claude;
-}
-
-/** A CLI that answers the version and sign-in checks through the stub and runs script as a session. */
-const sessionClaude = (script: string): string =>
-  writeClaude(`case "$1" in
-  --version|auth) exec "${process.env[claudeExecutableVariable]}" "$@";;
-esac
-${script}`);
 
 /** Resolves to whether Start succeeded, without waiting for the first turn. */
 const startNew = (page: Page): Promise<boolean> =>
@@ -219,6 +206,8 @@ exit 1`,
     openingWaitMs: 500,
   });
   const saved = savedConversations();
+  // The window re-reads the list on an event from a conversation it hasn't listed, which would race the removal's read; once reloaded, it has listed this one.
+  await page.reload();
   // The removal reads the list first.
   const listRead = await holdNextListRead(page);
   writeFileSync(exit, "");
@@ -268,15 +257,14 @@ sleep 30 & wait $!
 test("quitting closes live conversations without waiting for one still starting", async () => {
   const stub = process.env[claudeExecutableVariable];
   const exited = test.info().outputPath("session-exited");
-  const claude = test.info().outputPath("claude");
-  writeClaude(`case "$1" in
+  const claude = writeClaude(`case "$1" in
   --version) mkdir "${test.info().outputPath("checked")}" 2>/dev/null || sleep 8; exec "${stub}" "$@";;
   auth) exec "${stub}" "$@";;
 esac
 "${stub}" "$@"
 status=$?
 sleep 1
-${noteOutlivedApp(claude)}
+${noteOutlivedApp}
 touch "${exited}"
 exit $status
 `);
@@ -299,7 +287,6 @@ exit $status
 });
 
 test("a conversation or resume that finishes starting while the quit closes others is closed too", async () => {
-  const claude = test.info().outputPath("claude");
   const stub = process.env[claudeExecutableVariable];
   const userData = test.info().outputPath("user-data");
   const gates = test.info().outputPath("gates");
@@ -311,7 +298,8 @@ test("a conversation or resume that finishes starting while the quit closes othe
     JSON.stringify({ version: 1, conversations: [resumable] }),
   );
   // Version check n waits for release-n; session n, once its CLI ends, notes stopped-n and waits for exit-n, each numbered in arrival order.
-  writeClaude(`wait_for() { while [ ! -e "${gates}/$1" ]; do kill -0 $PPID 2>/dev/null || return 1; sleep 0.05; done; }
+  const claude =
+    writeClaude(`wait_for() { while [ ! -e "${gates}/$1" ]; do kill -0 $PPID 2>/dev/null || return 1; sleep 0.05; done; }
 take() { n=1; while ! mkdir "${gates}/$1-$n" 2>/dev/null; do n=$((n+1)); done; }
 case "$1" in
   --version) take check; wait_for "release-$n" || exit 1; exec "${stub}" "$@";;
@@ -321,9 +309,9 @@ take session
 "${stub}" "$@"
 status=$?
 touch "${gates}/stopped-$n"
-wait_for "exit-$n" || { ${noteOutlivedApp(claude)}; exit 1; }
+wait_for "exit-$n" || { ${noteOutlivedApp}; exit 1; }
 touch "${gates}/leaving-$n"
-${noteOutlivedApp(claude)}
+${noteOutlivedApp}
 exit $status
 `);
   const gate = (name: string) => path.join(gates, name);
@@ -383,16 +371,15 @@ exit $status
 
 /** A CLI that boots slowly, noting when it is stopped before it has read its first message and when it outlives the app. */
 function slowBootClaude(): { claude: string; cutBeforeBoot: string } {
-  const claude = test.info().outputPath("claude");
   const stub = process.env[claudeExecutableVariable];
   const cutBeforeBoot = test.info().outputPath("cut-before-boot");
-  sessionClaude(`trap 'touch "${cutBeforeBoot}"; exit 143' TERM
+  const claude = sessionClaude(`trap 'touch "${cutBeforeBoot}"; exit 143' TERM
 sleep 3 & wait $!
 trap - TERM
 "${stub}" "$@"
 status=$?
 sleep 1
-${noteOutlivedApp(claude)}
+${noteOutlivedApp}
 exit $status
 `);
   return { claude, cutBeforeBoot };
@@ -465,12 +452,11 @@ test("a resume still reading the saved conversations when the quit begins launch
   const stub = process.env[claudeExecutableVariable];
   const launches = test.info().outputPath("launches");
   // A live session slow to exit keeps the quit going until the refused resume's result reaches the renderer.
-  const claude = test.info().outputPath("claude");
-  sessionClaude(`echo >> "${launches}"
+  const claude = sessionClaude(`echo >> "${launches}"
 "${stub}" "$@"
 status=$?
 sleep 1
-${noteOutlivedApp(claude)}
+${noteOutlivedApp}
 exit $status
 `);
   const { app, page } = await launch({

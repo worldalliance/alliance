@@ -45,19 +45,71 @@ test("a turn that finishes before its interrupt reaches the CLI ends as not inte
   await session.close();
 });
 
-test("a turn the CLI fails without an interrupt ends as not interrupted", async () => {
+const failed = `echo '{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["boom"]}'`;
+const succeeded = `echo '{"type":"result","subtype":"success","is_error":false}'`;
+
+test("a turn the CLI fails without an interrupt ends as not interrupted, and the next send goes through", async () => {
   const session = R.unwrap(
     await createClaudeBackend(
-      shellCli(
-        `read message; echo '{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["boom"]}'; read eof`,
-      ),
+      shellCli(`read message; ${failed}; read message; ${succeeded}; read eof`),
     ).start({ cwd: scratch }),
   );
   expect(await turn({ session, message: text("Hello") })).toEqual([
-    { kind: AgentEventKind.Error, message: "boom" },
+    { kind: AgentEventKind.Error, message: "boom", needsResume: false },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
+  expect(await turn({ session, message: text("Again") })).toEqual([
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
   await session.close();
+});
+
+test("output the parser can't read leaves the session live", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(
+        `read message; echo nonsense; ${succeeded}; read message; ${succeeded}; read eof`,
+      ),
+    ).start({ cwd: scratch }),
+  );
+  const logged = spyOn(console, "error").mockImplementation(() => undefined);
+  const events = await turn({ session, message: text("Hello") });
+  const logs = logged.mock.calls.length;
+  logged.mockRestore();
+  expect(events).toEqual([
+    {
+      kind: AgentEventKind.Error,
+      message: expect.stringContaining("can't read"),
+      needsResume: false,
+    },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
+  expect(logs).toBe(1);
+  expect(await turn({ session, message: text("Again") })).toEqual([
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
+  await session.close();
+});
+
+test("a CLI that exits after a failed turn fails the next send with a resume", async () => {
+  const session = R.unwrap(
+    await createClaudeBackend(
+      shellCli(`read message; ${failed}; exit 1`),
+    ).start({ cwd: scratch }),
+  );
+  expect(await turn({ session, message: text("Hello") })).toEqual([
+    { kind: AgentEventKind.Error, message: "boom", needsResume: false },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
+  // The send can reach the CLI before or after it exits, which changes only the message's ending.
+  expect(await turn({ session, message: text("Again") })).toEqual([
+    {
+      kind: AgentEventKind.Error,
+      message: expect.stringContaining("Claude Code exited (code 1)."),
+      needsResume: true,
+    },
+    { kind: AgentEventKind.TurnEnded, interrupted: false },
+  ]);
 });
 
 test("a CLI that exits after an interrupt but before its result ends the turn as not interrupted", async () => {
@@ -72,6 +124,7 @@ test("a CLI that exits after an interrupt but before its result ends the turn as
     {
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 3).\nboom",
+      needsResume: true,
     },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
@@ -105,6 +158,7 @@ test("a CLI that exits while a process it started holds its output open still en
     {
       kind: AgentEventKind.Error,
       message: "Claude Code exited (code 1).\ngone",
+      needsResume: true,
     },
     { kind: AgentEventKind.TurnEnded, interrupted: false },
   ]);
