@@ -18,8 +18,10 @@ export class ActionEventNotifDeliveryService {
     private readonly pushService: PushService,
   ) {}
 
-  /** Sends on each of `channels`; true if any was attempted. */
-  async deliver(params: {
+  /** Renders each of `channels` and resolves to a function that sends them,
+   * resolving true if any was attempted. Nothing reaches a provider before
+   * that function runs. */
+  async prepare(params: {
     notif: ActionEventNotif;
     user: User;
     channels: readonly NotificationChannel[];
@@ -31,49 +33,61 @@ export class ActionEventNotifDeliveryService {
       idempotencyKey: string;
       notification?: Notification;
     };
-  }): Promise<boolean> {
+  }): Promise<() => Promise<boolean>> {
     const { notif, user, channels, tracking, templates, render, push } = params;
-    if (channels.includes(NotificationChannel.Push)) {
-      const pushes = await this.pushService.getPushForAllUserDevices(user.id, {
-        userId: user.id,
-        body: await render(templates.pushMessage),
-        screen: push.screen,
-        idempotencyKey: push.idempotencyKey,
-        notification: push.notification,
-      });
+    const pushes = channels.includes(NotificationChannel.Push)
+      ? await this.pushService.getPushForAllUserDevices(user.id, {
+          userId: user.id,
+          body: await render(templates.pushMessage),
+          screen: push.screen,
+          idempotencyKey: push.idempotencyKey,
+          notification: push.notification,
+        })
+      : null;
+    const text = channels.includes(NotificationChannel.Text)
+      ? await render(templates.textMessage)
+      : null;
+    const email = channels.includes(NotificationChannel.Email)
+      ? {
+          subject: await render(templates.emailSubject),
+          message: await render(templates.emailMessage),
+        }
+      : null;
 
-      const result = await this.pushService.sendMessages(pushes);
-      notif.pushes = result;
-      if (result.length > 0) {
-        notif.sent = true;
+    return async () => {
+      if (pushes) {
+        const result = await this.pushService.sendMessages(pushes);
+        notif.pushes = result;
+        if (result.length > 0) {
+          notif.sent = true;
+        }
       }
-    }
-    if (channels.includes(NotificationChannel.Text)) {
-      const result = await this.mmsService.sendMms({
-        to: user.phoneNumber!,
-        userId: user.id,
-        body: await render(templates.textMessage),
-        mediaUrls: [],
-        tracking,
-      });
+      if (text !== null) {
+        const result = await this.mmsService.sendMms({
+          to: user.phoneNumber!,
+          userId: user.id,
+          body: text,
+          mediaUrls: [],
+          tracking,
+        });
 
-      if (result && !result.errorCode) {
-        notif.sent = true;
+        if (result && !result.errorCode) {
+          notif.sent = true;
+        }
+        notif.mms = result;
       }
-      notif.mms = result;
-    }
-    if (channels.includes(NotificationChannel.Email)) {
-      const result = await this.mailService.sendActionEventNotificationEmail({
-        subject: await render(templates.emailSubject),
-        message: await render(templates.emailMessage),
-        tracking,
-        recipient: user.email,
-      });
-      notif.mail = result;
-      if (result.status === EmailStatus.Sent) {
-        notif.sent = true;
+      if (email) {
+        const result = await this.mailService.sendActionEventNotificationEmail({
+          ...email,
+          tracking,
+          recipient: user.email,
+        });
+        notif.mail = result;
+        if (result.status === EmailStatus.Sent) {
+          notif.sent = true;
+        }
       }
-    }
-    return channels.length > 0;
+      return channels.length > 0;
+    };
   }
 }
