@@ -1,14 +1,9 @@
-/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { recognitionCopySchema } from "@alliance/common/action-update-copy";
 import { ActionActivityType } from "@alliance/common/actionActivity";
-import { addDays, milliseconds } from "date-fns";
-import { ActionUpdateRecognitionService } from "src/actions/action-update-recognition.service";
+import { addDays } from "date-fns";
 import { ActionUpdateRecognitionWorker } from "src/actions/action-update-recognition.worker";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
-import {
-  ActionEvent,
-  ActionStatus,
-} from "src/actions/entities/action-event.entity";
 import { ActionUpdateExposure } from "src/actions/entities/action-update-exposure.entity";
 import {
   ActionUpdate,
@@ -26,164 +21,58 @@ import { MailService } from "src/mail/mail.service";
 import { Mms } from "src/mms/mms.entity";
 import { MmsService } from "src/mms/mms.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
-import {
-  UnreadContent,
-  UnreadContentType,
-} from "src/notifs/entities/unread-content.entity";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { Push } from "src/push/push.entity";
-import { ContractEvent } from "src/user/entities/contract-event.entity";
-import { Tag } from "src/user/entities/tag.entity";
-import { UserDevice } from "src/user/entities/user-device.entity";
-import { ReferralSource, User } from "src/user/entities/user.entity";
-import request from "supertest";
+import { User } from "src/user/entities/user.entity";
+import {
+  setUpRecognition,
+  type RecognitionFixture,
+} from "./action-update-recognition-fixtures";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   closeTestApp,
-  createTestApp,
-  giveActiveContract,
   setPreference,
-  stubExpoClient,
   type TestContext,
 } from "./e2e-test-utils";
 
 describe("action update recognition (e2e)", () => {
   let ctx: TestContext;
-  let recognition: ActionUpdateRecognitionService;
-  let action: Action;
-  let audience: Tag;
-  let memberCount = 0;
-
-  const admin = (
-    method: "post" | "patch",
-    path: string,
-    body?: Record<string, unknown>,
-  ) =>
-    request(ctx.app.getHttpServer())
-      [method](path)
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send(body);
-
-  const createMember = async (
-    params: { inAudience?: boolean; inCohort?: boolean } = {},
-  ) => {
-    const index = ++memberCount;
-    const users = ctx.dataSource.getRepository(User);
-    const user = await users.save(
-      users.create({
-        email: `recognition-${index}@example.com`,
-        password: "pass",
-        name: `Member${index} Example`,
-        referralSource: ReferralSource.None,
-        phoneNumber: `+1415555${String(1000 + index)}`,
-        tags: [
-          ...(params.inAudience === false ? [] : [audience]),
-          ...(params.inCohort ? [ctx.defaultTag] : []),
-        ],
-      }),
-    );
-    await giveActiveContract(ctx, user.id);
-    if (params.inCohort) {
-      // Assigned only with a contract held since the action launched.
-      await ctx.dataSource
-        .getRepository(ContractEvent)
-        .update({ user: { id: user.id } }, { date: addDays(new Date(), -60) });
-    }
-    await ctx.dataSource.getRepository(UserDevice).save({
-      user: { id: user.id },
-      expoPushToken: `ExponentPushToken[recognition-${index}]`,
-    });
-    return user;
-  };
-
-  const complete = (user: User) =>
-    ctx.dataSource.getRepository(ActionActivity).save({
-      actionId: action.id,
-      userId: user.id,
-      type: ActionActivityType.USER_COMPLETED,
-    });
-
-  const createUpdate = async (body: Record<string, unknown> = {}) => {
-    const created = await admin("post", `/actions/createUpdate/${action.id}`, {
-      title: "Recognition",
-      shortNotifString: "a hearing on the bill",
-      nonCompleterResult: "a hearing on the bill",
-      date: new Date(Date.now() - milliseconds({ minutes: 1 })).toISOString(),
-      notifyType: "tag",
-      tagId: audience.id,
-      ...body,
-    }).expect(201);
-    await admin("patch", `/actions/updateUpdate/${created.body.id}`, {
-      schema: {
-        blocks: [{ type: "display", kind: "header", id: "b1", text: "Body" }],
-      },
-      expectedSchemaSnapshotId: created.body.schemaSnapshotId,
-    }).expect(200);
-    const id: number = created.body.id;
-    return id;
-  };
-
-  const notify = (id: number) => admin("post", `/actions/updates/${id}/notify`);
-
-  const exposureOf = (updateId: number, userId: number) =>
-    ctx.dataSource.getRepository(ActionUpdateExposure).findOneOrFail({
-      where: { actionUpdateId: updateId, userId },
-      relations: { mail: true, mms: true, unreadContent: true },
-    });
-
-  const entriesFor = (updateId: number) =>
-    ctx.dataSource.getRepository(UnreadContent).find({
-      where: {
-        contentType: UnreadContentType.ActionUpdate,
-        contentId: updateId,
-      },
-      relations: { user: true },
-    });
-
-  const deliverAll = async () => {
-    let more = true;
-    while (more) {
-      more = await recognition.deliverPrepared();
-    }
-  };
+  let recognition: RecognitionFixture["recognition"];
+  let action: RecognitionFixture["action"];
+  let audience: RecognitionFixture["audience"];
+  let admin: RecognitionFixture["admin"];
+  let createMember: RecognitionFixture["createMember"];
+  let complete: RecognitionFixture["complete"];
+  let createUpdate: RecognitionFixture["createUpdate"];
+  let notify: RecognitionFixture["notify"];
+  let exposureOf: RecognitionFixture["exposureOf"];
+  let entriesFor: RecognitionFixture["entriesFor"];
+  let deliverAll: RecognitionFixture["deliverAll"];
+  let reset: RecognitionFixture["reset"];
 
   beforeAll(async () => {
-    process.env.SEND_DEV_NOTIFS = "1";
-    ctx = await createTestApp([]);
-    stubExpoClient(ctx);
-    recognition = ctx.app.get(ActionUpdateRecognitionService);
-    audience = await ctx.dataSource
-      .getRepository(Tag)
-      .save({ name: "Recognition audience", description: "" });
-    action = await ctx.dataSource.getRepository(Action).save({
-      name: "Write to your representative",
-      category: [],
-      body: "Body",
-      shortDescription: "Short",
-      visibilityMode: VisibilityMode.Public,
-      cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
-    });
-    await ctx.dataSource.getRepository(ActionEvent).save({
-      title: "Launch",
-      description: "Live",
-      newStatus: ActionStatus.MemberAction,
-      date: addDays(new Date(), -30),
+    ({
+      ctx,
+      recognition,
       action,
-    });
+      audience,
+      admin,
+      createMember,
+      complete,
+      createUpdate,
+      notify,
+      exposureOf,
+      entriesFor,
+      deliverAll,
+      reset,
+    } = await setUpRecognition());
   });
 
   afterAll(async () => {
     await closeTestApp(ctx.app);
   });
 
-  beforeEach(async () => {
-    await ctx.dataSource.query("DELETE FROM action_update");
-    await ctx.dataSource.query("DELETE FROM action_activity");
-    await ctx.dataSource.query(
-      'DELETE FROM tag_users_user WHERE "tagId" = $1',
-      [audience.id],
-    );
-  });
+  beforeEach(() => reset());
 
   it("sends every member the collective result as written, on each channel", async () => {
     const completer = await createMember();
