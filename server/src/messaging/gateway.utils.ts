@@ -86,8 +86,10 @@ export function socketAuthMiddleware(params: {
       if (current.error instanceof UnauthorizedException) {
         return next(new Error(SocketRefusal.Unauthorized));
       }
-      // Clients retry a refused handshake only once, after a token refresh,
-      // and deleting the account afterwards still disconnects this socket.
+      // Deleting the account afterwards still disconnects this socket, and
+      // mobile builds installed before the "Unavailable" retry reconnect after
+      // a refusal only by refreshing their token, which can't fix a check that
+      // errored.
       logger.error(
         `Socket session check failed; accepting the verified token: ${thrownMessage(current.error)}`,
       );

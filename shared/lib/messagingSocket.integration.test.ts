@@ -1,12 +1,16 @@
 import { R, type Result } from "@alliance/common/result";
 import { waitFor } from "@testing-library/dom";
-import { afterEach, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, expect, it, mock, spyOn } from "bun:test";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { io } from "socket.io-client";
 import { connectMessagingSocket } from "./messagingSocket";
 
 const cleanups: (() => void | Promise<void>)[] = [];
+
+beforeEach(() => {
+  spyOn(console, "warn").mockImplementation(() => {});
+});
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
@@ -29,11 +33,13 @@ const startServer = async () => {
   return { server, url: `http://127.0.0.1:${address.port}` };
 };
 
-const messagingServer = async () => {
+const messagingServer = async (params: { unavailable?: number } = {}) => {
+  let unavailable = params.unavailable ?? 0;
   const { server, url } = await startServer();
   const tokens: unknown[] = [];
   server.use((socket, next) => {
     tokens.push(socket.handshake.auth.token);
+    if (unavailable-- > 0) return next(new Error("Unavailable"));
     next(
       socket.handshake.auth.token === "fresh"
         ? undefined
@@ -70,6 +76,20 @@ it("connects after middleware rejects an expired token and refresh saves a new o
 
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(tokens).toEqual(["expired", "fresh"]);
+});
+
+it("retries a handshake the server couldn't check until it connects", async () => {
+  const { connect, tokens, saveToken } = await messagingServer({
+    unavailable: 1,
+  });
+  saveToken("fresh");
+  const refresh = mock(async () => R.success(true));
+  const { socket } = connect(refresh);
+
+  await waitFor(() => expect(socket.connected).toBe(true), { timeout: 2500 });
+
+  expect(refresh).not.toHaveBeenCalled();
+  expect(tokens).toEqual(["fresh", "fresh"]);
 });
 
 it.each([

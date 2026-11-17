@@ -53,6 +53,35 @@ const buildSocketOptions = ({
   };
 };
 
+const backoffMs = (attempt: number) => Math.min(1000 * 2 ** attempt, 30000);
+
+/** The server refuses as "Unavailable" when it couldn't check the session, and
+ * Socket.IO doesn't retry a handshake its middleware refused. */
+const retryUnavailable = (socket: Socket) => {
+  let attempt = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const onConnect = () => {
+    attempt = 0;
+  };
+  const onConnectError = (err: Error) => {
+    if (err.message !== SocketRefusal.Unavailable) return;
+    clearTimeout(timer);
+    // Jittered so admins refused by one outage don't retry in lockstep.
+    const delayMs = Math.round(backoffMs(attempt++) * (0.5 + Math.random()));
+    console.warn(
+      `Socket handshake refused as unavailable; retrying in ${delayMs} ms`,
+    );
+    timer = setTimeout(() => socket.connect(), delayMs);
+  };
+  socket.on("connect", onConnect);
+  socket.on("connect_error", onConnectError);
+  return () => {
+    clearTimeout(timer);
+    socket.off("connect", onConnect);
+    socket.off("connect_error", onConnectError);
+  };
+};
+
 const attachAuthRefresh = (
   socket: Socket,
   onRefreshToken?: () => Promise<Result<boolean, Error>>,
@@ -65,6 +94,8 @@ const attachAuthRefresh = (
     refreshed = false;
   };
   const onConnectError = async (err: Error) => {
+    // The server refuses as "Unavailable" only after the token verified.
+    if (err.message === SocketRefusal.Unavailable) refreshed = false;
     if (refreshing || controller.signal.aborted) return;
     if (
       !err.message?.includes("jwt expired") &&
@@ -83,7 +114,7 @@ const attachAuthRefresh = (
         async () => R.unwrap(await onRefreshToken()),
         {
           signal: controller.signal,
-          delay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
+          delay: backoffMs,
           shouldRetry: (error) => {
             if (controller.signal.aborted) return false;
             console.error("Socket token refresh failed", error);
@@ -124,8 +155,10 @@ export const connectMessagingSocket = (
     buildSocketOptions(config),
   );
   const stopAuthRefresh = attachAuthRefresh(socket, config.onRefreshToken);
+  const stopRetry = retryUnavailable(socket);
   const close = () => {
     stopAuthRefresh?.();
+    stopRetry();
     socket.disconnect();
   };
   return { socket, close };
