@@ -68,7 +68,8 @@ export class KoraOAuthController {
   @OnlyThrottle(OAUTH_THROTTLE)
   @ApiResponse({
     status: 302,
-    description: "Redirects to the provider's consent screen",
+    description:
+      "Redirects to the provider's consent screen, or back to returnTo with the error when the provider isn't configured",
   })
   async start(
     @ProviderParam() provider: OAuthProvider,
@@ -81,6 +82,17 @@ export class KoraOAuthController {
       distinctId: query.posthogDistinctId,
     });
     const returnTo = resolveReturnTo(query.returnTo);
+    const client = this.clients.get(provider);
+    if (!client.isConfigured()) {
+      res.redirect(
+        returnUrlWithError({
+          returnTo: returnTo.toString(),
+          provider,
+          error: OAuthError.NotConfigured,
+        }),
+      );
+      return;
+    }
     const redirectUri = callbackUri({
       req,
       path: `/kora/${provider}/callback`,
@@ -98,9 +110,7 @@ export class KoraOAuthController {
       res,
       addProof({ proof, presented: readCookie(req, KoraCookie.OAuth) }),
     );
-    res.redirect(
-      this.clients.get(provider).authorizationUrl({ redirectUri, state }),
-    );
+    res.redirect(client.authorizationUrl({ redirectUri, state }));
   }
 
   @Post("callback")

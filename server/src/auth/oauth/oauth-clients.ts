@@ -24,9 +24,11 @@ export class OAuthClients {
     provider: OAuthProvider;
     identityToken: string;
   }): Promise<Result<OAuthProfile, OAuthError>> {
-    const profile = await this.get(params.provider).verifyIdentityToken(
-      params.identityToken,
-    );
+    const client = this.get(params.provider);
+    if (!client.isConfigured()) {
+      return R.failure(OAuthError.NotConfigured);
+    }
+    const profile = await client.verifyIdentityToken(params.identityToken);
     if (!profile.ok) {
       console.error("oauth identity token rejected", profile.error);
       return R.failure(OAuthError.Failed);

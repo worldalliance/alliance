@@ -126,6 +126,7 @@ describe("OAuth sign-in (e2e)", () => {
       ctx.app.get(GoogleOAuthClient),
       ctx.app.get(AppleOAuthClient),
     ]) {
+      oauth.isConfigured = () => true;
       oauth.authorizationUrl = ({ state }) =>
         `https://consent.example.com/?state=${state}`;
       oauth.exchangeCode = () => Promise.resolve(R.success(profile));
