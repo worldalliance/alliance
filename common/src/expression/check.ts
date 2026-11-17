@@ -112,7 +112,7 @@ export function checkExpression({
   checkScope(scope);
   const nameOf = (id: string) =>
     scope.named.find((named) => named.id === id)?.name;
-  // A deleted named expression prints as its id only in text that `missing`
+  // A deleted named expression prints as its id only in text that `untypable`
   // below rejects, which nothing reads back.
   const names = { refName: (id: string) => nameOf(id) ?? id };
   const parsed =
@@ -126,71 +126,41 @@ export function checkExpression({
   const whole = (message: string) =>
     R.failure([{ message, start: 0, end: text.length }]);
 
-  const reached = reads(root, scope.named).named;
-  const holders = [
-    { tree: root, text, name: undefined },
-    ...scope.named
-      .filter((named) => reached.has(named.id))
-      .map((named) => ({
-        tree: named.tree,
-        text: printExpression(named.tree, names),
-        name: named.name,
-      })),
-  ];
-  // Printed, a removed input would read whatever now has its name.
-  const inputIds = new Set(scope.catalog.inputs.map((input) => input.id));
-  const missing = holders.flatMap((holder) => {
-    const direct = reads(holder.tree, []);
-    const gone = [...direct.named].some((id) => nameOf(id) === undefined)
-      ? "a named expression"
-      : [...direct.inputs].some((id) => !inputIds.has(id))
-        ? "an input"
-        : undefined;
-    if (gone === undefined) return [];
-    return [
-      {
-        message: `This uses ${gone} that no longer exists.`,
-        start: 0,
-        end: holder.text.length,
-        namedExpression: holder.name,
-      },
-    ];
-  });
-  if (missing.length > 0) return R.failure(sorted(missing));
-  const hidden = holders.flatMap((holder) => {
-    const message = scopeProblem(holder.tree, nameOf);
-    if (message === undefined) return [];
-    return [
-      {
-        message,
-        start: 0,
-        end: holder.text.length,
-        namedExpression: holder.name,
-      },
-    ];
-  });
-  if (hidden.length > 0) return R.failure(sorted(hidden));
   const order = dependencyOrder([root], scope.named);
   if (!order.ok) {
     return whole(
       `These named expressions refer to each other in a loop: ${order.error.join(" → ")}.`,
     );
   }
+  // Printed, a removed input would read whatever now has its name.
+  const inputIds = new Set(scope.catalog.inputs.map((input) => input.id));
+  const untypable = (tree: Expr, printed: string): Diagnostic | undefined => {
+    const direct = reads(tree, []);
+    const gone = [...direct.named].some((id) => nameOf(id) === undefined)
+      ? "a named expression"
+      : [...direct.inputs].some((id) => !inputIds.has(id))
+        ? "an input"
+        : undefined;
+    const message =
+      gone === undefined
+        ? scopeProblem(tree, nameOf)
+        : `This uses ${gone} that no longer exists.`;
+    return message === undefined
+      ? undefined
+      : { message, start: 0, end: printed.length };
+  };
 
   const world = new World(scope.catalog);
   const diagnostics: Diagnostic[] = [];
   // `tsc` repeats some of what the converter rejects, at the same span.
   const converterDiagnostics: Diagnostic[] = [];
-  const placed: Placed[] = [];
 
   const place = (
     entry: Omit<Placed, "offset" | "excused">,
     { prefix, suffix = CLOSE }: { prefix: string; suffix?: string },
-  ) => {
+  ): Placed => {
     world.write(entry.file, `${prefix}${entry.text}${suffix}`);
-    const done = { ...entry, offset: prefix.length, excused: [] };
-    placed.push(done);
-    return done;
+    return { ...entry, offset: prefix.length, excused: [] };
   };
 
   const analyzePlaced = (at: Placed) => {
@@ -238,44 +208,8 @@ export function checkExpression({
     return { ...converted.value, analysis, expression, program };
   };
 
-  for (const [index, named] of order.value.entries()) {
-    const at = place(
-      {
-        file: `/named-${index}.ts`,
-        text: printExpression(named.tree, names),
-        named,
-      },
-      { prefix: `const ${named.name} = ${NAMED_WRAPPER}(\n` },
-    );
-    const result = analyzePlaced(at);
-    if (result === undefined) continue;
-    const unknown = result.analysis.root !== undefined;
-    const type = result.program
-      .getTypeChecker()
-      .getTypeAtLocation(result.expression);
-    if (isNullableType(type) !== unknown) {
-      const wrapper = unknown ? UNDECIDED_WRAPPER : KNOWN_WRAPPER;
-      const prefix = `const ${named.name} = ${wrapper}(\n`;
-      world.write(at.file, `${prefix}${at.text}${CLOSE}`);
-      at.offset = prefix.length;
-    }
-  }
-
-  // `!` leaves the result's unknown to the analysis, so `tsc` checks only its
-  // type and names no `null` in a mismatch.
-  const rootAt = place(
-    { file: "/root.ts", text },
-    rule.type === undefined
-      ? { prefix: `const ${RESULT} = ${NAMED_WRAPPER}(\n` }
-      : {
-          prefix: `const ${RESULT}: ${typeScriptType(rule.type, { asTarget: true })} = (\n`,
-          suffix: "\n)!;",
-        },
-  );
-  const checked = analyzePlaced(rootAt);
-  const checker = world.program().getTypeChecker();
-
-  for (const at of placed) {
+  const report = (at: Placed) => {
+    const checker = world.program().getTypeChecker();
     for (const diagnostic of world.diagnostics(at.file)) {
       const start = (diagnostic.start ?? 0) - at.offset;
       const end = start + (diagnostic.length ?? 0);
@@ -302,7 +236,66 @@ export function checkExpression({
         namedExpression: at.named?.name,
       });
     }
+  };
+
+  const typeNamed = (index: number, named: NamedExpression) => {
+    const text = printExpression(named.tree, names);
+    const problem = untypable(named.tree, text);
+    if (problem !== undefined) {
+      diagnostics.push({ ...problem, namedExpression: named.name });
+      return;
+    }
+    const at = place(
+      { file: `/named-${index}.ts`, text, named },
+      { prefix: `const ${named.name} = ${NAMED_WRAPPER}(\n` },
+    );
+    const result = analyzePlaced(at);
+    // The wrappers differ only in the declared type, so the rewrite changes no
+    // diagnostic and reporting first spares a program build.
+    report(at);
+    if (result !== undefined) {
+      const unknown = result.analysis.root !== undefined;
+      const type = result.program
+        .getTypeChecker()
+        .getTypeAtLocation(result.expression);
+      if (isNullableType(type) !== unknown) {
+        const wrapper = unknown ? UNDECIDED_WRAPPER : KNOWN_WRAPPER;
+        world.write(
+          at.file,
+          `const ${named.name} = ${wrapper}(\n${at.text}${CLOSE}`,
+        );
+      }
+    }
+  };
+
+  // What a named expression's problem does to its readers, named or not,
+  // changes once it is fixed, so a reader waits until what it reads passes.
+  const broken = new Set<string>();
+  for (const [index, named] of order.value.entries()) {
+    const reached = reads(named.tree, scope.named).named;
+    if ([...reached].some((id) => broken.has(id))) continue;
+    const before = diagnostics.length;
+    typeNamed(index, named);
+    if (diagnostics.length > before) broken.add(named.id);
   }
+  if (broken.size > 0) return R.failure(sorted(diagnostics));
+  const problem = untypable(root, text);
+  if (problem !== undefined) return R.failure([problem]);
+
+  // `!` leaves the result's unknown to the analysis, so `tsc` checks only its
+  // type and names no `null` in a mismatch.
+  const rootAt = place(
+    { file: "/root.ts", text },
+    rule.type === undefined
+      ? { prefix: `const ${RESULT} = ${NAMED_WRAPPER}(\n` }
+      : {
+          prefix: `const ${RESULT}: ${typeScriptType(rule.type, { asTarget: true })} = (\n`,
+          suffix: "\n)!;",
+        },
+  );
+  const checked = analyzePlaced(rootAt);
+  report(rootAt);
+  const checker = world.program().getTypeChecker();
 
   if (checked === undefined) return R.failure(sorted(diagnostics));
   const culprit: Culprit | undefined = checked.analysis.root;

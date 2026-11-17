@@ -219,6 +219,73 @@ test("named expressions reading a removed input are listed by name", () => {
   );
 });
 
+test("a reader of a named expression reading a removed input gets only its problem", () => {
+  const a = named({ id: "1", name: "a", text: "total + 1" });
+  const inputs = catalog.inputs.filter((input) => input.id !== "total");
+  const source: Expr = {
+    kind: ExprKind.Binary,
+    op: BinaryOp.Add,
+    left: { kind: ExprKind.Ref, id: "1" },
+    right: { kind: ExprKind.Ref, id: "gone" },
+  };
+  expect(
+    checkExpression({
+      source,
+      scope: { catalog: { ...catalog, inputs }, named: [a] },
+      rule: variable,
+    }),
+  ).toEqual(
+    R.failure([
+      {
+        message: "This uses an input that no longer exists.",
+        start: 0,
+        end: 9,
+        namedExpression: "a",
+      },
+    ]),
+  );
+});
+
+test("a named expression's typing problem shows past its reader's removed input", () => {
+  const a = named({ id: "1", name: "a", text: '"x" - 1' });
+  const b = named({ id: "2", name: "b", text: "total" });
+  const mid = named({ id: "3", name: "mid", text: '"m" - b', others: [b] });
+  const inputs = catalog.inputs.filter((input) => input.id !== "total");
+  const source: Expr = {
+    kind: ExprKind.Binary,
+    op: BinaryOp.Add,
+    left: { kind: ExprKind.Input, id: "total" },
+    right: {
+      kind: ExprKind.Binary,
+      op: BinaryOp.Add,
+      left: { kind: ExprKind.Ref, id: "1" },
+      right: { kind: ExprKind.Ref, id: "3" },
+    },
+  };
+  expect(
+    checkExpression({
+      source,
+      scope: { catalog: { ...catalog, inputs }, named: [a, b, mid] },
+      rule: variable,
+    }),
+  ).toEqual(
+    R.failure([
+      {
+        message: "The left of this operator has to be a number.",
+        start: 0,
+        end: 3,
+        namedExpression: "a",
+      },
+      {
+        message: "This uses an input that no longer exists.",
+        start: 0,
+        end: 5,
+        namedExpression: "b",
+      },
+    ]),
+  );
+});
+
 test("a removed input whose id a named expression's name took is reported where it's read", () => {
   const taken = named({ id: "6", name: "gone", text: "5" });
   const gone: Expr = { kind: ExprKind.Input, id: "gone" };
@@ -251,3 +318,111 @@ test("a stored tree's scope with two named expressions of one name throws", () =
     }),
   ).toThrow("`a` names two things in the scope.");
 });
+
+test("a parameter hiding a read in a reader of a named expression with one is left out", () => {
+  const hides = (body: Expr): Expr => ({
+    kind: ExprKind.Method,
+    target: { kind: ExprKind.Input, id: "items" },
+    method: "some",
+    optional: false,
+    args: [{ kind: ExprKind.Lambda, params: ["state"], body }],
+  });
+  const inState: Expr = {
+    kind: ExprKind.Binary,
+    op: BinaryOp.Equal,
+    left: { kind: ExprKind.Input, id: "state" },
+    right: { kind: ExprKind.Literal, value: "CA" },
+  };
+  const x: NamedExpression = { id: "1", name: "x", tree: hides(inState) };
+  const source = hides({
+    kind: ExprKind.Binary,
+    op: BinaryOp.And,
+    left: { kind: ExprKind.Ref, id: "1" },
+    right: inState,
+  });
+  const result = checkExpression({
+    source,
+    scope: { catalog, named: [x] },
+    rule: condition,
+  });
+  expect(result.ok ? [] : result.error.map((d) => d.namedExpression)).toEqual([
+    "x",
+  ]);
+});
+
+test("a named expression's typing problem shows past its reader's hidden name", () => {
+  const a = named({ id: "1", name: "a", text: '"x" - 1 > 0' });
+  const source: Expr = {
+    kind: ExprKind.Binary,
+    op: BinaryOp.And,
+    left: { kind: ExprKind.Ref, id: "1" },
+    right: {
+      kind: ExprKind.Method,
+      target: { kind: ExprKind.Input, id: "items" },
+      method: "some",
+      optional: false,
+      args: [
+        {
+          kind: ExprKind.Lambda,
+          params: ["state"],
+          body: { kind: ExprKind.Input, id: "state" },
+        },
+      ],
+    },
+  };
+  expect(
+    checkExpression({
+      source,
+      scope: { catalog, named: [a] },
+      rule: condition,
+    }),
+  ).toEqual(
+    R.failure([
+      {
+        message: "The left of this operator has to be a number.",
+        start: 0,
+        end: 3,
+        namedExpression: "a",
+      },
+    ]),
+  );
+});
+
+test.each([
+  ["through another", "a → b → a", { kind: ExprKind.Ref, id: "b" }],
+  ["directly", "a → a", { kind: ExprKind.Ref, id: "a" }],
+] satisfies [string, string, Expr][])(
+  "a loop reading a removed input %s is reported as a loop",
+  (_, path, read) => {
+    const a: NamedExpression = {
+      id: "a",
+      name: "a",
+      tree: {
+        kind: ExprKind.Binary,
+        op: BinaryOp.Add,
+        left: { kind: ExprKind.Input, id: "total" },
+        right: read,
+      },
+    };
+    const b: NamedExpression = {
+      id: "b",
+      name: "b",
+      tree: { kind: ExprKind.Ref, id: "a" },
+    };
+    const inputs = catalog.inputs.filter((input) => input.id !== "total");
+    const result = checkExpression({
+      source: "a",
+      scope: { catalog: { ...catalog, inputs }, named: [a, b] },
+      rule: variable,
+    });
+    expect(result).toEqual(
+      R.failure([
+        {
+          message: `These named expressions refer to each other in a loop: ${path}.`,
+          start: 0,
+          end: 1,
+        },
+      ]),
+    );
+  },
+);

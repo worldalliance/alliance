@@ -9,6 +9,7 @@ import {
   passes,
   problems,
   string,
+  UNDECIDED_STATE,
   variable,
 } from "./check-test-support";
 import { ExprKind } from "./tree";
@@ -43,12 +44,11 @@ test("a catalog input that doesn't read as a name throws", () => {
   ).toThrow("`first-name` doesn't read back as a name.");
 });
 
-test("lists the root's problems first, then each named expression's by name", () => {
+test("lists only the named expressions' problems, by name, when they have any", () => {
   const a = named({ id: "1", name: "a", text: '"a" - 1' });
   const b = named({ id: "2", name: "b", text: '"b" - 1' });
   const message = "The left of this operator has to be a number.";
   expect(problems('"c" - 1 + b + a', { ...variable, named: [b, a] })).toEqual([
-    { message, at: '"c"' },
     { message, at: "a@0" },
     { message, at: "b@0" },
   ]);
@@ -245,6 +245,77 @@ describe("named expressions", () => {
       passes("isCalifornia ?? false", { ...condition, named: [isCalifornia] })
         .mayBeUnknown,
     ).toBe(false);
+  });
+
+  test.each([
+    ['state === "CA" ? true : false', UNDECIDED_STATE, 0],
+    [
+      '`${state}` === "a"',
+      'Members without a value for `state` would see no text here. Add `?? "…"` to choose what they see instead.',
+      3,
+    ],
+    [
+      "state === 1",
+      "This comparison appears to be unintentional because the types 'string | null' and 'number' have no overlap.",
+      0,
+    ],
+    [
+      'state === "CA" && "x" - 1 > 0',
+      "The left of this operator has to be a number.",
+      18,
+    ],
+  ])(
+    "a reader of a named expression %s with a problem of its own gets only that problem",
+    (text, message, start) => {
+      const options = {
+        ...condition,
+        named: [named({ id: "1", name: "inner", text })],
+      };
+      const reported = [{ message, at: `inner@${start}` }];
+      expect(problems("inner", options)).toEqual(reported);
+      expect(problems("inner ?? false", options)).toEqual(reported);
+    },
+  );
+
+  test.each([
+    ['inner === "a"', undefined],
+    ["mid ?? false", "inner.length"],
+    ["mid", 'inner === "a"'],
+    ['mid === "a"', "inner"],
+  ])(
+    "%s gets nothing that follows from a broken named expression it reads",
+    (text, midText) => {
+      const inner = named({ id: "1", name: "inner", text: '"x" - 1' });
+      const mid =
+        midText === undefined
+          ? []
+          : [named({ id: "2", name: "mid", text: midText, others: [inner] })];
+      expect(problems(text, { ...condition, named: [inner, ...mid] })).toEqual([
+        {
+          message: "The left of this operator has to be a number.",
+          at: "inner@0",
+        },
+      ]);
+    },
+  );
+
+  test("a reader two levels above a broken named expression is held back", () => {
+    const inner = named({ id: "1", name: "inner", text: '"x" - 1' });
+    const mid = named({
+      id: "2",
+      name: "mid",
+      text: "inner > 0",
+      others: [inner],
+    });
+    const top = named({ id: "3", name: "top", text: "mid", others: [mid] });
+    expect(problems("top", { ...condition, named: [inner, mid, top] })).toEqual(
+      [
+        {
+          message: "The left of this operator has to be a number.",
+          at: "inner@0",
+        },
+      ],
+    );
   });
 
   test("a named expression always decided needs no handling where it's used", () => {
