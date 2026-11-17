@@ -161,14 +161,23 @@ describe("mountKoraReview: moving through the pairs", () => {
     expect(e.optOutCategories).toEqual([]);
   });
 
-  it("asks the profile first, with prefer-not-to-say on every question", async () => {
+  it("asks the profile first, with prefer-not-to-say only on the optional questions", async () => {
     mount({ collectProfile: true });
     await tick(10);
     expect(el.querySelector(".rhead")!.textContent).toBe("Pre-survey");
-    const groups = [...el.querySelectorAll("fieldset")];
+    expect(el.querySelector(".lede")!.textContent).not.toContain(
+      "Prefer not to say",
+    );
+    const [parent, ...groups] = [...el.querySelectorAll("fieldset")];
+    expect(parent.textContent).toContain("parent or guardian");
+    expect(parent.textContent).not.toContain("Prefer not to say");
     for (const g of groups)
       expect(g.textContent).toContain("Prefer not to say");
-    expect(el.querySelectorAll(".chk").length).toBe(2); // the two free-text questions
+    expect(
+      [...el.querySelectorAll(".chk")].map(
+        (c) => c.closest(".field")?.querySelector("label")?.textContent,
+      ),
+    ).toEqual(["Gender (optional)"]);
     const selects = [...el.querySelectorAll("select")];
     expect(selects.map((s) => s.labels[0]?.textContent)).toEqual([
       "Your age",
@@ -176,9 +185,9 @@ describe("mountKoraReview: moving through the pairs", () => {
       "Highest level of education (optional)",
       "How often do you use AI chatbots? (optional)",
     ]);
-    for (const s of selects) {
+    for (const [i, s] of selects.entries()) {
       expect(s.value).toBe("");
-      expect(s.textContent).toContain("Prefer not to say");
+      expect(s.textContent.includes("Prefer not to say")).toBe(i >= 2);
     }
     button("Continue").click();
     expect(el.querySelector(".err")?.textContent).toMatch(/Your age/);
@@ -187,5 +196,39 @@ describe("mountKoraReview: moving through the pairs", () => {
     button("Continue").click();
     expect(el.querySelector(".err")?.textContent).not.toMatch(/Your age/);
     expect(el.querySelector(".err")?.textContent).toMatch(/English/);
+  });
+
+  it("saves the children's age bands a parent picks, with no prefer-not-to-say", async () => {
+    mount({ collectProfile: true });
+    await tick(10);
+    const pick = (value: string, checked = true) => {
+      const i = el.querySelector<HTMLInputElement>(`input[value="${value}"]`)!;
+      i.checked = checked;
+      i.dispatchEvent(new Event("change"));
+    };
+    pick("yes");
+    const ages = el.querySelectorAll("fieldset")[1];
+    expect(ages.textContent).toContain("How old are your children?");
+    expect(ages.textContent).not.toContain("Prefer not to say");
+    pick("7_10");
+    pick("under_7");
+    pick("under_7", false);
+    const country = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    country.value = "Kenya";
+    country.dispatchEvent(new Event("input"));
+    const [age, english] = el.querySelectorAll("select");
+    age.value = "25_34";
+    age.dispatchEvent(new Event("change"));
+    english.value = "fluent";
+    english.dispatchEvent(new Event("change"));
+    button("Continue").click();
+    await handle!.flush();
+    const e = saves.at(-1)!;
+    expectValid(e);
+    expect(e.profile).toMatchObject({
+      is_parent: "yes",
+      children_age_bands: ["7_10"],
+      country: "Kenya",
+    });
   });
 });

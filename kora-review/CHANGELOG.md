@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Required profile questions (parent or guardian, children's ages, country, age, English) no longer offer "Prefer not to say". The export schema still accepts `prefer_not_to_say` for them, for exports saved earlier.
+
 ## 0.1.0-alpha.0 (2026-11-10)
 
 First packaged release of KORA's transcript review tool, for hosts to mount on their own page.

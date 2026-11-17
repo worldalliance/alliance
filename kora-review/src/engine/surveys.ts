@@ -30,7 +30,6 @@ export function createSurveys(ctx: SurveysCtx) {
   } = ctx;
 
   /* ---------- Profile and exit survey ---------- */
-  // Every profile question offers "Prefer not to say". Free-text questions get it as a checkbox.
   const PNTS = "prefer_not_to_say",
     PNTS_LABEL = "Prefer not to say";
   const PROFILE_FIELDS: SurveyField[] = [
@@ -53,7 +52,12 @@ export function createSurveys(ctx: SurveysCtx) {
       req: true,
       when: (a) => a.is_parent === "yes",
     },
-    { id: "country", q: "Country of residence", text: true, req: true },
+    {
+      id: "country",
+      q: "Country of residence",
+      text: true,
+      req: true,
+    },
     {
       id: "age_band",
       q: "Your age",
@@ -109,7 +113,7 @@ export function createSurveys(ctx: SurveysCtx) {
     },
   ];
   const PROFILE: SurveyField[] = PROFILE_FIELDS.map((f) =>
-    f.text
+    f.text || f.req
       ? f
       : Object.assign(f, {
           opts: Object.assign({}, f.opts, { [PNTS]: PNTS_LABEL }),
@@ -191,7 +195,7 @@ export function createSurveys(ctx: SurveysCtx) {
       inp.addEventListener("input", () => {
         ans[f.id] = inp.value.trim();
       });
-      if (f.long)
+      if (f.long || f.req)
         return h(
           "div",
           { class: "field" },
@@ -267,20 +271,10 @@ export function createSurveys(ctx: SurveysCtx) {
                 const input = e.target;
                 if (!(input instanceof HTMLInputElement)) return;
                 if (f.multi) {
-                  // "Prefer not to say" excludes the age bands, and an age band clears it.
-                  let s = new Set(ans[f.id] || []);
-                  if (input.checked) {
-                    if (v === PNTS) s = new Set();
-                    else s.delete(PNTS);
-                    s.add(v);
-                  } else s.delete(v);
+                  const s = new Set(ans[f.id] || []);
+                  if (input.checked) s.add(v);
+                  else s.delete(v);
                   ans[f.id] = [...s];
-                  input
-                    .closest(".opts")
-                    ?.querySelectorAll("input")
-                    .forEach((i) => {
-                      i.checked = s.has(i.value);
-                    });
                 } else ans[f.id] = v;
                 onChange(f.id === "is_parent", input);
               },
@@ -321,7 +315,7 @@ export function createSurveys(ctx: SurveysCtx) {
         err.textContent =
           "Please answer: " +
           missing.map((f) => f.q.replace(/\?$/, "")).join("; ") +
-          '. Each one has a "Prefer not to say" option.';
+          ".";
         err.focus();
         return;
       }
@@ -353,7 +347,7 @@ export function createSurveys(ctx: SurveysCtx) {
         h(
           "p",
           { class: "lede" },
-          'They help us understand who reviewed. Your answers go with your reviews under a code, never your name. Every question has a "Prefer not to say" answer.',
+          "They help us understand who reviewed. Your answers go with your reviews under a code, never your name.",
         ),
         h(
           "form",

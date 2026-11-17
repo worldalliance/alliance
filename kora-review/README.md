@@ -71,7 +71,7 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 - **Progress** is shown as "N of M reviewed", where a pair counts once it's ranked or skipped. There's no time estimate.
 - **Content warnings.** Before each pair in a sensitive category, the reviewer can continue, skip that pair (`optedOut: true`), or skip every pair in the category for the rest of the assignment (added to `optOutCategories`).
 - **Completion.** When every pair is ranked or skipped, the tool asks the exit survey (if `collectExitSurvey`), sets `isDone`, saves, and then calls `onComplete`, once per mount. Mounting with an export that's already `isDone` shows the summary and calls `onComplete` once. The host shows the thank-you and any "review more" choice; to start another assignment, unmount and mount again with the new assignment and `savedExport: null`.
-- **Profile.** With `collectProfile`, the profile questions come before the first pair. Every question has a "Prefer not to say" answer.
+- **Profile.** With `collectProfile`, the profile questions come before the first pair. The optional questions have a "Prefer not to say" answer; the required ones don't.
 
 ## Theming
 
