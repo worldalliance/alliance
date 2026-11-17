@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -30,11 +32,18 @@ const PG_TOOL = `
   echo "$(basename "$0") $* | $PGHOST $PGUSER $PGPASSWORD $PGDATABASE" >> "$STATE/pg"
   [ "$(basename "$0")" != "\${PG_FAILS:-}" ]`;
 
+const HELD_LOCK = `
+  held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
+    || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')`;
+
 // Unless FLOCK_OK is set, flock exits 1, so a run the guard lets through stops
 // at the lock and posts "another sync is already running". FLOCK_FAILS names
 // the one flock call that still fails.
 const STUBS: Record<string, string> = {
   curl: `echo "$*" >> "$STATE/curl-argv"; { echo "$*"; cat; } >> "$STATE/curl"`,
+  cp: `${HELD_LOCK}
+    echo "cp $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
+    PATH="\${PATH#*:}" exec cp "$@"`,
   date: `
     if [ "$*" = "-u +%s" ]; then echo "$FAKE_EPOCH"; else PATH="\${PATH#*:}" exec date "$@"; fi`,
   flock: `
@@ -53,9 +62,7 @@ const STUBS: Record<string, string> = {
       export "$name=$value"
     done < "$STATE/secrets"
     exec "$@"`,
-  ".bun/bin/bun": `
-    held=$(readlink "/proc/$PPID/fd/201" 2>/dev/null \\
-      || lsof -a -p "$PPID" -d 201 -Fn 2>/dev/null | sed -n 's/^n//p')
+  ".bun/bin/bun": `${HELD_LOCK}
     echo "bun $*\${held:+ under \${held##*/}}" >> "$STATE/calls"
     [ -z "\${BUN_FAILS:-}" ] || exit 1
     [ "$2" = "\${BUN_EMPTY:-}" ] || echo "\${2}_db"`,
@@ -63,6 +70,8 @@ const STUBS: Record<string, string> = {
     echo "bunx $* | $DB_HOST $DB_NAME $DB_USERNAME $DB_PASSWORD" >> "$STATE/pg"
     env > "$STATE/bunx-env"`,
 };
+
+const ANONYMIZE = "nest-backend/scripts/anonymize";
 
 let home: string;
 let bin: string;
@@ -84,6 +93,8 @@ beforeEach(() => {
   writeSecrets();
   mkdirSync(join(home, ".bun/bin"), { recursive: true });
   mkdirSync(join(home, "nest-backend/server"), { recursive: true });
+  mkdirSync(join(home, ANONYMIZE), { recursive: true });
+  writeFileSync(join(home, ANONYMIZE, "anonymize.sql"), "-- anonymize\n");
   for (const [name, body] of Object.entries(STUBS)) {
     const path =
       name.includes("/") || name.endsWith(".sh")
@@ -340,7 +351,7 @@ test("sync_prod_to_staging.sh copies prod to staging with the logins kept out of
   }
   expect(readState("psql-stdin")).toContain(
     `\\set password_hash '${SECRETS.STAGING_PASSWORD_HASH}'\n` +
-      `\\i '${home}/nest-backend/scripts/anonymize/anonymize.sql'\n`,
+      `\\set in_anonymize_dir\n\\cd '${home}/sync_prod_to_staging.files/anonymize'\n\\i anonymize.sql\n`,
   );
   const curlArgv = readState("curl-argv");
   expect(curlArgv).toContain("--config -");
@@ -370,12 +381,39 @@ test("sync_prod_to_staging.sh drops the scratch database when a step before the 
   );
 });
 
-test("sync_prod_to_staging.sh reads the production, then the staging database name under ~/migrate.lock", () => {
+test("sync_prod_to_staging.sh reads its database names and copies the files it needs later under ~/migrate.lock", () => {
   run({ at: "15:00", env: { FLOCK_OK: "1" } });
   const helper = join(home, "nest-backend/scripts/deployed-db-name.ts");
   expect(readState("calls")).toStartWith(
-    `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n`,
+    `flock -n 200\nflock -w 900 201\nbun ${helper} production under migrate.lock\nbun ${helper} staging under migrate.lock\n` +
+      `cp -R ${join(home, ANONYMIZE)} ${home}/sync_prod_to_staging.files/ under migrate.lock\n`,
   );
+});
+
+test("sync_prod_to_staging.sh reports files it can't copy from ~/nest-backend", () => {
+  rmSync(join(home, ANONYMIZE), { recursive: true });
+  const result = run({ at: "15:00", env: { FLOCK_OK: "1" } });
+  expect(result.exitCode).toBe(1);
+  expect(result.curl).toContain("could not copy scripts/anonymize");
+  expect(result.curl).toContain("http://hc.invalid/check/fail");
+  expect(readState("pg")).toBe("");
+});
+
+test("the anonymize scripts read only files beside them, which the sync copies with them", () => {
+  const dir = join(import.meta.dir, "anonymize");
+  const sql = readdirSync(dir)
+    .filter((name) => name.endsWith(".sql"))
+    .map((name) => readFileSync(join(dir, name), "utf8"))
+    .join("\n");
+  const reads = [
+    ...sql.matchAll(/^\\(?:ir?\s+|copy\s.*\sFROM\s+)'?([^'\s]+)/gim),
+  ].map((match) => match[1]);
+  expect(reads).toContain("scrub_contacts.sql");
+  expect(reads).toContain("first_names.txt");
+  for (const file of reads) {
+    expect(file).not.toContain("/");
+    expect(existsSync(join(dir, file))).toBe(true);
+  }
 });
 
 test.each([

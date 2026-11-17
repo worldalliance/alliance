@@ -145,10 +145,12 @@ skipping this one."
 fi
 
 # The deploy holds ~/migrate.lock while it replaces ~/nest-backend, which
-# deployed-db-name.ts and its node_modules come from.
+# deployed-db-name.ts and its node_modules come from. The anonymize step runs
+# after this lock is released, so its files are copied out under it.
+SYNC_FILES=/home/ec2-user/sync_prod_to_staging.files
 if ! true >>"$MIGRATE_LOCK"; then
   abort_before_start "cannot write ~/migrate.lock; the sync needs it to read \
-its database names."
+its database names and copy its files out of ~/nest-backend."
 fi
 db_name_of() {
   unlocked /home/ec2-user/.bun/bin/bun \
@@ -157,7 +159,8 @@ db_name_of() {
 {
   if ! flock -w 900 201; then
     abort_before_start "a backend deploy held ~/migrate.lock for 15 minutes, \
-so the sync could not read its database names."
+so the sync could not read its database names or copy its files out of \
+~/nest-backend."
   fi
   if ! PROD_DB_NAME=$(db_name_of production) \
     || ! STAGING_DB_NAME=$(db_name_of staging) \
@@ -165,6 +168,11 @@ so the sync could not read its database names."
     abort_before_start "could not read both database names through \
 ~/nest-backend/scripts/deployed-db-name.ts, which failed or printed an empty \
 name; the sync's journal on the staging host has any error."
+  fi
+  if ! rm -rf "$SYNC_FILES/anonymize" || ! mkdir -p "$SYNC_FILES" \
+    || ! cp -R /home/ec2-user/nest-backend/scripts/anonymize "$SYNC_FILES/"; then
+    abort_before_start "could not copy scripts/anonymize from ~/nest-backend \
+to ${SYNC_FILES}."
   fi
 } 201>>"$MIGRATE_LOCK"
 
@@ -297,7 +305,9 @@ echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 unlocked staging_pg "$SCRATCH_DB" psql -v ON_ERROR_STOP=1 --single-transaction \
   -f - <<SQL
 \set password_hash '${STAGING_PASSWORD_HASH}'
-\i '/home/ec2-user/nest-backend/scripts/anonymize/anonymize.sql'
+\set in_anonymize_dir
+\cd '${SYNC_FILES}/anonymize'
+\i anonymize.sql
 SQL
 
 # The backend deploy holds this lock from replacing ~/nest-backend until the new
