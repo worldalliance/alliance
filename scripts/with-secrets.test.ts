@@ -232,35 +232,27 @@ test("rejects an unknown consumer", () => {
   expect(stderr).toContain("unknown consumer nope; expected one of server\n");
 });
 
-test("rejects a consumer whose manifest entry leaves out a field", () => {
+test("rejects a consumer whose manifest entry has no secrets", () => {
   writeFileSync(
     join(fx.repo, "scripts/dev-secrets.json"),
-    JSON.stringify({ server: { envFile: "server.env", secrets: ["ONE"] } }),
+    JSON.stringify({ server: { envFile: "server.env" } }),
   );
   const { exitCode, stderr, log } = fx.run({});
   expect(exitCode).toBe(1);
   expect(stderr).toBe(
-    "with-secrets.sh: scripts/dev-secrets.json: consumer server lacks loadsEnvFile\n",
+    "with-secrets.sh: scripts/dev-secrets.json: consumer server lacks secrets\n",
   );
   expect(log).toBe("");
 });
 
-test("rejects a loadsEnvFile that is not a boolean", () => {
+test("rejects an envFile that is not a path", () => {
   writeFileSync(
     join(fx.repo, "scripts/dev-secrets.json"),
-    JSON.stringify({
-      server: {
-        envFile: "server.env",
-        loadsEnvFile: "false",
-        secrets: ["ONE"],
-      },
-    }),
+    JSON.stringify({ server: { envFile: true, secrets: ["ONE"] } }),
   );
   const { exitCode, stderr, log } = fx.run({});
   expect(exitCode).toBe(1);
-  expect(stderr).toContain(
-    "consumer server loadsEnvFile must be true or false",
-  );
+  expect(stderr).toContain("consumer server envFile must be a path");
   expect(log).toBe("");
 });
 
