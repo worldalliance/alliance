@@ -52,12 +52,12 @@ export class OAuthLinkController {
     if (body.userId !== req.user.sub) {
       return new OAuthLinkDto(R.failure(OAuthError.Failed));
     }
-    const profile = await this.clients
-      .get(provider)
-      .verifyIdentityToken(body.identityToken);
+    const profile = await this.clients.verifyIdentityToken({
+      provider,
+      identityToken: body.identityToken,
+    });
     if (!profile.ok) {
-      console.error("oauth identity token rejected", profile.error);
-      return new OAuthLinkDto(R.failure(OAuthError.Failed));
+      return new OAuthLinkDto(profile);
     }
     return this.linkedProfile(
       await this.oauth.link({ userId: req.user.sub, profile: profile.value }),

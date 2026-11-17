@@ -505,6 +505,12 @@ describe("providerFailureFor", () => {
     ).not.toContain("Disconnect");
   });
 
+  it("doesn't ask for a retry the server can't answer", () => {
+    expect(message(OAuthProvider.Google, OAuthError.NotConfigured)).toBe(
+      "Google sign-in isn't set up on this server.",
+    );
+  });
+
   it("names the network", () => {
     expect(message(OAuthProvider.Google, ClientFailure.Network)).toContain(
       "connection",

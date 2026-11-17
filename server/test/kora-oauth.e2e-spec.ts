@@ -74,6 +74,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
       h.ctx.app.get(GoogleOAuthClient),
       h.ctx.app.get(AppleOAuthClient),
     ]) {
+      oauth.isConfigured = () => true;
       oauth.authorizationUrl = ({ state }) =>
         `https://consent.example.com/?state=${state}`;
       oauth.exchangeCode = () => Promise.resolve(R.success(profile));

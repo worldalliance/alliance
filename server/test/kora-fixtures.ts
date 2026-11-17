@@ -114,6 +114,7 @@ export async function koraHarness(): Promise<KoraHarness> {
 /** Google returns whatever `profileOf` gives at callback time. */
 export function stubGoogle(ctx: TestContext, profileOf: () => OAuthProfile) {
   const google = ctx.app.get(GoogleOAuthClient);
+  google.isConfigured = () => true;
   google.authorizationUrl = ({ state }) =>
     `https://consent.example.com/?state=${state}`;
   google.exchangeCode = () => Promise.resolve(R.success(profileOf()));

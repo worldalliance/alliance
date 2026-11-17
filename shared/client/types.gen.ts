@@ -866,7 +866,7 @@ export type SessionTokensDto = {
     refresh_token: string;
 };
 
-export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired' | 'review_account';
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired' | 'review_account' | 'not_configured';
 
 export type MobileOAuthSignInDto = {
     session?: SessionTokensDto;

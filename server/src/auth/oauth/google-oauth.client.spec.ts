@@ -1,4 +1,5 @@
 import { R } from "@alliance/common/result";
+import { setEnv } from "@alliance/common/set-env";
 import { OAuth2Client } from "google-auth-library";
 import { exportSPKI, generateKeyPair, SignJWT } from "jose";
 import { GoogleOAuthClient } from "./google-oauth.client";
@@ -45,5 +46,24 @@ describe("verifyIdentityToken", () => {
     const logged = Bun.inspect(!verified.ok && verified.error);
     expect(logged).not.toContain("ada@example.com");
     expect(logged).not.toContain("1234567890");
+  });
+});
+
+describe("isConfigured", () => {
+  const saved = {
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  };
+  afterEach(() => {
+    for (const [key, value] of Object.entries(saved)) setEnv(key, value);
+  });
+
+  it("is false without the client secret and true with it", () => {
+    setEnv("GOOGLE_CLIENT_ID", "web.apps.googleusercontent.com");
+    setEnv("GOOGLE_CLIENT_SECRET", undefined);
+    expect(new GoogleOAuthClient().isConfigured()).toBe(false);
+
+    setEnv("GOOGLE_CLIENT_SECRET", "secret");
+    expect(new GoogleOAuthClient().isConfigured()).toBe(true);
   });
 });

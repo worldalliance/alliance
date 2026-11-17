@@ -73,6 +73,7 @@ export function koraOAuthErrorMessage(
     case OAuthError.Cancelled:
     case OAuthError.Failed:
     case OAuthError.Expired:
+    case OAuthError.NotConfigured:
       return oauthErrorMessage(provider, error);
     case OAuthError.EmailNotVerified:
       return `${OAUTH_PROVIDER_LABEL[provider]} hasn’t verified that email address. Continue with your email or mobile number instead.`;

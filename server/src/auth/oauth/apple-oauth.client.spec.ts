@@ -1,5 +1,6 @@
 import { OAuthProvider } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
+import { setEnv } from "@alliance/common/set-env";
 import * as jose from "jose";
 import { generateKeyPair, jwtVerify, SignJWT } from "jose";
 import {
@@ -8,6 +9,16 @@ import {
   appleProfile,
   appleTokenFailure,
 } from "./apple-oauth.client";
+
+const appleEnv = {
+  APPLE_TEAM_ID: "629G87T7R5",
+  APPLE_KEY_ID: "T32B4D3S84",
+  APPLE_SERVICES_ID: "org.example.signin",
+  APPLE_BUNDLE_ID: "com.example.app",
+};
+const setAppleEnv = () => {
+  for (const [key, value] of Object.entries(appleEnv)) setEnv(key, value);
+};
 
 describe("appleCallbackName", () => {
   it("joins the parts Apple posts on the first authorization", () => {
@@ -61,10 +72,7 @@ describe("appleProfile", () => {
 
 describe("exchangeCode", () => {
   it("fails rather than throwing when the private key will not load", async () => {
-    process.env.APPLE_TEAM_ID = "629G87T7R5";
-    process.env.APPLE_KEY_ID = "T32B4D3S84";
-    process.env.APPLE_SERVICES_ID = "org.example.signin";
-    process.env.APPLE_BUNDLE_ID = "com.example.app";
+    setAppleEnv();
     process.env.APPLE_PRIVATE_KEY_BASE64 =
       Buffer.from("not a pkcs8 key").toString("base64");
 
@@ -110,10 +118,7 @@ describe("verifyIdentityToken", () => {
   });
 
   it("keeps the claims of a rejected token out of its failure", async () => {
-    process.env.APPLE_TEAM_ID = "629G87T7R5";
-    process.env.APPLE_KEY_ID = "T32B4D3S84";
-    process.env.APPLE_SERVICES_ID = "org.example.signin";
-    process.env.APPLE_BUNDLE_ID = "com.example.app";
+    setAppleEnv();
     process.env.APPLE_PRIVATE_KEY_BASE64 =
       Buffer.from("unused").toString("base64");
     const rejection = await rejectedToken();
@@ -127,5 +132,22 @@ describe("verifyIdentityToken", () => {
     const logged = Bun.inspect(!verified.ok && verified.error);
     expect(logged).toContain("ERR_JWT_EXPIRED");
     expect(logged).not.toContain("ada@example.com");
+  });
+});
+
+describe("isConfigured", () => {
+  const keys = [...Object.keys(appleEnv), "APPLE_PRIVATE_KEY_BASE64"];
+  const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  afterEach(() => {
+    for (const [key, value] of Object.entries(saved)) setEnv(key, value);
+  });
+
+  it("is false without the private key and true with it", () => {
+    setAppleEnv();
+    setEnv("APPLE_PRIVATE_KEY_BASE64", undefined);
+    expect(new AppleOAuthClient().isConfigured()).toBe(false);
+
+    setEnv("APPLE_PRIVATE_KEY_BASE64", Buffer.from("key").toString("base64"));
+    expect(new AppleOAuthClient().isConfigured()).toBe(true);
   });
 });
