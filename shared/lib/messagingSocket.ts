@@ -5,16 +5,14 @@ import { io, Socket } from "socket.io-client";
 
 export type MessagingConnectionConfig = {
   getWebSocketUrl: () => string;
-} & (
-  | {
-      getAuthToken: () => Promise<string | null> | string | null;
-      /** Must store the refreshed token where getAuthToken reads it before returning R.success(true).
-       * Returns R.success(false) when the session is absent or refused.
-       * Returns R.failure when refresh fails without establishing whether the session is valid. */
-      onRefreshToken?: () => Promise<Result<boolean, Error>>;
-    }
-  | { getAuthToken?: undefined; onRefreshToken?: undefined }
-);
+  /** Omitted, the server authenticates the handshake by the session cookie alone. */
+  getAuthToken?: () => Promise<string | null> | string | null;
+  /** Must store the refreshed token where getAuthToken reads it, or set the
+   * refreshed cookie, before returning R.success(true).
+   * Returns R.success(false) when the session is absent or refused.
+   * Returns R.failure when refresh fails without establishing whether the session is valid. */
+  onRefreshToken?: () => Promise<Result<boolean, Error>>;
+};
 
 const resolveAuthToken = async (
   getAuthToken?: () => Promise<string | null> | string | null,
@@ -32,11 +30,18 @@ const resolveAuthToken = async (
   }
 };
 
-const buildSocketOptions = (
-  getAuthToken?: () => Promise<string | null> | string | null,
-) => {
+const buildSocketOptions = ({
+  getAuthToken,
+  onRefreshToken,
+}: MessagingConnectionConfig) => {
   if (!getAuthToken) {
-    return { transports: ["websocket"], withCredentials: true };
+    // Cookies go only with a connection's opening request, so a socket sharing
+    // another's connection would retry a refused handshake with the old cookie.
+    return {
+      transports: ["websocket"],
+      withCredentials: true,
+      forceNew: onRefreshToken !== undefined,
+    };
   }
   return {
     transports: ["websocket"],
@@ -116,7 +121,7 @@ export const connectMessagingSocket = (
 ) => {
   const socket = io(
     `${config.getWebSocketUrl()}${namespace}`,
-    buildSocketOptions(config.getAuthToken),
+    buildSocketOptions(config),
   );
   const stopAuthRefresh = attachAuthRefresh(socket, config.onRefreshToken);
   const close = () => {

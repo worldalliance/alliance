@@ -129,6 +129,15 @@ it("registers no listeners without a refresh callback", () => {
   expect(socket.listeners("connect")).toHaveLength(0);
 });
 
+it("shares a connection between cookie sockets that never refresh", () => {
+  const config = { getWebSocketUrl: () => "http://shared.test" };
+  const first = connectMessagingSocket("/a", config);
+  const second = connectMessagingSocket("/b", config);
+  cleanups.push(first.close, second.close);
+
+  expect(second.socket.io).toBe(first.socket.io);
+});
+
 it("ignores another auth error while refresh is pending", async () => {
   let finish!: (value: Result<boolean, Error>) => void;
   const pending = new Promise<Result<boolean, Error>>((resolve) => {
