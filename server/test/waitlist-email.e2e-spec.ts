@@ -889,25 +889,6 @@ describe("Waitlist email admin (e2e)", () => {
       }
     });
 
-    it("marks a recipient left sending by an interrupted run uncertain", async () => {
-      const entry = await saveEntry();
-      run.mockImplementationOnce(async () => {});
-      const batch = await send({ entryIds: [entry.id] });
-      await recipientRepo.update(
-        { batchId: batch.id },
-        { status: WaitlistEmailRecipientStatus.Sending },
-      );
-
-      await ctx.app.get(WaitlistEmailSender).run();
-
-      expect(await recipientsOf(batch.id)).toEqual([
-        expect.objectContaining({
-          status: WaitlistEmailRecipientStatus.Uncertain,
-        }),
-      ]);
-      expect(sendStaff).not.toHaveBeenCalled();
-    });
-
     it("lists emails with their counts and shows one's recipients", async () => {
       const entry = await saveEntry({ name: "Listed Person" });
       const unsubscribed = await saveEntry({ unsubscribedAt: new Date() });

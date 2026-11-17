@@ -6,6 +6,8 @@ import {
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { milliseconds } from "date-fns";
+import { randomUUID } from "node:crypto";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { EmailStatus, type Mail } from "src/mail/mail.entity";
@@ -17,7 +19,7 @@ import {
   waitlistUnsubscribeLink,
   withRef,
 } from "src/search/approutes";
-import { DataSource } from "typeorm";
+import { DataSource, LessThan } from "typeorm";
 import {
   WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
@@ -34,6 +36,7 @@ import { recordMobilization } from "./waitlist-mobilization";
 
 type PreparedEmail = {
   recipient: WaitlistEmailRecipient;
+  attemptId: string;
   email: string;
   mobilize: boolean;
   staffUserId: number | null;
@@ -160,10 +163,14 @@ function mailOutcome(status: EmailStatus): SendOutcome {
 export const sendOutcome = (sent: Result<Mail, unknown>): SendOutcome =>
   sent.ok ? mailOutcome(sent.value.status) : sendErrorOutcome(sent.error);
 
+// Longer than nodemailer's 10-minute idle socket timeout, so a send another
+// run still has in flight is rarely labelled uncertain.
+const INTERRUPTED_AFTER_MINUTES = 15;
+
 /**
- * Sends pending waitlist email recipients one at a time. One run at a time
- * across servers holds the advisory lock, so a recipient still `sending` when
- * a run starts was interrupted, and becomes uncertain rather than resent.
+ * Sends pending waitlist email recipients one at a time. Another run may still
+ * be sending a recipient left `sending`, so it becomes uncertain, never
+ * resent, only once INTERRUPTED_AFTER_MINUTES have passed without an answer.
  */
 @Injectable()
 export class WaitlistEmailSender {
@@ -186,37 +193,45 @@ export class WaitlistEmailSender {
   }
 
   private async runLocked(): Promise<void> {
-    await withPgSessionLock(
-      this.dataSource,
-      ...LOCK_KEYS.waitlistEmail,
-      async () => {
-        await this.markInterrupted();
-        if (
-          (await this.nextPending()) !== null &&
-          !(await this.mailService.verifyTransport())
-        ) {
-          this.logger.warn(
-            "Waitlist email sending waits: the mail server can't be reached",
-          );
-          return;
-        }
-        for (
-          let next = await this.nextPending();
-          next !== null;
-          next = await this.nextPending()
-        ) {
-          if (await this.sendOne(next)) break;
-        }
-      },
+    await withPgSessionLock(this.dataSource, ...LOCK_KEYS.waitlistEmail, () =>
+      this.sendDue(),
     );
+  }
+
+  /** Skips the lock; production runs it through run. */
+  async sendDue(): Promise<void> {
+    await this.markInterrupted();
+    if (
+      (await this.nextPending()) !== null &&
+      !(await this.mailService.verifyTransport())
+    ) {
+      this.logger.warn(
+        "Waitlist email sending waits: the mail server can't be reached",
+      );
+      return;
+    }
+    for (
+      let next = await this.nextPending();
+      next !== null;
+      next = await this.nextPending()
+    ) {
+      if (await this.sendOne(next)) break;
+    }
   }
 
   private async markInterrupted(): Promise<void> {
     await this.dataSource.getRepository(WaitlistEmailRecipient).update(
-      { status: WaitlistEmailRecipientStatus.Sending },
+      {
+        status: WaitlistEmailRecipientStatus.Sending,
+        attemptedAt: LessThan(
+          new Date(
+            Date.now() - milliseconds({ minutes: INTERRUPTED_AFTER_MINUTES }),
+          ),
+        ),
+      },
       {
         status: WaitlistEmailRecipientStatus.Uncertain,
-        error: "Sending stopped before the mail server answered",
+        error: `No answer was recorded within ${INTERRUPTED_AFTER_MINUTES} minutes of sending`,
       },
     );
   }
@@ -357,9 +372,11 @@ export class WaitlistEmailSender {
         return null;
       }
       const unsubscribeUrl = waitlistUnsubscribeLink(entry.unsubscribeToken);
+      const attemptId = randomUUID();
       await manager.update(WaitlistEmailRecipient, recipientId, {
         status: WaitlistEmailRecipientStatus.Sending,
         attemptedAt: new Date(),
+        attemptId,
         error: null,
         inviteId: invite?.invite.id ?? null,
         renderedSubject: rendered.value.subject,
@@ -370,6 +387,7 @@ export class WaitlistEmailSender {
       });
       return {
         recipient,
+        attemptId,
         email,
         mobilize: batch.mobilize,
         staffUserId: batch.staffUserId,
@@ -388,12 +406,25 @@ export class WaitlistEmailSender {
   }): Promise<void> {
     const { prepared, outcome } = params;
     const sent = outcome.status === WaitlistEmailRecipientStatus.Sent;
+    const values = {
+      status: outcome.status,
+      error: outcome.error,
+      acceptedAt: sent ? new Date() : null,
+    };
     await this.dataSource.transaction(async (manager) => {
-      await manager.update(WaitlistEmailRecipient, prepared.recipient.id, {
-        status: outcome.status,
-        error: outcome.error,
-        acceptedAt: sent ? new Date() : null,
-      });
+      const landed = (
+        await manager.update(
+          WaitlistEmailRecipient,
+          { id: prepared.recipient.id, attemptId: prepared.attemptId },
+          values,
+        )
+      ).affected;
+      if (!landed) {
+        this.logger.warn(
+          `Waitlist recipient ${prepared.recipient.id}'s ${outcome.status} result is not recorded: a retry superseded this send`,
+        );
+        return;
+      }
       if (sent && prepared.mobilize) {
         await recordMobilization({
           manager,
