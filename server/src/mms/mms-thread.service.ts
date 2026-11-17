@@ -132,18 +132,26 @@ const textableNumber = (phoneNumber: string): boolean =>
   (ANONYMIZED_NUMBERS_TEXTABLE[env("NODE_ENV")] &&
     isAnonymizedPhoneNumber(phoneNumber));
 
+declare const textable: unique symbol;
+type TextableNumber = string & { readonly [textable]: true };
+
+const checkTextable = (
+  phoneNumber: string,
+): Result<TextableNumber, StaffTextRefusal.InvalidNumber> =>
+  textableNumber(phoneNumber)
+    ? // Safe: textableNumber just checked it, and only here brands a number.
+      R.success(phoneNumber as TextableNumber)
+    : R.failure(StaffTextRefusal.InvalidNumber);
+
 const memberNumber = (
   user: User,
 ): Result<
-  string,
+  TextableNumber,
   StaffTextRefusal.NoPhoneNumber | StaffTextRefusal.InvalidNumber
-> => {
-  if (!user.phoneNumber) return R.failure(StaffTextRefusal.NoPhoneNumber);
-  if (!textableNumber(user.phoneNumber)) {
-    return R.failure(StaffTextRefusal.InvalidNumber);
-  }
-  return R.success(user.phoneNumber);
-};
+> =>
+  user.phoneNumber
+    ? checkTextable(user.phoneNumber)
+    : R.failure(StaffTextRefusal.NoPhoneNumber);
 
 @Injectable()
 export class MmsThreadService {
@@ -300,10 +308,31 @@ export class MmsThreadService {
       ThreadRefusal.MemberNotFound | StaffTextRefusal | StaffSendFailure
     >
   > {
-    const { userId, body, adminId } = params;
+    const { userId, ...rest } = params;
     const user = await this.findMember(userId);
     if (!user.ok) return user;
-    const to = await this.staffTextable(memberNumber(user.value));
+    return this.sendStaffText({ ...rest, number: memberNumber(user.value) });
+  }
+
+  async markOptedOut(params: {
+    userId: number;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
+    const user = await this.findMember(params.userId);
+    if (!user.ok) return user;
+    return this.markNumberOptedOut({
+      number: memberNumber(user.value),
+      adminId: params.adminId,
+    });
+  }
+
+  private async sendStaffText(params: {
+    number: Result<TextableNumber, StaffTextRefusal>;
+    body: string;
+    adminId: number;
+  }): Promise<Result<Mms, StaffTextRefusal | StaffSendFailure>> {
+    const { number, body, adminId } = params;
+    const to = await this.staffTextable(number);
     if (!to.ok) return to;
     const threadId = await this.mmsNumberService.ensureThread(to.value);
     const sent = await this.mmsService.sendStaffText({
@@ -320,13 +349,11 @@ export class MmsThreadService {
     return R.success(mms);
   }
 
-  async markOptedOut(params: {
-    userId: number;
+  private async markNumberOptedOut(params: {
+    number: Result<TextableNumber, StaffTextRefusal>;
     adminId: number;
-  }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
-    const user = await this.findMember(params.userId);
-    if (!user.ok) return user;
-    const to = await this.staffTextable(memberNumber(user.value));
+  }): Promise<Result<void, StaffTextRefusal>> {
+    const to = await this.staffTextable(params.number);
     if (!to.ok) return to;
     await this.mmsUnsubService.unsubFromMms(to.value, {
       kind: OptOutSource.Staff,
@@ -414,8 +441,8 @@ export class MmsThreadService {
   }
 
   private async staffTextable(
-    number: Result<string, StaffTextRefusal>,
-  ): Promise<Result<string, StaffTextRefusal>> {
+    number: Result<TextableNumber, StaffTextRefusal>,
+  ): Promise<Result<TextableNumber, StaffTextRefusal>> {
     if (number.ok && (await this.mmsNumberService.optedOut(number.value))) {
       return R.failure(StaffTextRefusal.OptedOut);
     }
