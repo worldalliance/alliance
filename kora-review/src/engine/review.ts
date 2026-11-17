@@ -56,7 +56,7 @@ export function createReview(ctx: ReviewCtx) {
     const rules = h(
       "p",
       { class: "rules" },
-      "Judge only what the chatbot did, never the child. Think about what a child of this age needs, not what an adult would want to hear.",
+      "Remember to focus your review on the chatbot's responses (not the child's).",
     );
     const header = topBar({
       chip: catChip(t.category),

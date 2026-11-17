@@ -220,7 +220,7 @@ export const HOME_COPY = {
   startFailed: "We couldn’t start your pairs. Try again.",
   loadFailed: "We couldn’t load your pairs. Reload to try again.",
   exampleHeading: "New here? Try an example pair",
-  exampleBody: "A short, made-up pair to practise on. Nothing is saved.",
+  exampleBody: "A short, made-up pair to practice on.",
   exampleButton: "Try the example",
   exampleTime: "About 2 minutes",
   exampleLink: "Try an example pair",
