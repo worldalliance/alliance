@@ -376,7 +376,7 @@ describe("MmsService sendMms", () => {
     service["recordLateSend"]({
       sending: Promise.resolve(message),
       to: TO,
-      userId: USER_ID,
+      recipient: `user ${USER_ID}`,
       body: BODY,
       cid: "cid-1",
       sentById: null,
@@ -406,7 +406,7 @@ describe("MmsService sendMms", () => {
     service["recordLateSend"]({
       sending: Promise.reject(new Error("network down")),
       to: TO,
-      userId: USER_ID,
+      recipient: `user ${USER_ID}`,
       body: BODY,
       cid: "cid-1",
       sentById: null,
@@ -440,7 +440,7 @@ describe("MmsService sendMms", () => {
       service["recordLateSend"]({
         sending,
         to: TO,
-        userId: USER_ID,
+        recipient: `user ${USER_ID}`,
         body: BODY,
         cid: null,
         sentById: null,

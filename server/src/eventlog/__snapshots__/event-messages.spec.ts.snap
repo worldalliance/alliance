@@ -78,6 +78,11 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_failure",
   },
   {
+    "message": "Couldn't send a staff text to +15555550100: timed out after 10000ms",
+    "slack": "Couldn't send a staff text to +15555550100: timed out after 10000ms",
+    "type": "sms_failure",
+  },
+  {
     "message": "Twilio reported error 30003 for a text to +15555550100.",
     "slack": "Twilio reported error <https://www.twilio.com/docs/api/errors/30003|30003> for a text to +15555550100.",
     "type": "sms_failure",

@@ -66,7 +66,7 @@ A thread shows the members who currently have its number. When a member changes 
 - Non-member threads get the "Mark opted out" button, for opt-outs in the sender's own words, which Twilio's keyword matching misses. FCC rules require honouring them unless every text discloses an exclusive revocation method, and staff texts don't (EVIDENCE.md, "Opt-out records" and "This repository's code").
 - Non-member media is stored, copied to S3 and shown as member media is.
 - The Needs reply sidebar badge, now counting numbers rather than members, stays the only staff alert.
-- `MmsService.sendStaffText` takes the thread instead of a user id for its logs.
+- `MmsService.sendStaffText` takes the thread instead of a user id for its logs and its SMS-failure alert. The alert is its own `SmsFailureKind.StaffSendFailed`, beside `main`'s `SendFailed`, which links the member page (`docs/provenance/01a1f067-6739-72a0-852d-fa30e18df18e-slack-message-copy`), since the thread may have no member or several.
 - The branch comes onto `main` (REQUIREMENTS.md 7) by rebasing, never by merging `main` in, as `agents/skills/review-loop/SKILL.md` requires, so each commit can be reviewed against one parent.
 
 ## Out of scope

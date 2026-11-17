@@ -305,10 +305,10 @@ export class MmsThreadService {
     if (!user.ok) return user;
     const to = await this.staffTextable(memberNumber(user.value));
     if (!to.ok) return to;
-    await this.mmsNumberService.ensureThread(to.value);
+    const threadId = await this.mmsNumberService.ensureThread(to.value);
     const sent = await this.mmsService.sendStaffText({
       to: to.value,
-      userId,
+      threadId,
       body,
       sentById: adminId,
     });

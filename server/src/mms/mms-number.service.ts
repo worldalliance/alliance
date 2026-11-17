@@ -78,17 +78,22 @@ export class MmsNumberService {
     private readonly threadRepository: Repository<MmsThread>,
   ) {}
 
+  /** The number's thread id, creating its row if it has none. */
   async ensureThread(
     phoneNumber: string,
     manager: EntityManager = this.threadRepository.manager,
-  ): Promise<void> {
-    await manager
+  ): Promise<string> {
+    // The update, which also touches updatedAt, makes RETURNING yield the row
+    // when it already exists.
+    const result = await manager
       .createQueryBuilder()
       .insert()
       .into(MmsThread)
       .values({ phoneNumber })
-      .orIgnore()
+      .orUpdate(["phoneNumber"], ["phoneNumber"])
+      .returning(["id"])
       .execute();
+    return z.object({ id: z.string() }).parse(result.raw[0]).id;
   }
 
   async optedOut(phoneNumber: string): Promise<boolean> {

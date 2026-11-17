@@ -26,6 +26,7 @@ interface Referred extends Named {
 
 export enum SmsFailureKind {
   SendFailed = "send_failed",
+  StaffSendFailed = "staff_send_failed",
   DeliveryFailed = "delivery_failed",
   OptInFailed = "opt_in_failed",
   SignatureRejected = "signature_rejected",
@@ -61,6 +62,12 @@ export interface EventPayloads {
         kind: SmsFailureKind.SendFailed;
         phoneNumber: string;
         userId: number;
+        error: string;
+      }
+    | {
+        kind: SmsFailureKind.StaffSendFailed;
+        phoneNumber: string;
+        threadId: string;
         error: string;
       }
     | {
@@ -151,6 +158,8 @@ function smsFailure(payload: EventPayloads[EventType.SmsFailure]): EventText {
   switch (payload.kind) {
     case SmsFailureKind.SendFailed:
       return text`Couldn't send a text to ${adminLink(payload.phoneNumber, `/member/${payload.userId}`)}: ${payload.error}`;
+    case SmsFailureKind.StaffSendFailed:
+      return text`Couldn't send a staff text to ${payload.phoneNumber}: ${payload.error}`;
     case SmsFailureKind.DeliveryFailed:
       return text`Twilio reported error ${{ label: String(payload.errorCode), url: `https://www.twilio.com/docs/api/errors/${payload.errorCode}` }} for a text to ${payload.phoneNumber}.`;
     case SmsFailureKind.OptInFailed:

@@ -71,6 +71,12 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
       error: "timed out after 10000ms",
     },
     {
+      kind: SmsFailureKind.StaffSendFailed,
+      phoneNumber: "+15555550100",
+      threadId: "0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b",
+      error: "timed out after 10000ms",
+    },
+    {
       kind: SmsFailureKind.DeliveryFailed,
       phoneNumber: "+15555550100",
       errorCode: 30003,
