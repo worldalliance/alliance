@@ -16,7 +16,7 @@ REVIEW_LOOP_ROLE=subagent codex exec --dangerously-bypass-approvals-and-sandbox 
 
 ## When a CLI isn't set up
 
-Many people have only one of the two subscriptions. `codex login status` and `claude auth status` exit nonzero when that CLI isn't logged in, and fail outright when it isn't installed. A step that asks for a CLI that isn't set up, such as `consult`'s second opinion or the codex subagent of the root `AGENTS.md` **File size**, runs the CLI this machine has instead. Tell the user once per session which CLI isn't set up, so they know what ran in its place.
+Many people have only one of the two subscriptions. `codex login status` and `claude auth status` exit nonzero when that CLI isn't logged in, and fail outright when it isn't installed. A step that asks for a CLI that isn't set up, such as `consult`'s second opinion or the codex subagent of the root `AGENTS.md` **File size**, runs the CLI this machine has instead. A step that pairs the two vendors, such as a Claude and a Codex reviewer on one commit, runs only the one this machine has, once. Either way, tell the user once per session which CLI isn't set up, so they know what ran in its place or ran alone.
 
 ## Reading the result
 
