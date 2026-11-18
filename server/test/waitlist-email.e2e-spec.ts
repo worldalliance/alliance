@@ -31,6 +31,7 @@ import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
 import {
+  awaitCalls,
   closeTestApp,
   createTestApp,
   TestContext,
@@ -111,13 +112,9 @@ describe("Waitlist email admin (e2e)", () => {
       ...body,
     });
 
-  /** Waits for the sending runs requests started. */
-  const settled = () =>
-    Promise.all(run.mock.results.map((result) => result.value));
-
   const send = async (body: Record<string, unknown>) => {
     const res = await postWaitlistEmail(ctx, body);
-    await settled();
+    await awaitCalls(run);
     return res.body;
   };
 
@@ -732,7 +729,9 @@ describe("Waitlist email admin (e2e)", () => {
       sendStaff.mockReset();
       sendStaff.mockResolvedValue(mailWith(EmailStatus.Sent));
       const resend = (includeUncertain: boolean) =>
-        retry(batch.id, { includeUncertain }).expect(200).then(settled);
+        retry(batch.id, { includeUncertain })
+          .expect(200)
+          .then(() => awaitCalls(run));
 
       await resend(false);
       expect(sentTo(timedOut.email)).toHaveLength(0);
@@ -762,7 +761,7 @@ describe("Waitlist email admin (e2e)", () => {
 
       await retry(batch.id, { includeUncertain: false })
         .expect(200)
-        .then(settled);
+        .then(() => awaitCalls(run));
 
       expect(await recipientsOf(batch.id)).toEqual([
         expect.objectContaining({

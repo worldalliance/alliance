@@ -79,6 +79,13 @@ export async function eventually<T>(
   throw new Error(`timed out waiting for ${label}`);
 }
 
+/**
+ * Awaits the promises the spied method has returned so far. Prefer it to
+ * `eventually` when the method returns the background work's promise.
+ */
+export const awaitCalls = (spy: jest.SpyInstance) =>
+  Promise.all(spy.mock.results.map((result) => result.value));
+
 /** Accepts every push without calling Expo. */
 export function stubExpoClient(ctx: TestContext): void {
   const expo = ctx.app.get<Expo>(EXPO_CLIENT);
