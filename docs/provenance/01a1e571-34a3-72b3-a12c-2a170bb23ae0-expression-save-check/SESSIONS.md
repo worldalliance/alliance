@@ -54,3 +54,13 @@
 - claude:34301963-fef9-4e0a-84e8-f4e6421d68e0
 - claude:bfe2d538-dbd7-4d5f-bc1b-f3ddcb6d21d9
 - claude:ffa57831-0d8e-4c5a-b328-9318b84e6a89
+- claude:c2b2a242-9244-44c6-bb95-4ab69df9509c
+- claude:95a0d171-4344-4483-8c30-bd49e65aea91
+- claude:b6e010ff-c0b7-47b7-8e58-fcc71c251682
+- claude:5442bc42-dde7-4f14-b7bf-954b3c22e2d4
+- claude:e5cdbecf-15d5-47a2-b09e-def425c5ea44
+- claude:b0f9065e-79f1-45c9-b213-c8c66bdd2f8c
+- claude:49e9e9e3-6968-4a1a-905c-494d3eb9f6e1
+- claude:af09fec9-a5b4-49f4-90ec-2679bc71bcf1
+- claude:f9ec5b34-f7f1-46ef-a25a-ce9d05ddf516
+- claude:876fdb9c-0034-4a9f-ab11-395c854e91a6

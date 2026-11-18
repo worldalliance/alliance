@@ -6,6 +6,7 @@ import {
   condition,
   groupCondition,
   named,
+  NEEDLESS,
   passes,
   problems,
   string,
@@ -209,12 +210,12 @@ test("a function result tsc rejects gets no undecided report", () => {
   ).toBe(false);
 });
 
-test("a reduce whose list, starting value and function can't be missing leaves the fallback after it unrun", () => {
+test("a fallback after a reduce whose list, starting value and function can't be missing is needless", () => {
   expect(
-    passes(
+    problems(
       '(total > 0 && [1, 2].reduce((a, x) => a + x, 0) > 0) ?? (state === "CA")',
-    ).mayBeUnknown,
-  ).toBe(false);
+    ),
+  ).toEqual([{ message: NEEDLESS, at: '(state === "CA")' }]);
 });
 
 describe("named expressions", () => {

@@ -35,6 +35,48 @@ describe("undecided results", () => {
     ]);
   });
 
+  test("a fallback after a `??` that never runs its own fallback is needless", () => {
+    expect(
+      problems('(true ? true : null) ?? (state === "CA") ?? false'),
+    ).toEqual([{ message: NEEDLESS, at: "false" }]);
+  });
+
+  test("nothing undecided inside a fallback that never runs is reported", () => {
+    expect(problems('(total > 1) ?? (state === "CA" ? true : false)')).toEqual([
+      { message: NEEDLESS, at: '(state === "CA" ? true : false)' },
+    ]);
+  });
+
+  test("nothing undecided inside a fallback whose result a guard decides is reported", () => {
+    passes(
+      'isUnknown(count) || [count].some((m) => (m > 0) ?? (state === "CA" ? true : false))',
+    );
+  });
+
+  test.each([
+    "!isUnknown(marks.find((m) => m === 1)) && (marks.find((m) => m === 1) ?? 0) > 2",
+    "((true ? total : null) ?? 0) > 1",
+    "isUnknown(count) || [count].some((m) => ((true ? m : null) ?? 0) > 0)",
+  ])(
+    "the fallback in %s, which tsc requires, isn't called needless",
+    (text) => {
+      passes(text);
+    },
+  );
+
+  test("a fallback after a narrowed read tsc calls nullable can run", () => {
+    const comparison = "((true ? marks[0] : null) ?? count) === 1";
+    expect(
+      problems(`marks[0] === 1 && (${comparison} ? true : false)`, variable),
+    ).toEqual([
+      {
+        message:
+          "This is undecided when `count` has no value. Add `?? false` or `?? true` to decide it then.",
+        at: comparison,
+      },
+    ]);
+  });
+
   test("a fallback the analysis doesn't need stays an error", () => {
     expect(problems("(total > 1) ?? false")).toEqual([
       { message: NEEDLESS, at: "false" },
@@ -184,6 +226,11 @@ describe("undecided results", () => {
     'false ? state === "CA" : true',
     'true ? true : (state === "CA" ? true : false)',
     'true ? true : describe(state === "CA" ? 1 : 2) === "a"',
+    '(true ? true : null) ?? (state === "CA")',
+    '(false ? null : true) ?? (state === "CA")',
+    '(true ? (isUnknown(state) || state === "CA") : null) ?? (count === 1)',
+    '(true ? (isUnknown(count) || [count].length > 0) : null) ?? (state === "CA")',
+    '(true ? true : null) ?? (state === "CA" ? true : false)',
   ])("a literal that decides %s leaves nothing undecided", (text) => {
     expect(passes(text).mayBeUnknown).toBe(false);
   });

@@ -221,6 +221,18 @@ const FEEDS_RESULT_BACK: Record<ListRule, boolean> = {
   [ListRule.Sort]: false,
 };
 
+// The position of the index among a function argument's parameters.
+const INDEX_PARAM: Record<ListRule, number | undefined> = {
+  [ListRule.Plain]: undefined,
+  [ListRule.Concat]: undefined,
+  [ListRule.Join]: undefined,
+  [ListRule.Lookup]: undefined,
+  [ListRule.Predicate]: 1,
+  [ListRule.EachItem]: 1,
+  [ListRule.Reduce]: 2,
+  [ListRule.Sort]: undefined,
+};
+
 // Rules for a list target; text methods of the same name follow none of them.
 export const isPredicateMethod = (method: string) =>
   IS_PREDICATE[listRule(method)];
@@ -239,6 +251,8 @@ export const collectsEachResult = (method: string) =>
 
 export const feedsResultBack = (method: string) =>
   FEEDS_RESULT_BACK[listRule(method)];
+
+export const indexParam = (method: string) => INDEX_PARAM[listRule(method)];
 
 class UnknownResult extends Error {}
 

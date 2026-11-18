@@ -363,4 +363,175 @@ describe("isUnknown guards", () => {
       "isUnknown(state) || ((count ?? isUnknown(state.length)) === true && state.length > 2)",
     );
   });
+
+  const found = "marks.find((m) => m === 1)";
+  test.each([
+    ["", "((total > 1 ? total : null) ?? count) === 1", ""],
+    ["", "((false ? total : null) ?? count) === 1", ""],
+    ["", `(${found} ?? count) === 1`, ""],
+    [
+      `isUnknown(${found}) && (`,
+      `(${found} ?? count) === 1`,
+      " ? true : false)",
+    ],
+  ])(
+    "after a left that can be missing, %s%s%s reports the fallback's unknown",
+    (before, comparison, after) => {
+      expect(problems(`${before}${comparison}${after}`)).toContainEqual({
+        message:
+          "This is undecided when `count` has no value. Add `?? false` or `?? true` to decide it then.",
+        at: comparison,
+      });
+    },
+  );
+
+  test("a guard that decides a nullable left keeps its fallback from the result", () => {
+    passes(`isUnknown(${found}) || ((${found} ?? count) === 1 ? true : false)`);
+  });
+
+  test("a list item whose missing value a guard decides keeps its fallback", () => {
+    passes(
+      `isUnknown(${found}) || [(${found} ?? count) === 1].some((x) => x ?? false)`,
+    );
+  });
+
+  test.each([
+    '(true ? true : null) ?? [state === "CA"].length > 0',
+    'isUnknown(count) || [count].some((m) => (m > 0) ?? ([state === "CA"].length > 0))',
+  ])(
+    "a list item in a fallback after a left proven known stays unreported in %s",
+    (text) => {
+      expect(passes(text).mayBeUnknown).toBe(false);
+    },
+  );
+
+  test("a fallback that never runs reports no function's undecided argument", () => {
+    passes('(true ? true : null) ?? describe(state === "CA" ? 1 : 2) === "a"');
+  });
+
+  test("a fallback after reduce's accumulator from a known start is needless", () => {
+    const reduced = (start: string) =>
+      `[1, 2].reduce((acc, m) => acc ?? (state === "CA" ? 1 : 2), ${start}) > 1`;
+    expect(problems(reduced("0"))).toEqual([
+      { message: NEEDLESS, at: '(state === "CA" ? 1 : 2)' },
+    ]);
+    expect(
+      problems(
+        '[1, 2].reduce((acc, m) => acc ?? (state === "CA"), true) ?? false',
+      ),
+    ).toEqual([
+      { message: NEEDLESS, at: '(state === "CA")' },
+      { message: NEEDLESS, at: "false" },
+    ]);
+    expect(
+      problems(
+        "marks[0] === 1 && [marks[0]].reduce((a, x) => (a ?? 0) + 1, 0) > 0",
+      ),
+    ).toContainEqual({ message: NEEDLESS, at: "0" });
+  });
+
+  test("a fallback after reduce's accumulator from a start that can be missing stays checked", () => {
+    expect(
+      problems(
+        '[1, 2].reduce((acc, m) => acc ?? (state === "CA" ? 1 : 2), count) > 1',
+      ),
+    ).toContainEqual({ message: UNDECIDED_STATE, at: 'state === "CA"' });
+  });
+
+  test("a fallback after reduce's accumulator with no start stays allowed when the list can hold a missing item", () => {
+    passes(
+      "marks[0] === 1 && [marks[0], 2].reduce((a, x) => a ?? 0) > 0",
+      variable,
+    );
+  });
+
+  test.each([
+    'state === "CA"',
+    '`${state}` === "CA"',
+    '(state === "CA") ? true : false',
+  ])(
+    "a fallback after reduce's accumulator from an undecided start counted quietly stays allowed: %s",
+    (start) => {
+      passes(`isUnknown([1].reduce((a, x) => a ?? false, ${start}))`);
+    },
+  );
+
+  test("a fallback after reduce's accumulator a guarded read feeds stays allowed", () => {
+    passes(
+      "isUnknown(count) || [1, 2].reduce((acc, m) => m === 1 ? count : (acc ?? 0), 0) > 0",
+    );
+  });
+
+  test.each([
+    [
+      '(state === "CA")',
+      "(acc ?? (count === 1 ? true : false))",
+      "count === 1",
+    ],
+    [
+      '(state === "CA")',
+      "(acc ?? [1].some((n) => count === n))",
+      "count === n",
+    ],
+    [
+      '(state === "CA" ? true : false)',
+      "(acc ?? (count === 1 ? true : false))",
+      "count === 1",
+    ],
+  ])(
+    "a fallback after reduce's accumulator the function can leave missing, through %s, reports %s",
+    (branch, fallback, at) => {
+      const text = `[1, 2].reduce((acc, m) => m === 1 ? ${branch} : ${fallback}, true) ?? false`;
+      expect(problems(text)).toContainEqual({
+        message:
+          "This is undecided when `count` has no value. Add `?? false` or `?? true` to decide it then.",
+        at,
+      });
+    },
+  );
+
+  const afterReduceParam = (params: string, read: string) =>
+    `[1, 2].reduce(${params} => ${read} === 1 ? (state === "CA") : ((${read} > 1) ?? (count === 1 ? true : false)), true) ?? false`;
+
+  test.each([
+    ["(acc, m)", "m"],
+    ["(acc, m, i)", "i"],
+  ])(
+    "a fallback after reduce's parameter from a known list is needless: %s",
+    (params, read) => {
+      expect(problems(afterReduceParam(params, read))).toEqual([
+        { message: NEEDLESS, at: "(count === 1 ? true : false)" },
+      ]);
+    },
+  );
+
+  test.each([
+    "marks[0] === 1 && [marks[0]].some((m, i) => (i > 0) ?? false)",
+    "marks[0] === 1 && [marks[0]].map((m, i) => (i > 0) ?? false).length > 0",
+  ])("a fallback after an item function's index is needless: %s", (text) => {
+    expect(problems(text)).toContainEqual({ message: NEEDLESS, at: "false" });
+  });
+
+  test.each([
+    `isUnknown(${found}) || ((${found} ?? describe(state === "CA" ? 1 : 2).length) === 1 ? true : false)`,
+    'isUnknown(count) || [count].some((m) => (m > 0) ?? (describe(state === "CA" ? 1 : 2) === "a"))',
+    `isUnknown(${found}) || (((${found} ?? null) ?? describe(state === "CA" ? 1 : 2).length) === 1 ? true : false)`,
+    'isUnknown(count) || sum([count ?? (state === "CA" ? 1 : 2)]) > 0',
+    'isUnknown(count) || highest([count ?? (state === "CA" ? 1 : 2)]) > 0',
+    'isUnknown(count) || describe(count ?? (state === "CA" ? 1 : 2)) === "a"',
+  ])(
+    "a fallback after a left proven known, as in %s, reports its function's undecided argument",
+    (text) => {
+      expect(problems(text)).toContainEqual({
+        message: UNDECIDED_STATE,
+        at: 'state === "CA"',
+      });
+    },
+  );
+
+  test("a fallback a held read's list carries on saves once decided", () => {
+    passes(
+      'isUnknown(count) || sum([count ?? ((state === "CA" ?? false) ? 1 : 2)]) > 0',
+    );
+  });
 });
