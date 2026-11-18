@@ -11,11 +11,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
 import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
+import { text, turn } from "../testing/turn";
 import { createClaudeBackend } from "./backend";
 import type { ClaudeCli } from "./process";
 import { CLAUDE_CODE_VERSION } from "./protocol";
 import { stubCli as cli } from "./testing/stub";
-import { text, turn } from "./testing/turn";
 
 const scratch = mkdtempSync(
   path.join(tmpdir(), "claude-backend-process-test-"),

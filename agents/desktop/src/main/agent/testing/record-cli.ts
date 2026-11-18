@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
-// Stands in for the claude executable during a capture run: runs the real CLI and records its traffic.
+// Stands in for an agent CLI's executable during a capture run: runs the real CLI and records its traffic.
 import { spawn } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { closePipesAfterExit } from "../../cli-process";
-import { type CaptureRecord, CaptureRecordKind } from "./capture";
+import { closePipesAfterExit } from "../cli-process";
+import { type CaptureRecord, CaptureRecordKind } from "./capture-record";
 
-const real = process.env.ALLIANCE_AGENT_CLAUDE_REAL;
-const dir = process.env.ALLIANCE_AGENT_CLAUDE_RECORD_DIR;
-const name = process.env.ALLIANCE_AGENT_CLAUDE_RECORD_NAME;
+const real = process.env.ALLIANCE_AGENT_RECORD_REAL;
+const dir = process.env.ALLIANCE_AGENT_RECORD_DIR;
+const name = process.env.ALLIANCE_AGENT_RECORD_NAME;
 if (!real || !dir || !name)
   throw new Error(
-    "ALLIANCE_AGENT_CLAUDE_REAL, ALLIANCE_AGENT_CLAUDE_RECORD_DIR and ALLIANCE_AGENT_CLAUDE_RECORD_NAME must be set",
+    "ALLIANCE_AGENT_RECORD_REAL, ALLIANCE_AGENT_RECORD_DIR and ALLIANCE_AGENT_RECORD_NAME must be set",
   );
 
 const args = process.argv.slice(2);
