@@ -4,6 +4,7 @@ import {
   type FormResponseDto,
   type SubmitFormDto,
 } from "@alliance/shared/client";
+import { type DraftFetchState } from "@alliance/shared/forms/draftFetchState";
 import {
   useFlowPosition,
   type FlowPositionStorage,
@@ -24,6 +25,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { StickyAccordionTitles } from "@alliance/sharedweb/forms/accordionStyles";
 import { formBlockedView } from "@alliance/sharedweb/forms/FormElements";
 import { useWebFormState } from "@alliance/sharedweb/forms/useWebFormState";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Dialog } from "@base-ui/react/dialog";
 import { ArrowRight } from "lucide-react";
@@ -53,6 +55,7 @@ import TaskFlowScreen, {
   TaskFlowPage,
   TaskFlowTitle,
 } from "./TaskFlowScreen";
+import TaskOutline from "./TaskOutline";
 import { useExpandingPanel } from "./useExpandingPanel";
 
 const PROGRESS_TRANSITION = transition(flowMotion.progress, "width");
@@ -78,6 +81,7 @@ type TaskFlowProps = {
   taskFormId: number;
   formSnapshotId: number;
   draftFormResponse: FormResponseDto | null | undefined;
+  guestDraftFetch?: DraftFetchState;
   phDistinctId: string;
   sessionReplayUrl: string | undefined;
   submitTaskForm: (data: SubmitFormDto) => Promise<boolean>;
@@ -103,6 +107,7 @@ export default function TaskFlow({
   taskFormId,
   formSnapshotId,
   draftFormResponse,
+  guestDraftFetch,
   phDistinctId,
   sessionReplayUrl,
   submitTaskForm,
@@ -163,6 +168,7 @@ export default function TaskFlow({
     loadCurrentUserLocation: !!user && isAuthenticated,
     syncDraftToServer: records && isAuthenticated && !publicAction,
     draftFormResponse: records ? draftFormResponse : undefined,
+    guestDraftFetch: records ? guestDraftFetch : undefined,
     renderFormAsCompleted: readOnly,
     completedFormResponse,
     phDistinctId,
@@ -333,25 +339,35 @@ export default function TaskFlow({
 
   return (
     <div ref={anchorRef}>
-      <div
-        className={cn(
-          "flex gap-x-3",
-          flow.stage === FlowStage.Complete && "invisible",
-        )}
-      >
-        <FlowButton
-          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
-          className="flex-1"
-          onClick={flow.begin}
-          disabled={!position.loaded}
-          iconRight={ArrowRight}
-        >
-          {flow.beginLabel}
-        </FlowButton>
-        {menuSlot === undefined
-          ? withdrawMenu
-          : menuSlot && withdrawMenu && createPortal(withdrawMenu, menuSlot)}
-      </div>
+      {flow.outline === null ? (
+        <div className="flex justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          {flow.outline.length > 0 ? (
+            <TaskOutline
+              steps={flow.outline}
+              className={cn("mb-6", complete && "invisible")}
+            />
+          ) : null}
+          <div className={cn("flex gap-x-3", complete && "invisible")}>
+            <FlowButton
+              kind={
+                readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary
+              }
+              className="flex-1"
+              onClick={flow.begin}
+              disabled={!position.loaded}
+              iconRight={ArrowRight}
+            >
+              {flow.beginLabel}
+            </FlowButton>
+            {menuSlot === undefined ? withdrawMenu : null}
+          </div>
+        </>
+      )}
+      {menuSlot && withdrawMenu && createPortal(withdrawMenu, menuSlot)}
       {completedFormResponse ? (
         <TaskAnswersCard
           className="mt-4 border border-zinc-200"

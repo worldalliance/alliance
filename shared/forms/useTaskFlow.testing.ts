@@ -19,6 +19,8 @@ import {
   useTaskFlow,
   type TaskFlowFormState,
 } from "./useTaskFlow";
+import { SourceHistoriesStatus } from "./useVariableSourceHistories";
+import { type VariableInputsGate } from "./variableInputsGate";
 
 export const input = (id: string): AnyField => ({
   id,
@@ -60,6 +62,11 @@ type Overrides = {
   visiblePageIndices?: number[];
   currentPageIndex?: number;
   visibilitySettled?: boolean;
+  visibilityFailed?: boolean;
+  draftSettled?: boolean;
+  draftFailed?: boolean;
+  gate?: VariableInputsGate;
+  variablesError?: string;
   positionLoaded?: boolean;
   submit?: () => Promise<SubmitOutcome>;
 };
@@ -81,9 +88,15 @@ function flowParams(overrides: Overrides = {}) {
     visiblePageIndices: overrides.visiblePageIndices ?? [0, 1, 2],
     isElementCurrentlyVisible: () => true,
     visibilitySettled: overrides.visibilitySettled ?? true,
+    visibilityFailed: overrides.visibilityFailed ?? false,
+    draftSettled: overrides.draftSettled ?? true,
+    draftFailed: overrides.draftFailed ?? false,
     validateFieldValue: (_field, value) => (value ? null : "Required"),
     effectiveFormData: answers,
     activeUserKey: undefined,
+    variableValues: new Map(),
+    variablesError: overrides.variablesError ?? null,
+    gate: overrides.gate ?? { status: SourceHistoriesStatus.Ready },
     currentPageIndex: overrides.currentPageIndex ?? 0,
     setCurrentPageIndex: () => {},
     validateScreenFields: async () => overrides.screenValid ?? true,

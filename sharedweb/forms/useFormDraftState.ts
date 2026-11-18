@@ -211,9 +211,8 @@ export function useFormDraftState({
   const draftSettled = syncedDraftSettled && guestDraftSettled;
   const draftFailed = serverDraftFailed || !!guestDraftFetch?.failed;
 
-  // The draft query is fired in parallel with the form render so we don't
-  // block paint on it; apply it here if the user hasn't started editing and
-  // localStorage didn't already win the initial-state race.
+  // Applies a guest draft that arrives after mount, unless the member has
+  // started editing or another draft was restored.
   useEffect(() => {
     if (readOnly) return;
     if (draftLockedRef.current) return;

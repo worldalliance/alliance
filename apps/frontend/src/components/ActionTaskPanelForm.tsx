@@ -7,6 +7,7 @@ import {
   type FormResponseDto,
   type SubmitFormDto,
 } from "@alliance/shared/client";
+import { draftFetchState } from "@alliance/shared/forms/draftFetchState";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
 import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
 import {
@@ -79,7 +80,7 @@ const ActionTaskPanelForm = ({
 
   const draftEnabled =
     !formResponse && !disabled && !publicAction && !preview && isAuthenticated;
-  const { data: draftFormResponse } = useLinkedGuestDraft({
+  const guestDraft = useLinkedGuestDraft({
     taskFormId,
     actionId,
     enabled: draftEnabled,
@@ -174,7 +175,8 @@ const ActionTaskPanelForm = ({
         completedFormResponse={formResponse}
         publicAction={publicAction}
         taskFormId={taskFormId}
-        draftFormResponse={draftFormResponse}
+        draftFormResponse={guestDraft.data}
+        guestDraftFetch={draftEnabled ? draftFetchState(guestDraft) : undefined}
         phDistinctId={distinctId}
         sessionReplayUrl={sessionReplayUrl}
         submitTaskForm={submitTaskForm}
