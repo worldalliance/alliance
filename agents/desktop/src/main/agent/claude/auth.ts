@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
-import {
-  type ClaudeCli,
-  failureOutput,
-  queryTimeoutMs,
-  runClaude,
-} from "./process";
+import { failureOutput, queryTimeoutMs } from "../cli-process";
+import { type ClaudeCli, runClaude } from "./process";
 
 const authStatus = z.looseObject({ loggedIn: z.boolean() });
 

@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { appendFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { closePipesAfterExit } from "../process";
+import { closePipesAfterExit } from "../../cli-process";
 import { type CaptureRecord, CaptureRecordKind } from "./capture";
 
 const real = process.env.ALLIANCE_AGENT_CLAUDE_REAL;

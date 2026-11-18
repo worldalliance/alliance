@@ -1,9 +1,14 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
 import { AgentEventKind } from "../../../shared/agent-event";
+import {
+  cancelKillAfterMs,
+  couldNotStart,
+  spawnSessionCli,
+} from "../cli-process";
 import { SessionListeners } from "../listeners";
 import {
   type AgentBackend,
@@ -12,11 +17,9 @@ import {
   type AgentSession,
 } from "../session";
 import {
-  cancelKillAfterMs,
   checkClaudeVersion,
   type ClaudeCli,
   claudeEnvironment,
-  closePipesAfterExit,
 } from "./process";
 import {
   ClaudeLineKind,
@@ -202,12 +205,6 @@ export function createClaudeBackend(
   const live = new Map<string, Promise<Result<AgentSession, Error>>>();
   const closing = new Map<string, Promise<void>>();
   let versionChecked = false;
-  const couldNotStart = (cwd: string, error: unknown) =>
-    R.failure(
-      new Error(
-        `couldn't start ${cli.executable} in ${cwd}: ${R.toError(error).message}`,
-      ),
-    );
 
   async function launch(
     params: SessionHooks & {
@@ -221,21 +218,17 @@ export function createClaudeBackend(
       if (!checked.ok) return checked;
       versionChecked = true;
     }
-    const child = spawn(
-      cli.executable,
-      [...claudeSessionArgs, ...params.sessionArgs],
-      { cwd: params.cwd, env: claudeEnvironment(cli.configDir) },
-    );
-    const spawned = await new Promise<Result<void, Error>>((resolve) => {
-      child.once("spawn", () => resolve(R.success(undefined)));
-      child.once("error", (error) => resolve(couldNotStart(params.cwd, error)));
+    const child = await spawnSessionCli({
+      executable: cli.executable,
+      args: [...claudeSessionArgs, ...params.sessionArgs],
+      cwd: params.cwd,
+      env: claudeEnvironment(cli.configDir),
     });
-    if (!spawned.ok) return spawned;
-    closePipesAfterExit(child);
+    if (!child.ok) return child;
     return R.success(
       new ClaudeSession({
         id: params.sessionId,
-        child,
+        child: child.value,
         onClosing: params.onClosing,
         onExit: params.onExit,
         killAfterMs: timing.killAfterMs,
@@ -265,7 +258,9 @@ export function createClaudeBackend(
     // Waiting out a closing CLI keeps two from running on one session.
     const entry = (closing.get(sessionId) ?? Promise.resolve())
       .then(() => launch({ ...params, onClosing, onExit: forget }))
-      .catch((error: unknown) => couldNotStart(params.cwd, error));
+      .catch((error: unknown) =>
+        couldNotStart({ executable: cli.executable, cwd: params.cwd, error }),
+      );
     live.set(sessionId, entry);
     void entry.then((result) => {
       if (!result.ok) forget();
