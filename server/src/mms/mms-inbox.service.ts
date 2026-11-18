@@ -10,7 +10,7 @@ import {
   type SelectQueryBuilder,
 } from "typeorm";
 import { z } from "zod";
-import { optedOutSql } from "./mms-number.service";
+import { MmsNumberService, optedOutSql } from "./mms-number.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "./mms-thread-event.entity";
 import { Mms, MmsDirection } from "./mms.entity";
 
@@ -19,6 +19,15 @@ export enum ReplyState {
   Handled = "handled",
   Answered = "answered",
 }
+
+export type ThreadRef = { id: string; phoneNumber: string };
+
+export type NeedsReplyThread = {
+  thread: ThreadRef;
+  members: User[];
+  lastMessageBody: string;
+  waitingSince: Date;
+};
 
 export type NeedsReplyMember = {
   user: User;
@@ -96,6 +105,7 @@ export class MmsInboxService {
     private readonly mmsRepository: Repository<Mms>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly mmsNumberService: MmsNumberService,
   ) {}
 
   async replyState(phoneNumber: string): Promise<ReplyState> {
@@ -192,21 +202,48 @@ export class MmsInboxService {
 
   /** Longest-waiting first, timed from each number's oldest unanswered text.
    * STOP and START texts, which the webhook acts on and Twilio answers, neither
-   * list a member nor hide an earlier text that needs a reply. */
-  async needsReply(): Promise<NeedsReplyMember[]> {
+   * list a number nor hide an earlier text that needs a reply. */
+  async needsReply(): Promise<NeedsReplyThread[]> {
     const oldest = (await this.unansweredTexts()).toSorted(
       (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
     );
-    const members = await this.membersByNumber(
-      oldest.map((row) => row.phoneNumber),
-    );
-    return oldest.flatMap((row) =>
-      (members.get(row.phoneNumber) ?? []).map((user) => ({
+    const numbers = oldest.map((row) => row.phoneNumber);
+    const [threads, members] = await Promise.all([
+      this.threadRefs(numbers),
+      this.membersByNumber(numbers),
+    ]);
+    return oldest.map((row, index) => ({
+      thread: threads[index],
+      members: members.get(row.phoneNumber) ?? [],
+      lastMessageBody: row.lastMessageBody,
+      waitingSince: row.createdAt,
+    }));
+  }
+
+  /** BACKCOMPAT(mms-thread-ids): Needs reply as admin builds before per-number
+   * threads read it, one row per member; remove once no deployed admin build
+   * calls GET needs-reply. */
+  async needsReplyMembers(): Promise<NeedsReplyMember[]> {
+    return (await this.needsReply()).flatMap((entry) =>
+      entry.members.map((user) => ({
         user,
-        lastMessageBody: row.lastMessageBody,
-        waitingSince: row.createdAt,
+        lastMessageBody: entry.lastMessageBody,
+        waitingSince: entry.waitingSince,
       })),
     );
+  }
+
+  /** BACKCOMPAT(mms-thread-rows): texts the previous release recorded may have
+   * no row yet. Once this release is live everywhere, a migration inserting a
+   * row for every number with an inbound or staff text lets this read rows
+   * with findBy instead of upserting them. */
+  private async threadRefs(phoneNumbers: string[]): Promise<ThreadRef[]> {
+    const ids = await this.mmsNumberService.ensureThreads(phoneNumbers);
+    return phoneNumbers.map((phoneNumber) => {
+      const id = ids.get(phoneNumber);
+      if (id === undefined) throw new Error("thread row missing after upsert");
+      return { id, phoneNumber };
+    });
   }
 
   /** Non-deleted members, by number. */

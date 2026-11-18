@@ -36,6 +36,7 @@ import {
   MmsThreadDto,
   MmsThreadQueryDto,
   NeedsReplyMemberDto,
+  NeedsReplyThreadDto,
   NumberThreadDto,
   SendStaffTextDto,
 } from "./dto/mms-thread.dto";
@@ -96,11 +97,23 @@ export class MmsThreadController {
     private readonly inboxService: MmsInboxService,
   ) {}
 
+  /** BACKCOMPAT(mms-thread-ids): admin builds before per-number threads read
+   * this; remove once no deployed admin build calls it, moving the Needs reply
+   * tests in the mms-needs-reply, mms-number-opt-out and mms-number-thread e2e
+   * files to needs-reply-threads and deleting the per-member one. */
   @Get("needs-reply")
   @ApiOkResponse({ type: [NeedsReplyMemberDto] })
   async needsReplyAdmin(): Promise<NeedsReplyMemberDto[]> {
-    return (await this.inboxService.needsReply()).map(
+    return (await this.inboxService.needsReplyMembers()).map(
       (entry) => new NeedsReplyMemberDto(entry),
+    );
+  }
+
+  @Get("needs-reply-threads")
+  @ApiOkResponse({ type: [NeedsReplyThreadDto] })
+  async needsReplyThreadsAdmin(): Promise<NeedsReplyThreadDto[]> {
+    return (await this.inboxService.needsReply()).map(
+      (entry) => new NeedsReplyThreadDto(entry),
     );
   }
 

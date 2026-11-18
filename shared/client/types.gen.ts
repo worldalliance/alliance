@@ -1568,6 +1568,23 @@ export type ThreadMemberDto = {
     timeZone: string | null;
 };
 
+export type NeedsReplyThreadDto = {
+    threadId: string;
+    /**
+     * May be a short code or sender id
+     */
+    phoneNumber: string;
+    members: Array<ThreadMemberDto>;
+    /**
+     * The latest text that still needs a reply; STOP and START texts and handled texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the oldest text that no staff reply has followed and staff haven't marked handled arrived
+     */
+    waitingSince: string;
+};
+
 /**
  * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
  */
@@ -8453,6 +8470,25 @@ export type MmsThreadNeedsReplyAdminResponses = {
 };
 
 export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+
+export type MmsThreadNeedsReplyThreadsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply-threads';
+};
+
+export type MmsThreadNeedsReplyThreadsAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyThreadsAdminError = MmsThreadNeedsReplyThreadsAdminErrors[keyof MmsThreadNeedsReplyThreadsAdminErrors];
+
+export type MmsThreadNeedsReplyThreadsAdminResponses = {
+    200: Array<NeedsReplyThreadDto>;
+};
+
+export type MmsThreadNeedsReplyThreadsAdminResponse = MmsThreadNeedsReplyThreadsAdminResponses[keyof MmsThreadNeedsReplyThreadsAdminResponses];
 
 export type MmsThreadGetNumberThreadAdminData = {
     body?: never;

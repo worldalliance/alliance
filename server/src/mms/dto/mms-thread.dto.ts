@@ -14,7 +14,11 @@ import {
   ValidateBy,
 } from "class-validator";
 import { User } from "src/user/entities/user.entity";
-import { type NeedsReplyMember, ReplyState } from "../mms-inbox.service";
+import {
+  type NeedsReplyMember,
+  type NeedsReplyThread,
+  ReplyState,
+} from "../mms-inbox.service";
 import { MmsMedia } from "../mms-media.entity";
 import {
   inlineContentType,
@@ -243,6 +247,38 @@ export class NumberThreadDto {
   }
 }
 
+export class NeedsReplyThreadDto {
+  @ApiProperty()
+  threadId: string;
+
+  @ApiProperty({ description: "May be a short code or sender id" })
+  phoneNumber: string;
+
+  @ApiProperty({ type: () => ThreadMemberDto, isArray: true })
+  members: ThreadMemberDto[];
+
+  @ApiProperty({
+    description:
+      "The latest text that still needs a reply; STOP and START texts and handled texts are skipped",
+  })
+  lastMessageBody: string;
+
+  @ApiProperty({
+    type: Date,
+    description:
+      "When the oldest text that no staff reply has followed and staff haven't marked handled arrived",
+  })
+  waitingSince: Date;
+
+  constructor(input: NeedsReplyThread) {
+    this.threadId = input.thread.id;
+    this.phoneNumber = input.thread.phoneNumber;
+    this.members = input.members.map((member) => new ThreadMemberDto(member));
+    this.lastMessageBody = input.lastMessageBody;
+    this.waitingSince = input.waitingSince;
+  }
+}
+
 export class MmsThreadQueryDto {
   @ApiPropertyOptional({
     description: "Return texts sent before the text with this id",
@@ -282,6 +318,8 @@ export class SendStaffTextDto {
   body: string;
 }
 
+/** BACKCOMPAT(mms-thread-ids): remove with GET needs-reply, once no deployed
+ * admin build calls it. */
 export class NeedsReplyMemberDto {
   @ApiProperty()
   userId: number;

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { Repository } from "src/utils/Repository";
-import type { EntityManager } from "typeorm";
+import { type EntityManager, In } from "typeorm";
 import { z } from "zod";
 import { MmsThread } from "./mms-thread.entity";
 
@@ -95,6 +95,24 @@ export class MmsNumberService {
       .returning(["id"])
       .execute();
     return z.object({ id: z.string() }).parse(result.raw[0]).id;
+  }
+
+  /** Thread ids by number, creating the rows of numbers that have none.
+   * BACKCOMPAT(mms-thread-rows): see MmsInboxService.threadRefs. */
+  async ensureThreads(phoneNumbers: string[]): Promise<Map<string, string>> {
+    if (phoneNumbers.length === 0) return new Map();
+    await this.threadRepository
+      .createQueryBuilder()
+      .insert()
+      .into(MmsThread)
+      // Sorted so concurrent inserts of the same missing rows can't deadlock.
+      .values(phoneNumbers.toSorted().map((phoneNumber) => ({ phoneNumber })))
+      .orIgnore()
+      .execute();
+    const threads = await this.threadRepository.findBy({
+      phoneNumber: In(phoneNumbers),
+    });
+    return new Map(threads.map((t) => [t.phoneNumber, t.id]));
   }
 
   async optedOut(phoneNumber: string): Promise<boolean> {
