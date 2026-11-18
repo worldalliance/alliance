@@ -1,6 +1,7 @@
 import { normalizePhoneNumber } from "@alliance/common/phone";
 import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
+import { OptOutSource } from "src/mms/opt-out-source";
 import { z } from "zod";
 import { MmsMediaService } from "./mms-media.service";
 import { type InboundText, MmsThreadService } from "./mms-thread.service";
@@ -126,7 +127,7 @@ export class MmsController {
     if (STOP_KEYWORDS.has(keyword)) {
       console.log(`Received STOP from ${from}, marking unsubscribed`);
       await this.mmsUnsubService.unsubFromMms(from, {
-        reason: "stop_keyword",
+        kind: OptOutSource.Keyword,
         rawBody: text,
       });
       return MmsKeyword.Stop;

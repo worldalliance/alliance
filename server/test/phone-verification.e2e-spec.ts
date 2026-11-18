@@ -1,6 +1,7 @@
 import { OtpError } from "@alliance/common/otp";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
+import { OptOutSource } from "src/mms/opt-out-source";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { EntityManager, type Repository } from "typeorm";
@@ -191,9 +192,10 @@ describe("Phone verification (e2e)", () => {
       .mockImplementation(async function (this: EntityManager, ...args) {
         const found = await find.apply(this, args);
         if (args[0] === User && !stop) {
-          stop = ctx.app
-            .get(MmsUnsubService)
-            .unsubFromMms(phoneNumber, { reason: "STOP", rawBody: "STOP" });
+          stop = ctx.app.get(MmsUnsubService).unsubFromMms(phoneNumber, {
+            kind: OptOutSource.Keyword,
+            rawBody: "STOP",
+          });
           await waitForLockWait(ctx.dataSource);
         }
         return found;

@@ -7,6 +7,25 @@ import { lockPhoneNumber } from "src/user/user.utils";
 import type { EntityManager, Repository } from "typeorm";
 import { z } from "zod";
 import { MmsOptout } from "./mms-optout.entity";
+import { OptOutSource } from "./opt-out-source";
+
+export type OptOutRequest =
+  | { kind: OptOutSource.Keyword; rawBody: string }
+  | { kind: OptOutSource.Staff; adminId: number };
+
+function storedOptOut(request: OptOutRequest): {
+  reason: string;
+  rawBody: string;
+} {
+  switch (request.kind) {
+    case OptOutSource.Keyword:
+      return { reason: "stop_keyword", rawBody: request.rawBody };
+    case OptOutSource.Staff:
+      return { reason: `marked_by_staff:${request.adminId}`, rawBody: "" };
+    default:
+      throw new Error(`unknown opt-out source: ${request satisfies never}`);
+  }
+}
 
 const changedRows = z.array(
   z.object({
@@ -44,11 +63,12 @@ export class MmsUnsubService {
     private readonly eventLogService: EventLogService,
   ) {}
 
-  /** Applies STOP and audits all members sharing the number. */
+  /** Opts the number out of texts and audits all members sharing it. */
   async unsubFromMms(
     phoneNumber: string,
-    { reason, rawBody }: { reason: string; rawBody: string },
+    request: OptOutRequest,
   ): Promise<void> {
+    const { reason, rawBody } = storedOptOut(request);
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
         await lockPhoneNumber(manager, phoneNumber);

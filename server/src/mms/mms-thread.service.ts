@@ -4,6 +4,7 @@ import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { env } from "src/config/env";
+import { OptOutSource } from "src/mms/opt-out-source";
 import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
@@ -329,8 +330,8 @@ export class MmsThreadService {
     const to = staffTextableNumber(user.value);
     if (!to.ok) return to;
     await this.mmsUnsubService.unsubFromMms(to.value, {
-      reason: `marked_by_staff:${params.adminId}`,
-      rawBody: "",
+      kind: OptOutSource.Staff,
+      adminId: params.adminId,
     });
     return R.success(undefined);
   }
