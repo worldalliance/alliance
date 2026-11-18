@@ -56,7 +56,7 @@ export function RenderLabel({
   if (hideLabel) return null;
   const isRequired = required ?? !!field.required;
   const label = shownLabel(field);
-  if (label === null && isRequired) return null;
+  if (label === null && (isRequired || isOutputView)) return null;
   return (
     <View className={cn("mb-1", className)}>
       {!isRequired && !isOutputView && <OptionalLabelPrefix />}
