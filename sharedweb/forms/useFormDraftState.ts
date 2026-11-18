@@ -1,5 +1,6 @@
 import { type FormValue } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto } from "@alliance/shared/client";
+import { type DraftFetchState } from "@alliance/shared/forms/draftFetchState";
 import {
   applyDefaultValues,
   clampPageIndex,
@@ -10,6 +11,7 @@ import {
   restorablePublicAnswers,
   serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
+import { useDraftSettled } from "@alliance/shared/forms/useDraftSettled";
 import { useFormDraftSync } from "@alliance/shared/forms/useFormDraftSync";
 import { type useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -25,6 +27,7 @@ export function useFormDraftState({
   readOnly,
   completedFormResponse,
   draftFormResponse,
+  guestDraftFetch,
   initialPageIndex,
   userDefaultPublic,
   fieldLookup,
@@ -41,6 +44,8 @@ export function useFormDraftState({
   readOnly: boolean;
   completedFormResponse?: FormResponseDto;
   draftFormResponse?: FormResponseDto | null;
+  /** The fetch of `draftFormResponse`, when it is fetched. */
+  guestDraftFetch?: DraftFetchState;
   initialPageIndex?: number;
   userDefaultPublic: boolean;
 } & Pick<
@@ -142,18 +147,24 @@ export function useFormDraftState({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
-    useFormDraftSync({
-      enabled: draftSyncEnabled,
-      formId,
-      actionId,
-      formSnapshotId,
-      answers: formData,
-      publicAnswers,
-      currentPageIndex,
-      edited,
-      onSaved: setSyncedUpdatedAt,
-    });
+  const {
+    serverDraft,
+    settled: serverDraftSettled,
+    failed: serverDraftFailed,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+  } = useFormDraftSync({
+    enabled: draftSyncEnabled,
+    formId,
+    actionId,
+    formSnapshotId,
+    answers: formData,
+    publicAnswers,
+    currentPageIndex,
+    edited,
+    onSaved: setSyncedUpdatedAt,
+  });
 
   useEffect(() => {
     if (!draftSyncEnabled || edited || !serverDraft) return;
@@ -186,6 +197,19 @@ export function useFormDraftState({
     defaultValueMap,
     outputFieldIds,
   ]);
+
+  const syncedDraftSettled = useDraftSettled({
+    localDraftRead: true,
+    fetchEnabled: draftSyncEnabled,
+    fetchSettled: serverDraftSettled,
+  });
+  const guestDraftSettled = useDraftSettled({
+    localDraftRead: true,
+    fetchEnabled: guestDraftFetch !== undefined,
+    fetchSettled: guestDraftFetch?.settled ?? true,
+  });
+  const draftSettled = syncedDraftSettled && guestDraftSettled;
+  const draftFailed = serverDraftFailed || !!guestDraftFetch?.failed;
 
   // The draft query is fired in parallel with the form render so we don't
   // block paint on it; apply it here if the user hasn't started editing and
@@ -322,6 +346,10 @@ export function useFormDraftState({
     setCurrentPageIndex,
     edited,
     markEdited,
+    /** Set once a draft synced from another device, and one left on a guest visit, have been restored, found absent, or failed to load. */
+    draftSettled,
+    /** Set while a draft fetch has failed or waits offline. */
+    draftFailed,
     saveFailed,
     pauseSyncing,
     resumeSyncing,

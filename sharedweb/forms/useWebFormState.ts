@@ -5,6 +5,7 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { computeActiveUserKey } from "@alliance/shared/formrenderer";
+import { type DraftFetchState } from "@alliance/shared/forms/draftFetchState";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
 import { useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
@@ -56,6 +57,8 @@ export type WebFormStateParams = {
   completedFormResponse?: FormResponseDto;
   /** Prefill form with these answers when there is no locally-persisted draft. Used to restore a guest's answers after signup. */
   draftFormResponse?: FormResponseDto | null;
+  /** The fetch of `draftFormResponse`, when it is fetched. */
+  guestDraftFetch?: DraftFetchState;
   /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
   syncDraftToServer?: boolean;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
@@ -83,6 +86,7 @@ export function useWebFormState({
   renderFormAsCompleted,
   completedFormResponse,
   draftFormResponse,
+  guestDraftFetch,
   syncDraftToServer,
   adminPreviewUserId,
   loadCurrentUserLocation,
@@ -130,6 +134,8 @@ export function useWebFormState({
     setCurrentPageIndex,
     edited,
     markEdited,
+    draftSettled,
+    draftFailed,
     saveFailed,
     pauseSyncing,
     resumeSyncing,
@@ -142,6 +148,7 @@ export function useWebFormState({
     readOnly,
     completedFormResponse,
     draftFormResponse,
+    guestDraftFetch,
     initialPageIndex,
     userDefaultPublic,
     fieldLookup,
@@ -327,6 +334,8 @@ export function useWebFormState({
     setPublicAnswer,
     currentPageIndex,
     setCurrentPageIndex,
+    draftSettled,
+    draftFailed,
     saveFailed,
     formTopRef,
     fieldRef,
