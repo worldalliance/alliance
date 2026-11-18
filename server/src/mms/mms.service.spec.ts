@@ -9,6 +9,7 @@ import {
 import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import { DeliveryFailure } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
+import { SendErrorKind } from "src/utils/send-error";
 import type Twilio from "twilio";
 import { type Mms, MmsDirection } from "./mms.entity";
 import { MmsService } from "./mms.service";
@@ -16,6 +17,12 @@ import { MmsService } from "./mms.service";
 const TO = "+14155559001";
 const USER_ID = 42;
 const BODY = "you have tasks waiting";
+const TRACKING = {
+  owner: { userId: 1 },
+  source: MessageSource.ForumReply,
+  context: {},
+  actionEventNotifId: null,
+};
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -46,8 +53,8 @@ const withEnv = async <T>(
   }
 };
 
-// sendMms reads NODE_ENV on the way in, and again in the catch that reports the
-// failure, so it has to say production for the whole call.
+// sendMms reads NODE_ENV on the way in, and again when it reports the failure,
+// so it has to say production for the whole call.
 const asProduction = <T>(run: () => Promise<T>): Promise<T> =>
   withEnv({ NODE_ENV: "production" }, run);
 
@@ -131,12 +138,7 @@ describe("MmsService sendMms", () => {
         userId: USER_ID,
         body: "Tasks: https://app.example.org/tasks",
         mediaUrls: [],
-        tracking: {
-          owner: { userId: 1 },
-          source: MessageSource.ForumReply,
-          context: {},
-          actionEventNotifId: null,
-        },
+        tracking: TRACKING,
       });
     } finally {
       setEnv("APP_URL", appUrl);
@@ -161,12 +163,7 @@ describe("MmsService sendMms", () => {
         userId: USER_ID,
         body: BODY,
         mediaUrls: [],
-        tracking: {
-          owner: { userId: 1 },
-          source: MessageSource.ForumReply,
-          context: {},
-          actionEventNotifId: null,
-        },
+        tracking: TRACKING,
       }),
     );
 
@@ -199,12 +196,7 @@ describe("MmsService sendMms", () => {
         userId: USER_ID,
         body: BODY,
         mediaUrls: [],
-        tracking: {
-          owner: { userId: 1 },
-          source: MessageSource.ForumReply,
-          context: {},
-          actionEventNotifId: null,
-        },
+        tracking: TRACKING,
       }),
     );
 
@@ -258,6 +250,73 @@ describe("MmsService sendMms", () => {
       }),
     );
   });
+
+  it.each([
+    {
+      failure: "a rejection twilio explains",
+      create: () =>
+        Promise.reject(
+          Object.assign(new Error("invalid number"), {
+            status: 400,
+            code: 21211,
+          }),
+        ),
+      saveFails: false,
+      kind: SendErrorKind.Refused,
+    },
+    {
+      failure: "a failed tracking insert",
+      create: () => Promise.resolve(message),
+      saveFails: false,
+      trackFails: true,
+      kind: SendErrorKind.NotHandedOver,
+    },
+    {
+      failure: "no answer by the deadline",
+      create: () => new Promise<never>(() => {}),
+      saveFails: false,
+      kind: SendErrorKind.Unknown,
+    },
+    {
+      failure: "a failed save after twilio took it",
+      create: () => Promise.resolve(message),
+      saveFails: true,
+      kind: SendErrorKind.Unknown,
+    },
+  ])(
+    "returns $kind and alerts on $failure",
+    async ({ create, saveFails, trackFails, kind }) => {
+      service["twilioClient"] = {
+        messages: { create },
+      } as unknown as Twilio.Twilio;
+      service["sendTimeoutMs"] = 5;
+      if (saveFails) {
+        jest
+          .spyOn(service["mmsRepository"], "save")
+          .mockRejectedValue(new Error("connection lost"));
+      }
+      if (trackFails) {
+        jest
+          .spyOn(messageTracking, "track")
+          .mockRejectedValue(new Error("tracking insert failed"));
+      }
+
+      const result = await asProduction(() =>
+        service.sendMmsResult({
+          to: TO,
+          userId: USER_ID,
+          body: BODY,
+          mediaUrls: [],
+          tracking: trackFails ? TRACKING : null,
+        }),
+      );
+
+      expect(result).toEqual({ ok: false, error: kind });
+      expect(eventLogService.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: EventType.SmsFailure }),
+      );
+    },
+  );
 
   // The deadline is covered above. These two drive recordLateSend on its own,
   // since what they turn on is the row it writes once sendMms has already

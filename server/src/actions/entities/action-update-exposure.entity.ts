@@ -84,11 +84,21 @@ export class ActionUpdateExposure {
   @JoinColumn({ name: "mmsId" })
   mms?: Relation<Mms> | null;
 
-  /** Set when the email was attempted and failed, so `mail` stays null. */
+  /** Set just before the email is sent; with no `mail` or `emailFailedAt`,
+   * it may have gone out, so it is never sent again. */
+  @Column({ type: "timestamptz", nullable: true })
+  emailStartedAt: Date | null;
+
+  /** Set just before the text is sent; with no `mms` or `textFailedAt`, it
+   * may have gone out, so it is never sent again. */
+  @Column({ type: "timestamptz", nullable: true })
+  textStartedAt: Date | null;
+
+  /** Set when the email provably wasn't sent, so `mail` stays null. */
   @Column({ type: "timestamptz", nullable: true })
   emailFailedAt: Date | null;
 
-  /** Set when the text was attempted and failed, so `mms` stays null. */
+  /** Set when the text provably wasn't sent, so `mms` stays null. */
   @Column({ type: "timestamptz", nullable: true })
   textFailedAt: Date | null;
 
