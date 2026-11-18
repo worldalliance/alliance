@@ -440,12 +440,12 @@ export class MmsThreadService {
     }));
   }
 
-  /** Non-deleted members. */
-  private membersOn(phoneNumber: string): Promise<User[]> {
-    return this.userRepository.find({
-      where: { phoneNumber },
-      order: { id: "ASC" },
-    });
+  private async membersOn(phoneNumber: string): Promise<User[]> {
+    return (
+      (await this.mmsInboxService.membersByNumber([phoneNumber])).get(
+        phoneNumber,
+      ) ?? []
+    );
   }
 
   private async findMember(

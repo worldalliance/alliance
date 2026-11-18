@@ -188,15 +188,9 @@ export class MmsInboxService {
     const oldest = (await this.unansweredTexts()).toSorted(
       (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
     );
-    if (oldest.length === 0) return [];
-    const users = await this.userRepository
-      .createQueryBuilder("member")
-      .where('member."phoneNumber" = ANY(:phoneNumbers)', {
-        phoneNumbers: oldest.map((row) => row.phoneNumber),
-      })
-      .orderBy("member.id")
-      .getMany();
-    const members = Map.groupBy(users, (user) => user.phoneNumber);
+    const members = await this.membersByNumber(
+      oldest.map((row) => row.phoneNumber),
+    );
     return oldest.flatMap((row) =>
       (members.get(row.phoneNumber) ?? []).map((user) => ({
         user,
@@ -204,6 +198,19 @@ export class MmsInboxService {
         waitingSince: row.createdAt,
       })),
     );
+  }
+
+  /** Non-deleted members, by number. */
+  async membersByNumber(
+    phoneNumbers: string[],
+  ): Promise<Map<string | null, User[]>> {
+    if (phoneNumbers.length === 0) return new Map();
+    const users = await this.userRepository
+      .createQueryBuilder("member")
+      .where('member."phoneNumber" = ANY(:phoneNumbers)', { phoneNumbers })
+      .orderBy("member.id")
+      .getMany();
+    return Map.groupBy(users, (user) => user.phoneNumber);
   }
 
   /** Per number not opted out, its oldest inbound text that no staff reply has
