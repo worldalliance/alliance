@@ -47,14 +47,15 @@ export function useFormEditing({
     if (readOnly) return;
     ensureStarted();
     setFormData((prev) => {
-      const { next, turnedOn } = answerField({
+      const { next, clearedErrors } = answerField({
         prev,
         fieldId,
         value,
         fields: fieldLookup.values(),
         isVisible: isElementCurrentlyVisible,
+        validate: validateFieldValue,
       });
-      if (turnedOn) applyFieldErrorUpdates({ [turnedOn]: null });
+      applyFieldErrorUpdates(clearedErrors);
       const fieldDefinition = fieldLookup.get(fieldId);
       if (fieldDefinition) {
         const nextValue = next[fieldId];

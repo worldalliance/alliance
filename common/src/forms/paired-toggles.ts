@@ -9,30 +9,37 @@ export const pairedToggleRequired = (
   field.atLeastOneOnWith !== undefined &&
   data[field.atLeastOneOnWith] !== true;
 
-/**
- * The toggle to turn on after `fieldId`, a toggle paired by `atLeastOneOnWith`
- * from either side, turns off with no visible partner on: a visible partner,
- * or `fieldId` itself when every partner is hidden. Null otherwise.
- */
-export function pairedToggleToTurnOn(params: {
-  fieldId: string;
-  data: Record<string, FormValue>;
-  fields: Iterable<AnyField>;
-  isVisible: (field: AnyField) => boolean;
-}): string | null {
-  const { fieldId, data, fields, isVisible } = params;
+/** The toggles `atLeastOneOnWith` pairs with the toggle `fieldId`, from either side. */
+export function pairedToggles(
+  fieldId: string,
+  fields: Iterable<AnyField>,
+): ToggleField[] {
   const toggles = [...fields].filter(
     (field): field is ToggleField => field.kind === "toggle",
   );
   const changed = toggles.find((field) => field.id === fieldId);
-  if (!changed || data[fieldId] !== false) return null;
-  const partners = toggles.filter(
+  if (!changed) return [];
+  return toggles.filter(
     (field) =>
       field.id !== fieldId &&
       (field.atLeastOneOnWith === fieldId ||
         changed.atLeastOneOnWith === field.id),
   );
-  if (partners.length === 0) return null;
+}
+
+/**
+ * The toggle to turn on after `fieldId` turns off with no visible partner on:
+ * a visible partner, or `fieldId` itself when every partner is hidden. Null
+ * otherwise.
+ */
+export function pairedToggleToTurnOn(params: {
+  fieldId: string;
+  data: Record<string, FormValue>;
+  partners: readonly ToggleField[];
+  isVisible: (field: AnyField) => boolean;
+}): string | null {
+  const { fieldId, data, partners, isVisible } = params;
+  if (partners.length === 0 || data[fieldId] !== false) return null;
   const visible = partners.filter(isVisible);
   if (visible.some((field) => data[field.id] === true)) return null;
   return visible[0]?.id ?? fieldId;

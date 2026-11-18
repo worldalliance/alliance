@@ -1,5 +1,8 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
-import { pairedToggleToTurnOn } from "@alliance/common/forms/paired-toggles";
+import {
+  pairedToggles,
+  pairedToggleToTurnOn,
+} from "@alliance/common/forms/paired-toggles";
 import { validateFieldValue } from "./fieldValidation";
 import { answerField } from "./formValueUpdater";
 
@@ -23,7 +26,7 @@ const turnOn = (
   pairedToggleToTurnOn({
     fieldId,
     data,
-    fields,
+    partners: pairedToggles(fieldId, fields),
     isVisible: (field) => !hidden.includes(field.id),
   });
 
@@ -73,15 +76,55 @@ describe("validating a paired toggle", () => {
 });
 
 describe("answerField", () => {
+  const extras = { deviceType: "desktop" as const };
+  const answer = (params: {
+    fields: AnyField[];
+    prev: Record<string, FormValue>;
+    fieldId: string;
+    value: FormValue;
+  }) =>
+    answerField({
+      ...params,
+      isVisible: () => true,
+      validate: (field, value, data) =>
+        validateFieldValue(field, value, data, extras),
+    });
+
   it("answers the field and turns its off partner on", () => {
     expect(
-      answerField({
+      answer({
+        fields,
         prev: { text: false, email: true },
         fieldId: "email",
         value: false,
-        fields,
-        isVisible: () => true,
       }),
-    ).toEqual({ next: { text: true, email: false }, turnedOn: "text" });
+    ).toEqual({
+      next: { text: true, email: false },
+      clearedErrors: { text: null },
+    });
+  });
+
+  it("clears the errors of the turned-on toggle's other partners", () => {
+    const sms = toggle("sms", "text");
+
+    expect(
+      answer({
+        fields: [...fields, sms],
+        prev: { text: false, email: true, sms: false },
+        fieldId: "email",
+        value: false,
+      }).clearedErrors,
+    ).toEqual({ text: null, sms: null });
+  });
+
+  it("keeps the error of a partner the answer leaves invalid", () => {
+    expect(
+      answer({
+        fields: [{ ...text, required: true }, email],
+        prev: { text: false, email: false },
+        fieldId: "email",
+        value: true,
+      }).clearedErrors,
+    ).toEqual({});
   });
 });

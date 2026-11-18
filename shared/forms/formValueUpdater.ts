@@ -1,5 +1,8 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
-import { pairedToggleToTurnOn } from "@alliance/common/forms/paired-toggles";
+import {
+  pairedToggles,
+  pairedToggleToTurnOn,
+} from "@alliance/common/forms/paired-toggles";
 
 export type FormValueUpdater =
   | FormValue
@@ -20,7 +23,8 @@ export function resolveFormValue(
 
 /**
  * `prev` with `fieldId` answered, and with the toggle `pairedToggleToTurnOn`
- * names turned on, returned as `turnedOn` so its stale error can be cleared.
+ * names turned on. `clearedErrors` clears the error of each toggle paired with
+ * `fieldId` or with the toggle turned on that the answer leaves valid.
  */
 export function answerField(params: {
   prev: Record<string, FormValue>;
@@ -28,15 +32,34 @@ export function answerField(params: {
   value: FormValueUpdater;
   fields: Iterable<AnyField>;
   isVisible: (field: AnyField) => boolean;
-}): { next: Record<string, FormValue>; turnedOn: string | null } {
-  const { prev, fieldId, value, fields, isVisible } = params;
+  validate: (
+    field: AnyField,
+    value: FormValue | undefined,
+    data: Record<string, FormValue>,
+  ) => string | null;
+}): { next: Record<string, FormValue>; clearedErrors: Record<string, null> } {
+  const { prev, fieldId, value, isVisible, validate } = params;
+  const fields = [...params.fields];
   const next = { ...prev, [fieldId]: resolveFormValue(value, prev[fieldId]) };
+  const partners = pairedToggles(fieldId, fields);
   const turnedOn = pairedToggleToTurnOn({
     fieldId,
     data: next,
-    fields,
+    partners,
     isVisible,
   });
   if (turnedOn) next[turnedOn] = true;
-  return { next, turnedOn };
+  const rechecked = turnedOn
+    ? [...partners, ...pairedToggles(turnedOn, fields)]
+    : partners;
+  const clearedErrors = Object.fromEntries(
+    rechecked
+      .filter(
+        (field) =>
+          field.id !== fieldId &&
+          validate(field, next[field.id], next) === null,
+      )
+      .map((field) => [field.id, null] as const),
+  );
+  return { next, clearedErrors };
 }

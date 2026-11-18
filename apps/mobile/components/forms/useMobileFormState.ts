@@ -262,14 +262,15 @@ export function useMobileFormState({
   const handleFieldChange: SetFieldValue = (fieldId, value) => {
     if (readOnly) return;
     setFormData((prev) => {
-      const { next, turnedOn } = answerField({
+      const { next, clearedErrors } = answerField({
         prev,
         fieldId,
         value,
         fields: fieldLookup.values(),
         isVisible: isElementCurrentlyVisible,
+        validate: validateFieldValue,
       });
-      if (turnedOn) applyFieldErrorUpdates({ [turnedOn]: null });
+      applyFieldErrorUpdates(clearedErrors);
       return next;
     });
     applyFieldErrorUpdates(
