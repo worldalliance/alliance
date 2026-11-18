@@ -1,37 +1,18 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
-import { R } from "@alliance/common/result";
-import { captureException } from "@alliance/shared/lib/analytics";
 import * as Updates from "expo-updates";
 import { X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, AppState, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SPLASH_RELOAD_SCREEN } from "../constants/splash";
 import { startForegroundUpdateChecks } from "../lib/foregroundUpdateChecks";
 import { onAppForegrounded } from "../lib/onAppForegrounded";
-import { OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { fetchAvailableUpdate, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { restartIntoUpdate } from "../lib/restartIntoUpdate";
 import { colors } from "../lib/style/colors";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
+import { RESTART_FAILED_MESSAGE } from "./updateCopy";
 
 const READY_MESSAGE = "A new version of Alliance is ready.";
-
-async function downloadAvailableUpdate() {
-  const checked = await R.fromPromise(Updates.checkForUpdateAsync());
-  if (R.isFailure(checked)) {
-    captureException(ExceptionEvent.OtaForegroundUpdateFailed, checked.error, {
-      step: "check",
-    });
-    return;
-  }
-  if (!checked.value.isAvailable) return;
-  const fetched = await R.fromPromise(Updates.fetchUpdateAsync());
-  if (R.isFailure(fetched)) {
-    captureException(ExceptionEvent.OtaForegroundUpdateFailed, fetched.error, {
-      step: "download",
-    });
-  }
-}
 
 /**
  * Offers a restart into a downloaded update, whether expo-updates fetched it at
@@ -50,7 +31,7 @@ const OtaUpdateBanner = () => {
     if (!OTA_UPDATES_ENABLED) return;
     return startForegroundUpdateChecks({
       appState: AppState,
-      check: downloadAvailableUpdate,
+      check: fetchAvailableUpdate,
     });
   }, []);
 
@@ -65,11 +46,7 @@ const OtaUpdateBanner = () => {
   const restart = async () => {
     setRestarting(true);
     setRestartFailed(false);
-    const result = await R.fromPromise(
-      Updates.reloadAsync({ reloadScreenOptions: SPLASH_RELOAD_SCREEN }),
-    );
-    if (R.isFailure(result)) {
-      captureException(ExceptionEvent.OtaRestartFailed, result.error);
+    if (!(await restartIntoUpdate())) {
       setRestarting(false);
       setRestartFailed(true);
     }
@@ -83,9 +60,7 @@ const OtaUpdateBanner = () => {
       <View className="flex-1">
         <Text weight={FontWeight.Medium}>{READY_MESSAGE}</Text>
         {restartFailed && (
-          <Text className="text-sm text-red-600">
-            Couldn’t restart. Close and reopen Alliance to update.
-          </Text>
+          <Text className="text-sm text-red-600">{RESTART_FAILED_MESSAGE}</Text>
         )}
       </View>
       <Button

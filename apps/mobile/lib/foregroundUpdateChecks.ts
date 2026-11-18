@@ -11,7 +11,7 @@ export const FOREGROUND_CHECK_INTERVAL_MS = milliseconds({ minutes: 15 });
  */
 export function startForegroundUpdateChecks(params: {
   appState: Pick<AppStateStatic, "addEventListener" | "currentState">;
-  check: () => Promise<void>;
+  check: () => Promise<unknown>;
   now?: () => number;
 }): () => void {
   const now = params.now ?? Date.now;
