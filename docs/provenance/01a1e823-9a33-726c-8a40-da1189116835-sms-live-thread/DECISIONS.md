@@ -2,6 +2,10 @@
 
 Agent decisions unless marked otherwise. Sources are in `EVIDENCE.md`.
 
+## Session refresh
+
+- `refreshSession` signs the user out only when the server refuses the refresh with 401, the only refusal its refresh route sends. Any other answer, a 403 from a proxy in between included, or a refresh that couldn't be sent, fails the request instead, since signing out over a server error or a dropped connection discards the page for a session that may be fine.
+
 ## Transport
 
 - The handshake is refused in `io.use` middleware unless the token's session is current and its account is an admin, and it fails closed when that check errors. The event-log gateway instead checks admin after connecting, and the shared `socketAuthMiddleware` accepts a verified token when the session check errors; neither suits a feed of every member's thread activity. A check that errors refuses with "Unavailable" and logs an error, so clients retry instead of refreshing a session that is fine, and an outage doesn't read as expired tokens.
