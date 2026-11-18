@@ -42,6 +42,7 @@ export abstract class CliSession<
         this.settleFirstMessageRead(false);
         const stderr = this.stderrTail.trim();
         this.exitMessage = `${init.product} exited (${signal ?? `code ${code}`}).${stderr ? `\n${stderr}` : ""}`;
+        this.onExited(this.exitMessage);
         init.onExit();
         if (this.turn) {
           if (!this.closing)
@@ -60,6 +61,7 @@ export abstract class CliSession<
   protected abstract sendInterrupt(turn: Turn): void;
   /** Resolves once the CLI has exited. */
   protected abstract shutDown(): Promise<void>;
+  protected onExited(_message: string): void {}
 
   get turnRunning(): boolean {
     return this.turn !== undefined;
