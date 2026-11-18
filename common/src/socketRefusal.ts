@@ -5,4 +5,6 @@
  * jsonwebtoken's own message, such as "jwt expired", instead. */
 export enum SocketRefusal {
   Unauthorized = "Unauthorized",
+  Forbidden = "Forbidden",
+  Unavailable = "Unavailable",
 }
