@@ -267,3 +267,73 @@ describe("Number threads (e2e)", () => {
     await post(byId(threadId, "/opt-out")).expect(400);
   });
 });
+
+describe("Marking a number's thread (e2e)", () => {
+  const newestId = async (threadId: string): Promise<number> =>
+    (await numberThread(threadId).expect(200)).body.messages.at(-1).id;
+
+  const replyState = async (threadId: string): Promise<string> =>
+    (await numberThread(threadId).expect(200)).body.replyState;
+
+  const needsReplyIds = async (): Promise<number[]> =>
+    (
+      await supertest(server())
+        .get("/mms-threads/needs-reply")
+        .set("Authorization", admin())
+        .expect(200)
+    ).body.map((entry: { userId: number }) => entry.userId);
+
+  it("takes the number off Needs reply until marked needs reply", async () => {
+    const member = await createMember("+14155558760");
+    await inbound({ from: "+14155558760", body: "Thanks!" });
+    const threadId = await threadIdFor("+14155558760");
+    expect(await replyState(threadId)).toBe("needs_reply");
+
+    await post(byId(threadId, "/handled"))
+      .send({ throughId: await newestId(threadId) })
+      .expect(204);
+    expect(await replyState(threadId)).toBe("handled");
+    expect(await needsReplyIds()).not.toContain(member.id);
+
+    await post(byId(threadId, "/needs-reply"))
+      .send({ throughId: await newestId(threadId) })
+      .expect(204);
+    expect(await replyState(threadId)).toBe("needs_reply");
+    expect(await needsReplyIds()).toContain(member.id);
+  });
+
+  it("shows who marked a non-member's thread handled under the text they saw", async () => {
+    await inbound({ from: "+14155558761", body: "Who is this?" });
+    const threadId = await threadIdFor("+14155558761");
+    const throughId = await newestId(threadId);
+
+    await post(byId(threadId, "/handled")).send({ throughId }).expect(204);
+
+    const { body } = await numberThread(threadId).expect(200);
+    expect(body.messages.at(-1)).toMatchObject({
+      id: throughId,
+      events: [
+        expect.objectContaining({
+          kind: "marked_handled",
+          markedByName: expect.any(String),
+        }),
+      ],
+    });
+  });
+
+  it("refuses a text from another number's thread", async () => {
+    await inbound({ from: "+14155558762", body: "Hi" });
+    await inbound({ from: "+14155558763", body: "Hi" });
+    const other = await newestId(await threadIdFor("+14155558763"));
+
+    await post(byId(await threadIdFor("+14155558762"), "/handled"))
+      .send({ throughId: other })
+      .expect(400);
+  });
+
+  it("answers 404 for an unknown thread", async () => {
+    await post(byId(crypto.randomUUID(), "/needs-reply"))
+      .send({ throughId: 1 })
+      .expect(404);
+  });
+});

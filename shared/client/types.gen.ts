@@ -1568,6 +1568,11 @@ export type ThreadMemberDto = {
     timeZone: string | null;
 };
 
+/**
+ * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
+ */
+export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+
 export type MmsThreadEventKind = 'marked_handled' | 'marked_needs_reply';
 
 export type MmsThreadEventDto = {
@@ -1632,6 +1637,10 @@ export type NumberThreadDto = {
      */
     replyWindowClosed: boolean;
     /**
+     * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
+     */
+    replyState: ReplyState;
+    /**
      * Up to 100 texts, oldest first: the newest, or those sent before `before`
      */
     messages: Array<MmsMessageDto>;
@@ -1645,10 +1654,12 @@ export type SendStaffTextDto = {
     body: string;
 };
 
-/**
- * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
- */
-export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+export type MarkThreadDto = {
+    /**
+     * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
+     */
+    throughId: number;
+};
 
 export type MmsThreadDto = {
     /**
@@ -1662,7 +1673,7 @@ export type MmsThreadDto = {
     textable: boolean;
     optedOut: boolean;
     /**
-     * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+     * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
      */
     replyState: ReplyState;
     /**
@@ -1673,13 +1684,6 @@ export type MmsThreadDto = {
      * Older texts can be loaded with `before`
      */
     hasOlder: boolean;
-};
-
-export type MarkThreadDto = {
-    /**
-     * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
-     */
-    throughId: number;
 };
 
 export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached' | 'phone_number_moved';
@@ -8519,6 +8523,52 @@ export type MmsThreadMarkThreadOptedOutAdminResponses = {
 };
 
 export type MmsThreadMarkThreadOptedOutAdminResponse = MmsThreadMarkThreadOptedOutAdminResponses[keyof MmsThreadMarkThreadOptedOutAdminResponses];
+
+export type MmsThreadMarkThreadHandledAdminData = {
+    body: MarkThreadDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/handled';
+};
+
+export type MmsThreadMarkThreadHandledAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadHandledAdminError = MmsThreadMarkThreadHandledAdminErrors[keyof MmsThreadMarkThreadHandledAdminErrors];
+
+export type MmsThreadMarkThreadHandledAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadHandledAdminResponse = MmsThreadMarkThreadHandledAdminResponses[keyof MmsThreadMarkThreadHandledAdminResponses];
+
+export type MmsThreadMarkThreadNeedsReplyAdminData = {
+    body: MarkThreadDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/needs-reply';
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminError = MmsThreadMarkThreadNeedsReplyAdminErrors[keyof MmsThreadMarkThreadNeedsReplyAdminErrors];
+
+export type MmsThreadMarkThreadNeedsReplyAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminResponse = MmsThreadMarkThreadNeedsReplyAdminResponses[keyof MmsThreadMarkThreadNeedsReplyAdminResponses];
 
 export type MmsThreadMediaAdminData = {
     body?: never;

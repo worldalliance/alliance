@@ -149,6 +149,38 @@ export class MmsThreadController {
     if (!marked.ok) throw refusalException[marked.error]();
   }
 
+  @Post("by-id/:threadId/handled")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async markThreadHandledAdmin(
+    @Param("threadId", ParseUUIDPipe) threadId: string,
+    @Body() body: MarkThreadDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    const marked = await this.threadService.markHandledInThread({
+      threadId,
+      throughId: body.throughId,
+      adminId: req.user.sub,
+    });
+    if (!marked.ok) throw refusalException[marked.error]();
+  }
+
+  @Post("by-id/:threadId/needs-reply")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async markThreadNeedsReplyAdmin(
+    @Param("threadId", ParseUUIDPipe) threadId: string,
+    @Body() body: MarkThreadDto,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    const marked = await this.threadService.markNeedsReplyInThread({
+      threadId,
+      throughId: body.throughId,
+      adminId: req.user.sub,
+    });
+    if (!marked.ok) throw refusalException[marked.error]();
+  }
+
   @Get("media/:id")
   @ApiResponse({
     status: 302,

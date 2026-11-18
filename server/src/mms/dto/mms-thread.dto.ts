@@ -128,6 +128,14 @@ const ApiPageMessages = () =>
     description: `Up to ${THREAD_PAGE_SIZE} texts, oldest first: the newest, or those sent before \`before\``,
   });
 
+const ApiReplyState = () =>
+  ApiProperty({
+    enum: ReplyState,
+    enumName: "ReplyState",
+    description:
+      "Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)",
+  });
+
 const ApiPageHasOlder = () =>
   ApiProperty({ description: "Older texts can be loaded with `before`" });
 
@@ -152,12 +160,7 @@ export class MmsThreadDto {
   @ApiProperty()
   optedOut: boolean;
 
-  @ApiProperty({
-    enum: ReplyState,
-    enumName: "ReplyState",
-    description:
-      "Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)",
-  })
+  @ApiReplyState()
   replyState: ReplyState;
 
   @ApiPageMessages()
@@ -218,6 +221,9 @@ export class NumberThreadDto {
   })
   replyWindowClosed: boolean;
 
+  @ApiReplyState()
+  replyState: ReplyState;
+
   @ApiPageMessages()
   messages: MmsMessageDto[];
 
@@ -231,6 +237,7 @@ export class NumberThreadDto {
     this.textable = input.textable;
     this.optedOut = input.optedOut;
     this.replyWindowClosed = input.replyWindowClosed;
+    this.replyState = input.replyState;
     this.messages = input.messages.map((message) => new MmsMessageDto(message));
     this.hasOlder = input.hasOlder;
   }

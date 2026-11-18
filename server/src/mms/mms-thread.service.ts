@@ -49,6 +49,7 @@ export type NumberThread = {
   textable: boolean;
   optedOut: boolean;
   replyWindowClosed: boolean;
+  replyState: ReplyState;
   messages: Mms[];
   hasOlder: boolean;
 };
@@ -67,11 +68,7 @@ export enum ThreadRefusal {
   ThreadNotFound = "thread_not_found",
 }
 
-export type ThreadMark = {
-  userId: number;
-  throughId: number;
-  adminId: number;
-};
+export type ThreadMark = { throughId: number; adminId: number };
 
 export enum StaffTextRefusal {
   NoPhoneNumber = "no_phone_number",
@@ -216,10 +213,11 @@ export class MmsThreadService {
     const thread = await this.findThread(params.threadId);
     if (!thread.ok) return thread;
     const { phoneNumber } = thread.value;
-    const [page, members, optedOut] = await Promise.all([
+    const [page, members, optedOut, replyState] = await Promise.all([
       this.threadPage(phoneNumber, params.before),
       this.membersOn(phoneNumber),
       this.mmsNumberService.optedOut(phoneNumber),
+      this.mmsInboxService.replyState(phoneNumber),
     ]);
     if (!page.ok) return page;
     return R.success({
@@ -227,6 +225,7 @@ export class MmsThreadService {
       members,
       textable: textableNumber(phoneNumber),
       optedOut,
+      replyState,
       replyWindowClosed: await this.replyWindowClosed({
         phoneNumber,
         members,
@@ -367,29 +366,87 @@ export class MmsThreadService {
     return R.success(undefined);
   }
 
-  async markHandled(params: ThreadMark): Promise<Result<void, ThreadRefusal>> {
-    const mark = await this.numberMark(params);
-    if (!mark.ok) return mark;
-    await this.mmsInboxService.markHandled(mark.value);
-    return R.success(undefined);
+  async markHandled(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<void, ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.memberMark(params), (mark) =>
+      this.mmsInboxService.markHandled(mark),
+    );
   }
 
   async markNeedsReply(
-    params: ThreadMark,
-  ): Promise<Result<void, ThreadRefusal>> {
-    const mark = await this.numberMark(params);
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<void, ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.memberMark(params), (mark) =>
+      this.mmsInboxService.markNeedsReply(mark),
+    );
+  }
+
+  async markHandledInThread(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<void, ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.threadMark(params), (mark) =>
+      this.mmsInboxService.markHandled(mark),
+    );
+  }
+
+  async markNeedsReplyInThread(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<void, ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.threadMark(params), (mark) =>
+      this.mmsInboxService.markNeedsReply(mark),
+    );
+  }
+
+  private async mark<E>(
+    mark: Result<NumberMark, E>,
+    apply: (mark: NumberMark) => Promise<void>,
+  ): Promise<Result<void, E>> {
     if (!mark.ok) return mark;
-    await this.mmsInboxService.markNeedsReply(mark.value);
+    await apply(mark.value);
     return R.success(undefined);
   }
 
-  private async numberMark(
-    params: ThreadMark,
-  ): Promise<Result<NumberMark, ThreadRefusal>> {
+  private async memberMark(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<
+      NumberMark,
+      ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread
+    >
+  > {
     const { userId, ...mark } = params;
     const user = await this.findMember(userId);
     if (!user.ok) return user;
-    const { phoneNumber } = user.value;
+    return this.markOn(user.value.phoneNumber, mark);
+  }
+
+  private async threadMark(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<
+      NumberMark,
+      ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread
+    >
+  > {
+    const { threadId, ...mark } = params;
+    const thread = await this.findThread(threadId);
+    if (!thread.ok) return thread;
+    return this.markOn(thread.value.phoneNumber, mark);
+  }
+
+  private async markOn(
+    phoneNumber: string | null,
+    mark: ThreadMark,
+  ): Promise<Result<NumberMark, ThreadRefusal.TextNotInThread>> {
     if (!phoneNumber || !(await this.inThread(phoneNumber, mark.throughId))) {
       return R.failure(ThreadRefusal.TextNotInThread);
     }
