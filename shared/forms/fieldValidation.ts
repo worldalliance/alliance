@@ -66,7 +66,8 @@ export function validateFieldValue(
       }
       return null;
     }
-    case "time": {
+    case "time":
+    case "timePicker": {
       if (typeof valueToCheck === "string") {
         const minutes = parseTimeToMinutes(valueToCheck);
         if (minutes === null) {
@@ -160,6 +161,7 @@ export function validateFieldValue(
       return null;
     }
     case "checkbox":
+    case "toggle":
       if (!required) return null;
       return valueToCheck === true ? null : "This field is required.";
     case "radio":
@@ -168,6 +170,9 @@ export function validateFieldValue(
     case "file":
       if (!required) return null;
       return valueToCheck ? null : "Please upload a file.";
+    case "image":
+      if (!required) return null;
+      return valueToCheck ? null : "Please upload an image.";
     case "list": {
       const listField = field as ListField;
       const listValTyped = asCards(valueToCheck) ?? [];

@@ -26,7 +26,15 @@ import { env } from "../config/env";
 function getFirstAutoExtractAnswer(
   schema: FormSchema,
   answers: Record<string, unknown>,
-  kind: "phone" | "time" | "timezone" | "city" | "textarea" | "file",
+  kind:
+    | "phone"
+    | "time"
+    | "timePicker"
+    | "timezone"
+    | "city"
+    | "textarea"
+    | "file"
+    | "image",
 ): string | null {
   for (const page of schema.pages ?? []) {
     if (!page.fields) {
@@ -81,7 +89,11 @@ function getCheckboxExtractionValue(
       continue;
     }
     for (const field of page.fields) {
-      if (field.kind !== "checkbox" && field.kind !== "custom") {
+      if (
+        field.kind !== "checkbox" &&
+        field.kind !== "toggle" &&
+        field.kind !== "custom"
+      ) {
         continue;
       }
       if (field.autoExtractUserData?.target !== target) {
@@ -135,18 +147,18 @@ export class FormProfileAnswersService {
     answers: Record<string, unknown>;
   }): Promise<void> {
     const phoneNumber = getFirstAutoExtractAnswer(schema, answers, "phone");
-    const preferredReminderTime = getFirstAutoExtractAnswer(
-      schema,
-      answers,
-      "time",
-    );
+    const preferredReminderTime =
+      getFirstAutoExtractAnswer(schema, answers, "timePicker") ??
+      getFirstAutoExtractAnswer(schema, answers, "time");
     const timeZone = getFirstAutoExtractAnswer(schema, answers, "timezone");
     // Before the phone number, whose opt-in MMS a rejection cannot take back.
     if (timeZone && !isTimeZoneIdentifier(timeZone)) {
       throw new BadRequestException(`Invalid time zone: ${timeZone}`);
     }
 
-    const photoKey = getFirstAutoExtractAnswer(schema, answers, "file");
+    const photoKey =
+      getFirstAutoExtractAnswer(schema, answers, "image") ??
+      getFirstAutoExtractAnswer(schema, answers, "file");
     if (photoKey) {
       await updateLive(this.dataSource.manager, {
         target: User,

@@ -44,6 +44,7 @@ import {
   renderValidationMessage,
 } from "./fieldParts";
 import { FileInputField } from "./FileInputField";
+import { ImageUploadField } from "./ImageUploadField";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -53,7 +54,9 @@ import {
   TextareaInputField,
 } from "./TextFields";
 import { TimeInputField } from "./TimeInputField";
+import { TimeWheelField } from "./TimeWheelField";
 import TimeZoneSelect from "./TimeZoneSelect";
+import { ToggleInputField } from "./ToggleInputField";
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -238,6 +241,22 @@ export function RenderField({
         </View>
       );
     }
+
+    case "toggle":
+      return <ToggleInputField {...inputProps} field={field} />;
+
+    case "timePicker":
+      return <TimeWheelField {...inputProps} field={field} />;
+
+    case "image":
+      return (
+        <ImageUploadField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
+      );
 
     case "file":
       return (

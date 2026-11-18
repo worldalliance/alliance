@@ -86,7 +86,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
         if (
           isQuestionField(field) &&
           typeof field.id === "string" &&
-          STAT_FIELD_KINDS.has(field.kind)
+          STAT_FIELD_KINDS[field.kind]
         ) {
           if (!seen.has(field.id)) {
             fields.push(field);

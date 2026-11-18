@@ -81,6 +81,8 @@ describe("getExtractionLabel", () => {
     ["city", "Extracting into: City"],
     ["textarea", "Extracting into: Profile description"],
     ["file", "Extracting into: Profile photo"],
+    ["image", "Extracting into: Profile photo"],
+    ["timePicker", "Extracting into: Preferred reminder time"],
   ] as const)("names the %s user data", (kind, label) => {
     expect(getExtractionLabel({ ...phone, kind })).toBe(label);
   });
@@ -102,5 +104,12 @@ describe("getExtractionLabel", () => {
       }),
     ).toBe("Extracting into: Email notifications");
     expect(getExtractionLabel(checkbox)).toBe("Extracting into user data");
+    expect(
+      getExtractionLabel({
+        ...checkbox,
+        kind: "toggle",
+        autoExtractUserData: { target: "textNotifications" },
+      }),
+    ).toBe("Extracting into: Text notifications");
   });
 });

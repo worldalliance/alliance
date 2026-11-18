@@ -112,14 +112,25 @@ describe("clampPageIndex", () => {
 });
 
 describe("resolveFieldDefaultValue", () => {
-  const checkbox: AnyField = {
+  const toggle: AnyField = {
     id: "email",
     type: "input",
-    kind: "checkbox",
+    kind: "toggle",
     label: "Email notifications",
   };
 
+  it("answers a toggle off unless it is on by default", () => {
+    expect(resolveFieldDefaultValue(toggle, undefined)).toBe(false);
+    expect(
+      resolveFieldDefaultValue({ ...toggle, defaultValue: null }, undefined),
+    ).toBe(false);
+    expect(
+      resolveFieldDefaultValue({ ...toggle, defaultValue: true }, undefined),
+    ).toBe(true);
+  });
+
   it("answers a checkbox for a notification setting, and leaves others unanswered", () => {
+    const checkbox: AnyField = { ...toggle, kind: "checkbox" };
     expect(resolveFieldDefaultValue(checkbox, undefined)).toBeUndefined();
     expect(
       resolveFieldDefaultValue(
@@ -127,5 +138,21 @@ describe("resolveFieldDefaultValue", () => {
         undefined,
       ),
     ).toBe(false);
+  });
+
+  it("starts a time picker at its default, or 9:00 AM", () => {
+    const picker: AnyField = {
+      id: "reminder",
+      type: "input",
+      kind: "timePicker",
+      label: "Reminder time",
+    };
+    expect(resolveFieldDefaultValue(picker, undefined)).toBe("09:00");
+    expect(
+      resolveFieldDefaultValue({ ...picker, defaultValue: "18:30" }, undefined),
+    ).toBe("18:30");
+    expect(
+      resolveFieldDefaultValue({ ...picker, defaultValue: "soon" }, undefined),
+    ).toBe("09:00");
   });
 });

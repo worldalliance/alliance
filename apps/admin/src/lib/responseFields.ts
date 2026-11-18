@@ -7,27 +7,33 @@ import {
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 
-const ANSWER_FIELD_KINDS = new Set<FieldKind>([
-  "text",
-  "textarea",
-  "email",
-  "number",
-  "range",
-  "phone",
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "ranking",
-  "date",
-  "time",
-  "timezone",
-  "city",
-  "file",
-]);
+const ANSWER_FIELD_KINDS: Record<FieldKind, boolean> = {
+  text: true,
+  textarea: true,
+  email: true,
+  phone: true,
+  number: true,
+  range: true,
+  checkbox: true,
+  radio: true,
+  select: true,
+  multiselect: true,
+  ranking: true,
+  date: true,
+  time: true,
+  timezone: true,
+  city: true,
+  file: true,
+  contract: false,
+  list: false,
+  custom: false,
+  image: true,
+  toggle: true,
+  timePicker: true,
+};
 
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
-  isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
+  isQuestionField(node) && ANSWER_FIELD_KINDS[node.kind];
 
 /** Labels of the schema's answer fields, keyed by field id in page order. */
 export function answerFieldLabels(

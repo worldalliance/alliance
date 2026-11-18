@@ -87,6 +87,9 @@ const linkedFieldText = (field: AnyField | ListSubField): unknown[] => {
     case "timezone":
     case "city":
     case "file":
+    case "image":
+    case "toggle":
+    case "timePicker":
     // Its options are checked apart, since the mobile app links a bare url in
     // them.
     case "ranking":

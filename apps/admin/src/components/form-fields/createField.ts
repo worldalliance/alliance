@@ -187,6 +187,30 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         componentId: defaultComponent?.id ?? "",
       };
     }
+    case "image":
+      return {
+        id,
+        type: "input",
+        kind: "image",
+        label: "Upload photo",
+        required: false,
+      };
+    case "toggle":
+      return {
+        id,
+        type: "input",
+        kind: "toggle",
+        label: "Toggle Field",
+        required: false,
+      };
+    case "timePicker":
+      return {
+        id,
+        type: "input",
+        kind: "timePicker",
+        label: "Time Picker Field",
+        required: false,
+      };
     default:
       throw new Error(`unknown field kind: ${kind satisfies never}`);
   }

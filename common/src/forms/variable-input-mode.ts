@@ -25,8 +25,10 @@ export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
   phone: VariableInputMode.Text,
   date: VariableInputMode.Text,
   time: VariableInputMode.Text,
+  timePicker: VariableInputMode.Text,
   timezone: VariableInputMode.Text,
   checkbox: VariableInputMode.Boolean,
+  toggle: VariableInputMode.Boolean,
   contract: VariableInputMode.Boolean,
   radio: VariableInputMode.Choice,
   select: VariableInputMode.Choice,
@@ -38,6 +40,7 @@ export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
   // reading a formula could put in a sentence.
   list: VariableInputMode.None,
   file: VariableInputMode.None,
+  image: VariableInputMode.None,
   custom: VariableInputMode.None,
 };
 

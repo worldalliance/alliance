@@ -389,6 +389,61 @@ describe("Form answers saved to the member's account (e2e)", () => {
     expect(saved.emailByDefault).toBe(true);
   });
 
+  it("saves from the image upload, toggle and time picker fields", async () => {
+    const schema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "photo",
+              type: "input",
+              kind: "image",
+              label: "Upload photo",
+              autoExtractUserData: true,
+            },
+            {
+              id: "email-notifications",
+              type: "input",
+              kind: "toggle",
+              label: "Email notifications",
+              required: true,
+              autoExtractUserData: { target: "emailNotifications" },
+            },
+            {
+              id: "reminder",
+              type: "input",
+              kind: "timePicker",
+              label: "Reminder time",
+              autoExtractUserData: true,
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+
+    await submit({
+      schema,
+      answers: { photo: UPLOAD_KEY, "email-notifications": false },
+      status: 400,
+    });
+    await submit({
+      schema,
+      answers: {
+        photo: UPLOAD_KEY,
+        "email-notifications": true,
+        reminder: "18:30",
+      },
+      status: 201,
+    });
+
+    const saved = await member();
+    expect(saved.profilePicture).not.toBeNull();
+    expect(saved.emailByDefault).toBe(true);
+    expect(saved.preferredReminderTime?.toString()).toBe("18:30:00");
+  });
+
   it("refuses an uploaded file that is not an image", async () => {
     uploadedImage = Buffer.from("not an image");
 

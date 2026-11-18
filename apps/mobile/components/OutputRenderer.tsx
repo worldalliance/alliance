@@ -16,7 +16,10 @@ import Text, { FontWeight } from "./system/Text";
 type OutputRendererProps = OutputSource & { className?: string };
 
 const canUseMobileFieldRenderer = (field: AnyField): boolean =>
-  field.kind !== "contract" && field.kind !== "custom" && field.kind !== "file";
+  field.kind !== "contract" &&
+  field.kind !== "custom" &&
+  field.kind !== "file" &&
+  field.kind !== "image";
 
 const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
   if (!item.field) {
@@ -25,7 +28,7 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
     );
   }
 
-  if (item.field.kind === "file") {
+  if (item.field.kind === "file" || item.field.kind === "image") {
     if (!item.fileValues.length) {
       return <Text className="text-xs text-zinc-500">No file uploaded</Text>;
     }

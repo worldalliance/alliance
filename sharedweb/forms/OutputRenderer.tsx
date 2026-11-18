@@ -21,7 +21,7 @@ const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
       <span className="text-xs text-gray-500">Field removed from form.</span>
     );
   }
-  if (item.field.kind === "file") {
+  if (item.field.kind === "file" || item.field.kind === "image") {
     if (!item.fileValues.length) {
       return <span className="text-xs text-gray-500">No file uploaded</span>;
     }

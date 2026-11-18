@@ -101,7 +101,7 @@ export class FormSubmissionValidationService {
     if (field.kind === "number" || field.kind === "range") {
       return typeof value === "number" && Number.isFinite(value);
     }
-    if (field.kind === "checkbox") {
+    if (field.kind === "checkbox" || field.kind === "toggle") {
       return value === true;
     }
     if (typeof value === "string") {

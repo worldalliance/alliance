@@ -58,6 +58,7 @@ export const formatOutputFieldValue = (
   }
   switch (field.kind) {
     case "checkbox":
+    case "toggle":
       return value ? "Yes" : "No";
     case "radio":
     case "select": {
@@ -97,6 +98,7 @@ export const formatOutputFieldValue = (
     case "list":
       return withCount(drawnCards(field, value).length, "item");
     case "file":
+    case "image":
       return "";
     default:
       return Array.isArray(value)

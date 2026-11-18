@@ -122,6 +122,9 @@ export const AUTO_EXTRACT_FIELD_KINDS = [
   "custom",
   "textarea",
   "file",
+  "image",
+  "toggle",
+  "timePicker",
 ] as const;
 export type AutoExtractFieldKind = (typeof AUTO_EXTRACT_FIELD_KINDS)[number];
 
@@ -300,10 +303,36 @@ const listFieldSchema = z.strictObject({
 });
 export type ListField = z.infer<typeof listFieldSchema>;
 
+const imageFieldSchema = z.strictObject({
+  ...baseFieldSchema.shape,
+  kind: z.literal("image"),
+  autoExtractUserData: z.boolean().optional(),
+});
+export type ImageField = z.infer<typeof imageFieldSchema>;
+
+const toggleFieldSchema = z.strictObject({
+  ...baseFieldSchema.shape,
+  kind: z.literal("toggle"),
+  autoExtractUserData: z
+    .strictObject({ target: checkboxExtractionTargetSchema })
+    .optional(),
+});
+export type ToggleField = z.infer<typeof toggleFieldSchema>;
+
+const timePickerFieldSchema = z.strictObject({
+  ...baseFieldSchema.shape,
+  kind: z.literal("timePicker"),
+  autoExtractUserData: z.boolean().optional(),
+});
+export type TimePickerField = z.infer<typeof timePickerFieldSchema>;
+
 export const anyFieldSchema = z.discriminatedUnion("kind", [
   ...listSubFieldSchema.options,
   listFieldSchema,
   rankingFieldSchema,
+  imageFieldSchema,
+  toggleFieldSchema,
+  timePickerFieldSchema,
 ]);
 export type AnyField = z.infer<typeof anyFieldSchema>;
 export type FieldKind = AnyField["kind"];

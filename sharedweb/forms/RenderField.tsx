@@ -41,6 +41,7 @@ import {
   ValidationMessage,
 } from "./fieldParts";
 import { FileInputField } from "./FileInputField";
+import { ImageUploadField } from "./ImageUploadField";
 import { LazyRankingFieldInput } from "./lazyFieldInputs";
 import {
   ListAddButton,
@@ -55,7 +56,9 @@ import {
   TextareaInputField,
 } from "./TextFields";
 import { TimeInputField } from "./TimeInputField";
+import { TimeWheelField } from "./TimeWheelField";
 import TimeZoneSelect from "./TimeZoneSelect";
+import { ToggleInputField } from "./ToggleInputField";
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -169,6 +172,22 @@ export function RenderField({
 
     case "checkbox":
       return <CheckboxInputField {...inputProps} field={field} />;
+
+    case "toggle":
+      return <ToggleInputField {...inputProps} field={field} />;
+
+    case "timePicker":
+      return <TimeWheelField {...inputProps} field={field} />;
+
+    case "image":
+      return (
+        <ImageUploadField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
+      );
 
     case "radio":
       return (

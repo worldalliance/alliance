@@ -69,6 +69,9 @@ const FIELD_KIND_HAS_OPTION_LABELS: Record<FieldKind, boolean> = {
   contract: false,
   custom: false,
   list: false,
+  image: false,
+  toggle: false,
+  timePicker: false,
 };
 
 function hasOptionLabels(field: AnyField): field is FieldWithOptions {
@@ -95,6 +98,9 @@ const FIELD_KIND_SUPPORTS_INTERPOLATION: Record<FieldKind, boolean> = {
   custom: true,
   list: true,
   ranking: true,
+  image: true,
+  toggle: true,
+  timePicker: true,
 };
 
 export type TextRewrite = (text: string) => string;

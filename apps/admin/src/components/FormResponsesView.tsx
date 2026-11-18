@@ -244,7 +244,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const activeFilterField = useMemo(() => {
     if (!activeFilter) return null;
     const field = fieldsById.get(activeFilter.fieldId);
-    if (!field || !FILTERABLE_FIELD_KINDS.has(field.kind)) return null;
+    if (!field || !FILTERABLE_FIELD_KINDS[field.kind]) return null;
     return field;
   }, [activeFilter, fieldsById]);
 

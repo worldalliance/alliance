@@ -8,6 +8,7 @@ import { withCount } from "@alliance/common/plural";
 import { imageSrcFromKey } from "@alliance/sharedweb/lib/imageSrc";
 import { Check, Minus } from "lucide-react";
 import type { ReactNode } from "react";
+import { BOOLEAN_ANSWER_LABELS } from "../../lib/booleanAnswerLabels";
 
 export type CellContent = {
   /** Full text. Searched, sorted on, and shown once the row expands. */
@@ -109,6 +110,13 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
   timezone: plainText,
   custom: plainText,
   checkbox: ({ value }) => booleanCell({ value, yes: "Yes", no: "No" }),
+  toggle: ({ value }) =>
+    booleanCell({
+      value,
+      yes: BOOLEAN_ANSWER_LABELS.toggle.on,
+      no: BOOLEAN_ANSWER_LABELS.toggle.off,
+    }),
+  timePicker: plainText,
   contract: forKind("contract", ({ field, value }) =>
     booleanCell({
       value,
@@ -155,6 +163,7 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
       ),
     };
   },
+  image: (cell) => CELL_RENDERERS.file(cell),
   list: forKind("list", ({ field, value }) => {
     const cards = Array.isArray(value) ? value : [];
     const entries = cards.flatMap((card) =>

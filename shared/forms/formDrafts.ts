@@ -11,6 +11,8 @@ import { R, type Result } from "@alliance/common/result";
 import { z } from "zod";
 import { dropUnuploadedFileAnswers } from "./fileAnswers";
 import { dropUnknownOptionAnswers } from "./optionAnswers";
+import { parseTimeToMinutes } from "./timeUtils";
+import { TIME_WHEEL_DEFAULT } from "./timeWheel";
 
 export function clampPageIndex(idx: number, maxPageIndex: number): number {
   if (!Number.isFinite(idx)) return 0;
@@ -62,8 +64,15 @@ export function resolveFieldDefaultValue(
 
   const rawDefault = field.defaultValue;
 
-  if (answersNotifications(field)) {
+  if (field.kind === "toggle" || answersNotifications(field)) {
     return rawDefault === true;
+  }
+
+  if (field.kind === "timePicker") {
+    return typeof rawDefault === "string" &&
+      parseTimeToMinutes(rawDefault) !== null
+      ? rawDefault
+      : TIME_WHEEL_DEFAULT;
   }
 
   if (rawDefault === null) {
@@ -111,6 +120,7 @@ export function resolveFieldDefaultValue(
       case "email":
       case "phone":
       case "file":
+      case "image":
       case "custom":
         return isNonEmptyString(rawDefault) ? rawDefault : undefined;
       case "city":

@@ -34,3 +34,21 @@ it("labels answer fields in page order, first occurrence winning", () => {
   expect([...labels.keys()]).toEqual(["name", "age"]);
   expect(labels.get("name")).toBe("Name");
 });
+
+it("lists the image upload, toggle and time picker answers", () => {
+  expect([
+    ...answerFieldLabels({
+      pages: [
+        {
+          id: "p1",
+          fields: [
+            { id: "photo", type: "input", kind: "image", label: "Photo" },
+            { id: "email", type: "input", kind: "toggle", label: "Email" },
+            { id: "time", type: "input", kind: "timePicker", label: "Time" },
+          ],
+        },
+      ],
+      outputViews: [],
+    }).keys(),
+  ]).toEqual(["photo", "email", "time"]);
+});

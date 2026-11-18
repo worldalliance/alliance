@@ -29,6 +29,9 @@ export const FIELD_KIND_NAMES = {
   contract: "Contract Field",
   list: "List Field",
   custom: "Custom Component Field",
+  image: "Image Upload Field",
+  toggle: "Toggle Field",
+  timePicker: "Time Picker Field",
 } as const satisfies Record<FieldKind, string>;
 
 export const DISPLAY_KIND_NAMES = {
@@ -72,6 +75,9 @@ const FIELD_KIND_ADDABLE = {
   contract: true,
   list: true,
   custom: true,
+  image: true,
+  toggle: true,
+  timePicker: true,
 } as const satisfies Record<FieldKind, boolean>;
 
 export const ADDABLE_FIELD_KINDS = (

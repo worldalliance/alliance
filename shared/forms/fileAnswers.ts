@@ -33,7 +33,7 @@ export function dropUnuploadedFileAnswers(
   const cleaned: Record<string, FormValue> = {};
   for (const [fieldId, value] of Object.entries(answers)) {
     const field = fields.get(fieldId);
-    if (field?.kind === "file") {
+    if (field?.kind === "file" || field?.kind === "image") {
       if (isUploadedImageKey(value)) {
         cleaned[fieldId] = value;
       }

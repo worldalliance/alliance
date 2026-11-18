@@ -104,9 +104,12 @@ const renderPretty = (field: AnyField, value: unknown): string => {
     case "range":
     case "date":
     case "time":
+    case "timePicker":
     case "timezone":
     case "contract":
     case "file":
+    case "image":
+    case "toggle":
     case "custom":
       return escapeXml(stringify(value));
     default:

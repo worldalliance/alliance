@@ -6,6 +6,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import {
   CHECKBOX_TARGET_LABELS,
+  extractsIntoTarget,
   hasExtractionEnabled,
   supportsExtraction,
 } from "./fieldExtraction";
@@ -41,7 +42,7 @@ export function FieldExtraOptions({
       {supportsExtraction(field) && (
         <>
           <div className="border-t border-gray-100 my-1" />
-          {field.kind === "checkbox" || field.kind === "custom" ? (
+          {extractsIntoTarget(field) ? (
             <div className="py-1.5">
               <label className="block text-gray-700 mb-1">
                 Extract response into:
