@@ -25,7 +25,11 @@ import { parseExpression } from "./parse";
 import { printExpression } from "./print";
 import { ExprKind, children, type Expr } from "./tree";
 import { analyze, type Excused } from "./undecided";
-import { undecidedMessage, type Culprit } from "./undecided-messages";
+import {
+  NOT_ASSIGNABLE,
+  undecidedMessage,
+  type Culprit,
+} from "./undecided-messages";
 import { isNullableType, isYesNoType } from "./undecided-source";
 
 export enum Undecided {
@@ -70,6 +74,15 @@ export type CheckedExpression = {
 const RESULT = `${INTERNAL_PREFIX}result`;
 // `initializer` finds the expression by this layout.
 const CLOSE = "\n);";
+const YES_NO: Record<TypeKind, boolean> = {
+  [TypeKind.String]: false,
+  [TypeKind.Number]: false,
+  [TypeKind.Boolean]: true,
+  [TypeKind.Choice]: false,
+  [TypeKind.List]: false,
+  [TypeKind.Record]: false,
+  [TypeKind.Nullable]: false,
+};
 
 type Placed = {
   file: string;
@@ -204,7 +217,7 @@ export function checkExpression({
     return { ...converted.value, analysis, expression, program };
   };
 
-  const report = (at: Placed) => {
+  const report = (at: Placed, { rootRejected = false } = {}) => {
     const checker = world.program().getTypeChecker();
     for (const diagnostic of world.diagnostics(at.file)) {
       const start = (diagnostic.start ?? 0) - at.offset;
@@ -216,6 +229,12 @@ export function checkExpression({
           span.end === end,
       );
       if (excused !== undefined) continue;
+      // A root `&&` or `||` that isn't yes/no where yes/no is asked for is
+      // reported at its operands. Inside a ternary branch or before a fallback
+      // that isn't yes/no, another branch can cause the mismatch.
+      const resultMismatch = start < 0 && diagnostic.code === NOT_ASSIGNABLE;
+      const yesNoAsked = rule.type !== undefined && YES_NO[rule.type.kind];
+      if (resultMismatch && yesNoAsked && rootRejected) continue;
       const located =
         start < 0 ? { start: 0, end: at.text.length } : { start, end };
       const reported = converterDiagnostics.some(
@@ -290,7 +309,7 @@ export function checkExpression({
         },
   );
   const checked = analyzePlaced(rootAt);
-  report(rootAt);
+  report(rootAt, { rootRejected: checked?.analysis.rootRejected });
   const checker = world.program().getTypeChecker();
 
   if (checked === undefined) return R.failure(sorted(diagnostics));

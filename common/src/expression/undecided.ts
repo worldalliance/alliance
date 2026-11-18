@@ -1,7 +1,10 @@
-/* alliance/max-lines 650 -- one recursive walk whose counters, guard state and reports every branch shares; codex's splits move its operand checks or read tracking out behind callbacks into that state */
+/* alliance/max-lines 800 -- one recursive walk whose counters, guard state and reports every branch shares; codex's splits move its operand checks or read tracking out behind callbacks into that state */
 import ts from "typescript";
-import { IS_UNKNOWN, type Diagnostic } from "./catalog";
+import { IS_UNKNOWN, IS_UNKNOWN_HINT, type Diagnostic } from "./catalog";
 import {
+  COMPARES_PRIMITIVES_ONLY,
+  SHOWS_PRIMITIVES_ONLY,
+  SORTS_PRIMITIVES_ONLY,
   collectsEachResult,
   feedsResultBack,
   indexParam,
@@ -10,25 +13,43 @@ import {
   keepsUnknownAsItem,
   needsEveryItem,
 } from "./evaluate-methods";
+import { NEEDS_A_NUMBER, comparesMessage } from "./evaluate-operators";
 import { BinaryOp, ExprKind, UnaryOp, children, type Expr } from "./tree";
 import { guards, readKey, readsGuardedBy } from "./undecided-guards";
 import {
+  ALWAYS_FALSY,
+  ALWAYS_TRUTHY,
+  ARGUMENT_TYPE,
+  BY_REFERENCE,
   GUARDED_FALLBACK,
   NEEDLESS_FALLBACK,
+  NEEDS_YES_NO,
   NEVER_NULLISH,
+  NO_OVERLAP,
+  NULL_OPERAND,
+  OPERATOR_TYPES,
+  POSSIBLY_MISSING,
   UNREACHABLE_FALLBACK,
   textMessage,
   undecidedMessage,
   type Culprit,
 } from "./undecided-messages";
 import {
+  COMPARABLE,
+  NUMBERS,
+  ORDERABLE,
+  TEXT,
+  everyPart,
   isNullableType,
   isYesNoType,
   sourceQueries,
   type Span,
 } from "./undecided-source";
 
-/** A `tsc` error at an operand, parentheses skipped, that the analysis needs gone. */
+/**
+ * A `tsc` error, at the span `tsc` gives it, that the analysis needs gone or
+ * reports better itself.
+ */
 export type Excused = Span & { code: number };
 
 type Analysis = {
@@ -36,6 +57,11 @@ type Analysis = {
   excused: Excused[];
   /** Set when the whole result can be unknown or undecided. */
   root: Culprit | undefined;
+  /**
+   * Set when the result is an `&&` or `||` reported at its operands, or a
+   * ternary or `??` with one on a side whose other side is one too or yes/no.
+   */
+  rootRejected: boolean;
 };
 
 /**
@@ -45,8 +71,13 @@ type Analysis = {
  * three-valued operators, `===`/`!==`, either side of `??`, a ternary branch,
  * `isUnknown`, a function parameter that accepts a missing value, and the
  * result; a ternary test or list predicate needs a decided yes/no, and a text
- * part needs a value. It also reports a `??` whose left side can't be
- * missing, in place of `tsc`'s TS2869 and TS2881.
+ * part needs a value. It also reports operands the interpreter rejects: a
+ * value that isn't yes/no where yes/no is needed, a list or record compared,
+ * shown in text, sought or sorted without a function, `<`, `>`, `<=` or `>=`
+ * on anything but two numbers or two pieces of text, and `-` on anything but
+ * a number. It points a comparison or lookup with `null` at `isUnknown`, and
+ * reports a `??` whose left side can't be missing, in place of `tsc`'s TS2869
+ * and TS2881.
  */
 export function analyze({
   tree,
@@ -71,16 +102,30 @@ export function analyze({
     operandSpan,
     text,
     typeOf,
+    every,
     nullable,
     declaredNullable,
+    itemType,
     hasMissingItem,
     isString,
+    isYesNo,
+    reportedInside,
+    restatedMismatches,
   } = sourceQueries({ source, checker, file, offset });
   const report = (expr: Expr, message: string) =>
     diagnostics.push({ message, ...span(expr) });
   const missingItemMatters = (expr: Extract<Expr, { kind: ExprKind.Method }>) =>
     isItemLookup(expr.method) || needsEveryItem(expr.method, expr.args.length);
 
+  const yesNo = (expr: Expr) => {
+    const ok = isYesNo(expr);
+    if (!ok && !reportedInside(expr)) {
+      report(expr, NEEDS_YES_NO);
+      excused.push({ code: ALWAYS_TRUTHY, ...span(expr) });
+      excused.push({ code: ALWAYS_FALSY, ...span(expr) });
+    }
+    return ok;
+  };
   // Undecided reports, and reads that can be missing: `guarded` ones a guard
   // covered, which `tsc` may have narrowed, `narrowed` ones `tsc` narrowed by
   // anything but a guard, and `loose` ones, the narrowed reads that can leave
@@ -175,15 +220,20 @@ export function analyze({
   const excuse = (expr: Expr, code: number) => {
     excused.push({ code, ...operandSpan(expr) });
   };
+  const missingExcused = (expr: Expr) => {
+    for (const code of POSSIBLY_MISSING) excused.push({ code, ...span(expr) });
+  };
   // `tsc` leaves the right of `??` out of the result's type when it thinks the
   // left is never missing, so whether a required fallback fits is checked here.
   const fallback = (left: Expr, right: Expr) => {
     excuse(left, UNREACHABLE_FALLBACK);
     const expected = checker.getBaseTypeOfLiteralType(typeOf(left));
     // A fallback that can be missing passes its unknown on through the `??`.
-    // A left narrowed to `never` is a contradiction `tsc` already reports.
+    // A left narrowed to `never` is a contradiction `tsc` already reports, and
+    // fixing a fallback's operands reported as not yes/no fixes its fit.
     if (
       (expected.flags & ts.TypeFlags.Never) === 0 &&
+      !(isYesNoType(expected) && reportedInside(right)) &&
       !checker.isTypeAssignableTo(
         checker.getNonNullableType(typeOf(right)),
         expected,
@@ -202,13 +252,28 @@ export function analyze({
     undecided(expr, culprit);
     return undefined;
   };
+  // A rejected value gets no undecided report, whose `?? …` would leave it
+  // wrong; one that can be unknown still leaves an enclosing `??` reachable.
+  const rejected = (culprit: Culprit | undefined): undefined => {
+    if (culprit !== undefined) tally.undecided += 1;
+    return undefined;
+  };
+  const yesNoOperand = (expr: Expr, culprit: Culprit | undefined) =>
+    reportedInside(expr) || isYesNo(expr) ? culprit : rejected(culprit);
   const decided = (expr: Expr) => {
+    const yes = yesNo(expr);
     const culprit = visit(expr);
-    if (culprit !== undefined) undecided(expr, culprit);
+    if (culprit === undefined) return;
+    if (yes) undecided(expr, culprit);
+    else rejected(culprit);
   };
   // The interpreter makes the whole text unknown, so an enclosing `??` is
-  // needed all the same.
+  // needed all the same. It rejects a list or record there, which `tsc` takes.
   const shown = (expr: Expr) => {
+    if (!every(expr, COMPARABLE)) {
+      report(expr, SHOWS_PRIMITIVES_ONLY);
+      return rejected(visit(expr));
+    }
     const culprit = visit(expr);
     if (culprit === undefined) return;
     tally.undecided += 1;
@@ -220,13 +285,6 @@ export function analyze({
     const destination = checker.getContextualType(node(expr));
     if (destination !== undefined && isNullableType(destination)) visit(expr);
     else plain(expr);
-  };
-  // A rejected value gets no undecided report, whose `?? …` would leave it
-  // wrong, but is still unknown at runtime, so an enclosing `??` is needed
-  // all the same.
-  const rejected = (culprit: Culprit | undefined): undefined => {
-    if (culprit !== undefined) tally.undecided += 1;
-    return undefined;
   };
   // `tsc` rejects a nullable operand of arithmetic or `<`, target of a read or
   // call without `?.`, key of a read, or argument to a parameter that takes no
@@ -313,6 +371,20 @@ export function analyze({
     }
     return undefined;
   };
+  // A comparison with a `null` side is always unknown: the hint there replaces
+  // any undecided report on it, and an enclosing `??` stays reachable.
+  const compared = (sides: readonly Expr[]) => {
+    let hinted = false;
+    for (const side of sides) {
+      if (side.kind === ExprKind.Literal && side.value === null) {
+        report(side, IS_UNKNOWN_HINT);
+        excuse(side, NULL_OPERAND);
+        hinted = true;
+      }
+    }
+    if (hinted) tally.undecided += 1;
+    return hinted;
+  };
 
   // A held guard still decides the read's unknown, but the read can still be
   // missing where it goes, so it counts as narrowed rather than guarded.
@@ -356,9 +428,13 @@ export function analyze({
         const { op, operand } = expr;
         switch (op) {
           case UnaryOp.Not:
-            return visit(operand);
+            yesNo(operand);
+            return yesNoOperand(operand, visit(operand));
           case UnaryOp.Negate:
-            return checkedOperand(operand);
+            if (every(operand, NUMBERS)) return checkedOperand(operand);
+            report(operand, NEEDS_A_NUMBER);
+            missingExcused(operand);
+            return rejected(visit(operand));
           default:
             throw new Error(`unknown unary op: ${op satisfies never}`);
         }
@@ -494,12 +570,39 @@ export function analyze({
             );
           }
         }
+        const [sought] = expr.args;
+        let hinted = false;
+        let incomparable = false;
+        if (isItemLookup(expr.method) && sought !== undefined) {
+          hinted = compared([sought]);
+          // On text, `tsc` says what the argument has to be.
+          const comparable =
+            everyPart(
+              checker.getNonNullableType(typeOf(expr.target)),
+              ts.TypeFlags.StringLike,
+            ) ||
+            sought.kind === ExprKind.Lambda ||
+            every(sought, COMPARABLE);
+          if (!comparable) report(sought, COMPARES_PRIMITIVES_ONLY);
+          incomparable = !comparable;
+          // `tsc` reports the same value as an argument its parameter rejects.
+          if (hinted || !comparable) excuse(sought, ARGUMENT_TYPE);
+        }
+        if (expr.method === "sort" && expr.args.length === 0) {
+          const type = itemType(expr.target);
+          const sortable = type === undefined || everyPart(type, COMPARABLE);
+          if (!sortable) report(expr.target, SORTS_PRIMITIVES_ONLY);
+          incomparable ||= !sortable;
+        }
         if (missingItemMatters(expr) && hasMissingItem(expr.target)) {
           const itemText = `an item of \`${text(expr.target)}\``;
           // `tsc` rejects `join` on a list with missing items (formula-lib.ts).
           culprits.push(expr.method === "join" ? rejected(itemText) : itemText);
         }
-        return own(expr) ?? culprits.find((culprit) => culprit !== undefined);
+        if (hinted) return undefined;
+        const culprit =
+          own(expr) ?? culprits.find((each) => each !== undefined);
+        return incomparable ? rejected(culprit) : culprit;
       }
       case ExprKind.Lambda:
         inLambda(expr, () => plain(expr.body));
@@ -517,7 +620,20 @@ export function analyze({
       const culprit = checkedOperand(left);
       return checkedOperand(right) ?? culprit;
     };
+    // A fallback can't fix an operand of the wrong type.
+    const comparison = (
+      wrong: readonly Expr[],
+      valid: (side: Expr) => Culprit | undefined,
+    ) => {
+      const side = (operand: Expr) =>
+        (wrong.includes(operand) ? visit : valid)(operand);
+      const culprit = side(left);
+      const after = side(right) ?? culprit;
+      return wrong.length > 0 ? rejected(after) : after;
+    };
     const logical = (guard: { negated: boolean }) => {
+      yesNo(left);
+      yesNo(right);
       const saved = counts();
       const culprit = assumingKnown(readsGuardedBy(right, guard), () =>
         visit(left),
@@ -530,7 +646,10 @@ export function analyze({
         (side) =>
           side.kind === ExprKind.Literal && side.value === !guard.negated,
       );
-      if (!decisive) return after ?? culprit;
+      if (!decisive) {
+        const result = after ?? culprit;
+        return isYesNo(expr) ? result : rejected(result);
+      }
       restore(saved);
       return undefined;
     };
@@ -541,14 +660,43 @@ export function analyze({
         return logical({ negated: false });
       case BinaryOp.Equal:
       case BinaryOp.NotEqual: {
-        const culprit = visit(left);
-        return visit(right) ?? culprit;
+        const incomparable = [left, right].filter(
+          (side) => !every(side, COMPARABLE),
+        );
+        for (const side of incomparable) report(side, COMPARES_PRIMITIVES_ONLY);
+        if (incomparable.length > 0) {
+          excuse(expr, NO_OVERLAP);
+          excuse(expr, BY_REFERENCE);
+        }
+        const hinted = compared([left, right]);
+        const result = comparison(incomparable, visit);
+        return hinted ? undefined : result;
       }
       case BinaryOp.LessThan:
       case BinaryOp.GreaterThan:
       case BinaryOp.LessOrEqual:
-      case BinaryOp.GreaterOrEqual:
-        return bothPlain();
+      case BinaryOp.GreaterOrEqual: {
+        const hinted = compared([left, right]);
+        const unordered = [left, right].filter(
+          (side) => !every(side, ORDERABLE),
+        );
+        for (const side of unordered) report(side, comparesMessage(expr.op));
+        // A side that can be a number or text, as `x ? 1 : "a"` can, passes
+        // `tsc`, and so does a number beside text where `tsc` narrowed one
+        // to missing, while the interpreter compares only two of a kind.
+        const mixed =
+          unordered.length === 0 &&
+          ![NUMBERS, TEXT].some((kind) =>
+            [left, right].every((side) => every(side, kind)),
+          );
+        if (mixed) report(expr, comparesMessage(expr.op));
+        const wrong = mixed ? [left, right] : unordered;
+        for (const side of wrong) missingExcused(side);
+        if (wrong.length > 0) excuse(expr, OPERATOR_TYPES);
+        if (hinted) for (const side of [left, right]) missingExcused(side);
+        const result = comparison(wrong, hinted ? visit : checkedOperand);
+        return hinted ? undefined : result;
+      }
       case BinaryOp.Add:
         if (isString(left) || isString(right)) {
           shown(left);
@@ -647,5 +795,12 @@ export function analyze({
     }
   }
 
-  return { diagnostics, excused, root: visit(tree) };
+  const root = visit(tree);
+  excused.push(...restatedMismatches(tree));
+  return {
+    diagnostics,
+    excused,
+    root,
+    rootRejected: reportedInside(tree) && !isYesNo(tree),
+  };
 }

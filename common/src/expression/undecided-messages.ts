@@ -5,6 +5,24 @@ export type Culprit = string;
 export const UNREACHABLE_FALLBACK = 2869;
 /** `tsc` calls the right of a `??` inside another `??` never nullish. */
 export const NEVER_NULLISH = 2881;
+/** `tsc` rejects `null` as an operand of `<`, `>`, `<=` and `>=`. */
+export const NULL_OPERAND = 18050;
+/** `tsc` rejects an operator's operand types, as for `1 < true`. */
+export const OPERATOR_TYPES = 2365;
+/** `tsc` calls an operand possibly `null` or `undefined`. */
+export const POSSIBLY_MISSING = [2531, 2532, 2533, 18047, 18048, 18049];
+/** `tsc` rejects an argument its parameter's type doesn't allow. */
+export const ARGUMENT_TYPE = 2345;
+/** `tsc` says a value isn't assignable to the type it is given. */
+export const NOT_ASSIGNABLE = 2322;
+/** `tsc` calls a comparison between types that don't overlap unintentional. */
+export const NO_OVERLAP = 2367;
+/** `tsc` says a comparison with a list or record literal always gives the same answer. */
+export const BY_REFERENCE = 2839;
+/** `tsc` calls a text, list or record literal always truthy. */
+export const ALWAYS_TRUTHY = 2872;
+/** `tsc` calls an empty text literal always falsy. */
+export const ALWAYS_FALSY = 2873;
 
 export const undecidedMessage = ({
   culprit,
@@ -25,6 +43,8 @@ export const NEEDLESS_FALLBACK =
 
 export const GUARDED_FALLBACK =
   "This fallback isn't needed: an `isUnknown(…)` check already decides the result when the value is missing. Remove the `?? …`.";
+
+export const NEEDS_YES_NO = "This needs a yes/no value.";
 
 export const textMessage = (culprit: Culprit) => {
   const advice = 'Add `?? "…"` to choose what they see instead.';

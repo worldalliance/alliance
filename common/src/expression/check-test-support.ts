@@ -81,6 +81,16 @@ export const catalog: Catalog = {
       returns: string,
     },
     {
+      name: "agreed",
+      params: [{ name: "flag", type: boolean }],
+      returns: string,
+    },
+    {
+      name: "maybeAgreed",
+      params: [{ name: "flag", type: maybe }],
+      returns: string,
+    },
+    {
       name: "flagged",
       params: [
         {

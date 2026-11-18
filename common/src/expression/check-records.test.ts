@@ -2,6 +2,7 @@ import { R } from "../result";
 import { TypeKind, type Catalog, type Scope, type ValueType } from "./catalog";
 import { Undecided, checkExpression } from "./check";
 import {
+  GUARDED,
   NEEDLESS,
   groupCondition,
   passes,
@@ -228,6 +229,89 @@ test("a record with a numeric field name passes for a record", () => {
       rule: { type: pair, undecided: Undecided.Allowed },
     }).ok,
   ).toBe(true);
+});
+
+describe("a record read by a key input", () => {
+  const scope = {
+    catalog: {
+      inputs: [
+        {
+          id: "key",
+          label: "Key",
+          type: {
+            kind: TypeKind.Choice,
+            options: [{ value: "flag", label: "Flag" }],
+          },
+        },
+        {
+          id: "pick",
+          label: "Pick",
+          type: {
+            kind: TypeKind.Nullable,
+            inner: {
+              kind: TypeKind.Choice,
+              options: [
+                { value: "name", label: "Name" },
+                { value: "score", label: "Score" },
+              ],
+            },
+          },
+        },
+        {
+          id: "field",
+          label: "Field",
+          type: {
+            kind: TypeKind.Choice,
+            options: [
+              { value: "flag", label: "Flag" },
+              { value: "name", label: "Name" },
+            ],
+          },
+        },
+        {
+          id: "row",
+          label: "Row",
+          type: {
+            kind: TypeKind.Record,
+            fields: {
+              flag: {
+                kind: TypeKind.Nullable,
+                inner: { kind: TypeKind.Boolean },
+              },
+              name: string,
+              score: { kind: TypeKind.Number },
+            },
+          },
+        },
+      ],
+      functions: [],
+    },
+    named: [],
+  } satisfies Scope;
+  const check = (source: string) =>
+    checkExpression({ source, scope, rule: variable });
+
+  test("reads the field the key names where isUnknown narrows it", () => {
+    expect(check("isUnknown(row[key]) && !row[key]").ok).toBe(true);
+  });
+
+  test("reads every field a key can name where isUnknown narrows it", () => {
+    expect(check("isUnknown(row[field]) && !row[field]")).toEqual(
+      R.failure([
+        expect.objectContaining({ message: "This needs a yes/no value." }),
+      ]),
+    );
+  });
+
+  test("allows a fallback after a read by key `&&` narrowed", () => {
+    expect(check("row[key] === true && (row[key] ?? false)").ok).toBe(true);
+  });
+
+  test("still has a fallback the guard makes needless reported", () => {
+    expect(check("isUnknown(pick) ? 0 : row[pick] ?? 0")).toEqual(
+      R.failure([expect.objectContaining({ message: GUARDED })]),
+    );
+  });
 });
 
 test("a line the brand alone told apart from the one before is left out", () => {

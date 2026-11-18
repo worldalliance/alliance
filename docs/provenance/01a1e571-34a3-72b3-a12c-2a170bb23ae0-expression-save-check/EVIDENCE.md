@@ -11,6 +11,10 @@ Method: a scratch program compiled `declare const s: string | null; declare cons
 - `list[0].a` fails with TS2532 "Object is possibly 'undefined'"; `isUnknown(list[0]) ? null : list[0].a` checks clean, so `tsc` narrows a repeated literal index after the guard.
 - `n + 1` fails with TS18047; `!isUnknown(n) && n > 5` checks clean.
 
+### `tsc` and a comparison with `null` (typescript 5.9.3, the same program and lib; 2026-11-17)
+
+- `s === null`, with `s: string | null`, checks clean, so the ban on `=== null` has to come from the analysis.
+
 ### TypeScript's document registry across language services (typescript 5.9.3; 2026-11-12)
 
 Method: two save checks in one process, each a new language service sharing one `ts.createDocumentRegistry()`, writing different text to the same file name at version 1.
