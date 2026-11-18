@@ -26,6 +26,13 @@ export type NeedsReplyMember = {
   waitingSince: Date;
 };
 
+const unansweredRow = z.object({
+  id: z.number(),
+  phoneNumber: z.string(),
+  createdAt: z.date(),
+  lastMessageBody: z.string(),
+});
+
 /** A mark on a number's texts through `throughId`, a text in its thread. */
 export type NumberMark = {
   phoneNumber: string;
@@ -178,40 +185,37 @@ export class MmsInboxService {
    * STOP and START texts, which the webhook acts on and Twilio answers, neither
    * list a member nor hide an earlier text that needs a reply. */
   async needsReply(): Promise<NeedsReplyMember[]> {
-    const oldestTexts = await this.unansweredTexts();
-    if (oldestTexts.length === 0) return [];
-    const users = await this.subscribedMembers()
-      .andWhere("member.phoneNumber = ANY(:phoneNumbers)", {
-        phoneNumbers: oldestTexts.map((m) => m.memberPhoneNumber),
+    const oldest = (await this.unansweredTexts()).toSorted(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
+    );
+    if (oldest.length === 0) return [];
+    const users = await this.userRepository
+      .createQueryBuilder("member")
+      .where('member."phoneNumber" = ANY(:phoneNumbers)', {
+        phoneNumbers: oldest.map((row) => row.phoneNumber),
       })
       .orderBy("member.id")
       .getMany();
-    const usersByNumber = Map.groupBy(users, (user) => user.phoneNumber);
-    return oldestTexts
-      .toSorted(
-        (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
-      )
-      .flatMap((oldest) =>
-        (usersByNumber.get(oldest.memberPhoneNumber) ?? []).map((user) => ({
-          user,
-          lastMessageBody: oldest.lastMessageBody,
-          waitingSince: oldest.createdAt,
-        })),
-      );
+    const members = Map.groupBy(users, (user) => user.phoneNumber);
+    return oldest.flatMap((row) =>
+      (members.get(row.phoneNumber) ?? []).map((user) => ({
+        user,
+        lastMessageBody: row.lastMessageBody,
+        waitingSince: row.createdAt,
+      })),
+    );
   }
 
-  /** Per subscribed number, its oldest inbound text that no staff reply has
+  /** Per number not opted out, its oldest inbound text that no staff reply has
    * followed and staff haven't marked handled, with the latest such text's
-   * body as `lastMessageBody`. The window runs before `DISTINCT ON` keeps each
-   * number's first row. */
+   * body as `lastMessageBody`. The window runs before `DISTINCT ON` keeps
+   * each number's first row. */
   private async unansweredTexts() {
-    const rows = await unanswered(
-      this.mmsRepository.createQueryBuilder("inbound"),
-    )
+    const query = unanswered(this.mmsRepository.createQueryBuilder("inbound"))
       .select("inbound.id", "id")
-      .addSelect("inbound.memberPhoneNumber", "memberPhoneNumber")
-      .addSelect("inbound.createdAt", "createdAt")
-      .distinctOn(["inbound.memberPhoneNumber"])
+      .addSelect('inbound."memberPhoneNumber"', "phoneNumber")
+      .addSelect('inbound."createdAt"', "createdAt")
+      .distinctOn(['inbound."memberPhoneNumber"'])
       .addSelect(
         `first_value(inbound.body) OVER (
           PARTITION BY inbound."memberPhoneNumber"
@@ -219,34 +223,21 @@ export class MmsInboxService {
         )`,
         "lastMessageBody",
       )
+      .leftJoin(
+        "mms_thread",
+        "thread",
+        'thread."phoneNumber" = inbound."memberPhoneNumber"',
+      )
       .andWhere('inbound."handledEventId" IS NULL')
       .andWhere(
-        `inbound."memberPhoneNumber" IN (${this.subscribedMembers()
-          .select("member.phoneNumber")
-          .getQuery()})`,
+        `NOT ${optedOutSql({
+          state: 'thread."optedOut"',
+          phoneNumber: 'inbound."memberPhoneNumber"',
+        })}`,
       )
-      .orderBy("inbound.memberPhoneNumber")
-      .addOrderBy("inbound.createdAt", "ASC")
-      .addOrderBy("inbound.id", "ASC")
-      .getRawMany();
-    return z
-      .array(
-        z.object({
-          id: z.number(),
-          memberPhoneNumber: z.string(),
-          createdAt: z.date(),
-          lastMessageBody: z.string(),
-        }),
-      )
-      .parse(rows);
-  }
-
-  private subscribedMembers() {
-    return this.userRepository.createQueryBuilder("member").where(
-      `NOT ${optedOutSql({
-        state: `(SELECT "optedOut" FROM mms_thread WHERE "phoneNumber" = member."phoneNumber")`,
-        phoneNumber: 'member."phoneNumber"',
-      })}`,
-    );
+      .orderBy('inbound."memberPhoneNumber"')
+      .addOrderBy('inbound."createdAt"', "ASC")
+      .addOrderBy("inbound.id", "ASC");
+    return z.array(unansweredRow).parse(await query.getRawMany());
   }
 }

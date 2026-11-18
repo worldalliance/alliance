@@ -9,8 +9,9 @@ import { MmsThread } from "./mms-thread.entity";
  * with it, deleted ones included, has the old flag, so a keyword the previous
  * release handled still counts. Drop the flag check, and the user index it
  * reads, once no running release writes the flag without the state and every
- * number a user holds has a non-null state. Takes SQL
- * expressions for the thread row's `optedOut` and the number. */
+ * number a user holds has a non-null state. Takes SQL expressions for the
+ * number, which may come from `mms` since a text the previous release
+ * recorded has no thread row, and for that row's `optedOut`. */
 export const optedOutSql = (params: { state: string; phoneNumber: string }) =>
   `((${params.state}) IS TRUE OR EXISTS (
     SELECT 1 FROM "user" flagged

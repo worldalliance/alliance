@@ -1,3 +1,4 @@
+import { MmsThread } from "src/mms/mms-thread.entity";
 import { MmsService } from "src/mms/mms.service";
 import supertest from "supertest";
 import { mmsThreadApp } from "./mms-thread-app";
@@ -68,6 +69,35 @@ describe("Opt-out per number (e2e)", () => {
       member.id,
     );
   });
+
+  // BACKCOMPAT(number-opt-out): remove with optedOutSql's flag check.
+  it.each([
+    ["a thread row with no state", "+14155558742", false],
+    ["no thread row", "+14155558743", true],
+  ])(
+    "leaves out of Needs reply a member only the old flag opted out, with %s",
+    async (_, phoneNumber, dropRow) => {
+      const member = await createMember(phoneNumber);
+      await inbound({ from: phoneNumber, body: "hello?" });
+      if (dropRow) {
+        await ctx().dataSource.getRepository(MmsThread).delete({ phoneNumber });
+      }
+      const listed = async () =>
+        (
+          await supertest(server())
+            .get("/mms-threads/needs-reply")
+            .set("Authorization", admin())
+            .expect(200)
+        ).body.map((entry: { userId: number }) => entry.userId);
+
+      expect(await listed()).toContain(member.id);
+      await userRepo().update(
+        { id: member.id },
+        { phoneNumberUnsubscribed: true },
+      );
+      expect(await listed()).not.toContain(member.id);
+    },
+  );
 
   it("sends no automated text to a number that opted out", async () => {
     const member = await createMember("+14155558732");
