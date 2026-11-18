@@ -1,10 +1,10 @@
 import ts from "typescript";
 import { R } from "../result";
-import { TYPE_ARGUMENTS } from "./convert";
+import { TYPE_ARGUMENTS, convertExpression } from "./convert";
 import { parseExpression } from "./parse";
 import { printExpression } from "./print";
 import { scope } from "./syntax-test-support";
-import { ExprKind, LAMBDA_ONLY_AS_ARGUMENT } from "./tree";
+import { ExprKind, LAMBDA_ONLY_AS_ARGUMENT, children, type Expr } from "./tree";
 
 const NESTED_ORDERING =
   "`<`, `>`, `<=` and `>=` can't compare the yes/no result of another comparison.";
@@ -419,4 +419,53 @@ test.each([
   ["items.map(of => of / 2 + (of / 3))", "items.map(of => of / 2 + of / 3)"],
 ])("a `/` after a keyword in %s divides", (text, printed) => {
   expect(roundTrip(text)).toBe(printed);
+});
+
+test("conversion maps every node to its source, parentheses included", () => {
+  const text =
+    "((count + 1) > 1 ? `x${state}` : items.map((x) => (x.name))[0]) ?? [-count, { count, a: (!isCalifornia) }][0]";
+  const file = ts.createSourceFile("/t.ts", text, ts.ScriptTarget.ES2020, true);
+  const [statement] = file.statements;
+  if (statement === undefined || !ts.isExpressionStatement(statement)) {
+    throw new Error("expected an expression statement");
+  }
+  const { tree, source } = R.unwrap(
+    convertExpression({ node: statement.expression, file, scope }),
+  );
+  const nodes: Expr[] = [];
+  const walk = (expr: Expr) => {
+    nodes.push(expr);
+    children(expr).forEach(walk);
+  };
+  walk(tree);
+  expect(nodes.filter((node) => !source.has(node))).toEqual([]);
+  expect(source.size).toBe(nodes.length);
+  const texts = nodes.map((node) => source.get(node)?.getText(file));
+  expect(texts).toEqual([
+    text,
+    "((count + 1) > 1 ? `x${state}` : items.map((x) => (x.name))[0])",
+    "(count + 1) > 1",
+    "(count + 1)",
+    "count",
+    "1",
+    "1",
+    "`x${state}`",
+    "state",
+    "items.map((x) => (x.name))[0]",
+    "items.map((x) => (x.name))",
+    "items",
+    "(x) => (x.name)",
+    "(x.name)",
+    "x",
+    "0",
+    "[-count, { count, a: (!isCalifornia) }][0]",
+    "[-count, { count, a: (!isCalifornia) }]",
+    "-count",
+    "count",
+    "{ count, a: (!isCalifornia) }",
+    "count",
+    "(!isCalifornia)",
+    "isCalifornia",
+    "0",
+  ]);
 });

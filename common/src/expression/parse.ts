@@ -1,7 +1,8 @@
 import ts from "typescript";
 import { R, type Result } from "../result";
 import { type Diagnostic, type Scope } from "./catalog";
-import { TYPE_ARGUMENTS, checkScope, convertExpression } from "./convert";
+import { TYPE_ARGUMENTS, convertExpression } from "./convert";
+import { checkScope } from "./convert-scope";
 import { printExpression } from "./print";
 import { BinaryOp, type Expr } from "./tree";
 
@@ -113,7 +114,7 @@ export function parseExpression(
     scope,
   });
   if (!converted.ok) return R.failure(converted.error.map(shift));
-  const tree = converted.value;
+  const { tree } = converted.value;
   // Whether TypeScript reads a `<` and a later `>` as type arguments turns on
   // parentheses the printer doesn't keep, so the printed text is tried too.
   const printed = printExpression(tree, {

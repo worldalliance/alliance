@@ -3,6 +3,8 @@ import { COMPARES_PRIMITIVES_ONLY, isPrimitive } from "./evaluate-methods";
 import { evalError, finite } from "./failure";
 import { BinaryOp, UnaryOp } from "./tree";
 
+export const NEEDS_A_NUMBER = "- needs a number.";
+
 export function unary(op: UnaryOp, operand: Value): Value {
   switch (op) {
     case UnaryOp.Not:
@@ -11,7 +13,7 @@ export function unary(op: UnaryOp, operand: Value): Value {
       return operand === null ? null : !operand;
     case UnaryOp.Negate:
       if (operand !== null && typeof operand !== "number")
-        throw evalError("- needs a number.");
+        throw evalError(NEEDS_A_NUMBER);
       return operand === null ? null : -operand;
     default:
       throw new Error(`unknown unary op: ${op satisfies never}`);
@@ -45,7 +47,7 @@ function logical({
 
 const ADD_NEEDS = "+ needs numbers or text.";
 const needsNumbers = (op: BinaryOp) => `${op} needs numbers.`;
-const comparesMessage = (op: BinaryOp) =>
+export const comparesMessage = (op: BinaryOp) =>
   `${op} compares two numbers or two pieces of text.`;
 
 // Each operand is checked before an unknown one decides the result, so a

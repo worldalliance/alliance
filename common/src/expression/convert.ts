@@ -12,6 +12,7 @@ import {
   type Diagnostic,
   type Scope,
 } from "./catalog";
+import { STRICT_RESERVED } from "./convert-scope";
 import {
   BINARY_OPS,
   COALESCE_MIXES,
@@ -29,27 +30,20 @@ const UNDEFINED_UNSUPPORTED = `\`undefined\` isn't supported. ${IS_UNKNOWN_HINT}
 
 const MATH_FUNCTIONS: ReadonlySet<string> = new Set(MATH_FUNCTION_NAMES);
 
-// The parser reads text as a sloppy-mode script, where these are names, but
-// strict mode, which the save check's `tsc` runs in, reserves them. `await`
-// is a name there too, yet `(await) ** 2` prints as `await ** 2`, which
-// doesn't parse.
-const STRICT_RESERVED: ReadonlySet<string> = new Set([
-  "await",
-  "implements",
-  "interface",
-  "let",
-  "package",
-  "private",
-  "protected",
-  "public",
-  "static",
-  "yield",
-]);
+/**
+ * Every tree node mapped to the TypeScript node it was converted from. A
+ * parenthesized part maps to the parenthesized node, parentheses included.
+ */
+export type Converted = {
+  tree: Expr;
+  source: ReadonlyMap<Expr, ts.Expression>;
+};
 
 /** A function (`x => …`) is accepted only as a method's first argument. */
 type Position = { lambdaAllowed: boolean };
 
 class Converter {
+  readonly source = new Map<Expr, ts.Expression>();
   readonly diagnostics: Diagnostic[] = [];
   private readonly params: string[][] = [];
   private readonly functions: ReadonlySet<string>;
@@ -97,8 +91,14 @@ class Converter {
     node: ts.Expression,
     position: Position = { lambdaAllowed: false },
   ): Expr {
+    const tree = this.convertNode(node, position);
+    this.source.set(tree, node);
+    return tree;
+  }
+
+  private convertNode(node: ts.Expression, position: Position): Expr {
     if (ts.isParenthesizedExpression(node)) {
-      return this.convert(node.expression, position);
+      return this.convertNode(node.expression, position);
     }
     if (ts.isNumericLiteral(node)) {
       const value = Number(node.text);
@@ -449,6 +449,7 @@ class Converter {
   }
 }
 
+/** Diagnostic spans are offsets into `file`. */
 export function convertExpression({
   node,
   file,
@@ -457,33 +458,12 @@ export function convertExpression({
   node: ts.Expression;
   file: ts.SourceFile;
   scope: Scope;
-}): Result<Expr, Diagnostic[]> {
+}): Result<Converted, Diagnostic[]> {
   const converter = new Converter(file, scope);
   const tree = converter.convert(node);
   return converter.diagnostics.length > 0
     ? R.failure(converter.diagnostics)
-    : R.success(tree);
-}
-
-export function checkScope(scope: Scope): void {
-  const names = [
-    ...scope.catalog.functions.map((fn) => fn.name),
-    ...scope.catalog.inputs.map((input) => input.id),
-    ...scope.named.map((named) => named.name),
-  ];
-  const taken = new Set([MATH_OBJECT_NAME, IS_UNKNOWN, "undefined"]);
-  for (const name of names) {
-    if (!readsAsName(name)) {
-      // It would print as something else, such as `true`, or as text that
-      // doesn't parse.
-      throw new Error(`\`${name}\` doesn't read back as a name.`);
-    }
-    if (taken.has(name)) {
-      // Text can't tell the two apart, so a parsed tree wouldn't print back.
-      throw new Error(`\`${name}\` names two things in the scope.`);
-    }
-    taken.add(name);
-  }
+    : R.success({ tree, source: converter.source });
 }
 
 /** Significant digits and exponent, so `0.50` and `5e-1` compare equal. */
@@ -499,20 +479,4 @@ function decimalDigits(text: string): string {
   return significant === ""
     ? "0"
     : `${significant}e${Number(exponent) + whole.length - leadingZeros}`;
-}
-
-function readsAsName(name: string): boolean {
-  if (STRICT_RESERVED.has(name)) return false;
-  const [statement] = ts.createSourceFile(
-    "/name.ts",
-    `(${name})`,
-    ts.ScriptTarget.ES2020,
-  ).statements;
-  return (
-    statement !== undefined &&
-    ts.isExpressionStatement(statement) &&
-    ts.isParenthesizedExpression(statement.expression) &&
-    ts.isIdentifier(statement.expression.expression) &&
-    statement.expression.expression.text === name
-  );
 }
