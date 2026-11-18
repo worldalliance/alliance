@@ -1,4 +1,5 @@
 import { MailerService, type ISendMailOptions } from "@nestjs-modules/mailer";
+import { Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
@@ -10,6 +11,7 @@ import { harness, useMailSendingEnv } from "./mail.service.fixtures";
 
 describe("sendMail", () => {
   useMailSendingEnv();
+  afterEach(() => jest.restoreAllMocks());
 
   const send = (service: MailService) =>
     service.sendMail({
@@ -263,6 +265,26 @@ describe("sendMail", () => {
 
     await expect(send(service)).rejects.toBeInstanceOf(MailNotSentError);
     expect(attempted).toBe(false);
+  });
+
+  it("rethrows the transport's error when it can't save a rejected send", async () => {
+    const refused = Object.assign(new Error("login refused"), {
+      code: "EAUTH",
+    });
+    const other = { saveFails: false };
+    const { service } = await harness(() => {
+      other.saveFails = true;
+      return Promise.reject(refused);
+    }, other);
+    const logged = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+
+    await expect(send(service)).rejects.toBe(refused);
+    expect(logged).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ message: "connection lost" }),
+    );
   });
 
   it.each([

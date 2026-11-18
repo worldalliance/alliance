@@ -196,7 +196,9 @@ export class MailService {
 
     if (!sent.ok) {
       mail.status = EmailStatus.Failed;
-      await this.mailRepository.save(mail);
+      await this.mailRepository.save(mail).catch((error: unknown) => {
+        this.logger.error(`Recording failed email ${mail.id} failed`, error);
+      });
       throw sent.error;
     }
 
