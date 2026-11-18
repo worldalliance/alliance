@@ -4,7 +4,7 @@ No workflow reads a GitHub secret other than the `GITHUB_TOKEN` Actions issues e
 
 ## Roles
 
-`terraform/ci-oidc.tf` defines seven roles. A role's trust policy decides which jobs can assume it; GitHub's environment branch rules gate the same jobs on GitHub's side.
+`terraform/ci-oidc.tf` defines seven roles. A role's trust policy decides which jobs can assume it; GitHub's environment branch rules gate the same jobs on GitHub's side. `terraform/github.tf` derives each environment's branch rules from the trust of the role it gates, so change the trust in `local.ci_roles` and apply, never the rules in GitHub's settings; `terraform/README.md` says how. The `staging-live` and `production-live` environments hold the deploy records and stay out of Terraform.
 
 | Role                           | Assumed by                                                                                               | Can read                                                                           |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |

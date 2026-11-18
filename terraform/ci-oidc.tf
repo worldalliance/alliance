@@ -1,6 +1,8 @@
 locals {
   github_oidc         = "token.actions.githubusercontent.com"
-  github_repo         = "worldalliance/alliance"
+  github_owner        = "worldalliance"
+  github_repo_name    = "alliance"
+  github_repo         = "${local.github_owner}/${local.github_repo_name}"
   github_sub_prefix   = "repo:${local.github_repo}"
   github_repo_id      = "968852531"
   github_repo_owner   = "214721520"
