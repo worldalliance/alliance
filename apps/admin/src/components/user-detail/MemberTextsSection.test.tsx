@@ -14,6 +14,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { useNeedsReplyAdmin } from "../../lib/useMemberTextsAdmin";
 import MemberTextsSection from "./MemberTextsSection";
 
@@ -120,12 +121,43 @@ const renderSection = () => {
   render(
     <Wrapper>
       <ToastProvider>
-        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        <MemoryRouter>
+          <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        </MemoryRouter>
       </ToastProvider>
     </Wrapper>,
   );
   return client;
 };
+
+it("links to the number's thread once it has one", async () => {
+  thread = { ...thread, threadId: "00000000-0000-4000-8000-000000000001" };
+  renderSection();
+
+  expect(
+    (
+      await screen.findByRole("link", { name: "Open this number's thread" })
+    ).getAttribute("href"),
+  ).toBe("/texts/00000000-0000-4000-8000-000000000001");
+});
+
+it("links to the number's thread once the first send creates it", async () => {
+  postSaved = () => {
+    thread = { ...thread, threadId: "00000000-0000-4000-8000-000000000001" };
+  };
+  renderSection();
+  fireEvent.change(await screen.findByLabelText("Text Sam"), {
+    target: { value: "Happy to help" },
+  });
+  expect(
+    screen.queryByRole("link", { name: "Open this number's thread" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(
+    await screen.findByRole("link", { name: "Open this number's thread" }),
+  ).toBeTruthy();
+});
 
 it("shows who sent each text, and why one failed", async () => {
   renderSection();

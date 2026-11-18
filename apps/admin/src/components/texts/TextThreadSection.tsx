@@ -31,6 +31,7 @@ export default function TextThreadSection<T extends Thread>(props: {
   markingHandled: boolean;
   markingNeedsReply: boolean;
   composer: (thread: T) => ReactNode;
+  headerLink?: ReactNode;
 }) {
   const { threadKey, contactName, thread, markingOptedOut } = props;
   const { confirm, showToast } = useToast();
@@ -105,6 +106,7 @@ export default function TextThreadSection<T extends Thread>(props: {
       >
         <div className="flex items-baseline gap-2 min-w-0">
           <h2 className="text-sm font-semibold text-zinc-700">Texts</h2>
+          {props.headerLink}
           <SectionRefreshError
             noun="texts"
             isError={thread.isRefetchError}

@@ -1,3 +1,4 @@
+import { href, Link } from "react-router";
 import {
   fetchMemberThread,
   useMemberTextsAdmin,
@@ -14,6 +15,8 @@ export default function MemberTextsSection({
   member: { id: number; name: string; timeZone: string | null };
 }) {
   const { thread, send, ...actions } = useMemberTextsAdmin(member.id);
+  const threadId = thread.data?.threadId;
+
   return (
     <TextThreadSection
       {...actions}
@@ -41,6 +44,16 @@ export default function MemberTextsSection({
             timeZone={member.timeZone}
             send={send}
           />
+        )
+      }
+      headerLink={
+        threadId && (
+          <Link
+            to={href("/texts/:threadId", { threadId })}
+            className="text-sm underline text-zinc-700"
+          >
+            Open this number&apos;s thread
+          </Link>
         )
       }
     />
