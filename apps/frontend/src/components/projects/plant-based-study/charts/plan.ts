@@ -43,8 +43,8 @@ export function drawPlan({
       T(svg, cx + w / 2, BY + BH / 2 + 5, `${p}%`, {
         "text-anchor": "middle",
         "font-size": 15,
-        "font-weight": 700,
-        fill: i < 2 ? "var(--seg-label-light)" : "var(--ink)",
+        "font-weight": 600,
+        fill: i === 0 ? "var(--seg-label-light)" : "var(--ink)",
       });
     }
     rects.push({ x: cx, w, s, p });
@@ -64,7 +64,7 @@ export function drawPlan({
   T(svg, X0 + yesW / 2, BY - 32, "85% say probably or definitely yes", {
     "text-anchor": "middle",
     "font-size": 14,
-    "font-weight": 650,
+    "font-weight": 600,
     fill: "var(--ink)",
   });
   let lx = X0;

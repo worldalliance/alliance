@@ -55,7 +55,7 @@ export function drawGap({
     T(svg, bx + BW / 2, Y0 - bh - 9, `${Math.round(p)}%`, {
       "text-anchor": "middle",
       "font-size": 15,
-      "font-weight": 700,
+      "font-weight": 600,
       fill: "var(--ink)",
     });
     T(svg, bx + BW / 2, Y0 + 22, meta[i].name, {
@@ -92,7 +92,7 @@ export function drawGap({
     {
       "text-anchor": "middle",
       "font-size": 13.5,
-      "font-weight": 650,
+      "font-weight": 600,
       fill: "var(--ink)",
     },
   );

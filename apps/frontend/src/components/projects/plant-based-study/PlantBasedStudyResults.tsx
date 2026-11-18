@@ -66,14 +66,14 @@ export default function PlantBasedStudyResults() {
                 className="dot"
                 style={{ background: "var(--reduction)" }}
               />
-              reduction group
+              Reduction group
             </span>
             <span>
               <span
                 className="dot"
                 style={{ background: "var(--comparison)" }}
               />
-              comparison group
+              Comparison group
             </span>
           </p>
           <div
@@ -276,14 +276,14 @@ export default function PlantBasedStudyResults() {
           <p className="legend">
             <span>
               <span className="dot" style={{ background: "var(--axis)" }} />
-              expected, before
+              Expected, before
             </span>
             <span>
               <span
                 className="dot"
                 style={{ background: "var(--reduction)" }}
               />
-              experienced, after
+              Experienced, after
             </span>
           </p>
           <div
@@ -461,7 +461,7 @@ export default function PlantBasedStudyResults() {
             <i className="rn-s" />
             <i />
           </span>
-          <span className="rn-cap">full report · PDF</span>
+          <span className="rn-cap">Full report (PDF)</span>
         </a>
       </section>
 

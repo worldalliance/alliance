@@ -14,6 +14,9 @@ export default function PlantBasedStudyMasthead() {
       <p className="tk-lead">If you try eating more plant-based…</p>
       <nav className="tiles" aria-label="What to expect, based on the study">
         <a className="tile" href="#cut">
+          <span className="t-num" aria-hidden="true">
+            01
+          </span>
           <strong className="t-claim">
             You’ll probably be able to reduce by about half
           </strong>
@@ -24,6 +27,9 @@ export default function PlantBasedStudyMasthead() {
           </span>
         </a>
         <a className="tile" href="#surprise">
+          <span className="t-num" aria-hidden="true">
+            02
+          </span>
           <strong className="t-claim">
             You’ll likely find it about as hard as you expect
           </strong>
@@ -32,6 +38,9 @@ export default function PlantBasedStudyMasthead() {
           </span>
         </a>
         <a className="tile" href="#who">
+          <span className="t-num" aria-hidden="true">
+            03
+          </span>
           <strong className="t-claim">
             Your age, gender, or experienced difficulty probably won’t affect
             how much you’re able to reduce
@@ -43,6 +52,9 @@ export default function PlantBasedStudyMasthead() {
           </span>
         </a>
         <a className="tile" href="#hard">
+          <span className="t-num" aria-hidden="true">
+            04
+          </span>
           <strong className="t-claim">You’ll probably have cravings</strong>
           <span className="t-sub">
             Cravings were the most common difficulty, named by 27% of
@@ -51,6 +63,9 @@ export default function PlantBasedStudyMasthead() {
           </span>
         </a>
         <a className="tile" href="#next">
+          <span className="t-num" aria-hidden="true">
+            05
+          </span>
           <strong className="t-claim">
             You’ll probably want to keep going after trying
           </strong>
@@ -60,6 +75,9 @@ export default function PlantBasedStudyMasthead() {
           </span>
         </a>
         <a className="tile" href="#long-term">
+          <span className="t-num" aria-hidden="true">
+            06
+          </span>
           <strong className="t-claim">
             You may change your long-term habits
           </strong>
