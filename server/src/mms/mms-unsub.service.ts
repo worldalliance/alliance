@@ -1,6 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { R } from "@alliance/common/result";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventType } from "src/eventlog/event-log.entity";
+import type { EventPayloads } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { User } from "src/user/entities/user.entity";
 import { lockPhoneNumber } from "src/user/user.utils";
@@ -57,6 +59,8 @@ async function setUnsubscribed(
 /** Handles E.164 numbers; asynchronous audits avoid Twilio retries. */
 @Injectable()
 export class MmsUnsubService {
+  private readonly logger = new Logger(MmsUnsubService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -69,6 +73,17 @@ export class MmsUnsubService {
     request: OptOutRequest,
   ): Promise<void> {
     const { reason, rawBody } = storedOptOut(request);
+    // Before the opt-out, so a failed lookup can't fail one that was saved.
+    const source: EventPayloads[EventType.SmsUnsubscribe]["source"] =
+      request.kind === OptOutSource.Staff
+        ? {
+            kind: OptOutSource.Staff,
+            staff: await this.userRepository.findOneOrFail({
+              where: { id: request.adminId },
+              withDeleted: true,
+            }),
+          }
+        : request;
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
         await lockPhoneNumber(manager, phoneNumber);
@@ -99,7 +114,7 @@ export class MmsUnsubService {
     if (users.length === 0) {
       this.eventLogService.sendMessage({
         type: EventType.SmsUnsubscribe,
-        message: `Unhandled SMS opt-out from ${phoneNumber}`,
+        payload: { phoneNumber, member: null, source },
         blob: null,
         userId: null,
       });
@@ -108,7 +123,7 @@ export class MmsUnsubService {
     for (const user of users) {
       this.eventLogService.sendMessage({
         type: EventType.SmsUnsubscribe,
-        message: `${user.name} unsubscribed from SMS (${reason})`,
+        payload: { phoneNumber, member: user, source },
         userId: user.id,
         blob: null,
       });
@@ -131,7 +146,7 @@ export class MmsUnsubService {
     if (users.length === 0) {
       this.eventLogService.sendMessage({
         type: EventType.SmsResubscribe,
-        message: `Unhandled SMS resubscribe from ${phoneNumber}`,
+        payload: { phoneNumber, member: null, rawBody },
         blob: { phoneNumber, rawBody },
         userId: null,
       });
@@ -140,7 +155,7 @@ export class MmsUnsubService {
     for (const user of users) {
       this.eventLogService.sendMessage({
         type: EventType.SmsResubscribe,
-        message: `${user.name} keyword resubscribed to SMS`,
+        payload: { phoneNumber, member: user, rawBody },
         userId: user.id,
         blob: { phoneNumber, rawBody },
       });
@@ -152,9 +167,28 @@ export class MmsUnsubService {
     to: string,
     body: string,
   ): Promise<void> {
+    const found = await R.fromPromise(
+      this.userRepository.find({
+        where: { phoneNumber: from },
+        select: { id: true, name: true, phoneNumberUnsubscribed: true },
+      }),
+    );
+    if (!found.ok) {
+      this.logger.error(
+        "Could not look up members for an unhandled text",
+        found.error,
+      );
+      return;
+    }
+    const members = found.value;
     this.eventLogService.sendMessage({
       type: EventType.SmsInbound,
-      message: `Unhandled inbound SMS from ${from}: ${body}`,
+      payload: {
+        phoneNumber: from,
+        members,
+        optedOut: members.every((m) => m.phoneNumberUnsubscribed),
+        body,
+      },
       blob: { from, to, body },
       userId: null,
     });

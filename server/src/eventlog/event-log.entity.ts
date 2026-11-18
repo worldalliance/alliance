@@ -27,6 +27,7 @@ export enum EventType {
   ActionOptOut = "action_opt_out",
   AccountDeletionRequested = "account_deletion_requested",
   AccountDeleted = "account_deleted",
+  // No longer written; kept so past rows stay readable.
   JoinRequest = "join_request",
   AdminRoleChanged = "admin_role_changed",
   WaitlistMailCapReached = "waitlist_mail_cap_reached",

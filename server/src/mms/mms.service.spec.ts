@@ -246,7 +246,9 @@ describe("MmsService sendMms", () => {
     expect(eventLogService.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: EventType.SmsFailure,
-        message: `Failed to send MMS to ${TO}: sendMms timed out after 5ms`,
+        payload: expect.objectContaining({
+          error: "sendMms timed out after 5ms",
+        }),
       }),
     );
   });

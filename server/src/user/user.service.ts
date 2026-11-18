@@ -62,7 +62,7 @@ import { UserAwayRange } from "./entities/user-away-range.entity";
 import { PHONE_NUMBER_INDEX, User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
 import { PhoneNumberTakenException } from "./phone-number-taken.exception";
-import { lockPhoneNumber, memberWithReferral } from "./user.utils";
+import { lockPhoneNumber } from "./user.utils";
 
 @Injectable()
 export class UserService {
@@ -134,7 +134,7 @@ export class UserService {
     });
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
-      message: `${memberWithReferral(user)} created an account.`,
+      payload: { member: user },
       userId: user.id,
       blob: null,
     });

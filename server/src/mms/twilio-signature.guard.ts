@@ -8,6 +8,7 @@ import {
 import { milliseconds } from "date-fns";
 import type { Request } from "express";
 import { EventType } from "src/eventlog/event-log.entity";
+import { SmsFailureKind } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { validateRequest } from "twilio/lib/webhooks/webhooks";
 import { env, requireEnv, twilioSignatureEnforcedFor } from "../config/env";
@@ -74,17 +75,13 @@ export class TwilioSignatureGuard implements CanActivate {
     this.lastAlertAt = now;
     this.rejectionsSinceAlert = 0;
 
-    const since =
-      rejections === 1
-        ? ""
-        : ` (${rejections} rejections since the last alert)`;
     void this.eventLogService.sendMessage({
       type: EventType.SmsFailure,
-      message:
-        `Inbound Twilio webhook rejected: signature did not match${since}. ` +
-        "No STOP or START from a member is being honoured while this continues — " +
-        "check that the webhook URL in the Twilio console is exactly " +
-        `${params.url}.`,
+      payload: {
+        kind: SmsFailureKind.SignatureRejected,
+        webhookUrl: params.url,
+        rejections,
+      },
       blob: { ...params, rejectionsSinceLastAlert: rejections },
       userId: null,
     });

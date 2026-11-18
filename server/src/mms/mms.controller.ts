@@ -100,7 +100,7 @@ export class MmsController {
     const from = normalizePhoneNumber(rawFrom);
 
     // Before recording, so a failed write can't lose an opt-out.
-    const keyword = await this.handleKeyword({ from, to: rawTo, text });
+    const keyword = await this.handleKeyword({ from, text });
 
     const { MessageSid: sid, NumMedia: count } =
       inboundFieldsSchema.parse(body);
@@ -113,15 +113,17 @@ export class MmsController {
       media: inboundMedia({ body, sid, count }),
     });
     void this.mmsMediaService.copyToS3(media);
+    if (keyword === null) {
+      await this.mmsUnsubService.logUnhandledMessage(from, rawTo, text);
+    }
     return "";
   }
 
   private async handleKeyword(params: {
     from: string;
-    to: string;
     text: string;
   }): Promise<MmsKeyword | null> {
-    const { from, to, text } = params;
+    const { from, text } = params;
     const keyword = text.trim().toUpperCase();
 
     if (STOP_KEYWORDS.has(keyword)) {
@@ -139,7 +141,6 @@ export class MmsController {
       return MmsKeyword.Start;
     }
 
-    await this.mmsUnsubService.logUnhandledMessage(from, to, text);
     return null;
   }
 }

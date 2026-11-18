@@ -95,13 +95,15 @@ export class PhoneVerificationService {
         },
         notFound: `User ${userId} not found`,
       });
+      const verifiedBy = rows.find((row) => row.id === userId);
+      if (!verifiedBy) throw new Error(`User ${userId} not found`);
       // The event is the only record of the number the holder had.
       const announcements: Array<() => Promise<void>> = [];
       for (const holder of others) {
         announcements.push(
           await this.eventLogService.sendMessageInTransaction(manager, {
             type: EventType.PhoneNumberMoved,
-            message: `${holder.name} no longer has ${phoneNumber}: member ${userId} verified it`,
+            payload: { phoneNumber, previous: holder, verifiedBy },
             userId: holder.id,
             blob: { phoneNumber, verifiedByUserId: userId },
           }),

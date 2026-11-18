@@ -11,22 +11,19 @@ import {
   EventLogList,
   EventLogQueryDto,
 } from "./dto/event-log.dto";
-import { EventLog, EventType, SEND_TO_SLACK } from "./event-log.entity";
+import { EventLog, SEND_TO_SLACK } from "./event-log.entity";
+import { type EventMessage, renderEvent } from "./event-messages";
 import { EventLogEvents } from "./eventlog.events";
-import { escapeSlackText } from "./slack-format";
 
-export interface EventLogMessage {
-  type: EventType;
-  message: string;
-  slackMessage?: string;
+export type EventLogMessage = EventMessage & {
   blob: Record<string, unknown> | null;
   userId: number | null;
-}
+};
 
 function toEntity(data: EventLogMessage): DeepPartial<EventLog> {
   return {
     event: data.type,
-    message: data.message,
+    message: renderEvent(data).message,
     blob: data.blob,
     userId: data.userId,
   };
@@ -87,17 +84,8 @@ export class EventLogService {
    *
    * When the entry must be atomic with the change it records rather than
    * merely surfaced, use {@link sendMessageInTransaction}.
-   *
-   * `message` is stored raw in the event log (and shown in the admin panel);
-   * the Slack copy is `escapeSlackText(message)`, so interpolated user text
-   * can't inject mentions or links. Pass `slackMessage` only when the Slack
-   * copy needs intentional markup (mentions, `<url|label>` links) — it is
-   * sent verbatim, so run any untrusted text interpolated into it through
-   * `escapeSlackText` yourself.
    */
   async sendMessage(data: EventLogMessage): Promise<Result<void, Error>> {
-    const { message } = data;
-
     const saved = await R.fromPromiseFn(() =>
       this.eventLogRepository.save(
         this.eventLogRepository.create(toEntity(data)),
@@ -105,7 +93,7 @@ export class EventLogService {
     );
     if (R.isFailure(saved)) {
       this.logger.error(
-        `Failed to record event log message: ${message}`,
+        `Failed to record ${data.type} event log message`,
         saved.error,
       );
       return saved;
@@ -143,15 +131,15 @@ export class EventLogService {
     const forwarded = await R.fromPromiseFn(() => this.forward(saved, data));
     if (R.isFailure(forwarded)) {
       this.logger.error(
-        `Failed to forward event log message: ${data.message}`,
+        `Failed to forward ${data.type} event log message`,
         forwarded.error,
       );
     }
   }
 
   private async forward(saved: EventLog, data: EventLogMessage): Promise<void> {
-    const { type, message } = data;
-    const slackMessage = data.slackMessage ?? escapeSlackText(message);
+    const { type } = data;
+    const slackMessage = renderEvent(data).slack;
 
     // Re-query with user relation for the event payload
     const fullEvent = await this.eventLogRepository.findOne({

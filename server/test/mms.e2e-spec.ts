@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
+import { MmsUnsubService } from "src/mms/mms-unsub.service";
 import { MmsModule } from "src/mms/mms.module";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import { lockPhoneNumber } from "src/user/user.utils";
@@ -255,7 +256,8 @@ describe("Inbound MMS keywords (e2e)", () => {
     expect(
       await eventLogRepo.countBy({
         event: EventType.SmsUnsubscribe,
-        message: "Unhandled SMS opt-out from +14155559002",
+        message:
+          "+14155559002 opted out of texts, but no member has that number.",
       }),
     ).toBe(1);
   });
@@ -379,6 +381,50 @@ describe("Inbound MMS keywords (e2e)", () => {
       (rows) => rows.length > previousCount,
     );
     expect(logs[0]!.blob).toMatchObject({ to: recipient });
+  });
+
+  describe("logs an unhandled text", () => {
+    const inboundMessage = async (from: string, body: string) => {
+      await inbound(from, body).expect(201);
+      const logs = await eventually(
+        () => eventLogRepo.findBy({ event: EventType.SmsInbound }),
+        (rows) => rows.some((row) => row.blob?.body === body),
+      );
+      return logs.find((row) => row.blob?.body === body)!.message;
+    };
+
+    it("pointing staff to Needs reply when the member is subscribed", async () => {
+      expect(await inboundMessage("+14155559001", "subscribed hi")).toBe(
+        "Stopper texted: “subscribed hi” Reply from Needs reply.",
+      );
+    });
+
+    it("saying the member opted out when they have", async () => {
+      await userRepo.update(
+        { id: memberId },
+        { phoneNumberUnsubscribed: true },
+      );
+
+      expect(await inboundMessage("+14155559001", "opted out hi")).toBe(
+        "Stopper texted: “opted out hi” They have opted out of texts.",
+      );
+    });
+
+    it("naming the number when no member has it", async () => {
+      expect(await inboundMessage("+14155559998", "stranger hi")).toBe(
+        "+14155559998, which no member has, texted: “stranger hi”",
+      );
+    });
+
+    it("answering Twilio when the member lookup fails", async () => {
+      const find = jest
+        .spyOn(ctx.app.get(MmsUnsubService)["userRepository"], "find")
+        .mockRejectedValueOnce(new Error("connection lost"));
+
+      await inbound("+14155559001", "lookup fails").expect(201);
+      expect(find).toHaveBeenCalledTimes(1);
+      find.mockRestore();
+    });
   });
 });
 

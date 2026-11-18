@@ -3,6 +3,7 @@ import { setEnv } from "@alliance/common/set-env";
 import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
 import { randomUUID } from "crypto";
 import { softDeleteCascade } from "src/datasources/soft-delete";
+import { renderEvent } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsMediaStatus } from "src/mms/mms-media.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
@@ -432,10 +433,10 @@ describe("Staff opt-outs (e2e)", () => {
       .findOneByOrFail({ user: { id: member.id } });
     expect(optout.reason).toBe(`marked_by_staff:${ctx().adminUserId}`);
     expect(logged).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: `Texter unsubscribed from SMS (marked_by_staff:${ctx().adminUserId})`,
-        userId: member.id,
-      }),
+      expect.objectContaining({ userId: member.id }),
+    );
+    expect(renderEvent(logged.mock.calls[0]![0]).message).toBe(
+      "Test Admin marked Texter as opted out of texts.",
     );
     logged.mockRestore();
   });
