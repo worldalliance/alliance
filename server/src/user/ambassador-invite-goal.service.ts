@@ -307,7 +307,7 @@ export class AmbassadorInviteGoalService {
         goal.ambassador.id,
         goal,
       );
-    await this.notifsService.sendNotif({
+    await this.notifsService.sendNotifOnce({
       user: goal.ambassador,
       category: NotificationCategory.AmbassadorInviteGoal,
       message: notifMessage`${params.message(stats)}`,
