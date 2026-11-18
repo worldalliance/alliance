@@ -24,6 +24,6 @@ Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed 
 
 ## Running playwright
 
-`bunx playwright` resolves the latest playwright, whose chromium isn't installed. Scripts live in the repo, so a bare `import { chromium } from "playwright"` picks up the repo's copy.
+Scripts live in the repo, so a bare `import { chromium } from "playwright"` picks up the repo's copy. When its browser build isn't in the cache, launch fails with `Executable doesn't exist at …`; `chromium.launch({ channel: "chrome" })` runs the installed Chrome instead, with a fresh profile, and `bunx playwright install chromium` fetches the matching build but takes minutes.
 
 `chromium.launch()` gets playwright's own browser. Attaching to the user's Chrome over CDP takes over their session.
