@@ -14,6 +14,10 @@ REVIEW_LOOP_ROLE=subagent codex exec --dangerously-bypass-approvals-and-sandbox 
 
 `REVIEW_LOOP_ROLE` keeps the subagent out of the review loop, which needs the user. `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` raises how long `claude -p` waits on its background tasks after its last turn, from 10 minutes to two hours. A background shell ends at its own `timeout`, so a prompt for a long task such as a check run asks for a long `timeout`. `claude -p` refuses `stream-json` without `--verbose` unless the user's settings turn it on. For a task that must not write, such as a second opinion, pass codex `-s read-only` in place of `--dangerously-bypass-approvals-and-sandbox`, or claude `--permission-mode plan --disallowedTools Bash` in place of `--dangerously-skip-permissions`, since plan mode still runs the Bash commands any settings file or `--allowedTools` allows, such as `bun run build`.
 
+## When a CLI isn't set up
+
+Many people have only one of the two subscriptions. `codex login status` and `claude auth status` exit nonzero when that CLI isn't logged in, and fail outright when it isn't installed. A step that asks for a CLI that isn't set up, such as `consult`'s second opinion or the codex subagent of the root `AGENTS.md` **File size**, runs the CLI this machine has instead. Tell the user once per session which CLI isn't set up, so they know what ran in its place.
+
 ## Reading the result
 
 The run is done once `.scratch/<name>.exit` exists. A nonzero code, or a command that ended without writing `.exit` because a time limit killed it, means it failed: read `.scratch/<name>.err` and the end of the `.jsonl`. Otherwise the answer is `jq -r 'select(.type=="result").result' .scratch/<name>.jsonl` for claude, or `.scratch/<name>-out.md` for codex.
