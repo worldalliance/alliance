@@ -37,3 +37,9 @@ All agent decisions unless labelled otherwise.
 ## Web
 
 - The notice keeps the amber styling for both reasons; the outdated case adds a "Reload page" button (`window.location.reload()`).
+
+## Deploy order
+
+- The user deferred whether a failed OTA publish blocks the admin deploy, so how the ordering in REQUIREMENTS.md behaves on failure is the agent's choice: the admin deploy waits for `publish-mobile-ota` to finish and runs whether it succeeded or failed (`!cancelled()` plus the backend and frontend deploys' success, as GitHub recommends over `always()`; EVIDENCE.md, Deploy order). The OTA publish never failed in the deploy runs scanned, its job takes a few minutes, and blocking would supersede the OTA publish's place off the required list and as an alert only (`docs/provenance/01a1ce4b-16f7-713d-9845-fe08e3ffa147-ci-deploy-speed`, `docs/provenance/01a1ddf0-1ea9-7040-a575-80e716fde9ea-production-promotion`), which this keeps. During an Expo outage admins can use a new kind before a bundle that shows it exists; members see "isn't out yet" until it publishes.
+- The smoke checks (`verify-*`) run on `!cancelled()` and the admin deploy's success. GitHub documents `failure()` as covering every ancestor job but doesn't say how the default `success()` treats them, so without the explicit condition a failed OTA publish, an ancestor through the admin deploy, may skip them.
+- A deploy publishes the OTA without the fingerprint check (it runs only on manual dispatch), so for a commit that changes native code the bundle targets a runtime no installed app has, and the ordering gains nothing. Nothing in this task addresses that.

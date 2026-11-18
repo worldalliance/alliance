@@ -35,3 +35,8 @@ Agent-proposed (research and second opinion), user-picked.
 
 - A form broken for everyone posts to Slack once per piece of content per day, not once per member who opens it: `content_unrenderable` leaves the main Slack destination and gets its own PostHog Slack destination, posting to the same channel, that drops repeats for the same form or update for 24 hours.
 - The member apps (the web frontend and mobile) report content they can't show for every viewer, staff previews included: a staff preview of an unlaunched action and an admin viewing a draft or archived action report like any member. User-originated.
+
+## Getting updates to members sooner
+
+- No gate that delays publishing content using a new kind until clients have adopted it: a feature has to be able to reach members within hours from a single push. User-originated.
+- The admin app deploys only after the mobile over-the-air update job for the same deploy has finished, so admins can't use a new kind before a mobile bundle that shows it exists. This orders publishing; it doesn't guarantee members have installed the update. Agent-proposed, user-approved.

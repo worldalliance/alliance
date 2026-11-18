@@ -14,6 +14,14 @@ Checked 2026-11-18 by research subagents; categories per root `AGENTS.md` **Esta
 - Expo, [`reloadAsync`](https://docs.expo.dev/versions/latest/sdk/updates/#updatesreloadasyncoptions) (vendor recommendation): reloads into the update expo-updates selects locally; it rejects when updates are disabled or in development. A reload without a downloaded update doesn't run newer code.
 - Vite, [load error handling](https://vite.dev/guide/build#load-error-handling) (vendor recommendation): its example reloads on failed dynamic imports. That is a different failure from unknown content kinds.
 
+## Deploy order
+
+Checked 2026-11-18 by research subagents.
+
+- GitHub, [workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions) (vendor documentation): a job whose need failed or was skipped is skipped unless its condition lets it continue.
+- GitHub, [expressions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions) (vendor recommendation): avoid `always()` for a job that could suffer from a critical failure; use `!cancelled()`. In a chain of jobs, `failure()` is true if any ancestor failed; `success()` is described only for steps.
+- `publish-mobile-ota` in the Deploy workflow's run history, runs created 29 Oct to 18 Nov 2026 (measurement): read through the GitHub API on 19 Nov 2026, counting each attempt's job once, 218 runs made 226 attempts; the job succeeded in 180, was skipped in 28, was absent from 18, and never failed. The job took 127–275 s, median 172 s, in an earlier read of the same runs.
+
 ## Alerts for broken content
 
 Checked 2026-11-19 by research subagents.
