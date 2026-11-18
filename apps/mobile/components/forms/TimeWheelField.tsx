@@ -48,9 +48,10 @@ export function TimeWheelField({
         isOutputView={isOutputView}
         hideLabel={hideLabel}
         required={required}
+        className="mb-4"
       />
       <View
-        className="mt-3 flex-row justify-center overflow-hidden rounded-2xl bg-zinc-100"
+        className="flex-row justify-center overflow-hidden rounded-2xl bg-zinc-100"
         style={{ height: size.height }}
       >
         <View

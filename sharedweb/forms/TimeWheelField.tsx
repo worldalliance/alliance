@@ -37,6 +37,9 @@ export function TimeWheelField({
   const labelId = useQuestionLabelId(field);
   const locked = disabled || isOutputView || !onChange;
   const { columns, turn } = timeWheelControls({ value, onChange });
+  const labelShown =
+    !hideLabel &&
+    (labelId !== undefined || (!(required ?? field.required) && !isOutputView));
 
   return (
     <div className="space-y-1">
@@ -48,11 +51,12 @@ export function TimeWheelField({
         isOutputView={isOutputView}
         hideLabel={hideLabel}
         required={required}
+        className={labelShown ? "mb-4" : undefined}
       />
       <div
         role="group"
         aria-labelledby={labelId}
-        className="relative mt-4 flex w-full justify-center rounded-2xl bg-zinc-100"
+        className="relative flex w-full justify-center rounded-2xl bg-zinc-100"
         style={{ height: LAYOUT.height }}
       >
         <div

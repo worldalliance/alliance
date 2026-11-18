@@ -187,6 +187,21 @@ describe("time picker field", () => {
     expect(answer).toBe("04:00");
   });
 
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    "with no label and required %s, leaves the gap under Optional: %s",
+    (required, gap) => {
+      const { container } = render(
+        <Field field={{ ...wheel, label: null, required }} />,
+      );
+
+      const label = container.querySelector("label");
+      expect(label?.classList.contains("mb-4")).toBe(gap);
+    },
+  );
+
   it("darkens the row under the band while the scroll is still moving", () => {
     render(<Field field={wheel} initial="09:00" />);
     const hour = screen.getByRole("spinbutton", { name: "Hour" });
