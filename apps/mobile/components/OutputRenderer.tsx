@@ -1,5 +1,8 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
-import type { ResolvedOutputFieldItem } from "@alliance/shared/outputrenderer";
+import {
+  plainAnswer,
+  type ResolvedOutputFieldItem,
+} from "@alliance/shared/outputrenderer";
 import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import {
@@ -15,7 +18,7 @@ import Text, { FontWeight } from "./system/Text";
 
 type OutputRendererProps = OutputSource & {
   className?: string;
-  /** Answers as bare text, without the card, inner cards or labels. */
+  /** Answers as bare text and uploads as thumbnails, without the card or labels. */
   plain?: boolean;
 };
 
@@ -24,6 +27,21 @@ const canUseMobileFieldRenderer = (field: AnyField): boolean =>
   field.kind !== "custom" &&
   field.kind !== "file" &&
   field.kind !== "image";
+
+function UploadGrid({ uploads }: { uploads: string[] }) {
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      {uploads.map((upload) => (
+        <Image
+          key={upload}
+          source={{ uri: getImageSource(upload) }}
+          className="w-36 h-36 rounded-lg bg-zinc-200"
+          resizeMode="cover"
+        />
+      ))}
+    </View>
+  );
+}
 
 const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
   if (!item.field) {
@@ -36,18 +54,7 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
     if (!item.fileValues.length) {
       return <Text className="text-xs text-zinc-500">No file uploaded</Text>;
     }
-    return (
-      <View className="flex-row flex-wrap gap-2">
-        {item.fileValues.map((fileValue) => (
-          <Image
-            key={fileValue}
-            source={{ uri: getImageSource(fileValue) }}
-            className="w-36 h-36 rounded-lg bg-zinc-200"
-            resizeMode="cover"
-          />
-        ))}
-      </View>
-    );
+    return <UploadGrid uploads={item.fileValues} />;
   }
 
   if (!item.formattedValue) {
@@ -58,11 +65,13 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
 };
 
 function PlainOutputFieldValue({ item }: { item: ResolvedOutputFieldItem }) {
-  if (item.field?.kind === "file" || item.field?.kind === "image") {
-    return renderFormattedOutputFieldValue(item);
-  }
-  if (!item.formattedValue) return null;
-  return <Text className="text-base text-zinc-900">{item.formattedValue}</Text>;
+  const { text, uploads } = plainAnswer(item);
+  return (
+    <>
+      {text !== "" && <Text className="text-base text-zinc-900">{text}</Text>}
+      {uploads.length > 0 && <UploadGrid uploads={uploads} />}
+    </>
+  );
 }
 
 function OutputRenderer({

@@ -1,4 +1,7 @@
-import type { ResolvedOutputFieldItem } from "@alliance/shared/outputrenderer";
+import {
+  plainAnswer,
+  type ResolvedOutputFieldItem,
+} from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
@@ -15,7 +18,7 @@ import RenderField from "./RenderField";
 
 type OutputRendererProps = OutputSource & {
   className?: string;
-  /** Answers as bare text, without the card, inner cards or labels. */
+  /** Answers as bare text and uploads as thumbnails, without the card or labels. */
   plain?: boolean;
 };
 
@@ -39,14 +42,19 @@ const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
 };
 
 function PlainOutputFieldValue({ item }: { item: ResolvedOutputFieldItem }) {
-  if (item.field?.kind === "file" || item.field?.kind === "image") {
-    return renderOutputFieldValue(item);
-  }
-  if (!item.formattedValue) return null;
+  const { text, uploads } = plainAnswer(item);
   return (
-    <p className="whitespace-pre-line text-base text-zinc-900">
-      {item.formattedValue}
-    </p>
+    <>
+      {text && (
+        <p className="whitespace-pre-line text-base text-zinc-900">{text}</p>
+      )}
+      {uploads.length > 0 && (
+        <ImageThumbnailGrid
+          images={uploads.map((upload) => imageSrcFromKey(upload))}
+          alt="Uploaded file"
+        />
+      )}
+    </>
   );
 }
 

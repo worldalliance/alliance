@@ -15,7 +15,10 @@ import {
   resolveOutputBlocks,
   type ResolveOutputParams,
 } from "@alliance/common/forms/output-resolution";
-import { isOutputValueMissing } from "@alliance/common/forms/output-values";
+import {
+  isOutputValueMissing,
+  outputCardSubFields,
+} from "@alliance/common/forms/output-values";
 import { getRankingOptionLabel } from "@alliance/common/forms/ranking";
 import {
   interpolateDisplayBlock,
@@ -117,6 +120,71 @@ export const getOutputFileValues = (value: FormValue | undefined): string[] => {
     (entry): entry is string => typeof entry === "string" && entry.length > 0,
   );
 };
+
+/**
+ * What a plain output shows for an answer: its text, with a list's rows one per
+ * line and each row's shown answers comma-joined, and its uploads.
+ */
+export function plainAnswer(item: ResolvedOutputFieldItem): {
+  text: string;
+  uploads: string[];
+} {
+  const { field } = item;
+  const asText = { text: item.formattedValue, uploads: [] };
+  if (!field) return { text: "", uploads: [] };
+  switch (field.kind) {
+    case "file":
+    case "image":
+      return { text: "", uploads: item.fileValues };
+    case "list": {
+      const rows = drawnCards(field, item.value).map((card) =>
+        outputCardSubFields(field, card).map((sub) => ({
+          sub,
+          value: card[sub.id],
+        })),
+      );
+      return {
+        text: rows
+          .map((cells) =>
+            cells
+              .map(({ sub, value }) => formatOutputFieldValue(sub, value))
+              .filter(Boolean)
+              .join(", "),
+          )
+          .filter(Boolean)
+          .join("\n"),
+        uploads: rows.flatMap((cells) =>
+          cells.flatMap(({ sub, value }) =>
+            sub.kind === "file" ? getOutputFileValues(value) : [],
+          ),
+        ),
+      };
+    }
+    case "text":
+    case "textarea":
+    case "email":
+    case "phone":
+    case "number":
+    case "range":
+    case "checkbox":
+    case "radio":
+    case "select":
+    case "multiselect":
+    case "ranking":
+    case "date":
+    case "time":
+    case "timezone":
+    case "city":
+    case "contract":
+    case "custom":
+    case "toggle":
+    case "timePicker":
+      return asText;
+    default:
+      field satisfies never;
+      return asText;
+  }
+}
 
 const buildOutputField = (
   field: AnyField,
