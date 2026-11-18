@@ -28,7 +28,6 @@ import {
   NavbarOptionsContext,
   useImmersiveChrome,
 } from "../lib/NavbarOptionsContext";
-import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 import { useMessagingUnread } from "../pages/app/messages";
 import { flowMotion, REDUCED_MOTION, transition } from "./taskflow/flowMotion";
 
@@ -279,11 +278,6 @@ const NavbarVertical: React.FC<{
                   key={item.page}
                   to={item.destination}
                   prefetch="render"
-                  data-walkthrough={
-                    item.page === NavbarPage.Groups
-                      ? WalkthroughAnchor.GroupsNav
-                      : undefined
-                  }
                   className={cn(
                     "px-3 py-1.5 rounded-md flex items-center justify-between w-full pr-2 overflow-hidden",
                     currentLocation === item.page

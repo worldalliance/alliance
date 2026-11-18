@@ -15,7 +15,6 @@ import {
   NOTIFICATIONS_PREVIEW_LIMIT,
   useNotificationActions,
 } from "../lib/useNotificationActions";
-import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 
 const UPDATES_LIMIT = 3;
 
@@ -65,10 +64,7 @@ const HomeUpdatesRow = () => {
   const updates = data ?? [];
 
   return (
-    <div
-      className="flex flex-col gap-4"
-      data-walkthrough={WalkthroughAnchor.ActionUpdates}
-    >
+    <div className="flex flex-col gap-4">
       <div className="flex flex-row justify-between items-center px-1">
         <p className="text-title">Updates</p>
         <Link

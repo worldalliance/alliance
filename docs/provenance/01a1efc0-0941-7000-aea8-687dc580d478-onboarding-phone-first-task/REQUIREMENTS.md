@@ -21,5 +21,7 @@ These carry forward the phone step tabled in `docs/provenance/01a1d17d-ac6e-7000
 
 ## Walkthrough
 
+These supersede the walkthrough requirements (sections 5 to 8) in `docs/provenance/01a0b09b-c77a-7000-ab39-1f948ba56954-onboarding-tweaks/REQUIREMENTS.md`.
+
 - Most of the platform walkthrough is removed. On entering the platform the member goes straight to the tasks page, which highlights their first task and tells them to get started. (user-originated)
 - The tour box has no button, only its heading and text. The member can press the task's own "Begin" while the box is showing. (user-originated)
