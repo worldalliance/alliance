@@ -8,7 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { execFileSync } from "node:child_process";
 
 const usage =
-  "usage: (cd server && ../scripts/with-secrets.sh server bun ../agents/skills/demo-action/mint-token.ts <userId>)";
+  "usage: (cd server && ../scripts/with-secrets.sh server bun ../agents/skills/demo-action/mint-token.ts <userId> [hours])";
 
 // Bun loads server/.env and its siblings only when run from server/, as the server is.
 const env = (key: string): string => {
@@ -17,8 +17,10 @@ const env = (key: string): string => {
   return value;
 };
 
-const userId = Number(process.argv[2]);
-if (!Number.isInteger(userId) || userId < 1) {
+const [userArg, hoursArg = "1"] = process.argv.slice(2);
+const userId = Number(userArg);
+const hours = Number(hoursArg);
+if ([userId, hours].some((n) => !Number.isSafeInteger(n) || n < 1)) {
   throw new Error(usage);
 }
 
@@ -58,6 +60,6 @@ console.log(
       tokenType: "access",
       sessionGeneration: user.sessionGeneration,
     },
-    { expiresIn: "1h" },
+    { expiresIn: hours * 3600 },
   ),
 );
