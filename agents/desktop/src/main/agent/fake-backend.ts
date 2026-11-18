@@ -40,7 +40,7 @@ class FakeSession implements AgentSession {
     this.onClosing = init.onClosing;
     this.id = init.resumes?.id ?? randomUUID();
     this.nextTurn = init.resumes?.nextTurn ?? 0;
-    this.listeners = new SessionListeners(this.id);
+    this.listeners = new SessionListeners(() => this.id);
     const firstMessageRead = Promise.withResolvers<boolean>();
     this.firstMessageRead = firstMessageRead.promise;
     this.settleFirstMessageRead = firstMessageRead.resolve;

@@ -3,19 +3,13 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
-import { AgentEventKind } from "../../../shared/agent-event";
 import {
   cancelKillAfterMs,
   couldNotStart,
   spawnSessionCli,
 } from "../cli-process";
-import { SessionListeners } from "../listeners";
-import {
-  type AgentBackend,
-  type AgentEventListener,
-  type AgentMessage,
-  type AgentSession,
-} from "../session";
+import { CliSession } from "../cli-session";
+import type { AgentBackend, AgentMessage, AgentSession } from "../session";
 import { type SessionHooks, sessionRegistry } from "../session-registry";
 import {
   checkClaudeVersion,
@@ -30,22 +24,9 @@ import {
   userMessageLine,
 } from "./protocol";
 
-const stderrTailLength = 4000;
-
-class ClaudeSession implements AgentSession {
-  private turn: { interrupted: boolean } | undefined;
-  private exited = false;
-  private exitMessage = "";
-  private closing: Promise<void> | undefined;
-  private stderrTail = "";
+class ClaudeSession extends CliSession<{ interrupted: boolean }> {
   readonly id: string;
-  readonly firstMessageRead: Promise<boolean>;
-  private readonly settleFirstMessageRead: (read: boolean) => void;
-  private readonly child: ChildProcessWithoutNullStreams;
-  private readonly onClosing: SessionHooks["onClosing"];
   private readonly killAfterMs: number;
-  private readonly listeners: SessionListeners;
-  private readonly closed: Promise<void>;
 
   constructor(
     init: SessionHooks & {
@@ -54,95 +35,42 @@ class ClaudeSession implements AgentSession {
       killAfterMs: number;
     },
   ) {
-    const { id, child } = init;
-    this.id = id;
-    this.child = child;
-    this.onClosing = init.onClosing;
+    super({ ...init, product: "Claude Code" });
+    this.id = init.id;
     this.killAfterMs = init.killAfterMs;
-    this.listeners = new SessionListeners(id);
-    const firstMessageRead = Promise.withResolvers<boolean>();
-    this.firstMessageRead = firstMessageRead.promise;
-    this.settleFirstMessageRead = firstMessageRead.resolve;
-    // Writes to a CLI that has just exited fail with EPIPE; its exit is reported instead.
-    child.stdin.on("error", () => undefined);
-    child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
-      this.stderrTail = (this.stderrTail + chunk).slice(-stderrTailLength);
-    });
-    createInterface({ input: child.stdout }).on("line", (line) =>
+    createInterface({ input: init.child.stdout }).on("line", (line) =>
       this.handleLine(line),
     );
-    this.closed = new Promise((resolve) =>
-      child.once("close", (code, signal) => {
-        this.exited = true;
-        this.settleFirstMessageRead(false);
-        const stderr = this.stderrTail.trim();
-        this.exitMessage = `Claude Code exited (${signal ?? `code ${code}`}).${stderr ? `\n${stderr}` : ""}`;
-        init.onExit();
-        if (this.turn) {
-          if (!this.closing)
-            this.emitError({ message: this.exitMessage, needsResume: true });
-          this.endTurn({ interrupted: this.closing !== undefined });
-        }
-        resolve();
-      }),
-    );
   }
 
-  get turnRunning(): boolean {
-    return this.turn !== undefined;
+  protected newTurn() {
+    return { interrupted: false };
   }
 
-  send(message: AgentMessage): Result<void, Error> {
-    if (this.turn)
-      return R.failure(new Error(`session ${this.id} is mid-turn`));
-    this.turn = { interrupted: false };
-    if (this.exited || this.closing) {
-      const message = this.closing
-        ? "This session was closed. Resume it to continue."
-        : `${this.exitMessage}\nResume the session to continue.`;
-      queueMicrotask(() => {
-        this.emitError({ message, needsResume: true });
-        this.endTurn({ interrupted: false });
-      });
-    } else {
-      this.child.stdin.write(`${userMessageLine(message)}\n`);
-    }
-    return R.success(undefined);
+  protected startTurn(_turn: unknown, message: AgentMessage): void {
+    this.init.child.stdin.write(`${userMessageLine(message)}\n`);
   }
 
-  interrupt(): void {
-    if (!this.turn || this.turn.interrupted || this.exited) return;
-    this.turn.interrupted = true;
-    this.child.stdin.write(`${interruptLine(randomUUID())}\n`);
+  protected sendInterrupt(): void {
+    this.init.child.stdin.write(`${interruptLine(randomUUID())}\n`);
   }
 
-  subscribe(listener: AgentEventListener): () => void {
-    return this.listeners.subscribe(listener);
-  }
-
-  close(): Promise<void> {
-    if (!this.closing) {
-      this.closing = this.shutDown();
-      this.onClosing(this.closing);
-    }
-    return this.closing;
-  }
-
-  private async shutDown(): Promise<void> {
+  protected async shutDown(): Promise<void> {
     if (this.exited) return;
-    this.child.stdin.end();
+    const { child } = this.init;
+    child.stdin.end();
     const timers: ReturnType<typeof setTimeout>[] = [];
     const killAfter = (ms: number) =>
-      timers.push(setTimeout(() => this.child.kill("SIGKILL"), ms));
+      timers.push(setTimeout(() => child.kill("SIGKILL"), ms));
     if (this.turn) {
       // A CLI stopped mid-turn may still send its error result, which a close, like an interrupt, doesn't report.
       this.turn.interrupted = true;
-      this.child.kill("SIGTERM");
+      child.kill("SIGTERM");
       killAfter(this.killAfterMs);
     } else {
       timers.push(
         setTimeout(() => {
-          this.child.kill("SIGTERM");
+          child.kill("SIGTERM");
           killAfter(cancelKillAfterMs);
         }, this.killAfterMs),
       );
@@ -181,15 +109,6 @@ class ClaudeSession implements AgentSession {
       default:
         throw new Error(`unknown line kind: ${claudeLine satisfies never}`);
     }
-  }
-
-  private emitError(error: { message: string; needsResume: boolean }): void {
-    this.listeners.emit({ kind: AgentEventKind.Error, ...error });
-  }
-
-  private endTurn({ interrupted }: { interrupted: boolean }): void {
-    this.turn = undefined;
-    this.listeners.emit({ kind: AgentEventKind.TurnEnded, interrupted });
   }
 }
 
