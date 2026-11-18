@@ -53,5 +53,29 @@ export function sessionRegistry() {
       });
       return entry;
     },
+
+    /** Launches a session whose id its CLI gives once running, which joins the live set then; hooks it fires before that take effect once it has joined. */
+    async launchNew(launch: (hooks: SessionHooks) => Entry): Entry {
+      const early: ((hooks: SessionHooks) => void)[] = [];
+      let held = (run: (hooks: SessionHooks) => void) => {
+        early.push(run);
+      };
+      const started = await Promise.resolve()
+        .then(() =>
+          launch({
+            onExit: () => held((hooks) => hooks.onExit()),
+            onClosing: (closed) => held((hooks) => hooks.onClosing(closed)),
+          }),
+        )
+        .catch(failed);
+      if (!started.ok) return started;
+      const id = started.value.id;
+      const entry = Promise.resolve(started);
+      live.set(id, entry);
+      const hooks = hooksFor({ id, entry });
+      held = (run) => run(hooks);
+      for (const run of early) run(hooks);
+      return started;
+    },
   };
 }
