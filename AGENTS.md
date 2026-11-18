@@ -45,7 +45,7 @@ Read before the matching task:
 - Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
 - The user asks to spec or plan a change before building it → `(root)/agents/skills/spec/SKILL.md`
 - Investigating a bug or failing check whose cause you don't know yet → `(root)/agents/skills/debug/SKILL.md`
-- Pulling PostHog session replays or other PostHog API data → `(root)/agents/skills/posthog/SKILL.md`
+- Pulling PostHog data from its API, such as production errors, slow queries, traffic, web vitals or session replays → `(root)/agents/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/agents/skills/local-db/SKILL.md`
 - Creating demo staging data in the local db, never production: a demo action launched to every member → `(root)/agents/skills/demo-action/SKILL.md`; demo engagement on existing actions (members completing, withdrawing or dismissing, staff updates, closing old actions) → `(root)/agents/skills/demo-engagement/SKILL.md`
 - Using the Linear API, naming a branch for a Linear issue, or writing a commit or PR that names one → `(root)/agents/skills/linear/SKILL.md`

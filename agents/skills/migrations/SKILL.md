@@ -27,4 +27,4 @@ Check the shapes against real data: `scripts/load_staging_data.sh` loads staging
 
 ## Hand edits
 
-Hand edits change ordering and data handling, never the end state — confirm by re-running `migration:generate` and seeing `No changes in database schema were found`. Tell the user which statements you changed and why.
+Hand edits change ordering and data handling, never the end state — confirm by re-running `migration:generate` and seeing `No changes in database schema were found`. In a worktree, `migration:generate` also drops and recreates every generated column, such as `friend`'s `lowUserId`/`highUserId` with their unique index or `mms.memberPhoneNumber`, on every branch, because `scripts/new-worktree.sh` copies `typeorm_metadata` with the source database's name (ALL-1544); repair this worktree's database once with `UPDATE typeorm_metadata SET database = current_database()` (`(root)/agents/skills/local-db/SKILL.md`) rather than deleting those statements by hand. Tell the user which statements you changed and why.

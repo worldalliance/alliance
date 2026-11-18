@@ -13,5 +13,5 @@ PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USERNAME -d $DB_NAME
 ```
 
 - Tables are snake_case from the TypeORM entity class (`ReminderGroup` → `reminder_group`); columns keep entity camelCase and must be double-quoted (`"newStatus"`).
-- Test db (`server/.env.test`) is user/database `postgres`, password `postgres` — easy to hit by mistake instead of dev.
+- E2E tests drop and rebuild their database: `TEST_DB_NAME` in a worktree's `server/.env`, and in the main checkout `server/.env.test`'s database `postgres` (user and password `postgres`), which is easy to hit by mistake instead of dev.
 - `scripts/load_staging_data.sh` overwrites the local db with staging data (pii-pruned prod).

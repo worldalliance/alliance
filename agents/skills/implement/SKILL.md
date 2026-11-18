@@ -41,7 +41,7 @@ Local checks are targeted; CI runs the full matrix against the branch merged int
 
 ### Typechecking
 
-Run typechecking for affected packages that provide a typecheck script, following the root `AGENTS.md` Typechecking rule.
+Run typechecking for affected packages that provide a typecheck script, following the root `AGENTS.md` Typechecking rule. `scripts/` and `agents/` have no package of their own: `common`'s `typecheck` covers them, tsc and eslint both, except `agents/desktop`, which typechecks itself.
 
 ### Testing
 
@@ -51,7 +51,7 @@ A test that restores an env var it saved, which may have been unset, does so wit
 
 ### Duplication
 
-`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
+`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Both scans cover only the TypeScript and JavaScript files under the paths in `.jscpd.json`, which leave out `agents/` and `*.test.*`/`*.spec.*` files, so repeated prose in Markdown goes unflagged. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
 
 The purpose of deduplication is to put things that should change together in one place. Reducing repeated code is a useful side effect, not the goal. Deduplicate when a future change should naturally apply to all copies together; keep things separate when they are likely to evolve independently.
 
