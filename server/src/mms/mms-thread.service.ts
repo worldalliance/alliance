@@ -34,6 +34,7 @@ export type InboundText = {
 };
 
 export type MmsThreadView = {
+  threadId: string | null;
   phoneNumber: string | null;
   textable: boolean;
   optedOut: boolean;
@@ -180,12 +181,14 @@ export class MmsThreadService {
     const user = await this.findMember(params.userId);
     if (!user.ok) return user;
     const { phoneNumber } = user.value;
-    const [page, optedOut] = await Promise.all([
+    const [page, thread, optedOut] = await Promise.all([
       this.threadPage(phoneNumber, params.before),
+      phoneNumber ? this.threadRepository.findOneBy({ phoneNumber }) : null,
       phoneNumber ? this.mmsNumberService.optedOut(phoneNumber) : false,
     ]);
     if (!page.ok) return page;
     return R.success({
+      threadId: thread?.id ?? null,
       phoneNumber,
       textable: memberNumber(user.value).ok,
       optedOut,

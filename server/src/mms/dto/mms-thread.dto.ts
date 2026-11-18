@@ -132,6 +132,14 @@ const ApiPageHasOlder = () =>
   ApiProperty({ description: "Older texts can be loaded with `before`" });
 
 export class MmsThreadDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "Null when the member has no phone number or it has no thread row yet",
+  })
+  threadId: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
 
@@ -159,6 +167,7 @@ export class MmsThreadDto {
   hasOlder: boolean;
 
   constructor(input: MmsThreadView) {
+    this.threadId = input.threadId;
     this.phoneNumber = input.phoneNumber;
     this.textable = input.textable;
     this.optedOut = input.optedOut;

@@ -109,6 +109,7 @@ serveApi(
 
 beforeEach(() => {
   thread = {
+    threadId: null,
     phoneNumber: "+14155550123",
     textable: true,
     optedOut: false,

@@ -15,6 +15,7 @@ import { milliseconds } from "date-fns";
 import MemberTextsSection from "./MemberTextsSection";
 
 const textable = (phoneNumber: string): MmsThreadDto => ({
+  threadId: null,
   phoneNumber,
   textable: true,
   optedOut: false,

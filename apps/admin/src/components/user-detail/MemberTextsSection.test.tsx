@@ -83,6 +83,7 @@ beforeEach(() => {
   postSaved = () => {};
   postGate = Promise.resolve();
   thread = {
+    threadId: null,
     phoneNumber: "+14155550123",
     textable: true,
     optedOut: false,
@@ -103,6 +104,7 @@ beforeEach(() => {
     hasOlder: false,
   };
   kimsThread = {
+    threadId: null,
     phoneNumber: "+14155550188",
     textable: true,
     optedOut: false,
@@ -301,6 +303,7 @@ it("replaces the composer for an opted-out member", async () => {
 
 it("says in the thread that a member with no phone number can't be texted", async () => {
   thread = {
+    threadId: null,
     phoneNumber: null,
     textable: false,
     optedOut: false,

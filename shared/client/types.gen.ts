@@ -1651,6 +1651,10 @@ export type SendStaffTextDto = {
 export type ReplyState = 'needs_reply' | 'handled' | 'answered';
 
 export type MmsThreadDto = {
+    /**
+     * Null when the member has no phone number or it has no thread row yet
+     */
+    threadId: string | null;
     phoneNumber: string | null;
     /**
      * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut

@@ -15,6 +15,7 @@ const {
   server,
   admin,
   inbound,
+  thread,
   send,
   byId,
   numberThread,
@@ -66,6 +67,14 @@ describe("Number threads (e2e)", () => {
     expect((await numberThread(threadId).expect(200)).body.members).toEqual([
       { id: member.id, name: member.name, timeZone: null },
     ]);
+  });
+
+  it("returns the number's thread id with a member's thread", async () => {
+    const member = await createMember("+14155558716");
+    await inbound({ from: "+14155558716", body: "Hi" });
+    const threadId = await threadIdFor("+14155558716");
+
+    expect((await thread(member.id).expect(200)).body.threadId).toBe(threadId);
   });
 
   it("lets staff reply to a non-member who texted in the last 30 days", async () => {

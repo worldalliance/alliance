@@ -258,6 +258,7 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     const member = await createMember(null);
     expect((await thread(member.id).expect(200)).body).toEqual({
       phoneNumber: null,
+      threadId: null,
       textable: false,
       optedOut: false,
       replyState: "answered",
@@ -266,6 +267,11 @@ describe("Inbound texts in the member's thread (e2e)", () => {
     });
     const earlier = await saveBroadcast("+14155558015");
     await thread(member.id).query({ before: earlier.id }).expect(400);
+  });
+
+  it("has no thread id for a member whose number has no thread row", async () => {
+    const member = await createMember("+14155558121");
+    expect((await thread(member.id).expect(200)).body.threadId).toBeNull();
   });
 
   it("is not found for an unknown member", async () => {

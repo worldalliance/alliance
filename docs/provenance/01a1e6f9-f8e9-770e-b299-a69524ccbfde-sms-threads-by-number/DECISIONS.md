@@ -35,7 +35,7 @@ A new table holds one row per number: a UUID id, the E.164 or raw sender number 
 
 `scripts/anonymize/anonymize.sql` rewrites the table's numbers in step with `mms`: a member's number as today, and each other number to its own synthetic `+1555` number above the member range rather than the shared placeholder, so staging keeps non-member threads apart and the unique constraint holds.
 
-The member page keeps reading the member's thread through the user-id endpoints (`GET/POST /mms-threads/:userId`, `POST /mms-threads/:userId/opt-out`).
+The member page keeps reading the member's thread through the user-id endpoints (`GET/POST /mms-threads/:userId`, `POST /mms-threads/:userId/opt-out`), which also return the thread id so it can link to the thread page (decision 5).
 
 ## 5. The member page keeps its texts section
 
