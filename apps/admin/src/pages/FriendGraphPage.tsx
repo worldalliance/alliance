@@ -170,16 +170,16 @@ const FriendGraphPage = () => {
   if (!usersQuery.isFetchedAfterMount || !edgesQuery.isFetchedAfterMount) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Loading graph...</p>
+        <p className="text-zinc-500">Loading graph...</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col w-full h-screen">
-      <div className="p-4 border-b border-gray-200 shrink-0">
+      <div className="p-4 border-b border-zinc-200 shrink-0">
         <h2 className="text-lg font-bold">Friend Graph</h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-zinc-500">
           {activeUsers.length} members with an active contract,{" "}
           {friendEdges.length} friendships
           {matchCount !== null && ` — ${matchCount} matching filters`}
@@ -192,11 +192,11 @@ const FriendGraphPage = () => {
         className="border-b shrink-0"
       />
 
-      <div className="px-4 py-2 border-b border-gray-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
+      <div className="px-4 py-2 border-b border-zinc-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
         <UserGraphFilterControls filters={filters} />
 
         <label className="flex items-center gap-1.5 ml-2">
-          <span className="text-xs font-medium text-gray-600">Spread</span>
+          <span className="text-xs font-medium text-zinc-600">Spread</span>
           <input
             type="range"
             min={MIN_SPREAD}

@@ -72,7 +72,7 @@ export function VisibilityControls({
   switch (visibility.state) {
     case VisibilityState.Unpublished:
       return (
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-zinc-700">
           Not published yet — this update publishes the first time you save
           content on the Content tab, or at its displayed date if that is later.
         </p>
@@ -80,7 +80,7 @@ export function VisibilityControls({
     case VisibilityState.Scheduled:
       return (
         <>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-zinc-700">
             Hidden from members until {visibility.visibleAt.toLocaleString()},
             when it publishes on its own.
           </p>
@@ -94,7 +94,7 @@ export function VisibilityControls({
               <Eye className="w-4 h-4" aria-hidden />
               {changing ? "Publishing..." : "Publish now"}
             </button>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               Makes the update visible to members immediately.
             </p>
           </div>
@@ -116,7 +116,7 @@ export function VisibilityControls({
       });
       return (
         <>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-zinc-700">
             Visible to members since {visibility.visibleAt.toLocaleString()}.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -124,12 +124,12 @@ export function VisibilityControls({
               type="button"
               onClick={onUnpublish}
               disabled={changing || unpublishBlockedReason !== null}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:hover:bg-white"
+              className="flex items-center gap-2 px-4 py-2 border border-zinc-300 bg-white text-zinc-700 rounded-md hover:bg-zinc-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:hover:bg-white"
             >
               <EyeOff className="w-4 h-4" aria-hidden />
               {changing ? "Unpublishing..." : "Unpublish until displayed date"}
             </button>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               {unpublishBlockedReason ??
                 `Hides it from members until ${displayDate.toLocaleString()}.`}
             </p>

@@ -82,7 +82,7 @@ export function VariableInputRow({
   return (
     <div className="space-y-0.5">
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 font-mono text-xs text-gray-600">
+        <span className="w-14 shrink-0 font-mono text-xs text-zinc-600">
           {name}
         </span>
         <InputModePicker
@@ -138,17 +138,14 @@ export function VariableInputRow({
           onClick={onRemove}
           title="Remove input"
           aria-label={`Remove ${name}`}
-          className="p-1 text-gray-400 hover:text-red-500"
+          className="p-1 text-zinc-400 hover:text-red-500"
         >
           <X size={14} />
         </button>
       </div>
       <SourceFormLoadError sourceFormId={sourceFormId} sources={sources} />
       {(field || input.kind === "random") && (
-        <p
-          className="pl-16 font-mono text-[10px] text-gray-500"
-          title={help.notes}
-        >
+        <p className="pl-16 font-mono text-xs text-zinc-500" title={help.notes}>
           {name}: {type}
         </p>
       )}
@@ -180,7 +177,7 @@ export function VariableInputRow({
         />
       )}
       {readingError && (
-        <p className="pl-16 text-[10px] text-red-500">
+        <p className="pl-16 text-xs text-red-500">
           {readingError} Reads as undefined.
         </p>
       )}

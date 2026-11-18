@@ -66,12 +66,12 @@ export function OutlineRow({
     <div
       className={cn(
         "group/row flex items-center rounded-md",
-        current ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100",
+        current ? "bg-blue-50 text-blue-700" : "hover:bg-zinc-100",
       )}
     >
       {draggable ? (
         <GripVertical
-          className="h-3.5 w-3.5 shrink-0 cursor-grab text-gray-400 opacity-0 group-hover/row:opacity-100"
+          className="h-3.5 w-3.5 shrink-0 cursor-grab text-zinc-400 opacity-0 group-hover/row:opacity-100"
           aria-hidden="true"
         />
       ) : (
@@ -84,7 +84,7 @@ export function OutlineRow({
           aria-expanded={expanded}
           aria-label={`Contents of ${label}`}
           title={expanded ? "Collapse" : "Expand"}
-          className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex h-6 w-5 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:text-zinc-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <ChevronRight
             className={cn(
@@ -104,8 +104,8 @@ export function OutlineRow({
         data-selection-focus={rangeFocus || undefined}
         title={label}
         className={cn(
-          "min-w-0 flex-1 truncate rounded py-1 pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          !current && "text-gray-700",
+          "min-w-0 flex-1 truncate rounded-md py-1 pr-2 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500",
+          !current && "text-zinc-700",
           className,
         )}
       >

@@ -39,7 +39,7 @@ export default function KoraTranscriptPreviewPage() {
   return (
     <div className="min-h-svh bg-white" data-kora-theme="light">
       {TITLE}
-      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-4 border-b border-zinc-200 bg-yellow-50 px-5 py-3 text-sm">
+      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-4 border-b border-zinc-200 bg-amber-50 px-5 py-3 text-sm">
         <p className="font-medium">
           Preview: this is what reviewers see. Nothing you do here is saved.
         </p>

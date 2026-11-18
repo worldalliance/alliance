@@ -163,12 +163,12 @@ export function FixedOptionsEditor({
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-medium text-gray-700">
+          <label className="block text-xs font-medium text-zinc-700">
             Options
           </label>
           <button
             onClick={addOption}
-            className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-2 py-1 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600"
             type="button"
           >
             Add Option
@@ -189,19 +189,19 @@ export function FixedOptionsEditor({
               className="space-y-2"
             >
               {categories.length > 0 && (
-                <p className="pt-1 text-xs font-semibold text-gray-600">
+                <p className="pt-1 text-xs font-semibold text-zinc-600">
                   {category ? categoryLabel(category) : "No category"}
                 </p>
               )}
               {category && indices.length === 0 && (
-                <p className="text-xs text-gray-400">No options</p>
+                <p className="text-xs text-zinc-400">No options</p>
               )}
               {indices.map((index, position) => {
                 const option = options[index];
                 return (
                   <div key={index} className="flex items-center space-x-2">
                     {field.kind === "select" && (
-                      <label className="flex items-center space-x-1 text-xs text-gray-600">
+                      <label className="flex items-center space-x-1 text-xs text-zinc-600">
                         <input
                           type="radio"
                           name={`${field.id}-default`}
@@ -213,7 +213,7 @@ export function FixedOptionsEditor({
                       </label>
                     )}
                     {field.kind === "multiselect" && (
-                      <label className="flex items-center space-x-1 text-xs text-gray-600">
+                      <label className="flex items-center space-x-1 text-xs text-zinc-600">
                         <input
                           type="checkbox"
                           checked={
@@ -238,7 +238,7 @@ export function FixedOptionsEditor({
                       value={option.label}
                       onChange={(label) => updateOption(index, { label })}
                       containerClassName="flex-1"
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                       placeholder="Option label"
                     />
                     <input
@@ -248,10 +248,10 @@ export function FixedOptionsEditor({
                         updateOption(index, { value: e.target.value })
                       }
                       className={cn(
-                        "w-20 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
+                        "w-20 px-2 py-1 text-xs border rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500",
                         duplicates.has(option.value)
                           ? "border-red-500"
-                          : "border-gray-300",
+                          : "border-zinc-300",
                       )}
                       placeholder="Value"
                     />
@@ -268,7 +268,7 @@ export function FixedOptionsEditor({
                         onChange={(event) =>
                           assignCategory(index, event.target.value || undefined)
                         }
-                        className="w-28 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-28 px-1 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="">No category</option>
                         {option.category !== undefined &&
@@ -289,7 +289,7 @@ export function FixedOptionsEditor({
                         type="button"
                         onClick={() => moveOption(index, indices[position - 1])}
                         disabled={position === 0}
-                        className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                        className="px-1 py-0.5 text-xs rounded-md border border-zinc-300 text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-100"
                         aria-label="Move option up"
                         title="Move up"
                       >
@@ -299,7 +299,7 @@ export function FixedOptionsEditor({
                         type="button"
                         onClick={() => moveOption(index, indices[position + 1])}
                         disabled={position === indices.length - 1}
-                        className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                        className="px-1 py-0.5 text-xs rounded-md border border-zinc-300 text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-100"
                         aria-label="Move option down"
                         title="Move down"
                       >
@@ -325,7 +325,7 @@ export function FixedOptionsEditor({
             <button
               type="button"
               onClick={() => setDefaultValue(undefined)}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-zinc-500 hover:text-zinc-700"
             >
               Clear default
             </button>
@@ -336,7 +336,7 @@ export function FixedOptionsEditor({
             <button
               type="button"
               onClick={() => onUpdate({ defaultValue: null })}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-zinc-500 hover:text-zinc-700"
             >
               Clear defaults
             </button>

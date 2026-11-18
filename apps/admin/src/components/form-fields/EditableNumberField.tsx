@@ -29,7 +29,7 @@ export function EditableNumberField({
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Min Value</label>
+          <label className="block text-xs text-zinc-700 mb-1">Min Value</label>
           <input
             type="number"
             value={field.min ?? ""}
@@ -38,12 +38,12 @@ export function EditableNumberField({
                 min: e.target.value ? parseFloat(e.target.value) : undefined,
               })
             }
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder="Min"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Max Value</label>
+          <label className="block text-xs text-zinc-700 mb-1">Max Value</label>
           <input
             type="number"
             value={field.max ?? ""}
@@ -52,12 +52,12 @@ export function EditableNumberField({
                 max: e.target.value ? parseFloat(e.target.value) : undefined,
               })
             }
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder="Max"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Step</label>
+          <label className="block text-xs text-zinc-700 mb-1">Step</label>
           <input
             type="number"
             value={field.step ?? ""}
@@ -66,7 +66,7 @@ export function EditableNumberField({
                 step: e.target.value ? parseFloat(e.target.value) : undefined,
               })
             }
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             placeholder="1"
             step="any"
           />
@@ -87,11 +87,11 @@ export function EditableNumberField({
               step: e.target.checked ? undefined : field.step,
             })
           }
-          className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="h-3.5 w-3.5 rounded-md border-zinc-300 text-blue-600 focus:ring-blue-500"
         />
         <label
           htmlFor={`${field.id}-allow-decimals`}
-          className="text-xs text-gray-700"
+          className="text-xs text-zinc-700"
         >
           Allow decimals
         </label>
@@ -99,7 +99,7 @@ export function EditableNumberField({
 
       {field.allowDecimals && (
         <div className="mt-1">
-          <label className="block text-xs text-gray-700 mb-1">
+          <label className="block text-xs text-zinc-700 mb-1">
             Decimal places
           </label>
           <input
@@ -115,7 +115,7 @@ export function EditableNumberField({
                   : Math.max(1, Math.min(10, val)),
               });
             }}
-            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-24 px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
       )}

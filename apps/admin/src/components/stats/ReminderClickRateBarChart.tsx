@@ -68,13 +68,13 @@ const ReminderClickRateBarChart: React.FC<{
   const { title, emptyMessage, fill } = reminderChannelStyles[channel];
 
   return (
-    <div className="rounded border border-gray-200 bg-white">
-      <div className="px-3 py-2 border-b border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+    <div className="rounded-md border border-zinc-200 bg-white">
+      <div className="px-3 py-2 border-b border-zinc-200">
+        <h4 className="text-sm font-semibold text-zinc-900">{title}</h4>
       </div>
       <div className="p-3">
         {!geometry ? (
-          <p className="text-sm text-gray-600">{emptyMessage}</p>
+          <p className="text-sm text-zinc-600">{emptyMessage}</p>
         ) : (
           <div className="overflow-x-auto">
             <svg
@@ -98,7 +98,7 @@ const ReminderClickRateBarChart: React.FC<{
                       y={geometry.yScale(tick)}
                       textAnchor="end"
                       dominantBaseline="middle"
-                      className="fill-gray-500 text-base"
+                      className="fill-zinc-500 text-base"
                     >
                       {Math.round(tick * 100)}%
                     </text>
@@ -118,7 +118,7 @@ const ReminderClickRateBarChart: React.FC<{
                       x={x + geometry.xScale.bandwidth() / 2}
                       y={geometry.height - geometry.margin.bottom + 24}
                       textAnchor="middle"
-                      className="fill-gray-600 text-xs"
+                      className="fill-zinc-600 text-xs"
                     >
                       {label}
                     </text>

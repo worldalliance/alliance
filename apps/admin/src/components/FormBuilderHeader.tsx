@@ -97,7 +97,7 @@ export function FormBuilderHeader({
   }, [onSave, hasUnsavedChanges, isLoading, isSaving]);
 
   return (
-    <div className="bg-white border-b border-gray-200 p-4">
+    <div className="bg-white border-b border-zinc-200 p-4">
       <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
         {formId !== undefined && (
           <div className="mr-auto">
@@ -127,7 +127,7 @@ export function FormBuilderHeader({
             <FormJsonButton
               label="Edit form JSON"
               onClick={onEditJson}
-              className="h-8 w-8 rounded-md hover:bg-gray-100"
+              className="h-8 w-8 rounded-md hover:bg-zinc-100"
             />
           )}
           {activeEditor === "form" && (
@@ -153,7 +153,7 @@ export function FormBuilderHeader({
           </Button>
         </div>
         {onActiveEditorChange && (
-          <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
+          <div className="inline-flex rounded-md bg-zinc-200 p-0.5 text-sm font-medium text-zinc-600">
             {EDITOR_TABS.map(({ tab, label }) => (
               <button
                 key={tab}
@@ -161,14 +161,14 @@ export function FormBuilderHeader({
                 className={cn(
                   "px-3 py-2 rounded-md text-nowrap",
                   activeEditor === tab
-                    ? "bg-white shadow text-gray-900"
-                    : "text-gray-600",
+                    ? "bg-white shadow text-zinc-900"
+                    : "text-zinc-600",
                 )}
                 onClick={() => onActiveEditorChange(tab)}
               >
                 {label}
                 {tab === "variables" && (schema.variables?.length ?? 0) > 0 && (
-                  <span className="ml-1.5 rounded-full bg-gray-300 px-1.5 py-0.5 text-xs text-gray-700">
+                  <span className="ml-1.5 rounded-full bg-zinc-300 px-1.5 py-0.5 text-xs text-zinc-700">
                     {schema.variables?.length}
                   </span>
                 )}
@@ -205,7 +205,7 @@ export function FormBuilderBanners({
           <button
             type="button"
             onClick={loadFailure.onRetry}
-            className="ml-2 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium hover:bg-red-50"
+            className="ml-2 rounded-md border border-red-300 px-1.5 py-0.5 text-xs font-medium hover:bg-red-50"
           >
             {loadFailure.retryLabel}
           </button>

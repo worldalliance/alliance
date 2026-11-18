@@ -50,13 +50,13 @@ function CopyableReference({ name }: { name: string }) {
           }
         });
       }}
-      className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 hover:bg-gray-100"
+      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 font-mono text-xs text-zinc-700 hover:bg-zinc-100"
     >
       {reference}
       {copied ? (
         <Check size={12} className="text-green-600" />
       ) : (
-        <Copy size={12} className="text-gray-400" />
+        <Copy size={12} className="text-zinc-400" />
       )}
     </button>
   );
@@ -114,10 +114,10 @@ function VariableCard({
   }, [variable.name, allVariables]);
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4 space-y-4">
+    <div className="rounded-lg border border-zinc-200 p-4 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 space-y-1">
-          <label className="block text-xs font-medium text-gray-500">
+          <label className="block text-xs font-medium text-zinc-500">
             Name
           </label>
           <div className="flex items-center gap-2 flex-wrap">
@@ -140,7 +140,7 @@ function VariableCard({
           {nameError ? (
             <p className="text-xs text-red-600">{nameError}</p>
           ) : (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               Letters, numbers, <span className="font-mono">-</span> and{" "}
               <span className="font-mono">_</span> only.
             </p>
@@ -151,7 +151,7 @@ function VariableCard({
           onClick={onRemove}
           title="Delete variable"
           aria-label={`Delete variable ${variable.name}`}
-          className="p-1 text-gray-400 hover:text-red-500"
+          className="p-1 text-zinc-400 hover:text-red-500"
         >
           <X size={16} />
         </button>
@@ -222,15 +222,15 @@ export function VariableBuilder({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mx-auto w-full max-w-4xl">
+      <div className="bg-white rounded-lg border border-zinc-200 p-6 mx-auto w-full max-w-4xl">
         <div className="mb-6 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">Variables</h2>
+            <h2 className="text-xl font-semibold text-zinc-900">Variables</h2>
             <Button onClick={addVariable} color={ButtonColor.Blue}>
               Add variable
             </Button>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-zinc-600">
             Compute a value from the answers on this form, the member&apos;s
             answers to other forms, or how many members chose each option of a
             form&apos;s question, then write it into any text or field label as{" "}
@@ -248,7 +248,7 @@ export function VariableBuilder({
         <SharedOutputSourceWarning schema={schema} />
 
         {unresolvedReferences.length > 0 && (
-          <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 space-y-1">
+          <div className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-3 space-y-1">
             <p className="text-sm font-medium text-amber-900">
               These references don&apos;t match any variable, and will show as
               written to respondents:
@@ -267,7 +267,7 @@ export function VariableBuilder({
         )}
 
         {variables.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-zinc-500">
             No variables yet. Add one to reference a computed value in your
             form&apos;s text.
           </p>

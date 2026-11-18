@@ -18,7 +18,7 @@ export function NumberSample({
   onChange: (next: number) => void;
 }) {
   return (
-    <label className="flex flex-1 items-center gap-2 text-xs text-gray-600">
+    <label className="flex flex-1 items-center gap-2 text-xs text-zinc-600">
       <span className="shrink-0">Preview with</span>
       <input
         type="number"

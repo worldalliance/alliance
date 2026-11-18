@@ -79,7 +79,7 @@ export function EditableChatTranscriptBlock({
                 onChange={(leftName) =>
                   handleUpdate({ leftName: leftName || undefined })
                 }
-                className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 text-zinc-900 border border-zinc-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 placeholder="Left user name"
               />
               <VariableTextField
@@ -87,7 +87,7 @@ export function EditableChatTranscriptBlock({
                 onChange={(rightName) =>
                   handleUpdate({ rightName: rightName || undefined })
                 }
-                className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 text-zinc-900 border border-zinc-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 placeholder="Right user name"
               />
               <input
@@ -100,7 +100,7 @@ export function EditableChatTranscriptBlock({
                     size: parsed > 0 ? parsed : undefined,
                   });
                 }}
-                className="w-36 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-36 text-zinc-900 border border-zinc-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 placeholder="Size"
                 title="Card height cap. The transcript scrolls beyond it. Leave empty for no limit."
               />
@@ -129,7 +129,7 @@ export function EditableChatTranscriptBlock({
                   value={message.text}
                   onChange={(text) => updateMessage(index, { text })}
                   minRows={1}
-                  className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="flex-1 text-zinc-900 border border-zinc-300 rounded-md px-3 py-1.5 text-sm resize-none focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                   placeholder="Markdown message text"
                 />
                 <button

@@ -30,18 +30,18 @@ export function EditableUserLocationBlock({
         <div className="space-y-3">
           <div className="font-medium">User Location Block</div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Title
             </label>
             <VariableTextField
               value={activeBlock.title ?? ""}
               onChange={(title) => handleUpdate({ title: title || undefined })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               placeholder="Your location"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Empty state text
             </label>
             <VariableTextField
@@ -49,11 +49,11 @@ export function EditableUserLocationBlock({
               onChange={(emptyText) =>
                 handleUpdate({ emptyText: emptyText || undefined })
               }
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               placeholder="No location set"
             />
           </div>
-          <div className="rounded-md border border-gray-200 bg-zinc-50 px-3 py-2">
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
             {activeBlock.title ? (
               <p className="text-xs text-zinc-500">{activeBlock.title}</p>
             ) : null}

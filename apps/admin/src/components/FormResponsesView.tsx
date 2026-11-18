@@ -368,8 +368,8 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-zinc-50">
+      <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
         <FormResponsesHeader
           title={title}
           responses={responses}

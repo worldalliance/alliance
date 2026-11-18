@@ -24,11 +24,7 @@ type ActionAdmin = ReturnType<typeof useActionAdmin>;
 export function useActionCommands(params: {
   admin: Pick<
     ActionAdmin,
-    | "action"
-    | "createAction"
-    | "removeAction"
-    | "archiveAction"
-    | "unarchiveAction"
+    "action" | "createAction" | "archiveAction" | "unarchiveAction"
   >;
   actionId: number | null;
   form: CreateActionDto;
@@ -37,20 +33,13 @@ export function useActionCommands(params: {
   setError: (error: string | null) => void;
 }) {
   const {
-    admin: {
-      action,
-      createAction,
-      removeAction,
-      archiveAction,
-      unarchiveAction,
-    },
+    admin: { action, createAction, archiveAction, unarchiveAction },
     actionId,
     form,
     imageKey,
     imageUploading,
     setError,
   } = params;
-  const navigate = useNavigate();
   const { createForm } = useCreateFormAdmin();
   const { fetchLatest } = useAdminTaskFormActions();
   const handleActionCreated = useNavigateToCreatedAction();
@@ -110,18 +99,16 @@ export function useActionCommands(params: {
     setError,
   ]);
 
-  const handleActionDeleted = useCallback(() => {
-    navigate("/actions");
-  }, [navigate]);
-
   const { confirm } = useToast();
 
   const handleArchive = useCallback(async () => {
     const confirmed =
       action?.archived ||
       (await confirm({
-        title: "Confirm Archive",
-        message: "Are you sure you want to archive this action?",
+        title: "Archive this action?",
+        message:
+          "Members stop seeing this action. It also leaves the actions list unless archived actions are shown.",
+        confirmLabel: "Archive",
       }));
     if (confirmed && actionId) {
       const archived = action?.archived;
@@ -142,23 +129,5 @@ export function useActionCommands(params: {
     setError,
   ]);
 
-  const handleDelete = async () => {
-    if (!actionId) return;
-
-    if (
-      window.confirm(
-        "Are you sure you want to delete this action? This cannot be undone.",
-      )
-    ) {
-      const result = await R.fromPromise(removeAction());
-      if (!result.ok) {
-        setError("Failed to delete action");
-        console.error(result.error);
-        return;
-      }
-      handleActionDeleted();
-    }
-  };
-
-  return { handleDuplicate, handleArchive, handleDelete };
+  return { handleDuplicate, handleArchive };
 }

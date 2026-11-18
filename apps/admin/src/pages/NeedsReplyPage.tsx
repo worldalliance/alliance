@@ -136,7 +136,7 @@ const NeedsReplyPage = () => {
             No texts are waiting for a reply.
           </p>
         ) : (
-          <ul className="divide-y divide-zinc-200 border border-zinc-200 rounded">
+          <ul className="divide-y divide-zinc-200 border border-zinc-200 rounded-md">
             {rows.map(({ member, left }) => (
               <li key={member.userId}>
                 <Link

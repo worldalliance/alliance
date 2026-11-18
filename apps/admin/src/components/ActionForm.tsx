@@ -6,6 +6,7 @@ import { ActionSuiteDto, TagDto } from "@alliance/shared/client";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo } from "react";
+import { Link } from "react-router";
 import {
   ActionFieldSection,
   actionFieldDefs,
@@ -34,7 +35,6 @@ interface ActionFormProps extends ActionFieldInputs {
   saving: boolean;
   saveDisabled?: boolean;
   onCancel?: () => void;
-  onDelete?: () => void;
   availableTags?: TagDto[];
   tagsLoading: boolean;
   tagsError: boolean;
@@ -75,7 +75,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onCancelImageUpload,
   isNew,
   onCancel,
-  //   onDelete,
   baseUrl,
   availableTags = [],
   tagsLoading,
@@ -151,7 +150,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
             onChange={onAuthorsChange}
             loading={usersLoading}
             loadFailed={usersError}
-            label="Action Authors"
+            label="Action authors"
           />
           <ActionReviewersEditor
             reviewers={reviewers}
@@ -164,13 +163,13 @@ const ActionForm: React.FC<ActionFormProps> = ({
       <FormSection title="Settings">
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-gray-700">Priority</p>
-            <a
-              href="/priority"
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <p className="text-sm font-medium text-zinc-700">Priority</p>
+            <Link
+              to="/priority"
+              className="inline-flex items-center px-3 py-2 border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 bg-white hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               Manage priority
-            </a>
+            </Link>
           </div>
           <ActionFormFields fields={settingsFields} {...fieldInputs} />
         </div>
@@ -242,25 +241,15 @@ const ActionForm: React.FC<ActionFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium"
+            className="px-4 py-2 border border-zinc-300 rounded-md text-zinc-700 hover:bg-zinc-50 text-sm font-medium"
             disabled={saving}
           >
             Cancel
           </button>
         )}
-        {/* {!isNew && onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded-md hover:bg-red-200 text-sm font-medium"
-            disabled={saving}
-          >
-            Delete
-          </button>
-        )} */}
         <button
           type="submit"
-          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
+          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
           disabled={saving || saveDisabled || imageUploading}
         >
           {imageUploading
@@ -270,8 +259,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
                 ? "Creating..."
                 : "Saving..."
               : isNew
-                ? "Create Action"
-                : "Save Changes"}
+                ? "Create action"
+                : "Save changes"}
         </button>
       </div>
     </form>

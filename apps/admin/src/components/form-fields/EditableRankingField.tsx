@@ -88,12 +88,12 @@ export function EditableRankingField({
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-medium text-gray-700">
+          <label className="block text-xs font-medium text-zinc-700">
             Options
           </label>
           <button
             onClick={addOption}
-            className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-2 py-1 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600"
             type="button"
           >
             Add Option
@@ -108,7 +108,7 @@ export function EditableRankingField({
                 value={option.label}
                 onChange={(label) => updateOption(index, { label })}
                 containerClassName="flex-1"
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+                className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 resize-y"
                 placeholder="Option label (markdown)"
               />
               <input
@@ -116,10 +116,10 @@ export function EditableRankingField({
                 value={option.value}
                 onChange={(e) => updateOption(index, { value: e.target.value })}
                 className={cn(
-                  "w-20 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
+                  "w-20 px-2 py-1 text-xs border rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500",
                   duplicates.has(option.value)
                     ? "border-red-500"
-                    : "border-gray-300",
+                    : "border-zinc-300",
                 )}
                 placeholder="Value"
               />
@@ -128,7 +128,7 @@ export function EditableRankingField({
                   type="button"
                   onClick={() => moveOption(index, index - 1)}
                   disabled={index === 0}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="px-1 py-0.5 text-xs rounded-md border border-zinc-300 text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-100"
                   aria-label="Move option up"
                   title="Move up"
                 >
@@ -138,7 +138,7 @@ export function EditableRankingField({
                   type="button"
                   onClick={() => moveOption(index, index + 1)}
                   disabled={index === field.options.length - 1}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="px-1 py-0.5 text-xs rounded-md border border-zinc-300 text-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-100"
                   aria-label="Move option down"
                   title="Move down"
                 >
@@ -159,7 +159,7 @@ export function EditableRankingField({
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Number of items to rank
         </label>
         <input
@@ -169,9 +169,9 @@ export function EditableRankingField({
           value={field.numToRank ?? ""}
           onChange={(event) => handleNumToRankChange(event.target.value)}
           placeholder="All options"
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         />
-        <p className="mt-1 text-xs text-gray-500">Defaults to all options.</p>
+        <p className="mt-1 text-xs text-zinc-500">Defaults to all options.</p>
       </div>
     </FieldWrapper>
   );

@@ -160,7 +160,7 @@ export function CanvasList({
         }
       >
         {list.fields.length === 0 && (
-          <p className="text-sm text-gray-500">No fields in each card yet.</p>
+          <p className="text-sm text-zinc-500">No fields in each card yet.</p>
         )}
         {list.fields.map((sub, index) => {
           const selected =
@@ -258,7 +258,7 @@ export function CanvasAccordion({
   if (block.sections.length === 0) {
     return (
       <CanvasContent interactive={false}>
-        <p className="text-sm text-gray-500">This accordion has no sections.</p>
+        <p className="text-sm text-zinc-500">This accordion has no sections.</p>
       </CanvasContent>
     );
   }
@@ -315,12 +315,12 @@ export function CanvasAccordion({
                   onKeyDown={
                     titleInline ? startOnEnter(titleInline) : undefined
                   }
-                  className="min-w-0 flex-1 rounded-md py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="min-w-0 flex-1 rounded-md py-3 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   <span
                     className={cn(
                       ACCORDION_TITLE,
-                      !section.title && "text-gray-400",
+                      !section.title && "text-zinc-400",
                     )}
                   >
                     {sectionTitle(section)}
@@ -343,7 +343,7 @@ export function CanvasAccordion({
                   event.stopPropagation();
                   setSectionOpen({ key, isOpen: !isOpen });
                 }}
-                className="group shrink-0 rounded p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="group shrink-0 rounded-md p-1 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <AccordionChevron
                   className={cn(
@@ -356,7 +356,7 @@ export function CanvasAccordion({
             {isOpen && (
               <div className={ACCORDION_CONTENTS}>
                 {section.blocks.length === 0 && (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-zinc-500">
                     This section is empty.
                   </p>
                 )}

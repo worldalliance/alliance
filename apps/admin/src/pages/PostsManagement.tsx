@@ -32,7 +32,7 @@ const SettingToggle: React.FC<{
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-zinc-300"
+        className="w-4 h-4 rounded-md border-zinc-300"
       />
       <span className="text-sm font-medium">{label}</span>
     </label>
@@ -201,7 +201,7 @@ const PostsManagementPage: React.FC = () => {
     <div className="bg-white min-h-screen">
       <div className="p-6 pt-10 flex flex-col gap-6 max-w-5xl">
         <div>
-          <h1 className="text-2xl font-semibold">Posts Management</h1>
+          <h1 className="text-2xl font-semibold">Posts management</h1>
           <p className="text-sm text-zinc-500">
             Configure authors, Q&A mode, and assign experts to forum posts
           </p>
@@ -219,7 +219,7 @@ const PostsManagementPage: React.FC = () => {
                       type="button"
                       onClick={() => handleSelectPost(post)}
                       className={cn(
-                        "text-left border rounded px-3 py-2",
+                        "text-left border rounded-md px-3 py-2",
                         selectedPost?.id === post.id
                           ? "border-blue bg-blue/10"
                           : "border-zinc-200 hover:bg-zinc-50",
@@ -234,17 +234,17 @@ const PostsManagementPage: React.FC = () => {
                         </span>
                         {post.qaMode && (
                           <span className="text-xs text-orange-600 font-medium">
-                            Q&A Mode Active
+                            Q&A mode active
                           </span>
                         )}
                         {post.notifyForReplies && (
                           <span className="text-xs text-purple-600 font-medium">
-                            Reply Notifications On
+                            Reply notifications on
                           </span>
                         )}
                         {post.showClusterTags && (
                           <span className="text-xs text-teal-600 font-medium">
-                            Cluster Tags On
+                            Cluster tags on
                           </span>
                         )}
                         {(post.authorIds?.length ?? 0) > 1 && (
@@ -269,7 +269,7 @@ const PostsManagementPage: React.FC = () => {
 
           <Card style={CardStyle.White}>
             <div className="flex flex-col gap-4">
-              <h2 className="font-semibold text-lg">Post Settings</h2>
+              <h2 className="font-semibold text-lg">Post settings</h2>
               {selectedPost ? (
                 <>
                   <div className="border-b pb-4">
@@ -293,7 +293,7 @@ const PostsManagementPage: React.FC = () => {
                   </p>
 
                   <SettingToggle
-                    label="Enable Q&A Mode"
+                    label="Enable Q&A mode"
                     description="Designated experts get a badge on their replies, and readers can filter comments by answered/unanswered."
                     checked={qaMode}
                     onChange={setQaMode}
@@ -302,7 +302,7 @@ const PostsManagementPage: React.FC = () => {
                     <div className="flex flex-col gap-4 border-l-2 border-zinc-200 pl-4">
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
-                          Expert Badge Label
+                          Expert badge label
                         </label>
                         <input
                           type="text"
@@ -310,7 +310,7 @@ const PostsManagementPage: React.FC = () => {
                           value={expertLabel}
                           onChange={(e) => setExpertLabel(e.target.value)}
                           placeholder="Expert"
-                          className="w-full border border-zinc-300 rounded px-3 py-2 text-sm"
+                          className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
                         />
                         <p className="text-xs text-zinc-500 mt-1">
                           Custom badge label (e.g., &quot;AMA Guest&quot;,
@@ -325,20 +325,20 @@ const PostsManagementPage: React.FC = () => {
                         onChange={setExpertSelection}
                         loading={usersLoading}
                         loadFailed={usersLoadFailed}
-                        label="Designated Experts"
+                        label="Designated experts"
                       />
                     </div>
                   )}
 
                   <SettingToggle
-                    label="Notify for Replies"
+                    label="Notify for replies"
                     description="Commenters receive text/email notifications when someone replies to their comment."
                     checked={notifyForReplies}
                     onChange={setNotifyForReplies}
                   />
 
                   <SettingToggle
-                    label="Show Cluster Tags"
+                    label="Show cluster tags"
                     description="Each author's cluster name appears as a tag next to their name on this post. Tags are green when the viewer shares the author's cluster, grey otherwise."
                     checked={showClusterTags}
                     onChange={setShowClusterTags}
@@ -346,7 +346,7 @@ const PostsManagementPage: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">
-                      Comment Tags
+                      Comment tags
                     </label>
                     <div className="flex flex-col gap-2">
                       {tagDrafts.map((tag, index) => (
@@ -367,7 +367,7 @@ const PostsManagementPage: React.FC = () => {
                               )
                             }
                             placeholder="Tag name"
-                            className="flex-1 border border-zinc-300 rounded px-3 py-2 text-sm"
+                            className="flex-1 border border-zinc-300 rounded-md px-3 py-2 text-sm"
                           />
                           <button
                             type="button"
@@ -424,7 +424,7 @@ const PostsManagementPage: React.FC = () => {
                     disabled={updateSettings.isPending}
                     className="self-start"
                   >
-                    {updateSettings.isPending ? "Saving..." : "Save Changes"}
+                    {updateSettings.isPending ? "Saving..." : "Save changes"}
                   </Button>
                 </>
               ) : (

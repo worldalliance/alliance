@@ -69,7 +69,7 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
     <div className="px-2">
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Loading responses...</p>
+          <p className="text-zinc-500">Loading responses...</p>
         </div>
       ) : error ? (
         <div className="flex items-center justify-center py-12">
@@ -77,7 +77,7 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
         </div>
       ) : filteredTotal === 0 ? (
         <Card style={CardStyle.White} className="flex items-center gap-3">
-          <p className="text-gray-600">{emptyStateMessage}</p>
+          <p className="text-zinc-600">{emptyStateMessage}</p>
           {filterActive && (
             <Button
               onClick={onClearFilter}
@@ -97,7 +97,7 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
                   (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
                   form.schema;
                 return (
-                  <div className="bg-white p-6 border border-gray-200 rounded-lg">
+                  <div className="bg-white p-6 border border-zinc-200 rounded-lg">
                     <FormRenderer
                       id={currentResponse?.formId ?? form.id}
                       formSnapshotId={

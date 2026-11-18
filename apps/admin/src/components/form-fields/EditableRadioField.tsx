@@ -87,12 +87,12 @@ export function EditableRadioField({
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-medium text-gray-700">
+          <label className="block text-xs font-medium text-zinc-700">
             Options
           </label>
           <button
             onClick={addOption}
-            className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-2 py-1 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600"
             type="button"
           >
             Add Option
@@ -101,7 +101,7 @@ export function EditableRadioField({
         <div className="space-y-2 max-h-32 overflow-y-auto">
           {field.options?.map((option, index) => (
             <div key={index} className="flex items-center space-x-2">
-              <label className="flex items-center space-x-1 text-xs text-gray-600">
+              <label className="flex items-center space-x-1 text-xs text-zinc-600">
                 <input
                   type="radio"
                   name={`${field.id}-default`}
@@ -115,7 +115,7 @@ export function EditableRadioField({
                 value={option.label}
                 onChange={(label) => updateOption(index, { label })}
                 containerClassName="flex-1"
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 placeholder="Option label"
               />
               <input
@@ -123,10 +123,10 @@ export function EditableRadioField({
                 value={option.value}
                 onChange={(e) => updateOption(index, { value: e.target.value })}
                 className={cn(
-                  "w-20 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
+                  "w-20 px-2 py-1 text-xs border rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500",
                   duplicates.has(option.value)
                     ? "border-red-500"
-                    : "border-gray-300",
+                    : "border-zinc-300",
                 )}
                 placeholder="Value"
               />
@@ -145,7 +145,7 @@ export function EditableRadioField({
           <button
             type="button"
             onClick={() => setDefaultValue(undefined)}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className="text-xs text-zinc-500 hover:text-zinc-700"
           >
             Clear default
           </button>

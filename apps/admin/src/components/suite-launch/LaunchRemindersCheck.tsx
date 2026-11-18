@@ -117,7 +117,7 @@ const LaunchRemindersCheck = ({
                     <span>
                       {window.name}
                       {!!nightCounts.get(window) && (
-                        <span className="ml-2 text-xs text-yellow-700">
+                        <span className="ml-2 text-xs text-amber-700">
                           Reaches {nightCounts.get(window)} members between 10pm
                           and 8am their time
                         </span>

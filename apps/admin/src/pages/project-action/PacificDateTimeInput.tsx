@@ -21,7 +21,7 @@ const PacificDateTimeInput = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-fit rounded border border-gray-300 px-2 py-1.5 disabled:bg-zinc-50 disabled:text-zinc-500"
+        className="w-fit rounded-md border border-zinc-300 px-2 py-1.5 disabled:bg-zinc-50 disabled:text-zinc-500"
       />
     </div>
   );

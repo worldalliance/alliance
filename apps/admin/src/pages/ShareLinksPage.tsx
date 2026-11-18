@@ -156,7 +156,7 @@ const ShareLinksPage: React.FC = () => {
                 Owner kind
               </label>
               <select
-                className="border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white"
                 value={ownerKind}
                 onChange={(event) =>
                   setOwnerKind(event.target.value as OwnerKind)

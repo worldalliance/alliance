@@ -274,12 +274,12 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded bg-white px-2 py-1 text-[11px] text-gray-700">
+            <span className="rounded-md bg-white px-2 py-1 text-xs text-zinc-700">
               {paginationLabel}
             </span>
             <button
               type="button"
-              className="text-xs text-gray-700 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
+              className="text-xs text-zinc-700 border border-zinc-200 rounded-md px-2 py-1 hover:border-zinc-300 disabled:opacity-50"
               onClick={() => handleCycleUser("prev")}
               disabled={totalManualTargets === 0}
             >
@@ -287,7 +287,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             </button>
             <button
               type="button"
-              className="text-xs text-gray-700 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
+              className="text-xs text-zinc-700 border border-zinc-200 rounded-md px-2 py-1 hover:border-zinc-300 disabled:opacity-50"
               onClick={() => handleCycleUser("next")}
               disabled={totalManualTargets === 0}
             >
@@ -307,7 +307,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         content={
           <div className="space-y-3">
             {showConditional && perUserOptions && (
-              <div className="rounded-md border border-gray-200 py-2 text-sm">
+              <div className="rounded-md border border-zinc-200 py-2 text-sm">
                 {perUserOptions}
               </div>
             )}
@@ -335,7 +335,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         "group relative border rounded-lg p-4 pl-8 pt-8 transition-all",
         isDragging
           ? "border-blue-400 shadow-lg opacity-50"
-          : "border-gray-200 hover:border-gray-300",
+          : "border-zinc-200 hover:border-zinc-300",
       )}
     >
       {onDragStart && (
@@ -347,7 +347,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           title="Drag to reorder"
         >
           <div
-            className="text-gray-400 hover:text-gray-600 p-1"
+            className="text-zinc-400 hover:text-zinc-600 p-1"
             style={{ userSelect: "none" }}
           >
             <svg
@@ -369,7 +369,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       )}
       {block?.id && (
         <span
-          className="absolute top-2 left-8 font-mono text-[10px] text-gray-400 px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded select-all"
+          className="absolute top-2 left-8 font-mono text-xs text-zinc-400 px-1.5 py-0.5 bg-zinc-50 border border-zinc-200 rounded-md select-all"
           title="Block id"
         >
           {block.id}
@@ -381,7 +381,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             <button
               type="button"
               onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="text-gray-500 hover:text-gray-700 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+              className="text-zinc-500 hover:text-zinc-700 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
             >
@@ -399,8 +399,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
               </svg>
             </button>
             {isMenuOpen && (
-              <div className="absolute right-0 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg z-20">
-                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+              <div className="absolute right-0 mt-1 w-64 rounded-lg border border-zinc-200 bg-white py-2 text-sm shadow-lg z-20">
+                <label className="flex cursor-pointer items-center px-3 py-1.5 text-zinc-700">
                   <input
                     type="checkbox"
                     className="mr-2"
@@ -412,7 +412,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
                   Use conditional visibility
                 </label>
                 {perUserOptions && (
-                  <div className="mt-2 border-t border-gray-100 pt-2">
+                  <div className="mt-2 border-t border-zinc-100 pt-2">
                     {perUserOptions}
                   </div>
                 )}
@@ -422,7 +422,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         )}
         <button
           onClick={onRemove}
-          className="text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50"
+          className="text-zinc-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50"
           title="Remove field"
         >
           ×
@@ -431,7 +431,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       <div className={cn(showConditionalControls && "space-y-3")}>
         {contentBody}
         {showConditionalControls && (
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-zinc-200 pt-4">
             <ConditionalVisibility
               field={effectiveBlock ?? block!}
               previousFields={previousFields || []}

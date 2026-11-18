@@ -57,7 +57,7 @@ export const TagEditor: React.FC<{
   <select
     value={value.tagId}
     onChange={(e) => onChange({ ...value, tagId: e.target.value })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    className="w-full px-2 py-1 text-sm bg-white border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
   >
     <option value="">Select tag...</option>
     {value.tagId && !availableTags.some((tag) => tag.id === value.tagId) && (
@@ -108,7 +108,7 @@ export const ActionSelectEditor: React.FC<{
     value={value.actionId || ""}
     disabled={actionsLoading}
     onChange={(e) => onChange({ ...value, actionId: parseInt(e.target.value) })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    className="w-full px-2 py-1 text-sm bg-white border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
   >
     <option value="">
       {actionsLoading
@@ -168,7 +168,7 @@ const FormFieldEditor: React.FC<{
             responseEqualTo: undefined,
           })
         }
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
       >
         <option value="">Select form...</option>
         {availableForms.map((f) => (
@@ -186,7 +186,7 @@ const FormFieldEditor: React.FC<{
             responseEqualTo: undefined,
           })
         }
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
         disabled={!value.formId}
       >
         <option value="">Select field...</option>
@@ -210,7 +210,7 @@ const FormFieldEditor: React.FC<{
                 responseEqualTo: e.target.value || undefined,
               })
             }
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
           >
             <option value="">Response equals (optional)...</option>
             {value.responseEqualTo &&
@@ -237,7 +237,7 @@ const FormFieldEditor: React.FC<{
                 responseEqualTo: e.target.value || undefined,
               })
             }
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500"
           />
         )
       ) : null}
@@ -254,7 +254,7 @@ const FormFieldEditor: React.FC<{
                 : value.responseEqualTo,
             })
           }
-          className="h-4 w-4 rounded border-gray-300"
+          className="h-4 w-4 rounded-md border-zinc-300"
         />
         Any response (ignore value)
       </label>
@@ -303,27 +303,27 @@ export const LeafConditionEditor: React.FC<{
       return <FormFieldEditor value={expr} onChange={onChange} />;
     case "GroupLead":
       return (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-zinc-500 italic">
           All community group leaders
         </p>
       );
     case "USMember":
       return (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-zinc-500 italic">
           City in the US, or time zone if no city is set.
         </p>
       );
     case "NonUSMember":
       return (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-zinc-500 italic">
           City outside the US, or time zone if no city is set.
         </p>
       );
     case "AllMembers":
-      return <p className="text-sm text-gray-500 italic">Every user</p>;
+      return <p className="text-sm text-zinc-500 italic">Every user</p>;
     case "Staff":
       return (
-        <p className="text-sm text-gray-500 italic">Users marked as staff</p>
+        <p className="text-sm text-zinc-500 italic">Users marked as staff</p>
       );
   }
 };

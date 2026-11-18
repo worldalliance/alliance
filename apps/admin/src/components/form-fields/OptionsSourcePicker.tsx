@@ -78,10 +78,10 @@ export function OptionsSourcePicker({
       aria-pressed={params.selected}
       onClick={params.selected ? undefined : params.onClick}
       className={cn(
-        "flex items-center gap-1 rounded px-2 py-1 text-xs",
+        "flex items-center gap-1 rounded-md px-2 py-1 text-xs",
         params.selected
-          ? "bg-white font-medium text-gray-900 shadow-sm"
-          : "text-gray-500 hover:text-gray-800",
+          ? "bg-white font-medium text-zinc-900 shadow-sm"
+          : "text-zinc-500 hover:text-zinc-800",
       )}
     >
       <params.icon size={12} />
@@ -91,13 +91,13 @@ export function OptionsSourcePicker({
 
   return (
     <div className="space-y-1">
-      <p id={captionId} className="text-xs font-medium text-gray-700">
+      <p id={captionId} className="text-xs font-medium text-zinc-700">
         Options from
       </p>
       <div
         role="group"
         aria-labelledby={captionId}
-        className="inline-flex gap-0.5 rounded bg-gray-100 p-0.5"
+        className="inline-flex gap-0.5 rounded-md bg-zinc-100 p-0.5"
       >
         {button({
           selected: !usesFormula,

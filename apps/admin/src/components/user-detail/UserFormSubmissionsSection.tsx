@@ -22,7 +22,7 @@ export default function UserFormSubmissionsSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Invited Submissions ({sortedFormResponses.length})
       </h2>
@@ -32,7 +32,7 @@ export default function UserFormSubmissionsSection({
           {sortedFormResponses.map((response) => (
             <div
               key={response.id}
-              className="text-xs p-2 rounded bg-zinc-50 border border-zinc-100"
+              className="text-xs p-2 rounded-md bg-zinc-50 border border-zinc-100"
             >
               <div className="flex items-center justify-between">
                 <Link

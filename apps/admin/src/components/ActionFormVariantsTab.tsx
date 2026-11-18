@@ -256,7 +256,7 @@ export default function ActionFormVariantsTab({
 
       {!action.taskFormId && (
         <Card style={CardStyle.Alert} className="p-4 text-sm">
-          Set the action&apos;s task form (in the &quot;Task Form&quot; tab)
+          Set the action&apos;s task form (in the &quot;Task form&quot; tab)
           before creating variants. Variants are seeded by cloning the existing
           form.
         </Card>
@@ -290,7 +290,7 @@ export default function ActionFormVariantsTab({
                 key={draft.tempId}
                 className="flex flex-wrap items-center gap-2 border border-blue-200 bg-blue-50/40 rounded-md p-3"
               >
-                <span className="text-xs font-medium text-blue-700 px-2 py-0.5 bg-blue-100 rounded">
+                <span className="text-xs font-medium text-blue-700 px-2 py-0.5 bg-blue-100 rounded-md">
                   Staged
                 </span>
                 <input

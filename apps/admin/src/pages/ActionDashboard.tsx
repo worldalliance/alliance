@@ -1,7 +1,7 @@
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
@@ -50,7 +50,6 @@ const ActionDashboard: React.FC = () => {
     addEvent,
     isCreating,
     isUpdating,
-    isRemoving,
   } = admin;
   const cohortParseFailed = cohortExpressionError != null;
   const saving = isCreating || isUpdating;
@@ -95,8 +94,7 @@ const ActionDashboard: React.FC = () => {
     setError,
   });
   const loading =
-    (!isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded)) ||
-    isRemoving;
+    !isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded);
 
   useLinkedSelection({
     ready: selectedTab === "details" && !loading && !actionLoadFailed,
@@ -104,7 +102,7 @@ const ActionDashboard: React.FC = () => {
     setSearchParams,
     onError: setError,
   });
-  const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
+  const { handleDuplicate, handleArchive } = useActionCommands({
     admin,
     actionId,
     form: editor.form,
@@ -121,20 +119,20 @@ const ActionDashboard: React.FC = () => {
   const actionExport = useActionExport(actionId);
 
   const tabData: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Status Overview" },
-    { key: "details", label: "Action Details" },
-    { key: "events", label: "Event Management" },
+    { key: "overview", label: "Status overview" },
+    { key: "details", label: "Action details" },
+    { key: "events", label: "Events" },
     { key: "updates", label: "Updates" },
     ...(action
       ? [
-          { key: "form" as Tab, label: "Task Form" },
-          { key: "form-variants" as Tab, label: "Form Variants" },
+          { key: "form" as Tab, label: "Task form" },
+          { key: "form-variants" as Tab, label: "Form variants" },
         ]
       : []),
-    { key: "follow-up-forms", label: "Follow-up Forms" },
+    { key: "follow-up-forms", label: "Follow-up forms" },
     { key: "responses", label: "Responses" },
     ...(action
-      ? [{ key: "cohort-decisions" as Tab, label: "Cohort Decisions" }]
+      ? [{ key: "cohort-decisions" as Tab, label: "Cohort decisions" }]
       : []),
   ];
 
@@ -149,20 +147,20 @@ const ActionDashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <title>Action Dashboard</title>
+      <title>{`${isNew ? "New action" : (action?.name ?? "Action")} - Admin`}</title>
       <div className="flex justify-between items-center mb-2">
         <div className="p-5 pb-0 flex flex-row justify-between w-full">
           <div className="flex flex-row gap-x-2 ">
             <div className="flex flex-row gap-x-2 items-center">
               {action?.archived && (
-                <span className="px-2 py-1 rounded-sm bg-red-200">
+                <span className="px-2 py-1 rounded-sm bg-zinc-200 text-zinc-700">
                   Archived
                 </span>
               )}
             </div>
             <div className="flex flex-col">
-              <h1 className="text-[#111] text-[16pt] font-bold">
-                {isNew ? "Create New Action" : `${action?.name}`}
+              <h1 className="text-zinc-900 text-xl font-bold">
+                {isNew ? "Create new action" : `${action?.name}`}
               </h1>
               {action && (
                 <SlugField
@@ -178,30 +176,43 @@ const ActionDashboard: React.FC = () => {
               </div>
             )}
           </div>
-          <button
-            onClick={handleCancel}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
-          >
-            ← Back
-          </button>
+          <div className="mr-5 flex items-start gap-x-4 text-sm text-nowrap">
+            {action && (
+              <a
+                href={getSiteUrl() + `/actions/${action.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="py-1 text-blue-600 underline"
+              >
+                View action page
+              </a>
+            )}
+            <Link
+              to="/actions"
+              className="py-1 text-zinc-600 hover:text-zinc-800"
+            >
+              ← Back to actions
+            </Link>
+          </div>
         </div>
       </div>
-      <p className="p-2 border border-gray-200 mb-4 mx-5">
-        Please see{" "}
+      <p className="mb-4 mx-5 text-sm text-zinc-600">
+        Before writing copy, read the{" "}
         <a
-          className="text-green underline"
+          className="text-blue-600 underline"
           href="https://docs.google.com/document/d/1vxeA31milcWRhpkGjGWHp1RQbpDFRjS541E9SzdKkFc/edit?usp=sharing"
           target="_blank"
           rel="noreferrer"
         >
-          Action copy guidelines
+          action copy guidelines
         </a>
+        .
       </p>
       {errorMessage && (
         <div
           ref={errorRef}
           role="alert"
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4"
         >
           {errorMessage}
         </div>
@@ -219,30 +230,24 @@ const ActionDashboard: React.FC = () => {
         // Existing Action Dashboard
         <div className="space-y-4 flex-1 min-h-0 mx-5">
           {/* Tab Navigation */}
-          <div className="border-b border-gray-200">
+          <div className="border-b border-zinc-200">
             <nav className="-mb-px flex space-x-8 flex-wrap">
               {tabData.map((tab) => (
                 <button
                   key={tab.key}
+                  type="button"
+                  aria-current={activeTab === tab.key ? "page" : undefined}
                   onClick={() => onTabChange(tab.key)}
                   className={cn(
                     "py-2 px-1 border-b-2 text-sm text-nowrap",
                     activeTab === tab.key
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
+                      ? "border-blue-500 text-blue-600 font-medium"
+                      : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300",
                   )}
                 >
                   {tab.label}
                 </button>
               ))}
-              <a
-                href={getSiteUrl() + `/actions/${action?.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="py-2 px-1 border-b-2 font-medium text-sm text-nowrap border-transparent text-blue-500 hover:text-blue-600 hover:border-blue-300"
-              >
-                View Action Page →
-              </a>
             </nav>
           </div>
 
@@ -254,6 +259,7 @@ const ActionDashboard: React.FC = () => {
                 reporting={reporting}
                 actionExport={actionExport}
                 imageUploading={editor.imageUploading}
+                unsaved={editor.dirty}
                 onDuplicate={handleDuplicate}
                 onArchive={handleArchive}
                 onTabChange={onTabChange}
@@ -272,7 +278,6 @@ const ActionDashboard: React.FC = () => {
                 mode={{
                   isNew: false,
                   cohortParseFailed,
-                  onDelete: handleDelete,
                   checklist: (
                     <ActionReadinessChecklist
                       action={action}

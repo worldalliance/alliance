@@ -53,7 +53,7 @@ const ResponsesButton: React.FC<{
         onClick();
       }}
       title={title}
-      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md text-xs font-medium"
+      className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-md text-xs font-medium"
     >
       Responses ({label})
     </button>
@@ -106,7 +106,7 @@ const FormsList: React.FC = () => {
         <p className="text-red-500">Failed to load forms</p>
       ) : forms.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No forms found.</p>
+          <p className="text-zinc-500 mb-4">No forms found.</p>
         </div>
       ) : (
         <div className="space-y-3 flex-1 overflow-y-auto">
@@ -127,7 +127,7 @@ const FormsList: React.FC = () => {
                         e.stopPropagation();
                         handleDeleteForm(form.id);
                       }}
-                      className="ml-2 p-1 text-zinc-600 hover:text-red-500 rounded pt-0 -mt-2"
+                      className="ml-2 p-1 text-zinc-600 hover:text-red-500 rounded-md pt-0 -mt-2"
                     >
                       ×
                     </button>

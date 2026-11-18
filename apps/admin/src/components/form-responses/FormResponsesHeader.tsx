@@ -68,14 +68,14 @@ const FormResponsesHeader: React.FC<FormResponsesHeaderProps> = ({
     <div className="px-6 py-4 space-y-3">
       <div>
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+          <h1 className="text-xl font-semibold text-zinc-900">{title}</h1>
           {releaseDate && (
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-zinc-500">
               Released {releaseDate}
             </span>
           )}
         </div>
-        <p className="text-sm text-gray-500">{withCount(total, "response")}</p>
+        <p className="text-sm text-zinc-500">{withCount(total, "response")}</p>
         {referralsError && (
           <p className="text-sm text-red-500">{referralsError}</p>
         )}
@@ -121,7 +121,7 @@ const FormResponsesHeader: React.FC<FormResponsesHeaderProps> = ({
                   e.target.value === "all" ? null : e.target.value,
                 )
               }
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+              className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 focus:border-black focus:outline-hidden"
               title="Filter by variant"
             >
               <option value="all">All variants</option>

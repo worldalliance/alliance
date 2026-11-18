@@ -167,13 +167,13 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       yAxisFormat={(v) => `${Math.round(v * 100)}%`}
       height={360}
       headerContent={
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 md:ml-auto">
-          <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 md:ml-auto">
+          <div className="flex items-center rounded-md border border-zinc-300 bg-white overflow-hidden">
             <button
               className={`px-2 py-1 text-xs font-medium transition-colors ${
                 granularity === "daily"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-600 hover:bg-zinc-100"
               }`}
               onClick={() => setGranularity("daily")}
             >
@@ -182,8 +182,8 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
             <button
               className={`px-2 py-1 text-xs font-medium transition-colors ${
                 granularity === "hourly"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-600 hover:bg-zinc-100"
               }`}
               onClick={() => setGranularity("hourly")}
             >
@@ -192,7 +192,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
           </div>
           {showDropdown && (
             <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-600">
+              <label className="text-xs font-semibold text-zinc-600">
                 Action
               </label>
               <select
@@ -208,7 +208,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
                     stepCompletionAction(1);
                   }
                 }}
-                className="rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
+                className="rounded-md border border-zinc-300 px-2 py-1 text-xs bg-white"
               >
                 <option value="all">All actions</option>
                 {completionCurveActionOptions.map((option) => (
@@ -220,7 +220,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
             </div>
           )}
           <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-gray-600">
+            <label className="text-xs font-semibold text-zinc-600">
               Duration (days)
             </label>
             <input
@@ -229,16 +229,16 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
               placeholder="min"
               value={minDurationDays}
               onChange={(e) => setMinDurationDays(e.target.value)}
-              className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
+              className="w-14 rounded-md border border-zinc-300 px-2 py-1 text-xs bg-white"
             />
-            <span className="text-gray-400">–</span>
+            <span className="text-zinc-400">–</span>
             <input
               type="number"
               min={0}
               placeholder="max"
               value={maxDurationDays}
               onChange={(e) => setMaxDurationDays(e.target.value)}
-              className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
+              className="w-14 rounded-md border border-zinc-300 px-2 py-1 text-xs bg-white"
             />
             {(minDurationDays !== "" || maxDurationDays !== "") && (
               <button

@@ -116,15 +116,15 @@ const ExpressionNodeEditor: React.FC<{
         isSelected
           ? "border-blue-400 ring-1 ring-blue-200"
           : depth === 0
-            ? "border-gray-300"
-            : "border-gray-200",
+            ? "border-zinc-300"
+            : "border-zinc-200",
         depth > 0 && "ml-4",
       )}
     >
       <div
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-t-md",
-          isSelected ? "bg-blue-50" : "bg-gray-50",
+          isSelected ? "bg-blue-50" : "bg-zinc-50",
           onSelect && "cursor-pointer",
         )}
         onClick={(e) => {
@@ -137,7 +137,7 @@ const ExpressionNodeEditor: React.FC<{
         <select
           value={expr.type}
           onChange={(e) => handleTypeChange(e.target.value)}
-          className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+          className="px-2 py-1 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
         >
           <optgroup label="Conditions">
             {LEAF_TYPES.map((t) => (
@@ -168,7 +168,7 @@ const ExpressionNodeEditor: React.FC<{
               e.stopPropagation();
               onRemove();
             }}
-            className="ml-auto p-1 text-gray-600 hover:text-red-500"
+            className="ml-auto p-1 text-zinc-600 hover:text-red-500"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -212,7 +212,7 @@ const BooleanOperatorEditor: React.FC<{
     case "NOT":
       return (
         <div>
-          <p className="text-xs text-gray-500 mb-2">Exclude users matching:</p>
+          <p className="text-xs text-zinc-500 mb-2">Exclude users matching:</p>
           <ExpressionNodeEditor
             expr={expr.child}
             onChange={(child) => onChange({ ...expr, child })}
@@ -257,7 +257,7 @@ const BooleanOperatorEditor: React.FC<{
   return (
     <div className="space-y-2">
       {children.length === 0 && (
-        <p className="text-sm text-gray-400 italic">No conditions yet</p>
+        <p className="text-sm text-zinc-400 italic">No conditions yet</p>
       )}
       {children.map((child, i) => (
         <div key={i}>
@@ -282,7 +282,7 @@ const BooleanOperatorEditor: React.FC<{
       <button
         type="button"
         onClick={addChild}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
       >
         <Plus className="h-3 w-3" />
         Add condition

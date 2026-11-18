@@ -40,7 +40,10 @@ const PLACEHOLDER_PATTERN = new RegExp(
 function Highlighted({ text }: { text: string }) {
   return text.split(PLACEHOLDER_PATTERN).map((part, index) =>
     PLACEHOLDERS.has(part) ? (
-      <mark key={index} className="rounded bg-amber-100 px-0.5 text-amber-900">
+      <mark
+        key={index}
+        className="rounded-md bg-amber-100 px-0.5 text-amber-900"
+      >
         {part}
       </mark>
     ) : (
@@ -65,24 +68,24 @@ export function UpdatePreview({
   return (
     <div className="space-y-3">
       {counts?.kind === PreviewCountsKind.Unavailable && (
-        <p className="text-xs text-gray-500">{counts.reason}</p>
+        <p className="text-xs text-zinc-500">{counts.reason}</p>
       )}
       {variations.value.map(({ variation, copy }) => (
         <div
           key={variation}
-          className="rounded-md border border-gray-200 bg-white p-3 text-sm"
+          className="rounded-md border border-zinc-200 bg-white p-3 text-sm"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-medium text-gray-900">
+            <span className="font-medium text-zinc-900">
               {PREVIEW_VARIATION_LABELS[variation]}
             </span>
             {counted ? (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-zinc-500">
                 {withCount(previewVariationCount[variation](counted), "member")}
               </span>
             ) : (
               counts?.kind === PreviewCountsKind.Pending && (
-                <span className="text-xs text-gray-400">Counting…</span>
+                <span className="text-xs text-zinc-400">Counting…</span>
               )
             )}
           </div>
@@ -90,15 +93,15 @@ export function UpdatePreview({
             <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
               {CHANNELS.map(({ key, label }) => (
                 <div key={key} className="contents">
-                  <dt className="text-xs text-gray-500">{label}</dt>
-                  <dd className="whitespace-pre-wrap text-gray-800">
+                  <dt className="text-xs text-zinc-500">{label}</dt>
+                  <dd className="whitespace-pre-wrap text-zinc-800">
                     <Highlighted text={copy[key]} />
                   </dd>
                 </div>
               ))}
             </dl>
           ) : (
-            <p className="mt-1 text-gray-500">
+            <p className="mt-1 text-zinc-500">
               Not notified: this group&apos;s result is empty.
             </p>
           )}

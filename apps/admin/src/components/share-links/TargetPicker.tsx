@@ -56,7 +56,7 @@ const TargetPicker: React.FC<{
       </label>
       {loadError && <p className="text-xs text-red-500">{loadError}</p>}
       {value ? (
-        <div className="flex flex-row items-center gap-2 border border-zinc-300 rounded px-3 py-2 text-sm bg-white">
+        <div className="flex flex-row items-center gap-2 border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white">
           <span className="flex-1 truncate">{targetName(value)}</span>
           <button
             type="button"
@@ -71,7 +71,7 @@ const TargetPicker: React.FC<{
         <>
           <input
             type="text"
-            className="border border-zinc-300 rounded px-3 py-2 text-sm"
+            className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
             placeholder={searchPlaceholder[kind]}
             value={query}
             onChange={(event) => {
@@ -82,7 +82,7 @@ const TargetPicker: React.FC<{
             disabled={disabled}
           />
           {open && (
-            <div className="absolute top-full left-0 right-0 mt-1 border border-zinc-200 rounded bg-white shadow-md max-h-72 overflow-y-auto z-10">
+            <div className="absolute top-full left-0 right-0 mt-1 border border-zinc-200 rounded-md bg-white shadow-md max-h-72 overflow-y-auto z-10">
               {loading ? (
                 <p className="px-3 py-2 text-sm text-zinc-500">
                   {loadingText[kind]}

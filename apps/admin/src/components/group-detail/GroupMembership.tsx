@@ -138,7 +138,7 @@ const GroupMembership: React.FC<GroupMembershipProps> = ({
                   return (
                     <div
                       key={member.id}
-                      className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
+                      className="flex flex-row items-center justify-between border border-zinc-200 rounded-md px-3 py-2"
                     >
                       <div className="flex flex-col gap-0.5">
                         <span className="font-medium text-sm">
@@ -230,7 +230,7 @@ const GroupMembership: React.FC<GroupMembershipProps> = ({
                   return (
                     <div
                       key={leader.id}
-                      className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
+                      className="flex flex-row items-center justify-between border border-zinc-200 rounded-md px-3 py-2"
                     >
                       <div className="flex flex-col">
                         <span className="font-medium text-sm">

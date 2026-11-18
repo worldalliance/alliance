@@ -47,7 +47,7 @@ export function SlugField({
         <input
           type="text"
           aria-label="Slug"
-          className="w-96 border border-gray-2 rounded px-2 py-0.5 font-mono text-sm"
+          className="w-96 border border-zinc-300 rounded-md px-2 py-0.5 font-mono text-sm"
           value={draft}
           onChange={(event) => {
             setDraft(event.target.value);

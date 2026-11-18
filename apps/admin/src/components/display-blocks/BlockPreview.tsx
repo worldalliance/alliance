@@ -23,7 +23,7 @@ export function BlockPreview({
   if (!allowed) return null;
   if (!toggleable) {
     return (
-      <div className="pt-2 border-t border-gray-200">
+      <div className="pt-2 border-t border-zinc-200">
         <RenderDisplayBlock block={block} />
       </div>
     );
@@ -40,7 +40,7 @@ export function BlockPreview({
         </button>
       </div>
       {shown && (
-        <div className="border border-gray-200 rounded-md p-3 bg-white">
+        <div className="border border-zinc-200 rounded-md p-3 bg-white">
           <RenderDisplayBlock block={block} />
         </div>
       )}

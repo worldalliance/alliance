@@ -109,12 +109,12 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
   );
 
   if (users.length === 0) {
-    return <p className="text-xs text-gray-400 italic">No members loaded.</p>;
+    return <p className="text-xs text-zinc-400 italic">No members loaded.</p>;
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+      <div className="flex items-center gap-3 text-xs text-zinc-500 flex-wrap">
         <span>
           {matchError ? (
             <span className="text-red-600">
@@ -186,13 +186,13 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
       </div>
 
       <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
         <input
           type="text"
           placeholder="Search for a user..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-zinc-50"
+          className="w-full pl-7 pr-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-zinc-50"
         />
       </div>
       {searchResults.length > 0 && (
@@ -206,7 +206,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                 key={user.id}
                 className="flex items-center gap-2 text-sm px-1"
               >
-                <span className="font-medium text-gray-700">{user.name}</span>
+                <span className="font-medium text-zinc-700">{user.name}</span>
                 {!matchError &&
                   !loading &&
                   (expression ? (
@@ -215,13 +215,13 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                         "text-xs px-1.5 py-0.5 rounded-full",
                         inCohort
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500",
+                          : "bg-zinc-100 text-zinc-500",
                       )}
                     >
                       {inCohort ? "in cohort" : "not in cohort"}
                     </span>
                   ) : (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">
                       no expression
                     </span>
                   ))}
@@ -231,7 +231,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                       "text-xs px-1.5 py-0.5 rounded-full",
                       inCompare
                         ? "bg-violet-100 text-violet-700"
-                        : "bg-gray-100 text-gray-500",
+                        : "bg-zinc-100 text-zinc-500",
                     )}
                   >
                     {inCompare ? "in compare" : "not in compare"}
@@ -271,7 +271,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
             } else if (isCompareMatched) {
               bgColor = "bg-violet-500";
             } else {
-              bgColor = "bg-gray-200";
+              bgColor = "bg-zinc-200";
             }
 
             return (
@@ -282,7 +282,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
                   bgColor,
                   searchQuery &&
                     searchMatchIds.has(user.id) &&
-                    "ring-2 ring-gray-800 ring-offset-1",
+                    "ring-2 ring-zinc-800 ring-offset-1",
                 )}
                 style={{
                   width: `${DOT_SIZE}px`,
@@ -306,7 +306,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
 
           {hoveredUser && (
             <div
-              className="absolute z-10 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded shadow-lg pointer-events-none whitespace-nowrap"
+              className="absolute z-10 px-2 py-1 text-xs font-medium text-white bg-zinc-800 rounded-md shadow-lg pointer-events-none whitespace-nowrap"
               style={{
                 left: tooltipPos.x,
                 top: tooltipPos.y - 28,

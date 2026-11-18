@@ -23,7 +23,7 @@ export function FieldExtraOptions({
 }: FieldExtraOptionsProps) {
   return (
     <div>
-      <label className="flex cursor-pointer items-center py-1.5 text-gray-700">
+      <label className="flex cursor-pointer items-center py-1.5 text-zinc-700">
         <input
           type="checkbox"
           className="mr-2"
@@ -34,14 +34,14 @@ export function FieldExtraOptions({
       </label>
       {supportsExtraction(field) && (
         <>
-          <div className="border-t border-gray-100 my-1" />
+          <div className="border-t border-zinc-100 my-1" />
           {field.kind === "checkbox" || field.kind === "custom" ? (
             <div className="py-1.5">
-              <label className="block text-gray-700 mb-1">
+              <label className="block text-zinc-700 mb-1">
                 Extract response into:
               </label>
               <select
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={field.autoExtractUserData?.target || ""}
                 onChange={(e) =>
                   onCheckboxExtractionTargetChange(
@@ -54,7 +54,7 @@ export function FieldExtraOptions({
               </select>
             </div>
           ) : (
-            <label className="flex cursor-pointer items-center py-1.5 text-gray-700">
+            <label className="flex cursor-pointer items-center py-1.5 text-zinc-700">
               <input
                 type="checkbox"
                 className="mr-2"

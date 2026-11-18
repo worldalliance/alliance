@@ -43,7 +43,7 @@ const CreateActivityControls = ({ create }: CreateActivityControlsProps) => {
 
   return (
     <select
-      className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-600 cursor-pointer"
+      className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-600 cursor-pointer"
       value=""
       onChange={(e) => {
         const value = e.target.value as ActionActivityType;

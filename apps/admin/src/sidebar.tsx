@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-page">
       <div
-        className="overflow-y-auto max-h-screen overflow-x-hidden flex flex-col justify-between relative transition-all duration-100 bg-[#f4f4f4]"
+        className="overflow-y-auto max-h-screen overflow-x-hidden flex flex-col justify-between relative transition-all duration-100 bg-zinc-100"
         style={{
           width: `${sidebarWidth}px`,
           ...(isSidebarOpen
@@ -69,11 +69,16 @@ const Sidebar: React.FC = () => {
         >
           <h1
             className={cn(
-              "text-[14pt] font-bold pb-0",
-              isProd ? "text-red-500" : "text-gray-900",
+              "text-lg font-bold pb-0",
+              isProd ? "text-red-500" : "text-zinc-900",
             )}
           >
             Alliance Admin
+            {isProd && (
+              <span className="mt-1 block w-fit rounded-sm bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                Production
+              </span>
+            )}
           </h1>
           <AdminSearch />
           <SidebarNav
@@ -84,28 +89,32 @@ const Sidebar: React.FC = () => {
         </div>
         {isSidebarOpen && (
           <div className="flex flex-row justify-between items-center p-3 px-5 pb-8">
-            <p className="text-sm text-gray-800 truncate">{user?.email}</p>
+            <p className="text-sm text-zinc-800 truncate">{user?.email}</p>
             <button
               type="button"
               aria-label="Log out"
               title="Log out"
-              className="shrink-0 rounded p-1.5 text-zinc-700 hover:bg-zinc-200 hover:text-black cursor-pointer"
+              className="shrink-0 rounded-md p-1.5 text-zinc-700 hover:bg-zinc-200 hover:text-black cursor-pointer"
               onClick={logout}
             >
               <LogOut size={16} />
             </button>
           </div>
         )}
-        <div
+        <button
+          type="button"
+          aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          aria-expanded={isSidebarOpen}
           className={cn(
-            "absolute top-7",
-            isSidebarOpen ? "right-7" : "right-1",
+            "absolute top-6 rounded-md p-1 hover:bg-zinc-200",
+            isSidebarOpen ? "right-6" : "right-0",
             "cursor-pointer",
           )}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         >
-          <PanelLeft className="h-5 w-5" />
-        </div>
+          <PanelLeft className="h-5 w-5" aria-hidden />
+        </button>
       </div>
       <MemberZoneLink />
       <div className="flex-1 overflow-y-scroll max-h-screen">

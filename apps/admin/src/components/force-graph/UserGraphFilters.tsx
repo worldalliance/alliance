@@ -114,11 +114,11 @@ export const UserGraphFilterControls = ({
     />
 
     <label className="flex items-center gap-1.5">
-      <span className="text-xs font-medium text-gray-600">Community</span>
+      <span className="text-xs font-medium text-zinc-600">Community</span>
       <select
         value={filters.communityFilter}
         onChange={(e) => filters.setCommunityFilter(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
+        className="rounded-md border border-zinc-300 px-2 py-1 text-xs bg-white"
       >
         <option value="all">All</option>
         {filters.availableCommunities.map((c) => (
@@ -130,11 +130,11 @@ export const UserGraphFilterControls = ({
     </label>
 
     <label className="flex items-center gap-1.5">
-      <span className="text-xs font-medium text-gray-600">Tag</span>
+      <span className="text-xs font-medium text-zinc-600">Tag</span>
       <select
         value={filters.tagFilter}
         onChange={(e) => filters.setTagFilter(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
+        className="rounded-md border border-zinc-300 px-2 py-1 text-xs bg-white"
       >
         <option value="all">All</option>
         {filters.availableTags.map((t) => (

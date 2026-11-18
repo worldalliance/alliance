@@ -129,7 +129,7 @@ const ScheduleReleaseForm = ({
                     : "office_action",
                 )
               }
-              className="rounded border border-gray-300 px-2 py-1.5"
+              className="rounded-md border border-zinc-300 px-2 py-1.5"
             >
               <option value="office_action">
                 {ACTION_STATUS_LABELS.office_action}

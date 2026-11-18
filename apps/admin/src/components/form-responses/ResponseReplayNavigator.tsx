@@ -48,16 +48,16 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
       : null;
 
   return (
-    <div className="px-6 pb-4 border-t border-gray-100 pt-3">
+    <div className="px-6 pb-4 border-t border-zinc-100 pt-3">
       {filterSummary && (
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-zinc-600">
             Filtered:{" "}
-            <span className="font-medium text-gray-900">
+            <span className="font-medium text-zinc-900">
               {filterSummary.fieldLabel}
             </span>{" "}
             — {filterSummary.description}{" "}
-            <span className="text-gray-400">
+            <span className="text-zinc-400">
               ({filteredTotal} of {total})
             </span>
           </div>
@@ -88,12 +88,12 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
             onFocus={() => search.setOpen(true)}
             onKeyDown={search.handleKeyDown}
             placeholder="Search by name..."
-            className="w-56 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+            className="w-56 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 focus:border-black focus:outline-hidden"
           />
           {search.open && (
-            <div className="absolute z-30 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+            <div className="absolute z-30 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg">
               {search.results.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-gray-500">
+                <div className="px-3 py-2 text-sm text-zinc-500">
                   No matching responses
                 </div>
               ) : (
@@ -102,13 +102,13 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
                     key={response.id ?? `${response.sid}-${idx}`}
                     type="button"
                     className={cn(
-                      "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-b-0",
+                      "w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 border-b border-zinc-50 last:border-b-0",
                       idx + 1 === page && "bg-blue-50 font-medium",
                     )}
                     onClick={() => search.select(idx)}
                   >
-                    <div className="truncate text-gray-900">{name}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="truncate text-zinc-900">{name}</div>
+                    <div className="text-xs text-zinc-500">
                       {new Date(response.createdAt).toLocaleString()}
                     </div>
                   </button>
@@ -122,7 +122,7 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
           <div className="flex items-center gap-4">
             <div className="text-right min-w-[200px]">
               <div className="flex items-center justify-end gap-2">
-                <p className="font-medium text-gray-900 truncate max-w-[700px]">
+                <p className="font-medium text-zinc-900 truncate max-w-[700px]">
                   {getRespondentName(currentResponse)}
                 </p>
                 {currentResponseVariantName && (
@@ -135,7 +135,7 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
                   <WithdrawalInfo withdrawal={currentWithdrawal} />
                 )}
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-zinc-500">
                 {new Date(currentResponse.createdAt).toLocaleString()}
               </p>
             </div>

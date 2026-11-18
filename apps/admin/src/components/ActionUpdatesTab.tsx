@@ -49,6 +49,7 @@ const ActionUpdatesTab = ({
   const [newUpdate, setNewUpdate] =
     useState<CreateActionUpdateDto>(defaultNewUpdate);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<ReadonlySet<number>>(
     new Set(),
@@ -67,22 +68,23 @@ const ActionUpdatesTab = ({
       ...next,
       nonCompleterResult: next.nonCompleterResult || null,
     });
-  const isSubmitDisabled =
-    creating ||
-    !newUpdate.title.trim() ||
-    (newUpdate.notifyType !== "none" &&
-      !readGroupResults({
-        completed: texts.shortNotifString,
-        didNotComplete: texts.nonCompleterResult,
-      }).ok) ||
-    (newUpdate.notifyType === "tag" && !newUpdate.tagId);
+  const missing = !newUpdate.title.trim()
+    ? "Add a title."
+    : newUpdate.notifyType !== "none" &&
+        !readGroupResults({
+          completed: texts.shortNotifString,
+          didNotComplete: texts.nonCompleterResult,
+        }).ok
+      ? `Fix the notification text above, or set the audience to "No notification".`
+      : newUpdate.notifyType === "tag" && !newUpdate.tagId
+        ? "Pick the tag to notify."
+        : null;
 
   const handleSubmit = async () => {
-    if (isSubmitDisabled) {
-      return;
-    }
-
+    if (creating) return;
+    setSubmitAttempted(true);
     setCreateError(null);
+    if (missing) return;
     const created = await R.fromPromise(
       create.mutateAsync({ actionId, body: newUpdate }),
       (thrown) => {
@@ -95,6 +97,7 @@ const ActionUpdatesTab = ({
       return;
     }
     setNewUpdate(defaultNewUpdate);
+    setSubmitAttempted(false);
     navigate(`/actions/${actionId}/updates/${created.value.id}`);
   };
 
@@ -138,7 +141,7 @@ const ActionUpdatesTab = ({
         </a>
         .
       </p>
-      <p className="font-bold">Add a status update...</p>
+      <p className="font-bold">Add a status update</p>
       <Card className="space-y-2">
         <div className="p-3 bg-zinc-100 rounded-md space-y-4">
           <label className="flex flex-col gap-1">
@@ -263,7 +266,7 @@ const ActionUpdatesTab = ({
             )}
           </div>
           <div className="flex flex-col gap-1 text-sm">
-            <span className="font-bold">Preview Update</span>
+            <span className="font-bold">Preview update</span>
             <span className="text-xs text-zinc-600">
               {UPDATE_PREVIEW_DESCRIPTION}
             </span>
@@ -272,15 +275,15 @@ const ActionUpdatesTab = ({
         </div>
       </Card>
       <div className="flex items-center justify-end gap-3">
-        {createError && (
+        {(createError ?? (submitAttempted && missing)) && (
           <p className="text-sm text-red-700" role="alert">
-            {createError}
+            {createError ?? missing}
           </p>
         )}
         <Button
           onClick={handleSubmit}
           color={ButtonColor.Black}
-          disabled={isSubmitDisabled}
+          disabled={creating}
         >
           Create and write content
         </Button>
@@ -308,7 +311,7 @@ const ActionUpdatesTab = ({
               <>
                 {!update.visibleAt && (
                   <span
-                    className="flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800"
+                    className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800"
                     title="Not visible to members until its content is saved"
                   >
                     <EyeOff className="w-3 h-3" aria-hidden />
@@ -317,11 +320,10 @@ const ActionUpdatesTab = ({
                 )}
                 <Link
                   to={`/actions/${actionId}/updates/${update.id}`}
-                  title="Edit update"
-                  aria-label="Edit update"
-                  className="text-zinc-500 hover:text-zinc-900"
+                  className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900"
                 >
-                  <SquarePen className="w-4 h-4" />
+                  <SquarePen className="w-4 h-4" aria-hidden />
+                  Edit
                 </Link>
               </>
             }

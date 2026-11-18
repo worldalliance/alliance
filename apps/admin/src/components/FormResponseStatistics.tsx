@@ -35,15 +35,15 @@ const StatBar: React.FC<{
   const width = Math.min(percent, 100);
   const content = (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-      <div className="text-sm text-gray-700 sm:w-48">{label}</div>
+      <div className="text-sm text-zinc-700 sm:w-48">{label}</div>
       <div className="flex items-center gap-3 flex-1">
-        <div className="w-full h-2 bg-gray-100 rounded">
+        <div className="w-full h-2 bg-zinc-100 rounded-md">
           <div
-            className="h-2 rounded bg-blue-500"
+            className="h-2 rounded-md bg-blue-500"
             style={{ width: `${width}%` }}
           />
         </div>
-        <div className="text-xs text-gray-600 tabular-nums min-w-[90px] text-right">
+        <div className="text-xs text-zinc-600 tabular-nums min-w-[90px] text-right">
           {count} ({formatPercent(count, total)})
         </div>
       </div>
@@ -54,7 +54,7 @@ const StatBar: React.FC<{
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hover:bg-gray-50"
+        className="w-full text-left rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hover:bg-zinc-50"
       >
         {content}
       </button>
@@ -113,7 +113,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
     return (
       <div className="p-6">
         <Card>
-          <p className="text-gray-600">Loading form statistics...</p>
+          <p className="text-zinc-600">Loading form statistics...</p>
         </Card>
       </div>
     );
@@ -122,7 +122,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
   if (statsFields.length === 0) {
     return (
       <div className="p-6">
-        <p className="text-gray-600">No statistics available for this form.</p>
+        <p className="text-zinc-600">No statistics available for this form.</p>
       </div>
     );
   }
@@ -131,7 +131,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
     <div className="p-6 space-y-6">
       {totalResponses === 0 && (
         <Card>
-          <p className="text-gray-600">No responses yet for this form.</p>
+          <p className="text-zinc-600">No responses yet for this form.</p>
         </Card>
       )}
       {statsData.map((stat) => {
@@ -139,49 +139,49 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
         return (
           <Card key={stat.field.id} className="gap-4">
             <div className="space-y-1">
-              <div className="text-lg font-semibold text-gray-900">
+              <div className="text-lg font-semibold text-zinc-900">
                 <FormMarkdownWrapper markdownContent={label} inline />
               </div>
               {stat.note && (
-                <div className="text-xs text-gray-400">{stat.note}</div>
+                <div className="text-xs text-zinc-400">{stat.note}</div>
               )}
             </div>
             {stat.summary && (
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div>
-                  <div className="text-xs text-gray-500">Min</div>
-                  <div className="text-sm text-gray-900">
+                  <div className="text-xs text-zinc-500">Min</div>
+                  <div className="text-sm text-zinc-900">
                     {formatNumber(stat.summary.min)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Median</div>
-                  <div className="text-sm text-gray-900">
+                  <div className="text-xs text-zinc-500">Median</div>
+                  <div className="text-sm text-zinc-900">
                     {formatNumber(stat.summary.median)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Average</div>
-                  <div className="text-sm text-gray-900">
+                  <div className="text-xs text-zinc-500">Average</div>
+                  <div className="text-sm text-zinc-900">
                     {formatNumber(stat.summary.avg)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Max</div>
-                  <div className="text-sm text-gray-900">
+                  <div className="text-xs text-zinc-500">Max</div>
+                  <div className="text-sm text-zinc-900">
                     {formatNumber(stat.summary.max)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Total</div>
-                  <div className="text-sm text-gray-900">
+                  <div className="text-xs text-zinc-500">Total</div>
+                  <div className="text-sm text-zinc-900">
                     {formatNumber(stat.summary.total)}
                   </div>
                 </div>
               </div>
             )}
             {stat.rows.length === 0 ? (
-              <p className="text-sm text-gray-500">No responses yet.</p>
+              <p className="text-sm text-zinc-500">No responses yet.</p>
             ) : (
               <div className="space-y-3">
                 {stat.rows.map((row) => (

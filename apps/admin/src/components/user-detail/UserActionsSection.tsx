@@ -29,7 +29,7 @@ export default function UserActionsSection({ userId }: { userId: number }) {
     <section className="max-h-128 overflow-y-auto">
       <SectionRefreshError noun="actions" isError={isRefetchError} />
       {actionSummaries.length ? (
-        <div className="border border-zinc-200 rounded overflow-hidden">
+        <div className="border border-zinc-200 rounded-md overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-zinc-100 text-left">
               <tr>

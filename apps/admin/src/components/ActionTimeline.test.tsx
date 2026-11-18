@@ -121,7 +121,7 @@ describe("ActionTimeline", () => {
     expect(nameRow("Loner").className).not.toContain(" bg-zinc-50");
     expect(
       screen.getByTitle(/^Running action:/).parentElement!.className,
-    ).toContain(" bg-gray-50");
+    ).toContain(" bg-zinc-50");
 
     fireEvent.mouseLeave(nameRow("Finished action"));
 

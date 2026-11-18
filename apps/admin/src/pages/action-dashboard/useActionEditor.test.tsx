@@ -1,5 +1,6 @@
 import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -8,7 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type React from "react";
-import { MemoryRouter } from "react-router";
+import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
 const action: ParsedActionDto = {
@@ -24,26 +25,38 @@ const action: ParsedActionDto = {
   cohortExpression: null,
 };
 
-const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <LeaveGuardRouter>
+    <ToastProvider>{children}</ToastProvider>
+  </LeaveGuardRouter>
+);
+
+const noSearchParams = new URLSearchParams();
+const setError = jest.fn();
+
+const renderEditor = (
+  overrides: Partial<ParsedActionDto> = {},
+  { isNew = false }: { isNew?: boolean } = {},
+) => {
   const updateAction = jest.fn(async () => action);
   let editor!: ActionEditorState;
   const Harness = () => {
     editor = useActionEditor({
       admin: {
-        action: { ...action, ...overrides },
+        action: isNew ? null : { ...action, ...overrides },
         isFetching: false,
         createAction: jest.fn(),
         updateAction,
       },
-      actionId: action.id,
-      isNew: false,
+      actionId: isNew ? null : action.id,
+      isNew,
       cohortParseFailed: false,
-      searchParams: new URLSearchParams(),
-      setError: jest.fn(),
+      searchParams: noSearchParams,
+      setError,
     });
     return editor.contentDialog;
   };
-  render(<Harness />, { wrapper: MemoryRouter });
+  render(<Harness />, { wrapper });
   return {
     result: {
       get current() {
@@ -55,6 +68,36 @@ const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
 };
 
 const allMembers = { type: "AllMembers" } as const;
+
+const renderSwitchingEditor = () => {
+  let editor!: ActionEditorState;
+  const Harness = ({ actionId }: { actionId: number }) => {
+    editor = useActionEditor({
+      admin: {
+        action: actionId === action.id ? action : null,
+        isFetching: actionId !== action.id,
+        createAction: jest.fn(),
+        updateAction: jest.fn(async () => action),
+      },
+      actionId,
+      isNew: false,
+      cohortParseFailed: false,
+      searchParams: noSearchParams,
+      setError,
+    });
+    return editor.contentDialog;
+  };
+  const { rerender } = render(<Harness actionId={action.id} />, { wrapper });
+  return {
+    result: {
+      get current() {
+        return editor;
+      },
+    },
+    rerenderFor: (actionId: number) =>
+      rerender(<Harness actionId={actionId} />),
+  };
+};
 
 // handleSubmit only calls preventDefault on the event.
 const submitEvent = { preventDefault: () => {} } as React.FormEvent;
@@ -70,6 +113,16 @@ describe("useActionEditor", () => {
 
     await act(() => result.current.handleSubmit(submitEvent));
     expect(result.current.dirty).toBe(false);
+    expect(screen.getByText("Action saved")).toBeTruthy();
+  });
+
+  it("is dirty once a new action has an edit", async () => {
+    const { result } = renderEditor({}, { isNew: true });
+    await waitFor(() => expect(result.current.dirty).toBe(false));
+
+    act(() => result.current.handleCohortExpressionChange(allMembers));
+
+    expect(result.current.dirty).toBe(true);
   });
 
   it("keeps staff preview on when the details form saves afterwards", async () => {
@@ -187,5 +240,16 @@ describe("useActionEditor", () => {
 
     expect(screen.queryByRole("button", { name: "Save anyway" })).toBeNull();
     expect(updateAction).toHaveBeenCalled();
+  });
+
+  it("is clean once the page moves to another action, until that one is seeded", async () => {
+    const { result, rerenderFor } = renderSwitchingEditor();
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    act(() => result.current.handleCohortExpressionChange(allMembers));
+    expect(result.current.dirty).toBe(true);
+
+    rerenderFor(8);
+
+    expect(result.current.dirty).toBe(false);
   });
 });

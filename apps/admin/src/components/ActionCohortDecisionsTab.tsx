@@ -73,7 +73,7 @@ export default function ActionCohortDecisionsTab({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search members"
           aria-label="Search members"
-          className="rounded border border-gray-2 px-3 py-1.5 text-sm"
+          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
         />
       </div>
       <table className="w-full text-sm">
@@ -90,7 +90,7 @@ export default function ActionCohortDecisionsTab({
           {visible.map((row) => (
             <tr
               key={row.userId}
-              className="border-t border-gray-2 align-top [&>td]:py-2"
+              className="border-t border-zinc-300 align-top [&>td]:py-2"
             >
               <td>
                 <Link to={`/member/${row.userId}`} className="hover:underline">
@@ -120,7 +120,7 @@ export default function ActionCohortDecisionsTab({
                         type="button"
                         aria-label={`Correct ${row.userName}'s decision`}
                         onClick={() => setCorrecting(row)}
-                        className="rounded p-1.5 text-zinc-600 hover:bg-zinc-100"
+                        className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100"
                       />
                     }
                   >

@@ -43,7 +43,7 @@ export const ProjectCounts = ({ card }: { card: ProjectCard }) => (
       .map((bucket) => (
         <span
           key={bucket}
-          className={`rounded px-1.5 py-0.5 text-xs font-medium ${COUNT_COLORS[bucket]}`}
+          className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${COUNT_COLORS[bucket]}`}
         >
           {card.counts[bucket]} {COUNT_LABELS[bucket]}
         </span>
@@ -72,7 +72,7 @@ const ProjectCardBody = ({
           {card.flags.map((flag) => (
             <li
               key={`${flag.kind}-${flag.step.id}`}
-              className="flex items-start gap-x-1.5 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900"
+              className="flex items-start gap-x-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900"
             >
               <TriangleAlert size={12} className="mt-0.5 shrink-0" />
               {FLAG_TEXT[flag.kind](flag)}

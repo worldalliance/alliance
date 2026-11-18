@@ -34,7 +34,7 @@ const InlineNameForm: React.FC<InlineNameFormProps> = ({
         aria-label={label}
         placeholder={placeholder}
         maxLength={maxLength}
-        className="rounded border border-zinc-300 px-2 py-1 text-sm"
+        className="rounded-md border border-zinc-300 px-2 py-1 text-sm"
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && onCancel()}

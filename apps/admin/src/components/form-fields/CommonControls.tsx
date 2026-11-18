@@ -14,7 +14,7 @@ export function RequiredToggle({
   label = "Required",
 }: RequiredToggleProps) {
   return (
-    <label className={cn("flex items-center text-xs text-gray-700", className)}>
+    <label className={cn("flex items-center text-xs text-zinc-700", className)}>
       <input
         type="checkbox"
         checked={!!checked}
@@ -61,7 +61,7 @@ export function DuplicateOptionsWarning({
 }: DuplicateOptionsWarningProps) {
   if (duplicates.size === 0) return null;
   return (
-    <p className="mt-1 text-[11px] text-red-500">
+    <p className="mt-1 text-xs text-red-500">
       Duplicate option values ({Array.from(duplicates).join(", ")}): each option
       needs a unique value or the form won&apos;t save.
     </p>
@@ -80,7 +80,7 @@ export function OutputFieldToggle({
   className = "",
 }: OutputFieldToggleProps) {
   return (
-    <label className={cn("flex items-center text-xs text-gray-700", className)}>
+    <label className={cn("flex items-center text-xs text-zinc-700", className)}>
       <input
         type="checkbox"
         checked={!!checked}
@@ -104,7 +104,7 @@ export function OutputPrivateByDefaultToggle({
   className = "",
 }: OutputPrivateByDefaultToggleProps) {
   return (
-    <label className={cn("flex items-center text-xs text-gray-700", className)}>
+    <label className={cn("flex items-center text-xs text-zinc-700", className)}>
       <input
         type="checkbox"
         checked={!!checked}
@@ -124,7 +124,7 @@ export function AutoExtractUserDataToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center text-xs text-gray-700">
+    <label className="flex items-center text-xs text-zinc-700">
       <input
         type="checkbox"
         checked={checked}

@@ -92,10 +92,10 @@ export function ActionCategoryPicker({
                 />
               }
               className={cn(
-                "rounded border p-1.5 disabled:opacity-50",
+                "rounded-md border p-1.5 disabled:opacity-50",
                 selected
                   ? "border-zinc-400 bg-zinc-100 text-zinc-900"
-                  : "border-gray-2 bg-white text-zinc-300 hover:text-zinc-500",
+                  : "border-zinc-300 bg-white text-zinc-300 hover:text-zinc-500",
               )}
             >
               <Icon size={14} />

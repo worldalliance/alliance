@@ -10,7 +10,6 @@ import { actionPhase } from "../lib/actionPhase";
 import { ActionEditorSection } from "../lib/staffTestingGate";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
-import { useActionCommands } from "./action-dashboard/useActionCommands";
 import { useActionEditor } from "./action-dashboard/useActionEditor";
 import { useActionEditorLookups } from "./action-dashboard/useActionEditorLookups";
 import { taskFormWithSchema } from "./action-dashboard/useActionReporting";
@@ -22,7 +21,7 @@ const ProjectActionPage = () => {
   const projectId = Number(params.projectId);
   const actionId = Number(params.actionId);
   const admin = useActionAdmin(actionId);
-  const { action, cohortExpressionError, isUpdating, isRemoving } = admin;
+  const { action, cohortExpressionError, isUpdating } = admin;
   const [error, setError] = useState<string | null>(null);
   const [formUnsaved, setFormUnsaved] = useState(false);
   const [checklistCollapsed, setChecklistCollapsed] = useState(false);
@@ -38,19 +37,11 @@ const ProjectActionPage = () => {
     searchParams,
     setError,
   });
-  const { handleDelete } = useActionCommands({
-    admin,
-    actionId,
-    form: editor.form,
-    imageKey: editor.imageKey,
-    imageUploading: editor.imageUploading,
-    setError,
-  });
 
   if (admin.isError) {
     return <p className="p-5 text-red-500">Failed to load action</p>;
   }
-  if (!action || !editor.draftSeeded || isRemoving) {
+  if (!action || !editor.draftSeeded) {
     return <p className="p-5">Loading action…</p>;
   }
   if (action.project?.id !== projectId) {
@@ -71,7 +62,7 @@ const ProjectActionPage = () => {
 
   return (
     <div className="flex max-w-6xl flex-col gap-y-5 p-5">
-      <title>{action.name}</title>
+      <title>{`${action.name} - Admin`}</title>
       <Link
         to={`/projects/${projectId}`}
         className="flex w-fit items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-900"
@@ -101,7 +92,7 @@ const ProjectActionPage = () => {
       {error && (
         <div
           role="alert"
-          className="rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
+          className="rounded-md border border-red-400 bg-red-100 px-4 py-3 text-red-700"
         >
           {error}
         </div>
@@ -121,7 +112,6 @@ const ProjectActionPage = () => {
           mode={{
             isNew: false,
             cohortParseFailed: cohortExpressionError != null,
-            onDelete: handleDelete,
             checklist: null,
             hideStaffPreview: true,
           }}

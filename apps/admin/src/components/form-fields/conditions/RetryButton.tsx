@@ -6,7 +6,7 @@ export function RetryButton({ onClick }: { onClick: () => void }) {
       type="button"
       aria-label="Retry"
       title="Retry"
-      className="rounded p-0.5 text-blue-600 hover:bg-blue-50"
+      className="rounded-md p-0.5 text-blue-600 hover:bg-blue-50"
       onClick={onClick}
     >
       <RotateCw size={12} aria-hidden />

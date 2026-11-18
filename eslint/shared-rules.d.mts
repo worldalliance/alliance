@@ -14,8 +14,10 @@ export declare const serverEnvReads: EnvReads;
 export declare const webEnvReads: EnvReads;
 export declare const mobileEnvReads: EnvReads;
 export declare const sharedEnvReads: EnvReads;
-export declare const frontendBlockerImport: {
+type BlockerImport = {
   name: string;
   importNames: string[];
   message: string;
 };
+export declare function blockerImport(owner: string): BlockerImport;
+export declare const frontendBlockerImport: BlockerImport;

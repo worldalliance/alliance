@@ -26,8 +26,8 @@ export function CollectiveResultFields({
     <div className="space-y-3">
       {FIELDS.map(({ key, label, hint }) => (
         <label key={key} className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-700">{label}</span>
-          {hint && <span className="text-xs text-gray-500">{hint}</span>}
+          <span className="font-medium text-zinc-700">{label}</span>
+          {hint && <span className="text-xs text-zinc-500">{hint}</span>}
           <input
             type="text"
             value={texts[key]}

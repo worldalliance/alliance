@@ -71,7 +71,7 @@ export default function KoraAssignmentExportPage() {
         {exported && (
           <details>
             <summary className="cursor-pointer">Raw export</summary>
-            <pre className="mt-2 overflow-x-auto rounded bg-zinc-50 p-3 text-xs">
+            <pre className="mt-2 overflow-x-auto rounded-md bg-zinc-50 p-3 text-xs">
               {JSON.stringify(exported, null, 2)}
             </pre>
           </details>

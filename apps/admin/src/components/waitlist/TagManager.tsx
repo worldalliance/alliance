@@ -28,7 +28,7 @@ const TagRow: React.FC<{
   <li className="flex items-center gap-3 py-1">
     <InlineTextInput
       aria-label={`Rename ${tag.name}`}
-      className="flex-1 rounded border border-transparent px-2 py-1 hover:border-zinc-300 focus:border-zinc-400"
+      className="flex-1 rounded-md border border-transparent px-2 py-1 hover:border-zinc-300 focus:border-zinc-400"
       value={tag.name}
       maxLength={100}
       disabled={disabled}

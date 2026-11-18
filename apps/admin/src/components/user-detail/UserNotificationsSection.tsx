@@ -86,7 +86,7 @@ function UserNotifications({
       <SectionRefreshError noun="notifications" isError={isRefetchError} />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Texts */}
-        <div className="border border-zinc-200 rounded overflow-hidden">
+        <div className="border border-zinc-200 rounded-md overflow-hidden">
           <div className="bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600 border-b border-zinc-200 flex items-center justify-between">
             <span>Texts ({textNotifs.length})</span>
             {textClickRate !== null && (
@@ -150,7 +150,7 @@ function UserNotifications({
         </div>
 
         {/* Emails */}
-        <div className="border border-zinc-200 rounded overflow-hidden">
+        <div className="border border-zinc-200 rounded-md overflow-hidden">
           <div className="bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600 border-b border-zinc-200 flex items-center justify-between">
             <span>Emails ({emailNotifs.length})</span>
             {emailClickRate !== null && (
@@ -233,7 +233,7 @@ function UserNotifications({
         </div>
 
         {/* Push */}
-        <div className="border border-zinc-200 rounded overflow-hidden">
+        <div className="border border-zinc-200 rounded-md overflow-hidden">
           <div className="bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600 border-b border-zinc-200 flex items-center justify-between">
             <span>Push ({pushNotifs.length})</span>
             {pushOpenRate !== null && (

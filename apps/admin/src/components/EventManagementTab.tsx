@@ -1,5 +1,6 @@
 import { AdminActionDto } from "@alliance/shared/client";
 import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -37,7 +38,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           >
             <ChevronDown className="h-3 w-3 text-black" />
           </button>
-          <h2 className="text-lg font-semibold">Add New Event</h2>
+          <h2 className="text-lg font-semibold">Add new event</h2>
         </div>
         {addEventExpanded && (
           <CreateEventForm
@@ -50,16 +51,16 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           />
         )}
       </Card>
-      <h2 className="text-lg font-semibold mb-4">All Events</h2>
+      <h2 className="text-lg font-semibold mb-4">All events</h2>
       <div className="space-y-3 mb-3">
         {action.events && action.events.length > 0 ? (
           sortByDateDescending(action.events).map((event) => (
             <div
               key={event.id}
-              className="border border-gray-200 rounded-lg p-3 bg-white"
+              className="border border-zinc-200 rounded-lg p-3 bg-white"
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium text-gray-900 text-sm">
+                <h3 className="font-medium text-zinc-900 text-sm">
                   {event.title}
                 </h3>
                 <span
@@ -73,28 +74,18 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
               </div>
 
               {event.description && (
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-zinc-600 mb-2">
                   {event.description}
                 </p>
               )}
 
-              <div className="text-xs text-gray-500 space-y-1">
-                <div>
-                  Date:{" "}
-                  {new Date(event.date).toLocaleString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZoneName: "short",
-                  })}
-                </div>
+              <div className="text-xs text-zinc-500 space-y-1">
+                <div>Date: {formatDateTimeWithZone(new Date(event.date))}</div>
               </div>
             </div>
           ))
         ) : (
-          <div className="text-sm text-gray-500 text-center py-4">
+          <div className="text-sm text-zinc-500 text-center py-4">
             No events created yet. Add an event to change the action status.
           </div>
         )}

@@ -10,7 +10,7 @@ export function EditableLabelBlock(props: BaseDisplayBlockProps<LabelBlock>) {
         <VariableTextField
           value={activeBlock.text}
           onChange={(text) => handleUpdate({ text })}
-          className="text-sm font-medium text-gray-700 border-none outline-none bg-transparent w-full"
+          className="text-sm font-medium text-zinc-700 border-none outline-hidden bg-transparent w-full"
           placeholder="Enter label text"
         />
       )}

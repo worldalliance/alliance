@@ -96,7 +96,7 @@ export default function MemberTextsSection({
   };
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <div
         className={cn(
           "flex items-center justify-between mx-1 mb-2 gap-2",
@@ -126,7 +126,7 @@ export default function MemberTextsSection({
             <span
               ref={optedOutBadge}
               tabIndex={-1}
-              className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800"
+              className="text-xs px-1.5 py-0.5 rounded-md bg-red-100 text-red-800"
             >
               Opted out
             </span>
@@ -459,7 +459,7 @@ function Attachment({ media, author }: { media: MmsMediaDto; author: string }) {
         <img
           src={url}
           alt={`Image texted by ${author}`}
-          className="max-h-64 rounded"
+          className="max-h-64 rounded-md"
         />
       </a>
     );

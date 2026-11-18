@@ -199,7 +199,7 @@ export function FormBuilderSettings({
   switch (resolvedTarget.kind) {
     case CanvasTargetKind.Page:
       return displayOnly ? (
-        <p className="p-4 text-sm text-gray-500">
+        <p className="p-4 text-sm text-zinc-500">
           Select a block on the canvas to edit it.
         </p>
       ) : (

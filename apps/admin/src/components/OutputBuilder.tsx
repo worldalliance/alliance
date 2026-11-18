@@ -149,10 +149,10 @@ export function OutputBuilder({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mx-auto w-full max-w-4xl">
+      <div className="bg-white rounded-lg border border-zinc-200 p-6 mx-auto w-full max-w-4xl">
         <div className="mb-6 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-zinc-900">
               Output views
             </h2>
             <Button onClick={addView} color={ButtonColor.Blue}>
@@ -160,18 +160,18 @@ export function OutputBuilder({
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
-            <p className="text-sm text-gray-600">Current output fields:</p>
+            <p className="text-sm text-zinc-600">Current output fields:</p>
             {outputFields.length > 0 ? (
               outputFields.map((field) => (
                 <span
                   key={field.id}
-                  className="px-3 py-2 bg-zinc-100 text-black text-sm rounded-sm border border-zinc-200"
+                  className="px-3 py-2 bg-zinc-100 text-black text-sm rounded-md border border-zinc-200"
                 >
                   {elementInternalDescriptor(field)}
                 </span>
               ))
             ) : (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-zinc-500">
                 No output fields selected yet.
               </span>
             )}
@@ -193,7 +193,7 @@ export function OutputBuilder({
                         "px-3 py-1.5 rounded-l-md border text-sm",
                         isActive
                           ? "bg-blue-100 text-blue-700 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200",
+                          : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200",
                       )}
                     >
                       {view.title || "Untitled view"}
@@ -205,8 +205,8 @@ export function OutputBuilder({
                       className={cn(
                         "px-2 py-1.5 rounded-r-md border border-l-0 text-sm",
                         (schema.outputViews ?? []).length <= 1
-                          ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-                          : "bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 border-gray-200",
+                          ? "bg-zinc-50 text-zinc-300 cursor-not-allowed"
+                          : "bg-zinc-100 text-zinc-500 hover:text-red-500 hover:bg-red-50 border-zinc-200",
                       )}
                     >
                       <X size={20} />
@@ -220,7 +220,7 @@ export function OutputBuilder({
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-zinc-600 mb-1">
                       View title
                     </label>
                     <input
@@ -229,12 +229,12 @@ export function OutputBuilder({
                       onChange={(event) =>
                         updateSelectedView({ title: event.target.value })
                       }
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-1.5 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                       placeholder="Output view title"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-zinc-600 mb-1">
                       Layout
                     </label>
                     <select
@@ -244,7 +244,7 @@ export function OutputBuilder({
                           type: event.target.value as OutputViewSchema["type"],
                         })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 bg-white"
                     >
                       <option value="default">Default</option>
                       <option value="page">Detail page</option>
@@ -258,7 +258,7 @@ export function OutputBuilder({
                   <div className="flex items-center gap-2">
                     <select
                       defaultValue=""
-                      className="px-3 py-2 border border-gray-300 rounded text-sm bg-white"
+                      className="px-3 py-2 border border-zinc-300 rounded-md text-sm bg-white"
                       onChange={(event) => {
                         const nextKind = event.target
                           .value as OutputDisplayBlockKind;
@@ -284,13 +284,13 @@ export function OutputBuilder({
                       "px-3 py-2 rounded-md text-sm border",
                       outputFields.length
                         ? "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                        : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed",
+                        : "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed",
                     )}
                   >
                     Add output field block
                   </button>
                   {!outputFields.length && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-zinc-500">
                       Mark fields as outputs in the form builder to enable this.
                     </p>
                   )}
@@ -312,7 +312,7 @@ export function OutputBuilder({
             ) : null}
           </>
         ) : (
-          <div className="text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-8">
+          <div className="text-center text-sm text-zinc-500 border border-dashed border-zinc-300 rounded-lg p-8">
             No output views yet. Click &ldquo;Add output view&rdquo; to get
             started.
           </div>

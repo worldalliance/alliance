@@ -103,7 +103,7 @@ export function FormJsonModal({
         <button
           type="button"
           onClick={() => void handleCopy()}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-blue-600"
+          className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-blue-600"
           title="Copy JSON"
           aria-label="Copy JSON"
         >
@@ -121,12 +121,12 @@ export function FormJsonModal({
           readOnly={pending !== null || isChecking}
           spellCheck={false}
           aria-label={TITLES[scope.kind]}
-          className="min-h-[50vh] w-full flex-1 resize-y rounded border border-gray-300 p-3 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="min-h-[50vh] w-full flex-1 resize-y rounded-md border border-zinc-300 p-3 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         />
         {errors.length > 0 && (
           <ul
             role="alert"
-            className="space-y-1 rounded border border-red-300 bg-red-50 p-3 font-mono text-xs text-red-700"
+            className="space-y-1 rounded-md border border-red-300 bg-red-50 p-3 font-mono text-xs text-red-700"
           >
             {errors.map((message, i) => (
               <li key={i}>{message}</li>
@@ -136,7 +136,7 @@ export function FormJsonModal({
         {pending && (
           <div
             role="alert"
-            className="rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900"
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
           >
             <p className="font-medium">
               This JSON changes ids or kinds. Anything that refers to the old id

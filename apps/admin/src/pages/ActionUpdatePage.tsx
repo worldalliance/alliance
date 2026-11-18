@@ -8,6 +8,7 @@ import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
@@ -29,13 +30,15 @@ import {
   type ActionUpdateForm,
 } from "../lib/actionUpdateDetails";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
+import { useLeaveGuard } from "../lib/useLeaveGuard";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
 
 const TEXT_INPUT_CLASS =
-  "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm";
+  "w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm";
 
 const ActionUpdatePage: React.FC = () => {
   const { actionId: actionIdParam, updateId: updateIdParam } = useParams<{
@@ -74,6 +77,7 @@ const ActionUpdatePage: React.FC = () => {
   const notifying = notify.isPending;
   const changingVisibility = publishNow.isPending || unpublish.isPending;
   const [error, setError] = useState<string | null>(null);
+  const { confirm, success } = useToast();
 
   // A copy cached by an earlier visit may be stale, and saving a form filled
   // from it would write those stale details back. A newer copy refills a form
@@ -91,6 +95,8 @@ const ActionUpdatePage: React.FC = () => {
     fillForm(update);
   }
 
+  useLeaveGuard(formEdited, { allowSamePath: true });
+
   const savedForm = useMemo(() => update && formOf(update), [update]);
 
   const saveDetails = updateMutation.mutateAsync;
@@ -104,12 +110,13 @@ const ActionUpdatePage: React.FC = () => {
       if (!(await confirmSave(body))) return;
       try {
         fillForm(await saveDetails(body));
+        success("Update saved");
       } catch (err) {
         setError("Failed to save update");
         console.error(err);
       }
     },
-    [form, saveDetails, fillForm, confirmSave],
+    [form, saveDetails, fillForm, confirmSave, success],
   );
 
   const writeAndRefill = useCallback(
@@ -127,19 +134,21 @@ const ActionUpdatePage: React.FC = () => {
 
   const handleNotify = useCallback(
     async (audienceLabel: string) => {
-      if (
-        !window.confirm(
-          `Send this update's notification to ${audienceLabel}? This can't be undone, and it can only be sent once.`,
-        )
-      ) {
-        return;
-      }
+      const ok = await confirm({
+        title: "Send notification?",
+        message: `This notifies ${audienceLabel}. It can't be undone, and it can only be sent once.`,
+        confirmLabel: "Send",
+        cancelLabel: "Cancel",
+        mode: ConfirmMode.Fullscreen,
+        requiredText: notifyRealMembersText("many"),
+      });
+      if (!ok) return;
       await writeAndRefill(
         notify.mutateAsync,
         "Failed to send the notification",
       );
     },
-    [writeAndRefill, notify.mutateAsync],
+    [writeAndRefill, notify.mutateAsync, confirm],
   );
 
   const handleUnpublish = useCallback(
@@ -178,7 +187,7 @@ const ActionUpdatePage: React.FC = () => {
         </p>
         <button
           onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
-          className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          className="mt-4 px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800"
         >
           ← Back
         </button>
@@ -211,7 +220,7 @@ const ActionUpdatePage: React.FC = () => {
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+          className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
         />
       </FormSection>
 
@@ -231,7 +240,7 @@ const ActionUpdatePage: React.FC = () => {
               inputClassName={TEXT_INPUT_CLASS}
             />
             {update.recognitionPreparedAt && (
-              <p className="mt-2 text-sm text-gray-700">
+              <p className="mt-2 text-sm text-zinc-700">
                 Each member&apos;s copy was frozen when this update came due, so
                 changing the notification text no longer reaches anyone.
               </p>
@@ -299,7 +308,7 @@ const ActionUpdatePage: React.FC = () => {
             onChange={(e) =>
               setForm({ ...form, associatedEventId: e.target.value })
             }
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
           >
             <option value="">No associated event</option>
             {events.map((event) => (
@@ -313,7 +322,7 @@ const ActionUpdatePage: React.FC = () => {
 
       {recognition && !update.recognitionPreparedAt && (
         <FormSection
-          title="Preview Update"
+          title="Preview update"
           description={UPDATE_PREVIEW_DESCRIPTION}
         >
           <AudienceUpdatePreview updateId={update.id} form={form} />
@@ -326,7 +335,7 @@ const ActionUpdatePage: React.FC = () => {
           className="px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium"
           disabled={saving}
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : "Save changes"}
         </button>
       </div>
     </form>
@@ -361,30 +370,33 @@ const ActionUpdatePage: React.FC = () => {
       <title>{update.title} - Admin</title>
       {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
-        <h1 className="text-[#111] text-[16pt] font-bold">{update.title}</h1>
+        <h1 className="text-zinc-900 text-xl font-bold">{update.title}</h1>
         <button
           onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
-          className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
+          className="px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800 text-nowrap mr-5"
         >
-          ← Back to Updates
+          ← Back to updates
         </button>
       </div>
 
       <HiddenFromMembersBanner update={update} />
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">
+        <div
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 mx-5 mt-4"
+        >
           {error}
         </div>
       )}
 
       <div className="space-y-4 flex-1 min-h-0 mx-5">
-        <div className="border-b border-gray-200">
+        <div className="border-b border-zinc-200">
           <nav className="-mb-px flex space-x-8">
             {(
               [
                 ["content", "Content"],
-                ["details", "Update Details"],
+                ["details", "Update details"],
               ] as const
             ).map(([tab, label]) => (
               <button
@@ -394,7 +406,7 @@ const ActionUpdatePage: React.FC = () => {
                   "py-2 px-1 border-b-2 text-sm",
                   selectedTab === tab
                     ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
+                    : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300",
                 )}
               >
                 {label}

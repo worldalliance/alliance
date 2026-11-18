@@ -45,7 +45,7 @@ const MakeProject = ({
       type="button"
       aria-label="Make a project from this action"
       title="Make a project from this action"
-      className="relative z-10 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+      className="relative z-10 rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
       onClick={() => setNaming(true)}
     >
       <FolderPlus size={16} />
@@ -86,7 +86,7 @@ const ProjectCardTile = ({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
           <span>{startedText(card.startedAt)}</span>
           {card.kind === ProjectCardKind.Standalone && (
-            <span className="rounded border border-zinc-200 px-1">
+            <span className="rounded-md border border-zinc-200 px-1">
               Standalone action
             </span>
           )}

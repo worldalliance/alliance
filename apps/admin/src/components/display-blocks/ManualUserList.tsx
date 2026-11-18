@@ -60,7 +60,7 @@ export function ManualUserList({
         )}
         <button
           type="button"
-          className="text-gray-600 underline decoration-dotted underline-offset-2"
+          className="text-zinc-600 underline decoration-dotted underline-offset-2"
           onClick={() => {
             if (!isUserListOpen && manualUsers.length === 0) {
               refetchUsers();
@@ -72,10 +72,10 @@ export function ManualUserList({
         </button>
       </div>
       {isUserListOpen && (
-        <div className="mt-2 rounded-md border border-gray-200 bg-white">
-          <div className="flex items-center justify-between px-3 py-2 text-xs text-gray-700">
+        <div className="mt-2 rounded-md border border-zinc-200 bg-white">
+          <div className="flex items-center justify-between px-3 py-2 text-xs text-zinc-700">
             <span className="font-medium">Users</span>
-            {isLoadingUsers && <span className="text-gray-500">Loading…</span>}
+            {isLoadingUsers && <span className="text-zinc-500">Loading…</span>}
           </div>
           <div className="px-3 pb-2">
             <input
@@ -83,10 +83,10 @@ export function ManualUserList({
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
               placeholder="Search users"
-              className="w-full rounded-md border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-zinc-200 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             />
           </div>
-          <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+          <div className="max-h-56 overflow-y-auto divide-y divide-zinc-100">
             {filteredManualUsers.map((entry) => {
               const userId = String(entry.id);
               const name = entry.name ?? `User ${entry.id}`;
@@ -114,7 +114,7 @@ export function ManualUserList({
                         "truncate",
                         activeManualUserId === userId
                           ? "font-semibold text-blue-700"
-                          : "text-gray-800",
+                          : "text-zinc-800",
                       )}
                     >
                       {name}
@@ -125,7 +125,7 @@ export function ManualUserList({
                       "text-xs rounded-full px-2 py-0.5",
                       hasContent
                         ? "bg-green/10 text-green-800"
-                        : "bg-gray-100 text-gray-700",
+                        : "bg-zinc-100 text-zinc-700",
                     )}
                   >
                     {hasContent ? "Set" : "Unset"}
@@ -134,7 +134,7 @@ export function ManualUserList({
               );
             })}
             {filteredManualUsers.length === 0 && (
-              <div className="px-3 py-2 text-sm text-gray-500">
+              <div className="px-3 py-2 text-sm text-zinc-500">
                 No users match your search.
               </div>
             )}

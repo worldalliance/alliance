@@ -39,7 +39,7 @@ const SideDrawer: React.FC<SideDrawerProps> = ({
       >
         <Dialog.Popup
           className={cn(
-            "flex h-full w-screen max-w-[46rem] flex-col bg-white shadow-2xl outline-none",
+            "flex h-full w-screen max-w-[46rem] flex-col bg-white shadow-2xl outline-hidden",
             panelClassName,
           )}
         >
@@ -51,7 +51,7 @@ const SideDrawer: React.FC<SideDrawerProps> = ({
               {headerActions}
               <Dialog.Close
                 aria-label="Close"
-                className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
               >
                 <X aria-hidden="true" className="size-5" />
               </Dialog.Close>

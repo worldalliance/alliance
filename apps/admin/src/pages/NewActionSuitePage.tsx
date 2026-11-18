@@ -18,7 +18,12 @@ const NewActionSuitePage = () => {
   const handleCreateSuite = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.target as HTMLFormElement);
-    const suiteName = formData.get("suiteName") as string;
+    const suiteName = String(formData.get("suiteName") ?? "").trim();
+    if (!suiteName) {
+      setError("Give the suite a name.");
+      return;
+    }
+    setError(null);
     const created = await R.fromPromise(
       createSuite.mutateAsync(suiteName),
       (thrown) => adminRefusalMessage(thrown, "Failed to create suite"),
@@ -32,23 +37,36 @@ const NewActionSuitePage = () => {
 
   return (
     <div className="w-full h-screen flex items-center justify-center">
+      <title>New suite - Admin</title>
       <Card className="p-6">
         <form onSubmit={handleCreateSuite} className="space-y-4">
-          {error && <p className="text-red-500">{error}</p>}
-          <p className="font-bold">Create a new action suite</p>
+          <h1 className="font-bold">Create a new action suite</h1>
+          <label htmlFor="suiteName" className="block text-sm font-medium">
+            Suite name
+          </label>
           <input
             type="text"
+            id="suiteName"
             name="suiteName"
-            placeholder="Suite Name"
             autoFocus
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            aria-describedby={error ? "suiteNameError" : undefined}
+            className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
           />
+          {error && (
+            <p
+              id="suiteNameError"
+              role="alert"
+              className="text-sm text-red-600"
+            >
+              {error}
+            </p>
+          )}
           <div className="flex flex-row justify-end min-w-96 gap-x-3 mt-5">
             <Button color={ButtonColor.White} onClick={handleCancel}>
               Cancel
             </Button>
             <Button color={ButtonColor.Black} type="submit">
-              Create Suite
+              Create suite
             </Button>
           </div>
         </form>

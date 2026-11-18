@@ -76,16 +76,17 @@ const ScheduledPlansPage = () => {
 
   return (
     <CenterLayout width="3xl">
+      <title>Scheduled plans - Admin</title>
       <div className="mb-6 flex flex-col gap-1 max-w-3xl">
         <h1 className="font-semibold text-lg">Scheduled plans</h1>
-        <p className="text-gray-600">Timeline of future automated actions</p>
+        <p className="text-zinc-600">Timeline of future automated actions</p>
       </div>
 
       <Card className="relative gap-4">
         {isLoading && (
           <div className="flex flex-row items-center justify-center gap-2">
             <Spinner size="small" />
-            <p className="text-gray-500">Loading scheduled plans...</p>
+            <p className="text-zinc-500">Loading scheduled plans...</p>
           </div>
         )}
 
@@ -100,7 +101,7 @@ const ScheduledPlansPage = () => {
         )}
 
         {plans && timelineItems.length === 0 && (
-          <p className="text-gray-500">
+          <p className="text-zinc-500">
             No planned automated actions in this window.
           </p>
         )}
@@ -124,30 +125,30 @@ const ScheduledPlansPage = () => {
                         onClick={() => togglePlan(item.key)}
                       >
                         <div className="flex flex-col gap-1">
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-700">
                             <span className="font-semibold">{dayLabel}</span>
-                            <span className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
+                            <span className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-zinc-600">
                               {item.kind === "suspension"
                                 ? "Suspension"
                                 : "Forum action auto-complete"}
                             </span>
                           </div>
                           {item.kind === "forum" && (
-                            <div className="text-sm text-gray-600">
+                            <div className="text-sm text-zinc-600">
                               Auto-complete for{" "}
                               <Link
                                 to={`/actions/${item.action.id}`}
-                                className="font-medium text-gray-900 hover:underline"
+                                className="font-medium text-zinc-900 hover:underline"
                               >
                                 {item.action.name}
                               </Link>
                             </div>
                           )}
-                          <div className="text-xs text-gray-400 font-mono">
+                          <div className="text-xs text-zinc-400 font-mono">
                             {utcLabel}
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Users size={16} className="text-gray-500" />
+                          <div className="flex items-center gap-2 text-sm text-zinc-600">
+                            <Users size={16} className="text-zinc-500" />
                             <span>
                               {withCount(userCount, "user")} scheduled
                             </span>
@@ -156,7 +157,7 @@ const ScheduledPlansPage = () => {
                         <ChevronDown
                           size={18}
                           className={cn(
-                            "text-gray-500 transition-transform duration-150",
+                            "text-zinc-500 transition-transform duration-150",
                             isExpanded && "-rotate-180",
                           )}
                         />
@@ -175,7 +176,7 @@ const ScheduledPlansPage = () => {
                                 size="medium"
                               />
                               <div className="min-w-0">
-                                <p className="font-medium text-gray-900">
+                                <p className="font-medium text-zinc-900">
                                   {user.displayName}
                                 </p>
                               </div>

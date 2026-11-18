@@ -30,7 +30,7 @@ enum EditMode {
 }
 
 const iconButtonClassName =
-  "rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50";
+  "rounded-md border border-zinc-300 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50";
 
 export function ActionProjectControls({
   actionId,
@@ -114,7 +114,7 @@ export function ActionProjectControls({
           }
           disabled={projectsLoading || assign.isPending}
           className={cn(
-            "border border-gray-2 rounded bg-white px-3 py-1.5 text-sm",
+            "border border-zinc-300 rounded-md bg-white px-3 py-1.5 text-sm",
             !project && "text-zinc-500",
           )}
         />
@@ -183,7 +183,7 @@ export function ActionProjectSteps({
   if (!project) return null;
 
   return (
-    <div className="rounded border border-gray-2 bg-white p-3 text-sm">
+    <div className="rounded-md border border-zinc-300 bg-white p-3 text-sm">
       <div className="flex flex-row items-center justify-between gap-2 mb-2">
         <div className="flex flex-row items-center gap-2">
           <p className="font-medium">{project.name}</p>

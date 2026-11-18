@@ -142,7 +142,7 @@ const TagManagement: React.FC = () => {
             <input
               id="tag-name"
               type="text"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm"
+              className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
               value={newTag.name}
               onChange={(event) => {
                 setError(null);
@@ -163,7 +163,7 @@ const TagManagement: React.FC = () => {
             </label>
             <textarea
               id="group-description"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
+              className="border border-zinc-300 rounded-md px-3 py-2 text-sm min-h-[80px]"
               value={newTag.description}
               onChange={(event) => {
                 setError(null);
@@ -303,7 +303,7 @@ const TagCard: React.FC<TagCardProps> = ({
               <label className="text-sm font-medium text-zinc-700">Name</label>
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
                 value={formValues.name}
                 onChange={(event) =>
                   setFormValues((prev) => ({
@@ -319,7 +319,7 @@ const TagCard: React.FC<TagCardProps> = ({
               </label>
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
                 value={formValues.publicDisplayName}
                 onChange={(event) =>
                   setFormValues((prev) => ({
@@ -334,7 +334,7 @@ const TagCard: React.FC<TagCardProps> = ({
                 Description
               </label>
               <textarea
-                className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm min-h-[80px]"
                 value={formValues.description}
                 onChange={(event) =>
                   setFormValues((prev) => ({

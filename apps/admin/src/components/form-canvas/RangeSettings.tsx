@@ -119,7 +119,7 @@ export function RangeSettings({
     }
     if (group) {
       return (
-        <div className="space-y-2 text-sm text-gray-700">
+        <div className="space-y-2 text-sm text-zinc-700">
           <p>These elements already share visibility.</p>
           <button
             type="button"
@@ -139,7 +139,7 @@ export function RangeSettings({
     });
     return (
       <>
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-zinc-700">
           Choose the visibility these elements will share. It replaces each
           element&apos;s own.
         </p>
@@ -152,12 +152,12 @@ export function RangeSettings({
                   type="button"
                   disabled={reason !== null}
                   onClick={() => share(formula)}
-                  className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-left text-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-white disabled:text-gray-500"
+                  className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-left text-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-white disabled:text-zinc-500"
                 >
                   <span className="block font-medium">
                     Share: shown when {summarize(formula)}
                   </span>
-                  <span className="block text-gray-600">
+                  <span className="block text-zinc-600">
                     Now on {holders.join(", ")}
                   </span>
                   {reason && (
@@ -168,13 +168,13 @@ export function RangeSettings({
             );
           })}
           {unconditional.length > 0 && (
-            <li className="px-2 text-sm text-gray-600">
+            <li className="px-2 text-sm text-zinc-600">
               Always shown now: {unconditional.join(", ")}
             </li>
           )}
         </ul>
-        <div className="space-y-2 border-t border-gray-200 pt-3">
-          <p className="text-sm font-medium text-gray-800">
+        <div className="space-y-2 border-t border-zinc-200 pt-3">
+          <p className="text-sm font-medium text-zinc-800">
             Or share new rules
           </p>
           <LocalExpressionBuffers>
@@ -194,7 +194,7 @@ export function RangeSettings({
             type="button"
             disabled={!authored || authoredReason !== null}
             onClick={() => authored && share(authored)}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
           >
             Share new rules
           </button>
@@ -212,7 +212,7 @@ export function RangeSettings({
               <button
                 type="button"
                 onClick={() => onSelectMember(start + offset)}
-                className="w-full truncate rounded-md border border-gray-200 px-2 py-1 text-left text-sm text-gray-800 hover:text-blue-700"
+                className="w-full truncate rounded-md border border-zinc-200 px-2 py-1 text-left text-sm text-zinc-800 hover:text-blue-700"
               >
                 {describeElement(member)}
               </button>

@@ -159,7 +159,7 @@ function NestedEntries({
   return (
     <ul className="ml-3 pl-1">
       {children.length === 0 ? (
-        <li className="px-2 py-1 text-xs text-gray-400">{empty}</li>
+        <li className="px-2 py-1 text-xs text-zinc-400">{empty}</li>
       ) : (
         children
       )}

@@ -51,7 +51,7 @@ const Highlighted: React.FC<{ text: string; query: string }> = ({
   <>
     {highlightSegments({ text, query }).map((segment, index) =>
       segment.match ? (
-        <mark key={index} className="rounded-sm bg-yellow-200 text-inherit">
+        <mark key={index} className="rounded-sm bg-amber-200 text-inherit">
           {segment.text}
         </mark>
       ) : (

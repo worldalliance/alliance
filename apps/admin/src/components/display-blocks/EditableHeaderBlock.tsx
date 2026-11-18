@@ -14,7 +14,7 @@ export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
             value={activeBlock.text}
             onChange={(text) => handleUpdate({ text })}
             className={cn(
-              "w-full font-bold text-gray-900 border-none outline-none bg-transparent resize-none",
+              "w-full font-bold text-zinc-900 border-none outline-hidden bg-transparent resize-none",
               (activeBlock.level || 2) === 1
                 ? "text-3xl"
                 : (activeBlock.level || 2) === 2
@@ -32,7 +32,7 @@ export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
 
           {/* Compact level selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Level:</span>
+            <span className="text-xs text-zinc-500">Level:</span>
             <select
               value={activeBlock.level || 2}
               onChange={(e) =>
@@ -40,7 +40,7 @@ export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
                   level: parseInt(e.target.value) as 1 | 2 | 3 | 4 | 5 | 6,
                 })
               }
-              className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs border border-zinc-300 rounded-md px-1 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value={1}>H1</option>
               <option value={2}>H2</option>

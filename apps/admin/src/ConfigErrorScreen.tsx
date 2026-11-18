@@ -10,7 +10,7 @@ export function ConfigErrorScreen({ detail }: { detail: string }) {
       <h1
         ref={heading}
         tabIndex={-1}
-        className="text-xl font-semibold focus:outline-none"
+        className="text-xl font-semibold focus:outline-hidden"
       >
         The admin panel couldn&apos;t load its settings
       </h1>
@@ -21,7 +21,7 @@ export function ConfigErrorScreen({ detail }: { detail: string }) {
       >
         Reload
       </Button>
-      <details className="max-w-xl text-sm text-gray-600">
+      <details className="max-w-xl text-sm text-zinc-600">
         <summary className="cursor-pointer">Details</summary>
         <pre className="mt-2 text-left whitespace-pre-wrap">{detail}</pre>
       </details>

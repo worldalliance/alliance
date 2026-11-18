@@ -64,7 +64,7 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
     <div className="px-2">
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Loading responses...</p>
+          <p className="text-zinc-500">Loading responses...</p>
         </div>
       ) : error ? (
         <div className="flex items-center justify-center py-12">
@@ -72,14 +72,14 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
         </div>
       ) : orderedFieldIds.length === 0 ? (
         <Card style={CardStyle.White}>
-          <p className="text-gray-600">No answerable questions found.</p>
+          <p className="text-zinc-600">No answerable questions found.</p>
         </Card>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-col gap-2 mt-3">
             <label
               htmlFor="question-field-select"
-              className="text-xs font-semibold tracking-wide text-gray-600 uppercase"
+              className="text-xs font-semibold tracking-wide text-zinc-600 uppercase"
             >
               Question
             </label>
@@ -87,7 +87,7 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
               id="question-field-select"
               value={selectedQuestionFieldId}
               onChange={(event) => onSelectQuestionField(event.target.value)}
-              className="w-full max-w-xl rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-black focus:outline-none"
+              className="w-full max-w-xl rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-black focus:outline-hidden"
             >
               {orderedFieldIds.map((fieldId) => (
                 <option key={fieldId} value={fieldId}>
@@ -99,13 +99,13 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
 
           {questionResponses.length === 0 ? (
             <Card style={CardStyle.White}>
-              <p className="text-gray-600">
+              <p className="text-zinc-600">
                 No users responded to this question.
               </p>
             </Card>
           ) : (
-            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-              <div className="grid grid-cols-1 gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold tracking-wide text-gray-600 uppercase md:grid-cols-[260px_minmax(0,1fr)_auto]">
+            <div className="rounded-lg border border-zinc-200 bg-white overflow-hidden">
+              <div className="grid grid-cols-1 gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase md:grid-cols-[260px_minmax(0,1fr)_auto]">
                 <div>Respondent</div>
                 <div>Answer</div>
                 {selectedQuestionField &&
@@ -135,7 +135,7 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
                       }-${index}`
                     }
                     className={cn(
-                      "grid grid-cols-1 gap-1 border-b border-gray-100 px-3 py-2 last:border-b-0 md:gap-3",
+                      "grid grid-cols-1 gap-1 border-b border-zinc-100 px-3 py-2 last:border-b-0 md:gap-3",
                       selectedQuestionField &&
                         AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
                         ? "md:grid-cols-[260px_minmax(0,1fr)_auto]"
@@ -144,7 +144,7 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-900">
+                        <p className="truncate text-sm font-semibold text-zinc-900">
                           {getRespondentName(response)}
                         </p>
                         {variantName && (
@@ -159,12 +159,12 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
                             <WithdrawalBadge className="shrink-0" />
                           )}
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-zinc-500">
                         {new Date(response.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-5">
+                      <p className="text-sm text-zinc-800 whitespace-pre-wrap break-words leading-5">
                         {formatSelectedQuestionAnswer(answerValue, response)}
                       </p>
                     </div>
@@ -178,7 +178,7 @@ const QuestionResponses: React.FC<QuestionResponsesProps> = ({
                                 typeof aiDetection.aiProbability === "number" &&
                                 aiDetection.aiProbability > 0
                                 ? "text-red-600"
-                                : "text-gray-400",
+                                : "text-zinc-400",
                             )}
                           >
                             {formatAiScore(aiDetection?.aiProbability ?? null)}

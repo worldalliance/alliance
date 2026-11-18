@@ -64,7 +64,7 @@ export function HistoryControls({
       disabled={redo ? !canRedo : !canUndo}
       aria-label={label}
       title={`${label} (${shortcut})`}
-      className="flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
+      className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:text-zinc-300 disabled:hover:bg-transparent"
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>

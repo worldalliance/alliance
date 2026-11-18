@@ -115,27 +115,27 @@ const CohortCompletionGrid: React.FC<{
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-3 border-b border-gray-200">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-3 border-b border-zinc-200">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-zinc-900">
             Cohort Completion Grid
           </h3>
         </div>
       </div>
       <div className="p-4">
         {retentionLoading && retentionGridData.rows.length === 0 && (
-          <p className="text-sm text-gray-600">Loading cohorts...</p>
+          <p className="text-sm text-zinc-600">Loading cohorts...</p>
         )}
         {!retentionLoading && retentionGridData.rows.length === 0 && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-zinc-600">
             No cohorts have completions yet.
           </p>
         )}
         {!retentionLoading &&
           retentionGridData.rows.length > 0 &&
           retentionGridData.weeks.length === 0 && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-zinc-600">
               No weeks in the selected range.
             </p>
           )}
@@ -151,7 +151,7 @@ const CohortCompletionGrid: React.FC<{
                   }}
                 >
                   <div
-                    className="h-10 px-2 flex items-center text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
+                    className="h-10 px-2 flex items-center text-xs font-semibold text-zinc-500 uppercase tracking-wide"
                     style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                   >
                     Cohort
@@ -159,7 +159,7 @@ const CohortCompletionGrid: React.FC<{
                   {retentionGridData.weeks.map((week) => (
                     <div
                       key={`retention-grid-header-${week}`}
-                      className="h-10 w-10 flex items-center justify-center text-[11px] text-gray-500"
+                      className="h-10 w-10 flex items-center justify-center text-xs text-zinc-500"
                       style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                     >
                       W{week}
@@ -177,10 +177,10 @@ const CohortCompletionGrid: React.FC<{
                           className="h-10 px-2 flex flex-col justify-center gap-0.5"
                           style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                         >
-                          <div className="text-[11px] font-semibold text-gray-700 leading-tight">
+                          <div className="text-xs font-semibold text-zinc-700 leading-tight">
                             Week of {fullDateFormatter.format(cohortDate)}
                           </div>
-                          <div className="text-[10px] text-gray-500 leading-tight">
+                          <div className="text-xs text-zinc-500 leading-tight">
                             {row.cohort.cohortSize} members
                           </div>
                         </div>
@@ -204,7 +204,7 @@ const CohortCompletionGrid: React.FC<{
                           return (
                             <div
                               key={`retention-grid-${row.cohort.cohortStart}-${week}`}
-                              className="h-10 w-10 flex items-center justify-center text-[11px] font-semibold"
+                              className="h-10 w-10 flex items-center justify-center text-xs font-semibold"
                               style={{
                                 backgroundColor: fill,
                                 color: textColor,
@@ -238,7 +238,7 @@ const CohortCompletionGrid: React.FC<{
                 </div>
                 {hoveredRetentionCell && (
                   <div
-                    className="absolute z-20 w-64 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
+                    className="absolute z-20 w-64 rounded-md border border-zinc-200 bg-white p-3 text-xs text-zinc-700 shadow-lg"
                     style={{
                       left: hoveredRetentionCell.x,
                       top: hoveredRetentionCell.y,
@@ -247,7 +247,7 @@ const CohortCompletionGrid: React.FC<{
                     }}
                   >
                     <div className="flex items-center gap-2 justify-between mb-2">
-                      <div className="text-xs font-semibold text-gray-900">
+                      <div className="text-xs font-semibold text-zinc-900">
                         Week {hoveredRetentionCell.week}
                       </div>
                       <p>
@@ -258,7 +258,7 @@ const CohortCompletionGrid: React.FC<{
                         )}
                       </p>
                     </div>
-                    <div className="text-[11px] text-gray-500">
+                    <div className="text-xs text-zinc-500">
                       Cohort: Week of{" "}
                       {fullDateFormatter.format(
                         new Date(
@@ -276,7 +276,7 @@ const CohortCompletionGrid: React.FC<{
                     </div>
                     {hoveredRetentionCell.actions.length > 0 && (
                       <>
-                        <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                        <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-600">
                           Actions
                         </div>
                         <div className="mt-1 space-y-1">
@@ -288,7 +288,7 @@ const CohortCompletionGrid: React.FC<{
                               <span className="truncate">
                                 {action.actionName}
                               </span>
-                              <span className="text-gray-500">
+                              <span className="text-zinc-500">
                                 {action.memberCount}
                               </span>
                             </div>

@@ -50,7 +50,7 @@ const ResponsesToolbar: React.FC<ResponsesToolbarProps> = ({
         onChange={(event) => onSearchInputChange(event.target.value)}
         placeholder="Search responses…"
         aria-label="Search responses"
-        className="w-64 rounded-md border border-gray-300 bg-white py-1.5 pr-3 pl-8 text-sm text-gray-900 focus:border-black focus:outline-none"
+        className="w-64 rounded-md border border-zinc-300 bg-white py-1.5 pr-3 pl-8 text-sm text-zinc-900 focus:border-black focus:outline-hidden"
       />
     </div>
 

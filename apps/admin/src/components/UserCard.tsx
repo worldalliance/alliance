@@ -116,7 +116,7 @@ const UserCard = ({
             </button>
             {isDropdownOpen && (
               <div
-                className="absolute right-0 z-20 mt-2 w-56 rounded border border-zinc-200 bg-white shadow"
+                className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-zinc-200 bg-white shadow"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="max-h-56 overflow-y-auto py-1">
@@ -204,7 +204,7 @@ const UserCard = ({
                 return (
                   <div
                     key={action.id}
-                    className="rounded border border-zinc-200 bg-zinc-50 p-2"
+                    className="rounded-md border border-zinc-200 bg-zinc-50 p-2"
                   >
                     <div className="flex items-start justify-between gap-2 text-sm">
                       <span className="font-medium text-zinc-700">

@@ -31,7 +31,7 @@ enum EditField {
 }
 
 const iconButtonClassName =
-  "rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900";
+  "rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900";
 
 const ProjectHeader = ({
   project,
@@ -194,7 +194,7 @@ const ProjectDetailPage: React.FC = () => {
 
   return (
     <div className="flex max-w-6xl flex-col gap-y-5 p-5">
-      <title>{project.name}</title>
+      <title>{`${project.name} - Admin`}</title>
       <Link
         to="/projects"
         className="flex w-fit items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-900"
@@ -250,7 +250,7 @@ const ProjectDetailPage: React.FC = () => {
               assign.mutate({ actionId: Number(value), projectId: project.id })
             }
             disabled={assign.isPending}
-            className="border border-gray-2 rounded bg-white px-3 py-1.5 text-sm"
+            className="border border-zinc-300 rounded-md bg-white px-3 py-1.5 text-sm"
           />
         </div>
       </div>

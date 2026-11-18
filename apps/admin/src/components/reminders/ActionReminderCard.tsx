@@ -160,13 +160,13 @@ const ActionReminderCard = ({
                 <p
                   className={cn(
                     "text-sm",
-                    isFinished ? "text-gray-500" : "text-blue-500",
+                    isFinished ? "text-zinc-500" : "text-blue-500",
                   )}
                 >
                   {sendLabel}
                 </p>
               )}
-              <p className={cn("font-semibold", isFinished && "text-gray-500")}>
+              <p className={cn("font-semibold", isFinished && "text-zinc-500")}>
                 {group.name}
               </p>
               {isFinished ? (
@@ -179,10 +179,10 @@ const ActionReminderCard = ({
               )}
             </div>
             {groupSchedule.secondary && (
-              <p className="text-xs text-gray-500">{groupSchedule.secondary}</p>
+              <p className="text-xs text-zinc-500">{groupSchedule.secondary}</p>
             )}
             {group.timingAnchorEvent && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-zinc-500">
                 Anchored to:{" "}
                 {anchorCandidates.find(
                   (candidate) =>
@@ -192,7 +192,7 @@ const ActionReminderCard = ({
               </p>
             )}
             {group.excludePreviouslyNotified && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-zinc-500">
                 Only covers tasks the user hasn&apos;t been notified about;
                 skips users with nothing new
               </p>
@@ -257,7 +257,7 @@ const ActionReminderCard = ({
               }}
               serverError={editError}
               serverSuccess={editSuccess}
-              submitLabel="Update Reminders"
+              submitLabel="Update reminders"
               onCancel={handleEditCancel}
               onSubmit={handleEditGroupSubmit(group.id)}
             />
@@ -268,7 +268,7 @@ const ActionReminderCard = ({
               )}
               <p className="text-sm font-semibold">Email message:</p>
               <Card className="flex flex-col gap-1 !p-2">
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-zinc-900">
                   {group.emailSubject}
                 </p>
                 <TextareaWithHighlights
@@ -279,12 +279,12 @@ const ActionReminderCard = ({
                   textareaClassName="!border-0 border-transparent"
                 />
                 {emailPreview && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <p className="text-sm font-semibold text-gray-900">
+                  <div className="mt-2 pt-2 border-t border-zinc-200">
+                    <p className="text-sm font-semibold text-zinc-900">
                       {emailPreview.subject}
                     </p>
                     <div
-                      className="text-sm text-gray-700 whitespace-pre-wrap break-words"
+                      className="text-sm text-zinc-700 whitespace-pre-wrap break-words"
                       dangerouslySetInnerHTML={{ __html: emailPreview.html }}
                     />
                   </div>
@@ -294,8 +294,8 @@ const ActionReminderCard = ({
               <Card className="flex flex-col gap-1 !p-2">
                 <p>{group.textMessage}</p>
                 {textPreview != null && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                  <div className="mt-2 pt-2 border-t border-zinc-200">
+                    <p className="text-sm text-zinc-700 whitespace-pre-wrap break-words">
                       {textPreview}
                     </p>
                   </div>
@@ -305,8 +305,8 @@ const ActionReminderCard = ({
               <Card className="flex flex-col gap-1 !p-2">
                 <p>{group.pushMessage}</p>
                 {pushPreview != null && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                  <div className="mt-2 pt-2 border-t border-zinc-200">
+                    <p className="text-sm text-zinc-700 whitespace-pre-wrap break-words">
                       {pushPreview}
                     </p>
                   </div>
@@ -336,7 +336,7 @@ const ActionReminderCard = ({
           </div>
           <div
             className={cn(
-              "divide-y divide-gray-200 border-t border-gray-200 overflow-y-auto transition-[max-height] duration-300",
+              "divide-y divide-zinc-200 border-t border-zinc-200 overflow-y-auto transition-[max-height] duration-300",
               showPlans ? "max-h-[300px]" : "max-h-[0px]",
             )}
           >
@@ -355,14 +355,14 @@ const ActionReminderCard = ({
                   <Link to={`/member/${plan.user.id}`} target="_blank">
                     {plan.user.name}
                   </Link>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-zinc-500">
                     {formatDate(plan.scheduledFor, "MM/dd/yyyy hh:mm a")}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-zinc-500">
                     ({plan.channels.join(", ")})
                   </p>
                   {plan.missNumber !== null && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-zinc-500">
                       consecutive miss {plan.missNumber}
                     </p>
                   )}
@@ -372,7 +372,7 @@ const ActionReminderCard = ({
           </div>
           <div
             className={cn(
-              "divide-y divide-gray-200 border-t border-gray-200 overflow-y-auto transition-[max-height] duration-300",
+              "divide-y divide-zinc-200 border-t border-zinc-200 overflow-y-auto transition-[max-height] duration-300",
               showSentReminders ? "max-h-[300px]" : "max-h-0",
             )}
           >

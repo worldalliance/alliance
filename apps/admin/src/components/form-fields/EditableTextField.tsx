@@ -23,14 +23,14 @@ export function EditableTextField({
       />
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Placeholder Text
         </label>
         <input
           type="text"
           value={field.placeholder || ""}
           onChange={(e) => onUpdate({ placeholder: e.target.value })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           placeholder="Enter placeholder text"
         />
       </div>
@@ -42,7 +42,7 @@ export function EditableTextField({
         />
 
         <div className="flex items-center space-x-2">
-          <label className="text-xs text-gray-700">Max Length:</label>
+          <label className="text-xs text-zinc-700">Max Length:</label>
           <input
             type="number"
             value={field.maxLength || ""}
@@ -53,7 +53,7 @@ export function EditableTextField({
                   : undefined,
               })
             }
-            className="w-16 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-16 px-1 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             min="0"
           />
         </div>

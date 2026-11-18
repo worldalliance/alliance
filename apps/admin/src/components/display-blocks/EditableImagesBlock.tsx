@@ -66,14 +66,14 @@ function dragIds(images: ImagesItem[]): string[] {
 }
 
 const rowClasses =
-  "flex items-center gap-2 rounded border border-gray-200 bg-white p-2";
+  "flex items-center gap-2 rounded-md border border-zinc-200 bg-white p-2";
 
 function Thumbnail({ src }: { src: string }) {
   return (
     <img
       src={resolveImageSrc(src)}
       alt=""
-      className="h-14 w-14 shrink-0 rounded bg-zinc-100 object-cover"
+      className="h-14 w-14 shrink-0 rounded-md bg-zinc-100 object-cover"
     />
   );
 }
@@ -121,13 +121,13 @@ function SortableImageRow({
           value={image.caption ?? ""}
           onChange={(caption) => onUpdate({ caption: caption || undefined })}
           placeholder="Caption (optional)"
-          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         />
         <VariableTextField
           value={image.alt ?? ""}
           onChange={(alt) => onUpdate({ alt: alt || undefined })}
           placeholder="Alt text (optional)"
-          className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         />
         {downloadable && (
           <input
@@ -137,7 +137,7 @@ function SortableImageRow({
             }
             placeholder="Download file name (default: image)"
             aria-label="Download file name"
-            className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         )}
       </div>
@@ -382,7 +382,7 @@ function ImagesEditor({
             if (files.length) void uploadFiles(files);
           }}
           disabled={isUploading}
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+          className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         />
         {isUploading && (
           <UploadingWithCancel
@@ -412,7 +412,7 @@ function ImagesEditor({
       )}
 
       {images.length === 0 ? (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-zinc-500">
           No images yet. A single image renders on its own; more than one
           becomes a carousel.
         </p>

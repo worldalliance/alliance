@@ -17,7 +17,7 @@ export default function UserFriendsSection({ userId }: { userId: number }) {
   }
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Friends ({friends.length})
       </h2>
@@ -39,7 +39,7 @@ function FriendRow({ friend }: { friend: ProfileDto }) {
   return (
     <Link
       to={`/member/${friend.id}`}
-      className="flex items-center gap-2 rounded px-1 py-1.5 hover:bg-zinc-50"
+      className="flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-zinc-50"
     >
       <AvatarProfile pfp={friend.profilePicture} size="small" />
       <div className="min-w-0 flex-1">

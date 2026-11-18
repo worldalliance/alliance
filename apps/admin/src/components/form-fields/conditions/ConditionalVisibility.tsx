@@ -31,7 +31,7 @@ import { isConditionalController, type RuleCondition } from "./fieldConditions";
 import { INPUT_CLASS } from "./styles";
 
 const BUTTON_CLASS =
-  "rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100";
+  "rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100";
 
 type ConditionalVisibilityProps = {
   field: { id?: string; visibleIfFormula?: VisibleIfFormula };
@@ -53,7 +53,7 @@ function ReplaceExpression({
   onChoose: (combinator: Combinator) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
+    <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
       Replace the expression with:
       <button
         type="button"
@@ -213,7 +213,7 @@ export function ConditionalVisibility({
 
   return (
     <div className="space-y-2 pt-2">
-      <span className="block text-xs font-medium text-gray-700">
+      <span className="block text-xs font-medium text-zinc-700">
         Conditional visibility
       </span>
       {advanced ? (
@@ -247,12 +247,12 @@ export function ConditionalVisibility({
           }}
         />
       ) : rules.length === 0 ? (
-        <p className="text-[11px] text-gray-500">
+        <p className="text-xs text-zinc-500">
           Always shown. Add a rule to show this only when it matches.
         </p>
       ) : (
         rules.length > 1 && (
-          <label className="flex items-center gap-2 whitespace-nowrap text-xs text-gray-700">
+          <label className="flex items-center gap-2 whitespace-nowrap text-xs text-zinc-700">
             Show when
             <select
               aria-label="Combine rules"

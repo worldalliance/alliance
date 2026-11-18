@@ -10,7 +10,7 @@ import {
 } from "../lib/koraParticipants";
 import { useSetKoraBatchClosesAt } from "../lib/useKoraBatchesAdmin";
 
-const FIELD = "rounded border border-zinc-300 bg-white px-2 py-1";
+const FIELD = "rounded-md border border-zinc-300 bg-white px-2 py-1";
 
 export function KoraBatchClosesAt({ batch }: { batch: KoraBatchDto }) {
   const toast = useToast();

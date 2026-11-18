@@ -256,7 +256,7 @@ const UsersList: React.FC = () => {
           placeholder="Search by name, email, or phone..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
+          className="text-sm border border-zinc-300 text-black bg-white px-3 rounded-md py-2 w-64 focus:outline-hidden focus:border-black"
         />
         <div className="flex flex-row gap-3 items-center">
           <MemberFilterDropdown
@@ -303,7 +303,7 @@ const UsersList: React.FC = () => {
           <button
             type="button"
             onClick={handleShuffle}
-            className="p-2 rounded hover:bg-zinc-100"
+            className="p-2 rounded-md hover:bg-zinc-100"
             title="Shuffle view"
           >
             <Shuffle size={18} className="text-zinc-600" />
@@ -312,7 +312,7 @@ const UsersList: React.FC = () => {
             type="button"
             onClick={() => setParams({ viewMode: "rows" })}
             className={cn(
-              "p-2 rounded",
+              "p-2 rounded-md",
               viewMode === "rows" ? "bg-zinc-200" : "hover:bg-zinc-100",
             )}
             title="Table view"
@@ -323,7 +323,7 @@ const UsersList: React.FC = () => {
             type="button"
             onClick={() => setParams({ viewMode: "cards" })}
             className={cn(
-              "p-2 rounded",
+              "p-2 rounded-md",
               viewMode === "cards" ? "bg-zinc-200" : "hover:bg-zinc-100",
             )}
             title="Card view"

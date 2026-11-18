@@ -81,7 +81,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
 
           <InlineTextInput
             aria-label="Organization name"
-            className="text-base font-semibold border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded px-2 py-1 flex-1 min-w-48 max-w-md"
+            className="text-base font-semibold border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded-md px-2 py-1 flex-1 min-w-48 max-w-md"
             value={organization.name}
             disabled={busy}
             onSave={(name, done) =>
@@ -95,7 +95,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             Group
             <select
-              className="border border-zinc-300 rounded px-2 py-1"
+              className="border border-zinc-300 rounded-md px-2 py-1"
               value={organization.communityId ?? ""}
               disabled={busy}
               onChange={(e) =>

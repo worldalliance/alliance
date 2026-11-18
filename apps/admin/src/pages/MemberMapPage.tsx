@@ -140,7 +140,7 @@ const MemberMapPage: React.FC = () => {
                 No member location data available yet.
               </p>
             )}
-            <div className="w-full overflow-hidden rounded-lg border border-zinc-200 bg-slate-900">
+            <div className="w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-900">
               <ComposableMap
                 projection="geoMercator"
                 width={svgWidth}
@@ -190,9 +190,9 @@ const MemberMapPage: React.FC = () => {
                     Intensity
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-zinc-500">Fewer</span>
+                    <span className="text-xs text-zinc-500">Fewer</span>
                     <div className="h-2 w-32 rounded-full bg-linear-to-r from-rose-100 via-orange-400 to-rose-700" />
-                    <span className="text-[11px] text-zinc-500">More</span>
+                    <span className="text-xs text-zinc-500">More</span>
                   </div>
                 </div>
               </div>
@@ -238,7 +238,7 @@ const MemberMapPage: React.FC = () => {
                       ? "—"
                       : `${nonUsPercentage.toFixed(1)}%`}
                   </p>
-                  <p className="mt-1 text-[11px] leading-tight text-zinc-500">
+                  <p className="mt-1 text-xs leading-tight text-zinc-500">
                     Calculated only from members who report a location.
                   </p>
                 </div>

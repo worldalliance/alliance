@@ -69,7 +69,7 @@ export function PerUserOptions<T extends DisplayBlock>({
 
   return (
     <div>
-      <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+      <label className="flex cursor-pointer items-center px-3 py-1.5 text-zinc-700">
         <input
           type="checkbox"
           className="mr-2"
@@ -95,7 +95,7 @@ export function PerUserOptions<T extends DisplayBlock>({
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
-              className="text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 hover:border-gray-300"
+              className="text-xs text-zinc-600 border border-zinc-200 rounded-md px-2 py-1 hover:border-zinc-300"
               onClick={() => selectManualTarget(null)}
             >
               Edit default
@@ -103,7 +103,7 @@ export function PerUserOptions<T extends DisplayBlock>({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                className="text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
+                className="text-xs text-zinc-600 border border-zinc-200 rounded-md px-2 py-1 hover:border-zinc-300 disabled:opacity-50"
                 onClick={() => handleCycleUser("prev")}
                 disabled={manualUsers.length === 0}
               >
@@ -111,7 +111,7 @@ export function PerUserOptions<T extends DisplayBlock>({
               </button>
               <button
                 type="button"
-                className="text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
+                className="text-xs text-zinc-600 border border-zinc-200 rounded-md px-2 py-1 hover:border-zinc-300 disabled:opacity-50"
                 onClick={() => handleCycleUser("next")}
                 disabled={manualUsers.length === 0}
               >
@@ -119,7 +119,7 @@ export function PerUserOptions<T extends DisplayBlock>({
               </button>
             </div>
           </div>
-          <div className="text-xs text-gray-700">
+          <div className="text-xs text-zinc-700">
             {activeManualUserId ? (
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">
@@ -129,22 +129,22 @@ export function PerUserOptions<T extends DisplayBlock>({
                 </span>
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-[11px]",
+                    "rounded-full px-2 py-0.5 text-xs",
                     hasContentForActiveUser
                       ? "bg-green-100 text-green-800"
-                      : "bg-yellow-100 text-yellow-800",
+                      : "bg-amber-100 text-amber-800",
                   )}
                 >
                   {hasContentForActiveUser ? "Custom content" : "Using default"}
                 </span>
               </div>
             ) : (
-              <span className="font-medium text-gray-700">
+              <span className="font-medium text-zinc-700">
                 Editing default content
               </span>
             )}
           </div>
-          <div className="rounded-md border border-gray-100 bg-gray-50 p-2 text-xs text-gray-700 space-y-1">
+          <div className="rounded-md border border-zinc-100 bg-zinc-50 p-2 text-xs text-zinc-700 space-y-1">
             {userLoadError ? (
               <div className="flex items-center justify-between gap-2">
                 <span className="text-red-700">{userLoadError}</span>
@@ -160,46 +160,46 @@ export function PerUserOptions<T extends DisplayBlock>({
               <span>Loading users…</span>
             ) : manualUsers.length === 0 ? (
               <>
-                <div className="font-medium text-gray-800">
+                <div className="font-medium text-zinc-800">
                   Users with content ({manualContentKeys.length})
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {manualContentKeys.length === 0 ? (
-                    <span className="text-gray-500">No overrides yet</span>
+                    <span className="text-zinc-500">No overrides yet</span>
                   ) : (
                     manualContentKeys.slice(0, 6).map((userId) => (
                       <span
                         key={userId}
-                        className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] text-green-800"
+                        className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800"
                       >
                         User {userId}
                       </span>
                     ))
                   )}
                   {manualContentKeys.length > 6 && (
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-xs text-zinc-500">
                       +{manualContentKeys.length - 6} more
                     </span>
                   )}
                 </div>
-                <span className="text-gray-500">
+                <span className="text-zinc-500">
                   Load users to see who is missing content.
                 </span>
               </>
             ) : (
               <>
-                <div className="font-medium text-gray-800">
+                <div className="font-medium text-zinc-800">
                   Users with content ({usersWithContent.length})
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {usersWithContent.length === 0 ? (
-                    <span className="text-gray-500">None yet</span>
+                    <span className="text-zinc-500">None yet</span>
                   ) : (
                     usersWithContent.slice(0, 6).map((user) => (
                       <button
                         key={user.id}
                         type="button"
-                        className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] text-green-800 hover:bg-green-200"
+                        className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800 hover:bg-green-200"
                         onClick={() => selectManualTarget(String(user.id))}
                       >
                         {user.name ?? `User #${user.id}`}
@@ -207,23 +207,23 @@ export function PerUserOptions<T extends DisplayBlock>({
                     ))
                   )}
                   {usersWithContent.length > 6 && (
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-xs text-zinc-500">
                       +{usersWithContent.length - 6} more
                     </span>
                   )}
                 </div>
-                <div className="font-medium text-gray-800 pt-1">
+                <div className="font-medium text-zinc-800 pt-1">
                   Missing ({usersWithoutContent.length})
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {usersWithoutContent.length === 0 ? (
-                    <span className="text-gray-500">Everyone set</span>
+                    <span className="text-zinc-500">Everyone set</span>
                   ) : (
                     usersWithoutContent.slice(0, 6).map((user) => (
                       <button
                         key={user.id}
                         type="button"
-                        className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] text-gray-800 hover:bg-gray-300"
+                        className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-800 hover:bg-zinc-300"
                         onClick={() => selectManualTarget(String(user.id))}
                       >
                         {user.name ?? `User #${user.id}`}
@@ -231,7 +231,7 @@ export function PerUserOptions<T extends DisplayBlock>({
                     ))
                   )}
                   {usersWithoutContent.length > 6 && (
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-xs text-zinc-500">
                       +{usersWithoutContent.length - 6} more
                     </span>
                   )}

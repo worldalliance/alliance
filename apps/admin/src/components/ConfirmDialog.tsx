@@ -58,14 +58,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <ModalHeader className="p-6">
         <ModalTitle
           render={<h3 />}
-          className="text-lg font-medium text-gray-900"
+          className="text-lg font-medium text-zinc-900"
         >
           {title}
         </ModalTitle>
       </ModalHeader>
 
       <ModalBody className="flex-1 overflow-y-auto p-6">
-        <ModalDescription className="text-sm text-gray-600 whitespace-pre-wrap break-words">
+        <ModalDescription className="text-sm text-zinc-600 whitespace-pre-wrap break-words">
           {message}
         </ModalDescription>
       </ModalBody>

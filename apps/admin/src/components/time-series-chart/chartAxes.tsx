@@ -40,7 +40,7 @@ export const YGrid: React.FC<{
         y={yScale(tick)}
         textAnchor="end"
         dominantBaseline="middle"
-        className="fill-gray-500 text-xs"
+        className="fill-zinc-500 text-xs"
       >
         {yAxisFormat ? yAxisFormat(tick) : tick}
       </text>

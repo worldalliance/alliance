@@ -40,13 +40,13 @@ export function ValidatorRule({
         />
       ) : saved.isError ? (
         <div className="flex items-center gap-2">
-          <p className="text-[11px] text-red-600">
+          <p className="text-xs text-red-600">
             Could not load validator {validatorId}.
           </p>
           <RetryButton onClick={() => void saved.refetch()} />
         </div>
       ) : (
-        <p className="text-[11px] text-gray-400">Loading validator details…</p>
+        <p className="text-xs text-zinc-400">Loading validator details…</p>
       )}
       <select
         aria-label="Validator result"

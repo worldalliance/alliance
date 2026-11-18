@@ -30,7 +30,7 @@ beforeEach(() => {
   createStatus = 200;
 });
 
-const submit = () => {
+const submit = (name = "Autumn") => {
   const router = createMemoryRouter(
     [
       { path: "/new-suite", element: <NewActionSuitePage /> },
@@ -39,10 +39,10 @@ const submit = () => {
     { initialEntries: ["/new-suite"] },
   );
   render(<RouterProvider router={router} />, queryWrapper());
-  fireEvent.change(screen.getByPlaceholderText("Suite Name"), {
-    target: { value: "Autumn" },
+  fireEvent.change(screen.getByLabelText("Suite name"), {
+    target: { value: name },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create Suite" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create suite" }));
   return router;
 };
 
@@ -61,4 +61,11 @@ it("shows the server's reason for refusing the suite", async () => {
       "name must be shorter than or equal to 255 characters",
     ),
   ).toBeDefined();
+});
+
+it("asks for a name instead of creating a nameless suite", async () => {
+  const router = submit("  ");
+
+  expect(await screen.findByText("Give the suite a name.")).toBeTruthy();
+  expect(router.state.location.pathname).toBe("/new-suite");
 });

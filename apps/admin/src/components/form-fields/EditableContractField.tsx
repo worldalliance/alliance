@@ -74,13 +74,13 @@ export function EditableContractField({
       laterFields={laterFields}
     >
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Contract
         </label>
         <select
           value={field.contractId ?? currentContract?.id ?? ""}
           onChange={(e) => onUpdate({ contractId: Number(e.target.value) })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         >
           {contractOptions.map((opt) => (
             <option key={opt.id} value={opt.id}>
@@ -91,7 +91,7 @@ export function EditableContractField({
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Sign question
         </label>
         <input
@@ -99,13 +99,13 @@ export function EditableContractField({
           value={field.signQuestion ?? ""}
           onChange={(e) => onUpdate({ signQuestion: e.target.value })}
           placeholder="Sign the contract?"
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             Yes option label
           </label>
           <input
@@ -113,11 +113,11 @@ export function EditableContractField({
             value={field.yesLabel ?? ""}
             onChange={(e) => onUpdate({ yesLabel: e.target.value })}
             placeholder="Yes"
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-zinc-700 mb-1">
             No option label
           </label>
           <input
@@ -125,7 +125,7 @@ export function EditableContractField({
             value={field.noLabel ?? ""}
             onChange={(e) => onUpdate({ noLabel: e.target.value })}
             placeholder="No"
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-sm border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>

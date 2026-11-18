@@ -71,7 +71,7 @@ const FindingRow = ({
                 <mark
                   className={cn(
                     "font-mono",
-                    dismissed ? "bg-zinc-100" : "bg-yellow-200",
+                    dismissed ? "bg-zinc-100" : "bg-amber-200",
                   )}
                 >
                   {flagged.replaceAll(" ", "·")}

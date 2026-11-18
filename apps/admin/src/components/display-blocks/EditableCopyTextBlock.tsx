@@ -43,7 +43,7 @@ export function EditableCopyTextBlock({
                 onChange={(title) =>
                   handleUpdate({ title: title || undefined })
                 }
-                className="w-full text-xs text-gray-500 border-none outline-none bg-transparent"
+                className="w-full text-xs text-zinc-500 border-none outline-hidden bg-transparent"
                 containerClassName="flex-1"
                 placeholder="Title (optional)"
               />
@@ -60,7 +60,7 @@ export function EditableCopyTextBlock({
               multiline
               value={activeBlock.text}
               onChange={(text) => handleUpdate({ text })}
-              className="w-full text-sm text-gray-900 border-none outline-none bg-transparent resize-none overflow-hidden"
+              className="w-full text-sm text-zinc-900 border-none outline-hidden bg-transparent resize-none overflow-hidden"
               placeholder={rich ? "Text to copy (markdown)" : "Text to copy"}
               rows={1}
             />
@@ -90,7 +90,7 @@ function RichTextToggle({
       title={label}
       onClick={() => onChange(!rich)}
       className={cn(
-        "p-1 rounded border",
+        "p-1 rounded-md border",
         rich
           ? "border-blue-500 bg-blue-50 text-blue-700"
           : "border-zinc-200 text-zinc-500 hover:border-zinc-400",

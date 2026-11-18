@@ -33,19 +33,19 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
           public submissions)
         </h2>
         {shareUrlStatsLoading ? (
-          <div className="text-sm text-gray-500">Loading...</div>
+          <div className="text-sm text-zinc-500">Loading...</div>
         ) : shareUrlStats.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">
+                <tr className="border-b border-zinc-200">
+                  <th className="text-left py-2 px-3 font-medium text-zinc-600">
                     Member
                   </th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-600">
+                  <th className="text-right py-2 px-3 font-medium text-zinc-600">
                     Form submissions
                   </th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-600">
+                  <th className="text-right py-2 px-3 font-medium text-zinc-600">
                     Interested in joining
                   </th>
                 </tr>
@@ -54,7 +54,7 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
                 {shareUrlStats.map((stat) => (
                   <tr
                     key={stat.sid}
-                    className="border-b border-gray-100 hover:bg-gray-50"
+                    className="border-b border-zinc-100 hover:bg-zinc-50"
                   >
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
                           pfp={stat.user.profilePicture}
                           size="small"
                         />
-                        <span className="font-medium text-gray-800">
+                        <span className="font-medium text-zinc-800">
                           {stat.user.displayName}
                         </span>
                       </div>
@@ -79,7 +79,7 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
             </table>
           </div>
         ) : (
-          <div className="text-sm text-gray-500">No invites yet.</div>
+          <div className="text-sm text-zinc-500">No invites yet.</div>
         )}
       </Card>
     )}

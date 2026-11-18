@@ -364,7 +364,7 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-gray-500">Loading responses...</p>
+        <p className="text-zinc-500">Loading responses...</p>
       </div>
     );
   }
@@ -411,7 +411,7 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
             onClick={() => updateParams({ version: null })}
             aria-label="Clear version filter"
             title="Clear version filter"
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
           >
             <X aria-hidden="true" className="size-4" />
           </button>
@@ -436,7 +436,7 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
 
       {rows.length === 0 ? (
         <Card style={CardStyle.White}>
-          <p className="text-gray-600">No responses yet for this form.</p>
+          <p className="text-zinc-600">No responses yet for this form.</p>
         </Card>
       ) : (
         <ResponsesGrid

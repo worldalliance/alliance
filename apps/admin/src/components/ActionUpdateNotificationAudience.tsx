@@ -34,7 +34,7 @@ export function NotificationAudienceFields({
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-700">Audience</span>
+          <span className="font-medium text-zinc-700">Audience</span>
           <select
             value={form.notifyType}
             onChange={(e) =>
@@ -43,7 +43,7 @@ export function NotificationAudienceFields({
                 notifyType: e.target.value as ActionUpdateNotifyType,
               })
             }
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
           >
             {ACTION_UPDATE_NOTIFY_TYPES.map((option) => (
               <option key={option} value={option}>
@@ -54,11 +54,11 @@ export function NotificationAudienceFields({
         </label>
         {form.notifyType === "tag" && (
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Target tag</span>
+            <span className="font-medium text-zinc-700">Target tag</span>
             <select
               value={form.tagId}
               onChange={(e) => onChange({ ...form, tagId: e.target.value })}
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">Select a tag</option>
               {availableTags.map((tag) => (
@@ -70,12 +70,12 @@ export function NotificationAudienceFields({
           </label>
         )}
       </div>
-      <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+      <div className="mt-4 pt-4 border-t border-zinc-200 space-y-3">
         {update.notificationHeldReason && (
           <NotificationHeldBanner reason={update.notificationHeldReason} />
         )}
         {update.notifiedAt ? (
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-zinc-700">
             Sent {new Date(update.notifiedAt).toLocaleString()} to{" "}
             {ACTION_UPDATE_NOTIFY_TYPE_LABELS[update.notifyType].toLowerCase()}.
             An update can only be notified about once.
@@ -99,7 +99,7 @@ export function NotificationAudienceFields({
             >
               {notifying ? "Sending..." : "Send notification"}
             </button>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               {notifyBlockedReason ??
                 "Nothing has been sent yet. Members are notified when you send it."}
             </p>

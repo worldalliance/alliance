@@ -47,7 +47,7 @@ const ActionFormFields: React.FC<
         <div key={String(f.name)}>
           <label
             htmlFor={String(f.name)}
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-zinc-700 mb-1"
           >
             {f.label}
           </label>
@@ -58,7 +58,7 @@ const ActionFormFields: React.FC<
             accept="image/*"
             onChange={onImageChange}
             ref={fileInputRef}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
           {imageUploading && (
             <UploadingWithCancel
@@ -74,7 +74,7 @@ const ActionFormFields: React.FC<
               <img
                 src={imagePreview}
                 alt="Preview"
-                className="w-full max-w-sm h-auto rounded-md border border-gray-300"
+                className="w-full max-w-sm h-auto rounded-md border border-zinc-300"
               />
             </div>
           )}
@@ -83,7 +83,7 @@ const ActionFormFields: React.FC<
               <img
                 src={`${baseUrl}/images/${form.image}`}
                 alt="Current"
-                className="w-full max-w-sm h-auto rounded-md border border-gray-300"
+                className="w-full max-w-sm h-auto rounded-md border border-zinc-300"
               />
             </div>
           )}
@@ -94,7 +94,7 @@ const ActionFormFields: React.FC<
     if (f.type === "category") {
       return (
         <div key={String(f.name)}>
-          <span className="block text-sm font-medium text-gray-700 mb-1">
+          <span className="block text-sm font-medium text-zinc-700 mb-1">
             {f.label}
           </span>
           <ActionCategoryPicker
@@ -110,7 +110,7 @@ const ActionFormFields: React.FC<
         <div key={String(f.name)}>
           <label
             htmlFor={String(f.name)}
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-zinc-700 mb-1"
           >
             {f.label}
           </label>
@@ -131,7 +131,7 @@ const ActionFormFields: React.FC<
         <div key={String(f.name)}>
           <label
             htmlFor={String(f.name)}
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-zinc-700 mb-1"
           >
             {f.label}
           </label>
@@ -141,7 +141,8 @@ const ActionFormFields: React.FC<
             value={(form as any)[f.name] ?? ""}
             onChange={onInputChange}
             rows={f.rows || 3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+            required={f.required}
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
         </div>
       );
@@ -152,7 +153,7 @@ const ActionFormFields: React.FC<
         <div key={String(f.name)}>
           <label
             htmlFor={String(f.name)}
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-zinc-700 mb-1"
           >
             {f.label}
           </label>
@@ -162,7 +163,7 @@ const ActionFormFields: React.FC<
             value={(form as any)[f.name] ?? ""}
             onChange={onInputChange}
             required={f.required}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           >
             {f.options?.map((opt) => (
               <option key={String(opt.value)} value={String(opt.value)}>
@@ -171,7 +172,7 @@ const ActionFormFields: React.FC<
             ))}
           </select>
           {f.helpText && (
-            <p className="text-xs text-gray-500 mt-1">{f.helpText}</p>
+            <p className="text-xs text-zinc-500 mt-1">{f.helpText}</p>
           )}
         </div>
       );
@@ -208,7 +209,7 @@ const ActionFormFields: React.FC<
             "flex items-start justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors",
             isChecked
               ? "border-blue-400 bg-blue-50"
-              : "border-gray-200 hover:border-gray-300 bg-white",
+              : "border-zinc-200 hover:border-zinc-300 bg-white",
           )}
         >
           <input
@@ -221,14 +222,14 @@ const ActionFormFields: React.FC<
             className="peer sr-only"
           />
           <span className="flex flex-col min-w-0">
-            <span className="text-sm font-medium text-gray-900">{f.label}</span>
+            <span className="text-sm font-medium text-zinc-900">{f.label}</span>
             {f.helpText && (
-              <span className="text-xs text-gray-500 mt-0.5">{f.helpText}</span>
+              <span className="text-xs text-zinc-500 mt-0.5">{f.helpText}</span>
             )}
           </span>
           <span
             aria-hidden
-            className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-gray-300 transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"
+            className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-zinc-300 transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"
           />
         </label>
       );
@@ -239,7 +240,7 @@ const ActionFormFields: React.FC<
       <div key={String(f.name)}>
         <label
           htmlFor={String(f.name)}
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-zinc-700 mb-1"
         >
           {f.label}
         </label>
@@ -251,10 +252,10 @@ const ActionFormFields: React.FC<
           onChange={onInputChange}
           required={f.required}
           min={undefined}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+          className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white text-sm"
         />
         {f.helpText && (
-          <p className="text-xs text-gray-500 mt-1">{f.helpText}</p>
+          <p className="text-xs text-zinc-500 mt-1">{f.helpText}</p>
         )}
       </div>
     );

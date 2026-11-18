@@ -20,7 +20,7 @@ export type TimelineAction = Pick<
   ActionDto,
   "id" | "name" | "status" | "events" | "project"
 > &
-  Partial<Pick<AdminActionDto, "slug">>;
+  Partial<Pick<AdminActionDto, "slug" | "archived">>;
 
 export type TimelineReminder = Pick<
   ReminderGroupDto,
@@ -35,7 +35,10 @@ export type TimelineReminder = Pick<
 >;
 
 interface TimelineData {
-  action: Pick<TimelineAction, "id" | "name" | "slug" | "status" | "project">;
+  action: Pick<
+    TimelineAction,
+    "id" | "name" | "slug" | "status" | "project" | "archived"
+  >;
   phases: PhaseSegment[];
   totalDuration: number;
   startDate: Date;

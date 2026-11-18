@@ -239,14 +239,14 @@ export function ShareableTextBuilder({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="rounded-lg border border-zinc-200 bg-white p-6">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-zinc-900">
             Shareable Text for Completed Tasks
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-zinc-600">
             Build the text copied when a member shares a completed action. Type
-            <span className="mx-1 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">
+            <span className="mx-1 rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-xs">
               #{"{field}"}
             </span>
             to insert a field token, or drag a field into the text box.
@@ -286,7 +286,7 @@ export function ShareableTextBuilder({
             <ReferralUrlNotice />
 
             {activeToken && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-gray-200 bg-white shadow-xl">
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-zinc-200 bg-white shadow-xl">
                 {suggestions.map((field, index) => (
                   <button
                     key={field.id}
@@ -301,14 +301,14 @@ export function ShareableTextBuilder({
                     )}
                   >
                     <div>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-zinc-900">
                         {field.label}
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">
+                      <div className="mt-1 text-xs text-zinc-500">
                         {field.token} · {field.pageTitle}
                       </div>
                     </div>
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                    <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-600">
                       {field.kind}
                     </span>
                   </button>
@@ -317,19 +317,19 @@ export function ShareableTextBuilder({
             )}
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
+              <h3 className="text-sm font-semibold text-zinc-900">
                 Form Fields
               </h3>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-zinc-500">
                 Drag or click a field to insert its token.
               </p>
             </div>
 
             <div className="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Member Details
                 </p>
                 {SHAREABLE_NAME_TOKENS.map((item) => (
@@ -343,11 +343,11 @@ export function ShareableTextBuilder({
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Form Fields
                 </p>
                 {fields.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
+                  <p className="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500">
                     Add form fields in Form Builder first.
                   </p>
                 ) : (
@@ -366,12 +366,12 @@ export function ShareableTextBuilder({
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="rounded-lg border border-zinc-200 bg-white p-6">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-zinc-900">
             Default Shareable Text
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-zinc-600">
             This text is copied when a user shares the action before completing
             it. Only member-detail tokens are supported in this box.
           </p>
@@ -399,7 +399,7 @@ export function ShareableTextBuilder({
                 }
                 insertDefaultToken(item);
               }}
-              textareaClassName="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              textareaClassName="rounded-lg border border-zinc-300 px-4 py-3 text-sm text-zinc-900 shadow-sm outline-hidden transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
 
             <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
@@ -419,12 +419,12 @@ export function ShareableTextBuilder({
             <ReferralUrlNotice />
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
+              <h3 className="text-sm font-semibold text-zinc-900">
                 Member Details
               </h3>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-zinc-500">
                 Drag or click a member detail to insert it into Default
                 Shareable Text.
               </p>

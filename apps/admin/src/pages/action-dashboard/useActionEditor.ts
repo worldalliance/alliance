@@ -3,6 +3,7 @@ import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
 import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { useContentConfirm } from "../../components/useContentConfirm";
@@ -10,6 +11,7 @@ import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
 import { useCoverImage } from "../../lib/useCoverImage";
+import { useLeaveGuard, withoutLeaveGuard } from "../../lib/useLeaveGuard";
 import { imageUploadingMessage, logActionError } from "./actionSaveErrors";
 import { useNavigateToCreatedAction } from "./useActionCommands";
 
@@ -135,15 +137,23 @@ export function useActionEditor(params: {
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
   const { confirmSave, dialog: contentDialog } = useContentConfirm();
+  const { success } = useToast();
 
   useEffect(() => {
     if (isNew) {
-      setForm(
-        emptyActionDraft(
-          searchParams.get("suiteId")
-            ? parseInt(searchParams.get("suiteId")!)
-            : undefined,
-        ),
+      const emptyForm = emptyActionDraft(
+        searchParams.get("suiteId")
+          ? parseInt(searchParams.get("suiteId")!)
+          : undefined,
+      );
+      setForm(emptyForm);
+      setSavedDraft(
+        draftOf({
+          form: emptyForm,
+          reviewerRows: [],
+          cohortExpression: null,
+          imageKey: null,
+        }),
       );
       setReviewerRows([]);
       resetCoverImage(null);
@@ -336,7 +346,9 @@ export function useActionEditor(params: {
         setError(result.error);
         return;
       }
-      handleActionCreated(result.value);
+      const created = result.value;
+      setSavedDraft(null);
+      withoutLeaveGuard(() => handleActionCreated(created));
     } else if (actionId) {
       // The mutation invalidates the action query, so fresh data is
       // refetched before this resolves.
@@ -355,15 +367,20 @@ export function useActionEditor(params: {
         return;
       }
       setSavedDraft(submitted);
+      success("Action saved");
     }
   };
 
+  const dirty =
+    seededActionId === actionId &&
+    savedDraft !== null &&
+    draftOf({ form, reviewerRows, cohortExpression, imageKey }) !== savedDraft;
+  // A new action's draft resets when its search params change.
+  useLeaveGuard(dirty, { allowSamePath: !isNew });
+
   return {
     draftSeeded: seededActionId === actionId,
-    dirty:
-      savedDraft !== null &&
-      draftOf({ form, reviewerRows, cohortExpression, imageKey }) !==
-        savedDraft,
+    dirty,
     setStaffPreview,
     contentDialog,
     form,

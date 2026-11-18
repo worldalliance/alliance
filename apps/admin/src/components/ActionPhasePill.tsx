@@ -40,7 +40,7 @@ const ActionPhasePill = ({
   return (
     <span
       className={cn(
-        "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
+        "shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium",
         color,
       )}
     >

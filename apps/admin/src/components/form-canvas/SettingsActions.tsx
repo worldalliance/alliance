@@ -12,11 +12,11 @@ export function SettingsActions({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-3 border-t border-gray-200 pt-4">
+    <div className="space-y-3 border-t border-zinc-200 pt-4">
       {id && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-zinc-500">
           {idLabel}{" "}
-          <code className="select-all rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-gray-700">
+          <code className="select-all rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-zinc-700">
             {id}
           </code>
         </p>
@@ -45,10 +45,10 @@ export function SettingsAction({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
         destructive
           ? "border-red-200 text-red-700 hover:bg-red-50"
-          : "border-gray-200 text-gray-700 hover:bg-gray-50",
+          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
       )}
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
@@ -79,7 +79,7 @@ export function SettingsIconAction({
       aria-disabled={disabled}
       aria-label={label}
       title={label}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 aria-disabled:cursor-not-allowed aria-disabled:text-gray-300 aria-disabled:hover:bg-transparent"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 aria-disabled:cursor-not-allowed aria-disabled:text-zinc-300 aria-disabled:hover:bg-transparent"
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>

@@ -158,7 +158,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             rows={3}
             disabled={isDeleting}
             placeholder="Why is this account being deleted?"
-            className="border rounded px-3 py-2 bg-white focus:outline-none text-[11pt] border-zinc-300 focus:border-zinc-500"
+            className="border rounded-md px-3 py-2 bg-white focus:outline-hidden text-sm border-zinc-300 focus:border-zinc-500"
           />
           <p className="text-xs text-zinc-500">
             Posted to Slack with your name. Not stored on the account.
@@ -191,7 +191,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
               accept="image/*"
               onChange={handleFileChange}
               disabled={isUploading || isDeleting}
-              className="text-sm file:mr-2 file:rounded file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1 file:text-sm"
+              className="text-sm file:mr-2 file:rounded-md file:border file:border-zinc-300 file:bg-white file:px-2 file:py-1 file:text-sm"
             />
           )}
           <p className="text-xs text-zinc-500">

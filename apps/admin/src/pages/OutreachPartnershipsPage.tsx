@@ -289,7 +289,7 @@ function ResponseCard({
               Date
               <input
                 type="datetime-local"
-                className="rounded border border-zinc-300 bg-white px-3 py-2 text-sm"
+                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
                 value={noteDate}
                 onChange={(event) => onNoteDateChange(event.target.value)}
               />
@@ -297,7 +297,7 @@ function ResponseCard({
             <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700">
               Note
               <textarea
-                className="min-h-28 resize-y rounded border border-zinc-300 bg-white px-3 py-2 text-sm"
+                className="min-h-28 resize-y rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
                 value={noteBody}
                 onChange={(event) => onNoteBodyChange(event.target.value)}
                 placeholder="Follow-up status, next step, context..."

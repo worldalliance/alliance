@@ -167,7 +167,7 @@ export default function InviteFeedPage() {
                     current ? { ...current, startAt } : current,
                   );
                 }}
-                className="w-full rounded-md border border-[#081e40]/20 bg-[#f7f7f3] px-3 py-2.5 text-sm text-[#14181d] outline-none focus:border-[#081e40]"
+                className="w-full rounded-md border border-[#081e40]/20 bg-[#f7f7f3] px-3 py-2.5 text-sm text-[#14181d] outline-hidden focus:border-[#081e40]"
               />
             </label>
             <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md border border-[#081e40]/15 px-4 py-2.5 text-sm font-semibold text-[#081e40]">

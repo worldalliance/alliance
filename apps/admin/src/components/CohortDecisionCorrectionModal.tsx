@@ -60,7 +60,7 @@ export function CohortDecisionCorrectionModal({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          className="rounded border border-gray-2 p-2 text-sm"
+          className="rounded-md border border-zinc-300 p-2 text-sm"
         />
         <InlineError
           message={

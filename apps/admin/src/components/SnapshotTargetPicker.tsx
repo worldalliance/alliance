@@ -34,9 +34,9 @@ export const SnapshotTargetPicker: React.FC<SnapshotTargetPickerProps> = ({
           <button
             key={target.formId}
             onClick={() => onSelect(target)}
-            className="flex items-center justify-between rounded-md border border-zinc-200 px-4 py-2.5 text-left text-sm hover:border-black hover:bg-gray-50"
+            className="flex items-center justify-between rounded-md border border-zinc-200 px-4 py-2.5 text-left text-sm hover:border-black hover:bg-zinc-50"
           >
-            <span className="font-medium text-gray-900">{target.name}</span>
+            <span className="font-medium text-zinc-900">{target.name}</span>
             <span className="text-xs text-zinc-500">form #{target.formId}</span>
           </button>
         ))}

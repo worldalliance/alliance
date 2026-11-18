@@ -121,12 +121,12 @@ const MembersOverTimeChart: React.FC<{
   );
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 p-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">Members over time</h3>
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 p-3 border-b border-zinc-200">
+        <h3 className="font-semibold text-zinc-900">Members over time</h3>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">From</label>
+            <label className="text-xs font-semibold text-zinc-600">From</label>
             <input
               type="date"
               value={contractStatusRange.start}
@@ -136,11 +136,11 @@ const MembersOverTimeChart: React.FC<{
                   start: e.target.value,
                 }))
               }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">To</label>
+            <label className="text-xs font-semibold text-zinc-600">To</label>
             <input
               type="date"
               value={contractStatusRange.end}
@@ -150,14 +150,14 @@ const MembersOverTimeChart: React.FC<{
                   end: e.target.value,
                 }))
               }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+              className="rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-green-400 bg-white"
             />
           </div>
         </div>
       </div>
       <div className="relative p-4 pb-0">
         {contractStatusLoading && parsedContractStatusHistory.length === 0 && (
-          <p className="text-sm text-gray-600">Loading...</p>
+          <p className="text-sm text-zinc-600">Loading...</p>
         )}
         {contractStatusError && (
           <p className="text-sm text-red-600">
@@ -170,7 +170,7 @@ const MembersOverTimeChart: React.FC<{
         {!contractStatusLoading &&
           !contractStatusError &&
           parsedContractStatusHistory.length === 0 && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-zinc-600">
               No contract status data in this date range.
             </p>
           )}
@@ -202,7 +202,7 @@ const MembersOverTimeChart: React.FC<{
                       y={contractStatusChartGeometry.yScale(tick)}
                       textAnchor="end"
                       dominantBaseline="middle"
-                      className="fill-gray-500 text-xs"
+                      className="fill-zinc-500 text-xs"
                     >
                       {tick}
                     </text>
@@ -228,7 +228,7 @@ const MembersOverTimeChart: React.FC<{
                         24
                       }
                       textAnchor="middle"
-                      className="fill-gray-600 text-xs"
+                      className="fill-zinc-600 text-xs"
                     >
                       {dateFormatter.format(tick)}
                     </text>
@@ -307,7 +307,7 @@ const MembersOverTimeChart: React.FC<{
                       contractStatusChartGeometry.width - 118,
                     )}
                     y={contractStatusChartGeometry.margin.top + 50}
-                    className="fill-gray-500 text-xs"
+                    className="fill-zinc-500 text-xs"
                   >
                     {hoveredContractPoint.activeCount} members
                   </text>
@@ -319,17 +319,17 @@ const MembersOverTimeChart: React.FC<{
       <div className="flex items-center gap-6 px-4 pb-4 -mt-4">
         <div className="flex items-center gap-2">
           <div
-            className="w-4 h-4 rounded"
+            className="w-4 h-4 rounded-md"
             style={{ backgroundColor: "rgba(22, 163, 74, 0.8)" }}
           />
-          <span className="text-sm text-gray-600">Active Members</span>
+          <span className="text-sm text-zinc-600">Active Members</span>
         </div>
         <div className="flex items-center gap-2">
           <div
-            className="w-4 h-4 rounded"
+            className="w-4 h-4 rounded-md"
             style={{ backgroundColor: "rgba(239, 68, 68, 0.9)" }}
           />
-          <span className="text-sm text-gray-600">Churned Members</span>
+          <span className="text-sm text-zinc-600">Churned Members</span>
         </div>
       </div>
     </div>

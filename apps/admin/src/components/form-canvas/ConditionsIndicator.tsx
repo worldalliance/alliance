@@ -21,7 +21,7 @@ export function ConditionsIndicator({
       aria-label={label}
       title={title}
       className={cn(
-        "flex h-6 w-6 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+        "flex h-6 w-6 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500",
         className,
       )}
     >

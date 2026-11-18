@@ -120,11 +120,11 @@ describe("CohortVisualization", () => {
     );
 
     await screen.findByText("Evaluating...");
-    expect(dots()).toEqual(["bg-emerald-500", "bg-emerald-500", "bg-gray-200"]);
+    expect(dots()).toEqual(["bg-emerald-500", "bg-emerald-500", "bg-zinc-200"]);
     expect(gridClassName()).toContain("opacity-40");
     held[0].resolve();
     await screen.findByText("1 of 3 members matched");
-    expect(dots()).toEqual(["bg-emerald-500", "bg-gray-200", "bg-gray-200"]);
+    expect(dots()).toEqual(["bg-emerald-500", "bg-zinc-200", "bg-zinc-200"]);
   });
 
   it("labels no searched member while the cohort evaluates", async () => {
@@ -260,7 +260,7 @@ describe("CohortVisualization", () => {
 
     await screen.findByText("Failed to evaluate the compare action's cohort.");
     await screen.findByText("2 of 3 members matched");
-    expect(dots()).toEqual(["bg-emerald-500", "bg-emerald-500", "bg-gray-200"]);
+    expect(dots()).toEqual(["bg-emerald-500", "bg-emerald-500", "bg-zinc-200"]);
     expect(screen.queryByText(/in both/)).toBeNull();
     fireEvent.change(screen.getByPlaceholderText("Search for a user..."), {
       target: { value: "Member 1" },

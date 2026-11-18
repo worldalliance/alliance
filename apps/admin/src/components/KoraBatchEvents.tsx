@@ -136,7 +136,7 @@ export function KoraBatchEvents() {
         <label className="text-sm">
           Show{" "}
           <select
-            className="ml-1 rounded border border-zinc-300 bg-white px-2 py-1"
+            className="ml-1 rounded-md border border-zinc-300 bg-white px-2 py-1"
             value={filter}
             onChange={(e) =>
               setFilter(

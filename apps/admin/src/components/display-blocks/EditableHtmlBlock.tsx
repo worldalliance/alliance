@@ -13,7 +13,7 @@ export function EditableHtmlBlock(props: BaseDisplayBlockProps<HtmlBlock>) {
           <FormTextarea
             value={activeBlock.html}
             onChange={(e) => handleUpdate({ html: e.target.value })}
-            className="w-full px-2 py-1 text-sm border border-yellow-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono bg-yellow-50"
+            className="w-full px-2 py-1 text-sm border border-amber-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-amber-500 font-mono bg-amber-50"
             placeholder="Enter HTML content"
             rows={Math.max(2, activeBlock.html.split("\n").length)}
           />

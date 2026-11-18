@@ -78,13 +78,13 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
       </ModalHeader>
 
       <ModalBody className="grid grid-cols-1 gap-4 overflow-auto md:grid-cols-2">
-        <div className="rounded border border-zinc-200 p-3">
+        <div className="rounded-md border border-zinc-200 p-3">
           <p className="mb-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase">
             Your changes
           </p>
           <SchemaDiffView before={base} after={mine} />
         </div>
-        <div className="rounded border border-zinc-200 p-3">
+        <div className="rounded-md border border-zinc-200 p-3">
           <p className="mb-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase">
             Their changes (now saved)
           </p>

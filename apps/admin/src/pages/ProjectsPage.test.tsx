@@ -107,7 +107,7 @@ it("flags a deadline within three days and draws the project's timeline", async 
   expect(
     await screen.findByText('"Measure the air" closes in 2 days'),
   ).toBeTruthy();
-  expect(screen.getByTitle(/^Measure the air: Member Action/)).toBeTruthy();
+  expect(screen.getByTitle(/^Measure the air: Member action/)).toBeTruthy();
 });
 
 it("makes a project from a standalone action, prefilled with its name", async () => {

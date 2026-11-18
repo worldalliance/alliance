@@ -117,7 +117,7 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
       >
         <input
           aria-label="New link's channel"
-          className="border border-zinc-300 rounded px-2 py-1 text-sm"
+          className="border border-zinc-300 rounded-md px-2 py-1 text-sm"
           value={channel}
           maxLength={200}
           onChange={(e) => setChannel(e.target.value)}
@@ -127,7 +127,7 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
           Published
           <input
             type="date"
-            className="border border-zinc-300 rounded px-2 py-1"
+            className="border border-zinc-300 rounded-md px-2 py-1"
             value={publishedOn}
             onChange={(e) => setPublishedOn(e.target.value)}
           />
@@ -199,7 +199,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
       <td className="px-2 py-2">
         <InlineTextInput
           aria-label="Channel"
-          className="border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded px-1 py-0.5"
+          className="border border-transparent hover:border-zinc-300 focus:border-zinc-400 rounded-md px-1 py-0.5"
           value={link.channel}
           maxLength={200}
           disabled={disabled}
@@ -222,7 +222,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
         <input
           type="date"
           aria-label="Publication date"
-          className="border border-zinc-200 rounded px-1 py-0.5"
+          className="border border-zinc-200 rounded-md px-1 py-0.5"
           value={draftPublished ?? toDateInput(link.publishedAt)}
           disabled={disabled}
           onChange={(e) => setDraftPublished(e.target.value)}

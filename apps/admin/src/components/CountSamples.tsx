@@ -58,7 +58,7 @@ export function CountSamples({
 }: CountSamplesProps) {
   const options = countOptions(field);
   return (
-    <details className="pl-16 text-[10px] text-gray-500">
+    <details className="pl-16 text-xs text-zinc-500">
       <summary className="cursor-pointer">Sample counts</summary>
       <div className="mt-1 flex items-center gap-1">
         <span>Set all to</span>
@@ -74,7 +74,7 @@ export function CountSamples({
               )
             }
             title={`Set every sample count for ${inputName} to ${count}`}
-            className="rounded border border-gray-200 px-1.5 hover:bg-gray-50"
+            className="rounded-md border border-zinc-200 px-1.5 hover:bg-zinc-50"
           >
             {label}
           </button>

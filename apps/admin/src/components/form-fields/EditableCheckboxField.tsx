@@ -30,7 +30,7 @@ export function EditableCheckboxField({
       />
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-zinc-700 mb-1">
           Checkbox position
         </label>
         <select
@@ -41,7 +41,7 @@ export function EditableCheckboxField({
               checkboxPosition: position === "left" ? undefined : position,
             });
           }}
-          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500"
         >
           <option value="left">Left of text</option>
           <option value="right">Right of text</option>

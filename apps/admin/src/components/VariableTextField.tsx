@@ -239,7 +239,7 @@ export function VariableTextField({
               <span
                 key={index}
                 className={cn(
-                  "rounded",
+                  "rounded-md",
                   segment.known === true && "bg-emerald-100",
                   segment.known === false && "bg-red-100",
                 )}
@@ -274,7 +274,7 @@ export function VariableTextField({
             aria-label="Insert a variable"
             onMouseDown={(event) => event.preventDefault()}
             onClick={openPicker}
-            className="absolute right-1 top-1 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="absolute right-1 top-1 rounded-md p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
           >
             <SquareFunction size={14} />
           </button>
@@ -284,7 +284,7 @@ export function VariableTextField({
       {menu && options.length > 0 && (
         <ul
           role="listbox"
-          className="absolute left-0 top-full z-30 mt-1 max-h-48 w-64 overflow-y-auto rounded border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 top-full z-30 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border border-zinc-200 bg-white py-1 shadow-lg"
         >
           {options.map((variable, index) => (
             <li key={variable.name}>
@@ -300,12 +300,12 @@ export function VariableTextField({
                   index === activeIndex && "bg-blue-50",
                 )}
               >
-                <span className="font-mono text-xs text-gray-800">
+                <span className="font-mono text-xs text-zinc-800">
                   {VARIABLE_REFERENCE_OPEN}
                   {variable.name}
                   {"}"}
                 </span>
-                <span className="truncate font-mono text-[10px] text-gray-400">
+                <span className="truncate font-mono text-xs text-zinc-400">
                   {variable.formula}
                 </span>
               </button>

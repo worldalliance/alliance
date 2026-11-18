@@ -35,7 +35,7 @@ const TentativePlanSummary: React.FC<TentativePlanSummaryProps> = ({
               onClick={onRetry}
               aria-label="Retry recipient count"
               title="Retry recipient count"
-              className="shrink-0 rounded p-1 hover:bg-red-50"
+              className="shrink-0 rounded-md p-1 hover:bg-red-50"
             >
               <RotateCw className="h-4 w-4" />
             </button>
@@ -48,10 +48,10 @@ const TentativePlanSummary: React.FC<TentativePlanSummaryProps> = ({
       {tentativePlans !== null && tentativePlans.length > 0 && (
         <p
           className={cn(
-            "px-4 py-2 rounded self-start",
+            "px-4 py-2 rounded-md self-start",
             tentativePlans.length > 0 && isProd
-              ? "bg-yellow-600 text-white"
-              : "border border-gray-200",
+              ? "bg-amber-600 text-white"
+              : "border border-zinc-200",
           )}
         >
           {isProd && "⚠️"} This will send <b>{tentativePlans.length}</b>{" "}

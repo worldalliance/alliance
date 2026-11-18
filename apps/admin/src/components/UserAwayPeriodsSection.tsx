@@ -216,7 +216,7 @@ export default function UserAwayPeriodsSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="border border-zinc-200 rounded-md p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Away Periods
         {awayRangesQuery.data && ` (${sortedAwayRanges.length})`}
@@ -242,7 +242,7 @@ export default function UserAwayPeriodsSection({
               <div
                 key={range.id}
                 className={cn(
-                  "text-xs p-2 rounded",
+                  "text-xs p-2 rounded-md",
                   AWAY_RANGE_ROW_CLASS[status],
                 )}
               >
@@ -458,7 +458,7 @@ function AwayReasonSelect({
         onChange={(event) =>
           onChange(event.target.value as UserAwayRangeReason | "")
         }
-        className="w-full text-sm border border-gray-2 text-black bg-white px-2 rounded-sm py-2 focus:outline-none focus:border-black"
+        className="w-full text-sm border border-zinc-300 text-black bg-white px-2 rounded-md py-2 focus:outline-hidden focus:border-black"
       >
         <option value="">Select a reason</option>
         {AWAY_REASON_OPTIONS.map((option) => (

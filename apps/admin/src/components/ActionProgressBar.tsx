@@ -37,13 +37,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   label,
 }) => (
   <>
-    <div className="w-full h-2 bg-gray-100 rounded-[2px]">
+    <div className="w-full h-2 bg-zinc-100 rounded-[2px]">
       <div
         className={cn("h-2 rounded-[2px]", barColor)}
         style={{ width: `${Math.min(percentage, 100)}%` }}
       />
     </div>
-    <p className="text-gray-600 text-xs">{label}</p>
+    <p className="text-zinc-600 text-xs">{label}</p>
   </>
 );
 
@@ -103,7 +103,7 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
   // For statuses with no users, show basic stats
   return (
     <ProgressBarWrapper className={className}>
-      <div className="flex justify-between text-xs text-gray-600">
+      <div className="flex justify-between text-xs text-zinc-600">
         <span>Joined: {usersJoined}</span>
         <span>Completed: {usersCompleted}</span>
       </div>

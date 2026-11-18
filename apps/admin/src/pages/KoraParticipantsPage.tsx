@@ -202,7 +202,7 @@ const KoraParticipantsPage: React.FC = () => {
             {perDay.map(({ day, count }) => (
               <li
                 key={day}
-                className="rounded border border-zinc-200 bg-white px-2 py-1"
+                className="rounded-md border border-zinc-200 bg-white px-2 py-1"
               >
                 {day}: <span className="font-semibold">{count}</span>
               </li>
@@ -217,7 +217,7 @@ const KoraParticipantsPage: React.FC = () => {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
+          className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5"
         />
       </label>
 

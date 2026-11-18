@@ -70,10 +70,10 @@ export function CustomValidatorSelect({
 
   return (
     <div className={cn("space-y-1", className)}>
-      <label className="block text-xs font-medium text-gray-700">{label}</label>
+      <label className="block text-xs font-medium text-zinc-700">{label}</label>
       <div className="flex items-center gap-2">
         <select
-          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+          className="flex-1 px-2 py-1 text-xs border border-zinc-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 disabled:bg-zinc-100"
           value={type ?? ""}
           onChange={handleChange}
           disabled={loading || (!hasValidators && !type)}
@@ -95,7 +95,7 @@ export function CustomValidatorSelect({
                   idArgument: e.target.value === "" ? null : e.target.value,
                 })
               }
-              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-32"
+              className="px-2 py-1 text-xs border border-zinc-300 rounded-md bg-white w-32"
               disabled={tagsLoading}
             >
               <option value="">
@@ -117,16 +117,14 @@ export function CustomValidatorSelect({
                   idArgument: e.target.value === "" ? null : e.target.value,
                 })
               }
-              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-24"
+              className="px-2 py-1 text-xs border border-zinc-300 rounded-md bg-white w-24"
             />
           ))}
       </div>
-      {loading && (
-        <p className="text-[11px] text-gray-500">Loading validators…</p>
-      )}
-      {error && !loading && <p className="text-[11px] text-red-500">{error}</p>}
+      {loading && <p className="text-xs text-zinc-500">Loading validators…</p>}
+      {error && !loading && <p className="text-xs text-red-500">{error}</p>}
       {!loading && !hasValidators && !error && (
-        <p className="text-[11px] text-gray-500">No custom validators found.</p>
+        <p className="text-xs text-zinc-500">No custom validators found.</p>
       )}
     </div>
   );

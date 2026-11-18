@@ -97,7 +97,7 @@ const SnapshotGroupCard: React.FC<{
             {showResponses ? "Hide responses" : "Show responses"}
           </button>
           {showResponses && (
-            <ul className="mt-2 space-y-1 max-h-64 overflow-auto rounded border border-zinc-200 p-2">
+            <ul className="mt-2 space-y-1 max-h-64 overflow-auto rounded-md border border-zinc-200 p-2">
               {group.responses.map((response) => (
                 <li
                   key={response.id}
@@ -264,7 +264,7 @@ const FormSnapshotMigration: React.FC = () => {
             </Card>
           ) : (
             <>
-              <div className="flex items-center justify-between sticky top-0 bg-gray-50 py-2 z-10">
+              <div className="flex items-center justify-between sticky top-0 bg-zinc-50 py-2 z-10">
                 <p className="text-sm text-zinc-700">
                   {selectedIds.size} of {totalResponses} responses selected
                   across {withCount(data.groups.length, "snapshot")}

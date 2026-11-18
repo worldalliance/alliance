@@ -72,7 +72,7 @@ function SourceFormSelect({
         <div className="flex items-center gap-2">
           <FormPickerError
             reason={FormPickerErrorReason.FormList}
-            className="text-[11px]"
+            className="text-xs"
           />
           <RetryButton onClick={refetch} />
         </div>
@@ -185,14 +185,14 @@ export function FieldRule({
       </select>
       {externalError && sourceFormId !== undefined && (
         <div className="flex items-center gap-2">
-          <FormPickerError reason={externalError} className="text-[11px]" />
+          <FormPickerError reason={externalError} className="text-xs" />
           <RetryButton onClick={external.refetch} />
         </div>
       )}
       {!controller &&
         condition.when !== "" &&
         externalStatus === FormFieldsStatus.Ready && (
-          <p className="text-[11px] text-red-600">
+          <p className="text-xs text-red-600">
             {sourceFormId === undefined
               ? "This question isn't available to this rule: it was deleted, or it's on a later page."
               : "That form has no question with this id that a rule can use."}{" "}
@@ -201,7 +201,7 @@ export function FieldRule({
           </p>
         )}
       {isLater && (
-        <p className="text-[11px] text-amber-600">
+        <p className="text-xs text-amber-600">
           This field comes later in the form, so this element can appear or
           disappear above where the member is answering.
         </p>

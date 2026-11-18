@@ -52,7 +52,7 @@ const NewProject = () => {
       type="button"
       aria-label="New project"
       title="New project"
-      className="rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+      className="rounded-md border border-zinc-300 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
       onClick={() => setNaming(true)}
     >
       <Plus size={16} />
@@ -93,7 +93,7 @@ const ProjectsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-y-6 p-5">
-      <title>Projects</title>
+      <title>Projects - Admin</title>
       <div className="flex items-center gap-x-3">
         <h1 className="text-lg font-bold">Projects</h1>
         <NewProject />

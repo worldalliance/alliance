@@ -157,7 +157,7 @@ const UserDetail = ({
               {contractStatus}
             </span>
             {currentAwayRange && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+              <span className="text-xs px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800">
                 Away
               </span>
             )}
@@ -239,7 +239,7 @@ const UserDetail = ({
           <UserAwayPeriodsSection user={user} />
 
           {/* Contract Details */}
-          <section className="border border-zinc-200 rounded p-3">
+          <section className="border border-zinc-200 rounded-md p-3">
             <div className="flex items-center justify-between mx-1">
               <h2 className="text-sm font-semibold text-zinc-700 mb-2">
                 Contract
@@ -261,7 +261,7 @@ const UserDetail = ({
                     <div
                       key={idx}
                       className={cn(
-                        "text-xs flex items-center justify-between px-2 py-1 rounded",
+                        "text-xs flex items-center justify-between px-2 py-1 rounded-md",
                         event.type === "signed"
                           ? "bg-green-50 text-green-700"
                           : "bg-red-50 text-red-700",

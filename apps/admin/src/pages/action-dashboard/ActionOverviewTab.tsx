@@ -26,6 +26,7 @@ type ActionOverviewTabProps = {
   reporting: ActionReporting;
   actionExport: ActionExport;
   imageUploading: boolean;
+  unsaved: boolean;
   onDuplicate: () => Promise<void>;
   onArchive: () => Promise<void>;
   onTabChange: (tab: "events" | "responses") => void;
@@ -39,6 +40,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
   reporting,
   actionExport,
   imageUploading,
+  unsaved,
   onDuplicate,
   onArchive,
   onTabChange,
@@ -56,6 +58,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         action={action}
         actionExport={actionExport}
         imageUploading={imageUploading}
+        unsaved={unsaved}
         onDuplicate={onDuplicate}
         onArchive={onArchive}
       />
@@ -74,7 +77,9 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold">Status</h2>
-            <span
+            <button
+              type="button"
+              title="Open events"
               className={cn(
                 "inline-flex items-center px-3 py-1 rounded-full cursor-pointer text-sm font-medium",
                 ACTION_STATUS_COLORS[action.status],
@@ -82,15 +87,15 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
               onClick={() => onTabChange("events")}
             >
               {ACTION_STATUS_LABELS[action.status]}
-            </span>
+            </button>
           </div>
         </div>
 
         {action.usersJoined > 0 && (
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="font-medium">Completion Progress</span>
-              <span className="text-gray-600">
+              <span className="font-medium">Completion progress</span>
+              <span className="text-zinc-600">
                 {action.usersCompleted} / {action.usersJoined} (
                 {Math.round(
                   (action.usersCompleted / (action.usersJoined || 1)) * 100,
@@ -98,7 +103,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
                 %)
               </span>
             </div>
-            <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
+            <div className="w-full h-4 bg-zinc-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-green rounded-full transition-all duration-300"
                 style={{
@@ -127,19 +132,19 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
             sortByDateDescending(action.events).map((event) => (
               <div
                 key={event.id}
-                className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
+                className="flex items-center gap-3 py-2 border-b border-zinc-100 last:border-0"
               >
                 <div
                   className={cn(
                     "w-2 h-2 rounded-full flex-shrink-0",
-                    event.id === currentEventId ? "bg-blue-500" : "bg-gray-300",
+                    event.id === currentEventId ? "bg-blue-500" : "bg-zinc-300",
                   )}
                 />
                 <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="">{event.title}</span>
                   </div>
-                  <span className="text-xs text-gray-500 flex-shrink-0">
+                  <span className="text-xs text-zinc-500 flex-shrink-0">
                     {new Date(event.date).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -150,7 +155,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
               </div>
             ))
           ) : (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-zinc-500">
               No events yet. This action is in Draft status by default.
             </div>
           )}

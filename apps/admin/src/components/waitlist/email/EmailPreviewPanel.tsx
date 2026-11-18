@@ -84,7 +84,7 @@ const EmailPreviewPanel: React.FC<EmailPreviewPanelProps> = ({
                 title="Email preview"
                 sandbox=""
                 srcDoc={sample.html}
-                className="h-80 w-full rounded border border-zinc-200 bg-white"
+                className="h-80 w-full rounded-md border border-zinc-200 bg-white"
               />
               {signupLink && (
                 <p className="text-xs text-zinc-500">
