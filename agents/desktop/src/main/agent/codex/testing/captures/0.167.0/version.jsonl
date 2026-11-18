@@ -1,0 +1,4 @@
+{"kind":"start","args":["--version"]}
+{"kind":"stdin_closed"}
+{"kind":"out","text":"codex-cli 0.167.0"}
+{"kind":"exit","code":0}
