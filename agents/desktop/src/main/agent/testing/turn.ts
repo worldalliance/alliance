@@ -4,6 +4,9 @@ import type { AgentMessage, AgentSession } from "../session";
 
 export type TurnObserver = (event: AgentEvent, events: AgentEvent[]) => void;
 
+export const kinds = (events: AgentEvent[]) =>
+  events.map((event) => event.kind);
+
 export const text = (value: string): AgentMessage => ({
   text: value,
   images: [],

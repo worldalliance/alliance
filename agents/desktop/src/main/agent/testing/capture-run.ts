@@ -51,9 +51,6 @@ export function check(condition: boolean, message: string): void {
   if (!condition) throw new Error(`check failed: ${message}`);
 }
 
-export const kinds = (events: AgentEvent[]) =>
-  new Set(events.map((e) => e.kind));
-
 export const replyText = (events: AgentEvent[]) =>
   events
     .flatMap((e) => (e.kind === AgentEventKind.AssistantText ? [e.text] : []))

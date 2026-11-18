@@ -15,14 +15,13 @@ import {
   check,
   checkTranscriptUploaded,
   deltaText,
-  kinds,
   machine,
   redPng,
   replyText,
   repo,
   writeCaptures,
 } from "../../testing/capture-run";
-import { onFifthDelta, text, turn } from "../../testing/turn";
+import { kinds, onFifthDelta, text, turn } from "../../testing/turn";
 import { isSignedInToClaude, signInToClaude } from "../auth";
 import { createClaudeBackend } from "../backend";
 import { type ClaudeCli, checkClaudeVersion } from "../process";
@@ -79,17 +78,20 @@ check(
     AgentEventKind.ToolFinished,
     AgentEventKind.AssistantTextDelta,
     AgentEventKind.AssistantText,
-  ].every((k) => kinds(edit).has(k)),
+  ].every((k) => kinds(edit).includes(k)),
   "the edit turn streamed text and called a tool",
 );
-check(!kinds(edit).has(AgentEventKind.Error), "the edit turn had no error");
+check(
+  !kinds(edit).includes(AgentEventKind.Error),
+  "the edit turn had no error",
+);
 const interrupted = await turn({
   session: first,
   message: text("Count from 1 to 300, one number per line. Use no tools."),
   onEvent: onFifthDelta(() => first.interrupt()),
 });
 check(
-  !kinds(interrupted).has(AgentEventKind.Error),
+  !kinds(interrupted).includes(AgentEventKind.Error),
   "an interrupt emits no error",
 );
 check(
@@ -141,7 +143,7 @@ const missing = R.unwrap(
 );
 const failed = await turn({ session: missing, message: text("Hello") });
 check(
-  kinds(failed).has(AgentEventKind.Error),
+  kinds(failed).includes(AgentEventKind.Error),
   "a missing session reports an error",
 );
 await missing.close();

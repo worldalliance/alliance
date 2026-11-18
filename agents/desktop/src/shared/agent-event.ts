@@ -34,3 +34,5 @@ export type AgentEvent =
       /** True when the session was no longer live when the Error was reported, so it takes another message only once resumed. A CLI that exits after a false one is reported with true: in the same turn while that turn is still running, otherwise on the next send. */
       needsResume: boolean;
     };
+
+export type TurnEvent = Exclude<AgentEvent, { kind: AgentEventKind.TurnEnded }>;
