@@ -51,3 +51,6 @@ export const textMessage = (culprit: Culprit) => {
   if (culprit === "") return `Members would see no text here. ${advice}`;
   return `Members without a value for ${culprit} would see no text here. ${advice}`;
 };
+
+export const unstoppedMessage = (read: string) =>
+  `This function can't take a missing value here, and gets one when \`${read}\` has none: \`&&\` and \`||\` run both sides, so a check beside one doesn't stop it. Add \`?? …\` to \`${read}\`, or check it with a ternary, which runs only the branch it takes, as in \`isUnknown(${read}) ? … : …\`.`;

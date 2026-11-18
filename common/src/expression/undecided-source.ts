@@ -31,6 +31,29 @@ export const everyPart = (type: ts.Type, flags: ts.TypeFlags) =>
 
 export const isYesNoType = (type: ts.Type) => everyPart(type, BOOLEAN_LIKE);
 
+/** Whether a value of `type` holds an item or field, at any depth, that can't be missing. */
+export const rejectsMissingInside = (
+  checker: ts.TypeChecker,
+  type: ts.Type,
+): boolean =>
+  unionParts(checker.getNonNullableType(type)).some((part) => {
+    const item =
+      checker.isArrayType(part) || checker.isTupleType(part)
+        ? checker.getIndexTypeOfType(part, ts.IndexKind.Number)
+        : undefined;
+    const inside =
+      item !== undefined
+        ? [item]
+        : (part.flags & ts.TypeFlags.StructuredType) === 0
+          ? []
+          : checker
+              .getPropertiesOfType(part)
+              .map((field) => checker.getTypeOfSymbol(field));
+    return inside.some(
+      (each) => !isNullableType(each) || rejectsMissingInside(checker, each),
+    );
+  });
+
 const LOGICAL: Record<BinaryOp, boolean> = {
   [BinaryOp.Add]: false,
   [BinaryOp.Subtract]: false,

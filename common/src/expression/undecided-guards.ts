@@ -171,6 +171,8 @@ export function guards({ text }: { text: (expr: Expr) => string }) {
   return {
     covers: (expr: Expr) => known.size > 0 && known.has(readKey(expr)),
     holds: (expr: Expr) => known.get(readKey(expr))?.kind === GuardKind.Held,
+    decidedInBranch: (expr: Expr) =>
+      known.get(readKey(expr))?.kind === GuardKind.Branch,
     assumingKnown: <T>(reads: readonly Expr[], run: () => T): T =>
       assuming({ reads, kind: GuardKind.Beside }, run),
     inBranch: <T>(reads: readonly Expr[], run: () => T): T =>

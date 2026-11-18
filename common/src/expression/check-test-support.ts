@@ -24,6 +24,7 @@ const nullable = (inner: ValueType): ValueType => ({
 });
 
 const maybe = nullable(boolean);
+const numbers: ValueType = { kind: TypeKind.List, item: number };
 
 export const catalog: Catalog = {
   inputs: [
@@ -101,10 +102,56 @@ export const catalog: Catalog = {
       returns: string,
     },
     {
-      name: "sum",
+      name: "names",
       params: [
-        { name: "numbers", type: { kind: TypeKind.List, item: number } },
+        {
+          name: "names",
+          type: nullable({ kind: TypeKind.List, item: nullable(string) }),
+        },
       ],
+      returns: string,
+    },
+    {
+      name: "noted",
+      params: [
+        {
+          name: "row",
+          type: { kind: TypeKind.Record, fields: { note: nullable(string) } },
+        },
+      ],
+      returns: string,
+    },
+    {
+      name: "scored",
+      params: [
+        {
+          name: "row",
+          type: { kind: TypeKind.Record, fields: { n: number } },
+        },
+      ],
+      returns: string,
+    },
+    {
+      name: "maybeSum",
+      params: [{ name: "numbers", type: nullable(numbers) }],
+      returns: number,
+    },
+    {
+      name: "rowSum",
+      params: [
+        {
+          name: "row",
+          type: {
+            kind: TypeKind.Record,
+            fields: { numbers: nullable(numbers) },
+          },
+        },
+      ],
+      returns: number,
+    },
+    {
+      name: "sum",
+      params: [{ name: "numbers", type: numbers }],
       returns: number,
     },
   ],
