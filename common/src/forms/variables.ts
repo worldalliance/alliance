@@ -2,16 +2,17 @@
 
 import { camelCase, deburr, isEqual } from "es-toolkit";
 import { z } from "zod";
-import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, ListSubField } from "./form-schema";
 import { FORBIDDEN_PROPERTIES } from "./formula-allowlist";
 import type { OptionCategory } from "./options-schema";
 import { AGGREGATE_INPUT_TYPE } from "./variable-aggregates";
+import { exprValueToText, type ExprValue } from "./variable-expression";
 import {
-  exprValueToText,
-  type ExprRecord,
-  type ExprValue,
-} from "./variable-expression";
+  FIELD_KIND_VARIABLE_INPUT_MODE,
+  isFieldKindReadableByFieldInput,
+  isKnownFieldKind,
+  VariableInputMode,
+} from "./variable-input-mode";
 import {
   inputSourceFormId,
   isListInput,
@@ -22,6 +23,9 @@ import {
   type VariableInput,
   type VariableListInput,
 } from "./variable-inputs";
+
+export { formValueToExprValue } from "./variable-answers";
+export * from "./variable-input-mode";
 
 /**
  * Names appear only inside `#{…}`, never as an identifier in a formula (the
@@ -73,62 +77,6 @@ export type Formula = FormVariable | OptionsFormula;
 
 export function variableInputNameForIndex(index: number): string {
   return `${VARIABLE_INPUT_NAME_PREFIX}${index + 1}`;
-}
-
-export enum VariableInputMode {
-  Number = "number",
-  Text = "text",
-  Boolean = "boolean",
-  /** One `{ label, value }` record. */
-  Choice = "choice",
-  /** A list of `{ label, value }` records, in the order the answer holds. */
-  Choices = "choices",
-  /** The city record, plus a `label` reading "Paris, Île-de-France, France". */
-  City = "city",
-  None = "none",
-}
-
-export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
-  FieldKind,
-  VariableInputMode
-> = {
-  number: VariableInputMode.Number,
-  range: VariableInputMode.Number,
-  text: VariableInputMode.Text,
-  textarea: VariableInputMode.Text,
-  email: VariableInputMode.Text,
-  phone: VariableInputMode.Text,
-  date: VariableInputMode.Text,
-  time: VariableInputMode.Text,
-  timezone: VariableInputMode.Text,
-  checkbox: VariableInputMode.Boolean,
-  contract: VariableInputMode.Boolean,
-  radio: VariableInputMode.Choice,
-  select: VariableInputMode.Choice,
-  multiselect: VariableInputMode.Choices,
-  ranking: VariableInputMode.Choices,
-  city: VariableInputMode.City,
-  // A list is read through a `list` input, one record per row. A file holds an
-  // upload id and a custom component stores whatever it likes: neither has a
-  // reading a formula could put in a sentence.
-  list: VariableInputMode.None,
-  file: VariableInputMode.None,
-  custom: VariableInputMode.None,
-};
-
-// A newer admin can save a field kind this build predates.
-export function isKnownFieldKind(kind: string): kind is FieldKind {
-  return Object.hasOwn(FIELD_KIND_VARIABLE_INPUT_MODE, kind);
-}
-
-export function variableInputMode(kind: FieldKind): VariableInputMode {
-  return isKnownFieldKind(kind)
-    ? FIELD_KIND_VARIABLE_INPUT_MODE[kind]
-    : VariableInputMode.None;
-}
-
-export function isFieldKindReadableByFieldInput(kind: FieldKind): boolean {
-  return variableInputMode(kind) !== VariableInputMode.None;
 }
 
 export type VariableInputField = {
@@ -444,102 +392,6 @@ export function interpolateVariables(
     const value = values.get(name);
     return value === undefined ? whole : value;
   });
-}
-
-function numberFromAnswer(value: unknown): ExprValue {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : undefined;
-  }
-  // Number fields round-trip through text inputs, so a numeric answer often
-  // arrives as a string.
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  const asNumber = Number(trimmed);
-  return Number.isFinite(asNumber) ? asNumber : undefined;
-}
-
-function textFromAnswer(value: unknown): ExprValue {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? String(value) : undefined;
-  }
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-function booleanFromAnswer(value: unknown): ExprValue {
-  return typeof value === "boolean" ? value : undefined;
-}
-
-// Use the stored value as the label when an option was removed.
-function choiceRecord(
-  value: string,
-  field: VariableInputField,
-): ExprRecord | undefined {
-  if (!value) return undefined;
-  const option = field.options?.find((candidate) => candidate.value === value);
-  const category = field.categories?.find(
-    (candidate) => candidate.id === option?.category,
-  )?.name;
-  return {
-    label: option?.label ?? value,
-    value,
-    ...(category !== undefined && { category }),
-  };
-}
-
-function choiceFromAnswer(
-  value: unknown,
-  field: VariableInputField,
-): ExprValue {
-  return typeof value === "string" ? choiceRecord(value, field) : undefined;
-}
-
-function choicesFromAnswer(
-  value: unknown,
-  field: VariableInputField,
-): ExprValue {
-  if (!Array.isArray(value)) return undefined;
-  const records = value.flatMap((item: unknown) => {
-    const record =
-      typeof item === "string" ? choiceRecord(item, field) : undefined;
-    return record ? [record] : [];
-  });
-  // Nothing selected reads the same as nothing answered, so `??` can step in.
-  return records.length > 0 ? records : undefined;
-}
-
-function cityFromAnswer(value: unknown): ExprValue {
-  const city = parseCityValue(value);
-  return city === undefined
-    ? undefined
-    : { ...city, label: formatCityValue(city) };
-}
-
-const ANSWER_READERS: Record<
-  VariableInputMode,
-  (value: unknown, field: VariableInputField) => ExprValue
-> = {
-  [VariableInputMode.Number]: numberFromAnswer,
-  [VariableInputMode.Text]: textFromAnswer,
-  [VariableInputMode.Boolean]: booleanFromAnswer,
-  [VariableInputMode.Choice]: choiceFromAnswer,
-  [VariableInputMode.Choices]: choicesFromAnswer,
-  [VariableInputMode.City]: cityFromAnswer,
-  [VariableInputMode.None]: () => undefined,
-};
-
-/**
- * Converts a stored answer according to its field kind. Unanswered and blank
- * fields become `undefined` so `??` can supply a default.
- */
-export function formValueToExprValue(
-  value: unknown,
-  field: VariableInputField,
-): ExprValue {
-  if (value === undefined || value === null) return undefined;
-  return ANSWER_READERS[variableInputMode(field.kind)](value, field);
 }
 
 export function formatVariableValue(value: ExprValue): string {
