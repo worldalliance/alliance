@@ -37,3 +37,25 @@ export function pairedToggleToTurnOn(params: {
   if (visible.some((field) => data[field.id] === true)) return null;
   return visible[0]?.id ?? fieldId;
 }
+
+/**
+ * A toggle whose `atLeastOneOnWith` names no other toggle in the form would
+ * always be required with nothing to turn on, so the form doesn't save.
+ */
+export function pairedToggleErrors(
+  fieldLookup: ReadonlyMap<string, AnyField>,
+): { blockId: string; message: string }[] {
+  return [...fieldLookup.values()].flatMap((field) => {
+    if (field.kind !== "toggle" || field.atLeastOneOnWith === undefined) {
+      return [];
+    }
+    const partner = fieldLookup.get(field.atLeastOneOnWith);
+    if (partner?.kind === "toggle" && partner.id !== field.id) return [];
+    return [
+      {
+        blockId: field.id,
+        message: `"Keep at least one on with" names "${field.atLeastOneOnWith}", which is not another toggle in this form`,
+      },
+    ];
+  });
+}
