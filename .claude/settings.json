@@ -5,7 +5,7 @@
       "Bash(bun run gen-api)",
       "Bash(bun run test:*)"
     ],
-    "deny": ["Artifact", "Workflow"]
+    "deny": ["Agent", "Artifact", "Workflow"]
   },
   "autoMemoryEnabled": false,
   "idleCompaction": false,
