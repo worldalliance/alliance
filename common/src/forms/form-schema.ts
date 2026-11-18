@@ -97,6 +97,7 @@ export const formSchema = z.strictObject({
   description: z.string().optional(),
   pages: z.array(pageSchema),
   submit: z.strictObject({ label: z.string().optional() }).optional(),
+  completionSubtitle: z.string().optional(),
   shareableTextTemplate: z.string().optional(),
   defaultShareableTextTemplate: z.string().optional(),
   outputViews: z.array(outputViewSchemaSchema),

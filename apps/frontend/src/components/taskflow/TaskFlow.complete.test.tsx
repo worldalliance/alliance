@@ -237,6 +237,17 @@ it("shows the member's answers card on completion from the output view", async (
   expect(screen.getByText("First impression")).toBeTruthy();
 });
 
+it("shows the form's completion subtitle in place of the default", async () => {
+  setServedSchema({
+    ...taskSchema,
+    completionSubtitle: "Welcome to the Alliance!",
+  });
+  renderFlow();
+  await submitFlow();
+  expect(screen.getByText("Welcome to the Alliance!")).toBeTruthy();
+  expect(screen.queryByText(taskFlow.completeUpdate)).toBeNull();
+});
+
 it("closes the completion screen on a tap on its background, not its content", async () => {
   const onCompleteAction = jest.fn();
   setServedSchema({

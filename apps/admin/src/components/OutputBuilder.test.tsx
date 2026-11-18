@@ -33,6 +33,28 @@ const renderBuilder = (
   );
 
 describe("OutputBuilder", () => {
+  it("edits the completion subtitle, dropping it once cleared", () => {
+    const onSchemaChange = jest.fn();
+    const schema: FormSchema = {
+      pages: [{ id: "page-1", fields: [] }],
+      outputViews: [],
+      completionSubtitle: "Welcome!",
+    };
+    renderBuilder(schema, { onSchemaChange });
+    const input = screen.getByLabelText<HTMLInputElement>(
+      "Completion screen subtitle",
+    );
+    expect(input.value).toBe("Welcome!");
+
+    fireEvent.change(input, { target: { value: "Welcome to the Alliance!" } });
+    fireEvent.change(input, { target: { value: "" } });
+
+    expect(onSchemaChange.mock.calls.map(([next]) => next)).toEqual([
+      { ...schema, completionSubtitle: "Welcome to the Alliance!" },
+      { ...schema, completionSubtitle: undefined },
+    ]);
+  });
+
   it("refuses to render a display block kind output views don't allow", () => {
     const schema: FormSchema = {
       pages: [{ id: "page-1", title: "One", fields: [] }],

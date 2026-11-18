@@ -8,6 +8,7 @@ import type {
   OutputBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
+import { taskFlow } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
@@ -175,6 +176,34 @@ export function OutputBuilder({
                 No output fields selected yet.
               </span>
             )}
+          </div>
+          <div>
+            <label
+              htmlFor="completion-subtitle"
+              className="block text-xs text-gray-600 mb-1"
+            >
+              Completion screen subtitle
+            </label>
+            <input
+              id="completion-subtitle"
+              aria-describedby="completion-subtitle-hint"
+              type="text"
+              value={schema.completionSubtitle ?? ""}
+              onChange={(event) =>
+                onSchemaChange({
+                  ...schema,
+                  completionSubtitle: event.target.value || undefined,
+                })
+              }
+              className="w-full px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p
+              id="completion-subtitle-hint"
+              className="text-xs text-gray-500 mt-1"
+            >
+              Shown under &ldquo;{taskFlow.complete}&rdquo;. Left empty, it
+              reads &ldquo;{taskFlow.completeUpdate}&rdquo;
+            </p>
           </div>
         </div>
 
