@@ -50,7 +50,6 @@ const ActionDashboard: React.FC = () => {
     addEvent,
     isCreating,
     isUpdating,
-    isRemoving,
   } = admin;
   const cohortParseFailed = cohortExpressionError != null;
   const saving = isCreating || isUpdating;
@@ -96,8 +95,7 @@ const ActionDashboard: React.FC = () => {
     setError,
   });
   const loading =
-    (!isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded)) ||
-    isRemoving;
+    !isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded);
 
   useLinkedSelection({
     ready: selectedTab === "details" && !loading && !actionLoadFailed,
@@ -105,7 +103,7 @@ const ActionDashboard: React.FC = () => {
     setSearchParams,
     onError: setError,
   });
-  const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
+  const { handleDuplicate, handleArchive } = useActionCommands({
     admin,
     actionId,
     form: editor.form,
@@ -274,7 +272,6 @@ const ActionDashboard: React.FC = () => {
                 mode={{
                   isNew: false,
                   cohortParseFailed,
-                  onDelete: handleDelete,
                   checklist: (
                     <ActionReadinessChecklist
                       action={action}

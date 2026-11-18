@@ -32,7 +32,6 @@ const renderActionEditor = (isNew: boolean) => {
     : {
         isNew: false as const,
         cohortParseFailed: false,
-        onDelete: jest.fn(),
         checklist: null,
       };
   const Harness = () => {
