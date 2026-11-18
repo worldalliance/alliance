@@ -1,6 +1,6 @@
 # Sources
 
-Each item of `SKILL.md`, by its opening words, with the local copies in `sources/` its status rests on. Each copy is headed with its URL, licence and retrieval date; a page whose licence does not permit copying, or one far too large to be useful whole, holds only the passages the items rest on.
+Each item of `SKILL.md`, by its opening words, with the local copies in `sources/`, or the provenance, its status rests on. Each copy is headed with its URL, licence and retrieval date; a page whose licence does not permit copying, or one far too large to be useful whole, holds only the passages the items rest on.
 
 ## Legend and judging
 
@@ -13,6 +13,7 @@ Each item of `SKILL.md`, by its opening words, with the local copies in `sources
 - Direct interaction over modes: an inline edit over … [modes](sources/nngroup-modes.md)
 - On pointer platforms an icon-only control shows a … [GNOME's header-bar rule](sources/gnome-tooltips.md), [Carbon toggletip](sources/carbon-toggletip.md), [APG tooltip](sources/apg-tooltip.md), [content on hover or focus](sources/wcag-content-on-hover-or-focus.md)
 - A destructive or irreversible action says in words, … [GNOME dialogs](sources/gnome-dialogs.md), [error prevention](sources/wcag-error-prevention-legal-financial-data.md), [Apple buttons](sources/apple-buttons.md), [APG dialog](sources/apg-dialog-modal.md), [Carbon button](sources/carbon-button.md)
+- In the admin panel, admins may do almost … [variable-framework spec](../../../docs/provenance/01a1c8da-8f1b-7459-9652-87f613c8693c-variable-framework-spec/REQUIREMENTS.md)
 - A component with the same function keeps the … [consistent identification](sources/wcag-consistent-identification.md)
 - On the web, anything that goes somewhere is … [Carbon button](sources/carbon-button.md), [Carbon link](sources/carbon-link.md), [Atlassian link button](sources/atlassian-link-button.md), [link purpose](sources/wcag-link-purpose-in-context.md)
 - Interface text uses common words, literal phrasing and … [COGA](sources/w3c-coga-usable.md), [Fluent content](sources/fluent-content-design.md), [Carbon dialogs](sources/carbon-dialog-pattern.md), [Atlassian button](sources/atlassian-button.md), [lower-literacy users](sources/nngroup-writing-lower-literacy.md)
