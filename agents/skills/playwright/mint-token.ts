@@ -8,7 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { execFileSync } from "node:child_process";
 
 const usage =
-  "usage: (cd server && ../scripts/with-secrets.sh server bun ../agents/skills/demo-action/mint-token.ts <userId> [hours])";
+  "usage: (cd server && ../scripts/with-secrets.sh server bun ../agents/skills/playwright/mint-token.ts <userId> [hours])";
 
 // Bun loads server/.env and its siblings only when run from server/, as the server is.
 const env = (key: string): string => {

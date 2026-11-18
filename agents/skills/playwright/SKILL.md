@@ -1,6 +1,6 @@
 ---
 name: playwright
-description: "Read before driving the locally running apps: verifying a change in the browser, calling the API, authenticating as an admin, or driving the mobile app."
+description: "Read before driving the locally running apps: verifying a change in the browser, calling the API, authenticating as an admin or member, or driving the mobile app."
 ---
 
 # Driving the local apps
@@ -15,14 +15,12 @@ description: "Read before driving the locally running apps: verifying a change i
 
 Mobile is the exception. [`MOBILE.md`](MOBILE.md) has its start command, selectors, and auth.
 
-## Authenticating as admin
+## Authenticating
 
-Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with the server's `JWT_SECRET`, payload `{ sub: <userId>, email, tokenType: "access" }` — see `server/src/auth/tokens.ts`. Get an id from the local db (`(root)/agents/skills/local-db/SKILL.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
-
-Mint it in a bun script with `jsonwebtoken` from the root `node_modules`, reading `process.env.JWT_SECRET`, and run it from `server/` as `../scripts/with-secrets.sh server bun <script>`, which supplies it from Parameter Store. Keep `JWT_SECRET` and the minted token out of anything you print.
+Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with the server's `JWT_SECRET`; the session guard also checks the user row's `sessionGeneration` (`server/src/auth/session.service.ts`). Get an id from the local db (`(root)/agents/skills/local-db/SKILL.md`), such as an admin's: `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`. A member's id gives the member view. From the repo root, `TOKEN=$(cd server && ../scripts/with-secrets.sh server bun ../agents/skills/playwright/mint-token.ts <userId>)` mints an hour's token, or one lasting its optional second argument in hours, such as `8`; it runs from `server/` so Bun loads the server's env files, as the server does. Keep `JWT_SECRET` and the token out of anything you print.
 
 - API: `curl -H "Authorization: Bearer $TOKEN" http://localhost:<api port>/...`
-- Admin GUI: set cookie `{ name: "access_token", value: token, domain: "localhost", path: "/" }` on the browser context, then `goto http://localhost:<admin port>/<route>`. Cookies cross ports on `localhost`, so the app's calls to the API authenticate.
+- Browser: set cookie `{ name: "access_token", value: token, domain: "localhost", path: "/" }` on the browser context, then `goto http://localhost:<port>/<route>`, the admin port for an admin or the frontend port for a member. Cookies cross ports on `localhost`, so the app's calls to the API authenticate.
 
 ## Running playwright
 
