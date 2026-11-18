@@ -216,12 +216,13 @@ describe("OutputRenderer plain", () => {
   it("shows the uploads in a list's rows, a row with only an upload included", () => {
     renderPlain({
       people: [
-        { name: "Lease", scan: "uploads/a.png" },
         { scan: "uploads/b.png" },
+        { name: "Lease", scan: "uploads/a.png" },
+        { name: "Ada" },
       ],
     });
 
-    expect(screen.getByText("Lease")).toBeTruthy();
+    expect(screen.getByText(/Lease/).textContent).toBe("Lease\nAda");
     expect(screen.getAllByRole("img")).toHaveLength(2);
   });
 
