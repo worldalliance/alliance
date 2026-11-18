@@ -11,6 +11,9 @@ import {
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
+import { schemaFormulas } from "@alliance/common/forms/formula-options";
+import { compileVariableExpression } from "@alliance/common/forms/variable-expression-compile";
+import { isKnownVariableInputKind } from "@alliance/common/forms/variable-inputs";
 import {
   type ConditionExtras,
   isPageCurrentlyVisible,
@@ -133,6 +136,12 @@ export function findUnknownFormElementKind(
     if (!KNOWN_FORM_ELEMENT_KINDS.has(element.kind)) {
       return element.kind;
     }
+    if (element.kind === "list") {
+      return (
+        element.fields.find((sub) => !KNOWN_FORM_ELEMENT_KINDS.has(sub.kind))
+          ?.kind ?? null
+      );
+    }
     if (element.kind !== "accordion") {
       return null;
     }
@@ -174,6 +183,38 @@ export function findUnknownConditionKind(schema: FormSchema): string | null {
     forEachOutputViewCondition(schema, check);
   }
   return unknown;
+}
+
+/**
+ * Returns the first formula input kind, in a variable or an options formula,
+ * that the current client doesn't recognize, or null if every kind is known.
+ */
+export function findUnknownVariableInputKind(
+  schema: FormSchema,
+): string | null {
+  for (const formula of schemaFormulas(schema)) {
+    for (const input of Object.values(formula.inputs)) {
+      if (!isKnownVariableInputKind(input.kind)) return input.kind;
+    }
+  }
+  return null;
+}
+
+/**
+ * Describes the first variable or options formula this build can't compile,
+ * or returns null. The server compiles every formula on save, so one that
+ * fails here usually uses syntax or a function a newer build added; a formula
+ * saved before the compiler grew stricter fails on every build.
+ */
+export function findUncompilableFormula(schema: FormSchema): string | null {
+  for (const formula of schemaFormulas(schema)) {
+    const compiled = compileVariableExpression(
+      formula.formula,
+      new Set(Object.keys(formula.inputs)),
+    );
+    if (!compiled.ok) return `formula syntax (${compiled.error})`;
+  }
+  return null;
 }
 
 export type UserLocationDisplayValue =

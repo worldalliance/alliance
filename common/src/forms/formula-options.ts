@@ -79,7 +79,7 @@ export function collectOptionsFormulaFields(
   );
 }
 
-const schemaFormulas = (schema: FormSchema): Formula[] => [
+export const schemaFormulas = (schema: FormSchema): Formula[] => [
   ...(schema.variables ?? []),
   ...collectOptionsFormulaFields(schema).map(
     ({ field }) => field.optionsFormula,
@@ -128,7 +128,9 @@ function dependencies(
           )
           .map(({ field }) => field.id);
       default:
-        throw new Error(`unknown input kind: ${input satisfies never}`);
+        // Evaluation fails on a kind this build predates, which blocks the form.
+        input satisfies never;
+        return [];
     }
   });
 }

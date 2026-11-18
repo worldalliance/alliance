@@ -71,6 +71,14 @@ export const variableInputSchema = z.discriminatedUnion("kind", [
   variableRandomInputSchema,
 ]);
 export type VariableInput = z.infer<typeof variableInputSchema>;
+
+const KNOWN_VARIABLE_INPUT_KINDS: ReadonlySet<string> = new Set(
+  variableInputSchema.options.map((option) => option.shape.kind.value),
+);
+
+export function isKnownVariableInputKind(kind: string): boolean {
+  return KNOWN_VARIABLE_INPUT_KINDS.has(kind);
+}
 export type FieldReadingInput = Exclude<VariableInput, { kind: "random" }>;
 export type VariableFieldInput = Extract<
   VariableInput,

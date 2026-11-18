@@ -185,6 +185,22 @@ it("won't draw a form whose options formula fails", () => {
   expect(screen.queryByText("Picked")).toBeNull();
 });
 
+it("won't draw a form whose options formula reads an input kind this build doesn't know", () => {
+  renderForm(
+    schemaOf([
+      {
+        ...fromLocal,
+        optionsFormula: {
+          inputs: JSON.parse('{ "input1": { "kind": "telepathy" } }'),
+          formula: "input1",
+        },
+      },
+    ]),
+  );
+
+  expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+});
+
 it("draws a read-only form whose options read a deleted form", async () => {
   api.alsoServing({
     "GET /tasks/responseHistory/:formId/user/:userId": () =>
