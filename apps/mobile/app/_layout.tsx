@@ -14,6 +14,7 @@ import DeviceRegistration from "../components/DeviceRegistration";
 import { KeyboardExtenderPortalProvider } from "../components/KeyboardExtenderPortal";
 import OtaUpdateBanner from "../components/OtaUpdateBanner";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
+import ResumeAfterRestart from "../components/ResumeAfterRestart";
 import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
 import { AuthProvider } from "../lib/AuthContext";
@@ -75,6 +76,7 @@ export default function RootLayout() {
                 <KeyboardExtenderPortalProvider>
                   <DeviceRegistration />
                   <PushNotificationResponseHandler />
+                  <ResumeAfterRestart />
                   <UpdateAvailableModal />
                   <StatusBar style="dark" />
                   <Slot />

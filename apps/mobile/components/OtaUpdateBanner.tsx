@@ -1,3 +1,4 @@
+import { useUnstableGlobalHref } from "expo-router";
 import * as Updates from "expo-updates";
 import { X } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ const READY_MESSAGE = "A new version of Alliance is ready.";
 const OtaUpdateBanner = () => {
   const { isUpdatePending } = Updates.useUpdates();
   const insets = useSafeAreaInsets();
+  const route = useUnstableGlobalHref();
   const [dismissed, setDismissed] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [restartFailed, setRestartFailed] = useState(false);
@@ -46,7 +48,7 @@ const OtaUpdateBanner = () => {
   const restart = async () => {
     setRestarting(true);
     setRestartFailed(false);
-    if (!(await restartIntoUpdate())) {
+    if (!(await restartIntoUpdate(route))) {
       setRestarting(false);
       setRestartFailed(true);
     }

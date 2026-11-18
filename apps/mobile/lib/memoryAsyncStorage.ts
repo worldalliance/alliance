@@ -12,4 +12,7 @@ export function memoryAsyncStorage(): void {
   jest.spyOn(AsyncStorage, "setItem").mockImplementation(async (key, value) => {
     items.set(key, value);
   });
+  jest.spyOn(AsyncStorage, "removeItem").mockImplementation(async (key) => {
+    items.delete(key);
+  });
 }
