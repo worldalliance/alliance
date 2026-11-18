@@ -81,6 +81,9 @@ const notSent = (error: unknown): never => {
   );
 };
 
+/** Thrown by `sendMail` when saving the outcome failed after the mail server answered the send. */
+export class MailUnrecordedError extends Error {}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -210,7 +213,12 @@ export class MailService {
       mail.status = EmailStatus.Failed;
     }
     mail.sentMessageId = messageId;
-    return this.mailRepository.save(mail);
+    return this.mailRepository.save(mail).catch((error: unknown) => {
+      throw new MailUnrecordedError(
+        `The mail server answered, but saving the outcome failed: ${thrownMessage(error)}`,
+        { cause: error },
+      );
+    });
   }
 
   private transmit(params: {

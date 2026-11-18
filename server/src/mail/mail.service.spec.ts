@@ -4,9 +4,14 @@ import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
+import { mailSendError, SendErrorKind } from "src/utils/send-error";
 import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
-import { MailNotSentError, MailService } from "./mail.service";
+import {
+  MailNotSentError,
+  MailService,
+  MailUnrecordedError,
+} from "./mail.service";
 import { harness, useMailSendingEnv } from "./mail.service.fixtures";
 
 describe("sendMail", () => {
@@ -265,6 +270,30 @@ describe("sendMail", () => {
 
     await expect(send(service)).rejects.toBeInstanceOf(MailNotSentError);
     expect(attempted).toBe(false);
+  });
+
+  it("reports an outcome it couldn't save once the transport accepted the message as unrecorded", async () => {
+    const other = { saveFails: false };
+    const { service } = await harness(() => {
+      other.saveFails = true;
+      return Promise.resolve({
+        accepted: ["member@example.org"],
+        messageId: "",
+      });
+    }, other);
+
+    const sending = send(service);
+    await expect(sending).rejects.toBeInstanceOf(MailUnrecordedError);
+    await expect(sending).rejects.toThrow("The mail server answered");
+  });
+
+  it("reads an unrecorded outcome as unknown even when the save failed to connect", () => {
+    const cause = Object.assign(new Error("connect ECONNREFUSED"), {
+      syscall: "connect",
+    });
+    expect(mailSendError(new MailUnrecordedError("", { cause }))).toBe(
+      SendErrorKind.Unknown,
+    );
   });
 
   it("rethrows the transport's error when it can't save a rejected send", async () => {
