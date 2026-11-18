@@ -21,6 +21,7 @@ import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
 import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
+import { SendErrorKind, textSendError } from "src/utils/send-error";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { env } from "../config/env";
@@ -53,6 +54,14 @@ export type StaffSendFailure =
   | { kind: StaffSendFailureKind.Rejected; reason: string }
   | { kind: StaffSendFailureKind.Failed }
   | { kind: StaffSendFailureKind.TimedOut };
+
+type SendMmsParams = {
+  to: string;
+  userId: number;
+  body: string;
+  mediaUrls: string[];
+  tracking: TrackedMessage | null;
+};
 
 const canText = (to: string): boolean =>
   deliverySends() && !isAnonymizedPhoneNumber(to);
@@ -94,14 +103,24 @@ export class MmsService {
     }
   }
 
-  async sendMms(params: {
-    to: string;
-    userId: number;
-    body: string;
-    mediaUrls: string[];
-    tracking: TrackedMessage | null;
-  }): Promise<Mms | null> {
+  async sendMms(params: SendMmsParams): Promise<Mms | null> {
+    const sent = await this.sendMmsResult(params);
+    return sent.ok ? sent.value : null;
+  }
+
+  /**
+   * As {@link sendMms}, with what the failure shows about whether the text went
+   * out. Every failure it returns raises the SMS-failure alert. More than 10
+   * media URLs, or a failed save of an undelivered text, throws.
+   */
+  async sendMmsResult(
+    params: SendMmsParams,
+  ): Promise<Result<Mms, SendErrorKind>> {
     const { to, userId, mediaUrls, tracking } = params;
+    const fail = (error: unknown, kind: SendErrorKind) => {
+      this.reportFailure({ to, userId, error });
+      return R.failure(kind);
+    };
     let cid: string | null = null;
     if (tracking) {
       const tracked = await R.fromPromise(
@@ -110,15 +129,16 @@ export class MmsService {
           channel: MessageChannel.Sms,
         }),
       );
-      if (!tracked.ok)
-        return this.reportFailure({ to, userId, error: tracked.error });
+      if (!tracked.ok) return fail(tracked.error, SendErrorKind.NotHandedOver);
       cid = tracked.value;
     }
     const body = cid
       ? tagTextLinks({ text: params.body, trackingId: cid })
       : params.body;
     if (!canText(to)) {
-      return this.saveUndelivered({ to, body, cid, sentById: null });
+      return R.success(
+        await this.saveUndelivered({ to, body, cid, sentById: null }),
+      );
     }
     this.logger.log(
       `Attempting to send MMS to user ${userId} with ${mediaUrls.length} media items.`,
@@ -138,14 +158,14 @@ export class MmsService {
 
     try {
       const sending = this.dispatch({ to, body, mediaUrls });
-      const message = await withTimeout(sending, this.sendTimeoutMs).catch(
-        async (error: unknown) => {
-          if (cid) await this.messageTracking.discard(cid);
-          throw error;
-        },
+      const sent = await R.fromPromise(
+        withTimeout(sending, this.sendTimeoutMs),
       );
-
-      if (message === TIMED_OUT) {
+      if (!sent.ok) {
+        if (cid) await this.messageTracking.discard(cid);
+        return fail(sent.error, textSendError(sent.error));
+      }
+      if (sent.value === TIMED_OUT) {
         this.recordLateSend({
           sending,
           to,
@@ -154,14 +174,25 @@ export class MmsService {
           cid,
           sentById: null,
         });
-        throw new Error(`sendMms timed out after ${this.sendTimeoutMs}ms`);
+        return fail(
+          new Error(`sendMms timed out after ${this.sendTimeoutMs}ms`),
+          SendErrorKind.Unknown,
+        );
       }
 
-      this.logger.log(`MMS sent successfully! Message SID: ${message.sid}`);
+      this.logger.log(`MMS sent successfully! Message SID: ${sent.value.sid}`);
 
-      return this.saveSent({ message, to, body, cid, sentById: null });
+      return R.success(
+        await this.saveSent({
+          message: sent.value,
+          to,
+          body,
+          cid,
+          sentById: null,
+        }),
+      );
     } catch (error) {
-      return this.reportFailure({ to, userId, error });
+      return fail(error, SendErrorKind.Unknown);
     }
   }
 
@@ -299,7 +330,7 @@ export class MmsService {
     to: string;
     userId: number;
     error: unknown;
-  }): null {
+  }) {
     const { to, userId, error } = params;
     const errorMessage = thrownMessage(error);
     this.logError({
@@ -308,7 +339,6 @@ export class MmsService {
       error,
     });
     this.alertFailure({ to, errorMessage });
-    return null;
   }
 
   private alertFailure(params: { to: string; errorMessage: string }) {
