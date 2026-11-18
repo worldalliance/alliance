@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
 import ActionUpdatePage from "./ActionUpdatePage";
@@ -186,7 +187,6 @@ describe("ActionUpdatePage", () => {
   });
 
   it("says why the server refused a notification", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     jest.spyOn(console, "error").mockImplementation(() => {});
     api.alsoServing({
       "POST /actions/updates/:id/notify": () =>
@@ -198,8 +198,55 @@ describe("ActionUpdatePage", () => {
     await renderDetails();
 
     fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
+    const text = notifyRealMembersText("many");
+    fireEvent.change(await screen.findByPlaceholderText(text), {
+      target: { value: text },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText("Already notified")).toBeTruthy();
+  });
+
+  it("sends no notification when staff cancel the confirmation", async () => {
+    let sends = 0;
+    api.alsoServing({
+      "POST /actions/updates/:id/notify": () => {
+        sends += 1;
+        return Response.json(served);
+      },
+    });
+    await renderDetails();
+
+    fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Send notification?")).toBeNull(),
+    );
+    expect(sends).toBe(0);
+  });
+
+  it("withdraws the confirmation, sending nothing, when staff go to another update", async () => {
+    let sends = 0;
+    api.alsoServing({
+      "POST /actions/updates/:id/notify": () => {
+        sends += 1;
+        return Response.json(served);
+      },
+    });
+    const router = renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^update details$/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
+    expect(await screen.findByText("Send notification?")).toBeTruthy();
+
+    await router.navigate("/actions/2/updates/2");
+
+    await waitFor(() =>
+      expect(screen.queryByText("Send notification?")).toBeNull(),
+    );
+    expect(sends).toBe(0);
   });
 
   it("shows no recognition copy for a legacy update", async () => {

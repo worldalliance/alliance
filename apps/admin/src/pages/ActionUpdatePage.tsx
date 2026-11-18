@@ -8,6 +8,7 @@ import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
+import { ConfirmMode } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
@@ -29,7 +30,9 @@ import {
   type ActionUpdateForm,
 } from "../lib/actionUpdateDetails";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
+import { useConfirmOnPage } from "../lib/useConfirmOnPage";
 import { useLeaveGuard } from "../lib/useLeaveGuard";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
@@ -75,6 +78,7 @@ const ActionUpdatePage: React.FC = () => {
   const notifying = notify.isPending;
   const changingVisibility = publishNow.isPending || unpublish.isPending;
   const [error, setError] = useState<string | null>(null);
+  const confirm = useConfirmOnPage();
 
   // A copy cached by an earlier visit may be stale, and saving a form filled
   // from it would write those stale details back. A newer copy refills a form
@@ -133,19 +137,21 @@ const ActionUpdatePage: React.FC = () => {
 
   const handleNotify = useCallback(
     async (audienceLabel: string) => {
-      if (
-        !window.confirm(
-          `Send this update's notification to ${audienceLabel}? This can't be undone, and it can only be sent once.`,
-        )
-      ) {
-        return;
-      }
+      const ok = await confirm({
+        title: "Send notification?",
+        message: `This notifies ${audienceLabel}. It can't be undone, and it can only be sent once.`,
+        confirmLabel: "Send",
+        cancelLabel: "Cancel",
+        mode: ConfirmMode.Fullscreen,
+        requiredText: notifyRealMembersText("many"),
+      });
+      if (!ok) return;
       await writeAndRefill(
         notify.mutateAsync,
         "Failed to send the notification",
       );
     },
-    [writeAndRefill, notify.mutateAsync],
+    [writeAndRefill, notify.mutateAsync, confirm],
   );
 
   const handleUnpublish = useCallback(
