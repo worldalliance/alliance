@@ -15,7 +15,7 @@ No standard covers good UX as a whole; the **F** items below are the WCAG criter
 
 Each item names its sources; [SOURCES.md](SOURCES.md) links each item, by its opening words, to the local copies in `sources/`. Update it with each new item, each change to an item's opening words, and each source an item gains, loses or renames. Open one when a finding or decision needs to cite it.
 
-What a change adds or alters meets WCAG 2.2 AA, on native as an Alliance bar (**J**), and satisfies every item that applies; a failure it notices elsewhere on the surface follows the root `AGENTS.md` **Scope and improvement** rule. Judging a UI applies every item to the whole surface. A screenshot can show a visual defect; keyboard, screen-reader and timing items need the running app. Colour-only meaning needs a look at the page under Chrome's `achromatopsia` (grayscale), `protanopia` and `deuteranopia` emulation. **V** Chrome. Playwright reaches these through CDP `Emulation.setEmulatedVisionDeficiency`, and no automated rule judges colour-only meaning. **J**
+What a change adds or alters meets WCAG 2.2 AA, on native as an Alliance bar (**J**), and satisfies every item that applies; a failure it notices elsewhere on the surface follows the root `AGENTS.md` **Scope and improvement** rule. Judging a UI applies every item to the whole surface. A screenshot can show a visual defect; keyboard, screen-reader and timing items need the running app. No automated rule judges colour-only meaning, so a surface that shows state, status or category by colour gets a look under Chrome's `achromatopsia` (grayscale), `protanopia` and `deuteranopia` emulation, which Playwright reaches through CDP `Emulation.setEmulatedVisionDeficiency`; a surface with no colour-coded meaning gains nothing from it. **V** Chrome for the emulation; when to run it is **J**
 
 ## Controls and labels
 
@@ -48,7 +48,7 @@ What a change adds or alters meets WCAG 2.2 AA, on native as an Alliance bar (**
 ## Accessibility and input
 
 - Every action works from the keyboard unless it depends on the path of movement, nothing traps focus, and focus is visible and never fully hidden behind sticky headers, composers or overlays. **F** keyboard, no keyboard trap, focus visible, focus not obscured
-- After a view changes or the focused element goes away, focus lands on a logical place rather than `body`. **J**, applying focus order
+- After a view changes or the focused element goes away, focus lands on a logical place rather than `body`. **J**, applying focus order. The usual cause in a browser is `disabled` on the button that has focus, such as Send or a load-more button while pending; keep it focusable with `aria-disabled`, ignore presses while pending (in the submit handler for a submit button, since `aria-disabled` doesn't block form submission), and style it as disabled. "Show older texts" in `apps/admin/src/components/user-detail/MemberTextsSection.tsx` stays focusable and ignores presses; the shared `Button` dims only on `disabled`, so add the styling with Tailwind `aria-disabled:` variants, as `SettingsIconAction` in `apps/admin/src/components/form-canvas/SettingsActions.tsx` does.
 - Headings, lists, tables and field groups use native elements or the platform's roles, and each view sets a descriptive title (the route's `<title>`, the screen's title on native). **F** info and relationships, page titled
 - Meaningful images have a text alternative (`alt`, `accessibilityLabel` on native), decorative ones are hidden from screen readers, and prerecorded video with audio has captions. **F** non-text content, captions
 - Controls expose their name, role and state (selected, expanded, disabled, checked) to screen readers, icon-only ones included (`aria-label`, `accessibilityLabel` on native). A control's accessible name contains its visible label's text, so a voice user can say the word they see. **F** name, role, value, label in name
@@ -91,9 +91,9 @@ What a change adds or alters meets WCAG 2.2 AA, on native as an Alliance bar (**
 
 ## Visual system
 
-- Colour, type size and spacing come from theme tokens; an arbitrary value states its reason. **C** Fluent tokens, Atlassian tokens, USWDS tokens
+- Colour, type size and spacing come from theme tokens where one fits the purpose; a one-off value is fine where none does, and a value needed in a second place becomes a token. **C** Fluent tokens, Atlassian tokens, USWDS tokens for theme tokens; the one-off and second-use rule is **J**
 - Long text stays under about 75 characters a line, at 16 px or more with line height at least 1.5, start-aligned (left in left-to-right languages) and never justified. **C** USWDS typography, GOV.UK layout
-- Where the product has no convention, use the values mature systems converge on: a 4 px or 8 px spacing scale, 14 px dense text, 1.4 to 1.5 line height, 50 to 150 ms for hover or press and 150 to 400 ms for transitions, with entrances decelerating. **C** Fluent layout, Carbon spacing, Atlassian spacing, Fluent type, Atlassian type, Atlassian motion, Carbon motion
+- Where the product has no convention, use the values mature systems converge on: a 4 px or 8 px spacing scale, 14 px dense text, 1.4 to 1.5 line height, 50 to 150 ms for hover or press and 150 to 400 ms for transitions, with entrances decelerating. These are defaults where nothing else decides, not minimums: a value outside them isn't a defect by itself, though accessibility items still apply. **C** Fluent layout, Carbon spacing, Atlassian spacing, Fluent type, Atlassian type, Atlassian motion, Carbon motion
 
 ## Where judgment takes over
 
