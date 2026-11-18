@@ -33,7 +33,7 @@ const renderComposer = (params: {
   render(
     <ToastProvider>
       <TextComposer
-        memberName="Sam"
+        recipientName="Sam"
         timeZone="America/Los_Angeles"
         send={params.send}
       />
@@ -268,7 +268,7 @@ it("keeps a failure that lands after the composer closed until dismissed, with t
     <ToastProvider>
       {open && (
         <TextComposer
-          memberName="Sam"
+          recipientName="Sam"
           timeZone="America/Los_Angeles"
           send={send}
         />

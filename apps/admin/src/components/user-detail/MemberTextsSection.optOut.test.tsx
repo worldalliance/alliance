@@ -255,19 +255,27 @@ it("leaves a member subscribed when the confirmation is cancelled", async () => 
 
 it("says why a member wasn't marked opted out, until dismissed", async () => {
   jest.useFakeTimers();
-  optOutRefusal = "This phone number can't receive texts from staff.";
-  renderSection();
-  await confirmMarkOptedOut();
-  await screen.findByText("This phone number can't receive texts from staff.");
+  try {
+    optOutRefusal = "This phone number can't receive texts from staff.";
+    renderSection();
+    await confirmMarkOptedOut();
+    await screen.findByText(
+      "This phone number can't receive texts from staff.",
+    );
 
-  act(() => jest.advanceTimersByTime(milliseconds({ minutes: 1 })));
+    act(() => jest.advanceTimersByTime(milliseconds({ minutes: 1 })));
 
-  expect(
-    screen.getByText("This phone number can't receive texts from staff."),
-  ).toBeTruthy();
-  expect(screen.getByText("Problem marking Sam opted out")).toBeTruthy();
-  expect(screen.queryByText("Opted out")).toBeNull();
-  expect(screen.getByRole("button", { name: "Mark opted out" })).toBeTruthy();
+    expect(
+      screen.getByText("This phone number can't receive texts from staff."),
+    ).toBeTruthy();
+    expect(screen.getByText("Problem marking Sam opted out")).toBeTruthy();
+    expect(screen.queryByText("Opted out")).toBeNull();
+    expect(screen.getByRole("button", { name: "Mark opted out" })).toBeTruthy();
+  } finally {
+    // The preload's afterEach restore comes too late: with fake timers
+    // still on at teardown, the next tests' thread fetch never resolves.
+    jest.useRealTimers();
+  }
 });
 
 it("refreshes the thread after a failed opt-out, so a changed number shows", async () => {
