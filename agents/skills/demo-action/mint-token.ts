@@ -1,31 +1,50 @@
+import {
+  assertWorktreeDatabase,
+  DevDatabase,
+  devPorts,
+  PortCaller,
+} from "@alliance/common/dev-ports";
 import { JwtService } from "@nestjs/jwt";
 import { execFileSync } from "node:child_process";
-import path from "node:path";
-import { envFileValue } from "../../../common/src/dev-database";
 
-const envFile = path.join(import.meta.dirname, "../../../server/.env");
+const usage =
+  "usage: (cd server && ../scripts/with-secrets.sh server bun ../agents/skills/demo-action/mint-token.ts <userId>)";
+
+// Bun loads server/.env and its siblings only when run from server/, as the server is.
 const env = (key: string): string => {
-  const value = envFileValue(envFile, key);
-  if (value === null) throw new Error(`${key} missing from ${envFile}`);
+  const value = process.env[key];
+  if (value === undefined) throw new Error(`${key} is not set; ${usage}`);
   return value;
 };
 
 const userId = Number(process.argv[2]);
-if (!Number.isInteger(userId)) {
-  throw new Error(
-    "usage: bun agents/skills/demo-action/mint-token.ts <userId>",
-  );
+if (!Number.isInteger(userId) || userId < 1) {
+  throw new Error(usage);
 }
+
+const database = env("DB_NAME");
+assertWorktreeDatabase({
+  ports: devPorts(PortCaller.Server),
+  which: DevDatabase.Dev,
+  actual: database,
+});
 
 const row = execFileSync(
   "psql",
   [
-    ...["-h", env("DB_HOST"), "-p", env("DB_PORT")],
-    ...["-U", env("DB_USERNAME"), "-d", env("DB_NAME"), "-At"],
+    ...["-h", env("DB_HOST"), "-U", env("DB_USERNAME")],
+    ...["-d", database, "-At"],
     "-c",
     `SELECT json_build_object('email', email, 'sessionGeneration', "sessionGeneration") FROM "user" WHERE id = ${userId}`,
   ],
-  { encoding: "utf8", env: { ...process.env, PGPASSWORD: env("DB_PASSWORD") } },
+  {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PGPORT: process.env.DB_PORT,
+      PGPASSWORD: process.env.DB_PASSWORD,
+    },
+  },
 ).trim();
 if (!row) throw new Error(`no user ${userId}`);
 const user: { email: string; sessionGeneration: number } = JSON.parse(row);
