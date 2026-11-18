@@ -12,6 +12,12 @@ No formal standard or published research covers this. Vendor guidance converges 
 - Android vitals (vendor recommendation): a cold start of 5 s or more is excessive. https://developer.android.com/google/play/vitals/launch-time
 - Nielsen Norman Group (research-backed): 1 s before attention drifts, 10 s before the task is lost. https://www.nngroup.com/articles/response-times-3-important-limits/
 
+## Which update identity to attach to analytics (researched 2026-11-17)
+
+- Sentry's Expo SDK (vendor recommendation) attaches `update_id`, `channel`, `runtime_version`, `is_embedded_launch`, `is_emergency_launch` and `emergency_launch_reason` to every event. https://docs.sentry.io/platforms/react-native/guides/expo/manual-setup/expo/expo-updates/
+- Expo (vendor API) exposes those as `Updates` constants. https://docs.expo.dev/versions/latest/sdk/updates/
+- PostHog (vendor docs) documents `customAppProperties`, applied to every event from initialization. https://posthog.com/docs/libraries/react-native
+
 ## The bug (measured 2026-11-17, expo-updates 57.0.22)
 
 - iOS serializes the state machine context with `checkError` and `downloadError` present as `null` when there is no error (`node_modules/expo-updates/ios/EXUpdates/UpdatesStateMachine.swift`, `json`, a `[String: Any?]`). Android omits them. The TypeScript types declare `checkError?: Error`. The gate compared with `!== undefined`, so on iOS it opened with `check_error` on the first render.

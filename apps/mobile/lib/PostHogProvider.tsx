@@ -1,6 +1,7 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
+import * as Updates from "expo-updates";
 import {
   PostHogProviderProps,
   PostHogProvider as RNPostHogProvider,
@@ -9,6 +10,7 @@ import {
 import { type ReactNode, useEffect } from "react";
 import { releaseTarget } from "./config";
 import { linkOpeningSession } from "./linkOpenings";
+import { otaUpdateProperties } from "./otaUpdateProperties";
 import {
   posthogRequestContext,
   SESSION_IDLE_TIMEOUT_SECONDS,
@@ -30,6 +32,13 @@ const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
         host: releaseTarget().posthog.host,
         enableSessionReplay: true,
         captureAppLifecycleEvents: true,
+        // Set at init rather than with register() so the lifecycle events
+        // captured during init carry them too. PostHog types these properties
+        // as a closed set but sends every key on every event.
+        customAppProperties: (properties) => ({
+          ...properties,
+          ...otaUpdateProperties(Updates),
+        }),
         sessionExpirationTimeSeconds: SESSION_IDLE_TIMEOUT_SECONDS,
         sessionReplayConfig: {
           maskAllTextInputs: false,
