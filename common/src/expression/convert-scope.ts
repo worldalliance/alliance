@@ -52,7 +52,8 @@ export function checkScope(scope: Scope): void {
 }
 
 function readsAsName(name: string): boolean {
-  if (STRICT_RESERVED.has(name)) return false;
+  // `()` parses as a parenthesized empty identifier.
+  if (name === "" || STRICT_RESERVED.has(name)) return false;
   const [statement] = ts.createSourceFile(
     "/name.ts",
     `(${name})`,

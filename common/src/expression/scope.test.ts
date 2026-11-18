@@ -4,6 +4,7 @@ import { scope } from "./syntax-test-support";
 
 describe("scope check", () => {
   test.each([
+    "",
     "true",
     "null",
     "this",
