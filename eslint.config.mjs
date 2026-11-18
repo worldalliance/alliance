@@ -1,8 +1,8 @@
 import tseslint from "typescript-eslint";
 import apiClientRules from "./eslint/api-client-rules.mjs";
 import sharedRules, {
+  blockerImport,
   envReadsOnlyIn,
-  frontendBlockerImport,
   sharedEnvReads,
   webEnvReads,
 } from "./eslint/shared-rules.mjs";
@@ -24,7 +24,16 @@ export default tseslint.config([
   {
     files: ["sharedweb/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-imports": ["error", { paths: [frontendBlockerImport] }],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            blockerImport(
+              "apps/frontend/src/lib/useFullLoadOnNewBuild.ts or, for admin, apps/admin/src/components/LeaveGuard.tsx",
+            ),
+          ],
+        },
+      ],
     },
   },
   ...apiClientRules.map((config) => ({

@@ -3,11 +3,11 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBeforeUnload, useBlocker } from "react-router";
 import { adminRefusalMessage } from "./adminRefusal";
 import { ensurePages } from "./ensureFormSchema";
 import { placeForSelect } from "./formDependencies";
 import { useSelectOnLoad } from "./formEditorLink";
+import { useLeaveGuard, withoutLeaveGuard } from "./useLeaveGuard";
 
 type FormConflict = {
   base: FormSchema;
@@ -135,49 +135,18 @@ export function useSavedForm({
     setHasUnsavedChanges(currentSchemaJSON !== lastSavedSchemaJSON);
   }, [schema, lastSavedSchemaJSON]);
 
-  useBeforeUnload(
-    useCallback(
-      (event) => {
-        if (!hasUnsavedChanges) return;
-        event.preventDefault();
-        event.returnValue = "";
-      },
-      [hasUnsavedChanges],
-    ),
-  );
+  useLeaveGuard(hasUnsavedChanges);
 
-  /** Bypasses the blocker while `navigateToSaved`'s navigation still sees stale dirty state. */
-  const skipNavigationBlockRef = useRef(false);
-  const navigationBlocker = useBlocker(
-    useCallback(
-      () => hasUnsavedChanges && !skipNavigationBlockRef.current,
-      [hasUnsavedChanges],
-    ),
-  );
-
-  useEffect(() => {
-    if (navigationBlocker.state === "blocked") {
-      const confirmExit = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave this page?",
-      );
-
-      if (confirmExit) {
-        navigationBlocker.proceed?.();
-      } else {
-        navigationBlocker.reset?.();
-      }
-    }
-  }, [navigationBlocker]);
-
-  /** Runs `navigate` to the form a save created or updated, without reloading it. */
+  /**
+   * Runs `navigate` to the form a save created or updated, without reloading
+   * it or asking about the changes just saved, which still read as unsaved.
+   */
   const navigateToSaved = useCallback(
     (savedFormId: number, navigate: () => void) => {
-      skipNavigationBlockRef.current = true;
       if (savedFormId !== formId) {
         createdFormIdRef.current = savedFormId;
       }
-      navigate();
-      skipNavigationBlockRef.current = false;
+      withoutLeaveGuard(navigate);
     },
     [formId],
   );

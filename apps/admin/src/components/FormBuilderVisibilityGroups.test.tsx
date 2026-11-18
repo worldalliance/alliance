@@ -25,7 +25,9 @@ import {
   settings,
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
+import FormBuilderPage from "../pages/FormBuilder";
 import { FormBuilder } from "./FormBuilder";
+import LeaveGuard from "./LeaveGuard";
 
 const shownWhen = (when: string): VisibleIfFormula => ({
   conditions: { c1: { kind: "hasValue", when, hasValue: true } },
@@ -283,7 +285,11 @@ const renderStatefulFormBuilder = (initialFormId?: number) =>
             router={createMemoryRouter([
               {
                 path: "/",
-                element: <StatefulFormBuilder initialFormId={initialFormId} />,
+                element: (
+                  <LeaveGuard>
+                    <StatefulFormBuilder initialFormId={initialFormId} />
+                  </LeaveGuard>
+                ),
               },
             ])}
           />
@@ -391,6 +397,43 @@ describe("FormBuilder visibility groups across loads", () => {
     await waitFor(() =>
       expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]),
     );
+  });
+
+  it("opens a new form once saved, without asking about the changes just saved", async () => {
+    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(false);
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/forms/:formId",
+          element: (
+            <LeaveGuard>
+              <FormBuilderPage />
+            </LeaveGuard>
+          ),
+        },
+      ],
+      { initialEntries: ["/forms/new"] },
+    );
+    render(
+      <SiteOriginLinkProvider origin="https://worldalliance.org">
+        <QueryClientProvider client={new QueryClient()}>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </QueryClientProvider>
+      </SiteOriginLinkProvider>,
+    );
+    await applyFormJson(grouped);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Apply id and kind changes" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Form" }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/forms/5"),
+    );
+    expect(leaveAsked).not.toHaveBeenCalled();
   });
 
   it("keeps manual boundaries through a new form's first save", async () => {

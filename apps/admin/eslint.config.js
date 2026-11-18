@@ -6,9 +6,12 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 import apiClientRules from "../../eslint/api-client-rules.mjs";
 import sharedRules, {
+  blockerImport,
   envReadsOnlyIn,
   webEnvReads,
 } from "../../eslint/shared-rules.mjs";
+
+const SHARED_IMPORT_PATTERNS = ["../../../shared/*"];
 
 const RETIRED_CLASSES =
   "-(gray|slate|neutral|stone|yellow)-(50|[1-9]00|950|[1-4])\\b|\\boutline-none\\b|text-\\[[0-9.]+pt\\]|text-\\[([0-9]|1[0-5])(\\.[0-9]+)?px\\]|(^|[\\s:])rounded(?=\\s|$)|-\\[#(?:(?<hex1>[0-9a-fA-F])\\k<hex1>\\k<hex1>|(?<hex2>[0-9a-fA-F]{2})\\k<hex2>\\k<hex2>)\\]";
@@ -65,9 +68,16 @@ export default defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          patterns: ["../../../shared/*"],
+          patterns: SHARED_IMPORT_PATTERNS,
+          paths: [blockerImport("apps/admin/src/components/LeaveGuard.tsx")],
         },
       ],
+    },
+  },
+  {
+    files: ["src/components/LeaveGuard.tsx"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: SHARED_IMPORT_PATTERNS }],
     },
   },
 ]);

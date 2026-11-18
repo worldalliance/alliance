@@ -11,6 +11,7 @@ import {
   within,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../components/LeaveGuard";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
 import ActionUpdatePage from "./ActionUpdatePage";
@@ -62,7 +63,11 @@ const renderPage = (
     [
       {
         path: "/actions/:actionId/updates/:updateId",
-        element: <ActionUpdatePage />,
+        element: (
+          <LeaveGuard>
+            <ActionUpdatePage />
+          </LeaveGuard>
+        ),
       },
     ],
     { initialEntries: [params.path ?? "/actions/2/updates/1"] },
