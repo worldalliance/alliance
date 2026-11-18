@@ -2,26 +2,23 @@
 // Usage, from agents/desktop: bun src/main/agent/claude/testing/capture-claude.ts
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
 import { AgentEventKind } from "../../../../shared/agent-event";
 import { devClaudeConfigDir } from "../../../dev-app-data";
-import { ImageMediaType } from "../../session";
 import {
   appData,
   captureScratch,
   check,
   checkTranscriptUploaded,
-  deltaText,
   machine,
-  redPng,
-  replyText,
   repo,
+  runScriptedTask,
   writeCaptures,
 } from "../../testing/capture-run";
-import { kinds, onFifthDelta, text, turn } from "../../testing/turn";
+import { kinds, text, turn } from "../../testing/turn";
 import { isSignedInToClaude, signInToClaude } from "../auth";
 import { createClaudeBackend } from "../backend";
 import { type ClaudeCli, checkClaudeVersion } from "../process";
@@ -57,86 +54,11 @@ if (!R.unwrap(await isSignedInToClaude(real))) {
   );
 }
 
-console.log("edit, interrupt and a turn after it");
-process.env.ALLIANCE_AGENT_RECORD_NAME = "edit-and-interrupt";
-const first = R.unwrap(
-  await createClaudeBackend(recorded).start({ cwd: repo }),
-);
-const edit = await turn({
-  session: first,
-  message: text(
-    `Use the Edit tool to change the word hello to goodbye in ${path.relative(repo, workFile)}, then reply with one short sentence.`,
-  ),
+const firstId = await runScriptedTask({
+  createBackend: () => createClaudeBackend(recorded),
+  workFile,
+  editWith: "the Edit tool",
 });
-check(
-  readFileSync(workFile, "utf8").includes("goodbye"),
-  "the file was edited",
-);
-check(
-  [
-    AgentEventKind.ToolStarted,
-    AgentEventKind.ToolFinished,
-    AgentEventKind.AssistantTextDelta,
-    AgentEventKind.AssistantText,
-  ].every((k) => kinds(edit).includes(k)),
-  "the edit turn streamed text and called a tool",
-);
-check(
-  !kinds(edit).includes(AgentEventKind.Error),
-  "the edit turn had no error",
-);
-const interrupted = await turn({
-  session: first,
-  message: text("Count from 1 to 300, one number per line. Use no tools."),
-  onEvent: onFifthDelta(() => first.interrupt()),
-});
-check(
-  !kinds(interrupted).includes(AgentEventKind.Error),
-  "an interrupt emits no error",
-);
-const ended = interrupted.at(-1);
-check(
-  ended?.kind === AgentEventKind.TurnEnded && ended.interrupted,
-  "the turn ended as interrupted",
-);
-check(
-  !/\b300\b/.test(deltaText(interrupted)),
-  "the interrupt cut the turn short",
-);
-const pong = await turn({
-  session: first,
-  message: text("Reply with just the word: pong"),
-});
-check(/pong/i.test(replyText(pong)), "the session answers after an interrupt");
-await first.close();
-
-console.log("resume in a new backend, as after an app restart, with an image");
-process.env.ALLIANCE_AGENT_RECORD_NAME = "resume-with-image";
-const resumed = R.unwrap(
-  await createClaudeBackend(recorded).resume({
-    cwd: repo,
-    sessionId: first.id,
-  }),
-);
-const recalled = await turn({
-  session: resumed,
-  message: text(
-    "Which word did you reply with in your previous message? Reply with just that word.",
-  ),
-});
-check(
-  /pong/i.test(replyText(recalled)),
-  "the resumed session remembers the last turn",
-);
-const image = await turn({
-  session: resumed,
-  message: {
-    text: "What colour is this image? Reply with one word.",
-    images: [{ mediaType: ImageMediaType.Png, data: redPng }],
-  },
-});
-check(/red/i.test(replyText(image)), "the image arrived");
-await resumed.close();
 
 console.log("resume a session that doesn't exist");
 process.env.ALLIANCE_AGENT_RECORD_NAME = "missing-session";
@@ -164,4 +86,4 @@ writeCaptures({
 });
 
 // Last, so a run without a working transcript login still writes its captures.
-checkTranscriptUploaded(`claude/${first.id}.jsonl`);
+checkTranscriptUploaded(`claude/${firstId}.jsonl`);
