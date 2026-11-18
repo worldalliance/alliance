@@ -69,3 +69,37 @@ export function mailSendError(error: unknown): SendErrorKind {
   }
   return SendErrorKind.Unknown;
 }
+
+const TWILIO_NOT_PROCESSED = new Set([401, 403, 429]);
+const BEFORE_REQUEST_SYSCALLS = new Set(["connect", "getaddrinfo"]);
+
+/**
+ * Sorts an error from Twilio's message create. A 429, or a 401 or 403 refusing
+ * the account, processed nothing; another 4xx carrying Twilio's error code
+ * refuses the message.
+ * A failed DNS lookup or connect, which axios keeps as the cause, sent nothing.
+ * A 5xx, a reset or a timeout may have come after Twilio created the message.
+ */
+export function textSendError(error: unknown): SendErrorKind {
+  if (typeof error !== "object" || error === null) return SendErrorKind.Unknown;
+  const status = Reflect.get(error, "status");
+  const code = Reflect.get(error, "code");
+  if (typeof status === "number" && TWILIO_NOT_PROCESSED.has(status)) {
+    return SendErrorKind.NotHandedOver;
+  }
+  if (
+    typeof status === "number" &&
+    status >= 400 &&
+    status < 500 &&
+    typeof code === "number" &&
+    code > 0
+  ) {
+    return SendErrorKind.Refused;
+  }
+  const cause: unknown = Reflect.get(error, "cause");
+  return typeof cause === "object" &&
+    cause !== null &&
+    BEFORE_REQUEST_SYSCALLS.has(String(Reflect.get(cause, "syscall")))
+    ? SendErrorKind.NotHandedOver
+    : SendErrorKind.Unknown;
+}
