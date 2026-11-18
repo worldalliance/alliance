@@ -149,3 +149,41 @@ describe("OutputRenderer list rows", () => {
     expect(screen.getByDisplayValue("typed on a phone")).toBeTruthy();
   });
 });
+
+describe("plain", () => {
+  const bioSchema: FormSchema = {
+    pages: [
+      {
+        id: "p1",
+        fields: [{ id: "bio", type: "input", kind: "textarea", label: "Bio" }],
+      },
+    ],
+    outputViews: [
+      {
+        type: "default",
+        id: "v1",
+        blocks: [{ id: "b1", fieldId: "bio", showLabel: true }],
+      },
+    ],
+  };
+
+  it("shows a text answer as body text with its line breaks, without its label", () => {
+    render(
+      <SiteAppProvider>
+        <OutputRenderer
+          plain
+          ownView
+          schema={bioSchema}
+          viewId="v1"
+          deviceType="desktop"
+          answers={{ bio: "line one\nline two" }}
+        />
+      </SiteAppProvider>,
+    );
+
+    const bio = screen.getByText(/line one/);
+    expect(bio.className).toContain("text-base");
+    expect(bio.className).toContain("whitespace-pre-line");
+    expect(screen.queryByText(/Bio/)).toBeNull();
+  });
+});

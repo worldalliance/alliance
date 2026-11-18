@@ -58,7 +58,9 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
 };
 
 function PlainOutputFieldValue({ item }: { item: ResolvedOutputFieldItem }) {
-  if (item.fileValues.length > 0) return renderFormattedOutputFieldValue(item);
+  if (item.field?.kind === "file" || item.field?.kind === "image") {
+    return renderFormattedOutputFieldValue(item);
+  }
   if (!item.formattedValue) return null;
   return <Text className="text-base text-zinc-900">{item.formattedValue}</Text>;
 }

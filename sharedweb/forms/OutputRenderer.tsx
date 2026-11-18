@@ -39,7 +39,9 @@ const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
 };
 
 function PlainOutputFieldValue({ item }: { item: ResolvedOutputFieldItem }) {
-  if (item.fileValues.length > 0) return renderOutputFieldValue(item);
+  if (item.field?.kind === "file" || item.field?.kind === "image") {
+    return renderOutputFieldValue(item);
+  }
   if (!item.formattedValue) return null;
   return (
     <p className="whitespace-pre-line text-base text-zinc-900">
