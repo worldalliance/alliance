@@ -1,17 +1,17 @@
 ---
 name: playwright
-description: "Read before driving the locally running apps: verifying a change in the browser, calling the API, authenticating as an admin or member, or driving the mobile app."
+description: "Read before driving the local apps: verifying a change in the browser, calling the API, authenticating as an admin or member, or driving the mobile app."
 ---
 
 # Driving the local apps
 
-## Already running — check, don't start
+## Starting the apps
 
-- API: `bun --watch src/main.ts` in `server/`, started by `bun run dev`, hot-reloads on edit, OpenAPI at `/openapi.yaml`
+- API: hot-reloads on edit, OpenAPI at `/openapi.yaml`
 - Admin (vite): routes in `apps/admin/src/routes.ts`
 - Frontend (vite)
 
-`./scripts/with-env.sh` prints the dev ports. `lsof -iTCP -sTCP:LISTEN -P | grep -E "node|bun"` confirms they're up.
+`./scripts/with-env.sh` prints this checkout's ports. A worktree's apps are often not running, and that is no reason to skip a browser check. Check whether the port answers first, since a second copy dies on a taken port; if nothing does, start what you need from the repo root, in the background, with `bun run server:dev`, `admin:dev` or `frontend:dev`, which use this checkout's ports; `server:dev` also loads the server's secrets. Stop the PIDs you started when done.
 
 Mobile is the exception. [`MOBILE.md`](MOBILE.md) has its start command, selectors, and auth.
 

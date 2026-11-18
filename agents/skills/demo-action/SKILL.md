@@ -17,7 +17,7 @@ Everything goes through the API so the server's validation and side effects run.
 
 ## 1. Server
 
-`./scripts/with-env.sh` prints the API port. If nothing listens there, start `bun --watch src/main.ts` in `server/` in the background.
+`./scripts/with-env.sh` prints the API port. If nothing listens there, start `bun run server:dev` from the repo root in the background; it loads the server's secrets and this checkout's ports.
 
 `SEND_DEV_NOTIFS` must be unset, both in `server/.env` and in the running server's environment (`ps eww` on the listening pid). Signing contracts and posting updates can notify members, and the server delivers locally only with that flag set.
 
