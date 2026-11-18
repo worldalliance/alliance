@@ -16,6 +16,7 @@ import {
   type AgentMessage,
   type AgentSession,
 } from "../session";
+import { type SessionHooks, sessionRegistry } from "../session-registry";
 import {
   checkClaudeVersion,
   type ClaudeCli,
@@ -30,11 +31,6 @@ import {
 } from "./protocol";
 
 const stderrTailLength = 4000;
-
-type SessionHooks = {
-  onClosing: (closed: Promise<void>) => void;
-  onExit: () => void;
-};
 
 class ClaudeSession implements AgentSession {
   private turn: { interrupted: boolean } | undefined;
@@ -202,8 +198,7 @@ export function createClaudeBackend(
   // Outlasts the repository's SessionEnd transcript upload, whose hook times out after 10 seconds.
   timing = { killAfterMs: 15_000 },
 ): AgentBackend {
-  const live = new Map<string, Promise<Result<AgentSession, Error>>>();
-  const closing = new Map<string, Promise<void>>();
+  const sessions = sessionRegistry();
   let versionChecked = false;
 
   async function launch(
@@ -236,37 +231,16 @@ export function createClaudeBackend(
     );
   }
 
-  function track(params: {
+  const track = (params: {
     cwd: string;
     sessionId: string;
     sessionArgs: readonly string[];
-  }): Promise<Result<AgentSession, Error>> {
-    const { sessionId } = params;
-    // Runs only after launch has returned, so entry is assigned by then.
-    const forget = () => {
-      if (live.get(sessionId) === entry) live.delete(sessionId);
-    };
-    // A handle whose CLI has exited may close after a newer one replaced it; only the live one's close counts.
-    const onClosing = (closed: Promise<void>) => {
-      if (live.get(sessionId) !== entry) return;
-      live.delete(sessionId);
-      closing.set(sessionId, closed);
-      void closed.then(() => {
-        if (closing.get(sessionId) === closed) closing.delete(sessionId);
-      });
-    };
-    // Waiting out a closing CLI keeps two from running on one session.
-    const entry = (closing.get(sessionId) ?? Promise.resolve())
-      .then(() => launch({ ...params, onClosing, onExit: forget }))
-      .catch((error: unknown) =>
+  }) =>
+    sessions.launch(params.sessionId, (hooks) =>
+      launch({ ...params, ...hooks }).catch((error: unknown) =>
         couldNotStart({ executable: cli.executable, cwd: params.cwd, error }),
-      );
-    live.set(sessionId, entry);
-    void entry.then((result) => {
-      if (!result.ok) forget();
-    });
-    return entry;
-  }
+      ),
+    );
 
   return {
     start: ({ cwd }) => {
@@ -278,7 +252,7 @@ export function createClaudeBackend(
       });
     },
     resume: ({ cwd, sessionId }) => {
-      const running = live.get(sessionId);
+      const running = sessions.live(sessionId);
       if (running) return running;
       // The id becomes a command-line argument, so it must not read as a flag.
       if (!z.uuid().safeParse(sessionId).success)
