@@ -33,6 +33,7 @@ interface ActionTimelineProps {
   focusOnDate?: Date | string | number | null;
   latestLaunchFirst?: boolean;
   participantsById?: ReadonlyMap<number, CohortSegment[]>;
+  emptyMessage?: React.ReactNode;
 }
 
 const EMPTY_REMINDERS: TimelineReminder[] = [];
@@ -47,6 +48,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   focusOnDate,
   latestLaunchFirst = false,
   participantsById,
+  emptyMessage = "No actions with timeline events found.",
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -197,7 +199,6 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   };
 
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
-    const emptyMessage = "No actions with timeline events found.";
     return header ? (
       <div className={cn("bg-white rounded-lg", className)}>
         <div className="w-80 h-[50px] bg-zinc-50 border-b border-r border-zinc-200 py-3 pr-4 text-xs">
@@ -260,6 +261,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   </div>
                   <ActionTimelineRowMeta
                     status={action.status}
+                    archived={action.archived}
                     participants={participantsById?.get(action.id)}
                   />
                 </Link>
