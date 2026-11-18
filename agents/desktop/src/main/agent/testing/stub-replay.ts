@@ -9,9 +9,12 @@ export function stubReplay(params: {
   scratchPrefix: string;
 }) {
   let scratch: string | undefined;
-  const writeScratch = (name: string, text: string, mode?: number) => {
+  const scratchPath = (name: string) => {
     scratch ??= mkdtempSync(path.join(tmpdir(), params.scratchPrefix));
-    const file = path.join(scratch, name);
+    return path.join(scratch, name);
+  };
+  const writeScratch = (name: string, text: string, mode?: number) => {
+    const file = scratchPath(name);
     writeFileSync(file, text, { mode });
     return file;
   };
@@ -25,6 +28,7 @@ export function stubReplay(params: {
       if (scratch) rmSync(scratch, { recursive: true, force: true });
       scratch = undefined;
     },
+    scratchPath,
     writeScratch,
     writeCapture: (records: CaptureRecord[]) =>
       writeScratch(`${randomUUID()}.jsonl`, formatCapture(records)),
