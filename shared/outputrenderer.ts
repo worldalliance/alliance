@@ -6,6 +6,7 @@ import type {
   AnyField,
   FormValue,
   ListField,
+  ListSubField,
   OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
@@ -121,6 +122,26 @@ export const getOutputFileValues = (value: FormValue | undefined): string[] => {
   );
 };
 
+const isListUploadKind: Record<ListSubField["kind"], boolean> = {
+  file: true,
+  text: false,
+  textarea: false,
+  email: false,
+  phone: false,
+  number: false,
+  range: false,
+  checkbox: false,
+  radio: false,
+  select: false,
+  multiselect: false,
+  date: false,
+  time: false,
+  timezone: false,
+  city: false,
+  contract: false,
+  custom: false,
+};
+
 /**
  * What a plain output shows for an answer: its text, with a list's rows one per
  * line and each row's shown answers comma-joined, and its uploads.
@@ -155,7 +176,7 @@ export function plainAnswer(item: ResolvedOutputFieldItem): {
           .join("\n"),
         uploads: rows.flatMap((cells) =>
           cells.flatMap(({ sub, value }) =>
-            sub.kind === "file" ? getOutputFileValues(value) : [],
+            isListUploadKind[sub.kind] ? getOutputFileValues(value) : [],
           ),
         ),
       };
