@@ -1,3 +1,4 @@
+import { phoneSearchTerm } from "@alliance/common/phone";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
@@ -69,6 +70,16 @@ const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
   .filter(([, answers]) => answers)
   .map(([status]) => status);
 
+export type ThreadSummary = {
+  thread: ThreadRef;
+  members: User[];
+  lastMessageBody: string;
+  lastMessageDirection: MmsDirection;
+  lastMessageAt: Date;
+};
+
+export type ThreadList = { threads: ThreadSummary[]; hasMore: boolean };
+
 /** Inbound texts Needs reply counts, after the number's launch cutoff, that no
  * staff reply has followed, handled ones included, from a query aliased
  * `inbound`. */
@@ -97,6 +108,14 @@ const unanswered = (query: SelectQueryBuilder<Mms>) =>
           AND (inbound."createdAt", inbound.id) <= (cutoff."createdAt", cutoff.id)
       )`,
     );
+
+const latestRow = z.object({
+  phoneNumber: z.string(),
+  id: z.number(),
+  createdAt: z.date(),
+  body: z.string(),
+  direction: z.enum(MmsDirection),
+});
 
 @Injectable()
 export class MmsInboxService {
@@ -231,6 +250,62 @@ export class MmsInboxService {
         waitingSince: entry.waitingSince,
       })),
     );
+  }
+
+  /** Numbers with an inbound or staff text, by their latest such text, newest
+   * first; automated texts alone don't make a conversation. */
+  async list(params: {
+    page: number;
+    limit: number;
+    search?: string;
+  }): Promise<ThreadList> {
+    const term = phoneSearchTerm(params.search);
+    const query = this.mmsRepository
+      .createQueryBuilder("mms")
+      .select('mms."memberPhoneNumber"', "phoneNumber")
+      .addSelect("mms.id", "id")
+      .addSelect('mms."createdAt"', "createdAt")
+      .addSelect("mms.body", "body")
+      .addSelect("mms.direction", "direction")
+      .distinctOn(['mms."memberPhoneNumber"'])
+      .where(`(mms.direction = :inbound OR mms."sentById" IS NOT NULL)`, {
+        inbound: MmsDirection.Inbound,
+      })
+      // Descending throughout, so the partial index is read backward unsorted.
+      .orderBy('mms."memberPhoneNumber"', "DESC")
+      .addOrderBy('mms."createdAt"', "DESC")
+      .addOrderBy("mms.id", "DESC");
+    if (term) {
+      query.andWhere(
+        `regexp_replace(mms."memberPhoneNumber", '\\D', '', 'g') LIKE :term`,
+        { term: `%${term}%` },
+      );
+    }
+    const [sql, parameters] = query.getQueryAndParameters();
+    const rows = z.array(latestRow).parse(
+      await this.mmsRepository.query(
+        `SELECT * FROM (${sql}) latest
+         ORDER BY latest."createdAt" DESC, latest.id DESC
+         LIMIT ${params.limit + 1} OFFSET ${(params.page - 1) * params.limit}`,
+        parameters,
+      ),
+    );
+    const page = rows.slice(0, params.limit);
+    const numbers = page.map((row) => row.phoneNumber);
+    const [threads, members] = await Promise.all([
+      this.threadRefs(numbers),
+      this.membersByNumber(numbers),
+    ]);
+    return {
+      threads: page.map((row, index) => ({
+        thread: threads[index],
+        members: members.get(row.phoneNumber) ?? [],
+        lastMessageBody: row.body,
+        lastMessageDirection: row.direction,
+        lastMessageAt: row.createdAt,
+      })),
+      hasMore: rows.length > params.limit,
+    };
   }
 
   /** BACKCOMPAT(mms-thread-rows): texts the previous release recorded may have

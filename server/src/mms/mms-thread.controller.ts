@@ -39,6 +39,8 @@ import {
   NeedsReplyThreadDto,
   NumberThreadDto,
   SendStaffTextDto,
+  ThreadListDto,
+  ThreadListQueryDto,
 } from "./dto/mms-thread.dto";
 import { MmsInboxService } from "./mms-inbox.service";
 import { MediaRefusal, MmsMediaService } from "./mms-media.service";
@@ -96,6 +98,20 @@ export class MmsThreadController {
     private readonly mediaService: MmsMediaService,
     private readonly inboxService: MmsInboxService,
   ) {}
+
+  @Get()
+  @ApiOkResponse({ type: ThreadListDto })
+  async listThreadsAdmin(
+    @Query() query: ThreadListQueryDto,
+  ): Promise<ThreadListDto> {
+    return new ThreadListDto(
+      await this.inboxService.list({
+        page: query.page ?? 1,
+        limit: query.limit ?? 50,
+        search: query.search,
+      }),
+    );
+  }
 
   /** BACKCOMPAT(mms-thread-ids): admin builds before per-number threads read
    * this; remove once no deployed admin build calls it, moving the Needs reply

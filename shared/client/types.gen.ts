@@ -1549,6 +1549,32 @@ export type RecordLinkOpeningDto = {
     observedAt: string;
 };
 
+export type ThreadMemberDto = {
+    id: number;
+    name: string;
+    timeZone: string | null;
+};
+
+export type ThreadSummaryDto = {
+    threadId: string;
+    phoneNumber: string;
+    members: Array<ThreadMemberDto>;
+    /**
+     * The latest inbound or staff text
+     */
+    lastMessageBody: string;
+    lastMessageDirection: MmsDirection;
+    lastMessageAt: string;
+};
+
+export type ThreadListDto = {
+    /**
+     * Up to `limit` threads, latest text first
+     */
+    threads: Array<ThreadSummaryDto>;
+    hasMore: boolean;
+};
+
 export type NeedsReplyMemberDto = {
     userId: number;
     name: string;
@@ -1560,12 +1586,6 @@ export type NeedsReplyMemberDto = {
      * When the member's oldest text that no staff reply has followed and staff haven't marked handled arrived
      */
     waitingSince: string;
-};
-
-export type ThreadMemberDto = {
-    id: number;
-    name: string;
-    timeZone: string | null;
 };
 
 export type NeedsReplyThreadDto = {
@@ -8451,6 +8471,32 @@ export type MmsHandleInboundMmsResponses = {
 };
 
 export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadListThreadsAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        /**
+         * Matches numbers containing these digits; must contain one
+         */
+        search?: string;
+    };
+    url: '/mms-threads';
+};
+
+export type MmsThreadListThreadsAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadListThreadsAdminError = MmsThreadListThreadsAdminErrors[keyof MmsThreadListThreadsAdminErrors];
+
+export type MmsThreadListThreadsAdminResponses = {
+    200: ThreadListDto;
+};
+
+export type MmsThreadListThreadsAdminResponse = MmsThreadListThreadsAdminResponses[keyof MmsThreadListThreadsAdminResponses];
 
 export type MmsThreadNeedsReplyAdminData = {
     body?: never;

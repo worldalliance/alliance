@@ -4,3 +4,5 @@ export const STAFF_TEXT_MAX_LENGTH = 1600;
 
 /** How long after a non-member's last inbound text staff may reply. */
 export const NON_MEMBER_REPLY_WINDOW_DAYS = 30;
+
+export const THREAD_SEARCH_MAX_LENGTH = 40;

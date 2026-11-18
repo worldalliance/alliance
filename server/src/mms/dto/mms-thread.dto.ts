@@ -1,6 +1,8 @@
+import { phoneSearchTerm } from "@alliance/common/phone";
 import {
   NON_MEMBER_REPLY_WINDOW_DAYS,
   STAFF_TEXT_MAX_LENGTH,
+  THREAD_SEARCH_MAX_LENGTH,
 } from "@alliance/common/staffText";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
@@ -10,14 +12,18 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateBy,
 } from "class-validator";
 import { User } from "src/user/entities/user.entity";
+import { PaginationQueryDto } from "src/utils/pagination.dto";
 import {
   type NeedsReplyMember,
   type NeedsReplyThread,
   ReplyState,
+  type ThreadList,
+  type ThreadSummary,
 } from "../mms-inbox.service";
 import { MmsMedia } from "../mms-media.entity";
 import {
@@ -31,7 +37,7 @@ import {
   type NumberThread,
   THREAD_PAGE_SIZE,
 } from "../mms-thread.service";
-import { Mms } from "../mms.entity";
+import { Mms, MmsDirection } from "../mms.entity";
 
 export class MmsMediaDto {
   @ApiProperty()
@@ -277,6 +283,73 @@ export class NeedsReplyThreadDto {
     this.lastMessageBody = input.lastMessageBody;
     this.waitingSince = input.waitingSince;
   }
+}
+
+export class ThreadSummaryDto {
+  @ApiProperty()
+  threadId: string;
+
+  @ApiProperty()
+  phoneNumber: string;
+
+  @ApiProperty({ type: () => ThreadMemberDto, isArray: true })
+  members: ThreadMemberDto[];
+
+  @ApiProperty({ description: "The latest inbound or staff text" })
+  lastMessageBody: string;
+
+  @ApiProperty({ enum: MmsDirection, enumName: "MmsDirection" })
+  lastMessageDirection: MmsDirection;
+
+  @ApiProperty({ type: Date })
+  lastMessageAt: Date;
+
+  constructor(input: ThreadSummary) {
+    this.threadId = input.thread.id;
+    this.phoneNumber = input.thread.phoneNumber;
+    this.members = input.members.map((member) => new ThreadMemberDto(member));
+    this.lastMessageBody = input.lastMessageBody;
+    this.lastMessageDirection = input.lastMessageDirection;
+    this.lastMessageAt = input.lastMessageAt;
+  }
+}
+
+export class ThreadListDto {
+  @ApiProperty({
+    type: () => ThreadSummaryDto,
+    isArray: true,
+    description: "Up to `limit` threads, latest text first",
+  })
+  threads: ThreadSummaryDto[];
+
+  /** In place of PaginatedListDto's count, which would sort every text
+   * again. */
+  @ApiProperty()
+  hasMore: boolean;
+
+  constructor(input: ThreadList) {
+    this.threads = input.threads.map((t) => new ThreadSummaryDto(t));
+    this.hasMore = input.hasMore;
+  }
+}
+
+export class ThreadListQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    description: "Matches numbers containing these digits; must contain one",
+    maxLength: THREAD_SEARCH_MAX_LENGTH,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(THREAD_SEARCH_MAX_LENGTH)
+  @ValidateBy({
+    name: "phoneSearch",
+    validator: {
+      validate: (value) =>
+        typeof value === "string" && phoneSearchTerm(value) !== "",
+      defaultMessage: () => "search must contain digits",
+    },
+  })
+  search?: string;
 }
 
 export class MmsThreadQueryDto {
