@@ -12,11 +12,6 @@ import {
 import { MemberActionsService } from "src/actions/member-actions.service";
 import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
 import { updateLive } from "src/datasources/soft-delete";
-import {
-  NOTIF_SOURCE,
-  reminderContext,
-} from "src/link-tracking/message-tracking.entity";
-import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { processKeywordReplacements } from "src/notifs/notification-keywords";
@@ -29,7 +24,10 @@ import {
   QueryFailedError,
   type Repository,
 } from "typeorm";
-import { ActionEventNotifDeliveryService } from "./action-event-notif-delivery.service";
+import {
+  ActionEventNotifDeliveryService,
+  reminderTracking,
+} from "./action-event-notif-delivery.service";
 import {
   ActionEventReminderService,
   groupTaskScopeActionIds,
@@ -74,25 +72,6 @@ export type UncompletedTaskSummary = {
   name: string;
   timeEstimate: number | null;
 };
-
-const reminderTracking = (
-  plan: NotificationPlan,
-  notif: ActionEventNotif,
-): TrackedMessage => ({
-  owner: { userId: plan.user.id },
-  source: NOTIF_SOURCE[notif.type],
-  context: reminderContext({
-    group: plan.group,
-    action: loadedActionEventAction(
-      loadedReminderGroupMemberActionEvent(plan.group),
-    ),
-    notifiedActionIds: notif.notifiedActionIds,
-    actionSuiteId: notif.actionSuite?.id ?? null,
-    missNumber: notif.missNumber,
-    missedSuiteCopy: notif.missedSuiteCopy,
-  }),
-  actionEventNotifId: notif.id,
-});
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.actionEventNotif;
