@@ -80,7 +80,8 @@ interface Array<T> {
   sort(compare?: (a: T, b: T) => number): T[];
   reverse(): T[];
   slice(start?: number, end?: number): T[];
-  concat(...items: (T | T[])[]): T[];
+  // Every list argument is spread, so a list item has to arrive inside a list.
+  concat(...items: (readonly T[] | (T extends readonly unknown[] ? never : T))[]): T[];
   includes(search: T, from?: number): boolean;
   indexOf(search: T, from?: number): number;
   lastIndexOf(search: T, from?: number): number;

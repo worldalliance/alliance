@@ -454,3 +454,34 @@ test.each([
 ])("a chain of 60 yes/no branches is checked quickly", (branch) => {
   passes(Array.from({ length: 60 }, (_, i) => branch(i)).join("") + "false");
 });
+
+test.each([
+  [
+    "[[2]].concat([1]).some((l) => l.length > 0)",
+    "Type 'number' is not assignable to type 'number[]'.",
+    "1",
+  ],
+  [
+    "[[2]].concat([1]).some((l) => sum(l) > 0)",
+    "Type 'number' is not assignable to type 'number[]'.",
+    "1",
+  ],
+  [
+    "[[1]].reduce((a, x) => a.concat(x), [[2]]).some((l) => sum(l) > 0)",
+    "Argument of type 'number[]' is not assignable to parameter of type 'readonly number[][]'. Type 'number' is not assignable to type 'number[]'.",
+    "x",
+  ],
+])(
+  "concat refuses a flat list onto a list of lists in %s",
+  (text, message, at) => {
+    expect(problems(text)).toEqual([{ message, at }]);
+  },
+);
+
+test.each([
+  "[[2]].concat([[1]]).some((l) => sum(l) > 0)",
+  "[1].concat([2], 3).some((n) => n > 1)",
+  "marks.concat([1], count).some((n) => (n ?? 0) === 1)",
+])("concat takes items and lists of items in %s", (text) => {
+  passes(text);
+});
