@@ -4,7 +4,8 @@ import {
 } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-/** One per number with a text opt-out state. */
+/** Written on a number's inbound text, staff text or opt-out change, member
+ * or not. */
 @Entity()
 export class MmsThread {
   @PrimaryGeneratedColumn("uuid")

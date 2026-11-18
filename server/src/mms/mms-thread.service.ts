@@ -160,6 +160,7 @@ export class MmsThreadService {
   /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
   async recordInbound(text: InboundText): Promise<MmsMedia[]> {
     return this.mmsRepository.manager.transaction(async (manager) => {
+      await this.mmsNumberService.ensureThread(text.from, manager);
       const inserted = await manager
         .createQueryBuilder()
         .insert()
@@ -304,6 +305,7 @@ export class MmsThreadService {
     if (!user.ok) return user;
     const to = await this.staffTextable(memberNumber(user.value));
     if (!to.ok) return to;
+    await this.mmsNumberService.ensureThread(to.value);
     const sent = await this.mmsService.sendStaffText({
       to: to.value,
       userId,

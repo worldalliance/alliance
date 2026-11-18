@@ -78,6 +78,19 @@ export class MmsNumberService {
     private readonly threadRepository: Repository<MmsThread>,
   ) {}
 
+  async ensureThread(
+    phoneNumber: string,
+    manager: EntityManager = this.threadRepository.manager,
+  ): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .insert()
+      .into(MmsThread)
+      .values({ phoneNumber })
+      .orIgnore()
+      .execute();
+  }
+
   async optedOut(phoneNumber: string): Promise<boolean> {
     return numberOptedOut(this.threadRepository.manager, phoneNumber);
   }
