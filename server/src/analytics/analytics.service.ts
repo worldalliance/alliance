@@ -112,17 +112,21 @@ export class AnalyticsService {
       .where(inviteAcceptedSql("invite"))
       .getCount();
 
-    const record = await this.dailyStatsRepository.create({
-      dayId,
-      date: now,
-      signedMembers: signedUsers,
-      suspendedMembers: suspendedUsers,
-      actionsCompleted: completionActivities,
-      anonFormSubmissions: anonFormSubmissions,
-      invitesCreated: createdInvites,
-      invitesAccepted: acceptedInvites,
-    });
-    await this.dailyStatsRepository.save(record);
+    await this.dailyStatsRepository
+      .createQueryBuilder()
+      .insert()
+      .values({
+        dayId,
+        date: now,
+        signedMembers: signedUsers,
+        suspendedMembers: suspendedUsers,
+        actionsCompleted: completionActivities,
+        anonFormSubmissions: anonFormSubmissions,
+        invitesCreated: createdInvites,
+        invitesAccepted: acceptedInvites,
+      })
+      .orIgnore()
+      .execute();
   }
 
   async getDailyStats(
