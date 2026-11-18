@@ -1,0 +1,6 @@
+# Decisions
+
+- **The splash hides by itself.** The gate held the native splash with `preventAutoHideAsync`, plus a 30 s watchdog, and hid it once it opened. With the gate gone nothing needs the splash past the first render, so both go and expo-splash-screen hides it when the root view mounts. Agent decision.
+- **Gate-only code is deleted, not kept for later.** `ota_gate_resolved`, `OtaGateOutcome` and `ota_gate_crashed` in `common/src/analytics.ts`, `flushAnalytics` in `shared/lib/analytics.ts` (only the gate flushed before reloading), the backend's optional `flush`, and the splash-stand-in constants only the progress screen read. Builds still running the gate keep sending `ota_gate_resolved`; PostHog accepts events the code no longer names. Agent decision.
+- **No OTA debugging doc in this PR.** It was proposed alongside an alert; the user dropped the alert, and most of what the doc would have explained (gate outcomes, `applied` logged before the reload, the iOS/Android difference in the gate's inputs) no longer exists. Agent decision.
+- **Verification on a release build is left to production data.** Exercising "an update downloaded at launch surfaces the restart banner and runs on the next cold start" needs a release build pointed at a published update. Agent decision.

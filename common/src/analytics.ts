@@ -43,9 +43,6 @@ export enum AnalyticsEvent {
   KoraParticipantSignedUp = "kora_participant_signed_up",
   KoraParticipantSignedIn = "kora_participant_signed_in",
 
-  // OTA updates
-  OtaGateResolved = "ota_gate_resolved",
-
   // Visible actions (server-side). Each is forwarded to Slack.
   ForumPostCreated = "forum_post_created",
   ForumCommentCreated = "forum_comment_created",
@@ -85,36 +82,6 @@ export enum AnalyticsEvent {
   DbSlowQuery = "db.slow_query",
 }
 
-/**
- * The `outcome` property of {@link AnalyticsEvent.OtaGateResolved}: why the
- * mobile cold-start gate stopped blocking.
- *
- * Applying reports `applied` up front, since a reload that works never comes
- * back to report anything, and a reload that then fails or stalls emits a
- * second row naming `applied` in `supersedes`. So count launches with
- * `restart_count = 0`, and updates that landed as `applied` rows minus rows
- * with `supersedes = 'applied'`.
- */
-export enum OtaGateOutcome {
-  NoUpdate = "no_update",
-  Applied = "applied",
-  CheckTimedOut = "check_timed_out",
-  DownloadTimedOut = "download_timed_out",
-  Skipped = "skipped",
-  CheckError = "check_error",
-  DownloadError = "download_error",
-  /** `reloadAsync` rejected. */
-  ReloadFailed = "reload_failed",
-  /** `reloadAsync` resolved but the reload never landed. */
-  ReloadStalled = "reload_stalled",
-  /** The startup procedure ended mid-download, pending nothing and reporting no error. */
-  DownloadIncomplete = "download_incomplete",
-  /** This runtime came from a reload. */
-  Relaunched = "relaunched",
-  /** A notification tap is waiting to be handled, and a reload would discard it. */
-  NotificationLaunch = "notification_launch",
-}
-
 // Strongly-typed labels for exceptions reported via `captureException`.
 export enum ExceptionEvent {
   FormSubmitError = "form_submit_error",
@@ -122,7 +89,6 @@ export enum ExceptionEvent {
   PostReplyError = "post_reply_error",
   LoadCommentsError = "load_comments_error",
   DeleteCommentError = "delete_comment_error",
-  OtaGateCrashed = "ota_gate_crashed",
   OtaForegroundUpdateFailed = "ota_foreground_update_failed",
   OtaRestartFailed = "ota_restart_failed",
   RequestFailed = "request_failed",
@@ -185,9 +151,6 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [AnalyticsEvent.KoraParticipantSignedUp]: true,
   [AnalyticsEvent.KoraParticipantSignedIn]: true,
 
-  // OTA updates
-  [AnalyticsEvent.OtaGateResolved]: false,
-
   // Visible actions (server-side)
   [AnalyticsEvent.ForumPostCreated]: true,
   [AnalyticsEvent.ForumCommentCreated]: true,
@@ -231,7 +194,6 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.PostReplyError]: false,
   [ExceptionEvent.LoadCommentsError]: false,
   [ExceptionEvent.DeleteCommentError]: false,
-  [ExceptionEvent.OtaGateCrashed]: true,
   [ExceptionEvent.OtaForegroundUpdateFailed]: false,
   [ExceptionEvent.OtaRestartFailed]: true,
   [ExceptionEvent.RequestFailed]: false,

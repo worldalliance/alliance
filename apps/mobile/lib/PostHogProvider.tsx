@@ -1,5 +1,4 @@
 import { client } from "@alliance/shared/client/client.gen";
-import type { AnalyticsBackend } from "@alliance/shared/lib/analytics";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
 import {
@@ -46,12 +45,7 @@ function AnalyticsBridge() {
   useEffect(() => {
     if (posthog) {
       void posthog.ready().then(() => linkOpeningSession.register(posthog));
-      // AnalyticsBackend.flush is optional, so a posthog upgrade that dropped
-      // flush would typecheck and turn every flushAnalytics into a silent
-      // Unsupported. The pin makes that a build error instead.
-      registerAnalytics(
-        posthog satisfies Required<Pick<AnalyticsBackend, "flush">>,
-      );
+      registerAnalytics(posthog);
       return registerPosthogRequestContext({
         client,
         getContext: () => posthogRequestContext(posthog),

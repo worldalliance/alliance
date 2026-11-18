@@ -34,9 +34,9 @@ async function downloadAvailableUpdate() {
 }
 
 /**
- * Downloads updates published while the app is running and, once one is
- * ready, offers a restart into it. Without the tap it applies on the next cold
- * start.
+ * Offers a restart into a downloaded update, whether expo-updates fetched it at
+ * launch or a foreground check did while the app was running. Without the tap
+ * it applies on the next cold start.
  */
 const OtaUpdateBanner = () => {
   const { isUpdatePending } = Updates.useUpdates();
