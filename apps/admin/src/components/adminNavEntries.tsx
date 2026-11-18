@@ -18,6 +18,7 @@ import {
   Megaphone,
   MessageSquare,
   MessageSquareReply,
+  MessagesSquare,
   Network,
   Newspaper,
   Plane,
@@ -152,6 +153,7 @@ export const navEntries = (counts: {
     icon: <MessageSquareReply size={16} />,
     notifCount: counts.needsReplyCount,
   },
+  { to: "/texts", label: "Texts", icon: <MessagesSquare size={16} /> },
   {
     to: "/groups",
     label: "Groups",

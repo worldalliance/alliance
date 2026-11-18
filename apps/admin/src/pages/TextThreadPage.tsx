@@ -28,6 +28,12 @@ function NumberThread({ threadId }: { threadId: string }) {
   return (
     <div className="flex flex-col gap-4 p-5 max-w-3xl">
       <title>{`${contactName} - Texts - Admin`}</title>
+      <Link
+        to={href("/texts")}
+        className="text-sm underline text-zinc-700 self-start"
+      >
+        All texts
+      </Link>
       <div className="flex flex-col gap-1 min-w-0">
         <h1 className="text-xl font-semibold">{contactName}</h1>
         <div className="min-h-5">{data && <ThreadPeople thread={data} />}</div>

@@ -12,7 +12,7 @@ import {
 import { href, Link } from "react-router";
 import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import { threadContactName } from "../lib/memberTexts";
+import { textPreview, threadContactName } from "../lib/memberTexts";
 import { useNeedsReplyAdmin } from "../lib/useTextThreadsAdmin";
 
 type Row = { thread: NeedsReplyThreadDto; left: boolean };
@@ -158,7 +158,7 @@ const NeedsReplyPage = () => {
                     </span>
                   </span>
                   <span className="truncate text-sm text-zinc-600">
-                    {thread.lastMessageBody || "Sent an attachment"}
+                    {textPreview(thread.lastMessageBody)}
                   </span>
                 </Link>
               </li>

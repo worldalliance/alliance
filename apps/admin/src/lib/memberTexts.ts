@@ -90,6 +90,9 @@ export const memberLocalTime = (
   );
 };
 
+export const textPreview = (body: string): string =>
+  body || "Sent an attachment";
+
 export const threadContactName = (thread: {
   phoneNumber: string;
   members: { name: string }[];

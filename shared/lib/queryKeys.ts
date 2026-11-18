@@ -35,6 +35,7 @@ const projectsAdminAll = () => ["projectsAdmin"] as const;
 const memberTextThreadsAdminAll = () => ["mmsThreadGetThreadAdmin"] as const;
 const numberTextThreadsAdminAll = () =>
   ["mmsThreadGetNumberThreadAdmin"] as const;
+const textThreadsAdminAll = () => ["mmsThreadListThreadsAdmin"] as const;
 
 const actionAdminAll = () => ["actionsFindOneAdmin"] as const;
 
@@ -359,6 +360,9 @@ export const queryKeys = {
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
   tagsAdmin: () => ["userTagGetTagsAdmin"] as const,
   tagSummariesAdmin: () => ["userTagGetTagSummariesAdmin"] as const,
+  textThreadsAdminAll,
+  textThreadsAdmin: (query: { page: number; search: string }) =>
+    [...textThreadsAdminAll(), query] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   timeToChurnSamplesAdmin: () =>

@@ -1,5 +1,6 @@
 import {
   mmsThreadGetNumberThreadAdmin,
+  mmsThreadListThreadsAdmin,
   mmsThreadMarkThreadHandledAdmin,
   mmsThreadMarkThreadNeedsReplyAdmin,
   mmsThreadMarkThreadOptedOutAdmin,
@@ -41,6 +42,25 @@ export function useNeedsReplyCount(): number | null {
   return data?.length ?? (isError ? null : 0);
 }
 
+export function useTextThreadListAdmin(
+  query: { page: number; search: string },
+  { enabled }: { enabled: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.textThreadsAdmin(query),
+    enabled,
+    // Paging keeps the current page up until the next arrives; a new search
+    // doesn't, so its results are never mistaken for the previous search's.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1].search === query.search ? previous : undefined,
+    queryFn: () =>
+      mmsThreadListThreadsAdmin({
+        query: { page: query.page, search: query.search || undefined },
+        throwOnError: true,
+      }).then((r) => r.data),
+  });
+}
+
 type ThreadMark<Id> = { id: Id; throughId: number };
 
 /** Mutations take the thread's id, so one that settles after the page moves
@@ -67,6 +87,7 @@ export function useThreadActions<
     const keys = [
       queryKey(target),
       needsReplyQuery.queryKey,
+      queryKeys.textThreadsAdminAll(),
       queryKeys.memberTextThreadsAdminAll(),
       queryKeys.numberTextThreadsAdminAll(),
     ];

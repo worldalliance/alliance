@@ -233,6 +233,21 @@ it("marks the member view stale after a send or opt-out here", async () => {
   await waitFor(() => expect(memberViewStale()).toBe(true));
 });
 
+it("marks the Texts list stale after a send here", async () => {
+  const client = renderPage();
+  const listKey = queryKeys.textThreadsAdmin({ page: 1, search: "" });
+  client.setQueryData(listKey, { threads: [], hasMore: false });
+
+  fireEvent.change(await screen.findByLabelText("Text (415) 555-0101"), {
+    target: { value: "Happy to help" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  await waitFor(() =>
+    expect(client.getQueryState(listKey)?.isInvalidated).toBe(true),
+  );
+});
+
 it("marks the number's texts handled through the newest text, then undoes it", async () => {
   const client = renderPage();
   const button = await screen.findByRole("button", { name: "Mark handled" });
