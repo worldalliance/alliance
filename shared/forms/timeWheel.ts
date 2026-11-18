@@ -51,6 +51,16 @@ export function timeWheelLayout(scale = 1): TimeWheelLayout {
   };
 }
 
+/** The option under the band at scroll `offset`, kept within `0..last`. */
+export function timeWheelIndexAt(params: {
+  offset: number;
+  row: number;
+  last: number;
+}): number {
+  const { offset, row, last } = params;
+  return Math.min(Math.max(Math.round(offset / row), 0), last);
+}
+
 export const TIME_WHEEL_DEFAULT = formatMinutesAs24h(DEFAULT_MINUTES);
 
 /** The time a wheel shows: its `HH:MM` answer, or the default when there is none. */

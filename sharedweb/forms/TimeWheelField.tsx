@@ -1,11 +1,18 @@
 import type { TimePickerField } from "@alliance/common/forms/form-schema";
 import {
   timeWheelControls,
+  timeWheelIndexAt,
   timeWheelLayout,
   type TimeWheelColumn,
 } from "@alliance/shared/forms/timeWheel";
 import { cn } from "@alliance/shared/styles/util";
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import {
   RenderLabel,
   useQuestionLabelId,
@@ -97,6 +104,7 @@ function WheelColumn({
   const settle = useRef<number | undefined>(undefined);
   const placed = useRef(false);
   const last = column.options.length - 1;
+  const [centred, setCentred] = useState(column.index);
 
   useLayoutEffect(() => {
     const top = column.index * LAYOUT.row;
@@ -116,11 +124,13 @@ function WheelColumn({
   };
 
   const onScroll = () => {
+    const el = ref.current;
+    if (!el) return;
+    const centredAt = () =>
+      timeWheelIndexAt({ offset: el.scrollTop, row: LAYOUT.row, last });
+    setCentred(centredAt());
     window.clearTimeout(settle.current);
-    settle.current = window.setTimeout(() => {
-      const el = ref.current;
-      if (el) select(Math.round(el.scrollTop / LAYOUT.row));
-    }, SETTLE_MS);
+    settle.current = window.setTimeout(() => select(centredAt()), SETTLE_MS);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -156,7 +166,7 @@ function WheelColumn({
           onClick={() => select(index)}
           className={cn(
             "flex cursor-pointer snap-center items-center justify-center text-xl tabular-nums",
-            index === column.index ? "text-zinc-900" : "text-zinc-500",
+            index === centred ? "text-zinc-900" : "text-zinc-600",
           )}
           style={{ height: LAYOUT.row }}
         >

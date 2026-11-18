@@ -9,6 +9,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
@@ -184,6 +185,17 @@ describe("time picker field", () => {
     jest.useRealTimers();
 
     expect(answer).toBe("04:00");
+  });
+
+  it("darkens the row under the band while the scroll is still moving", () => {
+    render(<Field field={wheel} initial="09:00" />);
+    const hour = screen.getByRole("spinbutton", { name: "Hour" });
+
+    hour.scrollTop = 36 * 3;
+    fireEvent.scroll(hour);
+
+    expect(within(hour).getByText("4").className).toContain("text-zinc-900");
+    expect(within(hour).getByText("9").className).toContain("text-zinc-600");
   });
 
   it("keeps a turn of one column when another column settles after it", () => {

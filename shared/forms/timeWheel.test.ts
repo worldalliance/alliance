@@ -2,6 +2,7 @@ import {
   TIME_WHEEL_DEFAULT,
   TimeWheelColumnKey,
   timeWheelColumns,
+  timeWheelIndexAt,
   timeWheelMinutes,
   turnTimeWheel,
 } from "./timeWheel";
@@ -53,5 +54,18 @@ describe("turnTimeWheel", () => {
     ["21:15", TimeWheelColumnKey.Hour, "12", "12:15"],
   ])("turns %s's %s wheel to %s for %s", (value, column, option, expected) => {
     expect(turn(value, column, option)).toBe(expected);
+  });
+});
+
+describe("timeWheelIndexAt", () => {
+  it.each([
+    [0, 0],
+    [17, 0],
+    [18, 1],
+    [36 * 4, 4],
+    [-20, 0],
+    [36 * 20, 11],
+  ])("puts offset %s on option %s", (offset, expected) => {
+    expect(timeWheelIndexAt({ offset, row: 36, last: 11 })).toBe(expected);
   });
 });

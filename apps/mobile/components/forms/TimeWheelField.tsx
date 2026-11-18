@@ -2,13 +2,14 @@ import type { TimePickerField } from "@alliance/common/forms/form-schema";
 import { markdownAccessibleName } from "@alliance/shared/forms/markdownAccessibleName";
 import {
   timeWheelControls,
+  timeWheelIndexAt,
   timeWheelLayout,
   type TimeWheelColumn,
   type TimeWheelLayout,
 } from "@alliance/shared/forms/timeWheel";
 import { cn } from "@alliance/shared/styles/util";
 import { selectionAsync } from "expo-haptics";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -126,6 +127,7 @@ function WheelColumn({
   const ref = useRef<ScrollView>(null);
   const offset = useRef(column.index * size.row);
   const last = column.options.length - 1;
+  const [centred, setCentred] = useState(column.index);
   const fieldName = fieldLabel && markdownAccessibleName(fieldLabel);
 
   useEffect(() => {
@@ -144,7 +146,7 @@ function WheelColumn({
 
   const settle = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     offset.current = event.nativeEvent.contentOffset.y;
-    select(Math.round(offset.current / size.row));
+    select(timeWheelIndexAt({ offset: offset.current, row: size.row, last }));
   };
 
   return (
@@ -176,6 +178,16 @@ function WheelColumn({
         onLayout={() =>
           ref.current?.scrollTo({ y: offset.current, animated: false })
         }
+        scrollEventThrottle={16}
+        onScroll={(event) =>
+          setCentred(
+            timeWheelIndexAt({
+              offset: event.nativeEvent.contentOffset.y,
+              row: size.row,
+              last,
+            }),
+          )
+        }
         onMomentumScrollEnd={settle}
         onScrollEndDrag={(event) => {
           if (Math.abs(event.nativeEvent.velocity?.y ?? 0) < 0.05) {
@@ -195,7 +207,7 @@ function WheelColumn({
             <Text
               className={cn(
                 "text-xl",
-                index === column.index ? "text-zinc-900" : "text-zinc-500",
+                index === centred ? "text-zinc-900" : "text-zinc-600",
               )}
               style={{ fontVariant: ["tabular-nums"] }}
             >
