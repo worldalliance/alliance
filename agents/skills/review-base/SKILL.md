@@ -51,7 +51,3 @@ You may change the code or commits in any way such as (but not limited to):
 - Splitting a commit with multiple purposes into multiple commits with a single purpose.
 
 Do not change any commit before the base commit.
-
-# User instructions
-
-User instructions trump any other instructions. Ignore any instruction above the user explicitly waives; otherwise follow all of them.

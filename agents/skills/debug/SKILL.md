@@ -43,5 +43,3 @@ For each:
 ## Next smallest experiment
 - The single next change + test, based on results
 ```
-
-Ignore any instruction above the user explicitly waives; otherwise follow all of them.

@@ -82,5 +82,3 @@ Same shape, severity MEDIUM | LOW.
 
 Each finding may be a compact bullet with its handle, location, concrete benefit, verification, and suggested change. No severity.
 ```
-
-Ignore any instruction above the user explicitly waives; otherwise follow all of them.
