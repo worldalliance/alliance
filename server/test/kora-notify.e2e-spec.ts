@@ -10,7 +10,7 @@ import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { DeliveryFailure } from "src/utils/notif-delivery";
 import request from "supertest";
-import { closeTestApp } from "./e2e-test-utils";
+import { awaitCalls, closeTestApp } from "./e2e-test-utils";
 import {
   koraHarness,
   setKoraProjectStatus,
@@ -22,6 +22,7 @@ describe("Kora launch notice (e2e)", () => {
   let h: KoraHarness;
   let sent: { to: string; link: string }[];
   let failFor: Set<string>;
+  let sendAll: jest.SpyInstance;
 
   const asAdmin = () =>
     request(h.ctx.app.getHttpServer())
@@ -34,11 +35,6 @@ describe("Kora launch notice (e2e)", () => {
         .set("Authorization", `Bearer ${h.ctx.adminAccessToken}`)
         .expect(200)
     ).body.toNotify;
-  const settled = async () => {
-    for (let i = 0; i < 50 && (await toNotify()) > failFor.size; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-  };
   const deliver = <T>(to: string, link: string, value: T) => {
     if (failFor.has(to)) return R.failure(DeliveryFailure.Failed);
     sent.push({ to, link });
@@ -47,6 +43,7 @@ describe("Kora launch notice (e2e)", () => {
 
   beforeAll(async () => {
     h = await koraHarness();
+    sendAll = jest.spyOn(h.ctx.app.get(KoraNotifyService), "sendAll");
   }, 50000);
 
   beforeEach(async () => {
@@ -55,6 +52,7 @@ describe("Kora launch notice (e2e)", () => {
     await setKoraProjectStatus(h.ctx, KoraProjectStatus.Active);
     sent = [];
     failFor = new Set();
+    sendAll.mockClear();
     jest
       .spyOn(h.ctx.app.get(MailService), "sendUnrecordedMail")
       .mockImplementation(async ({ recipient, context }) =>
@@ -85,7 +83,7 @@ describe("Kora launch notice (e2e)", () => {
 
     const res = await asAdmin().expect(200);
     expect(res.body).toEqual({ queued: 2 });
-    await settled();
+    await awaitCalls(sendAll);
 
     expect(sent.map((s) => s.to).sort()).toEqual([
       "+15555550101",
@@ -95,18 +93,18 @@ describe("Kora launch notice (e2e)", () => {
     expect(await toNotify()).toBe(0);
 
     await asAdmin().expect(200);
-    await settled();
+    await awaitCalls(sendAll);
     expect(sent).toHaveLength(2);
   });
 
   it("reaches only people who joined since the last send", async () => {
     await seed({ email: "first@example.org" });
     await asAdmin().expect(200);
-    await settled();
+    await awaitCalls(sendAll);
     await seed({ email: "later@example.org" });
 
     await asAdmin().expect(200);
-    await settled();
+    await awaitCalls(sendAll);
 
     expect(sent.map((s) => s.to)).toEqual([
       "first@example.org",
@@ -119,13 +117,13 @@ describe("Kora launch notice (e2e)", () => {
     failFor.add("flaky@example.org");
 
     await asAdmin().expect(200);
-    await settled();
+    await awaitCalls(sendAll);
     expect(sent.map((s) => s.to)).toEqual(["fine@example.org"]);
     expect(await toNotify()).toBe(1);
 
     failFor.clear();
     await asAdmin().expect(200);
-    await settled();
+    await awaitCalls(sendAll);
     expect(sent.map((s) => s.to)).toEqual([
       "fine@example.org",
       "flaky@example.org",
