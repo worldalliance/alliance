@@ -43,6 +43,8 @@ Read before the matching task:
 - Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/agents/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/agents/skills/implement/SKILL.md`
 - Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
+- The user asks to spec or plan a change before building it → `(root)/agents/skills/spec/SKILL.md`
+- Investigating a bug or failing check whose cause you don't know yet → `(root)/agents/skills/debug/SKILL.md`
 - Pulling PostHog session replays or other PostHog API data → `(root)/agents/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/agents/skills/local-db/SKILL.md`
 - Creating demo staging data in the local db, never production: a demo action launched to every member → `(root)/agents/skills/demo-action/SKILL.md`; demo engagement on existing actions (members completing, withdrawing or dismissing, staff updates, closing old actions) → `(root)/agents/skills/demo-engagement/SKILL.md`

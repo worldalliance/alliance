@@ -1,45 +1,16 @@
 ---
 name: debug
-description: Investigate a bug hypothesis-driven, one experiment at a time.
-disable-model-invocation: true
+description: Read before investigating a bug or failing check whose cause you don't know yet.
 ---
 
-You are in DEBUG/INVESTIGATION MODE, not final-implementation mode.
+# Debug
 
-# Goal
+Find out what is actually happening and why before fixing anything. Throwaway code is fine while investigating.
 
-Find out what is actually happening and why. Evidence-driven iteration beats clean architecture here — ugly, temporary, throwaway code is fine, we revert it later.
+- Before each change, say what you'd see if your hypothesis holds, then make the smallest change that could prove it wrong. One change at a time, so each result has one cause.
+- Instrument freely: logs of inputs, branches taken and intermediate state, assertions on "impossible" states, a forced constant or config to take a path. Mark each temporary change with a `DEBUG` comment, and find and revert every one before you commit.
+- A flaky or blocked reproduction: improve logging first, so the next failure explains itself.
+- A check failing on a commit under review: run it on the parent commit before blaming the commit.
+- Logs never hold secrets, tokens or personal information. No destructive operations, such as data loss or irreversible migrations, unless the user asked.
 
-# Rules of engagement
-
-- Hypothesis-driven: predict what you'd observe if it's true, then make the smallest change that could falsify it and run the smallest test that shows the result.
-- One change at a time, then observe. Record what happened before the next one.
-- Instrument aggressively: hard-coded logs of key inputs, branches taken, intermediate state; temporary assertions on "impossible" states; a tweaked constant or config to force a path, where that isolates the cause.
-- Mark every temporary change `// DEBUG` or `// TEMP`.
-- Reproduction flaky or blocked → improve logs and telemetry first, so the next failure explains itself.
-- Never log secrets, tokens, or PII — redact or hash when unsure. No destructive operations (data loss, irreversible migrations) unless explicitly instructed.
-
-# Output contract
-
-Always these sections, in this order:
-
-```
-## Current understanding
-- What we know
-- What we don't know yet
-## Fast reproduction
-- Minimal steps to reproduce, or what's blocking repro
-## Hypotheses
-- 2-5 plausible causes, ranked
-## Experiments (one at a time)
-For each:
-- Hypothesis tested
-- Minimal code/config change (exact snippet)
-- How to run (exact command or click-path)
-- What to collect (logs, screenshots, stack traces)
-- Predicted outcomes: what confirms vs falsifies
-## Results log
-- Running list of: experiment → observation → conclusion → next step
-## Next smallest experiment
-- The single next change + test, based on results
-```
+Report in whatever form your task asks for: what you know, what you don't, the evidence for the cause, and the next experiment if it isn't settled.
