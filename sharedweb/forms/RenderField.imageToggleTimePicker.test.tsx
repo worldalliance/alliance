@@ -23,11 +23,13 @@ function Field({
   initial,
   fileUpload,
   onValue,
+  isOutputView,
 }: {
   field: AnyField;
   initial?: FormValue;
   fileUpload?: FileUploadSlots;
   onValue?: (value: FormValue | undefined) => void;
+  isOutputView?: boolean;
 }) {
   const [value, setValue] = useState<FormValue | undefined>(initial);
   onValue?.(value);
@@ -42,6 +44,7 @@ function Field({
             setValue((previous) => resolveFormValue(update, previous))
           }
           fileUpload={fileUpload}
+          isOutputView={isOutputView}
         />
       </SiteAppProvider>
     </MemoryRouter>
@@ -188,17 +191,23 @@ describe("time picker field", () => {
   });
 
   it.each([
-    [false, true],
-    [true, false],
+    ["the question", true, "When?", false, false],
+    ["the required question", true, "When?", true, false],
+    ["Optional alone", true, null, false, false],
+    ["nothing when required", false, null, true, false],
+    ["nothing in an output view", false, null, false, true],
   ])(
-    "with no label and required %s, leaves the gap under Optional: %s",
-    (required, gap) => {
+    "showing %s, leaves the gap under it: %p",
+    (_shows, gap, label, required, isOutputView) => {
       const { container } = render(
-        <Field field={{ ...wheel, label: null, required }} />,
+        <Field
+          field={{ ...wheel, label, required }}
+          isOutputView={isOutputView}
+        />,
       );
 
-      const label = container.querySelector("label");
-      expect(label?.classList.contains("mb-4")).toBe(gap);
+      const labelElement = container.querySelector("label");
+      expect(labelElement?.classList.contains("mb-4")).toBe(gap);
     },
   );
 
