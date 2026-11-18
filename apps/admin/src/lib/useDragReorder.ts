@@ -5,10 +5,57 @@ export enum DropPosition {
   After = "after",
 }
 
-const insertionOffset: Record<DropPosition, number> = {
+export const positionIn = (event: React.DragEvent) => {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return event.clientY < rect.top + rect.height / 2
+    ? DropPosition.Before
+    : DropPosition.After;
+};
+
+export const insertionOffset: Record<DropPosition, number> = {
   [DropPosition.Before]: 0,
   [DropPosition.After]: 1,
 };
+
+/** Whether the gap before `index` touches the items `start` up to `end`, so moving them there changes nothing. */
+export const leavesInPlace = ({
+  start,
+  end,
+  index,
+}: {
+  start: number;
+  end: number;
+  index: number;
+}) => index >= start && index <= end;
+
+/**
+ * Moves the items `start` up to, not including, `end` to the gap before
+ * `index`, counted before the move. Null when the move leaves them where they
+ * were.
+ */
+export function moveSpan<T>({
+  items,
+  start,
+  end,
+  index,
+}: {
+  items: readonly T[];
+  start: number;
+  end: number;
+  index: number;
+}): { items: T[]; insertionIndex: number } | null {
+  if (leavesInPlace({ start, end, index })) return null;
+  const rest = [...items.slice(0, start), ...items.slice(end)];
+  const insertionIndex = index > end ? index - (end - start) : index;
+  return {
+    items: [
+      ...rest.slice(0, insertionIndex),
+      ...items.slice(start, end),
+      ...rest.slice(insertionIndex),
+    ],
+    insertionIndex,
+  };
+}
 
 /**
  * Moves the item at `draggedIndex` to the `position` side of `dropIndex`. Null
@@ -21,13 +68,12 @@ export function moveItem<T>(params: {
   position: DropPosition;
 }): { items: T[]; insertionIndex: number } | null {
   const { items, draggedIndex, dropIndex, position } = params;
-  let insertionIndex = dropIndex + insertionOffset[position];
-  if (draggedIndex < insertionIndex) insertionIndex -= 1;
-  if (draggedIndex === insertionIndex) return null;
-  const next = [...items];
-  const [moving] = next.splice(draggedIndex, 1);
-  next.splice(insertionIndex, 0, moving);
-  return { items: next, insertionIndex };
+  return moveSpan({
+    items,
+    start: draggedIndex,
+    end: draggedIndex + 1,
+    index: dropIndex + insertionOffset[position],
+  });
 }
 
 export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
@@ -89,13 +135,8 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       if (draggedIndex === null) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
       setDragOverIndex(index);
-      setDropPosition(
-        position ??
-          (e.clientY < midpoint ? DropPosition.Before : DropPosition.After),
-      );
+      setDropPosition(position ?? positionIn(e));
     };
 
   const performDrop = useCallback(

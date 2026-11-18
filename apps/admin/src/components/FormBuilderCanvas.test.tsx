@@ -1,7 +1,13 @@
 /* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import {
+  act,
+  createEvent,
+  fireEvent,
+  screen,
+  within,
+} from "@testing-library/react";
 import {
   canvasOrder,
   heading,
@@ -457,6 +463,22 @@ describe("the form canvas", () => {
       "Select Radio Field: Pet",
       "Select Text Field: Town",
     ]);
+  });
+
+  it("offers no drop in the gap beside the dragged element", () => {
+    renderFormBuilder(schema);
+    const welcomeHandle = within(
+      button("Select Text Block: Welcome").parentElement!,
+    ).getByTitle("Drag to reorder");
+    const town = button("Select Text Field: Town").parentElement!;
+    const dataTransfer = { effectAllowed: "", dropEffect: "" };
+    fireEvent.dragStart(welcomeHandle, { dataTransfer });
+    const pet = button("Select Radio Field: Pet").parentElement!;
+    expect(fireEvent.dragOver(pet, { dataTransfer, clientY: 1 })).toBe(false);
+    expect(fireEvent.dragOver(town, { dataTransfer, clientY: 1 })).toBe(true);
+    const abovePetMiddle = createEvent.dragOver(pet, { dataTransfer });
+    Object.defineProperty(abovePetMiddle, "clientY", { value: -1 });
+    expect(fireEvent(pet, abovePetMiddle)).toBe(true);
   });
 
   it("moves an element dropped in the gap where the drop line shows", () => {

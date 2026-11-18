@@ -37,6 +37,7 @@ import {
   FlaggedSettings,
 } from "./form-canvas/ElementBoundary";
 import { ElementSettings } from "./form-canvas/ElementSettings";
+import { MoveToPageMenu } from "./form-canvas/MoveToPageMenu";
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
@@ -106,6 +107,7 @@ export function FormBuilderSettings({
     removePage,
     deleteElement,
     moveElement,
+    moveElementsTo,
     duplicateElement,
     applyGrouped,
     updateElementAt,
@@ -192,6 +194,20 @@ export function FormBuilderSettings({
             target,
             section: SidebarSection.Conditions,
           })
+        }
+      />
+    );
+
+  const moveToPage = (start: number, end: number) =>
+    !displayOnly && (
+      <MoveToPageMenu
+        pages={schema.pages}
+        pageIndex={selectedPageIndex}
+        onMove={(pageIndex) =>
+          moveElementsTo(
+            { pageIndex: selectedPageIndex, start, end },
+            { pageIndex, index: schema.pages[pageIndex]!.fields.length },
+          )
         }
       />
     );
@@ -320,6 +336,7 @@ export function FormBuilderSettings({
           onFocused={focused}
           onMoveUp={stepTo(NeighborDirection.Previous)}
           onMoveDown={stepTo(NeighborDirection.Next)}
+          moveToPage={moveToPage(index, index + 1)}
           onEditJson={() =>
             onEditJson({
               kind: JsonScopeKind.Element,
@@ -356,6 +373,7 @@ export function FormBuilderSettings({
       return (
         <SettingsSidebar
           heading="Shared visibility"
+          headingActions={moveToPage(resolvedTarget.start, resolvedTarget.end)}
           sections={GROUP_SECTIONS}
           section={section}
           onSection={setSection}
@@ -392,6 +410,7 @@ export function FormBuilderSettings({
       return (
         <SettingsSidebar
           heading={`${withCount(end - start, "element")} selected`}
+          headingActions={moveToPage(start, end)}
           sections={RANGE_SECTIONS}
           section={section}
           onSection={setSection}
