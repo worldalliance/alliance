@@ -89,11 +89,14 @@ describe("socketAuthMiddleware", () => {
   });
 
   // The middleware only calls assertCurrent, and the private repository keeps a literal from being assignable.
-  const handshake = async (assertCurrent: SessionService["assertCurrent"]) => {
+  const handshake = async (
+    assertCurrent: SessionService["assertCurrent"],
+    tokenType = JWTTokenType.access,
+  ) => {
     const sessionService = {} as SessionService;
     sessionService.assertCurrent = assertCurrent;
     const token = await jwtService.signAsync(
-      { sub: 7, email: "member@example.com", tokenType: JWTTokenType.access },
+      { sub: 7, email: "member@example.com", tokenType },
       { secret: "access-secret" },
     );
     const connecting = Object.assign(socket({ auth: { token } }), {
@@ -112,6 +115,15 @@ describe("socketAuthMiddleware", () => {
     expect(
       await handshake(() => Promise.reject(new UnauthorizedException())),
     ).toEqual({ errors: [new Error("Unauthorized")], userId: undefined });
+  });
+
+  it("refuses a token of a type that can't authenticate as unauthorized", async () => {
+    expect(
+      await handshake(() => Promise.resolve(), JWTTokenType.refresh),
+    ).toEqual({
+      errors: [new Error("Unauthorized")],
+      userId: undefined,
+    });
   });
 
   it("accepts a verified token when the session check itself fails", async () => {

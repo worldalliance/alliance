@@ -1,5 +1,6 @@
 import { thrownMessage } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
+import { SocketRefusal } from "@alliance/common/socketRefusal";
 import { Logger, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Server, Socket } from "socket.io";
@@ -55,19 +56,25 @@ export function socketAuthMiddleware(params: {
   return async (socket, next) => {
     const token = extractTokenFromSocket(socket);
     if (!token) {
-      return next(new Error("Unauthorized"));
+      return next(new Error(SocketRefusal.Unauthorized));
     }
     const payload = await R.fromPromise(verifyAccessToken(jwtService, token));
     if (!payload.ok) {
       logger.warn(`Socket auth failed: ${payload.error.message}`);
-      return next(new Error(payload.error.message));
+      return next(
+        new Error(
+          payload.error instanceof UnauthorizedException
+            ? SocketRefusal.Unauthorized
+            : payload.error.message,
+        ),
+      );
     }
     const current = await R.fromPromise(
       sessionService.assertCurrent(payload.value),
     );
     if (!current.ok) {
       if (current.error instanceof UnauthorizedException) {
-        return next(new Error("Unauthorized"));
+        return next(new Error(SocketRefusal.Unauthorized));
       }
       // Clients retry a refused handshake only once, after a token refresh,
       // and deleting the account afterwards still disconnects this socket.

@@ -1,4 +1,5 @@
 import { R, type Result } from "@alliance/common/result";
+import { SocketRefusal } from "@alliance/common/socketRefusal";
 import { retry } from "es-toolkit";
 import { io, Socket } from "socket.io-client";
 
@@ -62,7 +63,7 @@ const attachAuthRefresh = (
     if (refreshing || controller.signal.aborted) return;
     if (
       !err.message?.includes("jwt expired") &&
-      !err.message?.includes("Unauthorized")
+      !err.message?.includes(SocketRefusal.Unauthorized)
     ) {
       return;
     }
