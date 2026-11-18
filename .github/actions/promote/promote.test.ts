@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { COMMIT, type Route, artifacts, jobs, run, useFakeGh } from "./fake-gh";
+import { type Route, fail } from "../fake-gh";
+import { COMMIT, artifacts, jobs, run, usePromote } from "./fixtures";
 
-const promote = useFakeGh();
+const promote = usePromote();
 
 const staging = (...runs: ReturnType<typeof run>[]): Route => ({
   match: `deploy.yaml/runs?branch=main&event=push&head_sha=${COMMIT}`,
@@ -111,17 +112,14 @@ describe("promote.sh leaves the production run to build", () => {
 });
 
 test.each([
-  ["runs", [{ match: `head_sha=${COMMIT}`, response: { fail: "HTTP 502" } }]],
-  [
-    "jobs",
-    [staging(run(7)), { match: "runs/7/jobs", response: { fail: "HTTP 502" } }],
-  ],
+  ["runs", [fail(`head_sha=${COMMIT}`)]],
+  ["jobs", [staging(run(7)), fail("runs/7/jobs")]],
   [
     "artifacts",
     [
       staging(run(7)),
       { match: "runs/7/jobs", response: jobs() },
-      { match: "runs/7/artifacts", response: { fail: "HTTP 502" } },
+      fail("runs/7/artifacts"),
     ],
   ],
 ])(

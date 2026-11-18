@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
-import { REQUIRED } from "./fake-gh";
+import { REQUIRED } from "./fixtures";
 
 test("REQUIRED is the gate on every check plus every job deploy-environment.yaml records", () => {
   const workflow = (name: string) =>
