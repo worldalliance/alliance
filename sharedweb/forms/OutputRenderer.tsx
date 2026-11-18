@@ -60,80 +60,68 @@ export function OutputRenderer({
     return null;
   }
 
-  if (plain) {
-    return (
-      <div className={cn("space-y-2", className)}>
-        {items.map((item) =>
-          item.type === "display" ? (
-            <RenderDisplayBlock key={item.key} block={item.block} />
-          ) : (
-            <PlainOutputFieldValue key={item.key} item={item} />
-          ),
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <Card style={CardStyle.LightGrey}>
-      <div className={cn("space-y-2", className)}>
-        {items.map((item, index) => {
-          if (item.type === "display") {
-            return (
-              <div
-                key={item.key}
-                className={cn(
-                  item.block.kind === "header" && index > 0 && "pt-4",
-                )}
-              >
-                <RenderDisplayBlock block={item.block} />
-              </div>
-            );
-          }
-
-          const content = renderOutputFieldValue(item);
-          if (item.format === "card") {
-            return (
-              <Card key={item.key}>
-                {item.showLabel && (
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                    {item.label}
-                  </p>
-                )}
-                <div className="text-lg">{content}</div>
-              </Card>
-            );
-          }
-          if (item.format === "textonly") {
-            return (
-              <div key={item.key} className="text-sm text-gray-900">
-                {item.showLabel && (
-                  <span className="font-medium text-gray-700">
-                    {item.label}:{" "}
-                  </span>
-                )}
-                {content}
-              </div>
-            );
-          }
-          if (!item.renderField) {
-            return null;
-          }
+  const answers = (
+    <div className={cn("space-y-2", className)}>
+      {items.map((item, index) => {
+        if (item.type === "display") {
           return (
-            <div key={item.key} className="space-y-1">
-              <RenderField
-                field={item.renderField}
-                value={item.value}
-                disabled
-                isOutputView
-                fieldContext={staticFieldContext}
-              />
+            <div
+              key={item.key}
+              className={cn(
+                item.block.kind === "header" && index > 0 && "pt-4",
+              )}
+            >
+              <RenderDisplayBlock block={item.block} />
             </div>
           );
-        })}
-      </div>
-    </Card>
+        }
+        if (plain) {
+          return <PlainOutputFieldValue key={item.key} item={item} />;
+        }
+
+        const content = renderOutputFieldValue(item);
+        if (item.format === "card") {
+          return (
+            <Card key={item.key}>
+              {item.showLabel && (
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                  {item.label}
+                </p>
+              )}
+              <div className="text-lg">{content}</div>
+            </Card>
+          );
+        }
+        if (item.format === "textonly") {
+          return (
+            <div key={item.key} className="text-sm text-gray-900">
+              {item.showLabel && (
+                <span className="font-medium text-gray-700">
+                  {item.label}:{" "}
+                </span>
+              )}
+              {content}
+            </div>
+          );
+        }
+        if (!item.renderField) {
+          return null;
+        }
+        return (
+          <div key={item.key} className="space-y-1">
+            <RenderField
+              field={item.renderField}
+              value={item.value}
+              disabled
+              isOutputView
+              fieldContext={staticFieldContext}
+            />
+          </div>
+        );
+      })}
+    </div>
   );
+  return plain ? answers : <Card style={CardStyle.LightGrey}>{answers}</Card>;
 }
 
 export default OutputRenderer;

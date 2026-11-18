@@ -75,87 +75,75 @@ function OutputRenderer({
     return null;
   }
 
-  if (plain) {
-    return (
-      <View className={cn("gap-2", className)}>
-        {items.map((item) =>
-          item.type === "display" ? (
-            <RenderDisplayBlockMobile key={item.key} block={item.block} />
-          ) : (
-            <PlainOutputFieldValue key={item.key} item={item} />
-          ),
-        )}
-      </View>
-    );
-  }
-
-  return (
-    <Card cardStyle={CardStyle.Grey}>
-      <View className={cn("gap-2", className)}>
-        {items.map((item, index) => {
-          if (item.type === "display") {
-            return (
-              <View
-                key={item.key}
-                className={cn(
-                  item.block.kind === "header" && index > 0 && "pt-4",
-                )}
-              >
-                <RenderDisplayBlockMobile block={item.block} />
-              </View>
-            );
-          }
-
-          if (item.format === "card") {
-            return (
-              <Card key={item.key}>
-                {item.showLabel && (
-                  <Text className="mb-1 text-xs uppercase tracking-wide text-zinc-500">
-                    {item.label}
-                  </Text>
-                )}
-                <View>{renderFormattedOutputFieldValue(item)}</View>
-              </Card>
-            );
-          }
-
-          if (item.format === "textonly") {
-            return (
-              <View key={item.key} className="flex-row flex-wrap items-center">
-                {item.showLabel && (
-                  <Text className="text-zinc-700" weight={FontWeight.Medium}>
-                    {item.label}:{" "}
-                  </Text>
-                )}
-                <View>{renderFormattedOutputFieldValue(item)}</View>
-              </View>
-            );
-          }
-
-          if (!item.renderField) {
-            return null;
-          }
-
+  const answers = (
+    <View className={cn("gap-2", className)}>
+      {items.map((item, index) => {
+        if (item.type === "display") {
           return (
-            <View key={item.key} className="gap-1">
-              {item.renderField &&
-              canUseMobileFieldRenderer(item.renderField) ? (
-                <RenderField
-                  field={item.renderField}
-                  value={item.value}
-                  disabled
-                  isOutputView
-                  fieldContext={staticFieldContext}
-                />
-              ) : (
-                renderFormattedOutputFieldValue(item)
+            <View
+              key={item.key}
+              className={cn(
+                item.block.kind === "header" && index > 0 && "pt-4",
               )}
+            >
+              <RenderDisplayBlockMobile block={item.block} />
             </View>
           );
-        })}
-      </View>
-    </Card>
+        }
+
+        if (plain) {
+          return <PlainOutputFieldValue key={item.key} item={item} />;
+        }
+
+        if (item.format === "card") {
+          return (
+            <Card key={item.key}>
+              {item.showLabel && (
+                <Text className="mb-1 text-xs uppercase tracking-wide text-zinc-500">
+                  {item.label}
+                </Text>
+              )}
+              <View>{renderFormattedOutputFieldValue(item)}</View>
+            </Card>
+          );
+        }
+
+        if (item.format === "textonly") {
+          return (
+            <View key={item.key} className="flex-row flex-wrap items-center">
+              {item.showLabel && (
+                <Text className="text-zinc-700" weight={FontWeight.Medium}>
+                  {item.label}:{" "}
+                </Text>
+              )}
+              <View>{renderFormattedOutputFieldValue(item)}</View>
+            </View>
+          );
+        }
+
+        if (!item.renderField) {
+          return null;
+        }
+
+        return (
+          <View key={item.key} className="gap-1">
+            {item.renderField && canUseMobileFieldRenderer(item.renderField) ? (
+              <RenderField
+                field={item.renderField}
+                value={item.value}
+                disabled
+                isOutputView
+                fieldContext={staticFieldContext}
+              />
+            ) : (
+              renderFormattedOutputFieldValue(item)
+            )}
+          </View>
+        );
+      })}
+    </View>
   );
+  return plain ? answers : <Card cardStyle={CardStyle.Grey}>{answers}</Card>;
 }
 
 export default OutputRenderer;

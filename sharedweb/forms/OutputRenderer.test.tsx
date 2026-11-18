@@ -186,4 +186,39 @@ describe("plain", () => {
     expect(bio.className).toContain("whitespace-pre-line");
     expect(screen.queryByText(/Bio/)).toBeNull();
   });
+
+  it("keeps the space above a header that follows an answer", () => {
+    const header = (id: string, text: string) =>
+      ({ type: "display", kind: "header", id, text }) as const;
+    render(
+      <SiteAppProvider>
+        <OutputRenderer
+          plain
+          ownView
+          schema={{
+            ...bioSchema,
+            outputViews: [
+              {
+                type: "default",
+                id: "v1",
+                blocks: [
+                  header("h1", "About"),
+                  { id: "b1", fieldId: "bio", showLabel: true },
+                  header("h2", "More"),
+                ],
+              },
+            ],
+          }}
+          viewId="v1"
+          deviceType="desktop"
+          answers={{ bio: "Hello" }}
+        />
+      </SiteAppProvider>,
+    );
+
+    const wrapper = (text: string) =>
+      screen.getByText(text).closest(".space-y-2 > *");
+    expect(wrapper("About")?.classList.contains("pt-4")).toBe(false);
+    expect(wrapper("More")?.classList.contains("pt-4")).toBe(true);
+  });
 });
