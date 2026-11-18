@@ -105,8 +105,10 @@ export function useActionCommands(params: {
     const confirmed =
       action?.archived ||
       (await confirm({
-        title: "Confirm Archive",
-        message: "Are you sure you want to archive this action?",
+        title: "Archive this action?",
+        message:
+          "Members stop seeing this action. It also leaves the actions list unless archived actions are shown.",
+        confirmLabel: "Archive",
       }));
     if (confirmed && actionId) {
       const archived = action?.archived;

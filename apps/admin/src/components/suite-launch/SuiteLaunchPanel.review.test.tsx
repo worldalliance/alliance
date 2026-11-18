@@ -236,7 +236,7 @@ it("shows each reminder as the picked group of members gets it", async () => {
     preview.getByRole("figure", { name: "Push notification" }).textContent,
   ).toContain("New tasks: Call, Write");
   expect(
-    preview.getByText("Text Message").closest("figure")?.textContent,
+    preview.getByText("Text message").closest("figure")?.textContent,
   ).toContain("New Alliance tasks: Call, Write. Complete within");
 
   const mixes = within(

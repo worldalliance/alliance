@@ -43,10 +43,11 @@ const SuiteEventList = ({
             />
           ))}
         <Button
-          color={ButtonColor.Grey}
+          color={ButtonColor.White}
           onClick={() => setEventFormOpen((prev) => !prev)}
+          aria-expanded={eventFormOpen}
         >
-          +
+          {eventFormOpen ? "Close" : "Add event"}
         </Button>
       </div>
       {eventFormOpen && (

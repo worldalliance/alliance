@@ -1,7 +1,8 @@
 import { ActionDto } from "@alliance/shared/client";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import { cn } from "@alliance/shared/styles/util";
-import { useCallback } from "react";
-import { useNavigate } from "react-router";
+import { Link } from "react-router";
+import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
 import { getLastPastEventDate } from "../pages/Actions";
 import ActionProgressBar from "./ActionProgressBar";
 
@@ -21,32 +22,21 @@ export interface ActionListCardProps {
 }
 
 const ActionListCard = ({ action }: ActionListCardProps) => {
-  const navigate = useNavigate();
-  const handleEditAction = useCallback(
-    (id: number) => {
-      navigate(`/actions/${id}`);
-    },
-    [navigate],
-  );
-
   const lastEventDate = getLastPastEventDate(action);
   return (
-    <div key={action.id} className="p-4 group">
-      <div
-        onClick={() => handleEditAction(action.id)}
-        className="cursor-pointer relative"
-      >
+    <div className="p-4 group">
+      <Link to={`/actions/${action.id}`} className="relative block">
         <div className="flex justify-between mb-2 ">
           <div className="flex flex-row items-center gap-x-2">
             {action?.archived && (
-              <span className="px-2 py-1 rounded-sm bg-red-200 text-xs">
+              <span className="px-2 py-1 rounded-sm bg-zinc-200 text-zinc-700 text-xs">
                 Archived
               </span>
             )}
             <h2 className="font-bold text-sm">{action.name}</h2>
             {lastEventDate && (
               <p className="text-sm text-zinc-500">
-                Last event {lastEventDate.toLocaleString()}
+                Last event {formatDateTimeWithZone(lastEventDate)}
               </p>
             )}
           </div>
@@ -59,10 +49,10 @@ const ActionListCard = ({ action }: ActionListCardProps) => {
                   : "bg-zinc-50",
               )}
             >
-              {action.status}
+              {ACTION_STATUS_LABELS[action.status]}
             </span>
             {action.optional && (
-              <span className="p-2 bg-blue-500 rounded-sm text-xs text-white">
+              <span className="p-2 rounded-sm border border-zinc-200 bg-zinc-50 text-xs font-medium text-zinc-800">
                 Optional
               </span>
             )}
@@ -76,7 +66,7 @@ const ActionListCard = ({ action }: ActionListCardProps) => {
           usersCompleted={action.usersCompleted}
           className="mt-2"
         />
-      </div>
+      </Link>
     </div>
   );
 };

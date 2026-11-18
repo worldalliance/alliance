@@ -118,19 +118,19 @@ const listInvalidated = (client: ReturnType<typeof renderPage>["client"]) =>
 
 it("shows the stored schedule in the admin's local time", async () => {
   renderPage();
-  const start = await screen.findByLabelText<HTMLInputElement>("Start Date");
+  const start = await screen.findByLabelText<HTMLInputElement>("Start date");
   await waitFor(() => expect(start.value).toBe("2026-03-10T11:00"));
-  expect(screen.getByLabelText<HTMLInputElement>("End Date").value).toBe(
+  expect(screen.getByLabelText<HTMLInputElement>("End date").value).toBe(
     "2026-03-20T18:30",
   );
 });
 
 it("saves an untouched schedule unchanged", async () => {
   renderPage();
-  const start = await screen.findByLabelText<HTMLInputElement>("Start Date");
+  const start = await screen.findByLabelText<HTMLInputElement>("Start date");
   await waitFor(() => expect(start.value).not.toBe(""));
 
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   await waitFor(() => expect(saved).not.toBeNull());
   expect(saved).toMatchObject({ startDate, endDate });
@@ -142,7 +142,7 @@ it("refreshes the general updates list after creating one", async () => {
     target: { value: "New" },
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Create General Update" }),
+    screen.getByRole("button", { name: "Create general update" }),
   );
 
   await waitFor(() =>
@@ -156,11 +156,11 @@ it("creates a general update with the entered details", async () => {
   fireEvent.change(screen.getByLabelText("Title"), {
     target: { value: "New" },
   });
-  fireEvent.change(screen.getByLabelText("Start Date"), {
+  fireEvent.change(screen.getByLabelText("Start date"), {
     target: { value: "2026-03-10T11:00" },
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Create General Update" }),
+    screen.getByRole("button", { name: "Create general update" }),
   );
 
   await waitFor(() => expect(created).not.toBeNull());
@@ -176,7 +176,7 @@ it("refreshes the general updates list after saving", async () => {
   const { client } = renderPage();
   await screen.findByLabelText("Title");
 
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   await waitFor(() => expect(listInvalidated(client)).toBe(true));
 });
@@ -203,7 +203,7 @@ it("saves the reloaded details over a copy cached by an earlier visit", async ()
     ),
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   await waitFor(() => expect(saved).not.toBeNull());
   expect(saved?.name).toBe("Weekly note");
@@ -223,7 +223,7 @@ it("titles the page with the saved name", async () => {
   renderPage();
   const title = await screen.findByLabelText("Title");
   fireEvent.change(title, { target: { value: "Monthly note" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   expect(
     await screen.findByRole("heading", { name: "Monthly note" }),
@@ -252,7 +252,7 @@ it("assigns the suite named in the link to a new general update", async () => {
   expect(
     await screen.findByRole("button", { name: "Remove Suite #3" }),
   ).toBeDefined();
-  expect(screen.queryByLabelText("Start Date")).toBeNull();
+  expect(screen.queryByLabelText("Start date")).toBeNull();
 });
 
 it("saves the picked suite, tags, and manual cohort", async () => {
@@ -268,8 +268,8 @@ it("saves the picked suite, tags, and manual cohort", async () => {
   fireEvent.change(await screen.findByLabelText("Add suite"), {
     target: { value: "7" },
   });
-  expect(screen.queryByLabelText("Start Date")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  expect(screen.queryByLabelText("Start date")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   await waitFor(() => expect(saved).not.toBeNull());
   expect(saved).toMatchObject({
@@ -289,7 +289,7 @@ it("saves without a tag that was unticked", async () => {
 
   fireEvent.click(volunteers);
   fireEvent.click(volunteers);
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   await waitFor(() => expect(saved).not.toBeNull());
   expect(saved?.tagIds).toEqual([]);
@@ -299,7 +299,7 @@ it("removes a suite and brings back the schedule", async () => {
   renderPage("/general-updates/new?suiteId=7");
   fireEvent.click(await screen.findByRole("button", { name: "Remove Spring" }));
 
-  expect(await screen.findByLabelText("Start Date")).toBeDefined();
+  expect(await screen.findByLabelText("Start date")).toBeDefined();
 });
 
 it("loads the pickers alongside the general update", async () => {
@@ -326,7 +326,7 @@ it("reports a failed save and keeps the form", async () => {
   const errors = jest.spyOn(console, "error").mockImplementation(() => {});
   renderPage();
   const title = await screen.findByLabelText("Title");
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   expect(
     await screen.findByText("Failed to save general update"),
@@ -340,7 +340,7 @@ it("asks before saving a worldalliance title, saving only on Save anyway", async
   const title = await screen.findByLabelText("Title");
   const saveAs = async (value: string, choice: string) => {
     fireEvent.change(title, { target: { value } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     fireEvent.click(await screen.findByRole("button", { name: choice }));
   };
 

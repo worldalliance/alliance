@@ -6,6 +6,7 @@ import { ActionSuiteDto, TagDto } from "@alliance/shared/client";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo } from "react";
+import { Link } from "react-router";
 import {
   ActionFieldSection,
   actionFieldDefs,
@@ -149,7 +150,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
             onChange={onAuthorsChange}
             loading={usersLoading}
             loadFailed={usersError}
-            label="Action Authors"
+            label="Action authors"
           />
           <ActionReviewersEditor
             reviewers={reviewers}
@@ -163,12 +164,12 @@ const ActionForm: React.FC<ActionFormProps> = ({
         <div className="space-y-4">
           <div>
             <p className="text-sm font-medium text-zinc-700">Priority</p>
-            <a
-              href="/priority"
+            <Link
+              to="/priority"
               className="inline-flex items-center px-3 py-2 border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 bg-white hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               Manage priority
-            </a>
+            </Link>
           </div>
           <ActionFormFields fields={settingsFields} {...fieldInputs} />
         </div>
@@ -258,8 +259,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
                 ? "Creating..."
                 : "Saving..."
               : isNew
-                ? "Create Action"
-                : "Save Changes"}
+                ? "Create action"
+                : "Save changes"}
         </button>
       </div>
     </form>

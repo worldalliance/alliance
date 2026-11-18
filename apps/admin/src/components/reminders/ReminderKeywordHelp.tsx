@@ -42,7 +42,7 @@ const ReminderKeywordHelp: React.FC = () => {
             <thead>
               <tr>
                 <th>Keyword</th>
-                <th>Example Value</th>
+                <th>Example value</th>
                 <th>Description</th>
               </tr>
             </thead>

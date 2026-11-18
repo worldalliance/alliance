@@ -48,7 +48,7 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
                   : 0}
                 %
               </p>
-              <p className="text-xs text-zinc-500">Completion Rate</p>
+              <p className="text-xs text-zinc-500">Completion rate</p>
             </div>
           </div>
         </Card>

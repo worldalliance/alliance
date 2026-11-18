@@ -257,7 +257,7 @@ const ActionReminderCard = ({
               }}
               serverError={editError}
               serverSuccess={editSuccess}
-              submitLabel="Update Reminders"
+              submitLabel="Update reminders"
               onCancel={handleEditCancel}
               onSubmit={handleEditGroupSubmit(group.id)}
             />

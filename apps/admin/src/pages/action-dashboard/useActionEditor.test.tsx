@@ -1,5 +1,6 @@
 import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -23,6 +24,12 @@ const action: ParsedActionDto = {
   storedSquareThumbnailImage: null,
   cohortExpression: null,
 };
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <LeaveGuardRouter>
+    <ToastProvider>{children}</ToastProvider>
+  </LeaveGuardRouter>
+);
 
 const noSearchParams = new URLSearchParams();
 const setError = jest.fn();
@@ -49,7 +56,7 @@ const renderEditor = (
     });
     return editor.contentDialog;
   };
-  render(<Harness />, { wrapper: LeaveGuardRouter });
+  render(<Harness />, { wrapper });
   return {
     result: {
       get current() {
@@ -80,9 +87,7 @@ const renderSwitchingEditor = () => {
     });
     return editor.contentDialog;
   };
-  const { rerender } = render(<Harness actionId={action.id} />, {
-    wrapper: LeaveGuardRouter,
-  });
+  const { rerender } = render(<Harness actionId={action.id} />, { wrapper });
   return {
     result: {
       get current() {
@@ -108,6 +113,7 @@ describe("useActionEditor", () => {
 
     await act(() => result.current.handleSubmit(submitEvent));
     expect(result.current.dirty).toBe(false);
+    expect(screen.getByText("Action saved")).toBeTruthy();
   });
 
   it("is dirty once a new action has an edit", async () => {

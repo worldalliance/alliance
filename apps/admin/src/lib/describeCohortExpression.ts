@@ -6,14 +6,14 @@ import { formLabel } from "@alliance/shared/lib/useFormsAdmin";
 
 export const LEAF_LABELS: Record<LeafCondition["type"], string> = {
   Tag: "Tag",
-  Manual: "Manual Users",
-  CompletedAction: "Completed Action",
-  MissedActionDeadline: "Missed Action Deadline",
-  FormFieldValue: "Form Field Value",
-  GroupLead: "Group Lead",
-  USMember: "US Member",
-  NonUSMember: "Non-US Member",
-  AllMembers: "All Members",
+  Manual: "Manual users",
+  CompletedAction: "Completed action",
+  MissedActionDeadline: "Missed action deadline",
+  FormFieldValue: "Form field value",
+  GroupLead: "Group lead",
+  USMember: "US member",
+  NonUSMember: "Non-US member",
+  AllMembers: "All members",
   Staff: "Staff",
 };
 

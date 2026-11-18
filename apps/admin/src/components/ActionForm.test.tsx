@@ -8,6 +8,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { createActionForm } from "../lib/testing/createActionForm";
 import ActionForm from "./ActionForm";
 
@@ -47,34 +48,36 @@ const renderForm = (
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ToastProvider>
-        <ActionForm
-          form={{ ...baseForm, ...params.form }}
-          onInputChange={onInputChange}
-          onImageChange={onImageChange}
-          onSubmit={jest.fn()}
-          saving={false}
-          imagePreview={null}
-          onCancelImageUpload={jest.fn()}
-          isNew={true}
-          tagsLoading={false}
-          tagsError={false}
-          suitesLoading={false}
-          suitesError={false}
-          usersLoading={false}
-          usersError={false}
-          cohortExpression={null}
-          onCohortExpressionChange={jest.fn()}
-          onPrerequisitesChange={jest.fn()}
-          authorIds={[]}
-          onAuthorsChange={jest.fn()}
-          onCategoryChange={onCategoryChange}
-          reviewers={[]}
-          onReviewersChange={jest.fn()}
-          allActionsLoadFailed={false}
-          memberActionStart={null}
-          memberActionDeadline={null}
-          {...params.props}
-        />
+        <MemoryRouter>
+          <ActionForm
+            form={{ ...baseForm, ...params.form }}
+            onInputChange={onInputChange}
+            onImageChange={onImageChange}
+            onSubmit={jest.fn()}
+            saving={false}
+            imagePreview={null}
+            onCancelImageUpload={jest.fn()}
+            isNew={true}
+            tagsLoading={false}
+            tagsError={false}
+            suitesLoading={false}
+            suitesError={false}
+            usersLoading={false}
+            usersError={false}
+            cohortExpression={null}
+            onCohortExpressionChange={jest.fn()}
+            onPrerequisitesChange={jest.fn()}
+            authorIds={[]}
+            onAuthorsChange={jest.fn()}
+            onCategoryChange={onCategoryChange}
+            reviewers={[]}
+            onReviewersChange={jest.fn()}
+            allActionsLoadFailed={false}
+            memberActionStart={null}
+            memberActionDeadline={null}
+            {...params.props}
+          />
+        </MemoryRouter>
       </ToastProvider>
     </QueryClientProvider>,
   );
@@ -171,7 +174,7 @@ describe("ActionForm", () => {
     expect(fieldKinds("Custom stat")).toEqual(["select", "number", "text"]);
     expect(
       within(section("Settings")).getByRole("switch", {
-        name: /^Staff Preview/,
+        name: /^Staff preview/,
       }),
     ).toBeTruthy();
 
@@ -193,9 +196,19 @@ describe("ActionForm", () => {
     ]);
 
     const content = within(section("Content"));
-    expect(content.getByText("Action Authors")).toBeTruthy();
-    expect(content.getByText("Reviewed By")).toBeTruthy();
+    expect(content.getByText("Action authors")).toBeTruthy();
+    expect(content.getByText("Reviewed by")).toBeTruthy();
     expect(within(section("Settings")).getByText("Category")).toBeTruthy();
+  });
+
+  it("requires a name and leaves the descriptions optional, since drafts save without them", () => {
+    renderForm();
+
+    const required = (label: string) =>
+      screen.getByLabelText<HTMLTextAreaElement>(label).required;
+    expect(required("Name")).toBe(true);
+    expect(required("Short description")).toBe(false);
+    expect(required("Action page description")).toBe(false);
   });
 
   it("opens a rarely used section when one of its fields is set", () => {
@@ -214,7 +227,7 @@ describe("ActionForm", () => {
     expect(open("Custom stat")).toBe(false);
   });
 
-  it("leaves out Staff Preview when the page controls it", () => {
+  it("leaves out Staff preview when the page controls it", () => {
     renderForm({ props: { hideStaffPreview: true } });
 
     expect(fieldNames("Settings")).toEqual([
@@ -237,10 +250,10 @@ describe("ActionForm", () => {
       "forumParticipationIncludeChildren",
     ]);
     expect(leafTexts("Forum participation")).toEqual([
-      "Forum Post ID (override)",
+      "Forum post ID (override)",
       "Autocomplete based on replies to this post, ignoring any forum validator on the form. Leave blank to use the form's validator.",
-      "Forum Participation Action",
-      "Autocomplete action for users who leave comment but dont hit complete",
+      "Forum participation action",
+      "Completes the action for members who comment but don't press complete",
       "Include child replies",
       "Also count replies to nested child posts of the override post",
     ]);
@@ -250,54 +263,54 @@ describe("ActionForm", () => {
     renderForm();
 
     const content = leafTexts("Content");
-    expect(content.slice(0, content.indexOf("Action Authors"))).toEqual([
+    expect(content.slice(0, content.indexOf("Action authors"))).toEqual([
       "Name",
       "Short description",
       "Action page description",
       "Cover image",
-      "Square Thumbnail URL",
-      "Thumbnail Alt Text",
+      "Square thumbnail URL",
+      "Thumbnail alt text",
       "Left empty, the thumbnail is announced as the action name.",
     ]);
     expect(leafTexts("Settings")).toEqual([
       "Priority",
       "Category",
       "Suite",
-      "Visibility Mode",
+      "Visibility mode",
       "Task",
       "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
-      "Time Estimate (min)",
-      "Staff Preview",
-      "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
+      "Time estimate (min)",
+      "Staff preview",
+      "Staff see it on their home pages until the Member action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
     ]);
     expect(leafTexts("Audience")).toEqual([
       "Onboarding",
-      "Prevent completion by members who signed their contracts before action",
-      "Public Only",
+      "Members who signed their contract before this action launched can't complete it",
+      "Public only",
       "For actions completed by non-members and not by members",
     ]);
     expect(leafTexts("Completion")).toEqual([
-      "Complete After Deadline",
-      "Show in tasks view after deadline passes",
-      "Prevent Completion",
+      "Complete after deadline",
+      "Keeps it in the tasks view after the deadline passes",
+      "Prevent completion",
       "Prevents members from completing the action even on the detail page",
       "Optional",
-      "Shows prominent dismiss dialog above task card",
+      "Shows a prominent dismiss option above the task card",
     ]);
     expect(leafTexts("Custom stat")).toEqual([
-      "Custom Stat Type",
-      "Custom Stat Goal",
-      "Custom Stat Label",
+      "Custom stat type",
+      "Custom stat goal",
+      "Custom stat label",
     ]);
     expect(options("Suite")).toEqual([["", "No suite"]]);
-    expect(options("Visibility Mode")).toEqual([
-      ["all_members", "All Members"],
-      ["participating_groups", "Participating Groups"],
+    expect(options("Visibility mode")).toEqual([
+      ["all_members", "All members"],
+      ["participating_groups", "Participating groups"],
       ["public", "Public"],
     ]);
-    expect(options("Custom Stat Type")).toEqual([
+    expect(options("Custom stat type")).toEqual([
       ["none", "None"],
-      ["users_invited", "Users Invited"],
+      ["users_invited", "Users invited"],
     ]);
   });
 
@@ -312,10 +325,10 @@ describe("ActionForm", () => {
       screen.getByLabelText<HTMLInputElement>(label).checked;
     expect(value("Name")).toBe("Call your rep");
     expect(value("Action page description")).toBe("Intro");
-    expect(value("Visibility Mode")).toBe("all_members");
-    expect(value("Time Estimate (min)")).toBe("10");
+    expect(value("Visibility mode")).toBe("all_members");
+    expect(value("Time estimate (min)")).toBe("10");
     expect(checked(/^Optional/)).toBe(true);
-    expect(checked(/^Public Only/)).toBe(false);
+    expect(checked(/^Public only/)).toBe(false);
 
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Write your rep" },
@@ -323,16 +336,16 @@ describe("ActionForm", () => {
     fireEvent.change(screen.getByLabelText("Action page description"), {
       target: { value: "Hi" },
     });
-    fireEvent.change(screen.getByLabelText("Visibility Mode"), {
+    fireEvent.change(screen.getByLabelText("Visibility mode"), {
       target: { value: "public" },
     });
-    fireEvent.change(screen.getByLabelText("Time Estimate (min)"), {
+    fireEvent.change(screen.getByLabelText("Time estimate (min)"), {
       target: { value: "5" },
     });
-    fireEvent.change(screen.getByLabelText("Custom Stat Label"), {
+    fireEvent.change(screen.getByLabelText("Custom stat label"), {
       target: { value: "Invites" },
     });
-    fireEvent.click(screen.getByLabelText(/^Public Only/));
+    fireEvent.click(screen.getByLabelText(/^Public only/));
     fireEvent.click(screen.getByLabelText(/^Optional/));
     expect(edits).toEqual([
       ["name", "Write your rep"],

@@ -3,6 +3,7 @@ import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
 import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { useContentConfirm } from "../../components/useContentConfirm";
@@ -136,6 +137,7 @@ export function useActionEditor(params: {
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
   const { confirmSave, dialog: contentDialog } = useContentConfirm();
+  const { success } = useToast();
 
   useEffect(() => {
     if (isNew) {
@@ -365,6 +367,7 @@ export function useActionEditor(params: {
         return;
       }
       setSavedDraft(submitted);
+      success("Action saved");
     }
   };
 

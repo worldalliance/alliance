@@ -77,7 +77,9 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold">Status</h2>
-            <span
+            <button
+              type="button"
+              title="Open events"
               className={cn(
                 "inline-flex items-center px-3 py-1 rounded-full cursor-pointer text-sm font-medium",
                 ACTION_STATUS_COLORS[action.status],
@@ -85,14 +87,14 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
               onClick={() => onTabChange("events")}
             >
               {ACTION_STATUS_LABELS[action.status]}
-            </span>
+            </button>
           </div>
         </div>
 
         {action.usersJoined > 0 && (
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="font-medium">Completion Progress</span>
+              <span className="font-medium">Completion progress</span>
               <span className="text-zinc-600">
                 {action.usersCompleted} / {action.usersJoined} (
                 {Math.round(

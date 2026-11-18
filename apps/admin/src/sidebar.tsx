@@ -74,6 +74,11 @@ const Sidebar: React.FC = () => {
             )}
           >
             Alliance Admin
+            {isProd && (
+              <span className="mt-1 block w-fit rounded-sm bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                Production
+              </span>
+            )}
           </h1>
           <AdminSearch />
           <SidebarNav
@@ -96,16 +101,20 @@ const Sidebar: React.FC = () => {
             </button>
           </div>
         )}
-        <div
+        <button
+          type="button"
+          aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          aria-expanded={isSidebarOpen}
           className={cn(
-            "absolute top-7",
-            isSidebarOpen ? "right-7" : "right-1",
+            "absolute top-6 rounded-md p-1 hover:bg-zinc-200",
+            isSidebarOpen ? "right-6" : "right-0",
             "cursor-pointer",
           )}
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         >
-          <PanelLeft className="h-5 w-5" />
-        </div>
+          <PanelLeft className="h-5 w-5" aria-hidden />
+        </button>
       </div>
       <MemberZoneLink />
       <div className="flex-1 overflow-y-scroll max-h-screen">
