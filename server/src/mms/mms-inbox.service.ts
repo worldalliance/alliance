@@ -60,8 +60,9 @@ const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
   .filter(([, answers]) => answers)
   .map(([status]) => status);
 
-/** Inbound texts Needs reply counts and no staff reply has followed, handled
- * ones included, from a query aliased `inbound`. */
+/** Inbound texts Needs reply counts, after the number's launch cutoff, that no
+ * staff reply has followed, handled ones included, from a query aliased
+ * `inbound`. */
 const unanswered = (query: SelectQueryBuilder<Mms>) =>
   query
     .andWhere("inbound.direction = :inbound", {
@@ -78,6 +79,14 @@ const unanswered = (query: SelectQueryBuilder<Mms>) =>
           AND reply.status IN (:...answering)
       )`,
       { answering: ANSWERING_STATUSES },
+    )
+    .andWhere(
+      `NOT EXISTS (
+        SELECT 1 FROM mms_thread launch
+        JOIN mms cutoff ON cutoff.id = launch."launchCutoffId"
+        WHERE launch."phoneNumber" = inbound."memberPhoneNumber"
+          AND (inbound."createdAt", inbound.id) <= (cutoff."createdAt", cutoff.id)
+      )`,
     );
 
 @Injectable()

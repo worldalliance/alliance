@@ -59,6 +59,26 @@ describe("Thread rows (e2e)", () => {
 });
 
 describe("Number threads (e2e)", () => {
+  it("leaves texts up to a number's launch cutoff out of its reply state", async () => {
+    await inbound({ from: "+14155558756", body: "Before launch" });
+    const cutoff = await mmsRepo().findOneByOrFail({
+      memberPhoneNumber: "+14155558756",
+    });
+    await ctx()
+      .dataSource.getRepository(MmsThread)
+      .update({ phoneNumber: "+14155558756" }, { launchCutoffId: cutoff.id });
+    const threadId = await threadIdFor("+14155558756");
+
+    expect((await numberThread(threadId).expect(200)).body.replyState).toBe(
+      "answered",
+    );
+
+    await inbound({ from: "+14155558756", body: "After launch" });
+    expect((await numberThread(threadId).expect(200)).body.replyState).toBe(
+      "needs_reply",
+    );
+  });
+
   it("names the members on the number", async () => {
     const member = await createMember("+14155558702");
     await inbound({ from: "+14155558702", body: "Hi" });
