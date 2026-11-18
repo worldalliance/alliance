@@ -24,6 +24,33 @@ const MINUTES_IN_HALF_DAY = 12 * minutesInHour;
 
 const DEFAULT_MINUTES = 9 * minutesInHour;
 
+const ROW_HEIGHT = 36;
+const WHEEL_HEIGHT = 120;
+const COLUMN_WIDTH = 56;
+
+export type TimeWheelLayout = {
+  row: number;
+  height: number;
+  column: number;
+  /** The space above and below the selected row, which centres it. */
+  edge: number;
+  fade: number;
+};
+
+/** Pixel sizes of a wheel, scaled by the platform's font scale on native. */
+export function timeWheelLayout(scale = 1): TimeWheelLayout {
+  const row = Math.ceil(ROW_HEIGHT * scale);
+  const height = Math.ceil(WHEEL_HEIGHT * scale);
+  const edge = (height - row) / 2;
+  return {
+    row,
+    height,
+    column: Math.ceil(COLUMN_WIDTH * scale),
+    edge,
+    fade: edge / 2,
+  };
+}
+
 export const TIME_WHEEL_DEFAULT = formatMinutesAs24h(DEFAULT_MINUTES);
 
 /** The time a wheel shows: its `HH:MM` answer, or the default when there is none. */

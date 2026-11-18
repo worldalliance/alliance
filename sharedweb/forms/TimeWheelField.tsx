@@ -1,6 +1,7 @@
 import type { TimePickerField } from "@alliance/common/forms/form-schema";
 import {
   timeWheelControls,
+  timeWheelLayout,
   type TimeWheelColumn,
 } from "@alliance/shared/forms/timeWheel";
 import { cn } from "@alliance/shared/styles/util";
@@ -12,9 +13,7 @@ import {
   type FieldInputProps,
 } from "./fieldParts";
 
-const ROW_HEIGHT = 36;
-const VISIBLE_ROWS = 5;
-const EDGE = ROW_HEIGHT * Math.floor(VISIBLE_ROWS / 2);
+const LAYOUT = timeWheelLayout();
 const SETTLE_MS = 120;
 
 export function TimeWheelField({
@@ -46,13 +45,13 @@ export function TimeWheelField({
       <div
         role="group"
         aria-labelledby={labelId}
-        className="relative mx-auto flex w-fit rounded-2xl bg-zinc-100 px-3"
-        style={{ height: ROW_HEIGHT * VISIBLE_ROWS }}
+        className="relative mt-4 flex w-full justify-center rounded-2xl bg-zinc-100"
+        style={{ height: LAYOUT.height }}
       >
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-2 rounded-lg bg-zinc-200"
-          style={{ top: EDGE, height: ROW_HEIGHT }}
+          style={{ top: LAYOUT.edge, height: LAYOUT.row }}
         />
         {columns.map((column) => (
           <WheelColumn
@@ -65,12 +64,12 @@ export function TimeWheelField({
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 rounded-t-2xl bg-gradient-to-b from-zinc-100 to-transparent"
-          style={{ height: EDGE }}
+          style={{ height: LAYOUT.fade }}
         />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-2xl bg-gradient-to-t from-zinc-100 to-transparent"
-          style={{ height: EDGE }}
+          style={{ height: LAYOUT.fade }}
         />
       </div>
       <ValidationMessage message={errorMessage} />
@@ -100,7 +99,7 @@ function WheelColumn({
   const last = column.options.length - 1;
 
   useLayoutEffect(() => {
-    const top = column.index * ROW_HEIGHT;
+    const top = column.index * LAYOUT.row;
     const el = ref.current;
     if (!el) return;
     if (Math.abs(el.scrollTop - top) >= 1) {
@@ -120,7 +119,7 @@ function WheelColumn({
     window.clearTimeout(settle.current);
     settle.current = window.setTimeout(() => {
       const el = ref.current;
-      if (el) select(Math.round(el.scrollTop / ROW_HEIGHT));
+      if (el) select(Math.round(el.scrollTop / LAYOUT.row));
     }, SETTLE_MS);
   };
 
@@ -145,18 +144,21 @@ function WheelColumn({
       onScroll={onScroll}
       onKeyDown={onKeyDown}
       className={cn(
-        "relative w-14 snap-y snap-mandatory overflow-y-scroll rounded-lg [scrollbar-width:none] motion-safe:scroll-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green [&::-webkit-scrollbar]:hidden",
+        "relative snap-y snap-mandatory overflow-y-scroll rounded-lg [scrollbar-width:none] motion-safe:scroll-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green [&::-webkit-scrollbar]:hidden",
         disabled && "pointer-events-none overflow-hidden",
       )}
-      style={{ paddingBlock: EDGE }}
+      style={{ width: LAYOUT.column, paddingBlock: LAYOUT.edge }}
     >
       {column.options.map((option, index) => (
         <div
           key={option}
           aria-hidden
           onClick={() => select(index)}
-          className="flex cursor-pointer snap-center items-center justify-center text-xl tabular-nums text-zinc-900"
-          style={{ height: ROW_HEIGHT }}
+          className={cn(
+            "flex cursor-pointer snap-center items-center justify-center text-xl tabular-nums",
+            index === column.index ? "text-zinc-900" : "text-zinc-500",
+          )}
+          style={{ height: LAYOUT.row }}
         >
           {option}
         </div>

@@ -2,8 +2,11 @@ import type { TimePickerField } from "@alliance/common/forms/form-schema";
 import { markdownAccessibleName } from "@alliance/shared/forms/markdownAccessibleName";
 import {
   timeWheelControls,
+  timeWheelLayout,
   type TimeWheelColumn,
+  type TimeWheelLayout,
 } from "@alliance/shared/forms/timeWheel";
+import { cn } from "@alliance/shared/styles/util";
 import { selectionAsync } from "expo-haptics";
 import { useEffect, useId, useRef } from "react";
 import {
@@ -23,13 +26,6 @@ import {
   type FieldInputProps,
 } from "./fieldParts";
 
-const ROW_HEIGHT = 36;
-const COLUMN_WIDTH = 56;
-const VISIBLE_ROWS = 5;
-const EDGE_ROWS = Math.floor(VISIBLE_ROWS / 2);
-
-type WheelSize = { row: number; edge: number; column: number };
-
 export function TimeWheelField({
   field,
   value,
@@ -42,13 +38,7 @@ export function TimeWheelField({
 }: FieldInputProps<TimePickerField>) {
   const locked = disabled || isOutputView || !onChange;
   const { columns, turn } = timeWheelControls({ value, onChange });
-  const fontScale = useFontScale();
-  const row = Math.ceil(ROW_HEIGHT * fontScale);
-  const size: WheelSize = {
-    row,
-    edge: row * EDGE_ROWS,
-    column: Math.ceil(COLUMN_WIDTH * fontScale),
-  };
+  const size = timeWheelLayout(useFontScale());
 
   return (
     <View>
@@ -59,8 +49,8 @@ export function TimeWheelField({
         required={required}
       />
       <View
-        className="self-center flex-row overflow-hidden rounded-2xl bg-zinc-100 px-3"
-        style={{ height: size.row * VISIBLE_ROWS }}
+        className="mt-3 flex-row justify-center overflow-hidden rounded-2xl bg-zinc-100"
+        style={{ height: size.height }}
       >
         <View
           pointerEvents="none"
@@ -77,8 +67,8 @@ export function TimeWheelField({
             onSelect={(index) => turn(column.key, index)}
           />
         ))}
-        <Fade edge={FadeEdge.Top} height={size.edge} />
-        <Fade edge={FadeEdge.Bottom} height={size.edge} />
+        <Fade edge={FadeEdge.Top} height={size.fade} />
+        <Fade edge={FadeEdge.Bottom} height={size.fade} />
       </View>
       {renderValidationMessage(errorMessage)}
     </View>
@@ -127,7 +117,7 @@ function WheelColumn({
   disabled,
   onSelect,
 }: {
-  size: WheelSize;
+  size: TimeWheelLayout;
   column: TimeWheelColumn;
   fieldLabel: string | null;
   disabled: boolean;
@@ -203,7 +193,10 @@ function WheelColumn({
             style={{ height: size.row }}
           >
             <Text
-              className="text-xl text-zinc-900"
+              className={cn(
+                "text-xl",
+                index === column.index ? "text-zinc-900" : "text-zinc-500",
+              )}
               style={{ fontVariant: ["tabular-nums"] }}
             >
               {option}
