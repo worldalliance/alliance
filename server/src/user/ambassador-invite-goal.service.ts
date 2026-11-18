@@ -294,10 +294,10 @@ export class AmbassadorInviteGoalService {
     message: (stats: AmbassadorInviteStats) => string;
   }): Promise<void> {
     const { goal, groupingKey, sendTime } = params;
-    const alreadySent = await this.notifsService.hasNotifWithGroupingKey(
-      goal.ambassador.id,
+    const alreadySent = await this.notifsService.hasNotifWithGroupingKey({
+      userId: goal.ambassador.id,
       groupingKey,
-    );
+    });
     if (alreadySent) {
       return;
     }
@@ -307,7 +307,7 @@ export class AmbassadorInviteGoalService {
         goal.ambassador.id,
         goal,
       );
-    await this.notifsService.sendNotif({
+    await this.notifsService.sendNotifOnce({
       user: goal.ambassador,
       category: NotificationCategory.AmbassadorInviteGoal,
       message: notifMessage`${params.message(stats)}`,

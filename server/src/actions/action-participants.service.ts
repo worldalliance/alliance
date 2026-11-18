@@ -1,11 +1,11 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { startComputation } from "src/datasources/computation";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { User } from "src/user/entities/user.entity";
 import { computeIsAwayDuringWindow } from "src/utils/action-user";
 import { In, type Repository } from "typeorm";
-import { z } from "zod";
 import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivities,
@@ -200,8 +200,16 @@ export class ActionParticipantsService {
     await this.actionRepository.update(actionId, { usersCompleted });
   }
 
+  private startUsersJoinedComputation(): Promise<string> {
+    return startComputation({
+      manager: this.actionRepository.manager,
+      table: "action",
+      column: "usersJoinedComputation",
+    });
+  }
+
   async reloadAllActionUsersJoined(): Promise<void> {
-    const computation = await this.startComputation();
+    const computation = await this.startUsersJoinedComputation();
     const actions = (
       await this.actionRepository.find({ relations: { events: true } })
     ).map(parseAction);
@@ -216,27 +224,13 @@ export class ActionParticipantsService {
   }
 
   async reloadUsersJoinedForAction(actionId: number): Promise<void> {
-    const computation = await this.startComputation();
+    const computation = await this.startUsersJoinedComputation();
     const usersJoined = (await this.findParticipantIdsForActionById(actionId))
       .length;
     await this.publishUsersJoined({
       computation,
       counts: [{ id: actionId, usersJoined }],
     });
-  }
-
-  /** Taken before the first read, so the computation sees every input
-   * committed before it took its number. */
-  private async startComputation(): Promise<string> {
-    const [{ computation }] = z
-      .array(z.object({ computation: z.string() }))
-      .length(1)
-      .parse(
-        await this.actionRepository.query(
-          `SELECT nextval(pg_get_serial_sequence('action', 'usersJoinedComputation'))::text AS computation`,
-        ),
-      );
-    return computation;
   }
 
   /** Every count is written, changed or not, so it fences out older ones. */
