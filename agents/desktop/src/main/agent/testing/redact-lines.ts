@@ -147,7 +147,10 @@ export function redactLines(params: {
       blocks.set(streamed.block, []);
     }
     if (streamed.fragment)
-      blocks.get(streamed.block)?.push({ line: index, ...streamed.fragment });
+      blocks.set(streamed.block, [
+        ...(blocks.get(streamed.block) ?? []),
+        { line: index, ...streamed.fragment },
+      ]);
   });
   blocks.forEach(redactBlock);
   return result;
