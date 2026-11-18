@@ -1,5 +1,6 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import {
+  pairedToggleRequired,
   pairedToggles,
   pairedToggleToTurnOn,
 } from "@alliance/common/forms/paired-toggles";
@@ -23,8 +24,10 @@ export function resolveFormValue(
 
 /**
  * `prev` with `fieldId` answered, and with the toggle `pairedToggleToTurnOn`
- * names turned on. `clearedErrors` clears the error of each toggle paired with
- * `fieldId` or with the toggle turned on that the answer leaves valid.
+ * names turned on. `clearedErrors` clears the errors the answer resolves, once
+ * their toggle validates: the turned-on toggle's, and the required error of
+ * each toggle paired with `fieldId` or with it that was off and required by
+ * its pairing. The caller validates `fieldId` itself.
  */
 export function answerField(params: {
   prev: Record<string, FormValue>;
@@ -57,6 +60,8 @@ export function answerField(params: {
       .filter(
         (field) =>
           field.id !== fieldId &&
+          (field.id === turnedOn ||
+            (prev[field.id] !== true && pairedToggleRequired(field, prev))) &&
           validate(field, next[field.id], next) === null,
       )
       .map((field) => [field.id, null] as const),

@@ -127,4 +127,15 @@ describe("answerField", () => {
       }).clearedErrors,
     ).toEqual({});
   });
+
+  it("keeps the error of a partner its pairing didn't require", () => {
+    expect(
+      answer({
+        fields,
+        prev: { text: true, email: true },
+        fieldId: "text",
+        value: false,
+      }).clearedErrors,
+    ).toEqual({});
+  });
 });
