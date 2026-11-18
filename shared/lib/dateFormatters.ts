@@ -46,6 +46,16 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
+/** "Jan 1, 2025, 3:00 PM PST" */
+const dateTimeWithZoneFormatter = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
 /** "1/1/2025, 3:00:00 PM" (default toLocaleString equivalent) */
 const fullDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -78,6 +88,10 @@ export function formatMediumDateEnUS(date: Date): string {
 
 export function formatDateTime(date: Date): string {
   return dateTimeFormatter.format(date);
+}
+
+export function formatDateTimeWithZone(date: Date): string {
+  return dateTimeWithZoneFormatter.format(date);
 }
 
 export function formatFullDateTime(date: Date): string {
