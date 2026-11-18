@@ -89,6 +89,7 @@ export default function TaskFlowComplete({
             className="mt-6"
             output={{ schema, answers }}
             user={user}
+            plain
             {...KEEPS_OPEN}
           />
         </ScrollView>

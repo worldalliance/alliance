@@ -15,11 +15,14 @@ import Text, { FontWeight } from "../system/Text";
 export default function TaskAnswersCard({
   output,
   user,
+  plain = false,
   className,
   ...props
 }: ViewProps & {
   output: Omit<OutputSource, "ownView">;
   user: Omit<UserDto, "email"> | undefined;
+  /** The completion screen's look: a larger photo and answers as bare text. */
+  plain?: boolean;
 }) {
   const source = { ...output, ownView: true };
   const outputItems = useOutputItems(source);
@@ -37,7 +40,10 @@ export default function TaskAnswersCard({
     >
       {user ? (
         <View className="flex-row items-center gap-x-3">
-          <ProfileImage pfp={user.profilePicture} size="medium" />
+          <ProfileImage
+            pfp={user.profilePicture}
+            size={plain ? "larger" : "medium"}
+          />
           <View className="flex-1">
             <Text
               className="text-base text-zinc-900"
@@ -51,7 +57,7 @@ export default function TaskAnswersCard({
           </View>
         </View>
       ) : null}
-      <OutputRenderer {...source} />
+      <OutputRenderer {...source} plain={plain} />
     </View>
   );
 }

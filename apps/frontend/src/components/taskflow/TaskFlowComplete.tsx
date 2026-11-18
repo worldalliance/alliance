@@ -200,6 +200,7 @@ export default function TaskFlowComplete({
               style={recolor}
               output={{ schema, answers }}
               user={user}
+              plain
               {...KEEPS_OPEN}
             />
           </div>

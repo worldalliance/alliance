@@ -14,11 +14,14 @@ import { type ComponentProps } from "react";
 export default function TaskAnswersCard({
   output,
   user,
+  plain = false,
   className,
   ...props
 }: ComponentProps<"div"> & {
   output: Omit<OutputSource, "ownView">;
   user: UserDto | undefined;
+  /** The completion screen's look: a larger photo and answers as bare text. */
+  plain?: boolean;
 }) {
   const source = { ...output, ownView: true };
   const outputItems = useOutputItems(source);
@@ -38,8 +41,9 @@ export default function TaskAnswersCard({
         <div className="flex items-center gap-x-3">
           <AvatarProfile
             pfp={user.profilePicture}
-            size="medium"
             alt={user.name}
+            size={plain ? "override" : "medium"}
+            className={plain ? "size-12 rounded-md" : undefined}
           />
           <div className="flex-1">
             <p className="text-base font-semibold text-zinc-900">{user.name}</p>
@@ -49,7 +53,7 @@ export default function TaskAnswersCard({
           </div>
         </div>
       ) : null}
-      <OutputRenderer {...source} />
+      <OutputRenderer {...source} plain={plain} />
     </div>
   );
 }

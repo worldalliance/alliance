@@ -13,7 +13,11 @@ import { ImageThumbnailGrid } from "../ui/ImageLightbox";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
 
-type OutputRendererProps = OutputSource & { className?: string };
+type OutputRendererProps = OutputSource & {
+  className?: string;
+  /** Answers as bare text, without the card, inner cards or labels. */
+  plain?: boolean;
+};
 
 const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
   if (!item.field) {
@@ -34,13 +38,38 @@ const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
   return <span className="text-sm text-gray-900">{item.formattedValue}</span>;
 };
 
+function PlainOutputFieldValue({ item }: { item: ResolvedOutputFieldItem }) {
+  if (item.fileValues.length > 0) return renderOutputFieldValue(item);
+  if (!item.formattedValue) return null;
+  return (
+    <p className="whitespace-pre-line text-base text-zinc-900">
+      {item.formattedValue}
+    </p>
+  );
+}
+
 export function OutputRenderer({
   className = "",
+  plain = false,
   ...source
 }: OutputRendererProps) {
   const items = useOutputItems(source);
   if (items.length === 0) {
     return null;
+  }
+
+  if (plain) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        {items.map((item) =>
+          item.type === "display" ? (
+            <RenderDisplayBlock key={item.key} block={item.block} />
+          ) : (
+            <PlainOutputFieldValue key={item.key} item={item} />
+          ),
+        )}
+      </div>
+    );
   }
 
   return (

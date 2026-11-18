@@ -13,7 +13,11 @@ import { RenderField } from "./forms/RenderField";
 import Card, { CardStyle } from "./system/Card";
 import Text, { FontWeight } from "./system/Text";
 
-type OutputRendererProps = OutputSource & { className?: string };
+type OutputRendererProps = OutputSource & {
+  className?: string;
+  /** Answers as bare text, without the card, inner cards or labels. */
+  plain?: boolean;
+};
 
 const canUseMobileFieldRenderer = (field: AnyField): boolean =>
   field.kind !== "contract" &&
@@ -53,10 +57,34 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
   return <Text className="text-base text-zinc-900">{item.formattedValue}</Text>;
 };
 
-function OutputRenderer({ className = "", ...source }: OutputRendererProps) {
+function PlainOutputFieldValue({ item }: { item: ResolvedOutputFieldItem }) {
+  if (item.fileValues.length > 0) return renderFormattedOutputFieldValue(item);
+  if (!item.formattedValue) return null;
+  return <Text className="text-base text-zinc-900">{item.formattedValue}</Text>;
+}
+
+function OutputRenderer({
+  className = "",
+  plain = false,
+  ...source
+}: OutputRendererProps) {
   const items = useOutputItems(source);
   if (items.length === 0) {
     return null;
+  }
+
+  if (plain) {
+    return (
+      <View className={cn("gap-2", className)}>
+        {items.map((item) =>
+          item.type === "display" ? (
+            <RenderDisplayBlockMobile key={item.key} block={item.block} />
+          ) : (
+            <PlainOutputFieldValue key={item.key} item={item} />
+          ),
+        )}
+      </View>
+    );
   }
 
   return (
