@@ -49,6 +49,7 @@ const textareaFieldSchema = z.strictObject({
   rows: z.number().optional(),
   maxLength: z.number().optional(),
   placeholder: z.string().optional(),
+  autoExtractUserData: z.boolean().optional(),
 });
 export type TextareaField = z.infer<typeof textareaFieldSchema>;
 
@@ -89,7 +90,11 @@ const rangeFieldSchema = z.strictObject({
 });
 export type RangeField = z.infer<typeof rangeFieldSchema>;
 
-export const CHECKBOX_EXTRACTION_TARGETS = ["shareInfoPublicly"] as const;
+export const CHECKBOX_EXTRACTION_TARGETS = [
+  "shareInfoPublicly",
+  "textNotifications",
+  "emailNotifications",
+] as const;
 const checkboxExtractionTargetSchema = z.enum(CHECKBOX_EXTRACTION_TARGETS);
 export type CheckboxExtractionTarget = z.infer<
   typeof checkboxExtractionTargetSchema
@@ -115,6 +120,8 @@ export const AUTO_EXTRACT_FIELD_KINDS = [
   "city",
   "checkbox",
   "custom",
+  "textarea",
+  "file",
 ] as const;
 export type AutoExtractFieldKind = (typeof AUTO_EXTRACT_FIELD_KINDS)[number];
 
@@ -202,6 +209,7 @@ export type ContractField = z.infer<typeof contractFieldSchema>;
 const fileFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("file"),
+  autoExtractUserData: z.boolean().optional(),
 });
 export type FileField = z.infer<typeof fileFieldSchema>;
 
@@ -233,6 +241,10 @@ export const customComponentConfigSchema = z.union([
 ]);
 export type CustomComponentConfig = z.infer<typeof customComponentConfigSchema>;
 
+export const CUSTOM_COMPONENT_EXTRACTION_TARGETS = [
+  "shareInfoPublicly",
+] as const satisfies readonly CheckboxExtractionTarget[];
+
 /** @deprecated do not add any new types of custom components */
 const customComponentFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
@@ -240,7 +252,7 @@ const customComponentFieldSchema = z.strictObject({
   componentId: z.string(),
   componentConfig: customComponentConfigSchema.optional(),
   autoExtractUserData: z
-    .strictObject({ target: checkboxExtractionTargetSchema })
+    .strictObject({ target: z.enum(CUSTOM_COMPONENT_EXTRACTION_TARGETS) })
     .optional(),
 });
 export type CustomComponentField = z.infer<typeof customComponentFieldSchema>;

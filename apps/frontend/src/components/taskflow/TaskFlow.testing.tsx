@@ -123,6 +123,7 @@ export const serveTaskFlow = () => {
         return Response.json(makeFormResponse(), { status: 201 });
       },
       "GET /user/mylocation": () => Response.json({ city: null }),
+      "GET /auth/me": () => Response.json({ user: testAuthUser }),
       "GET /actions/slug/:id": () => Response.json(serverAction),
     }),
   );

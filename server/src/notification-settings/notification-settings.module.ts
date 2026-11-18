@@ -9,6 +9,6 @@ import { NotificationSettingsService } from "./notification-settings.service";
   imports: [TypeOrmModule.forFeature([NotificationPreference])],
   controllers: [NotificationSettingsController],
   providers: [NotificationPreferencesService, NotificationSettingsService],
-  exports: [NotificationPreferencesService],
+  exports: [NotificationPreferencesService, NotificationSettingsService],
 })
 export class NotificationSettingsModule {}

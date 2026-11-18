@@ -3,14 +3,16 @@ import { useActionHandlers } from "./actionPage";
 import { useDismissActionMutation } from "./actionsListPage";
 import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
-import { makeAction, makeFormResponse } from "./testFixtures";
+import { makeAction, makeFormResponse, makeUser } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { seedActions } from "./testing/seedActions";
 import { routes, serveApi } from "./testing/serveApi";
 import { meCache } from "./useMe";
 import { useTaskFormSubmission } from "./useTaskFormSubmission";
 
-const api = serveApi(routes({}));
+const api = serveApi(
+  routes({ "GET /auth/me": () => Response.json({ user: makeUser() }) }),
+);
 
 const useMutations = () => ({
   submission: useTaskFormSubmission(),

@@ -9,6 +9,7 @@ import {
 import { isDeployed } from "@alliance/common/node-env";
 import {
   GetObjectCommand,
+  NoSuchKey,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -155,7 +156,34 @@ export class ImagesService {
   }
 
   async processAndUploadProfileImage(image: string): Promise<string> {
-    const imgBuffer = await this.normalizeToSharpBuffer(image);
+    return this.uploadProfileImage(await this.normalizeToSharpBuffer(image));
+  }
+
+  async profileImageFromUpload(key: string): Promise<string> {
+    if (!isUploadKey(key)) {
+      throw new BadRequestException("The photo is not an uploaded image");
+    }
+    const object = await this.s3
+      .send(new GetObjectCommand({ Bucket: assetsBucket(), Key: key }))
+      .catch((err: unknown) => {
+        if (err instanceof NoSuchKey) return undefined;
+        throw err;
+      });
+    if (!object?.Body) {
+      throw new BadRequestException("The uploaded photo could not be found");
+    }
+    const bytes = Buffer.from(await object.Body.transformToByteArray());
+    await sharp(bytes)
+      .metadata()
+      .catch(() => {
+        throw new BadRequestException(
+          "The uploaded photo is not an image - try a standard image format",
+        );
+      });
+    return this.uploadProfileImage(bytes);
+  }
+
+  private async uploadProfileImage(imgBuffer: Buffer): Promise<string> {
     const [processed, thumbnail] = await Promise.all([
       sharp(imgBuffer)
         .rotate()

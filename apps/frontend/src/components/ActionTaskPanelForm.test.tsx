@@ -67,6 +67,7 @@ const api = serveApi(
         },
       }),
     "GET /user/mylocation": () => Response.json({ city: null }),
+    "GET /auth/me": () => Response.json({ user: testAuthUser }),
   }),
 );
 

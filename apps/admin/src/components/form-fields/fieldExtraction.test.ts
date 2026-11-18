@@ -41,6 +41,8 @@ describe("supportsExtraction", () => {
   it("accepts auto-extract kinds and rejects others", () => {
     expect(supportsExtraction(phone)).toBe(true);
     expect(supportsExtraction(checkbox)).toBe(true);
+    expect(supportsExtraction({ ...text, kind: "textarea" })).toBe(true);
+    expect(supportsExtraction({ ...text, kind: "file" })).toBe(true);
     expect(supportsExtraction(text)).toBe(false);
   });
 });
@@ -77,6 +79,8 @@ describe("getExtractionLabel", () => {
     ["time", "Extracting into: Preferred reminder time"],
     ["timezone", "Extracting into: Time zone"],
     ["city", "Extracting into: City"],
+    ["textarea", "Extracting into: Profile description"],
+    ["file", "Extracting into: Profile photo"],
   ] as const)("names the %s user data", (kind, label) => {
     expect(getExtractionLabel({ ...phone, kind })).toBe(label);
   });
@@ -91,6 +95,12 @@ describe("getExtractionLabel", () => {
         autoExtractUserData: { target: "shareInfoPublicly" },
       }),
     ).toBe("Extracting into: Share info publicly");
+    expect(
+      getExtractionLabel({
+        ...checkbox,
+        autoExtractUserData: { target: "emailNotifications" },
+      }),
+    ).toBe("Extracting into: Email notifications");
     expect(getExtractionLabel(checkbox)).toBe("Extracting into user data");
   });
 });

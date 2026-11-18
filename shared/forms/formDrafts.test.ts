@@ -4,6 +4,7 @@ import {
   applyDefaultValues,
   clampPageIndex,
   readStoredFormDraft,
+  resolveFieldDefaultValue,
   restorableAnswers,
   serializeStoredFormDraft,
 } from "./formDrafts";
@@ -107,5 +108,24 @@ describe("clampPageIndex", () => {
     expect(clampPageIndex(-2, 3)).toBe(0);
     expect(clampPageIndex(9, 3)).toBe(3);
     expect(clampPageIndex(Number.NaN, 3)).toBe(0);
+  });
+});
+
+describe("resolveFieldDefaultValue", () => {
+  const checkbox: AnyField = {
+    id: "email",
+    type: "input",
+    kind: "checkbox",
+    label: "Email notifications",
+  };
+
+  it("answers a checkbox for a notification setting, and leaves others unanswered", () => {
+    expect(resolveFieldDefaultValue(checkbox, undefined)).toBeUndefined();
+    expect(
+      resolveFieldDefaultValue(
+        { ...checkbox, autoExtractUserData: { target: "textNotifications" } },
+        undefined,
+      ),
+    ).toBe(false);
   });
 });

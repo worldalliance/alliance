@@ -1,8 +1,14 @@
-import type {
-  AnyField,
-  CheckboxExtractionTarget,
+import {
+  CHECKBOX_EXTRACTION_TARGETS,
+  CUSTOM_COMPONENT_EXTRACTION_TARGETS,
+  type AnyField,
+  type CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
-import { hasExtractionEnabled, supportsExtraction } from "./fieldExtraction";
+import {
+  CHECKBOX_TARGET_LABELS,
+  hasExtractionEnabled,
+  supportsExtraction,
+} from "./fieldExtraction";
 
 type FieldExtraOptionsProps = {
   field: AnyField;
@@ -50,7 +56,14 @@ export function FieldExtraOptions({
                 }
               >
                 <option value="">None</option>
-                <option value="shareInfoPublicly">Share info publicly</option>
+                {(field.kind === "custom"
+                  ? CUSTOM_COMPONENT_EXTRACTION_TARGETS
+                  : CHECKBOX_EXTRACTION_TARGETS
+                ).map((target) => (
+                  <option key={target} value={target}>
+                    {CHECKBOX_TARGET_LABELS[target]}
+                  </option>
+                ))}
               </select>
             </div>
           ) : (

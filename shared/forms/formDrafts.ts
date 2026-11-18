@@ -1,6 +1,7 @@
 import { parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
+  CheckboxExtractionTarget,
   FormValue,
   ListField,
 } from "@alliance/common/forms/form-schema";
@@ -38,6 +39,19 @@ export function computeFormStorageKey(args: {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
+// A checkbox for a notification setting always answers, so one left unchecked
+// turns the channel off rather than leaving it as it was.
+const ALWAYS_ANSWERS: Record<CheckboxExtractionTarget, boolean> = {
+  shareInfoPublicly: false,
+  textNotifications: true,
+  emailNotifications: true,
+};
+
+const answersNotifications = (field: AnyField): boolean =>
+  field.kind === "checkbox" &&
+  !!field.autoExtractUserData &&
+  ALWAYS_ANSWERS[field.autoExtractUserData.target];
+
 export function resolveFieldDefaultValue(
   field: AnyField,
   timeZone: string | undefined,
@@ -47,6 +61,10 @@ export function resolveFieldDefaultValue(
   }
 
   const rawDefault = field.defaultValue;
+
+  if (answersNotifications(field)) {
+    return rawDefault === true;
+  }
 
   if (rawDefault === null) {
     return undefined;

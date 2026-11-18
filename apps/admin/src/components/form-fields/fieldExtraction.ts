@@ -1,6 +1,7 @@
 import type {
   AnyField,
   AutoExtractFieldKind,
+  CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
 import { AUTO_EXTRACT_FIELD_KINDS } from "@alliance/common/forms/form-schema";
 
@@ -25,15 +26,23 @@ const SCALAR_EXTRACTION_LABELS: Record<
   time: "Extracting into: Preferred reminder time",
   timezone: "Extracting into: Time zone",
   city: "Extracting into: City",
+  textarea: "Extracting into: Profile description",
+  file: "Extracting into: Profile photo",
 };
+
+export const CHECKBOX_TARGET_LABELS: Record<CheckboxExtractionTarget, string> =
+  {
+    shareInfoPublicly: "Share info publicly",
+    textNotifications: "Text notifications",
+    emailNotifications: "Email notifications",
+  };
 
 export function getExtractionLabel(field: ExtractableField): string {
   if (field.kind === "checkbox" || field.kind === "custom") {
     const target = field.autoExtractUserData?.target;
-    if (target === "shareInfoPublicly") {
-      return "Extracting into: Share info publicly";
-    }
-    return "Extracting into user data";
+    return target
+      ? `Extracting into: ${CHECKBOX_TARGET_LABELS[target]}`
+      : "Extracting into user data";
   }
   return SCALAR_EXTRACTION_LABELS[field.kind];
 }

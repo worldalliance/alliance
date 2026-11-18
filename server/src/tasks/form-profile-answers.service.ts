@@ -1,8 +1,6 @@
 import {
   type CheckboxExtractionTarget,
-  type CheckboxField,
   type CityFieldValue,
-  type CustomComponentField,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { NodeEnv } from "@alliance/common/node-env";
@@ -10,21 +8,25 @@ import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { updateLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { ImagesService } from "src/images/images.service";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationSettingsService } from "src/notification-settings/notification-settings.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { PhoneNumberTakenException } from "src/user/phone-number-taken.exception";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
+import { DataSource } from "typeorm";
 import { env } from "../config/env";
 
 function getFirstAutoExtractAnswer(
   schema: FormSchema,
   answers: Record<string, unknown>,
-  kind: "phone" | "time" | "timezone" | "city",
+  kind: "phone" | "time" | "timezone" | "city" | "textarea" | "file",
 ): string | null {
   for (const page of schema.pages ?? []) {
     if (!page.fields) {
@@ -82,8 +84,7 @@ function getCheckboxExtractionValue(
       if (field.kind !== "checkbox" && field.kind !== "custom") {
         continue;
       }
-      const extractField = field as CheckboxField | CustomComponentField;
-      if (extractField.autoExtractUserData?.target !== target) {
+      if (field.autoExtractUserData?.target !== target) {
         continue;
       }
       const answer = answers[field.id];
@@ -99,8 +100,6 @@ function getCheckboxExtractionValue(
           return false;
         }
       }
-      // Field wasn't answered - don't overwrite existing user setting
-      return null;
     }
   }
 
@@ -114,13 +113,17 @@ export class FormProfileAnswersService {
     private userService: UserService,
     private mmsService: MmsService,
     private eventLogService: EventLogService,
+    private notificationSettingsService: NotificationSettingsService,
+    private imagesService: ImagesService,
+    private dataSource: DataSource,
   ) {}
 
   /**
-   * Copies auto-extract answers onto the member's profile, texting the welcome
-   * MMS to the extracted phone number if the member has not opted in. A phone
-   * number another account holds is skipped, so the member finishes the form
-   * without it. Throws on an invalid time zone before any side effect.
+   * Copies auto-extract answers onto the member's profile and notification
+   * defaults, texting the welcome MMS to the extracted phone number if the
+   * member has not opted in. A phone number another account holds is
+   * skipped, so the member finishes the form without it. Throws on an invalid
+   * time zone or an unusable photo before any other side effect.
    */
   async applyProfileAnswers({
     user,
@@ -143,7 +146,29 @@ export class FormProfileAnswersService {
       throw new BadRequestException(`Invalid time zone: ${timeZone}`);
     }
 
+    const photoKey = getFirstAutoExtractAnswer(schema, answers, "file");
+    if (photoKey) {
+      await updateLive(this.dataSource.manager, {
+        target: User,
+        id: user.id,
+        changes: {
+          profilePicture:
+            await this.imagesService.profileImageFromUpload(photoKey),
+        },
+      });
+    }
+
     const city = getFirstAutoExtractAnswer(schema, answers, "city");
+    const text = getCheckboxExtractionValue(
+      schema,
+      answers,
+      "textNotifications",
+    );
+    const profileDescription = getFirstAutoExtractAnswer(
+      schema,
+      answers,
+      "textarea",
+    );
 
     const userUpdates: Partial<UpdateProfileDto> = {};
 
@@ -157,7 +182,7 @@ export class FormProfileAnswersService {
         const normalized = parsed.value;
         this.logger.log(`Valid phone number: ${normalized}`);
 
-        if (!user.optInMms) {
+        if (!user.optInMms && text !== false) {
           const mms = await this.mmsService.sendMms({
             to: normalized,
             userId: user.id,
@@ -206,6 +231,10 @@ export class FormProfileAnswersService {
       userUpdates.timeZone = timeZone;
     }
 
+    if (profileDescription) {
+      userUpdates.profileDescription = profileDescription;
+    }
+
     const shareInfoPublicly = getCheckboxExtractionValue(
       schema,
       answers,
@@ -217,6 +246,20 @@ export class FormProfileAnswersService {
 
     if (Object.keys(userUpdates).length > 0) {
       await this.userService.update(user.id, userUpdates);
+    }
+
+    const email = getCheckboxExtractionValue(
+      schema,
+      answers,
+      "emailNotifications",
+    );
+    if (text !== null || email !== null) {
+      await this.notificationSettingsService.update(user.id, {
+        defaults: {
+          ...(text !== null && { text }),
+          ...(email !== null && { email }),
+        },
+      });
     }
   }
 

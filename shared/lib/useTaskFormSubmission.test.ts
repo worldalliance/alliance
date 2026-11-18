@@ -1,20 +1,27 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import { GUEST_HEADER } from "@alliance/common/guest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { SubmitFormDto } from "../client";
 import { formulaSourcesChanged } from "../forms/formulaChoices";
 import { actionStore } from "./actionStore";
 import { queryKeys } from "./queryKeys";
-import { makeAction, makeFormResponse } from "./testFixtures";
+import { makeAction, makeFormResponse, makeUser } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { recordExceptions } from "./testing/recordExceptions";
 import { seedActions } from "./testing/seedActions";
 import { routes, serveApi } from "./testing/serveApi";
 import { ActivityList } from "./useActivities";
+import { meQuery } from "./useMe";
+import { userQueryKeys } from "./user";
 import { useTaskFormSubmission } from "./useTaskFormSubmission";
 
-const api = serveApi(routes({}));
+const reloadedMember = makeUser({
+  profilePicture: "https://example.com/new.webp",
+});
+const api = serveApi(
+  routes({ "GET /auth/me": () => Response.json({ user: reloadedMember }) }),
+);
 
 const body: SubmitFormDto = { answers: {}, actionId: 1, deviceType: "mobile" };
 const withdrawal = { actionId: 1, reason: "", outOfTime: true, isMoral: false };
@@ -25,6 +32,9 @@ const renderSubmission = () => {
   client.setQueryData(queryKeys.myVisibilityContext(), {});
   client.setQueryData(queryKeys.allianceMemberCount(), 1200);
   client.setQueryData(queryKeys.taskFormAggregateViews(7), []);
+  client.setQueryData(queryKeys.notificationSettings(), {});
+  client.setQueryData(meQuery.queryKey, { user: makeUser() });
+  client.setQueryData(userQueryKeys.profile(makeUser().id), {});
   const view = renderHook(() => useTaskFormSubmission(), { wrapper });
   return {
     submission: () => view.result.current,
@@ -35,6 +45,11 @@ const renderSubmission = () => {
       client.getQueryState(queryKeys.allianceMemberCount())?.isInvalidated,
     aggregateViewsInvalidated: () =>
       client.getQueryState(queryKeys.taskFormAggregateViews(7))?.isInvalidated,
+    notificationSettingsInvalidated: () =>
+      client.getQueryState(queryKeys.notificationSettings())?.isInvalidated,
+    cachedMember: () => client.getQueryData(meQuery.queryKey)?.user,
+    ownProfileInvalidated: () =>
+      client.getQueryState(userQueryKeys.profile(makeUser().id))?.isInvalidated,
   };
 };
 
@@ -56,6 +71,19 @@ describe("submit", () => {
     expect(s.visibilityInvalidated()).toBe(true);
     expect(s.memberCountInvalidated()).toBe(true);
     expect(s.aggregateViewsInvalidated()).toBe(true);
+  });
+
+  it("reloads the member and their notification settings, which the answers can change", async () => {
+    api.alsoServing({ "POST /tasks/submitForm/:id": accepted });
+    const s = renderSubmission();
+
+    await act(() =>
+      s.submission().submit({ taskFormId: 7, body, isMember: true }),
+    );
+
+    expect(s.notificationSettingsInvalidated()).toBe(true);
+    expect(s.ownProfileInvalidated()).toBe(true);
+    await waitFor(() => expect(s.cachedMember()).toEqual(reloadedMember));
   });
 
   it("leaves a deferred completion to recordCompleted", async () => {
@@ -104,6 +132,7 @@ describe("submit", () => {
     expect(s.cachedRelation()).toBe("none");
     expect(s.visibilityInvalidated()).toBe(false);
     expect(s.memberCountInvalidated()).toBe(false);
+    expect(s.notificationSettingsInvalidated()).toBe(false);
     expect(s.aggregateViewsInvalidated()).toBe(true);
   });
 

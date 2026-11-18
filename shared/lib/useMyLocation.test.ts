@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { City, SubmitFormDto } from "../client";
-import { makeCity, makeFormResponse } from "./testFixtures";
+import { makeCity, makeFormResponse, makeUser } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { myLocationCache, useMyLocation } from "./useMyLocation";
@@ -19,6 +19,7 @@ const api = serveApi(
       loads += 1;
       return Response.json(stored ? { city: stored } : {});
     },
+    "GET /auth/me": () => Response.json({ user: makeUser() }),
   }),
 );
 
