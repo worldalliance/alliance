@@ -3,35 +3,48 @@ name: trim-comments
 description: Cut the comments. Read before presenting any code change.
 ---
 
-Read `(root)/agents/skills/keep-test.md` first. It carries the test, the rewrite rule, scope, and stability. This file supplies the two arguments that make it a comment pass: the source of truth, and what counts as protected.
+# Trim comments
+
+Comments have a very high bar. A good pass leaves only comments that tell a reader something the code beside them can't: a constraint, the reason behind code that looks wrong, an invariant, an edge case, or a caller's contract. On code whose comments already meet that bar, change nothing.
 
 Change no executable code, names, types, formatting, or behavior. Add no comment except to replace an existing one holding a fact worth saving.
 
-## Source of truth
+## The test
 
-The code beside the comment: names, types, control flow, and the statements around it. A comment restating any of it duplicates something the compiler already keeps honest.
+Keep a comment only when all four hold:
+
+1. It states a concrete fact the code in the same file (names, types, control flow, the statements around it) doesn't already carry.
+2. Nothing nearby, such as another comment or the declaration's doc, already says it more clearly.
+3. That fact changes what a reader does next: delete the comment and you can name what they now do differently.
+4. That fact is true now.
+
+Otherwise delete it. Harmless, or useful one day, is not a reason to keep. A comment your change added earns its place like any other. An accurate restatement still fails:
 
 ```ts
 // Check whether the user exists
 if (!user) {
 ```
 
-An accurate description of what the code does is not, by itself, useful.
-
-## What goes
-
-Most comments (comments have a very high bar for being kept).
-
-Anything that can be gleaned from looking at the code in the same file, including but not limited to:
+What fails the test:
 
 - **[Common pitfall]** accounts of past changes, fixed bugs, or previous implementations.
-- Comments restating the next statement, branch, call, type, or name.
-- Narration of straightforward code.
-- Section headings.
+- Restating the next statement, branch, call, type, or name.
+- Narration of straightforward code, and section headings.
 - Descriptions of standard language or framework behavior.
-- Claims of "handle", "process", "ensure", or "set up" with no specific constraint attached.
+- "Handle", "process", "ensure", or "set up" with no specific constraint attached.
 - Speculation about intent.
-- Anything that doesn't pass the `keep-test.md` doc.
+
+A comment that fails goes whole; shaving words off it leaves a worse sentence. Rewrite only to save a fact that passes but arrives worded as history, misleading, ambiguous, or far longer than it needs to be, and never invent a rationale, risk, or constraint the surroundings don't support. State the constraint that holds now, not the history that produced it:
+
+```ts
+// We used to sort this differently, but it caused duplicate notifications.
+// →
+// Keep oldest-first ordering so retries cannot skip an earlier notification.
+```
+
+## Scope and stability
+
+The pass covers the comments your change touched, plus any it made false or misleading. A comment that passes and needs no rewrite keeps its wording, format, and place, on this run and every repeat run.
 
 ## Declaration documentation
 
