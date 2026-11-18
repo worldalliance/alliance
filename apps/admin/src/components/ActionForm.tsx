@@ -34,7 +34,6 @@ interface ActionFormProps extends ActionFieldInputs {
   saving: boolean;
   saveDisabled?: boolean;
   onCancel?: () => void;
-  onDelete?: () => void;
   availableTags?: TagDto[];
   tagsLoading: boolean;
   tagsError: boolean;
@@ -75,7 +74,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onCancelImageUpload,
   isNew,
   onCancel,
-  //   onDelete,
   baseUrl,
   availableTags = [],
   tagsLoading,
@@ -248,16 +246,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
             Cancel
           </button>
         )}
-        {/* {!isNew && onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded-md hover:bg-red-200 text-sm font-medium"
-            disabled={saving}
-          >
-            Delete
-          </button>
-        )} */}
         <button
           type="submit"
           className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"

@@ -70,7 +70,6 @@ function renderCommands(
               followUpForms: [],
             });
           },
-          removeAction: notCalled,
           archiveAction: notCalled,
           unarchiveAction: notCalled,
         },

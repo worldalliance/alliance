@@ -28,7 +28,6 @@ type ActionEditorMode =
   | {
       isNew: false;
       cohortParseFailed: boolean;
-      onDelete: () => void;
       checklist: React.ReactNode;
       hideStaffPreview?: boolean;
     };
@@ -104,7 +103,6 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
         saveDisabled={mode.cohortParseFailed}
         isNew={false}
         actionId={action?.id}
-        onDelete={mode.onDelete}
         baseUrl={getApiUrl()}
         hideStaffPreview={mode.hideStaffPreview}
       />
