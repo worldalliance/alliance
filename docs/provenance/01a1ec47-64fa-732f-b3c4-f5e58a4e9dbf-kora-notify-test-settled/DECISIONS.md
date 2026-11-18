@@ -1,0 +1,2 @@
+- The tests await the `KoraNotifyService.sendAll` promises the requests start, via a pass-through spy, the pattern `waitlist-email.e2e-spec.ts` and `waitlist-mail.e2e-spec.ts` use. Polling `toNotify` can't tell a claim from a delivery: `claimNext` marks a participant notified before delivering, so the count drops while a send is still in flight. (agent decision)
+- The service is unchanged; marking before sending is what keeps two concurrent sends from messaging the same person. (agent decision)

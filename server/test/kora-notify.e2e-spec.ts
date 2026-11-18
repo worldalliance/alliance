@@ -22,6 +22,7 @@ describe("Kora launch notice (e2e)", () => {
   let h: KoraHarness;
   let sent: { to: string; link: string }[];
   let failFor: Set<string>;
+  let sendAll: jest.SpyInstance;
 
   const asAdmin = () =>
     request(h.ctx.app.getHttpServer())
@@ -34,11 +35,8 @@ describe("Kora launch notice (e2e)", () => {
         .set("Authorization", `Bearer ${h.ctx.adminAccessToken}`)
         .expect(200)
     ).body.toNotify;
-  const settled = async () => {
-    for (let i = 0; i < 50 && (await toNotify()) > failFor.size; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-  };
+  const settled = () =>
+    Promise.all(sendAll.mock.results.map((result) => result.value));
   const deliver = <T>(to: string, link: string, value: T) => {
     if (failFor.has(to)) return R.failure(DeliveryFailure.Failed);
     sent.push({ to, link });
@@ -47,6 +45,7 @@ describe("Kora launch notice (e2e)", () => {
 
   beforeAll(async () => {
     h = await koraHarness();
+    sendAll = jest.spyOn(h.ctx.app.get(KoraNotifyService), "sendAll");
   }, 50000);
 
   beforeEach(async () => {
@@ -55,6 +54,7 @@ describe("Kora launch notice (e2e)", () => {
     await setKoraProjectStatus(h.ctx, KoraProjectStatus.Active);
     sent = [];
     failFor = new Set();
+    sendAll.mockClear();
     jest
       .spyOn(h.ctx.app.get(MailService), "sendUnrecordedMail")
       .mockImplementation(async ({ recipient, context }) =>
