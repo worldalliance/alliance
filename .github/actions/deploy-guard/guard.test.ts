@@ -1,38 +1,36 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { COMMIT, NEWER, makeFakeGhDir, runScript } from "./fake-gh";
+import { describe, expect, test } from "bun:test";
+import { type Route, fail, useFakeGh } from "../fake-gh";
+import { COMMIT, NEWER, deployments } from "./fixtures";
 
-let dir: string;
+const fakeGh = useFakeGh();
 
-beforeEach(() => {
-  dir = makeFakeGhDir();
+const compare = (status: string): Route => ({
+  match: `/compare/${COMMIT}...`,
+  response: { status },
+});
+const tip = (sha: string): Route => ({
+  match: "/git/ref/heads/production",
+  response: { object: { sha } },
 });
 
-afterEach(() => rmSync(dir, { recursive: true }));
-
-function guard(env: Record<string, string>) {
-  const output = join(dir, "output");
-  writeFileSync(output, "");
-  const result = runScript({
-    dir,
-    command: ["guard.sh"],
+function guard(params: { routes?: Route[]; env?: Record<string, string> }) {
+  const result = fakeGh({
+    command: [`${import.meta.dir}/guard.sh`],
+    routes: [
+      ...(params.routes ?? []),
+      deployments("staging-live"),
+      { match: "POST repos/o/r/deployments --input", response: { id: 42 } },
+      { match: "POST repos/o/r/deployments/42/statuses", response: {} },
+    ],
     env: {
-      GITHUB_OUTPUT: output,
-      GITHUB_STEP_SUMMARY: join(dir, "summary"),
       ENVIRONMENT: "staging",
       DETAILS: "{}",
       COMMIT,
       RUN_URL: "https://github.com/o/r/actions/runs/7/attempts/1",
-      ...env,
+      ...params.env,
     },
   });
-  const body = join(dir, "body");
-  return {
-    ...result,
-    output: readFileSync(output, "utf8"),
-    body: existsSync(body) ? JSON.parse(readFileSync(body, "utf8")) : null,
-  };
+  return { ...result, body: result.input && JSON.parse(result.input) };
 }
 
 function expectDeploys(result: ReturnType<typeof guard>) {
@@ -47,7 +45,7 @@ function expectSkips(result: ReturnType<typeof guard>, reason: string) {
   expect(result.code).toBe(0);
   expect(result.output).toBe("deployment_id=\n");
   expect(result.stdout).toContain(reason);
-  expect(readFileSync(join(dir, "summary"), "utf8")).toContain(reason);
+  expect(result.summary).toContain(reason);
   expect(result.calls).not.toContain("POST");
 }
 
@@ -71,8 +69,10 @@ describe("guard.sh on staging", () => {
 
   test("skips when a strictly newer commit's deploy started, even if it failed", () => {
     const result = guard({
-      FAKE_DEPLOYMENTS: `9 ${NEWER}\n8 ${COMMIT}\n`,
-      FAKE_COMPARE: "ahead",
+      routes: [
+        deployments("staging-live", [9, NEWER], [8, COMMIT]),
+        compare("ahead"),
+      ],
     });
     expectSkips(
       result,
@@ -84,7 +84,7 @@ describe("guard.sh on staging", () => {
 
   test("redeploys the newest recorded commit on a re-run", () => {
     const result = guard({
-      FAKE_DEPLOYMENTS: `9 ${COMMIT}\n`,
+      routes: [deployments("staging-live", [9, COMMIT])],
     });
     expectDeploys(result);
     expect(result.calls).not.toContain("compare");
@@ -95,8 +95,7 @@ describe("guard.sh on staging", () => {
     (status) => {
       expectDeploys(
         guard({
-          FAKE_DEPLOYMENTS: `9 ${NEWER}\n`,
-          FAKE_COMPARE: status,
+          routes: [deployments("staging-live", [9, NEWER]), compare(status)],
         }),
       );
     },
@@ -106,8 +105,7 @@ describe("guard.sh on staging", () => {
     "fails on compare status '%s', neither ahead, behind nor diverged",
     (status) => {
       const result = guard({
-        FAKE_DEPLOYMENTS: `9 ${NEWER}\n`,
-        FAKE_COMPARE: status,
+        routes: [deployments("staging-live", [9, NEWER]), compare(status)],
       });
       expect(result.code).toBe(1);
       expect(result.stderr).toContain("unexpected compare status");
@@ -116,18 +114,14 @@ describe("guard.sh on staging", () => {
   );
 
   test("fails when the deployments lookup fails", () => {
-    const result = guard({
-      FAKE_DEPLOYMENTS: `9 ${NEWER}\n`,
-      FAKE_FAIL: "/deployments?",
-    });
+    const result = guard({ routes: [fail("/deployments?")] });
     expect(result.code).not.toBe(0);
     expect(result.calls).not.toContain("POST");
   });
 
   test("fails when the compare lookup fails", () => {
     const result = guard({
-      FAKE_DEPLOYMENTS: `9 ${NEWER}\n`,
-      FAKE_FAIL: "/compare/",
+      routes: [deployments("staging-live", [9, NEWER]), fail("/compare/")],
     });
     expect(result.code).not.toBe(0);
     expect(result.calls).not.toContain("POST");
@@ -135,8 +129,8 @@ describe("guard.sh on staging", () => {
 
   test.each(["POST repos/o/r/deployments --input", "/statuses"])(
     "fails without a deployment_id when '%s' fails",
-    (fail) => {
-      const result = guard({ FAKE_FAIL: fail });
+    (match) => {
+      const result = guard({ routes: [fail(match)] });
       expect(result.code).not.toBe(0);
       expect(result.output).not.toContain("deployment_id=");
     },
@@ -146,9 +140,8 @@ describe("guard.sh on staging", () => {
 describe("guard.sh on production", () => {
   test("deploys the production branch's tip, recording the details", () => {
     const result = guard({
-      ENVIRONMENT: "production",
-      DETAILS: '{"staging_run":"run"}',
-      FAKE_TIP: COMMIT,
+      routes: [tip(COMMIT)],
+      env: { ENVIRONMENT: "production", DETAILS: '{"staging_run":"run"}' },
     });
     expectDeploys(result);
     expect(result.body).toMatchObject({
@@ -160,15 +153,15 @@ describe("guard.sh on production", () => {
 
   test("skips a commit the branch has moved past", () => {
     expectSkips(
-      guard({ ENVIRONMENT: "production", FAKE_TIP: NEWER }),
+      guard({ routes: [tip(NEWER)], env: { ENVIRONMENT: "production" } }),
       `the production branch now points at ${NEWER}.`,
     );
   });
 
   test("fails when the branch lookup fails", () => {
     const result = guard({
-      ENVIRONMENT: "production",
-      FAKE_FAIL: "git/ref/heads/production",
+      routes: [fail("git/ref/heads/production")],
+      env: { ENVIRONMENT: "production" },
     });
     expect(result.code).not.toBe(0);
     expect(result.calls).not.toContain("POST");
@@ -176,7 +169,7 @@ describe("guard.sh on production", () => {
 });
 
 test("guard.sh fails on an unknown environment", () => {
-  const result = guard({ ENVIRONMENT: "prod" });
+  const result = guard({ env: { ENVIRONMENT: "prod" } });
   expect(result.code).toBe(1);
   expect(result.stderr).toContain("unknown environment: prod");
 });
@@ -185,9 +178,8 @@ test.each(["", "cccccccc"])(
   "guard.sh fails on commit '%s', not a full SHA",
   (commit) => {
     const result = guard({
-      ENVIRONMENT: "production",
-      FAKE_TIP: COMMIT,
-      COMMIT: commit,
+      routes: [tip(COMMIT)],
+      env: { ENVIRONMENT: "production", COMMIT: commit },
     });
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("commit must be a full SHA");
@@ -198,7 +190,7 @@ test.each(["", "cccccccc"])(
 test.each(['"x"', "[]", "null", "not json", "{} {}"])(
   "guard.sh fails on details %s, not a JSON object",
   (details) => {
-    const result = guard({ DETAILS: details });
+    const result = guard({ env: { DETAILS: details } });
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("details must be a JSON object");
     expect(result.calls).toBe("");
