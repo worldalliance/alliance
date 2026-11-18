@@ -35,6 +35,7 @@ import {
   NeedsReplyMemberDto,
   SendStaffTextDto,
 } from "./dto/mms-thread.dto";
+import { MmsInboxService } from "./mms-inbox.service";
 import { MediaRefusal, MmsMediaService } from "./mms-media.service";
 import {
   MmsThreadService,
@@ -80,12 +81,13 @@ export class MmsThreadController {
   constructor(
     private readonly threadService: MmsThreadService,
     private readonly mediaService: MmsMediaService,
+    private readonly inboxService: MmsInboxService,
   ) {}
 
   @Get("needs-reply")
   @ApiOkResponse({ type: [NeedsReplyMemberDto] })
   async needsReplyAdmin(): Promise<NeedsReplyMemberDto[]> {
-    return (await this.threadService.needsReply()).map(
+    return (await this.inboxService.needsReply()).map(
       (entry) => new NeedsReplyMemberDto(entry),
     );
   }

@@ -1,0 +1,252 @@
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "src/utils/Repository";
+import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
+import {
+  type EntityManager,
+  In,
+  IsNull,
+  type SelectQueryBuilder,
+} from "typeorm";
+import { z } from "zod";
+import { optedOutSql } from "./mms-number.service";
+import { MmsThreadEvent, MmsThreadEventKind } from "./mms-thread-event.entity";
+import { Mms, MmsDirection } from "./mms.entity";
+
+export enum ReplyState {
+  NeedsReply = "needs_reply",
+  Handled = "handled",
+  Answered = "answered",
+}
+
+export type NeedsReplyMember = {
+  user: User;
+  lastMessageBody: string;
+  waitingSince: Date;
+};
+
+/** A mark on a number's texts through `throughId`, a text in its thread. */
+export type NumberMark = {
+  phoneNumber: string;
+  throughId: number;
+  adminId: number;
+};
+
+const ANSWERS_MEMBER: Record<MessageStatus, boolean> = {
+  queued: true,
+  sending: true,
+  sent: true,
+  delivered: true,
+  accepted: true,
+  scheduled: true,
+  read: true,
+  partially_delivered: true,
+  failed: false,
+  undelivered: false,
+  canceled: false,
+  receiving: false,
+  received: false,
+};
+
+const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
+  .filter(([, answers]) => answers)
+  .map(([status]) => status);
+
+/** Inbound texts Needs reply counts and no staff reply has followed, handled
+ * ones included, from a query aliased `inbound`. */
+const unanswered = (query: SelectQueryBuilder<Mms>) =>
+  query
+    .andWhere("inbound.direction = :inbound", {
+      inbound: MmsDirection.Inbound,
+    })
+    .andWhere("inbound.keyword IS NULL")
+    .andWhere(
+      `NOT EXISTS (
+        SELECT 1 FROM mms reply
+        WHERE reply."memberPhoneNumber" = inbound."memberPhoneNumber"
+          AND reply."deletedAt" IS NULL
+          AND (reply."createdAt", reply.id) > (inbound."createdAt", inbound.id)
+          AND reply."sentById" IS NOT NULL
+          AND reply.status IN (:...answering)
+      )`,
+      { answering: ANSWERING_STATUSES },
+    );
+
+@Injectable()
+export class MmsInboxService {
+  constructor(
+    @InjectRepository(Mms)
+    private readonly mmsRepository: Repository<Mms>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
+
+  async replyState(phoneNumber: string): Promise<ReplyState> {
+    const { handled } = z
+      .object({ handled: z.boolean().nullable() })
+      .parse(
+        await this.unansweredOf(phoneNumber)
+          .select('bool_and(inbound."handledEventId" IS NOT NULL)', "handled")
+          .getRawOne(),
+      );
+    if (handled === null) return ReplyState.Answered;
+    return handled ? ReplyState.Handled : ReplyState.NeedsReply;
+  }
+
+  private unansweredOf(
+    phoneNumber: string,
+    manager: EntityManager = this.mmsRepository.manager,
+  ) {
+    return unanswered(
+      manager
+        .createQueryBuilder(Mms, "inbound")
+        .where("inbound.memberPhoneNumber = :phoneNumber", { phoneNumber }),
+    );
+  }
+
+  /** Marks the number's unanswered texts up to `throughId`, the newest text
+   * staff could see, so one arriving meanwhile still needs a reply. */
+  async markHandled(params: NumberMark): Promise<void> {
+    return this.mark(params, async ({ manager, phoneNumber, record }) => {
+      const texts = await this.unansweredOf(phoneNumber, manager)
+        .select("inbound.id")
+        .andWhere('inbound."handledEventId" IS NULL')
+        .andWhere(
+          `(inbound."createdAt", inbound.id) <= (SELECT "createdAt", id FROM mms WHERE id = :throughId)`,
+          { throughId: params.throughId },
+        )
+        .orderBy("inbound.id")
+        .setLock("pessimistic_write")
+        .getMany();
+      if (texts.length === 0) return;
+      await manager.update(
+        Mms,
+        { id: In(texts.map((text) => text.id)), handledEventId: IsNull() },
+        { handledEventId: await record(MmsThreadEventKind.MarkedHandled) },
+      );
+    });
+  }
+
+  async markNeedsReply(params: NumberMark): Promise<void> {
+    return this.mark(params, async ({ manager, phoneNumber, record }) => {
+      const texts = await this.unansweredOf(phoneNumber, manager)
+        .select("inbound.id")
+        .andWhere('inbound."handledEventId" IS NOT NULL')
+        .orderBy("inbound.id")
+        .setLock("pessimistic_write")
+        .getMany();
+      if (texts.length === 0) return;
+      await record(MmsThreadEventKind.MarkedNeedsReply);
+      await manager.update(
+        Mms,
+        { id: In(texts.map((text) => text.id)) },
+        { handledEventId: null },
+      );
+    });
+  }
+
+  /** `apply` calls `record` only when it changes texts, so a mark that changes
+   * nothing leaves no history. `apply` locks the texts it reads in id order, so
+   * a concurrent mark of the same kind on the same number, from any member
+   * sharing it, waits and then finds them changed. A mark of the opposite kind
+   * reads the other texts and doesn't wait. */
+  private async mark(
+    params: NumberMark,
+    apply: (input: {
+      manager: EntityManager;
+      phoneNumber: string;
+      record: (kind: MmsThreadEventKind) => Promise<number>;
+    }) => Promise<void>,
+  ): Promise<void> {
+    await this.mmsRepository.manager.transaction(async (manager) => {
+      const record = async (kind: MmsThreadEventKind) => {
+        const event = await manager.save(
+          manager.create(MmsThreadEvent, {
+            kind,
+            afterMmsId: params.throughId,
+            markedById: params.adminId,
+          }),
+        );
+        return event.id;
+      };
+      await apply({ manager, phoneNumber: params.phoneNumber, record });
+    });
+  }
+
+  /** Longest-waiting first, timed from each number's oldest unanswered text.
+   * STOP and START texts, which the webhook acts on and Twilio answers, neither
+   * list a member nor hide an earlier text that needs a reply. */
+  async needsReply(): Promise<NeedsReplyMember[]> {
+    const oldestTexts = await this.unansweredTexts();
+    if (oldestTexts.length === 0) return [];
+    const users = await this.subscribedMembers()
+      .andWhere("member.phoneNumber = ANY(:phoneNumbers)", {
+        phoneNumbers: oldestTexts.map((m) => m.memberPhoneNumber),
+      })
+      .orderBy("member.id")
+      .getMany();
+    const usersByNumber = Map.groupBy(users, (user) => user.phoneNumber);
+    return oldestTexts
+      .toSorted(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
+      )
+      .flatMap((oldest) =>
+        (usersByNumber.get(oldest.memberPhoneNumber) ?? []).map((user) => ({
+          user,
+          lastMessageBody: oldest.lastMessageBody,
+          waitingSince: oldest.createdAt,
+        })),
+      );
+  }
+
+  /** Per subscribed number, its oldest inbound text that no staff reply has
+   * followed and staff haven't marked handled, with the latest such text's
+   * body as `lastMessageBody`. The window runs before `DISTINCT ON` keeps each
+   * number's first row. */
+  private async unansweredTexts() {
+    const rows = await unanswered(
+      this.mmsRepository.createQueryBuilder("inbound"),
+    )
+      .select("inbound.id", "id")
+      .addSelect("inbound.memberPhoneNumber", "memberPhoneNumber")
+      .addSelect("inbound.createdAt", "createdAt")
+      .distinctOn(["inbound.memberPhoneNumber"])
+      .addSelect(
+        `first_value(inbound.body) OVER (
+          PARTITION BY inbound."memberPhoneNumber"
+          ORDER BY inbound."createdAt" DESC, inbound.id DESC
+        )`,
+        "lastMessageBody",
+      )
+      .andWhere('inbound."handledEventId" IS NULL')
+      .andWhere(
+        `inbound."memberPhoneNumber" IN (${this.subscribedMembers()
+          .select("member.phoneNumber")
+          .getQuery()})`,
+      )
+      .orderBy("inbound.memberPhoneNumber")
+      .addOrderBy("inbound.createdAt", "ASC")
+      .addOrderBy("inbound.id", "ASC")
+      .getRawMany();
+    return z
+      .array(
+        z.object({
+          id: z.number(),
+          memberPhoneNumber: z.string(),
+          createdAt: z.date(),
+          lastMessageBody: z.string(),
+        }),
+      )
+      .parse(rows);
+  }
+
+  private subscribedMembers() {
+    return this.userRepository.createQueryBuilder("member").where(
+      `NOT ${optedOutSql({
+        state: `(SELECT "optedOut" FROM mms_thread WHERE "phoneNumber" = member."phoneNumber")`,
+        phoneNumber: 'member."phoneNumber"',
+      })}`,
+    );
+  }
+}

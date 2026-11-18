@@ -10,6 +10,7 @@ import {
   Min,
   ValidateBy,
 } from "class-validator";
+import { type NeedsReplyMember, ReplyState } from "../mms-inbox.service";
 import { MmsMedia } from "../mms-media.entity";
 import {
   inlineContentType,
@@ -17,12 +18,7 @@ import {
   MmsMediaStatus,
 } from "../mms-media.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "../mms-thread-event.entity";
-import {
-  type MmsThreadView,
-  type NeedsReplyMember,
-  ReplyState,
-  THREAD_PAGE_SIZE,
-} from "../mms-thread.service";
+import { type MmsThreadView, THREAD_PAGE_SIZE } from "../mms-thread.service";
 import { Mms } from "../mms.entity";
 
 export class MmsMediaDto {
