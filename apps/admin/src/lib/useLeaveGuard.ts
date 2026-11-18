@@ -29,10 +29,17 @@ export function withoutLeaveGuard(navigate: () => void) {
  * Asks before a navigation or reload discards unsaved changes. Throws outside
  * `LeaveGuard`, which owns the blocker that asks.
  */
-export function useLeaveGuard(dirty: boolean) {
+export function useLeaveGuard(
+  dirty: boolean,
+  options: {
+    /** For state that survives a change of search params on the same path. */
+    allowSamePath?: boolean;
+  } = {},
+) {
   if (!useContext(LeaveGuardContext)) {
     throw new Error("useLeaveGuard needs a LeaveGuard above it");
   }
+  const { allowSamePath = false } = options;
   useBeforeUnload(
     useCallback(
       (event) => {
@@ -45,10 +52,12 @@ export function useLeaveGuard(dirty: boolean) {
   );
 
   useEffect(() => {
-    const guard: BlockerFunction = () => dirty;
+    const guard: BlockerFunction = ({ currentLocation, nextLocation }) =>
+      dirty &&
+      !(allowSamePath && currentLocation.pathname === nextLocation.pathname);
     guards.add(guard);
     return () => {
       guards.delete(guard);
     };
-  }, [dirty]);
+  }, [dirty, allowSamePath]);
 }

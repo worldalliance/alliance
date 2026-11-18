@@ -4,7 +4,7 @@ import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
-import { MemoryRouter } from "react-router";
+import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
 import ActionEditor from "./ActionEditor";
 import { useActionEditor } from "./useActionEditor";
 
@@ -75,7 +75,7 @@ const renderActionEditor = (isNew: boolean) => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={new QueryClient()}>
       <ToastProvider>
-        <MemoryRouter>{children}</MemoryRouter>
+        <LeaveGuardRouter>{children}</LeaveGuardRouter>
       </ToastProvider>
     </QueryClientProvider>
   );

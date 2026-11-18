@@ -254,6 +254,7 @@ const ActionDashboard: React.FC = () => {
                 reporting={reporting}
                 actionExport={actionExport}
                 imageUploading={editor.imageUploading}
+                unsaved={editor.dirty}
                 onDuplicate={handleDuplicate}
                 onArchive={handleArchive}
                 onTabChange={onTabChange}

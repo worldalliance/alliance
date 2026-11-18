@@ -316,6 +316,24 @@ describe("ActionUpdatePage", () => {
     await waitFor(() => expect(titleSaved).toBe("See worldalliance.org/b"));
     expect(writes).toBe(1);
   });
+
+  it("asks before leaving unsaved details, but not for a tab change", async () => {
+    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(false);
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^update details$/i }),
+    );
+    fireEvent.change(await screen.findByDisplayValue("Hearing"), {
+      target: { value: "Hearing moved" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Content" }));
+    expect(leaveAsked).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /back to updates/i }));
+    await waitFor(() => expect(leaveAsked).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("heading", { name: "Hearing" })).toBeTruthy();
+  });
 });
 
 describe("while an update's notifications are on hold", () => {

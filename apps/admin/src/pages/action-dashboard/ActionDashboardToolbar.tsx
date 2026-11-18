@@ -15,6 +15,7 @@ type ActionDashboardToolbarProps = {
   action: ParsedActionDto;
   actionExport: ActionExport;
   imageUploading: boolean;
+  unsaved: boolean;
   onDuplicate: () => Promise<void>;
   onArchive: () => Promise<void>;
 };
@@ -34,6 +35,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
     handleExportAction,
   },
   imageUploading,
+  unsaved,
   onDuplicate,
   onArchive,
 }) => {
@@ -66,7 +68,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
       )}
       <Button
         onClick={() => onDuplicate()}
-        disabled={imageUploading}
+        disabled={imageUploading || unsaved}
         title={imageUploading ? imageUploadingMessage : undefined}
         color={ButtonColor.White}
         className="!px-3 !text-sm gap-x-1"
@@ -74,6 +76,11 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
         <Copy className="h-5 w-5" />
         Duplicate Action
       </Button>
+      {unsaved && (
+        <span className="self-center text-sm text-amber-800">
+          Save your changes on Action details to duplicate this action.
+        </span>
+      )}
       <div className="relative">
         <Button
           onClick={handleExportActionOpen}
