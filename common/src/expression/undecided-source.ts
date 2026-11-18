@@ -42,25 +42,51 @@ export function sourceQueries({
     unionParts(typeOf(expr)).every(
       (part) => (part.flags & (flags | ts.TypeFlags.Any)) !== 0,
     );
-  // A read declared never missing stays so whatever `tsc` narrowed, unless
-  // its target can be missing and no guard covers that target.
+  // The key's declared type, not the key, names the fields: `rec[key]` with a
+  // `key` that can be "a" or "b" reads `a` or `b`, even where `tsc` narrowed
+  // `key`, as on the right of `key === "a" || …`.
+  const declaredTypes = (expr: Expr): ts.Type[] | undefined => {
+    const read = unparenthesized(node(expr));
+    if (!ts.isElementAccessExpression(read)) {
+      const symbol = checker.getSymbolAtLocation(
+        ts.isPropertyAccessExpression(read) ? read.name : read,
+      );
+      return symbol && [checker.getTypeOfSymbol(symbol)];
+    }
+    const target = checker.getNonNullableType(
+      checker.getTypeAtLocation(read.expression),
+    );
+    const keys = (expr.kind === ExprKind.Index &&
+      expr.index.kind !== ExprKind.Literal &&
+      declaredTypes(expr.index)) || [
+      checker.getTypeAtLocation(read.argumentExpression),
+    ];
+    const fields = keys
+      .flatMap(unionParts)
+      .filter((key) => !isNullableType(key))
+      .map((key) =>
+        key.isStringLiteral() || key.isNumberLiteral()
+          ? checker.getPropertyOfType(target, String(key.value))
+          : undefined,
+      );
+    if (!fields.every((field) => field !== undefined)) return undefined;
+    return fields.map((field) => checker.getTypeOfSymbol(field));
+  };
+  // A read through a target that can be missing, by position, or by a key
+  // naming no field can be missing whatever `tsc` narrowed it to; a target a
+  // guard covers can't.
   const declaredNullable = (
     expr: Expr,
     { covered }: { covered: (read: Expr) => boolean },
   ): boolean => {
-    if (
-      (expr.kind === ExprKind.Member || expr.kind === ExprKind.Index) &&
-      !covered(expr.target) &&
-      declaredNullable(expr.target, { covered })
-    ) {
-      return true;
+    const types = declaredTypes(expr);
+    if (expr.kind === ExprKind.Member || expr.kind === ExprKind.Index) {
+      if (!covered(expr.target) && declaredNullable(expr.target, { covered })) {
+        return true;
+      }
+      if (expr.kind === ExprKind.Index && types === undefined) return true;
     }
-    const read = unparenthesized(node(expr));
-    const symbol = checker.getSymbolAtLocation(
-      ts.isPropertyAccessExpression(read) ? read.name : read,
-    );
-    if (symbol === undefined) return ts.isElementAccessExpression(read);
-    return isNullableType(checker.getTypeOfSymbol(symbol));
+    return types?.some(isNullableType) ?? false;
   };
   return {
     node,

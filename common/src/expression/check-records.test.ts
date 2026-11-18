@@ -1,7 +1,8 @@
 import { R } from "../result";
-import { TypeKind, type Catalog, type ValueType } from "./catalog";
+import { TypeKind, type Catalog, type Scope, type ValueType } from "./catalog";
 import { Undecided, checkExpression } from "./check";
 import {
+  NEEDLESS,
   groupCondition,
   passes,
   problems,
@@ -297,6 +298,69 @@ test("a message keeps the spacing inside text values", () => {
     ),
   );
 });
+
+test("a fallback after a read by key is needless only when every value its key takes names a field that can't be missing", () => {
+  const choice = (values: string[]): ValueType => ({
+    kind: TypeKind.Choice,
+    options: values.map((value) => ({ value, label: value })),
+  });
+  const scope = {
+    catalog: {
+      inputs: [
+        {
+          id: "rec",
+          label: "Rec",
+          type: {
+            kind: TypeKind.Record,
+            fields: {
+              a: {
+                kind: TypeKind.Nullable,
+                inner: { kind: TypeKind.Number },
+              },
+              b: { kind: TypeKind.Number },
+            },
+          },
+        },
+        { id: "key", label: "Key", type: choice(["a", "b"]) },
+        { id: "keyB", label: "Key B", type: choice(["b"]) },
+        { id: "keyBC", label: "Key BC", type: choice(["b", "c"]) },
+      ],
+      functions: [],
+    },
+    named: [],
+  } satisfies Scope;
+  const check = (source: string) =>
+    checkExpression({ source, scope, rule: variable });
+  expect(check("rec[key] === 1 && (rec[key] ?? 0) === 1").ok).toBe(true);
+  expect(check('keyBC === "b" && (rec[keyBC] ?? 0) === 1').ok).toBe(true);
+  expect(
+    check('key === "a" || (isUnknown(rec[key] ?? 1) ? 1 / 0 : 0) > 0').ok,
+  ).toBe(true);
+  const needless = "rec[keyB] === 1 && (rec[keyB] ?? 0) === 1";
+  const fallback = needless.indexOf("0)");
+  expect(check(needless)).toEqual(
+    R.failure([
+      expect.objectContaining({
+        message: NEEDLESS,
+        start: fallback,
+        end: fallback + 1,
+      }),
+    ]),
+  );
+});
+
+test.each([
+  "items[0]?.name",
+  "items[0]?.score",
+  'items[0]?.name?.includes("a")',
+])(
+  "a fallback after a list holding %s is needless, as `?.` passes tsc",
+  (read) => {
+    expect(problems(`([${read}].length > 0) ?? false`)).toEqual([
+      { message: NEEDLESS, at: "false" },
+    ]);
+  },
+);
 
 test.each([
   'items.some(item => item.score === 1 || isUnknown(item["score"]))',

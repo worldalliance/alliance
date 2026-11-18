@@ -8,6 +8,10 @@ import {
 import { Undecided, checkExpression, type ResultRule } from "./check";
 import { parseExpression } from "./parse";
 
+export const NEEDLESS =
+  "This fallback can't change the result: the value before `??` always has one. Remove the `?? …`.";
+export const GUARDED =
+  "This fallback isn't needed: an `isUnknown(…)` check already decides the result when the value is missing. Remove the `?? …`.";
 export const UNDECIDED_STATE =
   "This is undecided when `state` has no value. Add `?? false` or `?? true` to decide it then.";
 

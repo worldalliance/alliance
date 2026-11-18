@@ -20,6 +20,12 @@ export const undecidedMessage = ({
   return `This is undecided when ${culprit} has no value. ${advice}`;
 };
 
+export const NEEDLESS_FALLBACK =
+  "This fallback can't change the result: the value before `??` always has one. Remove the `?? …`.";
+
+export const GUARDED_FALLBACK =
+  "This fallback isn't needed: an `isUnknown(…)` check already decides the result when the value is missing. Remove the `?? …`.";
+
 export const textMessage = (culprit: Culprit) => {
   const advice = 'Add `?? "…"` to choose what they see instead.';
   if (culprit === "") return `Members would see no text here. ${advice}`;

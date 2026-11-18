@@ -63,6 +63,39 @@ const isKeyRead = (
   "value" in value.index &&
   typeof value.index.value === "string";
 
+enum GuardKind {
+  /** A ternary test's: only the branch it takes runs. */
+  Branch,
+  /** Beside `&&` or `||`. */
+  Beside,
+  /**
+   * Beside `&&` or `||` outside a list, record, `map` result, `reduce`
+   * function or argument holding the read, which carries the read's value on.
+   */
+  Held,
+}
+
+const IN_HELD: Record<GuardKind, GuardKind> = {
+  [GuardKind.Branch]: GuardKind.Branch,
+  [GuardKind.Beside]: GuardKind.Held,
+  [GuardKind.Held]: GuardKind.Held,
+};
+
+// Whether a guard already known decides at least what one of kind `added`
+// would.
+const decidesAsMuch = (existing: GuardKind, added: GuardKind) => {
+  switch (existing) {
+    case GuardKind.Branch:
+      return true;
+    case GuardKind.Beside:
+      return added === GuardKind.Beside;
+    case GuardKind.Held:
+      return false;
+    default:
+      throw new Error(`unknown guard kind: ${existing satisfies never}`);
+  }
+};
+
 /**
  * The reads an `isUnknown` guard decides where the analysis stands. In
  * `… || isUnknown(x)`, `… && !isUnknown(x)` and `isUnknown(x) ? … : …`, an
@@ -72,19 +105,20 @@ const isKeyRead = (
  * reads: a lambda parameter of the same name is a different value.
  */
 export function guards({ text }: { text: (expr: Expr) => string }) {
-  const known = new Map<string, readonly string[]>();
+  type Guard = { names: readonly string[]; kind: GuardKind };
+  const known = new Map<string, Guard>();
   const withKnown = <T>(
-    entries: ReadonlyMap<string, readonly string[]>,
+    entries: ReadonlyMap<string, Guard>,
     run: () => T,
   ): T => {
     const saved = new Map(known);
     known.clear();
-    entries.forEach((names, read) => known.set(read, names));
+    entries.forEach((guard, read) => known.set(read, guard));
     try {
       return run();
     } finally {
       known.clear();
-      saved.forEach((names, read) => known.set(read, names));
+      saved.forEach((guard, read) => known.set(read, guard));
     }
   };
   const freeNames = (expr: Expr): string[] => {
@@ -113,26 +147,53 @@ export function guards({ text }: { text: (expr: Expr) => string }) {
         throw new Error(`unknown kind: ${expr satisfies never}`);
     }
   };
+  const assumingOne = <T>(
+    { read, kind }: { read: Expr; kind: GuardKind },
+    run: () => T,
+  ): T => {
+    const existing = known.get(readKey(read));
+    if (existing !== undefined && decidesAsMuch(existing.kind, kind)) {
+      return run();
+    }
+    return withKnown(
+      new Map([...known, [readKey(read), { names: freeNames(read), kind }]]),
+      run,
+    );
+  };
+  const assuming = <T>(
+    { reads, kind }: { reads: readonly Expr[]; kind: GuardKind },
+    run: () => T,
+  ): T =>
+    reads.reduceRight<() => T>(
+      (next, read) => () => assumingOne({ read, kind }, next),
+      run,
+    )();
   return {
     covers: (expr: Expr) => known.size > 0 && known.has(readKey(expr)),
-    assumingKnown: <T>(reads: readonly Expr[], run: () => T): T => {
-      const added = reads.filter((read) => !known.has(readKey(read)));
-      if (added.length === 0) return run();
-      return withKnown(
-        new Map([
-          ...known,
-          ...added.map((read): [string, string[]] => [
-            readKey(read),
-            freeNames(read),
+    holds: (expr: Expr) => known.get(readKey(expr))?.kind === GuardKind.Held,
+    assumingKnown: <T>(reads: readonly Expr[], run: () => T): T =>
+      assuming({ reads, kind: GuardKind.Beside }, run),
+    inBranch: <T>(reads: readonly Expr[], run: () => T): T =>
+      assuming({ reads, kind: GuardKind.Branch }, run),
+    held: <T>(run: () => T): T =>
+      withKnown(
+        new Map(
+          [...known].map(([read, guard]) => [
+            read,
+            { ...guard, kind: IN_HELD[guard.kind] },
           ]),
-        ]),
+        ),
         run,
-      );
-    },
+      ),
+    branchesOnly: <T>(run: () => T): T =>
+      withKnown(
+        new Map([...known].filter(([, { kind }]) => kind === GuardKind.Branch)),
+        run,
+      ),
     inLambda: <T>(lambda: { params: string[] }, run: () => T): T =>
       withKnown(
         new Map(
-          [...known].filter(([, names]) =>
+          [...known].filter(([, { names }]) =>
             names.every((name) => !lambda.params.includes(name)),
           ),
         ),

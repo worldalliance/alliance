@@ -210,6 +210,17 @@ const COLLECTS_EACH_RESULT: Record<ListRule, boolean> = {
   [ListRule.Sort]: false,
 };
 
+const FEEDS_RESULT_BACK: Record<ListRule, boolean> = {
+  [ListRule.Plain]: false,
+  [ListRule.Concat]: false,
+  [ListRule.Join]: false,
+  [ListRule.Lookup]: false,
+  [ListRule.Predicate]: false,
+  [ListRule.EachItem]: false,
+  [ListRule.Reduce]: true,
+  [ListRule.Sort]: false,
+};
+
 // Rules for a list target; text methods of the same name follow none of them.
 export const isPredicateMethod = (method: string) =>
   IS_PREDICATE[listRule(method)];
@@ -225,6 +236,9 @@ export const keepsUnknownAsItem = (method: string) =>
 
 export const collectsEachResult = (method: string) =>
   COLLECTS_EACH_RESULT[listRule(method)];
+
+export const feedsResultBack = (method: string) =>
+  FEEDS_RESULT_BACK[listRule(method)];
 
 class UnknownResult extends Error {}
 

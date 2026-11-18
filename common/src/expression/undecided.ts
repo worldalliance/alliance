@@ -1,7 +1,9 @@
+/* alliance/max-lines 600 -- one recursive walk whose counters, guard state and reports every branch shares; codex's splits move its operand checks or read tracking out behind callbacks into that state */
 import ts from "typescript";
 import { IS_UNKNOWN, type Diagnostic } from "./catalog";
 import {
   collectsEachResult,
+  feedsResultBack,
   isItemLookup,
   isPredicateMethod,
   keepsUnknownAsItem,
@@ -10,6 +12,8 @@ import {
 import { BinaryOp, ExprKind, UnaryOp, children, type Expr } from "./tree";
 import { guards, readKey, readsGuardedBy } from "./undecided-guards";
 import {
+  GUARDED_FALLBACK,
+  NEEDLESS_FALLBACK,
   NEVER_NULLISH,
   UNREACHABLE_FALLBACK,
   textMessage,
@@ -40,7 +44,8 @@ type Analysis = {
  * three-valued operators, `===`/`!==`, either side of `??`, a ternary branch,
  * `isUnknown`, a function parameter that accepts a missing value, and the
  * result; a ternary test or list predicate needs a decided yes/no, and a text
- * part needs a value.
+ * part needs a value. It also reports a `??` whose left side can't be
+ * missing, in place of `tsc`'s TS2869 and TS2881.
  */
 export function analyze({
   tree,
@@ -72,34 +77,48 @@ export function analyze({
   } = sourceQueries({ source, checker, file, offset });
   const report = (expr: Expr, message: string) =>
     diagnostics.push({ message, ...span(expr) });
-  // `tsc` rejects `join` on a list with missing items (formula-lib.ts).
   const missingItemMatters = (expr: Extract<Expr, { kind: ExprKind.Method }>) =>
-    isItemLookup(expr.method) ||
-    (expr.method !== "join" && needsEveryItem(expr.method, expr.args.length));
+    isItemLookup(expr.method) || needsEveryItem(expr.method, expr.args.length);
 
-  let undecidedReports = 0;
+  // Undecided reports, and reads that can be missing: `guarded` ones a guard
+  // covered, which `tsc` may have narrowed, `narrowed` ones `tsc` narrowed by
+  // anything but a guard, and `loose` ones, the narrowed reads that can leave
+  // the value around them unknown, which those a held guard decides and
+  // `reduce`'s own result passed back can't.
+  const tally = { undecided: 0, guarded: 0, narrowed: 0, loose: 0 };
+  const counts = () => ({ ...tally });
+  const restore = (saved: typeof tally) => Object.assign(tally, saved);
   let quiet = false;
   let discarded = false;
   let dead = false;
   const undecided = (expr: Expr, culprit: Culprit) => {
-    undecidedReports += 1;
+    tally.undecided += 1;
     if (quiet) return;
     report(
       expr,
       undecidedMessage({ culprit, yesNo: isYesNoType(typeOf(expr)) }),
     );
   };
-  const isolated = (run: () => void) => {
-    const saved = undecidedReports;
-    run();
-    undecidedReports = saved;
+  // Undecided reports and guarded, narrowed and loose reads inside don't reach
+  // the value around it, except with `keepsNarrowed`, where narrowed and loose
+  // reads do, and any undecided report adds one narrowed, loose read.
+  const isolated = <T>(
+    run: () => T,
+    { keepsNarrowed = false }: { keepsNarrowed?: boolean } = {},
+  ): T => {
+    const saved = counts();
+    const result = run();
+    const undecidedItem = tally.undecided > saved.undecided ? 1 : 0;
+    const kept = [tally.narrowed + undecidedItem, tally.loose + undecidedItem];
+    restore(saved);
+    if (keepsNarrowed) [tally.narrowed, tally.loose] = kept;
+    return result;
   };
-  // An unknown list item, record entry or `map` result leaves the list, record
-  // or call known, so a guard on the read holding it doesn't decide it.
-  const contained = (run: () => void) => {
+  // A guard on the read holding this doesn't decide it.
+  const loud = (run: () => void) => {
     const saved = quiet;
     quiet = discarded || dead;
-    isolated(run);
+    run();
     quiet = saved;
   };
   // A function receives its arguments whole, so discarding its result
@@ -110,19 +129,25 @@ export function analyze({
     run();
     discarded = saved;
   };
+  // An unknown list item, record entry or `map` result leaves the list, record
+  // or call known, but a read out of it can take a narrowed read's missing
+  // value, or an undecided item's, and carry a guarded read's on.
+  const contained = (run: () => void) =>
+    loud(() => isolated(() => held(run), { keepsNarrowed: true }));
   // A guard decides an unknown that reaches the read it guards, and an
   // `isUnknown` argument's value is discarded whole.
-  const decidedByGuard = (
-    run: () => void,
+  const decidedByGuard = <T>(
+    run: () => T,
     { discards }: { discards: boolean },
-  ) => {
+  ): T => {
     const saved = { quiet, discarded };
     quiet = true;
     discarded ||= discards;
-    isolated(run);
+    const result = isolated(run);
     ({ quiet, discarded } = saved);
+    return result;
   };
-  // Code that never runs reports nothing, down to its calls' arguments.
+  // Code that never runs reports no unknown, down to its calls' arguments.
   const neverRuns = (run: () => void) => {
     const saved = dead;
     dead = true;
@@ -138,7 +163,9 @@ export function analyze({
     excuse(left, UNREACHABLE_FALLBACK);
     const expected = checker.getBaseTypeOfLiteralType(typeOf(left));
     // A fallback that can be missing passes its unknown on through the `??`.
+    // A left narrowed to `never` is a contradiction `tsc` already reports.
     if (
+      (expected.flags & ts.TypeFlags.Never) === 0 &&
       !checker.isTypeAssignableTo(
         checker.getNonNullableType(typeOf(right)),
         expected,
@@ -166,7 +193,7 @@ export function analyze({
   const shown = (expr: Expr) => {
     const culprit = visit(expr);
     if (culprit === undefined) return;
-    undecidedReports += 1;
+    tally.undecided += 1;
     if (!quiet) report(expr, textMessage(culprit));
   };
   // An item whose destination, such as a function parameter, accepts a
@@ -180,16 +207,50 @@ export function analyze({
   // wrong, but is still unknown at runtime, so an enclosing `??` is needed
   // all the same.
   const rejected = (culprit: Culprit | undefined): undefined => {
-    if (culprit !== undefined) undecidedReports += 1;
+    if (culprit !== undefined) tally.undecided += 1;
     return undefined;
   };
-  // `tsc` rejects a nullable operand of arithmetic or `<` itself, which only
-  // `?? …` on that operand fixes.
+  // `tsc` rejects a nullable operand of arithmetic or `<`, target of a read or
+  // call without `?.`, key of a read, or argument to a parameter that takes no
+  // missing value, itself, which only `?? …` on that operand fixes.
   const checkedOperand = (expr: Expr): Culprit | undefined => {
     const culprit = plain(expr);
     return nullable(expr) ? rejected(culprit) : culprit;
   };
-  const { covers, assumingKnown, inLambda } = guards({ text });
+  const {
+    covers,
+    holds,
+    assumingKnown,
+    inBranch,
+    inLambda,
+    held,
+    branchesOnly,
+  } = guards({ text });
+  // Parameters fed a narrowed read, as a function's are when its list holds
+  // one and `reduce`'s always are, each set when that read is loose.
+  let fedParams: ReadonlyMap<string, boolean> = new Map();
+  const inFunction = <T>({
+    lambda,
+    fed,
+    run,
+  }: {
+    lambda: { params: string[] };
+    fed: { loose: boolean } | undefined;
+    run: () => T;
+  }): T => {
+    const saved = fedParams;
+    fedParams = new Map([
+      ...[...saved].filter(([name]) => !lambda.params.includes(name)),
+      ...(fed === undefined
+        ? []
+        : lambda.params.map((name) => [name, fed.loose] as const)),
+    ]);
+    try {
+      return inLambda(lambda, run);
+    } finally {
+      fedParams = saved;
+    }
+  };
   // `tsc` narrows by an `isUnknown` on the right of `??` as if it ran.
   const unrun = new Set<string>();
   const collectUnrun = (expr: Expr, { right }: { right: boolean }): void => {
@@ -214,16 +275,40 @@ export function analyze({
   ];
   const own = (expr: Expr): Culprit | undefined => {
     const key = readKey(expr);
-    return nullable(expr) ||
-      ((unrun.has(key) || leftReads.has(key)) &&
-        declaredNullable(expr, { covered: covers }))
-      ? `\`${text(expr)}\``
-      : undefined;
+    const declared = declaredNullable(expr, { covered: covers });
+    if (
+      nullable(expr) ||
+      ((unrun.has(key) || leftReads.has(key)) && declared)
+    ) {
+      return `\`${text(expr)}\``;
+    }
+    const fed =
+      expr.kind === ExprKind.Param ? fedParams.get(expr.name) : undefined;
+    if (fed !== undefined || declared) {
+      tally.narrowed += 1;
+      if (fed !== false) tally.loose += 1;
+    }
+    return undefined;
   };
 
+  // A held guard still decides the read's unknown, but the read can still be
+  // missing where it goes, so it counts as narrowed rather than guarded.
   function visit(expr: Expr): Culprit | undefined {
     if (!covers(expr)) return visitParts(expr);
-    decidedByGuard(() => visitParts(expr), { discards: false });
+    const missing = decidedByGuard(
+      () => {
+        const [reported, narrowed] = [tally.undecided, tally.narrowed];
+        const culprit = visitParts(expr);
+        return (
+          culprit !== undefined ||
+          tally.undecided > reported ||
+          tally.narrowed > narrowed
+        );
+      },
+      { discards: false },
+    );
+    if (missing && holds(expr)) tally.narrowed += 1;
+    else if (missing) tally.guarded += 1;
     return undefined;
   }
 
@@ -273,7 +358,7 @@ export function analyze({
         };
         const consequent = branch(
           () =>
-            assumingKnown(readsGuardedBy(expr.test, { negated: true }), () =>
+            inBranch(readsGuardedBy(expr.test, { negated: true }), () =>
               visit(expr.consequent),
             ),
           { runs: taken !== false },
@@ -281,7 +366,7 @@ export function analyze({
         return (
           branch(
             () =>
-              assumingKnown(readsGuardedBy(expr.test, { negated: false }), () =>
+              inBranch(readsGuardedBy(expr.test, { negated: false }), () =>
                 visit(expr.alternate),
               ),
             { runs: taken !== true },
@@ -289,57 +374,96 @@ export function analyze({
         );
       }
       case ExprKind.Member:
-        plain(expr.target);
+        (expr.optional ? plain : checkedOperand)(expr.target);
         return own(expr);
       case ExprKind.Index:
-        plain(expr.target);
-        plain(expr.index);
+        (expr.optional ? plain : checkedOperand)(expr.target);
+        checkedOperand(expr.index);
         return own(expr);
       case ExprKind.Call:
         if (expr.fn === IS_UNKNOWN) {
-          decidedByGuard(() => expr.args.forEach(visit), { discards: true });
+          // A guard beside `&&` or `||` doesn't make a fallback inside
+          // needless, since the fallback changes what `isUnknown` sees; a
+          // ternary test's does, since its branch runs only with the value.
+          decidedByGuard(() => branchesOnly(() => expr.args.forEach(visit)), {
+            discards: true,
+          });
           return undefined;
         }
         // A parameter that accepts a missing value lets the function decide,
-        // so a guard around the call decides nothing inside it.
+        // so nothing inside reaches the call's value or a guard around it.
         received(() => {
           for (const arg of expr.args) {
             const param = checker.getContextualType(node(arg));
             if (param !== undefined && isNullableType(param)) {
-              contained(() => visit(arg));
-            } else plain(arg);
+              loud(() => isolated(() => held(() => visit(arg))));
+            } else checkedOperand(arg);
           }
         });
         return own(expr);
       case ExprKind.Method: {
-        // `tsc` rejects a missing value its parameter or return type doesn't take.
+        const [narrowed, loose] = [tally.narrowed, tally.loose];
+        // An argument beside a function, such as `reduce`'s starting value,
+        // can carry a guarded read's missing value on to the function.
+        const passesOn = expr.args.some((arg) => arg.kind === ExprKind.Lambda);
+        // `tsc` rejects a missing value its parameter or return type doesn't
+        // take, which a fallback on the call can't fix.
         const taken = (value: Expr, culprit: Culprit | undefined) => {
           const param = checker.getContextualType(node(value));
           const takes = param === undefined || isNullableType(param);
           return nullable(value) && !takes ? rejected(culprit) : culprit;
         };
-        const target = plain(expr.target);
-        // `tsc` rejects a call on a target that can be missing.
-        const culprits = [nullable(expr.target) ? rejected(target) : target];
         const keepsItem =
           keepsUnknownAsItem(expr.method) &&
           checker.isArrayType(checker.getNonNullableType(typeOf(expr.target)));
+        const culprits = [expr.target, ...expr.args]
+          .filter((arg) => arg.kind !== ExprKind.Lambda)
+          .map((arg) => {
+            if (keepsItem && arg !== expr.target) {
+              contained(() => item(arg));
+              return undefined;
+            }
+            if (arg === expr.target) {
+              return (expr.optional ? plain : checkedOperand)(arg);
+            }
+            const culprit = passesOn ? held(() => plain(arg)) : plain(arg);
+            return taken(arg, culprit);
+          });
+        const fed =
+          tally.narrowed > narrowed
+            ? { loose: tally.loose > loose }
+            : undefined;
         for (const arg of expr.args) {
-          if (keepsItem) {
-            contained(() => item(arg));
-          } else if (arg.kind !== ExprKind.Lambda) {
-            culprits.push(taken(arg, plain(arg)));
-          } else if (isPredicateMethod(expr.method)) {
-            inLambda(arg, () => decided(arg.body));
+          if (arg.kind !== ExprKind.Lambda) continue;
+          if (isPredicateMethod(expr.method)) {
+            inFunction({ lambda: arg, fed, run: () => decided(arg.body) });
           } else if (collectsEachResult(expr.method)) {
-            contained(() => inLambda(arg, () => plain(arg.body)));
+            contained(() =>
+              inFunction({ lambda: arg, fed, run: () => plain(arg.body) }),
+            );
           } else {
-            const body = inLambda(arg, () => visit(arg.body));
-            culprits.push(taken(arg.body, body));
+            // `reduce`'s function gets its own result back, which its body
+            // may leave missing, so its parameters count as narrowed reads,
+            // loose only when the list or starting value holds a loose read,
+            // and a guard's read in it is held, as in a list item.
+            const feeds = feedsResultBack(expr.method)
+              ? { loose: fed?.loose ?? false }
+              : fed;
+            const run = () =>
+              inFunction({
+                lambda: arg,
+                fed: feeds,
+                run: () => visit(arg.body),
+              });
+            culprits.push(
+              taken(arg.body, feedsResultBack(expr.method) ? held(run) : run()),
+            );
           }
         }
         if (missingItemMatters(expr) && hasMissingItem(expr.target)) {
-          culprits.push(`an item of \`${text(expr.target)}\``);
+          const itemText = `an item of \`${text(expr.target)}\``;
+          // `tsc` rejects `join` on a list with missing items (formula-lib.ts).
+          culprits.push(expr.method === "join" ? rejected(itemText) : itemText);
         }
         return own(expr) ?? culprits.find((culprit) => culprit !== undefined);
       }
@@ -360,6 +484,7 @@ export function analyze({
       return checkedOperand(right) ?? culprit;
     };
     const logical = (guard: { negated: boolean }) => {
+      const saved = counts();
       const culprit = assumingKnown(readsGuardedBy(right, guard), () =>
         visit(left),
       );
@@ -371,7 +496,9 @@ export function analyze({
         (side) =>
           side.kind === ExprKind.Literal && side.value === !guard.negated,
       );
-      return decisive ? undefined : (after ?? culprit);
+      if (!decisive) return after ?? culprit;
+      restore(saved);
+      return undefined;
     };
     switch (expr.op) {
       case BinaryOp.And:
@@ -403,15 +530,22 @@ export function analyze({
         return bothPlain();
       case BinaryOp.Coalesce: {
         // A value reported undecided inside an operand, such as a ternary
-        // test, still leaves the operand unknown at runtime.
+        // test, still leaves the operand unknown at runtime, as a loose read
+        // does. `tsc` narrows the right of `&&` and `||` by the left, which
+        // the interpreter evaluates whatever its value, so a fallback after
+        // any narrowed read stays allowed.
         const mayBeUnknown = (operand: Expr) => {
-          const reported = undecidedReports;
+          const { undecided: reported, narrowed, loose } = counts();
           const culprit = visit(operand);
+          const unknown =
+            culprit !== undefined ||
+            tally.undecided > reported ||
+            tally.loose > loose;
           return {
             culprit,
+            unknown,
             needsFallback:
-              (culprit !== undefined || undecidedReports > reported) &&
-              !nullable(operand),
+              (unknown || tally.narrowed > narrowed) && !nullable(operand),
           };
         };
         const fallbackPart = <T>(run: () => T): T => {
@@ -423,18 +557,38 @@ export function analyze({
             leftReads = outer;
           }
         };
-        const reported = undecidedReports;
-        const { needsFallback } = mayBeUnknown(left);
-        if (needsFallback) fallback(left, right);
+        const saved = counts();
+        const { unknown, needsFallback } = mayBeUnknown(left);
+        const guarded = tally.guarded > saved.guarded;
+        const runs = nullable(left) || unknown;
+        if (needsFallback) {
+          fallback(left, right);
+        } else if (!nullable(left)) {
+          // `tsc` calls a fallback unreachable only after a left side that
+          // can't be missing by its syntax.
+          excuse(left, UNREACHABLE_FALLBACK);
+          // In `a ?? b ?? c`, `tsc` says so at `b`.
+          if (left.kind === ExprKind.Binary && left.op === BinaryOp.Coalesce) {
+            excuse(left.right, NEVER_NULLISH);
+          }
+          report(right, guarded ? GUARDED_FALLBACK : NEEDLESS_FALLBACK);
+        }
         // The `??` decides the left's unknowns, and the right's go on only
         // when it runs.
-        undecidedReports = reported;
+        restore(saved);
         const after = fallbackPart(() => mayBeUnknown(right));
-        const runs = needsFallback || nullable(left);
         // An enclosing `??` is the fallback for this right operand.
         if (after.needsFallback && runs) excuse(right, NEVER_NULLISH);
         if (runs) return after.culprit;
-        undecidedReports = reported;
+        // The fallback runs only when the guard decides the left, so one that
+        // can be missing leaves the guard deciding an enclosing `??`.
+        const handsOn =
+          guarded &&
+          (after.unknown ||
+            tally.guarded > saved.guarded ||
+            tally.narrowed > saved.narrowed);
+        restore(saved);
+        if (handsOn) tally.guarded += 1;
         return undefined;
       }
       default:

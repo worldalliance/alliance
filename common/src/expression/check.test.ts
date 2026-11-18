@@ -209,6 +209,14 @@ test("a function result tsc rejects gets no undecided report", () => {
   ).toBe(false);
 });
 
+test("a reduce whose list, starting value and function can't be missing leaves the fallback after it unrun", () => {
+  expect(
+    passes(
+      '(total > 0 && [1, 2].reduce((a, x) => a + x, 0) > 0) ?? (state === "CA")',
+    ).mayBeUnknown,
+  ).toBe(false);
+});
+
 describe("named expressions", () => {
   const isCalifornia = named({
     id: "1",
@@ -317,6 +325,21 @@ describe("named expressions", () => {
       ],
     );
   });
+
+  test.each([
+    "isUnknown(count) || [count].length > 0",
+    "isUnknown(count) || highest([count]) > 0",
+    "!isUnknown(count) && [count].length > 0",
+    "isUnknown(count) || [count].map((c) => c + 1).length > 0",
+    "!isUnknown(count) && [count].some((c) => c > 0)",
+    "isUnknown(count) || [count].filter((c) => c > 0).length > 0",
+  ])(
+    "a named expression a guard decides through a list isn't declared nullable: %s",
+    (text) => {
+      const inner = named({ id: "1", name: "inner", text });
+      passes("inner", { ...condition, named: [inner] });
+    },
+  );
 
   test("a named expression always decided needs no handling where it's used", () => {
     const decision = named({

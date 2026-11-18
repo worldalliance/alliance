@@ -1,4 +1,6 @@
 import {
+  GUARDED,
+  NEEDLESS,
   UNDECIDED_STATE,
   condition,
   groupCondition,
@@ -26,18 +28,47 @@ describe("undecided results", () => {
     );
   });
 
-  test("a fallback after one that never runs is still unreachable", () => {
+  test("each fallback after one that never runs is needless", () => {
+    expect(problems('true ?? (state === "CA") ?? false', variable)).toEqual([
+      { message: NEEDLESS, at: '(state === "CA")' },
+      { message: NEEDLESS, at: "false" },
+    ]);
+  });
+
+  test("a fallback the analysis doesn't need stays an error", () => {
+    expect(problems("(total > 1) ?? false")).toEqual([
+      { message: NEEDLESS, at: "false" },
+    ]);
+    expect(problems("(double(total) ?? 0) > 1")).toEqual([
+      { message: NEEDLESS, at: "0" },
+    ]);
+    expect(problems('(state === "CA" || isUnknown(state)) ?? false')).toEqual([
+      { message: GUARDED, at: "false" },
+    ]);
+  });
+
+  test("a needless fallback inside a required one stays an error", () => {
     expect(
-      problems('true ?? (state === "CA") ?? false', variable).map(
-        ({ at }) => at,
-      ),
-    ).toEqual(["true", 'state === "CA"']);
+      problems('(((total > 1) ?? false) || state === "CA") ?? true'),
+    ).toEqual([{ message: NEEDLESS, at: "false" }]);
+  });
+
+  test("a fallback after a literal that decides the left is needless", () => {
+    expect(
+      problems('((state === "CA" ? "a" : "b") === "a" || true) ?? false'),
+    ).toEqual([
+      { message: UNDECIDED_STATE, at: 'state === "CA"' },
+      { message: NEEDLESS, at: "false" },
+    ]);
   });
 
   test("each fallback a chain needs passes", () => {
     expect(
       passes('(state === "CA") ?? (count === 1) ?? false').mayBeUnknown,
     ).toBe(false);
+    expect(problems('(state === "CA") ?? true ?? false')).toEqual([
+      { message: NEEDLESS, at: "false" },
+    ]);
   });
 
   test("a split group may stay undecided and reports that it can", () => {
@@ -54,6 +85,48 @@ describe("undecided results", () => {
     );
   });
 
+  test.each([
+    'state === "CA" && ([state].length > 0 ?? false)',
+    'state === "CA" && (marks.map(m => state === "CA").length > 0 ?? false)',
+    "(count === 1 && ({ n: count }.n ?? 0) === 1) ?? true",
+    "(count === 1 && [count].map(m => m ?? 0)[0] === 1) ?? true",
+    "count === 1 && [1, 2].reduce((a, x) => x === 1 ? count : (a ?? 0), 0) > 0",
+    "count === 1 && [1, 2].reduce((a, x) => (a ?? 0) + count, 0) > 0",
+  ])(
+    "a narrowed read inside a list, record or function leaves a fallback after it allowed: %s",
+    (text) => {
+      passes(text, groupCondition);
+    },
+  );
+
+  test.each([
+    'state === "CA" && ((isUnknown(state) === false) ?? false)',
+    'state === "CA" && ((((state === "CA") ?? false) || total > 1) ?? false)',
+    'isUnknown(state) ? false : (([state === "CA"].length > 0) ?? false)',
+  ])(
+    "a read whose missing value can't reach the left of ?? leaves it needless: %s",
+    (text) => {
+      expect(problems(text, groupCondition)).toContainEqual({
+        message: NEEDLESS,
+        at: "false",
+      });
+    },
+  );
+
+  test.each([
+    "marks[0] === 1 && (marks[0] ?? 0) === 1",
+    'items[0]?.name === "a" && (items[0]?.name ?? "x") === "a"',
+  ])("a fallback on a narrowed read by position isn't needless: %s", (text) => {
+    passes(text, groupCondition);
+  });
+
+  test("an unknown an inner ?? decides doesn't reach an outer one", () => {
+    expect(problems('((state === "CA" ? 1 : 2) ?? 0) ?? 5', variable)).toEqual([
+      { message: UNDECIDED_STATE, at: 'state === "CA"' },
+      { message: NEEDLESS, at: "5" },
+    ]);
+  });
+
   test("a type error shows beside an undecided report at its span", () => {
     expect(problems('double(state === "CA") > 1')).toEqual([
       { message: UNDECIDED_STATE, at: 'state === "CA"' },
@@ -65,12 +138,40 @@ describe("undecided results", () => {
     ]);
   });
 
-  test.each(["count > 5", "-count > 5", "count + 1 > 5"])(
+  test.each([
+    "count > 5",
+    "-count > 5",
+    "count + 1 > 5",
+    "((-count) ?? 0) > 1",
+  ])(
     "an unguarded read %s gets only tsc's error, which only its own fallback fixes",
     (text) => {
       expect(problems(text)).toEqual([
         { message: "'count' is possibly 'null'.", at: "count" },
       ]);
+    },
+  );
+
+  test.each(["(double(count) ?? 0) > 1", "(Math.abs(count) ?? 0) > 0"])(
+    "a function argument tsc rejects in %s leaves the fallback after it allowed",
+    (text) => {
+      expect(problems(text)).toEqual([
+        expect.objectContaining({ at: "count" }),
+      ]);
+    },
+  );
+
+  test.each([
+    ["({ CA: 1 }[state] ?? 0) > 0", "state"],
+    ["(({ yes: 1, no: 2 })[usBased] > 0) ?? false", "usBased"],
+    [
+      '(items.find(i => i.name === "a").name === "a") ?? false',
+      'items.find(i => i.name === "a")',
+    ],
+  ])(
+    "a read target or key tsc rejects in %s leaves the fallback after it allowed",
+    (text, at) => {
+      expect(problems(text)).toEqual([expect.objectContaining({ at })]);
     },
   );
 
@@ -92,7 +193,9 @@ describe("undecided results", () => {
   });
 
   test("a fallback that never runs passes on nothing", () => {
-    expect(passes("(total ?? count) > 0", variable).mayBeUnknown).toBe(false);
+    expect(problems("(total ?? count) > 0", variable)).toEqual([
+      { message: NEEDLESS, at: "count" },
+    ]);
   });
 
   test("text that can be unknown leaves a fallback after it reachable", () => {
@@ -171,6 +274,7 @@ describe("undecided results", () => {
   test.each([
     ['(state === "CA") ?? 5', condition, "5", "boolean"],
     ["(marks.indexOf(3) ?? false) + 1", variable, "false", "number"],
+    ['state === "CA" && (state ?? 5) === "CA"', groupCondition, "5", "string"],
   ])("%s: a required fallback must fit the value", (text, rule, at, type) => {
     expect(problems(text, rule)).toEqual([
       {
@@ -273,12 +377,16 @@ describe("undecided results", () => {
     '([state === "CA"].length > 0) ?? false',
     '[state === "CA" ? 1 : 2].length > 0 ?? false',
     '[1].map(x => state === "CA").length > 0 ?? false',
-  ])("what is undecided inside %s leaves it known", (text) => {
-    expect(problems(text).map(({ message }) => message)).toEqual([
-      "Right operand of ?? is unreachable because the left operand is never nullish.",
-      UNDECIDED_STATE,
-    ]);
-  });
+    '({ n: state === "CA" }.n ?? false)',
+    '[state === "CA"].map(b => b ?? false).length > 0',
+  ])(
+    "what is undecided inside %s is reported alone, leaving a fallback after it until it is fixed",
+    (text) => {
+      expect(problems(text)).toEqual([
+        { message: UNDECIDED_STATE, at: 'state === "CA"' },
+      ]);
+    },
+  );
 
   test("a result that doesn't fit the consumer's type gets only tsc's mismatch", () => {
     expect(problems("count")).toEqual([
@@ -298,6 +406,19 @@ describe("undecided results", () => {
       },
     ]);
   });
+
+  test.each(["[count, 1]", "marks"])(
+    "a fallback after join on %s is allowed, since the interpreter makes it unknown",
+    (list) => {
+      expect(problems(`${list}.join(",") ?? ""`, variable)).toEqual([
+        {
+          message:
+            "join works on a list of text, numbers or yes/no. Name a part of each item first, or flatten a list of lists with .flat().",
+          at: list,
+        },
+      ]);
+    },
+  );
 
   test("a missing item leaves sort without a function unknown", () => {
     expect(passes("marks.sort()", variable).mayBeUnknown).toBe(true);
