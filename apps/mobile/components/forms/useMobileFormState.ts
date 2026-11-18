@@ -11,7 +11,7 @@ import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import {
-  resolveFormValue,
+  answerField,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
@@ -261,10 +261,17 @@ export function useMobileFormState({
 
   const handleFieldChange: SetFieldValue = (fieldId, value) => {
     if (readOnly) return;
-    setFormData((prev) => ({
-      ...prev,
-      [fieldId]: resolveFormValue(value, prev[fieldId]),
-    }));
+    setFormData((prev) => {
+      const { next, turnedOn } = answerField({
+        prev,
+        fieldId,
+        value,
+        fields: fieldLookup.values(),
+        isVisible: isElementCurrentlyVisible,
+      });
+      if (turnedOn) applyFieldErrorUpdates({ [turnedOn]: null });
+      return next;
+    });
     applyFieldErrorUpdates(
       { [fieldId]: null },
       fieldLookup.get(fieldId)?.kind === "list" ? fieldId : undefined,

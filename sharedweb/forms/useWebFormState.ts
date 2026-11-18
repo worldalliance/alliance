@@ -250,6 +250,7 @@ export function useWebFormState({
     setFormData,
     fieldLookup,
     validateFieldValue,
+    isElementCurrentlyVisible,
     applyFieldErrorUpdates,
   });
   const { uploadingAny } = imageUpload;

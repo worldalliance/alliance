@@ -13,6 +13,7 @@ import {
   collectFieldLookup,
   isQuestionField,
 } from "./form-schema";
+import { pairedToggleRequired } from "./paired-toggles";
 import {
   type UserPropertyPresence,
   emptyUserPropertyPresence,
@@ -412,12 +413,14 @@ export function isVisibleInSavedResponse(
  *
  * A `requiredIfFormula` replaces `required` rather than adding to it, so it can
  * make a statically-required field optional as well as the other way round.
+ * A toggle's `atLeastOneOnWith` partner not being on makes it required either way.
  */
 export function isFieldConditionallyRequired(
   field: AnyField,
   data: Record<string, FormValue>,
   extras: ConditionExtras,
 ): boolean {
+  if (pairedToggleRequired(field, data)) return true;
   if (hasEvaluableFormula(field.requiredIfFormula)) {
     return evaluateVisibleIfFormula(field.requiredIfFormula, data, extras);
   }

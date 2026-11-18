@@ -75,6 +75,12 @@ describe("toggle field", () => {
     expect(control.checked).toBe(false);
   });
 
+  it("is not marked optional, since off is an answer", () => {
+    render(<Field field={{ ...toggle, required: false }} />);
+
+    expect(screen.queryByText("Optional")).toBeNull();
+  });
+
   it("leaves the checkbox field a checkbox", () => {
     render(<Field field={{ ...toggle, kind: "checkbox" }} />);
 

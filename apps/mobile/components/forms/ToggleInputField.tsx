@@ -4,7 +4,6 @@ import { Switch, View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import { renderValidationMessage, type FieldInputProps } from "./fieldParts";
-import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 
 export function ToggleInputField({
   field,
@@ -12,12 +11,9 @@ export function ToggleInputField({
   onChange,
   disabled,
   errorMessage,
-  isOutputView,
-  required,
 }: FieldInputProps<ToggleField>) {
   return (
     <View>
-      {!required && !isOutputView && <OptionalLabelPrefix />}
       <View className="flex-row items-center justify-between gap-x-4">
         <View className="flex-1">
           <InlineLabelMarkdownWrapper>

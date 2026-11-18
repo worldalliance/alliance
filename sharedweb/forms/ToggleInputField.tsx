@@ -2,7 +2,6 @@ import type { ToggleField } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import { ValidationMessage, type FieldInputProps } from "./fieldParts";
-import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 
 export function ToggleInputField({
   field,
@@ -10,13 +9,11 @@ export function ToggleInputField({
   onChange,
   disabled,
   errorMessage,
-  isOutputView,
   required,
 }: FieldInputProps<ToggleField>) {
   const hasError = errorMessage !== null;
   return (
     <div className="space-y-1">
-      {!required && !isOutputView && <OptionalLabelPrefix />}
       <label
         className={cn(
           "flex items-center justify-between gap-x-4",

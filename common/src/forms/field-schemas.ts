@@ -316,6 +316,11 @@ const toggleFieldSchema = z.strictObject({
   autoExtractUserData: z
     .strictObject({ target: checkboxExtractionTargetSchema })
     .optional(),
+  /**
+   * Another toggle's id. Turning either off while the other is off turns the
+   * other on, and this one is required while the other is not on.
+   */
+  atLeastOneOnWith: z.string().optional(),
 });
 export type ToggleField = z.infer<typeof toggleFieldSchema>;
 

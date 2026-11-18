@@ -56,6 +56,7 @@ const renderEditing = ({ readOnly = false } = {}) => {
         !value || (Array.isArray(value) && value.length === 0)
           ? "Required"
           : null,
+      isElementCurrentlyVisible: () => true,
       applyFieldErrorUpdates,
     });
     return { draft, editing, fieldErrors };
