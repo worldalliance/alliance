@@ -3,12 +3,13 @@ import {
   ActionSuiteDto,
   CreateActionEventDto,
 } from "@alliance/shared/client";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
 import {
@@ -18,6 +19,8 @@ import {
 import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
 
 export type AddActionEvent = ReturnType<typeof useActionAdmin>["addEvent"];
+
+export const LAUNCH_CONFIRM_TEXT = "launch to real members";
 
 const DEADLINE_DECLINED_MESSAGE =
   "Added the launch event without its deadline event. Add the deadline separately.";
@@ -114,19 +117,34 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     e.preventDefault();
 
     setError(null);
-    setCreatingEvent(true);
 
+    const opensNow = launchNow || new Date(eventForm.date) <= new Date();
+    if (
+      eventForm.newStatus === "member_action" &&
+      !(await confirm({
+        title: opensNow ? "Launch to members now?" : "Schedule this launch?",
+        message: `${suiteMode ? "Every action in this suite" : "This action"} opens to its members ${opensNow ? "immediately" : `on ${formatDateTimeWithZone(new Date(eventForm.date))}`}.${suiteMode ? " This skips the suite launch checks." : ""}`,
+        confirmLabel: "Launch",
+        cancelLabel: "Cancel",
+        mode: ConfirmMode.Fullscreen,
+        requiredText: LAUNCH_CONFIRM_TEXT,
+      }))
+    ) {
+      return;
+    }
+
+    const eventData = {
+      ...eventForm,
+      title: useCustomName
+        ? eventForm.title
+        : DEFAULT_EVENT_NAMES[eventForm.newStatus as ActionStatus],
+      description: useCustomName ? eventForm.description : "",
+      date: launchNow
+        ? new Date().toISOString()
+        : new Date(eventForm.date).toISOString(),
+    };
+    setCreatingEvent(true);
     try {
-      const eventData = {
-        ...eventForm,
-        title: useCustomName
-          ? eventForm.title
-          : DEFAULT_EVENT_NAMES[eventForm.newStatus as ActionStatus],
-        description: useCustomName ? eventForm.description : "",
-        date: launchNow
-          ? new Date().toISOString()
-          : new Date(eventForm.date).toISOString(),
-      };
       let response;
 
       if (suiteMode) {
@@ -210,7 +228,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       {error && <p className="text-red-500">{error}</p>}
       <div className="mb-4 flex flex-row items-center">
         <label htmlFor="newStatus" className="block text-black min-w-25">
-          New Status
+          Status this event sets
         </label>
         <select
           id="newStatus"
@@ -259,7 +277,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           <>
             <div>
               <label htmlFor="eventTitle" className="block text-black mb-1">
-                Event Title *
+                Event title
               </label>
               <input
                 type="text"
@@ -268,7 +286,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 value={eventForm.title}
                 onChange={handleEventInputChange}
                 required={useCustomName}
-                placeholder="e.g., Launch Event, Office Action"
+                placeholder="e.g., Launch event, Office taking action"
                 className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -368,7 +386,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                   ):
                 </label>
                 <DateTimePicker
-                  id="eventDate"
+                  id="deadlineEventDateInput"
                   name="date"
                   value={deadlineEventDate}
                   onChange={handleDeadlineDateChange}
@@ -440,7 +458,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            Adding Event...
+            Adding event...
           </span>
         ) : eventCreatedSuccess ? (
           <span className="flex items-center justify-center">
@@ -455,10 +473,10 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 clipRule="evenodd"
               />
             </svg>
-            Event Added!
+            Event added
           </span>
         ) : (
-          "Add Event"
+          "Add event"
         )}
       </button>
     </form>

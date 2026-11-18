@@ -8,6 +8,7 @@ import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
@@ -29,6 +30,7 @@ import {
   type ActionUpdateForm,
 } from "../lib/actionUpdateDetails";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
 import { useLeaveGuard } from "../lib/useLeaveGuard";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
@@ -75,6 +77,7 @@ const ActionUpdatePage: React.FC = () => {
   const notifying = notify.isPending;
   const changingVisibility = publishNow.isPending || unpublish.isPending;
   const [error, setError] = useState<string | null>(null);
+  const { confirm, success } = useToast();
 
   // A copy cached by an earlier visit may be stale, and saving a form filled
   // from it would write those stale details back. A newer copy refills a form
@@ -107,12 +110,13 @@ const ActionUpdatePage: React.FC = () => {
       if (!(await confirmSave(body))) return;
       try {
         fillForm(await saveDetails(body));
+        success("Update saved");
       } catch (err) {
         setError("Failed to save update");
         console.error(err);
       }
     },
-    [form, saveDetails, fillForm, confirmSave],
+    [form, saveDetails, fillForm, confirmSave, success],
   );
 
   const writeAndRefill = useCallback(
@@ -130,19 +134,21 @@ const ActionUpdatePage: React.FC = () => {
 
   const handleNotify = useCallback(
     async (audienceLabel: string) => {
-      if (
-        !window.confirm(
-          `Send this update's notification to ${audienceLabel}? This can't be undone, and it can only be sent once.`,
-        )
-      ) {
-        return;
-      }
+      const ok = await confirm({
+        title: "Send notification?",
+        message: `This notifies ${audienceLabel}. It can't be undone, and it can only be sent once.`,
+        confirmLabel: "Send",
+        cancelLabel: "Cancel",
+        mode: ConfirmMode.Fullscreen,
+        requiredText: notifyRealMembersText("many"),
+      });
+      if (!ok) return;
       await writeAndRefill(
         notify.mutateAsync,
         "Failed to send the notification",
       );
     },
-    [writeAndRefill, notify.mutateAsync],
+    [writeAndRefill, notify.mutateAsync, confirm],
   );
 
   const handleUnpublish = useCallback(
@@ -316,7 +322,7 @@ const ActionUpdatePage: React.FC = () => {
 
       {recognition && !update.recognitionPreparedAt && (
         <FormSection
-          title="Preview Update"
+          title="Preview update"
           description={UPDATE_PREVIEW_DESCRIPTION}
         >
           <AudienceUpdatePreview updateId={update.id} form={form} />
@@ -329,7 +335,7 @@ const ActionUpdatePage: React.FC = () => {
           className="px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium"
           disabled={saving}
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : "Save changes"}
         </button>
       </div>
     </form>
@@ -369,14 +375,17 @@ const ActionUpdatePage: React.FC = () => {
           onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
           className="px-3 py-1 text-sm text-zinc-600 hover:text-zinc-800 text-nowrap mr-5"
         >
-          ← Back to Updates
+          ← Back to updates
         </button>
       </div>
 
       <HiddenFromMembersBanner update={update} />
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 mx-5 mt-4">
+        <div
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 mx-5 mt-4"
+        >
           {error}
         </div>
       )}
@@ -387,7 +396,7 @@ const ActionUpdatePage: React.FC = () => {
             {(
               [
                 ["content", "Content"],
-                ["details", "Update Details"],
+                ["details", "Update details"],
               ] as const
             ).map(([tab, label]) => (
               <button

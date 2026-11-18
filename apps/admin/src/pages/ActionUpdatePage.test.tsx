@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
 import ActionUpdatePage from "./ActionUpdatePage";
@@ -84,7 +85,7 @@ const renderPage = (
 const renderDetails = async () => {
   renderPage();
   fireEvent.click(
-    await screen.findByRole("button", { name: "Update Details" }),
+    await screen.findByRole("button", { name: "Update details" }),
   );
 };
 
@@ -137,11 +138,11 @@ describe("ActionUpdatePage", () => {
     await waitFor(() => expect(reloading).toBe(true));
 
     expect(screen.getByText("Loading update...")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update details" })).toBeNull();
 
     release();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Update Details" }),
+      await screen.findByRole("button", { name: "Update details" }),
     );
     expect(screen.getAllByRole("textbox")[0]).toHaveProperty("value", "Fresh");
   });
@@ -155,7 +156,7 @@ describe("ActionUpdatePage", () => {
     renderPage({ cached: update() });
 
     expect(await screen.findByText("Failed to load update")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update details" })).toBeNull();
   });
 
   it("offers the action's events to link the update to", async () => {
@@ -184,7 +185,6 @@ describe("ActionUpdatePage", () => {
   });
 
   it("says why the server refused a notification", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     jest.spyOn(console, "error").mockImplementation(() => {});
     api.alsoServing({
       "POST /actions/updates/:id/notify": () =>
@@ -196,8 +196,43 @@ describe("ActionUpdatePage", () => {
     await renderDetails();
 
     fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
+    const text = notifyRealMembersText("many");
+    fireEvent.change(await screen.findByPlaceholderText(text), {
+      target: { value: text },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText("Already notified")).toBeTruthy();
+  });
+
+  it("sends no notification when staff cancel the confirmation", async () => {
+    let sends = 0;
+    api.alsoServing({
+      "POST /actions/updates/:id/notify": () => {
+        sends += 1;
+        return Response.json(served);
+      },
+    });
+    await renderDetails();
+
+    fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Send notification?")).toBeNull(),
+    );
+    expect(sends).toBe(0);
+  });
+
+  it("confirms a saved change with a toast", async () => {
+    api.alsoServing({
+      "PATCH /actions/updateUpdate/:id": () => Response.json(served),
+    });
+    await renderDetails();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Update saved")).toBeTruthy();
   });
 
   it("shows no recognition copy for a legacy update", async () => {
@@ -205,7 +240,7 @@ describe("ActionUpdatePage", () => {
 
     await renderDetails();
 
-    expect(screen.queryByText("Preview Update")).toBeNull();
+    expect(screen.queryByText("Preview update")).toBeNull();
     expect(
       screen.queryByRole("textbox", {
         name: /^Notif text for people who didn't complete/,
@@ -242,14 +277,14 @@ describe("ActionUpdatePage", () => {
         name: "Notif text for people who completed",
       }),
     ).toBeTruthy();
-    expect(screen.queryByText("Preview Update")).toBeNull();
+    expect(screen.queryByText("Preview update")).toBeNull();
     expect(countedAudiences).toEqual([]);
   });
 
   it("previews every variation as the notif texts are typed", async () => {
     await renderDetails();
     const preview = () =>
-      screen.getByText("Preview Update").closest("div.border") as HTMLElement;
+      screen.getByText("Preview update").closest("div.border") as HTMLElement;
 
     fireEvent.change(
       screen.getByRole("textbox", {
@@ -306,7 +341,7 @@ describe("ActionUpdatePage", () => {
     const title = await screen.findByDisplayValue("Hearing");
     const saveAs = async (value: string, choice: string) => {
       fireEvent.change(title, { target: { value } });
-      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
       fireEvent.click(await screen.findByRole("button", { name: choice }));
     };
 
@@ -419,7 +454,7 @@ describe("while an update's notifications are on hold", () => {
     fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
       target: { value: "a vote" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText(SENDABLE);
     releasePoll();
     await Bun.sleep(30);
@@ -454,7 +489,7 @@ describe("while an update's notifications are on hold", () => {
     fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
       target: { value: "a vote" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(saveWaiting).toBe(true));
     releaseSave();
     releasePoll();
