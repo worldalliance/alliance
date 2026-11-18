@@ -1,6 +1,7 @@
 import { afterEach, beforeEach } from "bun:test";
 import {
   chmodSync,
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -20,11 +21,12 @@ export const fail = (match: string): Route => ({
 });
 
 const FAKE_GH = `#!/usr/bin/env bun
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 const dir = process.env.FAKE_DIR;
 const args = process.argv.slice(2);
 const line = args.join(" ");
 appendFileSync(dir + "/calls", line + "\\n");
+if (line.includes("--input -")) writeFileSync(dir + "/input", readFileSync(0));
 const routes = JSON.parse(readFileSync(dir + "/routes.json", "utf8"));
 const calls = readFileSync(dir + "/calls", "utf8").split("\\n");
 const route = routes.find((r) => line.includes(r.match) && !(calls.filter((c) => c.includes(r.match)).length > r.response?.times));
@@ -59,8 +61,10 @@ function runScript(params: {
   writeFileSync(join(dir, "routes.json"), JSON.stringify(params.routes));
   const output = join(dir, "output");
   const summary = join(dir, "summary");
+  const input = join(dir, "input");
   writeFileSync(output, "");
   writeFileSync(summary, "");
+  rmSync(input, { force: true });
   const result = Bun.spawnSync(["bash", ...params.command], {
     env: {
       ...process.env,
@@ -79,6 +83,7 @@ function runScript(params: {
     output: readFileSync(output, "utf8"),
     summary: readFileSync(summary, "utf8"),
     calls: readFileSync(join(dir, "calls"), "utf8"),
+    input: existsSync(input) ? readFileSync(input, "utf8") : null,
   };
 }
 
