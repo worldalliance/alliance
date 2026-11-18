@@ -8,6 +8,7 @@ import {
   type SaveFormDraftDto,
 } from "../client";
 import { queryKeys } from "../lib/queryKeys";
+import { draftFetchState, type DraftFetchState } from "./draftFetchState";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1500;
 
@@ -36,7 +37,7 @@ export function useFormDraftSync(args: {
    * written somewhere else, and is the thing worth restoring.
    */
   onSaved: (updatedAt: string) => void;
-}): {
+}): DraftFetchState & {
   /** The stored draft, or null until the fetch lands. */
   serverDraft: FormDraftDto | null;
   saveFailed: boolean;
@@ -133,6 +134,7 @@ export function useFormDraftSync(args: {
 
   return {
     serverDraft: fetched ? draftQuery.data : null,
+    ...draftFetchState(draftQuery),
     saveFailed,
     pauseSyncing,
     resumeSyncing,
