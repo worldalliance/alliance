@@ -15,10 +15,12 @@ export function PhoneStep({
   phoneNumber,
   onPhoneNumberChange,
   refused,
+  onLogOut,
 }: {
   phoneNumber: string;
   onPhoneNumberChange: (phoneNumber: string) => void;
   refused: boolean;
+  onLogOut?: () => void;
 }) {
   const labelId = useId();
   return (
@@ -45,6 +47,16 @@ export function PhoneStep({
           </p>
         )}
       </div>
+      {onLogOut && (
+        <button
+          type="button"
+          onClick={onLogOut}
+          className="ob-rise mx-auto text-[length:var(--ob-body)] text-white underline"
+          style={riseStyle(4)}
+        >
+          Log out
+        </button>
+      )}
     </>
   );
 }

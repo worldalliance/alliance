@@ -38,11 +38,15 @@ import { LandingBody } from "../site/sections/LandingBody";
 import "../site/site.css";
 import { AccountStep } from "./AccountStep";
 import {
+  CONTINUE_PARAM,
+  deferPhoneStep,
   isOnboardingStep,
   // MOBILE_WEB_QUERY,
   OnboardingStep,
+  oweTour,
   stepAfter,
   stepBefore,
+  takeOwedTour,
 } from "./flow";
 import { GrantmakingCard } from "./GrantmakingCard";
 import { JoinPhase, PANEL_FADE_MS } from "./joinPhase";
@@ -79,7 +83,13 @@ const OnboardingPage = () => {
   useSiteBackground();
   const navigate = useNavigate();
   const location = useLocation();
-  const { onLogin, isAuthenticated, user, loading: authLoading } = useAuth();
+  const {
+    onLogin,
+    logout,
+    isAuthenticated,
+    user,
+    loading: authLoading,
+  } = useAuth();
   const { fetch: fetchMe } = useMe();
   const { latestContract } = useContract();
   const contractSignature = useContractSignature();
@@ -113,6 +123,8 @@ const OnboardingPage = () => {
     () => inAppPath(searchParams.get("redirect"), href("/tasks")),
     [searchParams],
   );
+
+  const continueParam = searchParams.get(CONTINUE_PARAM);
 
   const draft = useInitialDraft(referralCode);
   const [email, setEmail] = useState(draft?.email ?? "");
@@ -167,14 +179,15 @@ const OnboardingPage = () => {
     }
   }, [step, email, goTo, registered, authLoading]);
 
-  // Land back on the screen the draft left off at, once per load.
+  // Land back on the screen the draft left off at, once per load. A draft
+  // predates the account, so it never moves a member the platform sent here.
   const resumedRef = useRef(false);
   useEffect(() => {
     if (resumedRef.current) return;
     resumedRef.current = true;
-    if (oauthLanding) return;
+    if (oauthLanding || registered || continueParam !== null) return;
     if (draft && draft.step !== step) goTo(draft.step);
-  }, [draft, step, goTo, oauthLanding]);
+  }, [draft, step, goTo, oauthLanding, registered, continueParam]);
 
   const oauthError =
     oauthNotice?.kind === "error" ? oauthNoticeMessage(oauthNotice) : null;
@@ -249,8 +262,16 @@ const OnboardingPage = () => {
     });
     const sessionP = R.fromPromise(onLogin());
     const [, session] = await Promise.all([fade, sessionP]);
-    navigate(session.ok ? walkthroughStartHref() : href("/login"));
-  }, [onLogin, navigate]);
+    if (!session.ok) {
+      navigate(href("/login"));
+      return;
+    }
+    navigate(
+      takeOwedTour()
+        ? walkthroughStartHref()
+        : inAppPath(continueParam, walkthroughStartHref()),
+    );
+  }, [onLogin, navigate, continueParam]);
 
   // Registration waits until Join, so an account only ever exists alongside a
   // signed agreement.
@@ -324,6 +345,7 @@ const OnboardingPage = () => {
     //   goTo(OnboardingStep.MobileApp);
     //   return;
     // }
+    oweTour();
     setJoinedNow(true);
     setSubmitting(false);
     goTo(OnboardingStep.Phone);
@@ -436,7 +458,11 @@ const OnboardingPage = () => {
             },
             save: () => void savePhone(),
             refused: phoneRefused,
-            skip: () => void enterPlatform(),
+            skip: () => {
+              if (user) deferPhoneStep(user.id);
+              void enterPlatform();
+            },
+            logOut: continueParam !== null ? () => void logout() : undefined,
           }}
         />
       </div>

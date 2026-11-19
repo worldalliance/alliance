@@ -81,6 +81,7 @@ export function OnboardingPanel({
     save: () => void;
     refused: boolean;
     skip: () => void;
+    logOut?: () => void;
   };
 }) {
   const isAccount = step === OnboardingStep.Account;
@@ -189,6 +190,7 @@ export function OnboardingPanel({
               phoneNumber={phone.number}
               onPhoneNumberChange={phone.onNumberChange}
               refused={phone.refused}
+              onLogOut={phone.logOut}
             />
           </StepLayout>
         );

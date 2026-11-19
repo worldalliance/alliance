@@ -1,3 +1,5 @@
+import { href } from "react-router";
+
 export enum OnboardingStep {
   Account = "account",
   Community = "community",
@@ -61,6 +63,44 @@ export const STEP_EYEBROW: Record<OnboardingStep, string | null> = {
   [OnboardingStep.Phone]: "Notifications",
   [OnboardingStep.MobileApp]: "The Alliance",
 };
+
+/** Where the phone step sends a member the platform sent to it. */
+export const CONTINUE_PARAM = "continue";
+
+export function phoneStepHref(continueTo: string): string {
+  const params = new URLSearchParams({
+    step: OnboardingStep.Phone,
+    [CONTINUE_PARAM]: continueTo,
+  });
+  return `${href("/onboarding")}?${params}`;
+}
+
+const PHONE_STEP_DEFERRED_KEY = "alliance:phone-step-deferred";
+
+/** Lets a member whose number was refused into the platform until the tab closes. */
+export function deferPhoneStep(userId: number) {
+  sessionStorage.setItem(PHONE_STEP_DEFERRED_KEY, String(userId));
+}
+
+export function isPhoneStepDeferred(userId: number): boolean {
+  return sessionStorage.getItem(PHONE_STEP_DEFERRED_KEY) === String(userId);
+}
+
+const TOUR_OWED_KEY = "alliance:tour-owed";
+
+/**
+ * Set at Join, so a member who leaves at the phone step still gets the tour
+ * once the platform sends them back to it.
+ */
+export function oweTour() {
+  localStorage.setItem(TOUR_OWED_KEY, "1");
+}
+
+export function takeOwedTour(): boolean {
+  const owed = localStorage.getItem(TOUR_OWED_KEY) !== null;
+  localStorage.removeItem(TOUR_OWED_KEY);
+  return owed;
+}
 
 export function isOnboardingStep(
   value: string | null,

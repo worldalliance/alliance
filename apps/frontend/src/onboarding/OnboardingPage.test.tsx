@@ -3,7 +3,13 @@ import { membershipAgreement } from "@alliance/shared/lib/copy";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router";
 import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
@@ -13,7 +19,7 @@ import { testAuthUser } from "../stories/testData";
 import OnboardingPage from "./OnboardingPage";
 import * as onboardingPanelModule from "./OnboardingPanel";
 import { PHONE_HEADLINE, PHONE_REFUSED, PHONE_SKIP_LABEL } from "./PhoneStep";
-import { OnboardingStep } from "./flow";
+import { isPhoneStepDeferred, OnboardingStep, phoneStepHref } from "./flow";
 import { walkthroughStartHref } from "./walkthrough/steps";
 
 let contract: ContractDto | null;
@@ -82,6 +88,7 @@ beforeEach(() => {
   profileRefusal = null;
   signatures = 0;
   localStorage.clear();
+  sessionStorage.clear();
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
   // The OAuth return URL the account step builds needs a real origin.
@@ -129,12 +136,21 @@ window.happyDOM.setURL("https://test.alliance/onboarding");
  * Returns a call that settles auth on the user it is given, keeping the page
  * mounted.
  */
-const visit = (url: string, user?: UserDto, { authLoading = false } = {}) => {
+const visit = (
+  url: string,
+  user?: UserDto,
+  {
+    authLoading = false,
+    logout = noop,
+  }: { authLoading?: boolean; logout?: () => Promise<void> } = {},
+) => {
   const queryClient = new QueryClient();
   const page = (pageUser: UserDto | undefined, loading: boolean) => (
     <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={{ ...authValue(pageUser), loading }}>
+        <AuthContext.Provider
+          value={{ ...authValue(pageUser), loading, logout }}
+        >
           <InviteSessionProvider>
             <OnboardingPage />
             <Search />
@@ -394,6 +410,99 @@ test("asks for a phone number after the agreement, and saves it before entering 
     expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
   );
   expect(profileUpdates).toEqual([{ phoneNumber: "+14155552671" }]);
+});
+
+test("returns a member the platform sent to the phone step to the page they opened", async () => {
+  contract = agreement;
+  visit(phoneStepHref("/actions/5?tab=1"), member(true));
+  fireEvent.change(await screen.findByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await waitFor(() => expect(pathname()).toBe("/actions/5"));
+  expect(search()).toBe("?tab=1");
+});
+
+test("offers a way to log out only to a member the platform sent to the phone step", async () => {
+  contract = agreement;
+  const logout = jest.fn(noop);
+  visit(phoneStepHref("/tasks"), member(true), { logout });
+  fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
+  expect(logout).toHaveBeenCalledTimes(1);
+});
+
+test("offers no way to log out during signup", async () => {
+  await joinToPhoneStep();
+  expect(screen.queryByRole("button", { name: "Log out" })).toBeNull();
+});
+
+test("lets a member the platform sent to the phone step in without a number for the visit once theirs is refused", async () => {
+  contract = agreement;
+  profileRefusal = { status: 409, message: "Taken" };
+  visit(phoneStepHref("/actions/5"), member(true));
+  fireEvent.change(await screen.findByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: new RegExp(PHONE_SKIP_LABEL) }),
+  );
+
+  await waitFor(() => expect(pathname()).toBe("/actions/5"));
+  expect(isPhoneStepDeferred(testAuthUser.id)).toBe(true);
+});
+
+test("keeps a member the platform sent to the phone step there over a stale signup draft", async () => {
+  localStorage.setItem(
+    "alliance:onboarding-draft",
+    JSON.stringify({
+      email: "member@example.com",
+      password: "a long password",
+      step: OnboardingStep.Account,
+      referralCode: null,
+      savedAt: Date.now(),
+    }),
+  );
+  contract = agreement;
+  const settleAuth = visit(phoneStepHref("/tasks"), undefined, {
+    authLoading: true,
+  });
+  settleAuth(member(true));
+
+  await screen.findByText(PHONE_HEADLINE);
+  expect(step()).toBe(OnboardingStep.Phone);
+});
+
+test("resumes a signed-out visitor's draft without waiting for the session", () => {
+  localStorage.setItem(
+    "alliance:onboarding-draft",
+    JSON.stringify({
+      email: "member@example.com",
+      password: "a long password",
+      step: OnboardingStep.Minutes,
+      referralCode: null,
+      savedAt: Date.now(),
+    }),
+  );
+  visit("/onboarding", undefined, { authLoading: true });
+
+  expect(step()).toBe(OnboardingStep.Minutes);
+});
+
+test("gives a member who left at the phone step the first-task tour once the platform sends them back", async () => {
+  await joinToPhoneStep();
+  cleanup();
+
+  visit(phoneStepHref("/tasks"), member(true));
+  fireEvent.change(await screen.findByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await waitFor(() =>
+    expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
+  );
 });
 
 test("goes back from the phone step to the signed agreement without signing it again", async () => {
