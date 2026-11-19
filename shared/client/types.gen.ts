@@ -4313,6 +4313,93 @@ export type CustomLinkDestinationDto = {
     destination: string;
 };
 
+export type FormulaDto = {
+    id: string;
+    name: string;
+    /**
+     * The current version, printed.
+     */
+    text: string;
+    notes: string | null;
+    /**
+     * The current version's id.
+     */
+    versionId: number;
+    /**
+     * Ids of the formulas it reads.
+     */
+    reads: Array<string>;
+    updatedAt: string;
+};
+
+export type FormulaVersionDto = {
+    id: number;
+    name: string;
+    text: string;
+    notes: string | null;
+    savedByName: string | null;
+    createdAt: string;
+};
+
+export type FormulaEditDto = {
+    id: string;
+    /**
+     * The version edited; null for a new formula.
+     */
+    baseVersionId: number | null;
+    name: string;
+    /**
+     * Names in it mean the formulas that have them once this save is applied.
+     */
+    text: string;
+    notes: string | null;
+};
+
+export type FormulaDeletionDto = {
+    id: string;
+    baseVersionId: number;
+};
+
+export type SaveFormulasDto = {
+    edits: Array<FormulaEditDto>;
+    deletions: Array<FormulaDeletionDto>;
+};
+
+export type SaveProblemKind = 'name' | 'named' | 'dependent';
+
+export type FormulaDiagnosticDto = {
+    message: string;
+    /**
+     * Offset into the problem's text.
+     */
+    start: number;
+    end: number;
+};
+
+export type FormulaProblemDto = {
+    kind: SaveProblemKind;
+    /**
+     * The formula's id, or the dependent's.
+     */
+    id: string;
+    /**
+     * Set for a name problem.
+     */
+    message?: string;
+    /**
+     * The text `diagnostics` are located in.
+     */
+    text?: string;
+    diagnostics?: Array<FormulaDiagnosticDto>;
+};
+
+export type SaveFormulasResultDto = {
+    /**
+     * Why the save was refused; empty when it was saved.
+     */
+    problems: Array<FormulaProblemDto>;
+};
+
 export type HostedDocDto = {
     id: number;
     slug: string;
@@ -14580,6 +14667,74 @@ export type CustomLinksResolveResponses = {
 };
 
 export type CustomLinksResolveResponse = CustomLinksResolveResponses[keyof CustomLinksResolveResponses];
+
+export type FormulasListAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/formulas';
+};
+
+export type FormulasListAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type FormulasListAdminError = FormulasListAdminErrors[keyof FormulasListAdminErrors];
+
+export type FormulasListAdminResponses = {
+    200: Array<FormulaDto>;
+};
+
+export type FormulasListAdminResponse = FormulasListAdminResponses[keyof FormulasListAdminResponses];
+
+export type FormulasVersionsAdminData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/formulas/{id}/versions';
+};
+
+export type FormulasVersionsAdminErrors = {
+    /**
+     * No formula has this id.
+     */
+    404: HeyApiError;
+};
+
+export type FormulasVersionsAdminError = FormulasVersionsAdminErrors[keyof FormulasVersionsAdminErrors];
+
+export type FormulasVersionsAdminResponses = {
+    200: Array<FormulaVersionDto>;
+};
+
+export type FormulasVersionsAdminResponse = FormulasVersionsAdminResponses[keyof FormulasVersionsAdminResponses];
+
+export type FormulasSaveAdminData = {
+    body: SaveFormulasDto;
+    path?: never;
+    query?: never;
+    url: '/formulas/save';
+};
+
+export type FormulasSaveAdminErrors = {
+    /**
+     * A formula changed since the admin opened it.
+     */
+    409: HeyApiError;
+};
+
+export type FormulasSaveAdminError = FormulasSaveAdminErrors[keyof FormulasSaveAdminErrors];
+
+export type FormulasSaveAdminResponses = {
+    200: SaveFormulasResultDto;
+};
+
+export type FormulasSaveAdminResponse = FormulasSaveAdminResponses[keyof FormulasSaveAdminResponses];
 
 export type HostedDocsFindAllAdminData = {
     body?: never;
