@@ -34,6 +34,7 @@ const GeneralUpdatesPage: React.FC = () => {
           {generalUpdates.map((generalUpdate) => (
             <LargeGeneralUpdateCard
               key={generalUpdate.id}
+              id={generalUpdate.id}
               title={generalUpdate.name}
               schema={generalUpdate.schema}
             />

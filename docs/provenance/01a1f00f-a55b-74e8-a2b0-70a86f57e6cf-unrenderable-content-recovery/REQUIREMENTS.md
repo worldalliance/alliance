@@ -28,3 +28,10 @@ Agent-proposed, user-approved.
 Agent-proposed, user-approved.
 
 - When the form or update itself is wrong (no newer client would show it), the box reads "There's a problem with this form." (or "update") and "Please try again later.", with no restart or update advice and no claim that anyone has been notified.
+
+## Alerts for broken content
+
+Agent-proposed (research and second opinion), user-picked.
+
+- A form broken for everyone posts to Slack once per piece of content per day, not once per member who opens it: `content_unrenderable` leaves the main Slack destination and gets its own PostHog Slack destination, posting to the same channel, that drops repeats for the same form or update for 24 hours.
+- The member apps (the web frontend and mobile) report content they can't show for every viewer, staff previews included: a staff preview of an unlaunched action and an admin viewing a draft or archived action report like any member. User-originated.

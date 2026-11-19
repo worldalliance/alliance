@@ -26,7 +26,10 @@ export default function LargeGeneralUpdateCard({
         </Text>
       </View>
       <View className="gap-4 mb-8">
-        <DisplayOnlyRenderer schema={generalUpdate.schema} />
+        <DisplayOnlyRenderer
+          schema={generalUpdate.schema}
+          content={{ generalUpdateId: generalUpdate.id }}
+        />
       </View>
       <View className="border-t border-zinc-200 pt-6">
         <Button

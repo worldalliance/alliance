@@ -45,6 +45,7 @@ export function formBlockedView(
             : UnrenderableReason.ContentProblem
         }
         detail={draftError ?? unrenderable.detail}
+        content={form.content}
         showDetail={showDetail}
       />
     );

@@ -317,6 +317,7 @@ export function useWebFormState({
 
   return {
     schema,
+    content: { formId: id, formSnapshotId, actionId },
     readOnly,
     user,
     activeUserKey,

@@ -1,7 +1,9 @@
 import { UnrenderableReason } from "@alliance/common/forms/unrenderable";
 import {
   CONTENT_PROBLEM_ADVICE,
+  ReportUnrenderable,
   unrenderableTitle,
+  type UnrenderableContent,
   type UnrenderableSubject,
 } from "@alliance/shared/forms/unrenderable";
 import { useUnstableGlobalHref } from "expo-router";
@@ -41,12 +43,22 @@ let lastAnnounced: { message: string; at: number } | null = null;
 export default function UnrenderableNotice({
   subject,
   reason,
+  detail = null,
+  content,
 }: {
   subject: UnrenderableSubject;
   reason: UnrenderableReason;
+  detail?: string | null;
+  content: UnrenderableContent;
 }) {
   return (
     <View className="gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+      <ReportUnrenderable
+        subject={subject}
+        reason={reason}
+        detail={detail}
+        content={content}
+      />
       <Text weight={FontWeight.Medium} className="text-amber-900">
         {unrenderableTitle(subject, reason)}
       </Text>

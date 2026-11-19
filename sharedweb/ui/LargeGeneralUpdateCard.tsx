@@ -8,12 +8,14 @@ import BaseButton, {
 import Card from "@alliance/sharedweb/ui/Card";
 
 export interface LargeGeneralUpdateCardProps {
+  id: number;
   title: string;
   schema: Result<DisplayOnlySchema, Unrenderable>;
   onDismiss?: () => void;
 }
 
 const LargeGeneralUpdateCard: React.FC<LargeGeneralUpdateCardProps> = ({
+  id,
   title,
   schema,
   onDismiss,
@@ -26,7 +28,10 @@ const LargeGeneralUpdateCard: React.FC<LargeGeneralUpdateCardProps> = ({
           <p className="text-title-small">{title}</p>
         </div>
         <div className="space-y-4">
-          <DisplayOnlyRenderer schema={schema} />
+          <DisplayOnlyRenderer
+            schema={schema}
+            content={{ generalUpdateId: id }}
+          />
           {onDismiss && (
             <BaseButton
               variant={BaseButtonVariant.LightHover}

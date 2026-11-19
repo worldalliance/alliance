@@ -1,8 +1,10 @@
 import { UnrenderableReason } from "@alliance/common/forms/unrenderable";
 import {
   CONTENT_PROBLEM_ADVICE,
+  ReportUnrenderable,
   UnrenderableSubject,
   unrenderableTitle,
+  type UnrenderableContent,
 } from "@alliance/shared/forms/unrenderable";
 import Button, { ButtonColor } from "../ui/Button";
 
@@ -20,12 +22,14 @@ export default function UnrenderableNotice({
   subject,
   reason,
   detail = null,
+  content,
   showDetail = false,
 }: {
   subject: UnrenderableSubject;
   reason: UnrenderableReason;
   detail?: string | null;
-  /** For staff previews: a neutral title and `detail` in place of member advice. */
+  content: UnrenderableContent;
+  /** For admin views: a neutral title and `detail` in place of member advice, unreported. */
   showDetail?: boolean;
 }) {
   return (
@@ -33,6 +37,14 @@ export default function UnrenderableNotice({
       className="flex flex-col items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
       role="alert"
     >
+      {!showDetail && (
+        <ReportUnrenderable
+          subject={subject}
+          reason={reason}
+          detail={detail}
+          content={content}
+        />
+      )}
       <div>
         <p className="font-medium">
           {showDetail

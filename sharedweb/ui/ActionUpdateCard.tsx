@@ -16,7 +16,7 @@ export interface ActionUpdateCardProps {
   onActionPageTimeline?: boolean;
   border?: boolean;
   marksNotificationsRead?: boolean;
-  /** For staff: an update that can't be displayed shows why. */
+  /** For staff: an update that can't be displayed shows why, unreported. */
   staffView?: boolean;
 }
 
@@ -92,7 +92,11 @@ const ActionUpdateCard = ({
             border && "border border-zinc-200",
           )}
         >
-          <DisplayOnlyRenderer schema={schema} showDetail={staffView} />
+          <DisplayOnlyRenderer
+            schema={schema}
+            content={{ actionUpdateId: update.id }}
+            showDetail={staffView}
+          />
         </div>
       )}
     </div>

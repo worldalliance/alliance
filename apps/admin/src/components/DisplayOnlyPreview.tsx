@@ -1,7 +1,7 @@
 import { formSchemaToDisplayOnly } from "@alliance/common/forms/display-only-schema";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
-import DisplayOnlyRenderer from "@alliance/sharedweb/forms/DisplayOnlyRenderer";
+import { DisplayOnlyBlocks } from "@alliance/sharedweb/forms/DisplayOnlyRenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 
 export function DisplayOnlyPreview({
@@ -15,7 +15,7 @@ export function DisplayOnlyPreview({
     success: (displaySchema) => (
       <Card className="p-6 sm:p-8 w-full border-[1.5px] rounded">
         <p className="text-title-small mb-4">{title}</p>
-        <DisplayOnlyRenderer schema={R.success(displaySchema)} />
+        <DisplayOnlyBlocks {...displaySchema} />
       </Card>
     ),
     failure: (errors) => (

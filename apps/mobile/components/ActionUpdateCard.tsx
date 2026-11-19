@@ -45,7 +45,10 @@ export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
       </View>
       {!(schema.ok && schema.value.blocks.length === 0) && (
         <View className="p-3 bg-white">
-          <DisplayOnlyRenderer schema={schema} />
+          <DisplayOnlyRenderer
+            schema={schema}
+            content={{ actionUpdateId: update.id }}
+          />
         </View>
       )}
     </View>

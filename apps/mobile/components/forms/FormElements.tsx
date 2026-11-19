@@ -27,6 +27,8 @@ export function formBlockedView(form: MobileFormState): ReactElement | null {
       <UnrenderableNotice
         subject={UnrenderableSubject.Form}
         reason={unrenderable.reason}
+        detail={unrenderable.detail}
+        content={form.content}
       />
     );
   }

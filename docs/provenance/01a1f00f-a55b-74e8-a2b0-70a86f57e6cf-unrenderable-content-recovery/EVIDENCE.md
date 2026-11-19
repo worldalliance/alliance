@@ -14,6 +14,14 @@ Checked 2026-11-18 by research subagents; categories per root `AGENTS.md` **Esta
 - Expo, [`reloadAsync`](https://docs.expo.dev/versions/latest/sdk/updates/#updatesreloadasyncoptions) (vendor recommendation): reloads into the update expo-updates selects locally; it rejects when updates are disabled or in development. A reload without a downloaded update doesn't run newer code.
 - Vite, [load error handling](https://vite.dev/guide/build#load-error-handling) (vendor recommendation): its example reloads on failed dynamic imports. That is a different failure from unknown content kinds.
 
+## Alerts for broken content
+
+Checked 2026-11-19 by research subagents.
+
+- PostHog destinations (vendor feature): a destination's masking (`hash`, `ttl` 60–86,400 s, optional `threshold`) posts at most once per hash value per TTL; the UI offers only fixed presets, and a custom hash such as a property value is set through the API. Read in PostHog's source, not its docs: [serializer](https://github.com/PostHog/posthog/blob/master/products/cdp/backend/api/hog_function.py), [UI presets](https://github.com/PostHog/posthog/blob/master/frontend/src/scenes/hog-functions/filters/HogFunctionFilters.tsx).
+- Google, [SRE book ch. 6](https://sre.google/sre-book/monitoring-distributed-systems/) (research-backed practice): every page should be actionable and about a novel problem; frequent pages get skimmed or ignored.
+- Sentry, [event grouping](https://docs.sentry.io/concepts/data-management/event-grouping/) and [alerts](https://docs.sentry.io/product/monitors-and-alerts/alerts/create-alerts.md) (vendor recommendation): events group into one issue by fingerprint, and an alert's actions throttle per issue. PagerDuty, [Events API v2](https://docs.pagerduty.com/developer/events-api-v2-overview) (vendor recommendation): alerts for an existing problem group into one incident.
+
 ## Mobile component tests
 
 Checked 2026-11-19 by a research subagent.
