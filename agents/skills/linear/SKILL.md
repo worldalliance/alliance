@@ -1,6 +1,6 @@
 ---
 name: linear
-description: Read before touching Linear, our issue tracker, naming a branch for one of its issues, or writing a commit or PR that names one.
+description: Read before starting or continuing work on an issue in Linear, our issue tracker, touching Linear, naming a branch for one of its issues, or writing a commit or PR that names one.
 ---
 
 # Linear API
@@ -26,6 +26,10 @@ File it in the `Backlog` state.
 Label it `AI-generated`, plus labels from every label group as each group's description says, plus any other relevant labels. The groups and their labels' descriptions: `issueLabels(filter: {isGroup: {eq: true}}) { nodes { name description children { nodes { name description } } } }`.
 
 Write the description so the bug can be fixed from it alone, weeks later: repro, file paths with line numbers, and the branch and commit sha when the finding only exists on an unmerged branch.
+
+## Starting work on an issue
+
+Claim an issue before working on it, so two agents don't do the same work: move it to `In Progress` and comment your branch and session id (`claude:$CLAUDE_CODE_SESSION_ID` or `codex:$CODEX_THREAD_ID`). Every agent acts in Linear as the same `Alliance agent` user, so the session id is what tells claims apart, and it leads to the transcript of a session that stopped without a PR. A session continuing the claimant's work, through a handoff or as its subagent, works under that claim. When the issue already looks claimed by someone else, ask the user. If you drop the work without opening a PR, put the issue back as you found it.
 
 ## Linking work to an issue
 
