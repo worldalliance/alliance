@@ -113,6 +113,6 @@ test("tells earlier reviewers there's more, from its own count", async () => {
     queryWrapper(),
   );
   await screen.findByText(
-    "Every reviewer who finished has been told about the newest transcripts.",
+    "Every reviewer who finished has been told about the newest conversations.",
   );
 });

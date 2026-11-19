@@ -1,0 +1,132 @@
+/* The v6 session: one conversation at a time, read then judged. */
+
+.kora-review .sprog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+}
+.kora-review .sprog::before {
+  content: "";
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-repeat: no-repeat;
+  background-size: var(--sprog-done, 0%) 100%;
+}
+.kora-review .sprog-text {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.kora-review .situation h2 {
+  margin: 0 0 4px;
+}
+.kora-review .situation p {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+.kora-review .situation p:last-child {
+  margin-bottom: 0;
+}
+
+.kora-review .guide {
+  padding: 0;
+  overflow: hidden;
+}
+.kora-review .guide-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.kora-review .guide-toggle:hover {
+  background: var(--accent-soft);
+}
+.kora-review .guide-caret {
+  margin-left: auto;
+  transition: transform 120ms ease;
+}
+.kora-review .guide-toggle[aria-expanded="true"] .guide-caret {
+  transform: rotate(90deg);
+}
+.kora-review .guide-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.kora-review .verdicts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.kora-review .verdict {
+  flex: 1 1 160px;
+  justify-content: center;
+}
+.kora-review .verdict[aria-pressed="true"] {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.kora-review .opts.scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kora-review .opts.scale .opt {
+  flex: 1 1 120px;
+}
+
+.kora-review .sh-label {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.kora-review .sh-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kora-review .chipbtn {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  cursor: pointer;
+}
+.kora-review .chipbtn:hover {
+  border-color: var(--accent);
+}
+.kora-review .chipbtn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.kora-review .acts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0 48px;
+}
+.kora-review .block-hint {
+  margin: 0;
+}
+.kora-review .questions {
+  margin-top: 24px;
+}

@@ -1,4 +1,4 @@
-import { KORA_UPLOAD_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
+import { KORA_UPLOAD_NEEDS_CONVERSATIONS } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
@@ -32,16 +32,17 @@ import {
   KoraBatchDto,
   KoraBatchEventDto,
   KoraDeletionImpactDto,
-  KoraTranscriptPreviewDto,
   KoraUploadRejectedDto,
   SetKoraBatchClosesAtDto,
   UploadKoraBatchDto,
 } from "./dto/kora-batch.dto";
+import { KoraItemDto } from "./dto/kora-review.dto";
 import {
   KoraBatchActionError,
   KoraBatchActionsService,
 } from "./kora-batch-actions.service";
 import { KoraBatchService } from "./kora-batch.service";
+import { koraItem } from "./kora-item";
 import { koraStagingTools } from "./kora-staging-tools";
 
 const TRANSCRIPTS_MAX_BYTES = 50 * 1024 * 1024;
@@ -63,7 +64,7 @@ export class KoraBatchesController {
   /** All or nothing: any invalid line rejects the file, listing every bad line. */
   @Post()
   @UseInterceptors(
-    FileInterceptor("transcripts", {
+    FileInterceptor("conversations", {
       limits: { fileSize: TRANSCRIPTS_MAX_BYTES },
     }),
   )
@@ -71,16 +72,10 @@ export class KoraBatchesController {
   @ApiBody({
     schema: {
       type: "object",
-      required: [
-        "transcripts",
-        "transcriptsPerAssignment",
-        "reviewsPerTranscript",
-        "closesAt",
-      ],
+      required: ["conversations", "reviewsPerConversation", "closesAt"],
       properties: {
-        transcripts: { type: "string", format: "binary" },
-        transcriptsPerAssignment: { type: "integer" },
-        reviewsPerTranscript: { type: "integer" },
+        conversations: { type: "string", format: "binary" },
+        reviewsPerConversation: { type: "integer" },
         closesAt: { type: "string", format: "date-time" },
       },
     },
@@ -89,16 +84,15 @@ export class KoraBatchesController {
   @ApiBadRequestResponse({ type: KoraUploadRejectedDto })
   async upload(
     @Body() dto: UploadKoraBatchDto,
-    @UploadedFile() transcripts: Express.Multer.File | undefined,
+    @UploadedFile() conversations: Express.Multer.File | undefined,
     @Request() req: JwtRequest,
   ): Promise<KoraBatchDto> {
-    if (!transcripts) {
-      throw new BadRequestException(KORA_UPLOAD_NEEDS_TRANSCRIPTS);
+    if (!conversations) {
+      throw new BadRequestException(KORA_UPLOAD_NEEDS_CONVERSATIONS);
     }
     const uploaded = await this.batchService.upload({
-      transcriptsText: transcripts.buffer.toString("utf8"),
-      transcriptsPerAssignment: dto.transcriptsPerAssignment,
-      reviewsPerTranscript: dto.reviewsPerTranscript,
+      conversationsText: conversations.buffer.toString("utf8"),
+      reviewsPerConversation: dto.reviewsPerConversation,
       closesAt: dto.closesAt,
       actor: await this.actions.actor(req.user.sub),
     });
@@ -112,16 +106,19 @@ export class KoraBatchesController {
     return new KoraBatchDto(uploaded.value);
   }
 
-  @Get(":id/random-transcript")
-  @ApiOkResponse({ type: KoraTranscriptPreviewDto })
-  async randomTranscript(
+  /** One conversation from the batch as a reviewer would be served it, for the admin preview. */
+  @Get(":id/random-conversation")
+  @ApiOkResponse({ type: KoraItemDto })
+  async randomConversation(
     @Param("id", ParseUUIDPipe) id: string,
-  ): Promise<KoraTranscriptPreviewDto> {
-    const transcript = await this.batchService.randomTranscript(id);
-    if (!transcript) {
+  ): Promise<KoraItemDto> {
+    const conversation = await this.batchService.randomConversation(id);
+    if (!conversation) {
       throw new NotFoundException("Batch not found");
     }
-    return new KoraTranscriptPreviewDto(transcript);
+    return new KoraItemDto(
+      koraItem({ conversation, ratedPosition: null, firstTimeOnRisk: true }),
+    );
   }
 
   @Get("events")

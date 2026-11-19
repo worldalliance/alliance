@@ -141,11 +141,11 @@ export const queryKeys = {
   koraBatchesAdmin: () => ["koraBatchesList"] as const,
   koraCategoriesAdmin: () => ["koraAdminCategories"] as const,
   koraBatchEventsAdmin: () => ["koraBatchesEvents"] as const,
-  koraAssignmentExport: (assignmentId: string) =>
-    ["koraResultsAssignment", assignmentId] as const,
+  koraSessionExport: (sessionId: string) =>
+    ["koraResultsSession", sessionId] as const,
   koraAnswersAdmin: () => ["koraResultsAnswers"] as const,
-  koraRandomTranscript: (batchId: string) =>
-    ["koraBatchesRandomTranscript", batchId] as const,
+  koraRandomConversation: (batchId: string) =>
+    ["koraBatchesRandomConversation", batchId] as const,
   koraProject: () => ["koraProject"] as const,
   koraProjectAdmin: () => ["koraAdminProject"] as const,
   linkedGuestDraft: (taskFormId: number) =>

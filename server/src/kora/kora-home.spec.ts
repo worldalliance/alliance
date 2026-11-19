@@ -1,33 +1,33 @@
 import { KoraUserBatchStatus } from "@alliance/common/kora";
-import { type KoraAssignmentProgress, koraHome } from "./kora-home";
+import { type KoraSessionProgress, koraHome } from "./kora-home";
 
 const now = new Date("2026-11-20T12:00:00Z");
 const day = (d: number) => new Date(now.getTime() + d * 86_400_000);
 
-const assignment = (
-  overrides: Partial<KoraAssignmentProgress>,
-): KoraAssignmentProgress => ({
+const session = (
+  overrides: Partial<KoraSessionProgress>,
+): KoraSessionProgress => ({
   id: "a",
   createdAt: day(-1),
   releasedAt: day(-3),
   closesAt: day(5),
-  completedAt: null,
+  endedAt: null,
   total: 10,
   progress: 0,
   ranked: 0,
   ...overrides,
 });
-const offer = { releasedAt: day(-3), closesAt: day(5), size: 10 };
+const offer = { releasedAt: day(-3), closesAt: day(5) };
 
 describe("koraHome", () => {
   it("names each assignment's status and lists the newest first", () => {
     const home = koraHome({
       now,
       offer: null,
-      assignments: [
-        assignment({ id: "done", createdAt: day(-9), completedAt: day(-8) }),
-        assignment({ id: "open", createdAt: day(-1) }),
-        assignment({ id: "closed", createdAt: day(-5), closesAt: now }),
+      sessions: [
+        session({ id: "done", createdAt: day(-9), endedAt: day(-8) }),
+        session({ id: "open", createdAt: day(-1) }),
+        session({ id: "closed", createdAt: day(-5), closesAt: now }),
       ],
     });
     expect(home.userBatches.map((b) => [b.id, b.status])).toEqual([
@@ -37,43 +37,43 @@ describe("koraHome", () => {
     ]);
   });
 
-  it("counts skipped pairs toward progress but not toward pairs ranked", () => {
+  it("counts skipped conversations toward progress but not toward conversations ranked", () => {
     const home = koraHome({
       now,
       offer: null,
-      assignments: [
-        assignment({ id: "x", progress: 4, ranked: 3 }),
-        assignment({ id: "y", completedAt: day(-1), progress: 10, ranked: 9 }),
+      sessions: [
+        session({ id: "x", progress: 4, ranked: 3 }),
+        session({ id: "y", endedAt: day(-1), progress: 10, ranked: 9 }),
       ],
     });
     expect(home.totalRanked).toBe(12);
     expect(home.userBatches[0]).toMatchObject({ progress: 4, total: 10 });
   });
 
-  it("shows an offer first, only while no assignment is open", () => {
-    const finished = assignment({ completedAt: day(-1) });
+  it("shows an offer first, only while no session is open", () => {
+    const finished = session({ endedAt: day(-1) });
     expect(
-      koraHome({ now, offer, assignments: [finished] }).userBatches[0],
+      koraHome({ now, offer, sessions: [finished] }).userBatches[0],
     ).toEqual({
       id: null,
       status: KoraUserBatchStatus.Ready,
       releasedAt: offer.releasedAt,
       closesAt: offer.closesAt,
       progress: 0,
-      total: 10,
+      total: 0,
     });
     expect(
-      koraHome({ now, offer, assignments: [assignment({})] }).userBatches,
+      koraHome({ now, offer, sessions: [session({})] }).userBatches,
     ).toHaveLength(1);
   });
 
-  it("leaves out an assignment a retire emptied, and falls back to its creation date", () => {
+  it("leaves out a session a retire emptied, and falls back to its creation date", () => {
     const home = koraHome({
       now,
       offer: null,
-      assignments: [
-        assignment({ id: "empty", total: 0 }),
-        assignment({ id: "kept", releasedAt: null }),
+      sessions: [
+        session({ id: "empty", total: 0 }),
+        session({ id: "kept", releasedAt: null }),
       ],
     });
     expect(home.userBatches).toEqual([

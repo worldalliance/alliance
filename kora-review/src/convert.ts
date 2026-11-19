@@ -1,16 +1,16 @@
 import { isNode, isSeq, LineCounter, parseDocument } from "yaml";
 
-// Reads KORA's pair export (pair_id, risk_id, conversation_a/b with child and ai turns) and converts each
-// pair into a transcript line for transcriptSchema. Fields the schema doesn't name (model names,
-// comprehension_options, feedback_text, note, risk_category_id, ...) are dropped. The converter checks
-// nothing and passes required values through unchanged, so validating its output against transcriptSchema
-// catches a missing or malformed one.
+// Reads KORA's import file, whatever shape it arrives in, and converts each record onto the field names
+// the host stores: conversations for conversationSchema (v6), pairs for transcriptSchema (v5.2, on its way
+// out). Fields the schemas don't name (model names, feedback_text, note, risk_category_id, ...) are
+// dropped. The converters check nothing and pass required values through unchanged, so validating their
+// output catches a missing or malformed one.
 
-export type KoraPairRecord =
+export type KoraFileRecord =
   | { line: number; ok: true; record: unknown }
   | { line: number; ok: false; error: string };
 
-function readYaml(text: string): KoraPairRecord[] {
+function readYaml(text: string): KoraFileRecord[] {
   const lineCounter = new LineCounter();
   const doc = parseDocument(text, { lineCounter });
   if (doc.errors.length > 0) {
@@ -22,9 +22,7 @@ function readYaml(text: string): KoraPairRecord[] {
   }
   if (doc.contents === null) return [];
   if (!isSeq(doc.contents)) {
-    return [
-      { line: 1, ok: false, error: "a YAML file must be a list of pairs" },
-    ];
+    return [{ line: 1, ok: false, error: "a YAML file must be a list" }];
   }
   return doc.contents.items.map((item) => ({
     line:
@@ -36,10 +34,10 @@ function readYaml(text: string): KoraPairRecord[] {
 
 /**
  * Splits KORA's file into records: JSON Lines numbered by line, a JSON array numbered by element, or a YAML
- * list numbered by the line each pair starts on. The first character that isn't whitespace or a YAML comment
- * picks the format.
+ * list numbered by the line each record starts on. The first character that isn't whitespace or a YAML
+ * comment picks the format.
  */
-export function readKoraPairs(text: string): KoraPairRecord[] {
+export function readKoraRecords(text: string): KoraFileRecord[] {
   const trimmed = text.trim();
   const first = trimmed.replace(/^(#.*(\n|$)|\s+)*/, "")[0];
   if (first !== "[" && first !== "{") return first ? readYaml(text) : [];
@@ -53,7 +51,7 @@ export function readKoraPairs(text: string): KoraPairRecord[] {
       // An array split one element per line isn't valid JSON as a whole; read it line by line.
     }
   }
-  return text.split("\n").flatMap((raw, i): KoraPairRecord[] => {
+  return text.split("\n").flatMap((raw, i): KoraFileRecord[] => {
     const line = raw
       .trim()
       .replace(/^\[|\]$/g, "")
@@ -100,5 +98,38 @@ export function fromKoraPair(record: unknown): Record<string, unknown> {
     ...(p.scenario ? { scenario: String(p.scenario) } : {}),
     conversationA: turns(p.conversation_a),
     conversationB: turns(p.conversation_b),
+  };
+}
+
+/** Maps one conversation from KORA's import file (Annex B) onto conversationSchema's field names. */
+export function fromKoraConversation(record: unknown): Record<string, unknown> {
+  const c = fields(record);
+  return {
+    conversationId: c.conversation_id,
+    itemType: c.item_type,
+    riskId: c.risk_id,
+    scenarioTitle: c.scenario_title,
+    childAge: c.child_age,
+    nTurns: c.n_turns,
+    conversation: turns(c.conversation),
+    ...(c.age_band ? { ageBand: String(c.age_band) } : {}),
+    ...(c.child_gender !== undefined ? { childGender: c.child_gender } : {}),
+    ...(c.child_background
+      ? { childBackground: String(c.child_background) }
+      : {}),
+    ...(c.scenario ? { scenario: String(c.scenario) } : {}),
+    ...(typeof c.opt_in === "boolean" ? { optIn: c.opt_in } : {}),
+    ...(c.comprehension_options !== undefined
+      ? { comprehensionOptions: c.comprehension_options }
+      : {}),
+    ...(c.comprehension_correct !== undefined
+      ? { comprehensionCorrect: c.comprehension_correct }
+      : {}),
+    ...(c.reference_verdict !== undefined
+      ? { referenceVerdict: c.reference_verdict }
+      : {}),
+    ...(c.reference_reason !== undefined
+      ? { referenceReason: c.reference_reason }
+      : {}),
   };
 }

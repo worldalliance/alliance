@@ -5,10 +5,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "src/utils/Repository";
 import { DataSource, type EntityManager, In } from "typeorm";
-import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
-import { KoraTranscript } from "./entities/kora-transcript.entity";
+import { KoraConversation } from "./entities/kora-conversation.entity";
+import { KoraSession } from "./entities/kora-session.entity";
 import type { KoraBatchSummary } from "./kora-batch.service";
 
 export type KoraActor = { id: number; name: string };
@@ -51,7 +51,7 @@ export class KoraBatchActionsService {
       e.assignmentId ? [e.assignmentId] : [],
     );
     const live = assignmentIds.length
-      ? await this.dataSource.manager.find(KoraAssignment, {
+      ? await this.dataSource.manager.find(KoraSession, {
           where: { id: In(assignmentIds) },
           select: { id: true },
         })
@@ -72,8 +72,8 @@ export class KoraBatchActionsService {
     return this.dataSource.transaction(async (manager) => {
       const batch = await manager.findOneBy(KoraBatch, { id: params.batchId });
       if (!batch) return R.failure(KoraBatchActionError.NotFound);
-      const transcriptCount = await countTranscripts(manager, batch.id);
-      if (batch.retiredAt) return R.success({ batch, transcriptCount });
+      const conversationCount = await countConversations(manager, batch.id);
+      if (batch.retiredAt) return R.success({ batch, conversationCount });
       batch.retiredAt = new Date();
       await manager.update(
         KoraBatch,
@@ -85,9 +85,9 @@ export class KoraBatchActionsService {
         kind: KoraBatchEventKind.Retire,
         batch,
         actor: params.actor,
-        counts: { transcriptCount },
+        counts: { transcriptCount: conversationCount },
       });
-      return R.success({ batch, transcriptCount });
+      return R.success({ batch, conversationCount });
     });
   }
 
@@ -98,17 +98,17 @@ export class KoraBatchActionsService {
     return this.dataSource.transaction(async (manager) => {
       const batch = await manager.findOneBy(KoraBatch, { id: params.batchId });
       if (!batch) return R.failure(KoraBatchActionError.NotFound);
-      const transcriptCount = await countTranscripts(manager, batch.id);
-      if (!batch.retiredAt) return R.success({ batch, transcriptCount });
+      const conversationCount = await countConversations(manager, batch.id);
+      if (!batch.retiredAt) return R.success({ batch, conversationCount });
       batch.retiredAt = null;
       await manager.update(KoraBatch, { id: batch.id }, { retiredAt: null });
       await logBatchEvent(manager, {
         kind: KoraBatchEventKind.Reactivate,
         batch,
         actor: params.actor,
-        counts: { transcriptCount },
+        counts: { transcriptCount: conversationCount },
       });
-      return R.success({ batch, transcriptCount });
+      return R.success({ batch, conversationCount });
     });
   }
 
@@ -122,7 +122,7 @@ export class KoraBatchActionsService {
     return R.success(await impactOf(this.dataSource.manager, batchId));
   }
 
-  /** Removes the batch, its transcripts and their ratings, and every assignment checked against its schema. */
+  /** Removes the batch, its conversations and their ratings, and every session checked against its schema. */
   delete(params: {
     batchId: string;
     actor: KoraActor;
@@ -165,19 +165,19 @@ export function logBatchEvent(
   });
 }
 
-const countTranscripts = (manager: EntityManager, batchId: string) =>
-  manager.countBy(KoraTranscript, { batchId });
+const countConversations = (manager: EntityManager, batchId: string) =>
+  manager.countBy(KoraConversation, { batchId });
 
 async function dropUnrated(
   manager: EntityManager,
   batchId: string,
 ): Promise<void> {
   await manager.query(
-    `DELETE FROM "kora_assignment_transcript" at
-     USING "kora_assignment" a, "kora_transcript" t
-     WHERE at."assignmentId" = a."id" AND at."transcriptId" = t."id"
-       AND t."batchId" = $1 AND at."status" = $2
-       AND a."completedAt" IS NULL AND a."deletedAt" IS NULL`,
+    `DELETE FROM "kora_session_conversation" sc
+     USING "kora_session" s, "kora_conversation" c
+     WHERE sc."sessionId" = s."id" AND sc."conversationId" = c."id"
+       AND c."batchId" = $1 AND sc."status" = $2
+       AND s."endedAt" IS NULL AND s."deletedAt" IS NULL`,
     [batchId, KoraReviewStatus.Pending],
   );
 }
@@ -188,15 +188,15 @@ async function impactOf(
 ): Promise<KoraDeletionImpact> {
   const [row]: KoraDeletionImpact[] = await manager.query(
     `SELECT
-       (SELECT COUNT(*)::int FROM "kora_transcript" WHERE "batchId" = $1)
+       (SELECT COUNT(*)::int FROM "kora_conversation" WHERE "batchId" = $1)
          AS "transcriptCount",
-       (SELECT COUNT(*)::int FROM "kora_assignment_transcript" at
-          JOIN "kora_assignment" a ON a."id" = at."assignmentId"
-          JOIN "kora_transcript" t ON t."id" = at."transcriptId"
-          WHERE at."status" = $2 AND a."deletedAt" IS NULL
-            AND (t."batchId" = $1 OR a."schemaBatchId" = $1))
+       (SELECT COUNT(*)::int FROM "kora_session_conversation" sc
+          JOIN "kora_session" s ON s."id" = sc."sessionId"
+          JOIN "kora_conversation" c ON c."id" = sc."conversationId"
+          WHERE sc."status" = $2 AND s."deletedAt" IS NULL
+            AND (c."batchId" = $1 OR s."schemaBatchId" = $1))
          AS "ratingCount",
-       (SELECT COUNT(*)::int FROM "kora_assignment"
+       (SELECT COUNT(*)::int FROM "kora_session"
           WHERE "schemaBatchId" = $1 AND "deletedAt" IS NULL)
          AS "assignmentCount"`,
     [batchId, KoraReviewStatus.Done],

@@ -24,7 +24,7 @@ serveApi(
 
 beforeEach(() => localStorage.clear());
 
-test("mounts the example pair under a banner, and remembers it was opened", async () => {
+test("mounts the example conversation under a banner, and remembers it was opened", async () => {
   const { container } = render(
     <MemoryRouter initialEntries={[KORA_EXAMPLE_PATH]}>
       <QueryClientProvider client={new QueryClient()}>
@@ -41,7 +41,10 @@ test("mounts the example pair under a banner, and remembers it was opened", asyn
     screen.getByRole("link", { name: EXAMPLE_COPY.back }).getAttribute("href"),
   ).toBe(KORA_PROJECT_PATH);
   await waitFor(() =>
-    expect(container.textContent).toContain("Category: Homework honesty"),
+    expect(container.textContent).toContain("Volcano homework"),
+  );
+  expect(container.textContent).toContain(
+    "What did the child talk to the AI about?",
   );
   expect(localStorage.getItem(EXAMPLE_OPENED_KEY)).toBe("true");
 });

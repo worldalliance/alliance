@@ -1,4 +1,5 @@
 import {
+  KORA_ACCOUNT_PATH,
   KORA_EXAMPLE_PATH,
   KORA_PROJECT_PATH,
   KORA_REVIEW_PATH,
@@ -46,6 +47,10 @@ export default [
   route(
     KORA_EXAMPLE_PATH,
     "components/projects/safer-chatbots-for-children-26/KoraExamplePage.tsx",
+  ),
+  route(
+    KORA_ACCOUNT_PATH,
+    "components/projects/safer-chatbots-for-children-26/KoraAccountPage.tsx",
   ),
   route("/safer-chatbots", "pages/static/SaferChatbotsRedirect.tsx"),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),

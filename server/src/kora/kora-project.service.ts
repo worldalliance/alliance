@@ -31,7 +31,7 @@ export class KoraProjectService {
   async adminProject(): Promise<KoraProjectState> {
     const [project, canActivate] = await Promise.all([
       this.project(),
-      this.batchService.hasTranscripts(),
+      this.batchService.hasConversations(),
     ]);
     return { project, canActivate };
   }
@@ -41,7 +41,7 @@ export class KoraProjectService {
   ): Promise<Result<KoraProjectState, KoraProjectError>> {
     if (
       status === KoraProjectStatus.Active &&
-      !(await this.batchService.hasTranscripts())
+      !(await this.batchService.hasConversations())
     ) {
       return R.failure(KoraProjectError.NeedsTranscripts);
     }

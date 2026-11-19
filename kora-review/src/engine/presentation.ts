@@ -1,21 +1,39 @@
 import type { PresentationCtx } from "./context.js";
+import type { Valence } from "./types.js";
 
 export function createPresentation(ctx: PresentationCtx) {
-  const { catLabel, fmt, h, hueOf, icon, vcls } = ctx;
+  const { budgetUnits, h, hueOf, icon, spentUnits } = ctx;
 
-  function catChip(c: string) {
+  function riskChip(riskId: string, riskName: string) {
     return h(
       "span",
-      { class: "chip", style: `--h:${hueOf(c)}`, title: catLabel(c) },
+      { class: "chip", style: `--h:${hueOf(riskId)}`, title: riskName },
       h("span", { class: "dot", "aria-hidden": "true" }),
-      catLabel(c),
+      riskName,
+    );
+  }
+  /** The session's load budget, not a count of conversations: a long one must not read as a fraction. */
+  function progressBar() {
+    const budget = budgetUnits();
+    const done = Math.min(100, Math.round((spentUnits() / budget) * 100));
+    return h(
+      "div",
+      {
+        class: "sprog",
+        style: `--sprog-done:${done}%`,
+        role: "progressbar",
+        "aria-valuemin": "0",
+        "aria-valuemax": "100",
+        "aria-valuenow": String(done),
+        "aria-label": "Session progress",
+      },
+      h("span", { class: "sprog-text" }, `${done}% of this session`),
     );
   }
   function topBar(params: {
     chip?: Node;
-    age?: string;
-    pairId?: string;
-    stage: string;
+    child?: string;
+    stage?: Node;
     below?: Node;
   }) {
     return h(
@@ -23,63 +41,37 @@ export function createPresentation(ctx: PresentationCtx) {
       { class: "rhead" },
       h(
         "div",
-        { class: "wrap wide" },
+        { class: "wrap" },
         h(
           "div",
           { class: "rrow" },
           params.chip,
-          params.age ? h("span", { class: "cage" }, params.age) : null,
-          params.pairId ? pairIdToggle(params.pairId) : null,
+          params.child ? h("span", { class: "cage" }, params.child) : null,
           h("span", { class: "grow" }),
-          h("span", { class: "prog" }, params.stage),
+          params.stage,
         ),
         params.below,
       ),
     );
   }
-  function pairIdToggle(pairId: string) {
-    const id = h("span", { class: "pair-id-text", hidden: true }, pairId);
-    const toggle = h(
-      "button",
-      {
-        type: "button",
-        class: "pair-id-hash",
-        "aria-label": "Pair ID",
-        "aria-expanded": "false",
-        onclick: () => {
-          id.hidden = !id.hidden;
-          toggle.setAttribute("aria-expanded", String(!id.hidden));
-        },
-      },
-      "#",
-    );
-    return h("span", { class: "pair-id" }, toggle, id);
-  }
   function brandMark() {
     return h(
       "span",
       { class: "mark", "aria-hidden": "true" },
-      h("b", { class: "p" }, "+1"),
-      h("b", { class: "n" }, "−1"),
+      h("b", { class: "p" }, "👍"),
+      h("b", { class: "n" }, "👎"),
     );
   }
 
-  // A mark is +1, −1, or 0: a neutral note, shown with a pencil and counted towards neither side.
-  const markCls = (v: number) => (v > 0 ? "pos" : v < 0 ? "neg" : "note");
-  const markBadge = (v: number, cls: string) =>
-    v
-      ? h(
-          "span",
-          { class: cls + " " + vcls(v) },
-          h("span", { "aria-hidden": "true" }, fmt(v)),
-          h("span", { class: "sr" }, v > 0 ? "Plus one:" : "Minus one:"),
-        )
-      : h(
-          "span",
-          { class: cls + " v-note" },
-          icon("note"),
-          h("span", { class: "sr" }, "Note:"),
-        );
+  /** Like and dislike reuse the positive and negative colours the stylesheet already carries. */
+  const markCls = (valence: Valence) => (valence === "like" ? "pos" : "neg");
+  const markBadge = (valence: Valence, cls: string) =>
+    h(
+      "span",
+      { class: `${cls} v-${markCls(valence)}` },
+      icon(valence === "like" ? "up" : "down"),
+      h("span", { class: "sr" }, valence === "like" ? "Like:" : "Dislike:"),
+    );
 
-  return { brandMark, catChip, markBadge, markCls, topBar };
+  return { brandMark, markBadge, markCls, progressBar, riskChip, topBar };
 }

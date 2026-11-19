@@ -1,5 +1,5 @@
 import {
-  KORA_ACTIVE_NEEDS_TRANSCRIPTS,
+  KORA_ACTIVE_NEEDS_CONVERSATIONS,
   KoraProjectStatus,
 } from "@alliance/common/kora";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -26,7 +26,7 @@ const STATUS: Record<
     label: "Active",
     Icon: CirclePlay,
     description: "Accepting reviews",
-    confirm: "Reviewers start getting transcripts to review.",
+    confirm: "Reviewers start getting conversations to review.",
   },
   [KoraProjectStatus.Closed]: {
     label: "Closed",
@@ -109,7 +109,7 @@ export function KoraProjectStatusControl() {
       </div>
       {activeBlocked && current !== KoraProjectStatus.Active && (
         <p id="kora-status-blocked" className="text-zinc-600">
-          {KORA_ACTIVE_NEEDS_TRANSCRIPTS}
+          {KORA_ACTIVE_NEEDS_CONVERSATIONS}
         </p>
       )}
       <ConfirmDialog

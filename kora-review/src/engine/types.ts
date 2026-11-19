@@ -1,78 +1,68 @@
 import type {
-  KoraAnnotation,
   KoraCategory,
-  KoraExitSurvey,
-  KoraProfile,
-  KoraResult,
+  KoraFeedback,
+  KoraHighlight,
+  KoraItem,
+  KoraRating,
+  KoraSkip,
 } from "../types.gen.js";
 
-export type Side = "a" | "b";
-export type Safety = NonNullable<KoraResult["q0_a"]>;
-export type Strength = "clearly" | "somewhat";
+export type Valence = NonNullable<KoraHighlight["valence"]>;
+export type Reason = NonNullable<KoraHighlight["reason"]>;
+export type Verdict = NonNullable<KoraRating["q1"]>;
+export type Scale = 1 | 2 | 3 | 4;
 
-export type Message = { role: "user" | "assistant"; content: string };
-
-/** A pair as the engine holds it: A's turns then B's in one message list. */
-export type Transcript = {
+/**
+ * A highlight as the tool holds it: UTF-16 offsets into the turn's text, which is what the DOM gives.
+ * The export converts them to the code-point offsets Annex D asks for; `text` is the same slice either way.
+ */
+export type Highlight = {
   id: string;
-  category: KoraCategory;
-  hash: string;
-  pairType: string | null;
-  context: {
-    title: string;
-    childAge: number | null;
-  };
-  messages: Message[];
-  pair: { na: number };
+  turnIndex: number;
+  start: number;
+  end: number;
+  text: string;
+  valence: Valence;
+  reason: Reason | null;
+  createdAt: string;
+  orphaned?: boolean;
 };
 
-/** An annotation with messageIndex into the combined message list. */
-export type Annotation = Pick<
-  KoraAnnotation,
-  "id" | "start" | "end" | "text" | "value" | "createdAt" | "note" | "orphaned"
-> & { messageIndex: number };
-
-export type AnswerKey = "q0_a" | "q0_b" | "q1" | "q2_turn" | "q3_text";
-
-export type Answers = Partial<Pick<KoraResult, AnswerKey>>;
-
-/** "clearly_a" as its strength and side. */
-export function q1Parts(q1: NonNullable<KoraResult["q1"]>): {
-  strength: Strength;
-  side: Side;
-} {
-  const [strength, side] = q1.split("_");
-  return {
-    strength: strength === "clearly" ? "clearly" : "somewhat",
-    side: side === "a" ? "a" : "b",
-  };
-}
-
-export type Result = Pick<
-  KoraResult,
-  | "transcriptId"
-  | "category"
-  | "contentHash"
-  | "status"
-  | "optedOut"
-  | "netSum"
-  | "plusCount"
-  | "minusCount"
-  | "startedAt"
-  | "completedAt"
-  | "timeMs"
-  | "pairPosition"
-  | "stale"
-> & { answers: Answers; annotations: Annotation[] };
+export type Rating = {
+  conversationId: string;
+  riskId: KoraCategory;
+  contentHash: string;
+  kind: KoraItem["kind"];
+  status: "reading" | "judging" | "done";
+  position: number | null;
+  firstTimeOnRisk: boolean;
+  comprehensionAnswer: number | null;
+  q1: Verdict | null;
+  q2Confidence: Scale | null;
+  q3Severity: Scale | null;
+  q4Text: string | null;
+  highlights: Highlight[];
+  startedAt: string;
+  readSubmittedAt: string | null;
+  completedAt: string | null;
+  timeMsRead: number;
+  timeMsJudge: number;
+  stale?: { moved: number; lost: number };
+};
 
 export type Screen =
   | "boot"
   | "loading"
-  | "profile"
   | "warning"
-  | "review"
-  | "exit"
-  | "finish";
+  | "read"
+  | "judge"
+  | "practice"
+  | "feedback"
+  | "complete"
+  | "empty";
+
+/** Why the host stopped giving conversations, once it has. */
+export type Ended = "budget_spent" | "queue_empty";
 
 export type Token = {
   start: number;
@@ -80,10 +70,10 @@ export type Token = {
   text: string;
   el: HTMLElement;
   blk: number;
-  ann?: Annotation | null;
+  hl?: Highlight | null;
 };
 
-/** One rendered message's words, for selecting and marking them. */
+/** One rendered AI turn's words, for selecting and marking them. */
 export type Words = {
   mi: number;
   tokens: Token[];
@@ -91,49 +81,31 @@ export type Words = {
   content: string;
 };
 
-/** A reply on the review screen, with its bubble and its list of marks. */
 export type View = Words & { bubble: HTMLElement };
 
-/** Token indexes within one message. */
+/** Token indexes within one turn. */
 export type Selection = { mi: number; anchor: number; focus: number };
 
-export type PairDraft = {
-  q0: Partial<Record<Side, Safety>>;
-  q1: { side: Side; strength: Strength } | null;
-  turn: number | "none" | null;
-  quote: string | null;
-  reason: string;
-  reasonEdited: boolean;
-};
-
 export type SheetMode = "new" | "edit";
-
 export type SheetOpts = { kb?: boolean };
-
 export type SheetState = { mode: SheetMode } & SheetOpts;
 
 export type State = {
-  all: Transcript[];
-  list: Transcript[];
-  /** How many pairs the assignment asks for; more are fetched one at a time up to it. */
-  size: number;
-  /** The host has nothing more to give. */
-  exhausted: boolean;
-  results: Record<string, Result>;
-  history: Record<string, Annotation[][]>;
+  items: KoraItem[];
+  ratings: Record<string, Rating>;
+  history: Record<string, Highlight[][]>;
+  skips: KoraSkip[];
+  feedback: KoraFeedback | null;
   screen: Screen;
   idx: number;
   views: Record<number, View>;
   sel: Selection | null;
   editing: string | null;
   sheet: SheetState | null;
-  noteDraft: string;
-  lastCategory: string | null;
-  optOutCats: KoraCategory[];
-  profile: KoraProfile | null;
-  exitSurvey: KoraExitSurvey | null;
+  guideOpen: boolean;
+  ended: Ended | null;
   isDone: boolean;
-  coachDone: boolean;
+  /** The conversation whose content warning the reviewer has already answered. */
+  warned: string | null;
   mounted: boolean;
-  warned?: string;
 };

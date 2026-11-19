@@ -40,11 +40,10 @@ function maxLength(def: string, property: string): number {
   return limit;
 }
 
+// What a reviewer typed. A highlight's text is the conversation's own words, so it is left alone.
 const FREE_TEXT: Record<string, string[]> = {
-  result: ["q3_text"],
-  annotation: ["note"],
-  profile: ["country", "gender"],
-  exitSurvey: ["exit_q6"],
+  rating: ["q4Text"],
+  feedback: ["f3Text", "f5Text", "f7"],
 };
 
 const LIMITS = new Map(
@@ -72,28 +71,13 @@ function redactFields(value: unknown, def: string): unknown {
 export function redactExport(
   root: Record<string, unknown>,
 ): Record<string, unknown> {
-  const results = Array.isArray(root.results)
-    ? root.results.map((r: unknown) => {
-        const result = redactFields(r, "result");
-        const object = fields(result);
-        return object && Array.isArray(object.annotations)
-          ? {
-              ...object,
-              annotations: object.annotations.map((a: unknown) =>
-                redactFields(a, "annotation"),
-              ),
-            }
-          : result;
-      })
-    : root.results;
   return {
     ...root,
-    results,
-    ...("profile" in root
-      ? { profile: redactFields(root.profile, "profile") }
+    ...(Array.isArray(root.ratings)
+      ? { ratings: root.ratings.map((r: unknown) => redactFields(r, "rating")) }
       : {}),
-    ...("exitSurvey" in root
-      ? { exitSurvey: redactFields(root.exitSurvey, "exitSurvey") }
+    ...("feedback" in root
+      ? { feedback: redactFields(root.feedback, "feedback") }
       : {}),
   };
 }

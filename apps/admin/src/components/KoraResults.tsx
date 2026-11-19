@@ -80,14 +80,12 @@ export function KoraResults() {
       {answers.data && (
         <>
           <p className="text-zinc-600">
-            {answers.data.profiles} reviewers answered the profile and{" "}
-            {answers.data.exitSurveys} answered the exit survey. Counts only: no
-            individual answers are shown.
+            {answers.data.sessions} sessions ended with their feedback answered.
+            Counts only: no individual answers are shown.
           </p>
-          <AnswerTable caption="Profile" questions={answers.data.profile} />
           <AnswerTable
-            caption="Exit survey"
-            questions={answers.data.exitSurvey}
+            caption="End-of-session feedback"
+            questions={answers.data.feedback}
           />
         </>
       )}

@@ -3,7 +3,6 @@ import { Type } from "class-transformer";
 import { IsDate, IsInt, Max, Min, MinDate } from "class-validator";
 import { KoraBatchEvent } from "../entities/kora-batch-event.entity";
 import { KoraBatch } from "../entities/kora-batch.entity";
-import type { KoraTranscript } from "../entities/kora-transcript.entity";
 import type {
   KoraDeletionImpact,
   KoraLoggedEvent,
@@ -12,41 +11,32 @@ import type { KoraBatchSummary } from "../kora-batch.service";
 
 export class KoraBatchDto extends PickType(KoraBatch, [
   "id",
-  "transcriptsPerAssignment",
-  "reviewsPerTranscript",
+  "reviewsPerConversation",
   "retiredAt",
   "closesAt",
   "createdAt",
 ]) {
   @ApiProperty()
-  transcriptCount: number;
+  conversationCount: number;
 
   constructor(input: KoraBatchSummary) {
     super();
     this.id = input.batch.id;
-    this.transcriptsPerAssignment = input.batch.transcriptsPerAssignment;
-    this.reviewsPerTranscript = input.batch.reviewsPerTranscript;
+    this.reviewsPerConversation = input.batch.reviewsPerConversation;
     this.retiredAt = input.batch.retiredAt;
     this.closesAt = input.batch.closesAt;
     this.createdAt = input.batch.createdAt;
-    this.transcriptCount = input.transcriptCount;
+    this.conversationCount = input.conversationCount;
   }
 }
 
 export class UploadKoraBatchDto {
-  @ApiProperty({ minimum: 1, maximum: 100 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  transcriptsPerAssignment: number;
-
   @ApiProperty({ minimum: 1, maximum: 50 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(50)
-  reviewsPerTranscript: number;
+  reviewsPerConversation: number;
 
   @ApiProperty({ type: Date, description: "Must be in the future" })
   @Type(() => Date)
@@ -73,30 +63,6 @@ export class KoraUploadRejectedDto {
 
   @ApiProperty({ type: () => KoraRejectedLineDto, isArray: true })
   rejected: KoraRejectedLineDto[];
-}
-
-export class KoraTranscriptPreviewDto {
-  @ApiProperty({ type: "object", additionalProperties: true })
-  transcript: Record<string, unknown>;
-
-  @ApiProperty()
-  contentHash: string;
-
-  constructor(input: KoraTranscript) {
-    this.transcript = transcriptContent(input);
-    this.contentHash = input.contentHash;
-  }
-}
-
-/** Content was validated against transcriptSchema when stored. */
-export function transcriptContent(
-  transcript: KoraTranscript,
-): Record<string, unknown> {
-  const { content } = transcript;
-  if (!content || typeof content !== "object" || Array.isArray(content)) {
-    throw new Error(`Kora transcript ${transcript.id} has no content object`);
-  }
-  return Object.fromEntries(Object.entries(content));
 }
 
 export class KoraDeletionImpactDto {

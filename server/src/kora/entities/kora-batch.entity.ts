@@ -9,13 +9,10 @@ export class KoraBatch {
   @ApiProperty()
   id: string;
 
+  /** How many completed ratings each conversation is worth serving for. */
   @Column({ type: "int" })
   @ApiProperty()
-  transcriptsPerAssignment: number;
-
-  @Column({ type: "int" })
-  @ApiProperty()
-  reviewsPerTranscript: number;
+  reviewsPerConversation: number;
 
   /** Set while retired: its transcripts are left out of new assignments. */
   @Column({ type: "timestamptz", nullable: true })

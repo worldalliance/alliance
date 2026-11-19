@@ -2,7 +2,7 @@ import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "bun:test";
 import { fromKoraPair } from "../src/convert.js";
-import { transcriptSchema } from "../src/index.js";
+import { transcriptSchema } from "../src/schemas.js";
 
 const read = async (path: string): Promise<unknown> =>
   Bun.YAML.parse(await Bun.file(new URL(path, import.meta.url)).text());

@@ -30,7 +30,7 @@ function CategoryList() {
       <thead className="text-left text-zinc-500">
         <tr>
           <th className={CELL}>Category</th>
-          <th className={`${CELL} text-right`}>Pairs</th>
+          <th className={`${CELL} text-right`}>Conversations</th>
           <th className={`${CELL} text-right`}>Reviews needed</th>
           <th className={`${CELL} text-right`}>Opted out</th>
         </tr>
@@ -39,7 +39,7 @@ function CategoryList() {
         {categories.data.map((c) => (
           <tr key={c.category} className="border-t border-zinc-200">
             <td className={CELL}>{label(c.category)}</td>
-            <td className={NUM}>{c.pairs}</td>
+            <td className={NUM}>{c.conversations}</td>
             <td className={NUM}>{c.reviewsNeeded}</td>
             <td className={NUM}>{c.optedOut}</td>
           </tr>
@@ -56,10 +56,10 @@ export function KoraCategories() {
         Categories
       </h2>
       <p className="text-sm text-zinc-600">
-        Pairs in open batches. Reviews needed is how many more reviews their
-        pairs need, after finished reviews and pairs held in unfinished
-        assignments. Opted out counts participants who skipped the category;
-        they aren&apos;t given its pairs again.
+        Conversations in open batches. Reviews needed is how many more reviews
+        they need, after finished reviews and conversations held in unfinished
+        sessions. Opted out counts participants who skipped the category; they
+        aren&apos;t given its conversations again.
       </p>
       <CategoryList />
     </section>

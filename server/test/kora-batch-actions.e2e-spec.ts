@@ -5,12 +5,13 @@ import {
 } from "@alliance/common/kora";
 import { NodeEnv } from "@alliance/common/node-env";
 import { setEnv } from "@alliance/common/set-env";
-import { KoraAssignment } from "src/kora/entities/kora-assignment.entity";
 import { KoraBatchEvent } from "src/kora/entities/kora-batch-event.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
+import { KoraSession } from "src/kora/entities/kora-session.entity";
 import request from "supertest";
 import { closeTestApp } from "./e2e-test-utils";
+import { koraSessionExport } from "./kora-conversations";
 import {
   koraHarness,
   setKoraProjectStatus,
@@ -21,24 +22,15 @@ import { forgetRateEvents } from "./otp-fixtures";
 
 describe("Kora batch retire, reactivate and delete (e2e)", () => {
   let h: KoraHarness;
-  const {
-    state,
-    more,
-    save,
-    next,
-    ids,
-    exportOf,
-    finish,
-    participant,
-    upload,
-  } = koraReviewClient(() => h);
+  const { finish, ids, more, next, participant, save, served, state, upload } =
+    koraReviewClient(() => h);
 
   const admin = (method: "get" | "post" | "delete", path: string) =>
     request(h.ctx.app.getHttpServer())
       [method](`/kora/admin${path}`)
       .set("Authorization", `Bearer ${h.ctx.adminAccessToken}`);
-  const batchesOf = (assigned: string[]) =>
-    new Set(assigned.map((id) => id.replace(/\d+$/, "")));
+  const batchesOf = (conversationIds: string[]) =>
+    new Set(conversationIds.map((id) => id.replace(/\d+$/, "")));
   const events = async () =>
     (await admin("get", "/batches/events").expect(200)).body;
 
@@ -58,51 +50,18 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     await closeTestApp(h.ctx.app);
   });
 
-  it("retires a batch: unrated pairs leave, new assignments skip it, and reactivating brings it back", async () => {
-    const older = await upload(2, { prefix: "A", perAssignment: 2 });
-    const newer = await upload(2, { prefix: "B", perAssignment: 4 });
-    const reviewer = await participant();
-    const first = await state(reviewer);
-    const id = first.assignment?.id ?? "";
-    const given = [...(first.assignment?.transcripts ?? [])];
-    const rateGiven = () => {
-      const all = {
-        ...first,
-        assignment: first.assignment && {
-          ...first.assignment,
-          transcripts: given,
-        },
-      };
-      return save(
-        reviewer,
-        id,
-        exportOf(all, { done: ids(all.assignment) }),
-      ).expect(200);
-    };
-    const givenIds = () => given.map((t) => t.transcript.transcriptId);
-    while (!givenIds().some((t) => t.startsWith("B"))) {
-      await rateGiven();
-      const t = await next(reviewer, id);
-      if (!t) throw new Error("ran out before a B pair");
-      given.push(t);
-    }
-    await rateGiven();
-    const rated = givenIds();
-    const unrated = await next(reviewer, id);
+  it("retires a batch, so new sessions skip it, and reactivating brings it back", async () => {
+    const older = await upload(2, { prefix: "A", reviews: 3 });
+    const newer = await upload(2, { prefix: "B", reviews: 3 });
 
-    const retired = await admin("post", `/batches/${newer}/retire`).expect(200);
-    expect(retired.body.retiredAt).not.toBeNull();
-
-    const kept = ids((await state(reviewer)).assignment);
-    expect(kept.slice(0, rated.length)).toEqual(rated);
-    const unratedB = unrated?.transcript.transcriptId.startsWith("B")
-      ? [unrated.transcript.transcriptId]
-      : [];
-    for (const b of unratedB) expect(kept).not.toContain(b);
+    await admin("post", `/batches/${newer}/retire`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.retiredAt).not.toBeNull();
+      });
 
     const fresh = await state(await participant());
-    expect(batchesOf(ids(fresh.assignment))).toEqual(new Set(["A"]));
-    expect(fresh.assignment?.size).toBe(2);
+    expect(batchesOf(ids(fresh.session))).toEqual(new Set(["A"]));
 
     const reactivated = await admin(
       "post",
@@ -133,7 +92,7 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     ]);
   });
 
-  it("finishes an assignment a retire left with nothing to give, and says none are left", async () => {
+  it("leaves a session a retire emptied with nothing to give, and says none are left", async () => {
     const only = await upload(3);
     const reviewer = await participant();
     const s = await state(reviewer);
@@ -142,67 +101,66 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
 
     expect((await state(reviewer)).phase).toBe(KoraReviewPhase.NoneLeft);
     expect((await more(reviewer)).phase).toBe(KoraReviewPhase.NoneLeft);
-    const stored = await h.ctx.dataSource
-      .getRepository(KoraAssignment)
-      .findOneByOrFail({ id: s.assignment?.id });
-    expect(stored.completedAt).not.toBeNull();
-    expect(await events()).toContainEqual(
-      expect.objectContaining({
-        kind: KoraBatchEventKind.AssignmentCompleted,
-        assignmentId: s.assignment?.id,
-        reviewerId: s.reviewerId,
-        ratingCount: 0,
-      }),
-    );
+    expect(
+      await h.ctx.dataSource
+        .getRepository(KoraSession)
+        .existsBy({ id: s.session?.id }),
+    ).toBe(true);
   });
 
-  it("accepts a save from a tool loaded before the retire, dropping the removed pair and saying so", async () => {
-    await upload(2, { prefix: "A", perAssignment: 2 });
-    const newer = await upload(2, { prefix: "B", perAssignment: 4 });
+  it("accepts a save from a tool loaded before the retire, dropping the removed conversation", async () => {
+    await upload(2, { prefix: "A", reviews: 3 });
+    const newer = await upload(2, { prefix: "B", reviews: 3 });
     const reviewer = await participant();
     const loaded = await state(reviewer);
-    const id = loaded.assignment?.id ?? "";
-    const given = [...(loaded.assignment?.transcripts ?? [])];
-    const withGiven = () => ({
-      ...loaded,
-      assignment: loaded.assignment && {
-        ...loaded.assignment,
-        transcripts: given,
-      },
-    });
-    while (!given.at(-1)?.transcript.transcriptId.startsWith("B")) {
-      await save(
+    const id = loaded.session?.id ?? "";
+    const given = [...served(loaded.session)];
+    const judge = () =>
+      save(
         reviewer,
         id,
-        exportOf(withGiven(), { done: ids(withGiven().assignment) }),
+        koraSessionExport({
+          reviewerId: loaded.reviewerId,
+          sessionId: id,
+          conversations: given,
+          done: given.map((c) => c.id),
+        }),
       ).expect(200);
-      const t = await next(reviewer, id);
-      if (!t) throw new Error("ran out before a B pair");
-      given.push(t);
+    while (!given.at(-1)?.id.startsWith("B")) {
+      await judge();
+      const more = await next(reviewer, id);
+      if (!more.item) throw new Error("ran out before a B conversation");
+      given.push({
+        id: more.item.conversationId,
+        riskId: more.item.riskId,
+        contentHash: more.item.contentHash,
+      });
     }
-    const removed = given.at(-1)?.transcript.transcriptId ?? "";
+    const removed = given.at(-1)?.id ?? "";
 
     await admin("post", `/batches/${newer}/retire`).expect(200);
-    expect(
-      (
-        await save(reviewer, id, {
-          ...exportOf(withGiven(), { done: ids(withGiven().assignment) }),
-          currentTranscriptId: removed,
-        }).expect(200)
-      ).body,
-    ).toEqual({ completed: false, removed: [removed] });
+    const stale = koraSessionExport({
+      reviewerId: loaded.reviewerId,
+      sessionId: id,
+      conversations: given,
+      done: given.slice(0, -1).map((c) => c.id),
+    });
+    expect((await save(reviewer, id, stale).expect(200)).body).toEqual({
+      ended: false,
+      removed: [removed],
+    });
     const stored = await h.ctx.dataSource
-      .getRepository(KoraAssignment)
+      .getRepository(KoraSession)
       .findOneByOrFail({ id });
-    const results = JSON.stringify(stored.export);
+    const ratings = JSON.stringify(stored.export);
     for (const kept of given.slice(0, -1)) {
-      expect(results).toContain(`"${kept.transcript.transcriptId}"`);
+      expect(ratings).toContain(`"${kept.id}"`);
     }
-    expect(results).not.toContain(`"${removed}"`);
+    expect(ratings).not.toContain(`"${removed}"`);
   });
 
   it("marks each exported line with its batches and whether they're retired", async () => {
-    const older = await upload(2, { prefix: "A", perAssignment: 2 });
+    const older = await upload(2, { prefix: "A" });
     const reviewer = await participant();
     await finish(reviewer, await state(reviewer));
     await admin("post", `/batches/${older}/retire`).expect(200);
@@ -213,8 +171,8 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     ]);
   });
 
-  it("logs a completed assignment, and shows its export", async () => {
-    await upload(2, { perAssignment: 2 });
+  it("logs a finished session, and shows its export", async () => {
+    await upload(2);
     const reviewer = await participant();
     const s = await state(reviewer);
     await finish(reviewer, s);
@@ -222,31 +180,29 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     const [completed] = await events();
     expect(completed).toMatchObject({
       kind: KoraBatchEventKind.AssignmentCompleted,
-      assignmentId: s.assignment?.id,
+      assignmentId: s.session?.id,
       reviewerId: s.reviewerId,
       ratingCount: 2,
       adminName: null,
     });
     const shown = await admin(
       "get",
-      `/results/assignments/${s.assignment?.id}`,
+      `/results/sessions/${s.session?.id}`,
     ).expect(200);
     expect(shown.body).toMatchObject({
-      id: s.assignment?.id,
+      id: s.session?.id,
       reviewerId: s.reviewerId,
-      export: { batchId: s.assignment?.id },
+      export: { sessionId: s.session?.id },
     });
-    await admin("get", `/results/assignments/${crypto.randomUUID()}`).expect(
-      404,
-    );
+    await admin("get", `/results/sessions/${crypto.randomUUID()}`).expect(404);
   });
 
   it("deletes a batch with what hangs off it, after saying how much that is", async () => {
-    const older = await upload(2, { prefix: "A", perAssignment: 2 });
+    const older = await upload(2, { prefix: "A" });
     const reviewer = await participant();
     const first = await state(reviewer);
     await finish(reviewer, first);
-    const newer = await upload(2, { prefix: "B", perAssignment: 2 });
+    const newer = await upload(2, { prefix: "B" });
     const other = await participant();
     const s = await state(other);
     await finish(other, s);
@@ -257,7 +213,8 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     ).expect(200);
     expect(impact.body).toEqual({
       transcriptCount: 2,
-      ratingCount: 2,
+      // Every rating in the second reviewer's session: it was started against this batch.
+      ratingCount: 4,
       assignmentCount: 1,
     });
 
@@ -267,24 +224,24 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     expect(listed.body.map((b: { id: string }) => b.id)).toEqual([older]);
     expect(
       await h.ctx.dataSource
-        .getRepository(KoraAssignment)
-        .existsBy({ id: s.assignment?.id }),
+        .getRepository(KoraSession)
+        .existsBy({ id: s.session?.id }),
     ).toBe(false);
     const logged = await events();
     expect(logged[0]).toMatchObject({
       kind: KoraBatchEventKind.Delete,
       batchId: newer,
       transcriptCount: 2,
-      ratingCount: 2,
+      ratingCount: 4,
       assignmentCount: 1,
       adminName: "Test Admin",
     });
-    const completedOf = (assignmentId: string | undefined) =>
+    const completedOf = (sessionId: string | undefined) =>
       logged.find(
-        (e: { assignmentId: string | null }) => e.assignmentId === assignmentId,
+        (e: { assignmentId: string | null }) => e.assignmentId === sessionId,
       );
-    expect(completedOf(s.assignment?.id).assignmentDeleted).toBe(true);
-    expect(completedOf(first.assignment?.id).assignmentDeleted).toBe(false);
+    expect(completedOf(s.session?.id).assignmentDeleted).toBe(true);
+    expect(completedOf(first.session?.id).assignmentDeleted).toBe(false);
     await admin("delete", `/batches/${newer}`).expect(404);
   });
 

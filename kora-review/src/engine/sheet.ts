@@ -1,51 +1,59 @@
+import { DISLIKE_REASONS, LIKE_REASONS } from "../schemas.js";
 import type { SheetCtx } from "./context.js";
-import type { SheetMode, SheetOpts } from "./types.js";
+import type { Reason, SheetMode, SheetOpts, Valence } from "./types.js";
 
 type SheetPart = HTMLElement | HTMLElement[] | null;
 
+const REASON_LABEL: Record<string, string> = {
+  unsafe_advice: "Unsafe advice",
+  not_for_this_age: "Not for this age",
+  cold_or_preachy: "Cold or preachy",
+  pretends_to_be_a_friend: "Pretends to be a friend",
+  caring: "Caring",
+  points_to_an_adult: "Points to an adult",
+  other: "Other",
+};
+const reasonsFor = (valence: Valence): string[] =>
+  valence === "like" ? LIKE_REASONS : DISLIKE_REASONS;
+
 export function createSheet(ctx: SheetCtx) {
   const {
-    $,
     S,
     applyNew,
     clearSel,
     clip,
-    isDestroyed,
     doc,
-    findAnn,
+    drop,
+    find,
     flip,
-    fmt,
     h,
     headBottom,
     icon,
+    isDestroyed,
     later,
     markBadge,
     on,
     overlapping,
     plural,
     raf,
-    removeAnn,
-    rootEl,
     selRange,
-    setValue,
+    setReason,
     setVar,
     sheetEl,
     sheetIn,
-    spanText,
     win,
   } = ctx;
 
-  /* ---------- Bottom sheet ---------- */
   let sheetReturn: HTMLElement | null = null;
   function openSheet(mode: SheetMode, opts: SheetOpts = {}) {
-    const a = doc.activeElement;
+    const active = doc.activeElement;
     if (
       !S.sheet &&
-      a instanceof HTMLElement &&
-      rootEl.contains(a) &&
-      !sheetEl.contains(a)
+      active instanceof HTMLElement &&
+      !sheetEl.contains(active) &&
+      sheetEl.ownerDocument.contains(active)
     )
-      sheetReturn = a;
+      sheetReturn = active;
     S.sheet = { mode, ...opts };
     renderSheet();
     sheetEl.hidden = false;
@@ -77,59 +85,18 @@ export function createSheet(ctx: SheetCtx) {
   }
   function keepSelVisible() {
     if (!S.sel) return;
-    const v = S.views[S.sel.mi];
-    if (!v) return;
-    const el = v.tokens[S.sel.focus].el,
-      r = el.getBoundingClientRect();
+    const view = S.views[S.sel.mi];
+    if (!view) return;
+    const el = view.tokens[S.sel.focus].el,
+      box = el.getBoundingClientRect();
     const limit = win.innerHeight - sheetEl.offsetHeight - 16;
-    if (r.bottom > limit)
-      win.scrollBy({ top: r.bottom - limit + 8, behavior: "smooth" });
+    if (box.bottom > limit)
+      win.scrollBy({ top: box.bottom - limit + 8, behavior: "smooth" });
     const top = headBottom() + 8;
-    if (r.top < top) win.scrollBy({ top: r.top - top - 8, behavior: "smooth" });
+    if (box.top < top)
+      win.scrollBy({ top: box.top - top - 8, behavior: "smooth" });
   }
-  function focusNote() {
-    later(() => {
-      const n = $("note");
-      if (n instanceof HTMLTextAreaElement) {
-        n.focus();
-        n.setSelectionRange(n.value.length, n.value.length);
-      }
-    }, 60);
-  }
-  const NOTE_PLACEHOLDER =
-    "Tell us why you feel positive or negative about this part of the chat.";
-  function noteField(onEnter: (() => void) | null, onInput?: () => void) {
-    const ta = h("textarea", {
-      id: "note",
-      maxlength: 140,
-      rows: 2,
-      placeholder: NOTE_PLACEHOLDER,
-    });
-    ta.value = S.noteDraft;
-    const cnt = h(
-      "span",
-      { class: "cnt", "aria-hidden": "true" },
-      `${S.noteDraft.length}/140`,
-    );
-    ta.addEventListener("input", () => {
-      S.noteDraft = ta.value.slice(0, 140);
-      cnt.textContent = `${S.noteDraft.length}/140`;
-      if (onInput) onInput();
-    });
-    ta.addEventListener("keydown", (e) => {
-      if (onEnter && e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        onEnter();
-      }
-    });
-    return h(
-      "div",
-      { class: "sh-note" },
-      h("label", { for: "note" }, "Note (optional)"),
-      ta,
-      cnt,
-    );
-  }
+
   function renderSheet() {
     if (!S.sheet) return;
     const sheet = SHEETS[S.sheet.mode];
@@ -138,45 +105,32 @@ export function createSheet(ctx: SheetCtx) {
       ...sheet
         .parts()
         .flat()
-        .filter((p) => p !== null),
+        .filter((part) => part !== null),
     );
     sheetEl.setAttribute("aria-label", sheet.label);
   }
   const SHEETS: Record<SheetMode, { label: string; parts: () => SheetPart[] }> =
     {
-      new: { label: "Mark selection", parts: sheetNew },
-      edit: { label: "Edit mark", parts: sheetEdit },
+      new: { label: "Highlight this passage", parts: sheetNew },
+      edit: { label: "Edit highlight", parts: sheetEdit },
     };
+
   function sheetNew(): SheetPart[] {
     if (!S.sel) return [];
-    const v = S.views[S.sel.mi],
+    const view = S.views[S.sel.mi],
       [lo, hi] = selRange();
-    const txt = spanText(v, lo, hi),
-      words = hi - lo + 1;
+    const text = view.content.slice(view.tokens[lo].start, view.tokens[hi].end);
     const over = overlapping(
       S.sel.mi,
-      v.tokens[lo].start,
-      v.tokens[hi].end,
+      view.tokens[lo].start,
+      view.tokens[hi].end,
     ).length;
-    // The note button saves a neutral note, so it waits for some text.
-    const pen = h(
-      "button",
-      {
-        type: "button",
-        class: "big note-btn",
-        onclick: () => applyNew(0),
-        disabled: !S.noteDraft.trim(),
-        title: "Save as a neutral note",
-      },
-      icon("note"),
-      "Note",
-    );
     return [
       h(
         "div",
         { class: "sh-top" },
-        h("p", { class: "sh-prev" }, `“${clip(txt, 160)}”`),
-        h("span", { class: "sh-count" }, plural(words, "word")),
+        h("p", { class: "sh-prev" }, `“${clip(text, 160)}”`),
+        h("span", { class: "sh-count" }, plural(hi - lo + 1, "word")),
         h(
           "button",
           {
@@ -193,7 +147,7 @@ export function createSheet(ctx: SheetCtx) {
         ? h(
             "p",
             { class: "sh-warn" },
-            `This replaces ${plural(over, "existing mark")}.`,
+            `This replaces ${plural(over, "highlight")}.`,
           )
         : null,
       S.sheet?.kb
@@ -203,98 +157,104 @@ export function createSheet(ctx: SheetCtx) {
             "Arrow keys move the selection, Shift extends it. Press + or −, or Tab to the buttons.",
           )
         : null,
-      noteField(null, () => {
-        pen.disabled = !S.noteDraft.trim();
-      }),
       h(
         "div",
         { class: "sh-acts" },
-        h(
-          "button",
-          { type: "button", class: "big plus", onclick: () => applyNew(1) },
-          icon("up"),
-          "+1",
-        ),
-        h(
-          "button",
-          { type: "button", class: "big minus", onclick: () => applyNew(-1) },
-          icon("down"),
-          "−1",
-        ),
-        pen,
-      ),
-    ];
-  }
-  function sheetEdit(): SheetPart[] {
-    const a = S.editing ? findAnn(S.editing) : undefined;
-    if (!a) return [];
-    return [
-      h(
-        "div",
-        { class: "sh-top" },
-        markBadge(a.value, "vbadge"),
-        h("p", { class: "sh-prev" }, `“${clip(a.text, 160)}”`),
-      ),
-      noteField(null),
-      h(
-        "div",
-        { class: "sh-acts" },
-        a.value
-          ? h(
-              "button",
-              {
-                type: "button",
-                class: "big " + (a.value > 0 ? "minus" : "plus"),
-                onclick: () => flip(a.id),
-              },
-              icon("flip"),
-              `Flip to ${fmt(-a.value)}`,
-            )
-          : [
-              h(
-                "button",
-                {
-                  type: "button",
-                  class: "big plus",
-                  onclick: () => setValue(a.id, 1),
-                },
-                icon("up"),
-                "+1",
-              ),
-              h(
-                "button",
-                {
-                  type: "button",
-                  class: "big minus",
-                  onclick: () => setValue(a.id, -1),
-                },
-                icon("down"),
-                "−1",
-              ),
-            ],
         h(
           "button",
           {
             type: "button",
-            class: "big ghost",
-            onclick: () => removeAnn(a.id),
+            class: "big plus",
+            onclick: () => applyNew("like"),
+          },
+          icon("up"),
+          "I like this",
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "big minus",
+            onclick: () => applyNew("dislike"),
+          },
+          icon("down"),
+          "I don't like this",
+        ),
+      ),
+    ];
+  }
+
+  function reasonChips(id: string, valence: Valence, chosen: Reason | null) {
+    return h(
+      "div",
+      { class: "sh-reasons", role: "group", "aria-label": "Reason (optional)" },
+      reasonsFor(valence).map((reason) =>
+        h(
+          "button",
+          {
+            type: "button",
+            class: "chipbtn" + (chosen === reason ? " on" : ""),
+            "aria-pressed": String(chosen === reason),
+            onclick: () => setReason(id, reason as Reason),
+          },
+          REASON_LABEL[reason] ?? reason,
+        ),
+      ),
+    );
+  }
+
+  function sheetEdit(): SheetPart[] {
+    const highlight = S.editing ? find(S.editing) : undefined;
+    if (!highlight) return [];
+    return [
+      h(
+        "div",
+        { class: "sh-top" },
+        markBadge(highlight.valence, "vbadge"),
+        h("p", { class: "sh-prev" }, `“${clip(highlight.text, 160)}”`),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "iconbtn sh-x",
+            onclick: clearSel,
+            "aria-label": "Done (Esc)",
+            title: "Done (Esc)",
+          },
+          icon("x"),
+        ),
+      ),
+      h("p", { class: "sh-label" }, "Why? (optional)"),
+      reasonChips(highlight.id, highlight.valence, highlight.reason),
+      h(
+        "div",
+        { class: "sh-sub" },
+        h(
+          "button",
+          {
+            type: "button",
+            class: "link",
+            onclick: () => flip(highlight.id),
+          },
+          icon("flip"),
+          highlight.valence === "like"
+            ? "Change to don't like"
+            : "Change to like",
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "link quiet",
+            onclick: () => drop(highlight.id),
           },
           icon("trash"),
           "Remove",
         ),
       ),
-      h(
-        "div",
-        { class: "sh-sub" },
-        h("span"),
-        h(
-          "button",
-          { type: "button", class: "link quiet", onclick: clearSel },
-          "Done",
-        ),
-      ),
     ];
   }
+
   /* ---------- Keyboard-aware sheet position on phones ---------- */
   if (win.visualViewport) {
     const vv = win.visualViewport;
@@ -310,11 +270,15 @@ export function createSheet(ctx: SheetCtx) {
   const disconnectResize = () => {
     if (ro) ro.disconnect();
   };
+  const focusSheet = () =>
+    later(() => {
+      sheetEl.querySelector("button")?.focus();
+    }, 60);
 
   return {
-    disconnectResize,
     closeSheet,
-    focusNote,
+    disconnectResize,
+    focusSheet,
     keepSelVisible,
     openSheet,
     renderSheet,

@@ -3,9 +3,9 @@ import {
   KoraReviewPhase,
   KoraUserBatchStatus,
 } from "@alliance/common/kora";
-import { KoraAssignment } from "src/kora/entities/kora-assignment.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
+import { KoraSession } from "src/kora/entities/kora-session.entity";
 import { KoraBatchService } from "src/kora/kora-batch.service";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
@@ -34,21 +34,21 @@ describe("Kora home base (e2e)", () => {
   let h: KoraHarness;
 
   const {
-    state,
-    more,
-    save,
-    next,
-    ids,
     exportOf,
     finish,
+    ids,
+    more,
+    next,
     participant,
+    save,
+    state,
     upload,
   } = koraReviewClient(() => h);
   const home = async (browser: TestAgent): Promise<Home> =>
     (await browser.get("/kora/review/home").expect(200)).body;
-  const assignments = () => h.ctx.dataSource.getRepository(KoraAssignment);
-  const closeAssignment = (id: string | undefined) =>
-    assignments().update({ id }, { closesAt: past() });
+  const sessions = () => h.ctx.dataSource.getRepository(KoraSession);
+  const closeSession = (id: string | undefined) =>
+    sessions().update({ id }, { closesAt: past() });
 
   beforeAll(async () => {
     h = await koraHarness();
@@ -71,7 +71,7 @@ describe("Kora home base (e2e)", () => {
       .expect(401);
   });
 
-  it("offers a user-batch without reserving it, then tracks it once started", async () => {
+  it("offers a session without reserving anything, then tracks it once started", async () => {
     const closesAt = new Date(Date.now() + 10 * 86_400_000);
     await upload(5, { closesAt });
     const browser = await participant();
@@ -83,97 +83,86 @@ describe("Kora home base (e2e)", () => {
           id: null,
           status: KoraUserBatchStatus.Ready,
           closesAt: closesAt.toISOString(),
-          total: 3,
         }),
       ],
     });
-    expect(await assignments().count()).toBe(0);
+    expect(await sessions().count()).toBe(0);
 
     const started = await more(browser);
-    expect(started.assignment?.extra).toBe(false);
-    const id = started.assignment?.id ?? "";
-    const [first] = ids(started.assignment);
+    expect(started.session?.number).toBe(1);
+    const id = started.session?.id ?? "";
+    const [first] = ids(started.session);
     await save(browser, id, exportOf(started, { done: [first] })).expect(200);
-    const second = await next(browser, id);
-    const both = {
-      ...started,
-      assignment: started.assignment && {
-        ...started.assignment,
-        transcripts: [
-          ...started.assignment.transcripts,
-          ...(second ? [second] : []),
-        ],
-      },
-    };
+    await next(browser, id);
+
+    const tracked = await state(browser);
     await save(
       browser,
       id,
-      exportOf(both, {
-        done: [first],
-        optedOut: [second?.transcript.transcriptId ?? ""],
-      }),
+      exportOf(tracked, { done: ids(tracked.session) }),
     ).expect(200);
     expect(await home(browser)).toEqual({
-      totalRanked: 1,
+      totalRanked: 2,
       userBatches: [
         expect.objectContaining({
-          id: started.assignment?.id,
+          id,
           status: KoraUserBatchStatus.Open,
           closesAt: closesAt.toISOString(),
           progress: 2,
-          total: 3,
+          total: 2,
         }),
       ],
     });
   });
 
-  it("offers another user-batch once one is done, newest first", async () => {
-    await upload(6);
+  it("offers another session once one is done, newest first", async () => {
+    await upload(12, { reviews: 3 });
     const browser = await participant();
     await finish(browser, await state(browser));
 
     const after = await home(browser);
-    expect(after.totalRanked).toBe(3);
+    expect(after.totalRanked).toBe(5);
     expect(after.userBatches.map((b) => b.status)).toEqual([
       KoraUserBatchStatus.Ready,
       KoraUserBatchStatus.Done,
     ]);
-    expect((await more(browser)).assignment?.extra).toBe(true);
+    expect((await more(browser)).session?.number).toBe(2);
   });
 
-  it("closes a user-batch at its closing date and releases its unranked pairs", async () => {
-    await upload(2, { perAssignment: 2, reviews: 1 });
+  it("closes a session at its closing date, and what it held goes back to the queue", async () => {
+    await upload(2, { reviews: 1 });
     const one = await participant();
     const held = await state(one);
     await save(
       one,
-      held.assignment?.id ?? "",
-      exportOf(held, { done: ids(held.assignment) }),
+      held.session?.id ?? "",
+      exportOf(held, { done: ids(held.session) }),
     ).expect(200);
-    expect(await next(one, held.assignment?.id ?? "")).not.toBeNull();
-    const two = await participant();
-    expect((await home(two)).userBatches).toEqual([]);
+    const pending = (await next(one, held.session?.id ?? "")).item;
+    expect(pending).toBeTruthy();
 
-    await closeAssignment(held.assignment?.id);
+    await closeSession(held.session?.id);
     expect((await home(one)).userBatches).toEqual([
       expect.objectContaining({ status: KoraUserBatchStatus.Closed }),
     ]);
-    expect((await home(two)).userBatches[0].status).toBe(
-      KoraUserBatchStatus.Ready,
-    );
-    expect((await state(two)).phase).toBe(KoraReviewPhase.Reviewing);
+
+    // The closed session reserves nothing, so the conversation it never judged is served again.
+    const two = await participant();
+    const fresh = await state(two);
+    expect(fresh.phase).toBe(KoraReviewPhase.Reviewing);
+    expect(ids(fresh.session)).toContain(pending?.conversationId);
   });
 
-  it("starts a new user-batch for someone whose only one closed unfinished", async () => {
+  it("starts a new session for someone whose only one closed unfinished", async () => {
     await upload(6);
     const browser = await participant();
     const first = await state(browser);
-    await closeAssignment(first.assignment?.id);
+    await closeSession(first.session?.id);
 
-    const next = await state(browser);
-    expect(next.phase).toBe(KoraReviewPhase.Reviewing);
-    expect(next.assignment?.id).not.toBe(first.assignment?.id);
-    expect(next.assignment?.extra).toBe(false);
+    const after = await state(browser);
+    expect(after.phase).toBe(KoraReviewPhase.Reviewing);
+    expect(after.session?.id).not.toBe(first.session?.id);
+    expect(after.session?.number).toBe(2);
   });
 
   it("offers nothing from a batch past its closing date", async () => {
@@ -186,7 +175,7 @@ describe("Kora home base (e2e)", () => {
     expect((await state(browser)).phase).toBe(KoraReviewPhase.NoneLeft);
   });
 
-  it("moves an unfinished user-batch's closing date with its batch's", async () => {
+  it("moves an open session's closing date with its batch's", async () => {
     const batchId = await upload(4);
     const browser = await participant();
     const s = await state(browser);
@@ -195,7 +184,7 @@ describe("Kora home base (e2e)", () => {
       .get(KoraBatchService)
       .setClosesAt({ batchId, closesAt: later });
     expect(
-      (await assignments().findOneByOrFail({ id: s.assignment?.id })).closesAt,
+      (await sessions().findOneByOrFail({ id: s.session?.id })).closesAt,
     ).toEqual(later);
   });
 

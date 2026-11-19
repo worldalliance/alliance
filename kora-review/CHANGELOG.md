@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+Rebuilt for KORA's spec v6: the reviewer rates one conversation at a time, not a pair.
+
+- Two screens per conversation, in order and with no way back: **Read** (highlight passages of the AI's answers, say what the child talked about) and **Judge** (OK / Not OK, confidence, and on Not OK a severity and one sentence).
+- Highlights replace the +1 / −1 marks: a valence and one reason from a fixed list, on AI turns only, exported with code-point offsets and the span verbatim.
+- Work is a **session** with a load budget, ending in seven feedback questions; the profile and the exit survey are gone from the tool, and the demographics move to the host's sign-up.
+- Practice conversations with a reference answer, content warnings that can skip a conversation or opt out of its risk, and 45-second soft blocks on the screens spec v6 asks to slow down.
+- `SCHEMA_VERSION` is 3. `itemSchema` and a new `exportSchema` replace the pair export; `conversationSchema` types what the host stores. `transcriptSchema` stays until the pair upload goes.
+
+## Unreleased
+
 - Pairs come one at a time. `assignment.size` says how many the assignment asks for, `assignment.transcripts` holds those given so far, and the new required `next` option fetches each further one after a save, or returns null when there are no more. A failed `next` shows Try again.
 - `save` may resolve with `{ removed }` (`KoraSaveResult`): pairs taken out of the assignment, which the tool drops without a message.
 - The content warning no longer counts the pairs left on its topic, which the tool can't know, and always offers to skip the whole topic.

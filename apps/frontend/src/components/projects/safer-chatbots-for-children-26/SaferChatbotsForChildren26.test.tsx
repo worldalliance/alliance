@@ -9,6 +9,7 @@ import { AuthContext } from "../../../lib/AuthContext";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { testAuthUser } from "../../../stories/testData";
 import { authValue } from "../../../testing/authValue";
+import { HOME_COPY } from "./copy";
 import { ALLIANCE_BLURB } from "./KoraNavbar";
 import SaferChatbotsForChildren26 from "./SaferChatbotsForChildren26";
 
@@ -227,7 +228,10 @@ test("shows a signed-in participant their home base once the project is active",
   status = KoraProjectStatus.Active;
   renderPage();
 
-  await screen.findByRole("heading", { level: 1, name: "Rank 10 pairs" });
+  await screen.findByRole("heading", {
+    level: 1,
+    name: HOME_COPY.sessionReady,
+  });
   expect(screen.queryByText("Thank you for joining the waitlist")).toBeNull();
   expect(screen.queryByText(/KoraBench/)).toBeNull();
   expect(screen.queryByRole("switch", { name: "Remind me" })).toBeNull();

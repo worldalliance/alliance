@@ -265,7 +265,7 @@ describe("ActionForm", () => {
       "Suite",
       "Visibility Mode",
       "Task",
-      "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
+      "Kora review sends members to review chatbot conversations; the action completes when they finish their first session.",
       "Time Estimate (min)",
       "Staff Preview",
       "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",

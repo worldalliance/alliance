@@ -86,7 +86,7 @@ export class KoraAdminOverviewDto {
 
 export type KoraAdminCategory = {
   category: string;
-  pairs: number;
+  conversations: number;
   reviewsNeeded: number;
   optedOut: number;
 };
@@ -95,11 +95,11 @@ export class KoraAdminCategoryDto {
   @ApiProperty()
   category: string;
 
-  @ApiProperty({ description: "Pairs in open batches" })
-  pairs: number;
+  @ApiProperty({ description: "Conversations in open batches" })
+  conversations: number;
 
   @ApiProperty({
-    description: "Reviews its pairs still need to reach their targets",
+    description: "Reviews its conversations still need to reach their targets",
   })
   reviewsNeeded: number;
 
@@ -108,7 +108,7 @@ export class KoraAdminCategoryDto {
 
   constructor(input: KoraAdminCategory) {
     this.category = input.category;
-    this.pairs = input.pairs;
+    this.conversations = input.conversations;
     this.reviewsNeeded = input.reviewsNeeded;
     this.optedOut = input.optedOut;
   }

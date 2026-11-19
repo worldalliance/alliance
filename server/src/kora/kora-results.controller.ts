@@ -10,8 +10,8 @@ import { ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
   KoraAnswerCountsDto,
-  KoraAssignmentExportDto,
   KoraExportsDto,
+  KoraSessionExportDto,
 } from "./dto/kora-results.dto";
 import { countAnswers } from "./kora-answers";
 import { KoraResultsService } from "./kora-results.service";
@@ -47,16 +47,16 @@ export class KoraResultsController {
     );
   }
 
-  @Get("assignments/:id")
-  @ApiOkResponse({ type: KoraAssignmentExportDto })
-  async assignment(
+  @Get("sessions/:id")
+  @ApiOkResponse({ type: KoraSessionExportDto })
+  async session(
     @Param("id", ParseUUIDPipe) id: string,
-  ): Promise<KoraAssignmentExportDto> {
-    const assignment = await this.resultsService.assignment(id);
-    if (!assignment) throw new NotFoundException("Assignment not found");
-    return new KoraAssignmentExportDto({
-      ...assignment,
-      export: asRecord(assignment.export),
+  ): Promise<KoraSessionExportDto> {
+    const session = await this.resultsService.session(id);
+    if (!session) throw new NotFoundException("Session not found");
+    return new KoraSessionExportDto({
+      ...session,
+      export: asRecord(session.export),
     });
   }
 }

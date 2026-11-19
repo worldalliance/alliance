@@ -71,18 +71,23 @@ const renderHome = () =>
     </MemoryRouter>,
   );
 
-test("offers a newcomer their first pairs and the example, without a table", async () => {
+test("offers a newcomer their first conversations and the example, without a table", async () => {
   renderHome();
-  await screen.findByRole("heading", { level: 1, name: /^Rank 10 pairs by / });
+  await screen.findByRole("heading", {
+    level: 1,
+    name: new RegExp(`^${HOME_COPY.sessionReady} by `),
+  });
   expect(
     screen
       .getByRole("link", { name: HOME_COPY.exampleButton })
       .getAttribute("href"),
   ).toBe(KORA_EXAMPLE_PATH);
-  expect(screen.queryByText(/ranked so far/)).toBeNull();
+  expect(screen.queryByText(/judged so far/)).toBeNull();
   expect(screen.queryByRole("table")).toBeNull();
-  const intro = screen.getByText(HOME_COPY.startIntro(10));
-  const startButton = screen.getByRole("button", { name: "Start ranking" });
+  const intro = screen.getByText(HOME_COPY.startIntro());
+  const startButton = screen.getByRole("button", {
+    name: HOME_COPY.startRanking,
+  });
   expect(
     intro.compareDocumentPosition(startButton) &
       Node.DOCUMENT_POSITION_FOLLOWING,
@@ -93,10 +98,12 @@ test("offers a newcomer their first pairs and the example, without a table", asy
   expect(moreRequests).toBe(1);
 });
 
-test("says when the pairs couldn't be started, and stays put", async () => {
+test("says when the session couldn't be started, and stays put", async () => {
   moreFails = true;
   renderHome();
-  fireEvent.click(await screen.findByRole("button", { name: "Start ranking" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: HOME_COPY.startRanking }),
+  );
   expect((await screen.findByRole("alert")).textContent).toBe(
     HOME_COPY.startFailed,
   );
@@ -114,9 +121,9 @@ test("lists a returning participant's user-batches, with a smaller link to the e
   renderHome();
   await screen.findByRole("heading", {
     level: 1,
-    name: /^Rank 7 more pairs by /,
+    name: new RegExp(`^${HOME_COPY.rankMore(7)} by `),
   });
-  expect(screen.getByText("13 pairs ranked so far")).toBeTruthy();
+  expect(screen.getByText(HOME_COPY.rankedSoFar(13))).toBeTruthy();
   expect(
     screen.queryByRole("heading", { name: HOME_COPY.exampleHeading }),
   ).toBeNull();

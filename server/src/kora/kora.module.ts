@@ -7,17 +7,17 @@ import { OtpModule } from "src/otp/otp.module";
 import { PushModule } from "src/push/push.module";
 import { User } from "src/user/entities/user.entity";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
-import { KoraAssignmentTranscript } from "./entities/kora-assignment-transcript.entity";
-import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
+import { KoraConversation } from "./entities/kora-conversation.entity";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSession } from "./entities/kora-participant-session.entity";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
 import { KoraParticipant } from "./entities/kora-participant.entity";
 import { KoraProject } from "./entities/kora-project.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
-import { KoraTranscript } from "./entities/kora-transcript.entity";
+import { KoraSessionConversation } from "./entities/kora-session-conversation.entity";
+import { KoraSession } from "./entities/kora-session.entity";
 import { KoraAdminController } from "./kora-admin.controller";
 import { KoraAdminService } from "./kora-admin.service";
 import { KoraBatchActionsService } from "./kora-batch-actions.service";
@@ -32,6 +32,7 @@ import { KoraResultsController } from "./kora-results.controller";
 import { KoraResultsService } from "./kora-results.service";
 import { KoraReviewController } from "./kora-review.controller";
 import { KoraReviewService } from "./kora-review.service";
+import { KoraReviewerService } from "./kora-reviewer.service";
 import { KoraSessionService } from "./kora-session.service";
 import { KoraController } from "./kora.controller";
 
@@ -39,17 +40,17 @@ import { KoraController } from "./kora.controller";
   imports: [
     TypeOrmModule.forFeature([
       KoraAbandonedSignup,
-      KoraAssignment,
-      KoraAssignmentTranscript,
       KoraBatch,
       KoraBatchEvent,
+      KoraConversation,
       KoraParticipant,
       KoraParticipantOAuthIdentity,
       KoraParticipantSession,
       KoraParticipantSignup,
       KoraProject,
       KoraReviewer,
-      KoraTranscript,
+      KoraSession,
+      KoraSessionConversation,
       User,
     ]),
     OtpModule,
@@ -68,6 +69,7 @@ import { KoraController } from "./kora.controller";
     KoraBatchService,
     KoraBatchActionsService,
     KoraReviewService,
+    KoraReviewerService,
     KoraResultsService,
   ],
   controllers: [

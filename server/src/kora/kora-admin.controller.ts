@@ -1,5 +1,5 @@
 import {
-  KORA_ACTIVE_NEEDS_TRANSCRIPTS,
+  KORA_ACTIVE_NEEDS_CONVERSATIONS,
   KORA_NOTIFY_NEEDS_ACTIVE,
 } from "@alliance/common/kora";
 import {
@@ -74,7 +74,7 @@ export class KoraAdminController {
     if (!updated.ok) {
       switch (updated.error) {
         case KoraProjectError.NeedsTranscripts:
-          throw new BadRequestException(KORA_ACTIVE_NEEDS_TRANSCRIPTS);
+          throw new BadRequestException(KORA_ACTIVE_NEEDS_CONVERSATIONS);
         default:
           throw new Error(`unknown error: ${updated.error satisfies never}`);
       }

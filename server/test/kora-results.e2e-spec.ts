@@ -10,6 +10,11 @@ import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
 import { closeTestApp } from "./e2e-test-utils";
 import {
+  koraConversation,
+  koraJsonlFile,
+  koraSessionExport,
+} from "./kora-conversations";
+import {
   koraAdminActor,
   koraClosesAt,
   koraHarness,
@@ -17,16 +22,14 @@ import {
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 import { forgetRateEvents, uniqueEmail } from "./otp-fixtures";
 
 type State = {
   reviewerId: string;
-  assignment: {
+  session: {
     id: string;
-    transcripts: {
-      transcript: { transcriptId: string; category: string };
-      contentHash: string;
+    items: {
+      item: { conversationId: string; riskId: string; contentHash: string };
     }[];
   };
 };
@@ -46,63 +49,57 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
   const upload = async () => {
     batchNumber++;
     const uploaded = await h.ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(
-        ...[1, 2, 3, 4].map((n) => koraPair(`M${batchNumber}-${n}`)),
+      conversationsText: koraJsonlFile(
+        ...[1, 2, 3, 4].map((n) => koraConversation(`M${batchNumber}-${n}`)),
       ),
-      transcriptsPerAssignment: 2,
-      reviewsPerTranscript: 3,
+      reviewsPerConversation: 3,
       closesAt: koraClosesAt(),
       actor: koraAdminActor(h.ctx),
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
   };
-  const review = async (
-    browser: TestAgent,
-    options: { finish: boolean; profile?: boolean },
-  ) => {
+  const review = async (browser: TestAgent, options: { finish: boolean }) => {
+    await browser
+      .patch("/kora/review/onboarding")
+      .set("Origin", ORIGIN)
+      .send({ consented: true, onboarded: true })
+      .expect(200);
     const s: State = (await browser.get("/kora/review").expect(200)).body;
-    const transcripts = [...s.assignment.transcripts];
-    const send = (exitSurvey: boolean) =>
+    const given = s.session.items.map((i) => ({
+      id: i.item.conversationId,
+      riskId: i.item.riskId,
+      contentHash: i.item.contentHash,
+    }));
+    const send = (end: boolean) =>
       browser
-        .put(`/kora/review/assignments/${s.assignment.id}/export`)
+        .put(`/kora/review/sessions/${s.session.id}/export`)
         .set("Origin", ORIGIN)
         .send({
-          export: {
-            ...koraExport({
-              reviewerId: s.reviewerId,
-              assignmentId: s.assignment.id,
-              transcripts,
-              done: options.finish
-                ? transcripts.map((t) => t.transcript.transcriptId)
-                : [],
-              profile: options.profile,
-            }),
-            ...(exitSurvey
-              ? {
-                  exitSurvey: {
-                    exit_q1: "very",
-                    exit_q2: null,
-                    exit_q3: null,
-                    exit_q4: null,
-                    exit_q5: null,
-                    exit_q6: null,
-                  },
-                }
-              : {}),
-          },
+          export: koraSessionExport({
+            reviewerId: s.reviewerId,
+            sessionId: s.session.id,
+            conversations: given,
+            done: options.finish ? given.map((c) => c.id) : [],
+            isDone: end,
+            feedback: end,
+          }),
         })
         .expect(200);
     await send(false);
     if (!options.finish) return;
     for (;;) {
-      const { next } = (
+      const { item } = (
         await browser
-          .post(`/kora/review/assignments/${s.assignment.id}/next`)
+          .post(`/kora/review/sessions/${s.session.id}/next`)
           .set("Origin", ORIGIN)
           .expect(200)
       ).body;
-      if (!next) break;
-      transcripts.push(next);
+      if (!item) break;
+      given.push({
+        id: item.conversationId,
+        riskId: item.riskId,
+        contentHash: item.contentHash,
+      });
       await send(false);
     }
     await send(true);
@@ -180,10 +177,10 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
     await admin("post", "/kora/admin/notify-more").expect(400);
   });
 
-  it("downloads every export and counts profile and exit-survey answers", async () => {
+  it("downloads every export and counts the end-of-session feedback", async () => {
     await upload();
     const one = await participant();
-    await review(one.browser, { finish: true, profile: true });
+    await review(one.browser, { finish: true });
     const two = await participant();
     await review(two.browser, { finish: false });
 
@@ -198,10 +195,10 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
     const answers = (
       await admin("get", "/kora/admin/results/answers").expect(200)
     ).body;
-    expect(answers).toMatchObject({ profiles: 1, exitSurveys: 1 });
-    expect(answers.exitSurvey[0]).toEqual({
-      question: "exit_q1",
-      answers: [{ value: "very", count: 1 }],
+    expect(answers).toMatchObject({ sessions: 1 });
+    expect(answers.feedback).toContainEqual({
+      question: "f1",
+      answers: [{ value: "fully", count: 1 }],
     });
   });
 

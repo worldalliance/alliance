@@ -5538,11 +5538,11 @@ export type KoraAdminOverviewDto = {
 export type KoraAdminCategoryDto = {
     category: string;
     /**
-     * Pairs in open batches
+     * Conversations in open batches
      */
-    pairs: number;
+    conversations: number;
     /**
-     * Reviews its pairs still need to reach their targets
+     * Reviews its conversations still need to reach their targets
      */
     reviewsNeeded: number;
     /**
@@ -5557,12 +5557,11 @@ export type KoraAdminCategoriesDto = {
 
 export type KoraBatchDto = {
     id: string;
-    transcriptsPerAssignment: number;
-    reviewsPerTranscript: number;
+    reviewsPerConversation: number;
     retiredAt: string | null;
     closesAt: string | null;
     createdAt: string;
-    transcriptCount: number;
+    conversationCount: number;
 };
 
 export type KoraRejectedLineDto = {
@@ -5575,11 +5574,10 @@ export type KoraUploadRejectedDto = {
     rejected: Array<KoraRejectedLineDto>;
 };
 
-export type KoraTranscriptPreviewDto = {
-    transcript: {
+export type KoraItemDto = {
+    item: {
         [key: string]: unknown;
     };
-    contentHash: string;
 };
 
 export type KoraBatchEventKind = 'upload' | 'retire' | 'reactivate' | 'delete' | 'assignment_completed';
@@ -5615,25 +5613,67 @@ export type KoraDeletionImpactDto = {
     assignmentCount: number;
 };
 
-export type KoraReviewPhase = 'reviewing' | 'finished' | 'none_left' | 'not_active';
+export type KoraReviewPhase = 'onboarding' | 'reviewing' | 'finished' | 'none_left' | 'not_active';
 
-export type KoraReviewAssignmentDto = {
+export type KoraAgeBand = '18to29' | '30to39' | '40to49' | '50to59' | '60plus';
+
+export type KoraGender = 'woman' | 'man' | 'other' | 'prefer_not_to_say';
+
+export type KoraUsRegion = 'northeast' | 'midwest' | 'south' | 'west';
+
+export type KoraChildAgeBand = 'under7' | '7to9' | '10to12' | '13to17';
+
+export type KoraChildAiUse = 'never' | 'sometimes' | 'often' | 'dont_know';
+
+export type KoraEducation = 'high_school_or_less' | 'some_college' | 'bachelors' | 'graduate';
+
+export type KoraHouseholdIncome = 'under_50k' | '50k_to_100k' | '100k_to_150k' | 'over_150k' | 'prefer_not_to_say';
+
+export type KoraEnglish = 'native_or_bilingual' | 'fluent' | 'comfortable' | 'basic';
+
+export type KoraDemographicsDto = {
+    ageBand: KoraAgeBand | null;
+    gender: KoraGender | null;
     /**
-     * The batchId the review tool echoes
+     * ISO 3166-1 alpha-2
+     */
+    country: string | null;
+    usRegion: KoraUsRegion | null;
+    isParent: boolean | null;
+    childrenAgeBands: Array<KoraChildAgeBand>;
+    childAiUse: KoraChildAiUse | null;
+    worksWithChildrenOrHealth: boolean | null;
+    education: KoraEducation | null;
+    householdIncome: KoraHouseholdIncome | null;
+    english: KoraEnglish | null;
+};
+
+export type KoraOnboardingDto = {
+    demographics: KoraDemographicsDto | null;
+    consentAt: string | null;
+    /**
+     * Set once the reviewer has passed every sign-up screen
+     */
+    onboardedAt: string | null;
+};
+
+export type KoraReviewSessionDto = {
+    /**
+     * The sessionId the review tool echoes
      */
     id: string;
     /**
-     * Requested after finishing an earlier one
+     * 1-based for this reviewer
      */
-    extra: boolean;
+    number: number;
     /**
-     * How many transcripts the assignment asks for
+     * Load units this session may spend
      */
-    size: number;
+    budgetUnits: number;
     /**
      * Those given so far; the next comes from the next endpoint
      */
-    transcripts: Array<KoraTranscriptPreviewDto>;
+    items: Array<KoraItemDto>;
     savedExport: {
         [key: string]: unknown;
     } | null;
@@ -5645,20 +5685,28 @@ export type KoraReviewStateDto = {
      * Opaque; the only identity the tool sees
      */
     reviewerId: string;
-    collectProfile: boolean;
     /**
-     * Categories the reviewer opted out of in any assignment
+     * Risks the reviewer asked not to be shown
      */
-    optOutCategories: Array<string>;
+    optOutRisks: Array<string>;
     /**
-     * Has finished at least one assignment
+     * Shown conversations longer than three AI turns
+     */
+    extendedOptIn: boolean;
+    /**
+     * Has finished at least one session
      */
     reviewed: boolean;
+    sessionsCompleted: number;
     /**
-     * Reviews finished in extra assignments
+     * Conversations judged, across every session
      */
-    extraReviews: number;
-    assignment?: KoraReviewAssignmentDto;
+    ratingsCompleted: number;
+    /**
+     * What the sign-up screens have saved so far
+     */
+    onboarding: KoraOnboardingDto;
+    session?: KoraReviewSessionDto;
 };
 
 export type KoraUserBatchStatus = 'ready' | 'open' | 'done' | 'closed';
@@ -5672,7 +5720,7 @@ export type KoraUserBatchDto = {
     releasedAt: string;
     closesAt: string | null;
     /**
-     * Pairs ranked or skipped
+     * Conversations judged or skipped
      */
     progress: number;
     total: number;
@@ -5680,10 +5728,52 @@ export type KoraUserBatchDto = {
 
 export type KoraHomeDto = {
     /**
-     * Pairs ranked, not counting skipped ones
+     * Conversations judged, not counting skipped ones
      */
     totalRanked: number;
     userBatches: Array<KoraUserBatchDto>;
+};
+
+export type SendKoraDemographicsDto = {
+    ageBand: KoraAgeBand | null;
+    gender: KoraGender | null;
+    /**
+     * ISO 3166-1 alpha-2
+     */
+    country: string | null;
+    usRegion: KoraUsRegion | null;
+    isParent: boolean | null;
+    childrenAgeBands: Array<KoraChildAgeBand>;
+    childAiUse: KoraChildAiUse | null;
+    worksWithChildrenOrHealth: boolean | null;
+    education: KoraEducation | null;
+    householdIncome: KoraHouseholdIncome | null;
+    english: KoraEnglish | null;
+};
+
+export type UpdateKoraOnboardingDto = {
+    demographics?: SendKoraDemographicsDto;
+    /**
+     * Only ever true
+     */
+    consented?: boolean;
+    /**
+     * Only ever true
+     */
+    onboarded?: boolean;
+};
+
+export type UpdateKoraPreferencesDto = {
+    /**
+     * The whole list, as the account page holds it
+     */
+    optOutRisks?: Array<string>;
+    extendedOptIn?: boolean;
+};
+
+export type KoraPreferencesDto = {
+    optOutRisks: Array<string>;
+    extendedOptIn: boolean;
 };
 
 export type SaveKoraExportDto = {
@@ -5694,25 +5784,36 @@ export type SaveKoraExportDto = {
 
 export type KoraExportSavedDto = {
     /**
-     * The assignment is finished
+     * The session is over
      */
-    completed: boolean;
+    ended: boolean;
     /**
-     * Transcripts no longer in the assignment whose results the save dropped; the tool removes them
+     * Conversations no longer in the session whose ratings the save dropped; the tool removes them
      */
     removed: Array<string>;
 };
 
-export type KoraNextTranscriptDto = {
+/**
+ * Why there is no conversation: the budget, or an empty queue
+ */
+export type KoraSessionEnd = 'budget_spent' | 'queue_empty';
+
+export type KoraNextConversationDto = {
     /**
-     * Null once the assignment is full or nothing is left to give
+     * The next conversation, absent once the session has none
      */
-    next: KoraTranscriptPreviewDto | null;
+    item?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Why there is no conversation: the budget, or an empty queue
+     */
+    done?: KoraSessionEnd;
 };
 
 export type KoraExportsDto = {
     /**
-     * Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }
+     * Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its conversations come from, each { id, retired }
      */
     exports: Array<{
         [key: string]: unknown;
@@ -5731,21 +5832,16 @@ export type KoraQuestionCountsDto = {
 
 export type KoraAnswerCountsDto = {
     /**
-     * Reviewers who answered the profile
+     * Sessions whose feedback was answered
      */
-    profiles: number;
-    profile: Array<KoraQuestionCountsDto>;
-    /**
-     * Exit surveys answered
-     */
-    exitSurveys: number;
-    exitSurvey: Array<KoraQuestionCountsDto>;
+    sessions: number;
+    feedback: Array<KoraQuestionCountsDto>;
 };
 
-export type KoraAssignmentExportDto = {
+export type KoraSessionExportDto = {
     id: string;
     reviewerId: string;
-    completedAt: string | null;
+    endedAt: string | null;
     export: {
         [key: string]: unknown;
     } | null;
@@ -17100,9 +17196,8 @@ export type KoraBatchesListResponse = KoraBatchesListResponses[keyof KoraBatches
 
 export type KoraBatchesUploadData = {
     body: {
-        transcripts: Blob | File;
-        transcriptsPerAssignment: number;
-        reviewsPerTranscript: number;
+        conversations: Blob | File;
+        reviewsPerConversation: number;
         closesAt: string;
     };
     path?: never;
@@ -17122,29 +17217,29 @@ export type KoraBatchesUploadResponses = {
 
 export type KoraBatchesUploadResponse = KoraBatchesUploadResponses[keyof KoraBatchesUploadResponses];
 
-export type KoraBatchesRandomTranscriptData = {
+export type KoraBatchesRandomConversationData = {
     body?: never;
     path: {
         id: string;
     };
     query?: never;
-    url: '/kora/admin/batches/{id}/random-transcript';
+    url: '/kora/admin/batches/{id}/random-conversation';
 };
 
-export type KoraBatchesRandomTranscriptErrors = {
+export type KoraBatchesRandomConversationErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type KoraBatchesRandomTranscriptError = KoraBatchesRandomTranscriptErrors[keyof KoraBatchesRandomTranscriptErrors];
+export type KoraBatchesRandomConversationError = KoraBatchesRandomConversationErrors[keyof KoraBatchesRandomConversationErrors];
 
-export type KoraBatchesRandomTranscriptResponses = {
-    200: KoraTranscriptPreviewDto;
+export type KoraBatchesRandomConversationResponses = {
+    200: KoraItemDto;
 };
 
-export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
+export type KoraBatchesRandomConversationResponse = KoraBatchesRandomConversationResponses[keyof KoraBatchesRandomConversationResponses];
 
 export type KoraBatchesEventsData = {
     body?: never;
@@ -17356,13 +17451,57 @@ export type KoraReviewMoreResponses = {
 
 export type KoraReviewMoreResponse = KoraReviewMoreResponses[keyof KoraReviewMoreResponses];
 
+export type KoraReviewOnboardingData = {
+    body: UpdateKoraOnboardingDto;
+    path?: never;
+    query?: never;
+    url: '/kora/review/onboarding';
+};
+
+export type KoraReviewOnboardingErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewOnboardingError = KoraReviewOnboardingErrors[keyof KoraReviewOnboardingErrors];
+
+export type KoraReviewOnboardingResponses = {
+    200: KoraOnboardingDto;
+};
+
+export type KoraReviewOnboardingResponse = KoraReviewOnboardingResponses[keyof KoraReviewOnboardingResponses];
+
+export type KoraReviewPreferencesData = {
+    body: UpdateKoraPreferencesDto;
+    path?: never;
+    query?: never;
+    url: '/kora/review/preferences';
+};
+
+export type KoraReviewPreferencesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewPreferencesError = KoraReviewPreferencesErrors[keyof KoraReviewPreferencesErrors];
+
+export type KoraReviewPreferencesResponses = {
+    200: KoraPreferencesDto;
+};
+
+export type KoraReviewPreferencesResponse = KoraReviewPreferencesResponses[keyof KoraReviewPreferencesResponses];
+
 export type KoraReviewSaveData = {
     body: SaveKoraExportDto;
     path: {
         id: string;
     };
     query?: never;
-    url: '/kora/review/assignments/{id}/export';
+    url: '/kora/review/sessions/{id}/export';
 };
 
 export type KoraReviewSaveErrors = {
@@ -17386,7 +17525,7 @@ export type KoraReviewNextData = {
         id: string;
     };
     query?: never;
-    url: '/kora/review/assignments/{id}/next';
+    url: '/kora/review/sessions/{id}/next';
 };
 
 export type KoraReviewNextErrors = {
@@ -17399,7 +17538,7 @@ export type KoraReviewNextErrors = {
 export type KoraReviewNextError = KoraReviewNextErrors[keyof KoraReviewNextErrors];
 
 export type KoraReviewNextResponses = {
-    200: KoraNextTranscriptDto;
+    200: KoraNextConversationDto;
 };
 
 export type KoraReviewNextResponse = KoraReviewNextResponses[keyof KoraReviewNextResponses];
@@ -17448,29 +17587,29 @@ export type KoraResultsAnswersResponses = {
 
 export type KoraResultsAnswersResponse = KoraResultsAnswersResponses[keyof KoraResultsAnswersResponses];
 
-export type KoraResultsAssignmentData = {
+export type KoraResultsSessionData = {
     body?: never;
     path: {
         id: string;
     };
     query?: never;
-    url: '/kora/admin/results/assignments/{id}';
+    url: '/kora/admin/results/sessions/{id}';
 };
 
-export type KoraResultsAssignmentErrors = {
+export type KoraResultsSessionErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type KoraResultsAssignmentError = KoraResultsAssignmentErrors[keyof KoraResultsAssignmentErrors];
+export type KoraResultsSessionError = KoraResultsSessionErrors[keyof KoraResultsSessionErrors];
 
-export type KoraResultsAssignmentResponses = {
-    200: KoraAssignmentExportDto;
+export type KoraResultsSessionResponses = {
+    200: KoraSessionExportDto;
 };
 
-export type KoraResultsAssignmentResponse = KoraResultsAssignmentResponses[keyof KoraResultsAssignmentResponses];
+export type KoraResultsSessionResponse = KoraResultsSessionResponses[keyof KoraResultsSessionResponses];
 
 export type ClientOptions = {
     baseUrl: string;

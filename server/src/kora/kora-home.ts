@@ -1,11 +1,11 @@
 import { KoraUserBatchStatus } from "@alliance/common/kora";
 
-export type KoraAssignmentProgress = {
+export type KoraSessionProgress = {
   id: string;
   createdAt: Date;
   releasedAt: Date | null;
   closesAt: Date | null;
-  completedAt: Date | null;
+  endedAt: Date | null;
   total: number;
   /** Done or opted out. */
   progress: number;
@@ -16,11 +16,10 @@ export type KoraAssignmentProgress = {
 export type KoraOffer = {
   releasedAt: Date;
   closesAt: Date | null;
-  size: number;
 };
 
 export type KoraUserBatch = {
-  /** Null for an offer, which has no assignment until the participant starts it. */
+  /** Null for an offer, which has no session until the participant starts it. */
   id: string | null;
   status: KoraUserBatchStatus;
   releasedAt: Date;
@@ -36,33 +35,33 @@ export type KoraHome = {
 };
 
 function statusOf(
-  assignment: Pick<KoraAssignmentProgress, "completedAt" | "closesAt">,
+  session: Pick<KoraSessionProgress, "endedAt" | "closesAt">,
   now: Date,
 ): KoraUserBatchStatus {
-  if (assignment.completedAt) return KoraUserBatchStatus.Done;
-  if (assignment.closesAt && assignment.closesAt <= now) {
+  if (session.endedAt) return KoraUserBatchStatus.Done;
+  if (session.closesAt && session.closesAt <= now) {
     return KoraUserBatchStatus.Closed;
   }
   return KoraUserBatchStatus.Open;
 }
 
-/** The offer shows only while no assignment is open. */
+/** The offer shows only while no session is open. */
 export function koraHome(params: {
   now: Date;
-  assignments: KoraAssignmentProgress[];
+  sessions: KoraSessionProgress[];
   offer: KoraOffer | null;
 }): KoraHome {
-  const rows = params.assignments
+  const rows = params.sessions
     .filter((a) => a.total > 0)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map(
-      (a): KoraUserBatch => ({
-        id: a.id,
-        status: statusOf(a, params.now),
-        releasedAt: a.releasedAt ?? a.createdAt,
-        closesAt: a.closesAt,
-        progress: a.progress,
-        total: a.total,
+      (s): KoraUserBatch => ({
+        id: s.id,
+        status: statusOf(s, params.now),
+        releasedAt: s.releasedAt ?? s.createdAt,
+        closesAt: s.closesAt,
+        progress: s.progress,
+        total: s.total,
       }),
     );
   const open = rows.some((r) => r.status === KoraUserBatchStatus.Open);
@@ -75,12 +74,12 @@ export function koraHome(params: {
             releasedAt: params.offer.releasedAt,
             closesAt: params.offer.closesAt,
             progress: 0,
-            total: params.offer.size,
+            total: 0,
           },
         ]
       : [];
   return {
-    totalRanked: params.assignments.reduce((sum, a) => sum + a.ranked, 0),
+    totalRanked: params.sessions.reduce((sum, s) => sum + s.ranked, 0),
     userBatches: [...offer, ...rows],
   };
 }

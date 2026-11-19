@@ -17,12 +17,7 @@ serveApi(
     "GET /kora/admin/batches/events": () => Response.json([]),
     "GET /kora/admin/categories": () => Response.json({ categories: [] }),
     "GET /kora/admin/results/answers": () =>
-      Response.json({
-        profiles: 0,
-        profile: [],
-        exitSurveys: 0,
-        exitSurvey: [],
-      }),
+      Response.json({ sessions: 0, feedback: [] }),
     "GET /kora/admin/project": () =>
       Response.json({
         status: "pending",

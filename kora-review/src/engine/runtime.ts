@@ -114,6 +114,7 @@ export function createRuntime(ctx: RuntimeCtx) {
       else if (
         k === "id" ||
         k === "for" ||
+        k === "aria-controls" ||
         k === "aria-describedby" ||
         k === "aria-labelledby"
       )

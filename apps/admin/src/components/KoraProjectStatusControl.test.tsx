@@ -1,5 +1,5 @@
 import {
-  KORA_ACTIVE_NEEDS_TRANSCRIPTS,
+  KORA_ACTIVE_NEEDS_CONVERSATIONS,
   KoraProjectStatus,
 } from "@alliance/common/kora";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -65,7 +65,7 @@ test("shows the current status, with Active disabled and why", async () => {
   await screen.findByRole("group", { name: "Project status" });
   expect(radio("Pending").checked).toBe(true);
   expect(radio("Active").disabled).toBe(true);
-  expect(screen.getByText(KORA_ACTIVE_NEEDS_TRANSCRIPTS)).toBeTruthy();
+  expect(screen.getByText(KORA_ACTIVE_NEEDS_CONVERSATIONS)).toBeTruthy();
 });
 
 test("closes the project only after confirming", async () => {

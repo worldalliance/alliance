@@ -6,29 +6,30 @@ import { KORA_MEMBER_REVIEWED, type KoraMemberReviewed } from "./kora-events";
 import { koraStagingTools } from "./kora-staging-tools";
 
 export type KoraCompletion = {
-  assignmentId: string;
+  sessionId: string;
   reviewerId: string;
   userId: number | null;
+  /** Not the reviewer's first session; only the first credits a member's Kora action. */
   extra: boolean;
   ratingCount: number;
 };
 
 export function completionOf(params: {
-  assignment: { id: string; extra: boolean };
+  session: { id: string; number: number };
   reviewer: { id: string; userId: number | null };
   statuses: Iterable<KoraReviewStatus>;
 }): KoraCompletion {
   return {
-    assignmentId: params.assignment.id,
+    sessionId: params.session.id,
     reviewerId: params.reviewer.id,
     userId: params.reviewer.userId,
-    extra: params.assignment.extra,
+    extra: params.session.number > 1,
     ratingCount: [...params.statuses].filter((s) => s === KoraReviewStatus.Done)
       .length,
   };
 }
 
-/** Call inside the transaction that completes the assignment. */
+/** Call inside the transaction that ends the session. */
 export async function logCompletion(
   manager: EntityManager,
   completion: KoraCompletion,
@@ -36,13 +37,13 @@ export async function logCompletion(
   if (!koraStagingTools()) return;
   await manager.insert(KoraBatchEvent, {
     kind: KoraBatchEventKind.AssignmentCompleted,
-    assignmentId: completion.assignmentId,
+    assignmentId: completion.sessionId,
     reviewerId: completion.reviewerId,
     ratingCount: completion.ratingCount,
   });
 }
 
-/** Call once that transaction commits; only a member's first assignment completes their Kora actions. */
+/** Call once that transaction commits; only a member's first session completes their Kora actions. */
 export function emitMemberReviewed(
   events: EventEmitter2,
   completion: KoraCompletion,

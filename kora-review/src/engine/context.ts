@@ -1,32 +1,33 @@
-import type { KoraAssignedTranscript, KoraAssignment } from "../index.js";
-import type { KoraCategory, KoraExport } from "../types.gen.js";
-import type { createAnnotations } from "./annotations.js";
+import type { KoraNext, KoraSession } from "../index.js";
+import type { KoraCategory, KoraExport, KoraItem } from "../types.gen.js";
+import type { createFeedbackForm } from "./feedback-form.js";
 import type { createFeedback } from "./feedback.js";
 import type { createFlow } from "./flow.js";
+import type { createGuide } from "./guide.js";
+import type { createHighlights } from "./highlights.js";
+import type { createJudge } from "./judge.js";
 import type { createMarkdownParser } from "./markdown-parser.js";
 import type { createMarkdownRenderer } from "./markdown-renderer.js";
 import type { createMath } from "./math.js";
 import type { createModel } from "./model.js";
+import type { createPractice } from "./practice.js";
 import type { createPresentation } from "./presentation.js";
-import type { createRanking } from "./ranking.js";
-import type { createReview } from "./review.js";
+import type { createRead } from "./read.js";
 import type { createRuntime } from "./runtime.js";
 import type { createScreens } from "./screens.js";
 import type { createSelection } from "./selection.js";
 import type { createSheet } from "./sheet.js";
-import type { createSurveys } from "./surveys.js";
-import type { SheetMode, SheetOpts, Transcript } from "./types.js";
+import type { SheetMode, SheetOpts } from "./types.js";
 
 export type EngineOptions = {
   reviewerId: string;
-  assignment: KoraAssignment;
+  session: KoraSession;
   savedExport: KoraExport | null;
-  collectProfile: boolean;
-  collectExitSurvey: boolean;
-  optOutCategories: KoraCategory[];
-  next: () => Promise<KoraAssignedTranscript | null>;
+  next: () => Promise<KoraNext>;
+  onOptOutRisk: (riskId: KoraCategory) => void;
+  onOpenAccount: () => void;
   onChange: () => void;
-  onComplete: () => void;
+  onComplete: (end: { again: boolean }) => void;
   onHidden: () => void;
 };
 
@@ -37,17 +38,18 @@ export type EngineOptions = {
  */
 export type Late = {
   closeSheet(): void;
-  focusNote(): void;
-  needsWarning(t: Transcript): boolean;
+  needsWarning(item: KoraItem): boolean;
+  nudgeChoice(): void;
+  openEdit(id: string): void;
   openSheet(mode: SheetMode, opts?: SheetOpts): void;
-  playOpener(): void;
-  renderAnns(): void;
-  renderExit(): void;
-  renderFinish(): void;
+  renderComplete(): void;
+  renderEmpty(): void;
+  renderFeedbackForm(): void;
+  renderHighlights(): void;
+  renderJudge(): void;
   renderLoading(state: { failed: boolean }): void;
-  renderProfile(): void;
-  renderRank(): void;
-  renderReview(slow?: boolean): void;
+  renderPractice(): void;
+  renderRead(): void;
   renderSel(): void;
   renderWarning(next: { then: string }): void;
   selRange(): [number, number];
@@ -68,12 +70,14 @@ export type MarkdownRendererCtx = MarkdownParserCtx &
 export type PresentationCtx = MarkdownRendererCtx &
   Api<typeof createMarkdownRenderer>;
 export type FeedbackCtx = PresentationCtx & Api<typeof createPresentation>;
-export type FlowCtx = FeedbackCtx & Api<typeof createFeedback>;
+export type GuideCtx = FeedbackCtx & Api<typeof createFeedback>;
+export type FlowCtx = GuideCtx & Api<typeof createGuide>;
 export type ScreensCtx = FlowCtx & Api<typeof createFlow>;
-export type SurveysCtx = ScreensCtx & Api<typeof createScreens>;
-export type ReviewCtx = SurveysCtx & Api<typeof createSurveys>;
-export type AnnotationsCtx = ReviewCtx & Api<typeof createReview>;
-export type SelectionCtx = AnnotationsCtx & Api<typeof createAnnotations>;
-export type RankingCtx = SelectionCtx & Api<typeof createSelection>;
-export type SheetCtx = RankingCtx & Api<typeof createRanking>;
-export type KeyboardCtx = SheetCtx & Api<typeof createSheet>;
+export type FeedbackFormCtx = ScreensCtx & Api<typeof createScreens>;
+export type ReadCtx = FeedbackFormCtx & Api<typeof createFeedbackForm>;
+export type HighlightsCtx = ReadCtx & Api<typeof createRead>;
+export type SelectionCtx = HighlightsCtx & Api<typeof createHighlights>;
+export type JudgeCtx = SelectionCtx & Api<typeof createSelection>;
+export type SheetCtx = JudgeCtx & Api<typeof createJudge>;
+export type PracticeCtx = SheetCtx & Api<typeof createSheet>;
+export type KeyboardCtx = PracticeCtx & Api<typeof createPractice>;

@@ -4,12 +4,12 @@ import {
   koraBatchesDeletionImpact,
   koraBatchesEvents,
   koraBatchesList,
-  koraBatchesRandomTranscript,
+  koraBatchesRandomConversation,
   koraBatchesReactivate,
   koraBatchesRetire,
   koraBatchesSetClosesAt,
   koraBatchesUpload,
-  koraResultsAssignment,
+  koraResultsSession,
   type KoraBatchDto,
   type KoraBatchesUploadData,
   type KoraDeletionImpactDto,
@@ -139,12 +139,12 @@ export function useKoraBatchEvents() {
   });
 }
 
-export function useKoraAssignmentExport(assignmentId: string) {
+export function useKoraSessionExport(sessionId: string) {
   return useQuery({
-    queryKey: queryKeys.koraAssignmentExport(assignmentId),
+    queryKey: queryKeys.koraSessionExport(sessionId),
     queryFn: () =>
-      koraResultsAssignment({
-        path: { id: assignmentId },
+      koraResultsSession({
+        path: { id: sessionId },
         throwOnError: true,
       }).then((r) => r.data),
   });
@@ -164,11 +164,11 @@ export const koraUploadRejection = (
   error: unknown,
 ): KoraUploadRejection | undefined => rejectedSchema.safeParse(error).data;
 
-export function useRandomKoraTranscript(batchId: string) {
+export function useRandomKoraConversation(batchId: string) {
   return useQuery({
-    queryKey: queryKeys.koraRandomTranscript(batchId),
+    queryKey: queryKeys.koraRandomConversation(batchId),
     queryFn: () =>
-      koraBatchesRandomTranscript({
+      koraBatchesRandomConversation({
         path: { id: batchId },
         throwOnError: true,
       }).then((r) => r.data),

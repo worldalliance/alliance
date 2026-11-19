@@ -35,8 +35,8 @@ export const countOf = (n: number, one: string, many: string) =>
 function retireMessage(params: { lastAssigned: boolean }): string {
   return [
     params.lastAssigned &&
-      "This is the last batch being assigned, so no chat pairs will be left to assign.",
-    "Its chat pairs stop being assigned to volunteers, and pairs not yet rated leave assignments in progress.",
+      "This is the last batch being served, so no conversations will be left to review.",
+    "Its conversations stop being served to volunteers, and any not yet judged leave the sessions holding them.",
     "Ratings already given stay in the export, marked as from a retired batch.",
     "You can reactivate it later.",
   ]
@@ -46,8 +46,8 @@ function retireMessage(params: { lastAssigned: boolean }): string {
 
 function deleteMessage(impact: KoraDeletionImpactDto): string {
   return [
-    `This permanently removes ${countOf(impact.transcriptCount, "chat pair", "chat pairs")}, ${countOf(impact.ratingCount, "rating", "ratings")} and ${countOf(impact.assignmentCount, "volunteer assignment", "volunteer assignments")}.`,
-    "Pairs not yet rated leave other assignments in progress.",
+    `This permanently removes ${countOf(impact.transcriptCount, "conversation", "conversations")}, ${countOf(impact.ratingCount, "rating", "ratings")} and ${countOf(impact.assignmentCount, "review session", "review sessions")}.`,
+    "Conversations not yet judged leave other sessions in progress.",
     "You can't undo this.",
   ].join("\n\n");
 }

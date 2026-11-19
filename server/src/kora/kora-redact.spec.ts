@@ -19,57 +19,49 @@ describe("redactContact", () => {
 });
 
 describe("redactExport", () => {
-  it("redacts annotation notes, q3_text and exit_q6, and nothing else", () => {
+  it("redacts what the reviewer typed, and nothing the conversation said", () => {
     const exported = {
-      batchId: "a@b.org",
-      results: [
+      sessionId: "a@b.org",
+      ratings: [
         {
-          transcriptId: "T1",
-          q3_text: "mail x@example.org",
-          annotations: [
-            { id: "n1", note: "call +1 555 555 0101", text: "y@example.org" },
-          ],
+          conversationId: "C1",
+          q4Text: "mail x@example.org",
+          highlights: [{ id: "h1", text: "write to y@example.org" }],
         },
       ],
-      exitSurvey: { exit_q5: "fine", exit_q6: "z@example.org" },
+      feedback: {
+        f5: "yes",
+        f5Text: "call +1 555 555 0101",
+        f7: "z@example.org",
+      },
     };
     expect(redactExport(exported)).toEqual({
-      batchId: "a@b.org",
-      results: [
+      sessionId: "a@b.org",
+      ratings: [
         {
-          transcriptId: "T1",
-          q3_text: `mail ${REDACTED}`,
-          annotations: [
-            { id: "n1", note: `call ${REDACTED}`, text: "y@example.org" },
-          ],
+          conversationId: "C1",
+          q4Text: `mail ${REDACTED}`,
+          highlights: [{ id: "h1", text: "write to y@example.org" }],
         },
       ],
-      exitSurvey: { exit_q5: "fine", exit_q6: REDACTED },
+      feedback: {
+        f5: "yes",
+        f5Text: `call ${REDACTED}`,
+        f7: REDACTED,
+      },
     });
   });
 
-  it("redacts the profile's free-text country and gender", () => {
-    expect(
-      redactExport({
-        results: [],
-        profile: {
-          country: "mail me x@example.org",
-          gender: "call +1 555 555 0101",
-          age_band: "25_34",
-        },
-      }).profile,
-    ).toEqual({
-      country: `mail me ${REDACTED}`,
-      gender: `call ${REDACTED}`,
-      age_band: "25_34",
-    });
+  it("leaves an export with no free text and no feedback alone", () => {
+    const exported = { ratings: [{ conversationId: "C1" }], feedback: null };
+    expect(redactExport(exported)).toEqual(exported);
   });
 
   it("keeps a redacted field within the export schema's maxLength", () => {
-    const note = "mail a@b.co ".padEnd(140, "x");
-    const redacted = redactExport({ results: [{ annotations: [{ note }] }] });
-    expect(redacted.results).toEqual([
-      { annotations: [{ note: `mail ${REDACTED} ${"x".repeat(124)}` }] },
+    const q4Text = "mail a@b.co ".padEnd(280, "x");
+    const redacted = redactExport({ ratings: [{ q4Text }] });
+    expect(redacted.ratings).toEqual([
+      { q4Text: `mail ${REDACTED} ${"x".repeat(264)}` },
     ]);
   });
 });

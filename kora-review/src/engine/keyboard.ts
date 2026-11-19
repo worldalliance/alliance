@@ -2,23 +2,22 @@ import type { KeyboardCtx } from "./context.js";
 
 export function createKeyboard(ctx: KeyboardCtx) {
   const {
-    $,
     S,
     applyNew,
     clamp,
     clearSel,
     doc,
     headBottom,
-    introShown,
     keepSelVisible,
     mutate,
     newSelection,
     on,
+    focusSheet,
     openSheet,
     overlapping,
     placeHandles,
     plural,
-    removeAnn,
+    drop,
     renderSel,
     rootEl,
     selRange,
@@ -66,7 +65,7 @@ export function createKeyboard(ctx: KeyboardCtx) {
     openSheet("new", { kb: true });
   }
   on(doc, "keydown", (e) => {
-    if (S.screen !== "review" || introShown()) return;
+    if (S.screen !== "read") return;
     // Only keys aimed at the tool: focus inside it, or nowhere in particular.
     const target = e.target instanceof Element ? e.target : null;
     if (
@@ -103,29 +102,23 @@ export function createKeyboard(ctx: KeyboardCtx) {
     }
     if ((k === "+" || k === "=") && S.sel) {
       e.preventDefault();
-      applyNew(1);
+      applyNew("like");
       return;
     }
     if ((k === "-" || k === "_") && S.sel) {
       e.preventDefault();
-      applyNew(-1);
-      return;
-    }
-    if (k === "0" && S.sel && S.noteDraft.trim()) {
-      e.preventDefault();
-      applyNew(0);
+      applyNew("dislike");
       return;
     }
     if (k === "Enter" && S.sel && !onButton) {
       e.preventDefault();
-      const n = $("note");
-      if (n) n.focus();
+      focusSheet();
       return;
     }
     if (k === "Backspace" || k === "Delete") {
       if (S.editing) {
         e.preventDefault();
-        removeAnn(S.editing);
+        drop(S.editing);
         return;
       }
       if (S.sel) {
@@ -140,10 +133,10 @@ export function createKeyboard(ctx: KeyboardCtx) {
           e.preventDefault();
           const ids = new Set(hits.map((a) => a.id));
           mutate((r) => {
-            r.annotations = r.annotations.filter((a) => !ids.has(a.id));
+            r.highlights = r.highlights.filter((x) => !ids.has(x.id));
           });
           clearSel();
-          toast(`Removed ${plural(hits.length, "mark")}`);
+          toast(`Removed ${plural(hits.length, "highlight")}`);
         }
       }
     }
@@ -151,12 +144,7 @@ export function createKeyboard(ctx: KeyboardCtx) {
   // Focus is never hidden behind the sticky header or the fixed footer: nudge the page so the focused element shows.
   on(rootEl, "focusin", (e) => {
     const el = e.target;
-    if (
-      !(el instanceof Element) ||
-      sheetEl.contains(el) ||
-      introShown()?.el.contains(el)
-    )
-      return;
+    if (!(el instanceof Element) || sheetEl.contains(el)) return;
     if (el.closest(".rhead")) return;
     let kb = true;
     try {

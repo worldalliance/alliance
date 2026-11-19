@@ -3,7 +3,7 @@ import {
   KORA_PROJECT_PATH,
   KORA_REVIEW_PATH,
 } from "@alliance/common/kora";
-import { EXAMPLE_PAIR } from "@alliance/kora-review/example-pair";
+import { EXAMPLE_CONVERSATION } from "@alliance/kora-review/example-conversation";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useEffect, useState } from "react";
@@ -19,32 +19,26 @@ import { type KoraToolOptions, KoraReviewTool } from "./KoraReviewTool";
 
 export function meta() {
   return socialPreviewMeta({
-    title: "Example pair — Safer Chatbots for Children",
-    description: "Practise ranking a made-up pair of chatbot conversations.",
+    title: "Example conversation — Safer Chatbots for Children",
+    description:
+      "Practise judging a made-up conversation between a child and a chatbot.",
     url: KORA_EXAMPLE_PATH,
   });
 }
 
-// The tool requires a hash's shape and only echoes it back; nothing is saved to check it against.
-const EXAMPLE_HASH = `sha256:${"0".repeat(64)}`;
-
 const OPTIONS: KoraToolOptions = {
   reviewerId: "example",
-  assignment: {
-    batchId: "example",
-    size: 1,
-    transcripts: [
-      {
-        transcript: EXAMPLE_PAIR,
-        contentHash: EXAMPLE_HASH,
-      },
-    ],
+  session: {
+    id: "example",
+    number: 1,
+    budgetUnits: 1,
+    items: [EXAMPLE_CONVERSATION],
   },
   savedExport: null,
-  collectProfile: false,
-  collectExitSurvey: false,
   save: () => Promise.resolve(),
-  next: () => Promise.resolve(null),
+  next: () => Promise.resolve({ done: "budget_spent" }),
+  onOptOutRisk: () => {},
+  onOpenAccount: () => {},
 };
 
 export default function KoraExamplePage() {

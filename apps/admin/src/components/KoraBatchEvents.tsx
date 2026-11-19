@@ -42,7 +42,8 @@ const shows = (filter: EventFilter, event: KoraBatchEventDto): boolean => {
   }
 };
 
-const pairs = (n: number | null) => countOf(n ?? 0, "chat pair", "chat pairs");
+const conversations = (n: number | null) =>
+  countOf(n ?? 0, "conversation", "conversations");
 
 const whoDid = (event: KoraBatchEventDto) => event.adminName ?? "An admin";
 const batchOf = (event: KoraBatchEventDto) =>
@@ -55,22 +56,22 @@ const DESCRIBE: Record<
   (event: KoraBatchEventDto) => ReactNode
 > = {
   [KoraBatchEventKind.Upload]: (e) =>
-    `${whoDid(e)} uploaded a batch of ${pairs(e.transcriptCount)}`,
+    `${whoDid(e)} uploaded a batch of ${conversations(e.transcriptCount)}`,
   [KoraBatchEventKind.Retire]: (e) => `${whoDid(e)} retired ${batchOf(e)}`,
   [KoraBatchEventKind.Reactivate]: (e) =>
     `${whoDid(e)} reactivated ${batchOf(e)}`,
   [KoraBatchEventKind.Delete]: (e) =>
-    `${whoDid(e)} deleted ${batchOf(e)}, removing ${pairs(e.transcriptCount)}, ${countOf(e.ratingCount ?? 0, "rating", "ratings")} and ${countOf(e.assignmentCount ?? 0, "volunteer assignment", "volunteer assignments")}`,
+    `${whoDid(e)} deleted ${batchOf(e)}, removing ${conversations(e.transcriptCount)}, ${countOf(e.ratingCount ?? 0, "rating", "ratings")} and ${countOf(e.assignmentCount ?? 0, "review session", "review sessions")}`,
   [KoraBatchEventKind.AssignmentCompleted]: (e) => (
     <>
-      Reviewer {e.reviewerId?.slice(0, 8)} completed an assignment, rating{" "}
-      {pairs(e.ratingCount)}.{" "}
+      Reviewer {e.reviewerId?.slice(0, 8)} finished a session, judging{" "}
+      {conversations(e.ratingCount)}.{" "}
       {e.assignmentDeleted || !e.assignmentId ? (
-        "The assignment has since been deleted."
+        "The session has since been deleted."
       ) : (
         <Link
           className="underline"
-          to={`/kora-participants/assignments/${e.assignmentId}`}
+          to={`/kora-participants/sessions/${e.assignmentId}`}
         >
           View its export
         </Link>

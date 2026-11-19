@@ -65,7 +65,7 @@ export function heroOf(home: KoraHomeDto, now: Date): Hero {
             ? HOME_COPY.startRanking
             : HOME_COPY.continueRanking,
       },
-      note: open.progress === 0 ? HOME_COPY.startIntro(open.total) : null,
+      note: open.progress === 0 ? HOME_COPY.startIntro() : null,
     };
   }
   const ready = find(KoraUserBatchStatus.Ready);
@@ -77,22 +77,23 @@ export function heroOf(home: KoraHomeDto, now: Date): Hero {
       heading: HOME_COPY.rankedAll(latest.total),
       action: {
         kind: HeroAction.Start,
-        label: HOME_COPY.rankAnother(ready.total),
+        label: HOME_COPY.rankAnother,
       },
       note: null,
     };
   }
   if (ready) {
     return {
-      heading: HOME_COPY.rank(ready.total) + deadline(ready.closesAt, now),
+      heading: HOME_COPY.sessionReady + deadline(ready.closesAt, now),
       action: { kind: HeroAction.Start, label: HOME_COPY.startRanking },
-      note: HOME_COPY.startIntro(ready.total),
+      note: HOME_COPY.startIntro(),
     };
   }
+  const caughtUp = home.totalRanked > 0;
   return {
-    heading: HOME_COPY.caughtUp,
+    heading: caughtUp ? HOME_COPY.caughtUp : HOME_COPY.nothingYet,
     action: null,
-    note: HOME_COPY.caughtUpNote,
+    note: caughtUp ? HOME_COPY.caughtUpNote : HOME_COPY.nothingYetNote,
   };
 }
 

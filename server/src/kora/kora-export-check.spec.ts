@@ -1,123 +1,119 @@
 import { KoraReviewStatus } from "@alliance/common/kora";
 import { exportSchema } from "@alliance/kora-review/schemas";
-import { koraExport } from "../../test/kora-pairs";
-import { checkExport, withoutResultsFor } from "./kora-export-check";
+import { koraSessionExport } from "../../test/kora-conversations";
+import {
+  changedRatings,
+  checkExport,
+  withoutRatingsFor,
+} from "./kora-export-check";
 import { koraAjv } from "./kora-upload";
 
 const validate = koraAjv().compile(exportSchema);
 const hash = (n: number) => `sha256:${String(n).repeat(64)}`;
-const transcripts = [
+const conversations = [
   {
-    transcript: {
-      transcriptId: "T1",
-      category: "privacy_and_personal_data_protection",
-    },
+    id: "C1",
+    riskId: "privacy_and_personal_data_protection",
     contentHash: hash(1),
   },
-  {
-    transcript: { transcriptId: "T2", category: "fear_trauma_and_distress" },
-    contentHash: hash(2),
-  },
+  { id: "C2", riskId: "fear_trauma_and_distress", contentHash: hash(2) },
 ];
 const check = (exported: Record<string, unknown>) =>
   checkExport({
     exported,
     validate,
     reviewerId: "rv1",
-    assignmentId: "as1",
-    transcripts: transcripts.map((t) => ({
-      id: t.transcript.transcriptId,
-      contentHash: t.contentHash,
+    sessionId: "ses1",
+    conversations: conversations.map((c) => ({
+      id: c.id,
+      contentHash: c.contentHash,
     })),
   });
-const build = (
-  options: { done?: string[]; optedOut?: string[]; profile?: boolean } = {},
-) =>
-  koraExport({
+const build = (options: { done?: string[]; skipped?: string[] } = {}) =>
+  koraSessionExport({
     reviewerId: "rv1",
-    assignmentId: "as1",
-    transcripts,
+    sessionId: "ses1",
+    conversations,
     ...options,
   });
 
 describe("checkExport", () => {
-  it("reads each transcript's status and whether the profile was answered", () => {
-    const result = check(
-      build({ done: ["T1"], optedOut: ["T2"], profile: true }),
-    );
+  it("reads each conversation's status, including the skipped ones", () => {
+    const result = check(build({ done: ["C1"], skipped: ["C2"] }));
     if (!result.ok) throw new Error(result.error);
     expect([...result.value.statuses]).toEqual([
-      ["T1", KoraReviewStatus.Done],
-      ["T2", KoraReviewStatus.OptedOut],
+      ["C1", KoraReviewStatus.Done],
+      ["C2", KoraReviewStatus.OptedOut],
     ]);
-    expect(result.value.profileAnswered).toBe(true);
-    expect(result.value.optOutCategories).toEqual([]);
   });
 
-  it("reads the categories the reviewer opted out of", () => {
-    const result = check({
-      ...build({ optedOut: ["T2"] }),
-      optOutCategories: ["fear_trauma_and_distress"],
-    });
+  it("counts a conversation still being read as pending", () => {
+    const result = check(build());
     if (!result.ok) throw new Error(result.error);
-    expect(result.value.optOutCategories).toEqual(["fear_trauma_and_distress"]);
+    expect(result.value.statuses.get("C1")).toBe(KoraReviewStatus.Pending);
   });
 
-  it("refuses an export for another reviewer or assignment", () => {
-    expect(check({ ...build(), reviewer: { id: "rv2" } })).toEqual({
+  it("refuses an export for another reviewer or session", () => {
+    const other = { ...build(), reviewer: { id: "rv2" } };
+    expect(check(other)).toEqual({
       ok: false,
       error: "names a different reviewer",
     });
-    expect(check({ ...build(), batchId: "as2" })).toEqual({
+    expect(check({ ...build(), sessionId: "ses2" })).toEqual({
       ok: false,
-      error: "names a different assignment",
+      error: "names a different session",
     });
   });
 
-  it("refuses changed content, an unassigned transcript, or a missing one", () => {
+  it("refuses changed content and a conversation it was never given", () => {
     const changed = build();
-    changed.results[0].contentHash = hash(9);
+    changed.ratings[0].contentHash = hash(9);
     expect(check(changed)).toEqual({
       ok: false,
-      error: "reviewed different content for transcript T1",
+      error: "rated different content for conversation C1",
     });
 
-    const extra = build();
-    extra.results[1].transcriptId = "T9";
-    expect(check(extra)).toEqual({
+    const unknown = build();
+    unknown.ratings[0].conversationId = "C9";
+    expect(check(unknown)).toEqual({
       ok: false,
-      error: "has a result for transcript T9, which isn't assigned",
+      error: "has a rating for conversation C9, which isn't in this session",
     });
 
-    const missing = build();
-    missing.results = missing.results.slice(0, 1);
-    expect(check(missing)).toEqual({
+    const skipped = build({ skipped: ["C2"] });
+    skipped.skips[0].conversationId = "C9";
+    expect(check(skipped)).toEqual({
       ok: false,
-      error: "is missing results for assigned transcripts",
+      error: "skipped conversation C9, which isn't in this session",
     });
   });
 
-  it("refuses an export the schema rejects", () => {
-    const result = check({ ...build(), unexpected: true });
-    expect(result.ok ? "" : result.error).toContain(
-      "doesn't match the export schema",
-    );
+  it("refuses an export that doesn't match the schema", () => {
+    const result = check({ ...build(), ratings: [{ conversationId: "C1" }] });
+    expect(result.ok).toBe(false);
   });
 });
 
-describe("withoutResultsFor", () => {
-  it("drops the removed pairs' results and stops pointing at a removed pair", () => {
-    const exported = { ...build(), currentTranscriptId: "T1" };
-    const kept = withoutResultsFor(exported, new Set(["T1"]));
-    expect(JSON.stringify(kept)).not.toContain('"T1"');
-    expect(kept.currentTranscriptId).toBeNull();
-    expect(validate(kept)).toBe(true);
+describe("withoutRatingsFor", () => {
+  it("drops a conversation's rating and skip, and the place that pointed at it", () => {
+    const exported = build({ skipped: ["C2"] });
+    const kept = withoutRatingsFor(exported, new Set(["C1", "C2"]));
+    expect(kept.ratings).toEqual([]);
+    expect(kept.skips).toEqual([]);
+    expect(kept.place).toEqual({ conversationId: null, screen: null });
   });
 
-  it("keeps the open pair when it wasn't removed", () => {
-    const exported = { ...build(), currentTranscriptId: "T2" };
-    expect(
-      withoutResultsFor(exported, new Set(["T1"])).currentTranscriptId,
-    ).toBe("T2");
+  it("leaves the export alone when nothing was dropped", () => {
+    const exported = build();
+    expect(withoutRatingsFor(exported, new Set())).toBe(exported);
+  });
+});
+
+describe("changedRatings", () => {
+  it("names the conversations whose rating differs from the stored one", () => {
+    const before = build();
+    const after = build({ done: ["C1"] });
+    expect([...changedRatings(before, after)]).toEqual(["C1"]);
+    expect([...changedRatings(before, before)]).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@ import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "bun:test";
 import sample from "../samples/transcript.json";
-import { fromKoraPair, readKoraPairs } from "../src/convert.js";
+import { fromKoraPair, readKoraRecords } from "../src/convert.js";
 import { parseKoraExport, parseKoraTranscript } from "../src/parse.js";
 import { SAMPLE_EXPORT } from "../src/sample-export.js";
 import { transcriptSchema } from "../src/schemas.js";
@@ -29,7 +29,7 @@ const nativeOf = (t: typeof sample, id = t.transcriptId) => ({
   feedback_text: "dropped",
 });
 
-describe("readKoraPairs", () => {
+describe("readKoraRecords", () => {
   it("numbers JSON Lines from 1, skipping blank lines, and reports a bad line without stopping", () => {
     const text = [
       JSON.stringify(nativeOf(sample, "P1")),
@@ -37,7 +37,7 @@ describe("readKoraPairs", () => {
       "{not json",
       JSON.stringify(nativeOf(sample, "P2")),
     ].join("\n");
-    const records = readKoraPairs(text);
+    const records = readKoraRecords(text);
     expect(records.map((r) => [r.line, r.ok])).toEqual([
       [1, true],
       [3, false],
@@ -47,7 +47,7 @@ describe("readKoraPairs", () => {
 
   it("reads a JSON array, whole or split one element per line", () => {
     const pairs = [nativeOf(sample, "P1"), nativeOf(sample, "P2")];
-    expect(readKoraPairs(JSON.stringify(pairs)).map((r) => r.line)).toEqual([
+    expect(readKoraRecords(JSON.stringify(pairs)).map((r) => r.line)).toEqual([
       1, 2,
     ]);
     const split = [
@@ -57,7 +57,7 @@ describe("readKoraPairs", () => {
       ),
       "]",
     ].join("\n");
-    expect(readKoraPairs(split).filter((r) => r.ok).length).toBe(2);
+    expect(readKoraRecords(split).filter((r) => r.ok).length).toBe(2);
   });
 
   it("reads a YAML list, numbering each pair by the line it starts on", () => {
@@ -69,7 +69,7 @@ describe("readKoraPairs", () => {
       "- pair_id: P2",
       "  risk_id: cybersecurity",
     ].join("\n");
-    expect(readKoraPairs(yaml)).toEqual([
+    expect(readKoraRecords(yaml)).toEqual([
       {
         line: 2,
         ok: true,
@@ -84,13 +84,13 @@ describe("readKoraPairs", () => {
   });
 
   it("reports a YAML syntax error at its line, and refuses YAML that isn't a list", () => {
-    expect(readKoraPairs("- pair_id: P1\n- pair_id: [P2\n")).toMatchObject([
+    expect(readKoraRecords("- pair_id: P1\n- pair_id: [P2\n")).toMatchObject([
       { line: 3, ok: false },
     ]);
-    expect(readKoraPairs("pair_id: P1")).toEqual([
-      { line: 1, ok: false, error: "a YAML file must be a list of pairs" },
+    expect(readKoraRecords("pair_id: P1")).toEqual([
+      { line: 1, ok: false, error: "a YAML file must be a list" },
     ]);
-    expect(readKoraPairs("# nothing yet\n")).toEqual([]);
+    expect(readKoraRecords("# nothing yet\n")).toEqual([]);
   });
 });
 

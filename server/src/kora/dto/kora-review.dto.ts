@@ -1,56 +1,77 @@
-import { KoraReviewPhase, KoraUserBatchStatus } from "@alliance/common/kora";
+import {
+  KoraReviewPhase,
+  KoraSessionEnd,
+  KoraUserBatchStatus,
+} from "@alliance/common/kora";
+import type { KoraItem } from "@alliance/kora-review";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsObject } from "class-validator";
-import type { KoraTranscript } from "../entities/kora-transcript.entity";
+import {
+  IsArray,
+  IsBoolean,
+  IsObject,
+  IsOptional,
+  IsString,
+} from "class-validator";
 import type { KoraHome, KoraUserBatch } from "../kora-home";
-import type { KoraSaved } from "../kora-review.service";
-import { KoraTranscriptPreviewDto } from "./kora-batch.dto";
+import type { KoraNextResult, KoraSaved } from "../kora-review.service";
+import type { KoraOnboarding, KoraPreferences } from "../kora-reviewer.service";
+import { KoraOnboardingDto } from "./kora-onboarding.dto";
 
-export type KoraLoadedAssignment = {
+export type KoraLoadedSession = {
   id: string;
-  extra: boolean;
-  size: number;
-  transcripts: KoraTranscript[];
+  number: number;
+  budgetUnits: number;
+  items: KoraItem[];
   savedExport: Record<string, unknown> | null;
 };
 
 export type KoraReviewState = {
   phase: KoraReviewPhase;
   reviewerId: string;
-  collectProfile: boolean;
-  optOutCategories: string[];
+  optOutRisks: string[];
+  extendedOptIn: boolean;
   reviewed: boolean;
-  extraReviews: number;
-  assignment: KoraLoadedAssignment | null;
+  sessionsCompleted: number;
+  ratingsCompleted: number;
+  onboarding: KoraOnboarding;
+  session: KoraLoadedSession | null;
 };
 
-export class KoraReviewAssignmentDto {
-  @ApiProperty({ description: "The batchId the review tool echoes" })
+/** One conversation as the review tool receives it; its shape is the tool's itemSchema. */
+export class KoraItemDto {
+  @ApiProperty({ type: "object", additionalProperties: true })
+  item: Record<string, unknown>;
+
+  constructor(input: KoraItem) {
+    this.item = { ...input };
+  }
+}
+
+export class KoraReviewSessionDto {
+  @ApiProperty({ description: "The sessionId the review tool echoes" })
   id: string;
 
-  @ApiProperty({ description: "Requested after finishing an earlier one" })
-  extra: boolean;
+  @ApiProperty({ description: "1-based for this reviewer" })
+  number: number;
 
-  @ApiProperty({ description: "How many transcripts the assignment asks for" })
-  size: number;
+  @ApiProperty({ description: "Load units this session may spend" })
+  budgetUnits: number;
 
   @ApiProperty({
-    type: () => KoraTranscriptPreviewDto,
+    type: () => KoraItemDto,
     isArray: true,
     description: "Those given so far; the next comes from the next endpoint",
   })
-  transcripts: KoraTranscriptPreviewDto[];
+  items: KoraItemDto[];
 
   @ApiProperty({ type: "object", additionalProperties: true, nullable: true })
   savedExport: Record<string, unknown> | null;
 
-  constructor(input: KoraLoadedAssignment) {
+  constructor(input: KoraLoadedSession) {
     this.id = input.id;
-    this.extra = input.extra;
-    this.size = input.size;
-    this.transcripts = input.transcripts.map(
-      (t) => new KoraTranscriptPreviewDto(t),
-    );
+    this.number = input.number;
+    this.budgetUnits = input.budgetUnits;
+    this.items = input.items.map((item) => new KoraItemDto(item));
     this.savedExport = input.savedExport;
   }
 }
@@ -62,34 +83,47 @@ export class KoraReviewStateDto {
   @ApiProperty({ description: "Opaque; the only identity the tool sees" })
   reviewerId: string;
 
-  @ApiProperty()
-  collectProfile: boolean;
-
   @ApiProperty({
     type: String,
     isArray: true,
-    description: "Categories the reviewer opted out of in any assignment",
+    description: "Risks the reviewer asked not to be shown",
   })
-  optOutCategories: string[];
+  optOutRisks: string[];
 
-  @ApiProperty({ description: "Has finished at least one assignment" })
+  @ApiProperty({
+    description: "Shown conversations longer than three AI turns",
+  })
+  extendedOptIn: boolean;
+
+  @ApiProperty({ description: "Has finished at least one session" })
   reviewed: boolean;
 
-  @ApiProperty({ description: "Reviews finished in extra assignments" })
-  extraReviews: number;
+  @ApiProperty()
+  sessionsCompleted: number;
 
-  @ApiPropertyOptional({ type: () => KoraReviewAssignmentDto })
-  assignment?: KoraReviewAssignmentDto;
+  @ApiProperty({ description: "Conversations judged, across every session" })
+  ratingsCompleted: number;
+
+  @ApiProperty({
+    type: () => KoraOnboardingDto,
+    description: "What the sign-up screens have saved so far",
+  })
+  onboarding: KoraOnboardingDto;
+
+  @ApiPropertyOptional({ type: () => KoraReviewSessionDto })
+  session?: KoraReviewSessionDto;
 
   constructor(input: KoraReviewState) {
     this.phase = input.phase;
     this.reviewerId = input.reviewerId;
-    this.collectProfile = input.collectProfile;
-    this.optOutCategories = input.optOutCategories;
+    this.optOutRisks = input.optOutRisks;
+    this.extendedOptIn = input.extendedOptIn;
     this.reviewed = input.reviewed;
-    this.extraReviews = input.extraReviews;
-    if (input.assignment) {
-      this.assignment = new KoraReviewAssignmentDto(input.assignment);
+    this.sessionsCompleted = input.sessionsCompleted;
+    this.ratingsCompleted = input.ratingsCompleted;
+    this.onboarding = new KoraOnboardingDto(input.onboarding);
+    if (input.session) {
+      this.session = new KoraReviewSessionDto(input.session);
     }
   }
 }
@@ -101,34 +135,72 @@ export class SaveKoraExportDto {
 }
 
 export class KoraExportSavedDto {
-  @ApiProperty({ description: "The assignment is finished" })
-  completed: boolean;
+  @ApiProperty({ description: "The session is over" })
+  ended: boolean;
 
   @ApiProperty({
     type: String,
     isArray: true,
     description:
-      "Transcripts no longer in the assignment whose results the save dropped; the tool removes them",
+      "Conversations no longer in the session whose ratings the save dropped; the tool removes them",
   })
   removed: string[];
 
   constructor(input: KoraSaved) {
-    this.completed = input.completed;
+    this.ended = input.ended;
     this.removed = input.removed;
   }
 }
 
-export class KoraNextTranscriptDto {
-  @ApiProperty({
-    type: () => KoraTranscriptPreviewDto,
-    nullable: true,
-    description: "Null once the assignment is full or nothing is left to give",
+export class KoraNextConversationDto {
+  @ApiPropertyOptional({
+    type: "object",
+    additionalProperties: true,
+    description: "The next conversation, absent once the session has none",
   })
-  next: KoraTranscriptPreviewDto | null;
+  item?: Record<string, unknown>;
 
-  constructor(input: KoraTranscript | null) {
-    this.next = input ? new KoraTranscriptPreviewDto(input) : null;
+  @ApiPropertyOptional({
+    enum: KoraSessionEnd,
+    enumName: "KoraSessionEnd",
+    description: "Why there is no conversation: the budget, or an empty queue",
+  })
+  done?: KoraSessionEnd;
+
+  constructor(input: KoraNextResult) {
+    if ("item" in input) this.item = { ...input.item };
+    else this.done = input.done;
   }
+}
+
+export class KoraPreferencesDto {
+  @ApiProperty({ type: String, isArray: true })
+  optOutRisks: string[];
+
+  @ApiProperty()
+  extendedOptIn: boolean;
+
+  constructor(input: KoraPreferences) {
+    this.optOutRisks = input.optOutRisks;
+    this.extendedOptIn = input.extendedOptIn;
+  }
+}
+
+export class UpdateKoraPreferencesDto {
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    description: "The whole list, as the account page holds it",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  optOutRisks?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  extendedOptIn?: boolean;
 }
 
 export class KoraUserBatchDto {
@@ -148,7 +220,7 @@ export class KoraUserBatchDto {
   @ApiProperty({ type: Date, nullable: true })
   closesAt: Date | null;
 
-  @ApiProperty({ description: "Pairs ranked or skipped" })
+  @ApiProperty({ description: "Conversations judged or skipped" })
   progress: number;
 
   @ApiProperty()
@@ -165,7 +237,9 @@ export class KoraUserBatchDto {
 }
 
 export class KoraHomeDto {
-  @ApiProperty({ description: "Pairs ranked, not counting skipped ones" })
+  @ApiProperty({
+    description: "Conversations judged, not counting skipped ones",
+  })
   totalRanked: number;
 
   @ApiProperty({ type: () => KoraUserBatchDto, isArray: true })

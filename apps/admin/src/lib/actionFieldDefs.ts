@@ -144,7 +144,7 @@ export function actionFieldDefs(
       options: taskKindOptions,
       gridCol: true,
       helpText:
-        "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
+        "Kora review sends members to review chatbot conversations; the action completes when they finish their first session.",
     },
     {
       name: "timeEstimate",

@@ -1,448 +1,324 @@
-import { CATEGORIES } from "../categories.js";
-import type { KoraAssignedTranscript, KoraTurn } from "../index.js";
-import { SCHEMA_VERSION } from "../schemas.js";
-import type { KoraAnnotation, KoraExport, KoraResult } from "../types.gen.js";
-import type { ModelCtx } from "./context.js";
-import type { IconName } from "./runtime.js";
+import { CATEGORY_IDS, SCHEMA_VERSION } from "../schemas.js";
 import type {
-  Annotation,
-  AnswerKey,
-  Message,
-  Result,
-  Safety,
-  Side,
-  State,
-  Transcript,
-} from "./types.js";
-import { q1Parts } from "./types.js";
+  KoraExport,
+  KoraHighlight,
+  KoraItem,
+  KoraRating,
+} from "../types.gen.js";
+import type { ModelCtx } from "./context.js";
+import type { Highlight, Rating, Scale, State, Verdict } from "./types.js";
+
+/** UTF-16 offset to the code-point offset Annex D asks for, and back. */
+export const toCodePoints = (text: string, utf16: number): number =>
+  [...text.slice(0, utf16)].length;
+export const fromCodePoints = (text: string, points: number): number =>
+  [...text].slice(0, points).join("").length;
+
+const hash = (seed: string): number => {
+  let x = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    x ^= seed.charCodeAt(i);
+    x = Math.imul(x, 16777619) >>> 0;
+  }
+  return x;
+};
+
+/** A shuffle that is stable for a reviewer and a conversation, so a reload shows the same order. */
+export function shuffle(length: number, seed: string): number[] {
+  const order = Array.from({ length }, (_, i) => i);
+  let x = hash(seed) || 1;
+  for (let i = order.length - 1; i > 0; i--) {
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    x >>>= 0;
+    const j = x % (i + 1);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
 
 export function createModel(ctx: ModelCtx) {
   const { o } = ctx;
 
   const iso = () => new Date().toISOString();
-  const sign = (n: number) => (n > 0 ? 1 : n < 0 ? -1 : 0);
-  const fmt = (v: number) => (v > 0 ? "+1" : v < 0 ? "−1" : "0");
-  const fmtNet = (n: number) =>
-    n > 0 ? "+" + n : n < 0 ? "−" + Math.abs(n) : "0";
-  const vcls = (v: number) => (v > 0 ? "v-pos" : v < 0 ? "v-neg" : "v-zero");
   const clamp = (x: number, a: number, b: number) =>
     Math.max(a, Math.min(b, x));
   const clip = (s: string, n: number) =>
     s.length > n ? s.slice(0, n - 1) + "…" : s;
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
   const newId = () =>
-    "a_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    "h_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
-  const CAT = new Map<string, (typeof CATEGORIES)[number]>(
-    CATEGORIES.map((c) => [c.id, c]),
-  );
-  const CAT_ORDER: string[] = CATEGORIES.map((c) => c.id);
-  const hueOf = (s: string) => {
-    const i = CAT_ORDER.indexOf(s);
-    if (i >= 0) return Math.round((i * 360) / CAT_ORDER.length);
-    let x = 0;
-    for (const c of s) x = (x * 31 + c.charCodeAt(0)) >>> 0;
-    return x % 360;
+  const hueOf = (riskId: string) => {
+    const i = CATEGORY_IDS.findIndex((id) => id === riskId);
+    return i >= 0
+      ? Math.round((i * 360) / CATEGORY_IDS.length)
+      : hash(riskId) % 360;
   };
-  const catLabel = (id: string) => CAT.get(id)?.label || id;
-  /* ---------- Transcripts from the assignment ---------- */
-  // A pair is kept as one message list, A's turns then B's, so marks keep a plain messageIndex internally.
-  // The export converts back to an index within each conversation, with `side`.
-  const toMsgs = (turns: KoraTurn[]): Message[] =>
-    turns.map((m) => ({
-      role: m.role === "ai" ? "assistant" : "user",
-      content: m.text,
-    }));
-  const toTranscript = ({
-    transcript: x,
-    contentHash,
-  }: KoraAssignedTranscript): Transcript => ({
-    id: x.transcriptId,
-    category: x.category,
-    hash: contentHash,
-    pairType: typeof x.pairType === "string" ? x.pairType : null,
-    context: {
-      title: x.scenarioTitle || "",
-      childAge: x.childAge ?? null,
-    },
-    messages: [...toMsgs(x.conversationA), ...toMsgs(x.conversationB)],
-    pair: { na: x.conversationA.length },
-  });
-  const ALL = o.assignment.transcripts.map(toTranscript);
 
-  /* ---------- State ---------- */
   const S: State = {
-    all: ALL,
-    list: [...ALL],
-    size: o.assignment.size,
-    exhausted: false,
-    results: {},
+    items: [...o.session.items],
+    ratings: {},
     history: {},
+    skips: [],
+    feedback: null,
     screen: "boot",
     idx: 0,
     views: {},
     sel: null,
     editing: null,
     sheet: null,
-    noteDraft: "",
-    lastCategory: null,
-    optOutCats: [...o.optOutCategories],
-    profile: null,
-    exitSurvey: null,
+    guideOpen: false,
+    ended: null,
     isDone: false,
-    coachDone: false,
+    warned: null,
     mounted: false,
   };
-  const cur = () => S.list[S.idx];
-  function transcript(id: string): Transcript {
-    const t = S.all.find((x) => x.id === id);
-    if (!t) throw new Error(`No transcript ${id} in this assignment.`);
-    return t;
-  }
-  function category(id: string) {
-    const c = CAT.get(id);
-    if (!c) throw new Error(`Unknown category ${id}.`);
-    return c;
-  }
-  function blankResult(t: Transcript): Result {
-    return {
-      transcriptId: t.id,
-      category: t.category,
-      contentHash: t.hash,
-      status: "pending",
-      optedOut: false,
-      netSum: 0,
-      plusCount: 0,
-      minusCount: 0,
-      startedAt: null,
-      completedAt: null,
-      timeMs: 0,
-      answers: {},
-      annotations: [],
-    };
-  }
-  const res = (t: Transcript) => S.results[t.id] || blankResult(t);
-  const ensure = (t: Transcript) => (S.results[t.id] ||= blankResult(t));
-  function recompute(r: Result) {
-    const lv = r.annotations.filter((a) => !a.orphaned);
-    r.plusCount = lv.filter((a) => a.value > 0).length;
-    r.minusCount = lv.filter((a) => a.value < 0).length;
-    r.netSum = r.plusCount - r.minusCount;
-  }
-  /* ---------- Pairs: two AIs answering the same child, shown side by side ---------- */
-  // Sides 'a' and 'b' are conversationA and conversationB. On screen, the left one is always "Chatbot A" and the right one
-  // "Chatbot B"; which conversation goes left is random per reviewer and pair, but stable (a hash, not stored).
-  const sideOf = (t: Transcript, mi: number): Side =>
-    mi < t.pair.na ? "a" : "b";
-  function posOfA(t: Transcript): "left" | "right" {
-    let x = 0x811c9dc5;
-    const s = o.reviewerId + "|" + t.id;
-    for (let i = 0; i < s.length; i++) {
-      x ^= s.charCodeAt(i);
-      x = Math.imul(x, 16777619) >>> 0;
-    }
-    return x & 1 ? "right" : "left";
-  }
-  const shownSides = (t: Transcript): [Side, Side] =>
-    posOfA(t) === "left" ? ["a", "b"] : ["b", "a"];
-  const letter = (t: Transcript, side: Side) =>
-    shownSides(t)[0] === side ? "A" : "B";
-  const other = (side: Side): Side => (side === "a" ? "b" : "a");
-  function sideNets(t: Transcript, r: Result) {
-    const n = {
-      a: { plus: 0, minus: 0, net: 0 },
-      b: { plus: 0, minus: 0, net: 0 },
-    };
-    for (const a of r.annotations) {
-      if (a.orphaned) continue;
-      const s = n[sideOf(t, a.messageIndex)];
-      if (a.value > 0) s.plus++;
-      else if (a.value < 0) s.minus++;
-      s.net += a.value;
-    }
-    return n;
-  }
-  // The AI turn (1-based, within its own conversation) that message mi is.
-  const aiTurn = (t: Transcript, mi: number) =>
-    t.messages
-      .slice(sideOf(t, mi) === "a" ? 0 : t.pair.na, mi + 1)
-      .filter((m) => m.role === "assistant").length;
-  const aiTurns = (t: Transcript, side: Side) =>
-    t.messages
-      .slice(
-        side === "a" ? 0 : t.pair.na,
-        side === "a" ? t.pair.na : t.messages.length,
-      )
-      .filter((m) => m.role === "assistant").length;
-  // How a saved pair reads on the finish screen: its comparison, such as "A ≫ B", in screen letters.
-  function callOf(
-    t: Transcript,
-    r: Result,
-  ): { text: string; cls: string; icon: IconName } {
-    if (r.optedOut && r.status !== "done")
-      return { text: "Skipped", cls: "dim", icon: "skip" };
-    if (!r.answers.q1) return { text: "Done", cls: "v-pair", icon: "lock" };
-    const { strength, side } = q1Parts(r.answers.q1);
-    const w = letter(t, side),
-      l = w === "A" ? "B" : "A";
-    return {
-      text: `${w} ${strength === "clearly" ? "≫" : ">"} ${l}`,
-      cls: "v-pair",
-      icon: "scale",
-    };
-  }
-  /** Copies one answer when it holds a value; generic, so each key keeps its own type. */
-  function copyAnswer<K extends AnswerKey>(
-    to: Partial<Pick<KoraResult, AnswerKey>>,
-    from: Partial<Pick<KoraResult, AnswerKey>>,
-    k: K,
-  ) {
-    const v = from[k];
-    if (v != null && v !== "") to[k] = v;
-  }
-  /** Restoring keeps an empty answer, which exporting leaves out. */
-  function restoreAnswer<K extends AnswerKey>(
-    to: Partial<Pick<KoraResult, AnswerKey>>,
-    from: Partial<Pick<KoraResult, AnswerKey>>,
-    k: K,
-  ) {
-    const v = from[k];
-    if (v != null) to[k] = v;
-  }
-  const reviewed = (r: Result) => r.status === "done" || r.optedOut;
-  const reviewedCount = () => S.all.filter((t) => reviewed(res(t))).length;
-  const needsMore = () => !S.exhausted && S.all.length < S.size;
-  const allReviewed = () =>
-    !needsMore() && S.all.every((t) => reviewed(res(t)));
-  // Only unreviewed pairs open, so the current pair is always reviewed + 1.
-  const progressText = () =>
-    allReviewed()
-      ? `${S.all.length} of ${S.all.length} reviewed`
-      : `${reviewedCount() + 1} of ${S.size}`;
 
-  /* ---------- Restore from the host's saved export ---------- */
-  function reanchor(t: Transcript, r: Result) {
+  const cur = (): KoraItem => S.items[clamp(S.idx, 0, S.items.length - 1)];
+  const itemOf = (conversationId: string): KoraItem => {
+    const item = S.items.find((i) => i.conversationId === conversationId);
+    if (!item)
+      throw new Error(`No conversation ${conversationId} in this session.`);
+    return item;
+  };
+
+  function blank(item: KoraItem): Rating {
+    return {
+      conversationId: item.conversationId,
+      riskId: item.riskId,
+      contentHash: item.contentHash,
+      kind: item.kind,
+      status: "reading",
+      position: item.position ?? null,
+      firstTimeOnRisk: item.firstTimeOnRisk,
+      comprehensionAnswer: null,
+      q1: null,
+      q2Confidence: null,
+      q3Severity: null,
+      q4Text: null,
+      highlights: [],
+      startedAt: iso(),
+      readSubmittedAt: null,
+      completedAt: null,
+      timeMsRead: 0,
+      timeMsJudge: 0,
+    };
+  }
+  const res = (item: KoraItem): Rating =>
+    S.ratings[item.conversationId] || blank(item);
+  const ensure = (item: KoraItem): Rating =>
+    (S.ratings[item.conversationId] ||= blank(item));
+  const done = (item: KoraItem) => res(item).status === "done";
+  const skipped = (conversationId: string) =>
+    S.skips.some((s) => s.conversationId === conversationId);
+
+  /** Where the reviewer is: the first conversation they have not finished, else the last one given. */
+  const openIndex = () => {
+    const i = S.items.findIndex(
+      (item) => !done(item) && !skipped(item.conversationId),
+    );
+    return i === -1 ? S.items.length - 1 : i;
+  };
+
+  /* ---------- The session's load budget (spec 6.0 section 7) ---------- */
+  const spentUnits = () =>
+    S.items.filter(done).reduce((sum, item) => sum + item.weightUnits, 0);
+  const budgetUnits = () => o.session.budgetUnits;
+  const ratedDone = () =>
+    S.items.filter((item) => item.kind === "rated" && done(item)).length;
+
+  const optionOrder = (item: KoraItem): number[] =>
+    shuffle(
+      item.comprehension ? item.comprehension.options.length : 0,
+      `${o.reviewerId}|${item.conversationId}`,
+    );
+
+  function exportHighlight(item: KoraItem, h: Highlight): KoraHighlight {
+    const text = item.conversation[h.turnIndex]?.text ?? "";
+    return {
+      id: h.id,
+      turnIndex: h.turnIndex,
+      charStart: toCodePoints(text, h.start),
+      charEnd: toCodePoints(text, h.end),
+      text: h.text,
+      valence: h.valence,
+      createdAt: h.createdAt,
+      ...(h.reason ? { reason: h.reason } : {}),
+      ...(h.orphaned ? { orphaned: true } : {}),
+    };
+  }
+  function exportRating(item: KoraItem, r: Rating): KoraRating {
+    const out: KoraRating = {
+      conversationId: r.conversationId,
+      riskId: r.riskId,
+      contentHash: r.contentHash,
+      kind: r.kind,
+      status: r.status,
+      firstTimeOnRisk: r.firstTimeOnRisk,
+      highlights: r.highlights.map((h) => exportHighlight(item, h)),
+      startedAt: r.startedAt,
+      readSubmittedAt: r.readSubmittedAt,
+      completedAt: r.completedAt,
+      timeMsRead: Math.max(0, Math.round(r.timeMsRead)),
+      timeMsJudge: Math.max(0, Math.round(r.timeMsJudge)),
+    };
+    if (r.position !== null) out.position = r.position;
+    if (r.comprehensionAnswer !== null)
+      out.comprehensionAnswer = r.comprehensionAnswer;
+    if (r.q1) out.q1 = r.q1;
+    if (r.q2Confidence) out.q2Confidence = r.q2Confidence;
+    if (r.q1 === "not_ok") {
+      if (r.q3Severity) out.q3Severity = r.q3Severity;
+      if (r.q4Text) out.q4Text = r.q4Text;
+    }
+    if (r.stale) out.stale = { ...r.stale };
+    return out;
+  }
+  function buildExport(): KoraExport {
+    const screen =
+      S.screen === "read" || S.screen === "judge" ? S.screen : null;
+    const open = screen ? cur() : null;
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      sessionId: o.session.id,
+      reviewer: { id: o.reviewerId },
+      exportedAt: iso(),
+      place: {
+        conversationId: open ? open.conversationId : null,
+        screen,
+      },
+      ratings: S.items.flatMap((item) => {
+        const r = S.ratings[item.conversationId];
+        return r ? [exportRating(item, r)] : [];
+      }),
+      skips: S.skips.map((s) => ({ ...s })),
+      feedback: S.feedback ? clone(S.feedback) : null,
+      isDone: S.isDone,
+    };
+  }
+
+  function reanchor(item: KoraItem, r: Rating) {
     let moved = 0,
       lost = 0;
-    for (const a of r.annotations) {
-      const m = t.messages[a.messageIndex];
-      const content = m && m.role === "assistant" ? m.content : null;
-      if (content && content.slice(a.start, a.end) === a.text) {
-        a.orphaned = false;
+    for (const h of r.highlights) {
+      const text = item.conversation[h.turnIndex]?.text ?? "";
+      if (text.slice(h.start, h.end) === h.text) {
+        h.orphaned = false;
         continue;
       }
       let best = -1,
-        bd = Infinity;
-      if (content && a.text) {
+        distance = Infinity;
+      if (h.text) {
         for (
-          let i = content.indexOf(a.text);
+          let i = text.indexOf(h.text);
           i !== -1;
-          i = content.indexOf(a.text, i + 1)
+          i = text.indexOf(h.text, i + 1)
         ) {
-          const d = Math.abs(i - a.start);
-          if (d < bd) {
-            bd = d;
+          const d = Math.abs(i - h.start);
+          if (d < distance) {
+            distance = d;
             best = i;
           }
         }
       }
       if (best >= 0) {
-        a.start = best;
-        a.end = best + a.text.length;
-        a.orphaned = false;
+        h.start = best;
+        h.end = best + h.text.length;
+        h.orphaned = false;
         moved++;
       } else {
-        a.orphaned = true;
+        h.orphaned = true;
         lost++;
       }
     }
     r.stale = { moved, lost };
-    r.contentHash = t.hash;
-    recompute(r);
+    r.contentHash = item.contentHash;
   }
-  const ANSWER_KEYS = [
-    "q0_a",
-    "q0_b",
-    "q1",
-    "q2_turn",
-    "q3_text",
-  ] as const satisfies readonly AnswerKey[];
+  const scale = (value: number | undefined): Scale | null =>
+    value === 1 || value === 2 || value === 3 || value === 4 ? value : null;
   function restore(saved: KoraExport | null) {
     if (!saved) return;
-    const byId = new Map((saved.results || []).map((r) => [r.transcriptId, r]));
-    for (const t of S.all) {
-      const e = byId.get(t.id);
-      if (!e) continue;
-      const r = blankResult(t);
-      r.contentHash = e.contentHash || t.hash;
-      r.status = e.status === "done" ? "done" : "pending";
-      r.optedOut = !!e.optedOut;
-      r.startedAt = e.startedAt || null;
-      r.completedAt = e.completedAt || null;
-      r.timeMs = e.timeMs || 0;
-      for (const k of ANSWER_KEYS) restoreAnswer(r.answers, e, k);
-      if (e.pairPosition != null) r.pairPosition = e.pairPosition;
-      if (e.stale) r.stale = clone(e.stale);
-      r.annotations = (e.annotations || []).map((a) => {
-        const x: Annotation = {
-          id: a.id,
-          messageIndex: (a.side === "b" ? t.pair.na : 0) + a.messageIndex,
-          start: a.start,
-          end: a.end,
-          text: a.text,
-          value: a.value,
-          createdAt: a.createdAt,
-          ...(a.note ? { note: a.note } : {}),
-          ...(a.orphaned ? { orphaned: true } : {}),
-        };
-        return x;
-      });
-      if (r.contentHash !== t.hash) reanchor(t, r);
-      recompute(r);
-      S.results[t.id] = r;
-    }
-    S.optOutCats = [
-      ...new Set([...o.optOutCategories, ...saved.optOutCategories]),
-    ];
-    S.profile = saved.profile ? clone(saved.profile) : null;
-    S.exitSurvey = saved.exitSurvey ? clone(saved.exitSurvey) : null;
+    S.skips = saved.skips.map((s) => ({ ...s }));
+    S.feedback = saved.feedback ? clone(saved.feedback) : null;
     S.isDone = !!saved.isDone;
-    S.coachDone = S.all.some((t) => res(t).annotations.length);
+    for (const e of saved.ratings) {
+      const item = S.items.find((i) => i.conversationId === e.conversationId);
+      if (!item) continue;
+      const r = blank(item);
+      r.contentHash = e.contentHash;
+      r.status = e.status;
+      r.position = e.position ?? null;
+      r.firstTimeOnRisk = e.firstTimeOnRisk;
+      r.comprehensionAnswer = e.comprehensionAnswer ?? null;
+      r.q1 = (e.q1 as Verdict | undefined) ?? null;
+      r.q2Confidence = scale(e.q2Confidence);
+      r.q3Severity = scale(e.q3Severity);
+      r.q4Text = e.q4Text ?? null;
+      r.startedAt = e.startedAt;
+      r.readSubmittedAt = e.readSubmittedAt;
+      r.completedAt = e.completedAt;
+      r.timeMsRead = e.timeMsRead;
+      r.timeMsJudge = e.timeMsJudge;
+      r.highlights = e.highlights.map((h) => {
+        const text = item.conversation[h.turnIndex]?.text ?? "";
+        const restored: Highlight = {
+          id: h.id,
+          turnIndex: h.turnIndex,
+          start: fromCodePoints(text, h.charStart),
+          end: fromCodePoints(text, h.charEnd),
+          text: h.text,
+          valence: h.valence,
+          reason: h.reason ?? null,
+          createdAt: h.createdAt,
+          ...(h.orphaned ? { orphaned: true } : {}),
+        };
+        return restored;
+      });
+      if (e.stale) r.stale = { ...e.stale };
+      if (r.contentHash !== item.contentHash) reanchor(item, r);
+      S.ratings[item.conversationId] = r;
+    }
   }
-  const refreshList = () => {
-    S.list = S.all.filter((t) => !res(t).optedOut || res(t).status === "done");
-  };
-  function addTranscript(item: KoraAssignedTranscript): Transcript {
-    const t = toTranscript(item);
-    S.all.push(t);
-    refreshList();
-    return t;
+
+  function addItem(item: KoraItem): KoraItem {
+    S.items.push(item);
+    return item;
   }
-  function removeTranscripts(ids: string[]) {
+  function removeItems(ids: string[]) {
     const gone = new Set(ids);
-    S.all = S.all.filter((t) => !gone.has(t.id));
+    S.items = S.items.filter((item) => !gone.has(item.conversationId));
     for (const id of gone) {
-      delete S.results[id];
+      delete S.ratings[id];
       delete S.history[id];
     }
-    refreshList();
   }
-
-  /* ---------- Export: everything, in the shape exportSchema describes ---------- */
-  function buildExport(): KoraExport {
-    return {
-      schemaVersion: SCHEMA_VERSION,
-      batchId: o.assignment.batchId,
-      reviewer: { id: o.reviewerId },
-      exportedAt: iso(),
-      currentTranscriptId: S.screen === "review" && cur() ? cur().id : null,
-      results: S.all.map((t) => {
-        const r = res(t),
-          n = sideNets(t, r);
-        const out: Omit<KoraResult, "annotations"> = {
-          transcriptId: t.id,
-          category: t.category,
-          contentHash: t.hash,
-          status: r.status,
-          optedOut: !!r.optedOut,
-          score: null,
-          netSum: r.netSum,
-          plusCount: r.plusCount,
-          minusCount: r.minusCount,
-          startedAt: r.startedAt || null,
-          completedAt: r.completedAt || null,
-          timeMs: Math.max(0, Math.round(r.timeMs || 0)),
-          pairType: t.pairType,
-          positionOfA: posOfA(t),
-          netA: n.a.net,
-          netB: n.b.net,
-        };
-        for (const k of ANSWER_KEYS) copyAnswer(out, r.answers, k);
-        if (out.q1) out.failingSide = other(q1Parts(out.q1).side);
-        if (r.pairPosition != null) out.pairPosition = r.pairPosition;
-        if (r.stale) out.stale = { moved: r.stale.moved, lost: r.stale.lost };
-        const annotations = r.annotations.map((a): KoraAnnotation => {
-          const side = sideOf(t, a.messageIndex);
-          return {
-            id: a.id,
-            side,
-            messageIndex: a.messageIndex - (side === "b" ? t.pair.na : 0),
-            turn: aiTurn(t, a.messageIndex),
-            start: a.start,
-            end: a.end,
-            text: a.text,
-            value: a.value,
-            ...(a.note ? { note: a.note } : {}),
-            createdAt: a.createdAt,
-            ...(a.orphaned ? { orphaned: true } : {}),
-          };
-        });
-        return { ...out, annotations };
-      }),
-      profile: S.profile ? clone(S.profile) : null,
-      exitSurvey: S.exitSurvey ? clone(S.exitSurvey) : null,
-      optOutCategories: [...S.optOutCats],
-      isDone: S.isDone,
-    };
-  }
-
-  function nextPendingIndex() {
-    const ts = S.list,
-      n = ts.length;
-    for (let k = 1; k <= n; k++) {
-      const i = (S.idx + k) % n;
-      if (!reviewed(res(ts[i]))) return i;
-    }
-    return -1;
-  }
-  const firstPendingIndex = () => S.list.findIndex((t) => !reviewed(res(t)));
-
-  const Q0_LABEL: Record<Safety, string> = {
-    safe: "Safe",
-    unsafe: "Unsafe",
-    cant_tell: "I can't tell",
-  };
 
   return {
-    transcript,
-    category,
-    CAT,
-    Q0_LABEL,
     S,
-    aiTurn,
-    aiTurns,
-    addTranscript,
-    allReviewed,
+    addItem,
+    blank,
+    budgetUnits,
     buildExport,
-    callOf,
-    catLabel,
     clamp,
     clip,
     clone,
     cur,
+    done,
     ensure,
-    firstPendingIndex,
-    fmt,
-    fmtNet,
     hueOf,
     iso,
-    letter,
+    itemOf,
     newId,
-    needsMore,
-    nextPendingIndex,
-    other,
+    openIndex,
+    optionOrder,
     plural,
-    progressText,
-    recompute,
-    refreshList,
-    removeTranscripts,
+    ratedDone,
+    removeItems,
     res,
     restore,
-    reviewed,
-    shownSides,
-    sideNets,
-    sideOf,
-    sign,
-    vcls,
+    skipped,
+    spentUnits,
   };
 }

@@ -17,7 +17,7 @@ import {
   KoraParticipant,
   participantContact,
 } from "./entities/kora-participant.entity";
-import { COUNTED_REVIEWS, OPEN_BATCH } from "./kora-pool";
+import { COVERAGE, OPEN_BATCH } from "./kora-queue";
 
 export enum KoraAdminError {
   NotFound = "not_found",
@@ -88,20 +88,20 @@ export class KoraAdminService {
     };
   }
 
-  /** Categories in open batches, those needing the most reviews first. */
+  /** Risks in open batches, those needing the most reviews first. */
   categories(): Promise<KoraAdminCategory[]> {
     return this.dataSource.query(
-      `SELECT t."category",
-         COUNT(*)::int AS "pairs",
-         SUM(GREATEST(b."reviewsPerTranscript" - ${COUNTED_REVIEWS}, 0))::int AS "reviewsNeeded",
+      `SELECT c."riskId" AS "category",
+         COUNT(*)::int AS "conversations",
+         SUM(GREATEST(b."reviewsPerConversation" - ${COVERAGE}, 0))::int AS "reviewsNeeded",
          (SELECT COUNT(*)::int FROM "kora_reviewer" r
-           WHERE r."deletedAt" IS NULL AND t."category" = ANY(r."optOutCategories")
+           WHERE r."deletedAt" IS NULL AND c."riskId" = ANY(r."optOutCategories")
          ) AS "optedOut"
-       FROM "kora_transcript" t
-       JOIN "kora_batch" b ON b."id" = t."batchId"
+       FROM "kora_conversation" c
+       JOIN "kora_batch" b ON b."id" = c."batchId"
        WHERE ${OPEN_BATCH}
-       GROUP BY t."category"
-       ORDER BY "reviewsNeeded" DESC, t."category"`,
+       GROUP BY c."riskId"
+       ORDER BY "reviewsNeeded" DESC, c."riskId"`,
     );
   }
 

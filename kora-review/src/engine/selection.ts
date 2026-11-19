@@ -35,7 +35,6 @@ export function createSelection(ctx: SelectionCtx) {
     S,
     cancel,
     clamp,
-    commitNote,
     isDestroyed,
     doc,
     h,
@@ -44,7 +43,7 @@ export function createSelection(ctx: SelectionCtx) {
     on,
     openEdit,
     raf,
-    renderAnns,
+    renderHighlights,
     rootEl,
     sheetEl,
     win,
@@ -105,25 +104,22 @@ export function createSelection(ctx: SelectionCtx) {
     put("end", b.right, b.top, b.height);
   }
   function clearSel() {
-    if (S.editing && S.sheet && S.sheet.mode === "edit") commitNote(S.editing);
     S.sel = null;
     S.editing = null;
-    S.noteDraft = "";
     renderSel();
-    renderAnns();
+    renderHighlights();
     closeSheet();
   }
   function newSelection(mi: number, t: number) {
     S.editing = null;
-    S.noteDraft = "";
     S.sel = { mi, anchor: t, focus: t };
     $$(".tk.pulse").forEach((e) => e.classList.remove("pulse"));
-    renderAnns();
+    renderHighlights();
     renderSel();
   }
-  function annAtToken(mi: number, t: number) {
+  function highlightAtToken(mi: number, t: number) {
     const v = S.views[mi];
-    return v && v.tokens[t] ? v.tokens[t].ann : null;
+    return v && v.tokens[t] ? v.tokens[t].hl : null;
   }
   // While a selection is open it can be stretched or moved; only +1, −1, a note, ✕ or Escape closes it.
   function onTap(mi: number, t: number) {
@@ -138,15 +134,13 @@ export function createSelection(ctx: SelectionCtx) {
         }
         if (lo === hi && t === lo) return;
       }
-      const draft = S.noteDraft;
       newSelection(mi, t);
-      S.noteDraft = draft;
       openSheet("new");
       return;
     }
-    const a = annAtToken(mi, t);
-    if (a) {
-      openEdit(a.id);
+    const existing = highlightAtToken(mi, t);
+    if (existing) {
+      openEdit(existing.id);
       return;
     }
     newSelection(mi, t);
@@ -156,7 +150,7 @@ export function createSelection(ctx: SelectionCtx) {
   /* ---------- Pointer gestures: tap, long-press sweep, handle drag ---------- */
   let G: Press | HandleDrag | null = null;
   on(doc, "pointerdown", (e) => {
-    if (S.screen !== "review" || e.button > 0) return;
+    if (S.screen !== "read" || e.button > 0) return;
     const tk = targetEl(e)?.closest<HTMLElement>(".layer .tk");
     if (!tk || !rootEl.contains(tk)) return;
     const mi = Number(tk.dataset.m),
@@ -341,11 +335,11 @@ export function createSelection(ctx: SelectionCtx) {
     (e) => {
       const target = targetEl(e);
       if (
-        S.screen !== "review" ||
+        S.screen !== "read" ||
         !S.sel ||
         !target ||
         !rootEl.contains(target) ||
-        !target.closest(".rhead button,.anns button")
+        !target.closest(".rhead button,.sh-acts button")
       )
         return;
       e.preventDefault();
@@ -357,14 +351,14 @@ export function createSelection(ctx: SelectionCtx) {
   on(doc, "click", (e) => {
     const target = targetEl(e);
     if (
-      S.screen !== "review" ||
+      S.screen !== "read" ||
       !(S.sel || S.editing) ||
       !target?.isConnected ||
       Date.now() - dragEndedAt < 400
     )
       return;
     if (!rootEl.contains(target)) return;
-    if (target.closest(".tk,.handle,.kr-sheet,.kr-toasts,.anns,.rhead")) return;
+    if (target.closest(".tk,.handle,.kr-sheet,.kr-toasts,.rhead")) return;
     if (S.sel) {
       nudgeChoice();
       return;

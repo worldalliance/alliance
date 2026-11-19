@@ -13,8 +13,11 @@
     "paths": {
       "src/*": ["./src/*"],
       "@alliance/common/*": ["../common/src/*"],
+      "@alliance/kora-review": ["../kora-review/src/index.ts"],
       "@alliance/kora-review/schemas": ["../kora-review/src/schemas.ts"],
+      "@alliance/kora-review/categories": ["../kora-review/src/categories.ts"],
       "@alliance/kora-review/convert": ["../kora-review/src/convert.ts"],
+      "@alliance/kora-review/parse": ["../kora-review/src/parse.ts"],
       "@alliance/kora-review/sample-export": [
         "../kora-review/src/sample-export.ts"
       ]

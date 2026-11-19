@@ -1,67 +1,58 @@
-import { CONTENT_WARNING } from "../categories.js";
-import type { KoraCategory } from "../types.gen.js";
+import type { KoraItem } from "../types.gen.js";
 import type { ScreensCtx } from "./context.js";
-import type { Transcript } from "./types.js";
 
 export function createScreens(ctx: ScreensCtx) {
   const {
-    CAT,
+    o,
     S,
     announce,
     app,
     brandMark,
-    callOf,
-    catChip,
-    catLabel,
-    category,
-    changed,
-    ensure,
+    endSession,
     fetchNext,
-    finishFlow,
-    firstPendingIndex,
     h,
     icon,
-    openTranscript,
-    plural,
-    progressText,
-    refreshList,
+    leave,
+    openItem,
+    optOutOfRisk,
+    ratedDone,
     res,
-    reviewed,
-    transcript,
+    skip,
+    plural,
   } = ctx;
 
-  /* ---------- Content warning before sensitive pairs ---------- */
-  // Shown before each pending pair in a sensitive category the reviewer hasn't opened yet and hasn't skipped.
-  function needsWarning(t: Transcript) {
-    const c = CAT.get(t.category),
-      r = res(t);
-    return !!(
-      c &&
-      c.sensitive &&
-      r.status !== "done" &&
-      !r.optedOut &&
-      !r.startedAt &&
-      S.warned !== t.id
+  /* ---------- The content warning on a hard risk (spec 6.0 sections 3.4 and 6) ---------- */
+  function needsWarning(item: KoraItem) {
+    return (
+      item.hard &&
+      res(item).status === "reading" &&
+      res(item).highlights.length === 0 &&
+      S.warned !== item.conversationId
     );
   }
   function renderWarning({ then }: { then: string }) {
-    const w = CONTENT_WARNING,
-      t = transcript(then),
-      c = category(t.category);
-    const label = c.label;
+    const item = S.items.find((i) => i.conversationId === then);
+    if (!item) return;
     app.replaceChildren(
       h(
         "main",
         { class: "optout wrap" },
-        h("div", { class: "brand" }, brandMark(), "TRANSCRIPT REVIEW"),
+        h("div", { class: "brand" }, brandMark(), "CONVERSATION REVIEW"),
         h(
           "h1",
           { class: "qtitle", tabindex: "-1", "data-focus": "" },
-          w.title.replace("{label}", label),
+          `The next conversation is about ${item.riskName.toLowerCase()}.`,
         ),
-        c.description ? h("p", { class: "lede" }, c.description) : null,
-        h("p", { class: "lede" }, w.body),
-        h("p", { class: "fine" }, `${progressText()}.`),
+        h(
+          "p",
+          { class: "lede" },
+          "The child is simulated, but the content is realistic.",
+        ),
+        h(
+          "p",
+          { class: "lede" },
+          "You can skip this one, or stop being shown this kind of situation altogether.",
+        ),
         h(
           "div",
           { class: "oo-acts" },
@@ -70,9 +61,12 @@ export function createScreens(ctx: ScreensCtx) {
             {
               class: "big primary",
               type: "button",
-              onclick: () => continueWarning(then),
+              onclick: () => {
+                S.warned = item.conversationId;
+                openItem(S.items.indexOf(item));
+              },
             },
-            w.continueLabel,
+            "Continue",
             icon("right"),
           ),
           h(
@@ -80,60 +74,39 @@ export function createScreens(ctx: ScreensCtx) {
             {
               class: "big ghost",
               type: "button",
-              onclick: () => skipOne(then),
+              onclick: () => skip(item.conversationId),
             },
-            w.skipOneLabel,
+            "Skip this one",
           ),
           h(
             "button",
             {
               class: "big ghost",
               type: "button",
-              onclick: () => skipCategory(c.id),
+              onclick: () => {
+                optOutOfRisk(item.riskId);
+                skip(item.conversationId);
+              },
             },
-            w.skipAllLabel.replace("{label}", label),
+            `Skip this one and stop showing me ${item.riskName.toLowerCase()}`,
           ),
         ),
       ),
     );
   }
-  function continueWarning(id: string) {
-    const t = transcript(id);
-    S.warned = id;
-    openTranscript(S.list.indexOf(t));
-  }
-  function afterSkip(msg: string) {
-    refreshList();
-    changed();
-    announce(`${msg} ${progressText()}.`);
-    const i = firstPendingIndex();
-    if (i === -1) finishFlow();
-    else openTranscript(i);
-  }
-  function skipOne(id: string) {
-    const t = transcript(id);
-    ensure(t).optedOut = true;
-    afterSkip("Skipped this pair.");
-  }
-  function skipCategory(cid: KoraCategory) {
-    if (!S.optOutCats.includes(cid)) S.optOutCats.push(cid);
-    for (const t of S.all)
-      if (t.category === cid && res(t).status !== "done")
-        ensure(t).optedOut = true;
-    afterSkip(`Skipping all ${catLabel(cid)} pairs.`);
-  }
 
-  /* ---------- Waiting for the next pair ---------- */
   function renderLoading({ failed }: { failed: boolean }) {
     app.replaceChildren(
       h(
         "main",
         { class: "finish wrap", "aria-busy": failed ? "false" : "true" },
-        h("div", { class: "brand" }, brandMark(), "TRANSCRIPT REVIEW"),
+        h("div", { class: "brand" }, brandMark(), "CONVERSATION REVIEW"),
         h(
           "h1",
           { class: "qtitle", tabindex: "-1", "data-focus": "" },
-          failed ? "Couldn't load the next pair" : "Loading the next pair…",
+          failed
+            ? "Couldn't load the next conversation"
+            : "Loading the next conversation…",
         ),
         failed
           ? h(
@@ -159,55 +132,98 @@ export function createScreens(ctx: ScreensCtx) {
           : null,
       ),
     );
-    if (failed) announce("Couldn't load the next pair.");
+    if (failed) announce("Couldn't load the next conversation.");
   }
 
-  /* ---------- Finish ---------- */
-  function renderFinish() {
-    const ts = S.all;
-    const done = ts.filter((t) => res(t).status === "done").length,
-      skipped = ts.filter(
-        (t) => res(t).optedOut && res(t).status !== "done",
-      ).length;
+  /* ---------- Nothing left to serve (Annex A11) ---------- */
+  function renderEmpty() {
     app.replaceChildren(
       h(
         "main",
         { class: "finish wrap" },
-        h("div", { class: "brand" }, brandMark(), "TRANSCRIPT REVIEW"),
+        h("div", { class: "brand" }, brandMark(), "CONVERSATION REVIEW"),
         h(
           "h1",
           { class: "hero", tabindex: "-1", "data-focus": "" },
-          `${progressText()}.`,
+          "That's everything available to you",
         ),
         h(
           "p",
           { class: "lede" },
-          `You ranked ${plural(done, "pair")}${skipped ? ` and skipped ${skipped}` : ""}. Your answers are saved.`,
+          "You have reviewed everything available in the situations you chose. You can add situations back on your account page, turn on longer conversations, or finish here.",
         ),
         h(
-          "ul",
-          { class: "flist" },
-          ts.map((t) => {
-            const r = res(t),
-              call = reviewed(r) ? callOf(t, r) : null;
-            return h(
-              "li",
-              { class: "frow" },
-              call
-                ? h("span", { class: "mini-stamp " + call.cls }, call.text)
-                : h("span", { class: "badge" }, "To do"),
-              h(
-                "span",
-                { class: "qi-l" },
-                h("span", { class: "qi-meta" }, catChip(t.category)),
-                h("span", { class: "qi-snip" }, t.context.title || t.id),
-              ),
-            );
-          }),
+          "div",
+          { class: "oo-acts" },
+          h(
+            "button",
+            { class: "big primary", type: "button", onclick: o.onOpenAccount },
+            "Account page",
+          ),
+          h(
+            "button",
+            { class: "big ghost", type: "button", onclick: endSession },
+            "I am done",
+          ),
         ),
       ),
     );
   }
 
-  return { needsWarning, renderFinish, renderLoading, renderWarning };
+  /* ---------- The session is over (Annex A8) ---------- */
+  function renderComplete() {
+    app.replaceChildren(
+      h(
+        "main",
+        { class: "finish wrap" },
+        h("div", { class: "brand" }, brandMark(), "CONVERSATION REVIEW"),
+        h(
+          "h1",
+          { class: "hero", tabindex: "-1", "data-focus": "" },
+          "Thank you — that is a full session",
+        ),
+        h(
+          "p",
+          { class: "lede" },
+          `You judged ${plural(ratedDone(), "conversation")}. Your answers are on their way to the researchers.`,
+        ),
+        h(
+          "p",
+          { class: "lede" },
+          "You can start another session if you like: new conversations, same length. Or you can stop here, and we will send you a summary of what we found in the new year.",
+        ),
+        h(
+          "div",
+          { class: "oo-acts" },
+          h(
+            "button",
+            {
+              class: "big primary",
+              type: "button",
+              onclick: () => leave(true),
+            },
+            "Another session",
+            icon("right"),
+          ),
+          h(
+            "button",
+            {
+              class: "big ghost",
+              type: "button",
+              onclick: () => leave(false),
+            },
+            "I am done for now",
+          ),
+        ),
+      ),
+    );
+  }
+
+  return {
+    needsWarning,
+    renderComplete,
+    renderEmpty,
+    renderLoading,
+    renderWarning,
+  };
 }

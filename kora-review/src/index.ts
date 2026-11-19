@@ -1,71 +1,69 @@
-// Public API of korabench-review: mount KORA's transcript review tool into a host page.
+// Public API of the KORA review tool: mount one review session into a host page.
 // The host owns identity, storage and networking. The tool reads only what it is given and writes only through save().
 import { createEngine, type Engine } from "./engine.js";
 import { createSaver } from "./saver.js";
 import { CATEGORY_IDS, SCHEMA_VERSION } from "./schemas.js";
-import type { KoraCategory, KoraExport, KoraTranscript } from "./types.gen.js";
+import type { KoraCategory, KoraExport, KoraItem } from "./types.gen.js";
 
-export { exportSchema, SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
+export { exportSchema, itemSchema, SCHEMA_VERSION } from "./schemas.js";
 export { KoraCategory } from "./types.gen.js";
 export type {
-  KoraAnnotation,
+  KoraComprehension,
   KoraConversation,
-  KoraExitSurvey,
   KoraExport,
-  KoraProfile,
-  KoraResult,
+  KoraFeedback,
+  KoraHighlight,
+  KoraItem,
+  KoraRating,
+  KoraReference,
   KoraReviewer,
-  KoraTranscript,
+  KoraSkip,
   KoraTurn,
 } from "./types.gen.js";
+
+export interface KoraSession {
+  /** Identifies this session. The host generates it; it is echoed as the export's sessionId. */
+  id: string;
+  /** 1-based for this reviewer. The first session carries the practice conversations. */
+  number: number;
+  /** What the session may spend: 5.0 in the review, against each item's weightUnits. */
+  budgetUnits: number;
+  /** The conversations given so far, in the order to show them; the rest come from `next`. */
+  items: KoraItem[];
+}
+
+/** The next conversation, or why there isn't one. */
+export type KoraNext =
+  | { item: KoraItem }
+  | { done: "budget_spent" | "queue_empty" };
 
 export interface KoraReviewOptions {
   /** Opaque id the host generates. Never a name, email or phone number. */
   reviewerId: string;
-  assignment: KoraAssignment;
-  /** The last export the host stored for this assignment, or null on first open. */
+  session: KoraSession;
+  /** The last export the host stored for this session, or null on first open. */
   savedExport: KoraExport | null;
-  /** Ask the profile questions. False once this reviewer has answered them. */
-  collectProfile: boolean;
-  /** Ask the exit survey when the assignment is complete. */
-  collectExitSurvey: boolean;
-  /** Categories the reviewer opted out of in earlier assignments, repeated in this export's `optOutCategories`. */
-  optOutCategories?: KoraCategory[];
   /**
    * Persist the whole export. Rejects when the host refuses the save. May
-   * resolve with pairs the host took out of the assignment, which the tool
-   * drops without a word.
+   * resolve with conversations the host took out of the session, which the
+   * tool drops without a word.
    */
   save: (exported: KoraExport) => Promise<KoraSaveResult | void>;
-  /**
-   * Give the reviewer their next pair, or null when the assignment is full or
-   * there is nothing more to give. Called after the current pairs are saved.
-   */
-  next: () => Promise<KoraAssignedTranscript | null>;
-  /** Called once, when every transcript is done or opted out and any exit survey is answered. */
-  onComplete: () => void;
+  /** Give the reviewer their next conversation. Called after the current ones are saved. */
+  next: () => Promise<KoraNext>;
+  /** The reviewer asked not to be shown this risk again, from a content warning. */
+  onOptOutRisk: (riskId: KoraCategory) => void;
+  /** The reviewer asked for their account page; the tool never navigates. */
+  onOpenAccount: () => void;
+  /** Called once, when the session is over. `again` is the reviewer asking for another one. */
+  onComplete: (end: { again: boolean }) => void;
   /** Called when a save rejects and when a later save succeeds, so the host can show and clear its error. */
   onSaveStateChange: (state: KoraSaveState) => void;
 }
 
-export interface KoraAssignment {
-  /** Identifies this assignment. The host generates it; it is echoed as the export's batchId. */
-  batchId: string;
-  /** How many pairs the assignment asks for. */
-  size: number;
-  /** The pairs given so far; the rest come from `next`. */
-  transcripts: KoraAssignedTranscript[];
-}
-
 export interface KoraSaveResult {
-  /** Transcript ids no longer in the assignment. */
+  /** Conversation ids no longer in the session. */
   removed: string[];
-}
-
-export interface KoraAssignedTranscript {
-  transcript: KoraTranscript;
-  /** sha256 of the transcript as the host stored it, formatted "sha256:<hex>". Echoed unchanged. */
-  contentHash: string;
 }
 
 export enum KoraSaveState {
@@ -91,34 +89,39 @@ function checkTurns(turns: unknown, where: string): void {
   if (!Array.isArray(turns) || turns.length === 0)
     fail(`${where} must be a non-empty array of turns.`);
   let ai = false;
-  for (const [i, m] of turns.entries()) {
-    if (!m || typeof m !== "object") fail(`${where}[${i}] is not a turn.`);
-    const { role, text } = m as { role?: unknown; text?: unknown };
+  for (const [i, turn] of turns.entries()) {
+    if (!turn || typeof turn !== "object")
+      fail(`${where}[${i}] is not a turn.`);
+    const { role, text } = turn as { role?: unknown; text?: unknown };
     if (role !== "child" && role !== "ai")
       fail(`${where}[${i}].role must be "child" or "ai".`);
     if (typeof text !== "string") fail(`${where}[${i}].text must be a string.`);
     if (role === "ai") ai = true;
   }
-  if (!ai) fail(`${where} has no ai turn to review.`);
+  if (!ai) fail(`${where} has no ai turn to judge.`);
 }
 
-function checkAssigned(item: KoraAssignedTranscript, where: string): void {
-  if (!item || !item.transcript) fail(`${where}.transcript is missing.`);
-  const t = item.transcript;
-  if (typeof t.transcriptId !== "string" || !t.transcriptId)
-    fail(`${where}.transcript.transcriptId must be a non-empty string.`);
-  if (!CATEGORY_SET.has(t.category))
-    fail(
-      `${where}.transcript.category "${String(t.category)}" is not a known category.`,
-    );
+function checkItem(item: KoraItem, where: string): void {
+  if (!item || typeof item !== "object") fail(`${where} is missing.`);
+  if (typeof item.conversationId !== "string" || !item.conversationId)
+    fail(`${where}.conversationId must be a non-empty string.`);
+  if (!CATEGORY_SET.has(item.riskId))
+    fail(`${where}.riskId "${String(item.riskId)}" is not a known risk.`);
   if (typeof item.contentHash !== "string" || !HASH.test(item.contentHash))
     fail(`${where}.contentHash must look like "sha256:<64 hex digits>".`);
-  checkTurns(t.conversationA, `${where}.transcript.conversationA`);
-  checkTurns(t.conversationB, `${where}.transcript.conversationB`);
+  if (item.kind !== "practice" && item.kind !== "rated")
+    fail(`${where}.kind must be "practice" or "rated".`);
+  if (typeof item.weightUnits !== "number" || !(item.weightUnits >= 0))
+    fail(`${where}.weightUnits must be a number of load units.`);
+  if (item.comprehension && item.comprehension.options.length !== 4)
+    fail(`${where}.comprehension must offer exactly four options.`);
+  if (item.kind === "practice" && !item.reference)
+    fail(`${where} is a practice conversation with no reference answer.`);
+  checkTurns(item.conversation, `${where}.conversation`);
 }
 
 // A light structural check so a mistake fails loudly at mount rather than mid-review.
-// The host's server-side validation against transcriptSchema and exportSchema is the real contract check.
+// The host's server-side validation against itemSchema and exportSchema is the real contract check.
 function validate(element: unknown, o: KoraReviewOptions): void {
   if (!element || (element as Node).nodeType !== 1)
     fail("element must be an HTMLElement.");
@@ -128,40 +131,44 @@ function validate(element: unknown, o: KoraReviewOptions): void {
   for (const k of [
     "save",
     "next",
+    "onOptOutRisk",
+    "onOpenAccount",
     "onComplete",
     "onSaveStateChange",
   ] as const) {
     if (typeof o[k] !== "function") fail(`${k} must be a function.`);
   }
-  const a = o.assignment;
-  if (!a || typeof a.batchId !== "string" || !a.batchId)
-    fail("assignment.batchId must be a non-empty string.");
-  if (!Number.isInteger(a.size) || a.size < 1)
-    fail("assignment.size must be a positive integer.");
-  if (!Array.isArray(a.transcripts) || a.transcripts.length === 0)
-    fail("assignment.transcripts must be a non-empty array.");
+  const session = o.session;
+  if (!session || typeof session.id !== "string" || !session.id)
+    fail("session.id must be a non-empty string.");
+  if (!Number.isInteger(session.number) || session.number < 1)
+    fail("session.number must be a positive integer.");
+  if (typeof session.budgetUnits !== "number" || session.budgetUnits <= 0)
+    fail("session.budgetUnits must be a positive number of load units.");
+  if (!Array.isArray(session.items)) fail("session.items must be an array.");
   const seen = new Set<string>();
-  for (const [i, item] of a.transcripts.entries()) {
-    checkAssigned(item, `assignment.transcripts[${i}]`);
-    const id = item.transcript.transcriptId;
-    if (seen.has(id))
-      fail(`transcriptId "${id}" appears twice in the assignment.`);
-    seen.add(id);
+  for (const [i, item] of session.items.entries()) {
+    checkItem(item, `session.items[${i}]`);
+    if (seen.has(item.conversationId))
+      fail(
+        `conversationId "${item.conversationId}" appears twice in the session.`,
+      );
+    seen.add(item.conversationId);
   }
-  const s = o.savedExport;
-  if (s != null) {
-    if (s.schemaVersion !== SCHEMA_VERSION)
+  const saved = o.savedExport;
+  if (saved != null) {
+    if (saved.schemaVersion !== SCHEMA_VERSION)
       fail(
-        `savedExport.schemaVersion is ${String(s.schemaVersion)}, but this version of the tool reads ${SCHEMA_VERSION}.`,
+        `savedExport.schemaVersion is ${String(saved.schemaVersion)}, but this version of the tool reads ${SCHEMA_VERSION}.`,
       );
-    if (s.batchId !== a.batchId)
+    if (saved.sessionId !== session.id)
       fail(
-        `savedExport.batchId "${s.batchId}" does not match assignment.batchId "${a.batchId}".`,
+        `savedExport.sessionId "${saved.sessionId}" does not match session.id "${session.id}".`,
       );
-    if (!s.reviewer || s.reviewer.id !== o.reviewerId)
+    if (!saved.reviewer || saved.reviewer.id !== o.reviewerId)
       fail("savedExport belongs to a different reviewerId.");
-    if (!Array.isArray(s.results))
-      fail("savedExport.results must be an array.");
+    if (!Array.isArray(saved.ratings))
+      fail("savedExport.ratings must be an array.");
   }
 }
 
@@ -199,30 +206,29 @@ export function mountKoraReview(
 
   // Completion saves first, then tells the host, once per mount, whether or not that save succeeded.
   // (A failed save is reported through onSaveStateChange and retried on the next change or flush().)
-  const onComplete = () => {
+  const onComplete = (end: { again: boolean }) => {
     if (completed) return;
     completed = true;
     void Promise.resolve()
       .then(() => saver.flush())
       .catch(() => undefined)
       .then(() => {
-        if (!unmounted) options.onComplete();
+        if (!unmounted) options.onComplete(end);
       });
   };
 
   engine = createEngine(element, {
     reviewerId: options.reviewerId,
-    assignment: options.assignment,
+    session: options.session,
     savedExport: options.savedExport,
-    collectProfile: !!options.collectProfile,
-    collectExitSurvey: !!options.collectExitSurvey,
-    optOutCategories: options.optOutCategories ?? [],
     next: async () => {
       await saver.flush();
-      const item = await options.next();
-      if (item) checkAssigned(item, "next()");
-      return item;
+      const next = await options.next();
+      if ("item" in next) checkItem(next.item, "next().item");
+      return next;
     },
+    onOptOutRisk: options.onOptOutRisk,
+    onOpenAccount: options.onOpenAccount,
     onChange: () => saver.changed(),
     onComplete,
     // The page is being hidden (tab switch, app backgrounded, webview closing): save now rather than in 2 s.

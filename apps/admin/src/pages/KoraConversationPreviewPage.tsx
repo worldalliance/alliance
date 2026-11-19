@@ -1,37 +1,33 @@
 import { mountKoraReview } from "@alliance/kora-review";
-import { parseKoraTranscript } from "@alliance/kora-review/parse";
+import { parseKoraItem } from "@alliance/kora-review/parse";
 import "@alliance/kora-review/style.css";
 import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import { useRandomKoraTranscript } from "../lib/useKoraBatchesAdmin";
+import { useRandomKoraConversation } from "../lib/useKoraBatchesAdmin";
 
-const TITLE = <title>Kora transcript preview - Admin</title>;
+const TITLE = <title>Kora conversation preview - Admin</title>;
 
-export default function KoraTranscriptPreviewPage() {
+export default function KoraConversationPreviewPage() {
   const { batchId = "" } = useParams();
-  const preview = useRandomKoraTranscript(batchId);
+  const preview = useRandomKoraConversation(batchId);
   const mountAt = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!preview.data || !mountAt.current) return;
     const handle = mountKoraReview(mountAt.current, {
       reviewerId: "admin-preview",
-      assignment: {
-        batchId: `preview-${batchId}`,
-        size: 1,
-        transcripts: [
-          {
-            transcript: parseKoraTranscript(preview.data.transcript),
-            contentHash: preview.data.contentHash,
-          },
-        ],
+      session: {
+        id: `preview-${batchId}`,
+        number: 1,
+        budgetUnits: 1,
+        items: [parseKoraItem(preview.data.item)],
       },
       savedExport: null,
-      collectProfile: false,
-      collectExitSurvey: false,
       save: () => Promise.resolve(),
-      next: () => Promise.resolve(null),
+      next: () => Promise.resolve({ done: "budget_spent" }),
+      onOptOutRisk: () => {},
+      onOpenAccount: () => {},
       onComplete: () => {},
       onSaveStateChange: () => {},
     });
@@ -51,18 +47,18 @@ export default function KoraTranscriptPreviewPage() {
           onClick={() => void preview.refetch()}
           disabled={preview.isFetching}
         >
-          Show another transcript
+          Show another conversation
         </button>
         <Link className="underline" to="/kora-participants">
           Back to Kora participants
         </Link>
       </div>
-      {preview.isPending && <p className="p-5">Loading a transcript…</p>}
+      {preview.isPending && <p className="p-5">Loading a conversation…</p>}
       {preview.isError && (
         <p className="p-5 text-red-600" role="alert">
           {adminRefusalMessage(
             preview.error,
-            "Couldn't load a transcript. Reload to try again.",
+            "Couldn't load a conversation. Reload to try again.",
           )}
         </p>
       )}

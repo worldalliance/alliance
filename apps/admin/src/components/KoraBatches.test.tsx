@@ -11,11 +11,10 @@ let uploadResponse: () => Response;
 let uploads: FormData[];
 let closings: { id: string; body: unknown }[];
 
-const batch = (id: string, transcriptCount: number): KoraBatchDto => ({
+const batch = (id: string, conversationCount: number): KoraBatchDto => ({
   id,
-  transcriptCount,
-  transcriptsPerAssignment: 10,
-  reviewsPerTranscript: 3,
+  conversationCount,
+  reviewsPerConversation: 3,
   retiredAt: null,
   closesAt: null,
   createdAt: "2026-11-10T10:00:00.000Z",
@@ -66,15 +65,12 @@ const renderBatches = () =>
 const fillAndUpload = () => {
   fireEvent.change(
     screen.getByLabelText(
-      "Transcripts file from KORA (.jsonl, .json or .yaml)",
+      "Conversations file from KORA (.jsonl, .json or .yaml)",
     ),
     {
       target: { files: [new File(['{"pair_id":"P1"}'], "pairs.jsonl")] },
     },
   );
-  fireEvent.change(screen.getByLabelText("Transcripts per assignment"), {
-    target: { value: "8" },
-  });
   fireEvent.change(screen.getByLabelText(/^Closes on/), {
     target: { value: "2099-11-30" },
   });
@@ -84,43 +80,42 @@ const fillAndUpload = () => {
 test("says why the list is empty and what to do", async () => {
   renderBatches();
   await screen.findByText(
-    "No transcripts yet. Upload KORA's file to make the project active.",
+    "No conversations yet. Upload KORA's file to make the project active.",
   );
 });
 
-test("uploads the transcripts file with the settings, then offers a preview", async () => {
+test("uploads the conversations file with the settings, then offers a preview", async () => {
   renderBatches();
-  await screen.findByText(/No transcripts yet/);
+  await screen.findByText(/No conversations yet/);
   fillAndUpload();
 
-  await screen.findByText(/Read 12 transcripts\./);
+  await screen.findByText(/Read 12 conversations\./);
   const [sent] = uploads;
-  expect(sent.get("transcriptsPerAssignment")).toBe("8");
-  expect(sent.get("reviewsPerTranscript")).toBe("3");
-  expect(sent.get("transcripts")).toBeInstanceOf(File);
+  expect(sent.get("reviewsPerConversation")).toBe("3");
+  expect(sent.get("conversations")).toBeInstanceOf(File);
   expect(sent.has("exportSchema")).toBe(false);
   expect(sent.get("closesAt")).toBe(
     new Date(2099, 10, 30, 23, 59, 59, 999).toISOString(),
   );
   const links = await screen.findAllByRole("link", {
-    name: "Preview a random transcript",
+    name: "Preview a random conversation",
   });
   expect(links[0].getAttribute("href")).toBe(
     "/kora-participants/preview/b-new",
   );
   await waitFor(() =>
-    expect(screen.queryByText(/No transcripts yet/)).toBeNull(),
+    expect(screen.queryByText(/No conversations yet/)).toBeNull(),
   );
 });
 
-test("asks for the transcripts file before uploading", async () => {
+test("asks for the conversations file before uploading", async () => {
   renderBatches();
-  await screen.findByText(/No transcripts yet/);
+  await screen.findByText(/No conversations yet/);
   fireEvent.change(screen.getByLabelText(/^Closes on/), {
     target: { value: "2099-11-30" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
-  const missing = await screen.findByText("Choose the transcripts file.");
+  const missing = await screen.findByText("Choose the conversations file.");
   expect(missing.getAttribute("role")).toBe("alert");
   expect(uploads).toEqual([]);
 });
@@ -141,7 +136,7 @@ test("lists every rejected line by number", async () => {
       { status: 400 },
     );
   renderBatches();
-  await screen.findByText(/No transcripts yet/);
+  await screen.findByText(/No conversations yet/);
   fillAndUpload();
 
   const alert = (

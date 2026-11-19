@@ -1,55 +1,56 @@
 import { countAnswers, NO_ANSWER } from "./kora-answers";
 
 describe("countAnswers", () => {
-  it("counts each reviewer's profile once, every exit survey, and each value of a list answer", () => {
+  it("counts every session's feedback, a skipped question among the answers", () => {
     const result = countAnswers([
       {
-        reviewerId: "r1",
         exported: {
-          profile: { is_parent: "yes", children_age_bands: ["7_10", "11_13"] },
-          exitSurvey: null,
+          feedback: { f1: "fully", f2: "easy", f7: "The guide helped." },
         },
       },
-      {
-        reviewerId: "r1",
-        exported: {
-          profile: { is_parent: "no", children_age_bands: null },
-          exitSurvey: { exit_q1: "very" },
-        },
-      },
-      {
-        reviewerId: "r2",
-        exported: {
-          profile: { is_parent: "yes", children_age_bands: null },
-          exitSurvey: { exit_q1: "very" },
-        },
-      },
-      {
-        reviewerId: "r3",
-        exported: { profile: null, exitSurvey: { exit_q1: null } },
-      },
+      { exported: { feedback: { f1: "mostly", f2: "easy", f7: null } } },
+      { exported: { feedback: { f1: "fully", f2: null, f7: null } } },
+      { exported: { feedback: null } },
     ]);
-    expect(result.profiles).toBe(2);
-    expect(result.profile).toEqual([
-      { question: "is_parent", answers: [{ value: "yes", count: 2 }] },
+    expect(result.sessions).toBe(3);
+    expect(result.feedback).toEqual([
       {
-        question: "children_age_bands",
+        question: "f1",
         answers: [
-          { value: "11_13", count: 1 },
-          { value: "7_10", count: 1 },
+          { value: "fully", count: 2 },
+          { value: "mostly", count: 1 },
+        ],
+      },
+      {
+        question: "f2",
+        answers: [
+          { value: "easy", count: 2 },
           { value: NO_ANSWER, count: 1 },
         ],
       },
-    ]);
-    expect(result.exitSurveys).toBe(3);
-    expect(result.exitSurvey).toEqual([
       {
-        question: "exit_q1",
+        question: "f7",
         answers: [
-          { value: "very", count: 2 },
-          { value: NO_ANSWER, count: 1 },
+          { value: NO_ANSWER, count: 2 },
+          { value: "The guide helped.", count: 1 },
         ],
       },
     ]);
+  });
+
+  it("counts each value of a list answer", () => {
+    const result = countAnswers([
+      { exported: { feedback: { f3: "yes", risks: ["cybersecurity"] } } },
+      {
+        exported: { feedback: { f3: "no", risks: ["cybersecurity", "bias"] } },
+      },
+    ]);
+    expect(result.feedback[1]).toEqual({
+      question: "risks",
+      answers: [
+        { value: "cybersecurity", count: 2 },
+        { value: "bias", count: 1 },
+      ],
+    });
   });
 });

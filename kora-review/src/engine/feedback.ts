@@ -1,4 +1,5 @@
 import type { FeedbackCtx } from "./context.js";
+import type { Valence } from "./types.js";
 
 export function createFeedback(ctx: FeedbackCtx) {
   const {
@@ -7,13 +8,12 @@ export function createFeedback(ctx: FeedbackCtx) {
     clamp,
     isDestroyed,
     doc,
-    fmt,
     h,
     later,
+    markCls,
     raf,
     rootEl,
     toasts,
-    vcls,
   } = ctx;
 
   /* ---------- Toast ---------- */
@@ -25,12 +25,12 @@ export function createFeedback(ctx: FeedbackCtx) {
     toastTimer = later(() => el.remove(), 5000);
   }
   // Just the value, hovering up from the rated words for a moment and fading out. Positioned inside the root.
-  function floatValue(v: number, first: HTMLElement, last: HTMLElement) {
+  function floatMark(valence: Valence, first: HTMLElement, last: HTMLElement) {
     $$(".toast-v").forEach((el) => el.remove());
     const el = h(
       "div",
-      { class: "toast-v " + vcls(v), "aria-hidden": "true" },
-      fmt(v),
+      { class: "toast-v v-" + markCls(valence), "aria-hidden": "true" },
+      valence === "like" ? "👍" : "👎",
     );
     raf(() => {
       if (isDestroyed() || !first.isConnected) return;
@@ -67,5 +67,5 @@ export function createFeedback(ctx: FeedbackCtx) {
     });
   }
 
-  return { floatValue, toast };
+  return { floatMark, toast };
 }

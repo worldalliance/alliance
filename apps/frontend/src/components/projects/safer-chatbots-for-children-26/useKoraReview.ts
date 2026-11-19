@@ -1,14 +1,14 @@
-import type {
-  KoraAssignedTranscript,
-  KoraSaveResult,
-} from "@alliance/kora-review";
-import { parseKoraTranscript } from "@alliance/kora-review/parse";
+import type { KoraNext, KoraSaveResult } from "@alliance/kora-review";
+import { parseKoraItem } from "@alliance/kora-review/parse";
 import {
   koraReviewHome,
   koraReviewMore,
   koraReviewNext,
+  koraReviewOnboarding,
+  koraReviewPreferences,
   koraReviewSave,
   koraReviewState,
+  type KoraDemographicsDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
@@ -33,7 +33,7 @@ export function useKoraReview(enabled: boolean) {
   });
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.koraReview() });
-  // The tool adds pairs as it goes, so a cached state is stale once the page leaves.
+  // The tool adds conversations as it goes, so a cached state is stale once the page leaves.
   useEffect(
     () => () => queryClient.removeQueries({ queryKey: queryKeys.koraReview() }),
     [queryClient],
@@ -42,25 +42,37 @@ export function useKoraReview(enabled: boolean) {
 }
 
 export const saveKoraExport = (
-  assignmentId: string,
+  sessionId: string,
   exported: Record<string, unknown>,
 ): Promise<KoraSaveResult> =>
   koraReviewSave({
-    path: { id: assignmentId },
+    path: { id: sessionId },
     body: { export: exported },
     throwOnError: true,
   }).then((res) => ({ removed: res.data.removed }));
 
-export const nextKoraTranscript = (
-  assignmentId: string,
-): Promise<KoraAssignedTranscript | null> =>
-  koraReviewNext({ path: { id: assignmentId }, throwOnError: true }).then(
-    ({ data: { next } }) =>
-      next && {
-        transcript: parseKoraTranscript(next.transcript),
-        contentHash: next.contentHash,
-      },
+export const nextKoraConversation = (sessionId: string): Promise<KoraNext> =>
+  koraReviewNext({ path: { id: sessionId }, throwOnError: true }).then(
+    ({ data }) =>
+      data.item
+        ? { item: parseKoraItem(data.item) }
+        : {
+            done: data.done === "queue_empty" ? "queue_empty" : "budget_spent",
+          },
   );
+
+export const setKoraOnboarding = (body: {
+  demographics?: KoraDemographicsDto;
+  consented?: true;
+  onboarded?: true;
+}): Promise<void> =>
+  koraReviewOnboarding({ body, throwOnError: true }).then(() => undefined);
+
+export const setKoraPreferences = (body: {
+  optOutRisks?: string[];
+  extendedOptIn?: boolean;
+}): Promise<void> =>
+  koraReviewPreferences({ body, throwOnError: true }).then(() => undefined);
 
 export function useKoraHome() {
   return useQuery({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { CATEGORIES } from "../src/categories.js";
+import { CATEGORIES, RISK_GROUP_NAMES, RiskGroup } from "../src/categories.js";
 import { KoraCategory } from "../src/index.js";
 
 const taxonomy = Bun.YAML.parse(
@@ -19,6 +19,18 @@ describe("categories", () => {
     expect(ids).toHaveLength(26);
     expect<string[]>(Object.values(KoraCategory)).toEqual(ids);
     expect<string[]>(CATEGORIES.map((c) => c.id)).toEqual(ids);
+  });
+
+  it("sit under the 8 categories of the taxonomy, in its order", () => {
+    const groups: string[] = [];
+    for (const risk of taxonomy) {
+      if (!groups.includes(risk.category_id)) groups.push(risk.category_id);
+      expect(CATEGORIES.find((c) => c.id === risk.id)?.group, risk.id).toBe(
+        risk.category_id,
+      );
+    }
+    expect<string[]>(Object.values(RiskGroup)).toEqual(groups);
+    expect(Object.keys(RISK_GROUP_NAMES)).toEqual(groups);
   });
 
   it("warn on every hard risk, and on violence and fear", () => {

@@ -14,9 +14,9 @@ import {
 import { KoraBatch } from "./kora-batch.entity";
 import { KoraReviewer } from "./kora-reviewer.entity";
 
-/** A reviewer's set of transcripts. Its id is the batchId the review tool echoes in its export. */
+/** One sitting of about 45 minutes. Its id is the sessionId the review tool echoes in its export. */
 @Entity()
-export class KoraAssignment {
+export class KoraSession {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
@@ -28,11 +28,15 @@ export class KoraAssignment {
   @JoinColumn({ name: "reviewerId" })
   reviewer?: Relation<KoraReviewer>;
 
-  /** Requested after the reviewer finished an earlier assignment. */
-  @Column({ type: "boolean" })
-  extra: boolean;
+  /** 1-based for this reviewer. The first session carries the practice conversations. */
+  @Column({ type: "int" })
+  number: number;
 
-  /** The newest batch when the assignment was made; deleting that batch deletes the assignment. */
+  /** What this session may spend, against each conversation's weight in load units. */
+  @Column({ type: "real" })
+  budgetUnits: number;
+
+  /** The newest batch when the session started; deleting that batch deletes the session. */
   @Column({ type: "uuid" })
   schemaBatchId: string;
 
@@ -44,19 +48,20 @@ export class KoraAssignment {
   @Column({ type: "jsonb", nullable: true })
   export: unknown | null;
 
-  /** Creation or the latest save. Unreviewed transcripts are released after 7 days without one. */
+  /** Creation or the latest save. Unfinished conversations are released after the window without one. */
   @Column({ type: "timestamptz" })
   lastActivityAt: Date;
 
   /**
-   * The earliest closesAt of its transcripts' batches, null when none has one.
-   * After it the assignment can't be continued and its unreviewed transcripts are released.
+   * The earliest closesAt of its conversations' batches, null when none has one.
+   * After it the session can't be continued and its unfinished conversations are released.
    */
   @Column({ type: "timestamptz", nullable: true })
   closesAt: Date | null;
 
+  /** When the reviewer reached the end of the session, feedback included. */
   @Column({ type: "timestamptz", nullable: true })
-  completedAt: Date | null;
+  endedAt: Date | null;
 
   @CreateDateColumnTz()
   createdAt: Date;

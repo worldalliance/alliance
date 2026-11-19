@@ -31,31 +31,15 @@ function tally(answers: Record<string, unknown>[]): QuestionCounts[] {
   }));
 }
 
-/**
- * Counts each answer to the profile, once per reviewer from the first export
- * that carries it, and to each exit survey.
- */
-export function countAnswers(
-  exports: { reviewerId: string; exported: unknown }[],
-): {
-  profiles: number;
-  profile: QuestionCounts[];
-  exitSurveys: number;
-  exitSurvey: QuestionCounts[];
+/** Counts each answer to the end-of-session feedback, which a reviewer gives once per session. */
+export function countAnswers(exports: { exported: unknown }[]): {
+  sessions: number;
+  feedback: QuestionCounts[];
 } {
-  const profiles = new Map<string, Record<string, unknown>>();
-  const exitSurveys: Record<string, unknown>[] = [];
-  for (const { reviewerId, exported } of exports) {
-    const root = fields(exported);
-    const profile = fields(root?.profile);
-    if (profile && !profiles.has(reviewerId)) profiles.set(reviewerId, profile);
-    const exit = fields(root?.exitSurvey);
-    if (exit) exitSurveys.push(exit);
+  const answered: Record<string, unknown>[] = [];
+  for (const { exported } of exports) {
+    const feedback = fields(fields(exported)?.feedback);
+    if (feedback) answered.push(feedback);
   }
-  return {
-    profiles: profiles.size,
-    profile: tally([...profiles.values()]),
-    exitSurveys: exitSurveys.length,
-    exitSurvey: tally(exitSurveys),
-  };
+  return { sessions: answered.length, feedback: tally(answered) };
 }

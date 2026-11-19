@@ -11,8 +11,9 @@
     "./convert": "./src/convert.ts",
     "./parse": "./src/parse.ts",
     "./sample-export": "./src/sample-export.ts",
-    "./example-pair": "./src/example-pair.ts",
-    "./style.css": "./src/style.css"
+    "./example-conversation": "./src/example-conversation.ts",
+    "./style.css": "./src/style.css",
+    "./copy": "./src/copy.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && eslint .",

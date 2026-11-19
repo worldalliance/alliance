@@ -1,27 +1,27 @@
-import { KORA_PROJECT_PATH, KoraReviewPhase } from "@alliance/common/kora";
 import {
-  parseKoraCategories,
-  parseKoraExport,
-  parseKoraTranscript,
-} from "@alliance/kora-review/parse";
+  KORA_ACCOUNT_PATH,
+  KORA_PROJECT_PATH,
+  KoraReviewPhase,
+} from "@alliance/common/kora";
+import { parseKoraExport, parseKoraItem } from "@alliance/kora-review/parse";
 import type { KoraReviewStateDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useMemo } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../../../lib/AuthContext";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
-import { NAV_HEIGHT } from "../../../site/Navbar";
-import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { REVIEW_COPY } from "./copy";
-import { KoraNavbar } from "./KoraNavbar";
+import { KoraOnboarding } from "./KoraOnboarding";
+import { KoraPageShell } from "./KoraPageShell";
 import { type KoraToolOptions, KoraReviewTool } from "./KoraReviewTool";
 import { useKoraParticipant } from "./useKoraParticipant";
 import {
-  nextKoraTranscript,
+  nextKoraConversation,
   saveKoraExport,
+  setKoraPreferences,
   useKoraReview,
 } from "./useKoraReview";
 
@@ -29,8 +29,9 @@ export const SIGN_IN_TO_REVIEW = `${KORA_PROJECT_PATH}?next=review`;
 
 export function meta() {
   return socialPreviewMeta({
-    title: "Review transcripts — Safer Chatbots for Children",
-    description: "Review chatbot transcripts for the Alliance and KORA.",
+    title: "Review conversations — Safer Chatbots for Children",
+    description:
+      "Review conversations between children and AI chatbots, for the Alliance and KORA.",
     url: `${KORA_PROJECT_PATH}/review`,
   });
 }
@@ -38,40 +39,40 @@ export function meta() {
 function ReviewTool({
   state,
   onComplete,
+  onPreferencesChanged,
 }: {
   state: KoraReviewStateDto;
-  onComplete: () => void;
+  onComplete: (end: { again: boolean }) => void;
+  onPreferencesChanged: () => void;
 }) {
-  const assignment = state.assignment;
+  const navigate = useNavigate();
+  const session = state.session;
+  const optOutRisks = state.optOutRisks;
   const options = useMemo(
     (): KoraToolOptions | null =>
-      assignment
+      session
         ? {
             reviewerId: state.reviewerId,
-            assignment: {
-              batchId: assignment.id,
-              size: assignment.size,
-              transcripts: assignment.transcripts.map((t) => ({
-                transcript: parseKoraTranscript(t.transcript),
-                contentHash: t.contentHash,
-              })),
+            session: {
+              id: session.id,
+              number: session.number,
+              budgetUnits: session.budgetUnits,
+              items: session.items.map((i) => parseKoraItem(i.item)),
             },
-            savedExport: assignment.savedExport
-              ? parseKoraExport(assignment.savedExport)
+            savedExport: session.savedExport
+              ? parseKoraExport(session.savedExport)
               : null,
-            collectProfile: state.collectProfile,
-            collectExitSurvey: !assignment.extra,
-            optOutCategories: parseKoraCategories(state.optOutCategories),
-            save: (exported) => saveKoraExport(assignment.id, { ...exported }),
-            next: () => nextKoraTranscript(assignment.id),
+            save: (exported) => saveKoraExport(session.id, { ...exported }),
+            next: () => nextKoraConversation(session.id),
+            onOptOutRisk: (riskId) => {
+              void setKoraPreferences({
+                optOutRisks: [...new Set([...optOutRisks, riskId])],
+              }).then(onPreferencesChanged);
+            },
+            onOpenAccount: () => void navigate(KORA_ACCOUNT_PATH),
           }
         : null,
-    [
-      assignment,
-      state.reviewerId,
-      state.collectProfile,
-      state.optOutCategories,
-    ],
+    [session, state.reviewerId, optOutRisks, navigate, onPreferencesChanged],
   );
   return (
     options && <KoraReviewTool options={options} onComplete={onComplete} />
@@ -94,8 +95,8 @@ function Finished({
         {REVIEW_COPY.thanksHeading}
       </h1>
       <p className="text-lg">{REVIEW_COPY.thanksBody}</p>
-      {state.extraReviews > 0 && (
-        <p>{REVIEW_COPY.extraReviews(state.extraReviews)}</p>
+      {state.ratingsCompleted > 0 && (
+        <p>{REVIEW_COPY.judgedSoFar(state.ratingsCompleted)}</p>
       )}
       {state.phase === KoraReviewPhase.NoneLeft ? (
         <p role="status">{REVIEW_COPY.noneLeft}</p>
@@ -125,16 +126,7 @@ export default function KoraReviewPage() {
     member.isAuthenticated || Boolean(participantQuery.data?.participant);
   const review = useKoraReview(signedIn);
   const shell = (children: React.ReactNode, busy = false) => (
-    <SiteRoot className="flex flex-col bg-white">
-      <KoraNavbar hideNavLinks />
-      <main
-        aria-busy={busy || undefined}
-        className="flex flex-1 flex-col"
-        style={{ paddingTop: NAV_HEIGHT }}
-      >
-        {children}
-      </main>
-    </SiteRoot>
+    <KoraPageShell busy={busy}>{children}</KoraPageShell>
   );
 
   if (member.loading || participantQuery.isPending) {
@@ -154,9 +146,19 @@ export default function KoraReviewPage() {
   switch (phase) {
     case KoraReviewPhase.NotActive:
       return <Navigate to={KORA_PROJECT_PATH} replace />;
+    case KoraReviewPhase.Onboarding:
+      return shell(
+        <KoraOnboarding state={state} onDone={() => void review.refresh()} />,
+      );
     case KoraReviewPhase.Reviewing:
       return shell(
-        <ReviewTool state={state} onComplete={() => void review.refresh()} />,
+        <ReviewTool
+          state={state}
+          onComplete={({ again }) =>
+            again ? review.more.mutate() : void review.refresh()
+          }
+          onPreferencesChanged={() => void review.refresh()}
+        />,
       );
     case KoraReviewPhase.Finished:
     case KoraReviewPhase.NoneLeft:

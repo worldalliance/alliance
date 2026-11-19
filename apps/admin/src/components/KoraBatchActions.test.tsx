@@ -21,9 +21,8 @@ let eventsStatus: number;
 
 const batch = (id: string, retiredAt: string | null = null): KoraBatchDto => ({
   id,
-  transcriptCount: 4,
-  transcriptsPerAssignment: 2,
-  reviewsPerTranscript: 3,
+  conversationCount: 4,
+  reviewsPerConversation: 3,
   retiredAt,
   closesAt: null,
   createdAt: "2026-11-10T10:00:00.000Z",
@@ -113,7 +112,7 @@ test("retires only after confirming, warning when it's the last batch being assi
   const dialog = screen.getByRole("dialog");
   expect(within(dialog).getByText(/^Retire the batch uploaded/)).toBeTruthy();
   expect(
-    within(dialog).getByText(/no chat pairs will be left to assign/),
+    within(dialog).getByText(/no conversations will be left to review/),
   ).toBeTruthy();
   expect(calls).toEqual([]);
 
@@ -132,7 +131,7 @@ test("leaves out the last-batch warning while another batch is still assigned", 
   );
   expect(
     within(screen.getByRole("dialog")).queryByText(
-      /no chat pairs will be left/,
+      /no conversations will be left/,
     ),
   ).toBeNull();
 });
@@ -163,14 +162,14 @@ test("deletes after showing how much goes with the batch", async () => {
   const dialog = await screen.findByRole("dialog");
   expect(
     within(dialog).getByText(
-      /removes 4 chat pairs, 1 rating and 2 volunteer assignments/,
+      /removes 4 conversations, 1 rating and 2 review sessions/,
     ),
   ).toBeTruthy();
 
   fireEvent.click(within(dialog).getByRole("button", { name: "Delete batch" }));
 
   await waitFor(() => expect(calls).toEqual(["delete b1"]));
-  await screen.findByText(/No transcripts yet/);
+  await screen.findByText(/No conversations yet/);
 });
 
 test("lists the history newest first and filters it", async () => {
@@ -203,12 +202,8 @@ test("lists the history newest first and filters it", async () => {
   renderBatches();
 
   const link = await screen.findByRole("link", { name: "View its export" });
-  expect(link.getAttribute("href")).toBe(
-    "/kora-participants/assignments/a-live",
-  );
-  expect(
-    screen.getByText(/The assignment has since been deleted/),
-  ).toBeTruthy();
+  expect(link.getAttribute("href")).toBe("/kora-participants/sessions/a-live");
+  expect(screen.getByText(/The session has since been deleted/)).toBeTruthy();
   expect(
     screen.getByText(/^Priya Admin retired the batch uploaded/),
   ).toBeTruthy();
@@ -218,7 +213,7 @@ test("lists the history newest first and filters it", async () => {
   });
   expect(screen.queryByRole("link", { name: "View its export" })).toBeNull();
   expect(
-    screen.getByText("Priya Admin uploaded a batch of 4 chat pairs"),
+    screen.getByText("Priya Admin uploaded a batch of 4 conversations"),
   ).toBeTruthy();
 
   fireEvent.change(screen.getByLabelText("Show"), {

@@ -21,7 +21,8 @@ export function KoraReviewTool({
   onComplete,
 }: {
   options: KoraToolOptions;
-  onComplete: () => void;
+  /** `again` is the reviewer asking for another session from the session-complete screen. */
+  onComplete: (end: { again: boolean }) => void;
 }) {
   const mountAt = useRef<HTMLDivElement>(null);
   const handle = useRef<KoraReviewHandle | null>(null);
@@ -33,7 +34,7 @@ export function KoraReviewTool({
     if (!mountAt.current) return;
     const mounted = mountKoraReview(mountAt.current, {
       ...options,
-      onComplete: () => completed.current(),
+      onComplete: (end) => completed.current(end),
       onSaveStateChange: (saveState) =>
         setSaveFailed(saveState === KoraSaveState.Failed),
     });

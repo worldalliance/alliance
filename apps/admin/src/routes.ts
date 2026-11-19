@@ -5,15 +5,15 @@ export default [
     route("/invite-feed", "pages/InviteFeedPage.tsx"),
     route(
       "/kora-participants/preview/:batchId",
-      "pages/KoraTranscriptPreviewPage.tsx",
+      "pages/KoraConversationPreviewPage.tsx",
     ),
     layout("sidebar.tsx", [
       route("/projects", "pages/ProjectsPage.tsx"),
       route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),
       route("/kora-participants", "pages/KoraParticipantsPage.tsx"),
       route(
-        "/kora-participants/assignments/:assignmentId",
-        "pages/KoraAssignmentExportPage.tsx",
+        "/kora-participants/sessions/:sessionId",
+        "pages/KoraSessionExportPage.tsx",
       ),
       route(
         "/projects/:projectId/action/:actionId",

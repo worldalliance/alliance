@@ -40,8 +40,8 @@ const NOTICE: Record<
     waiting: (p) => p.moreToNotify,
     noun: "reviewer",
     pending: (people) =>
-      `${people} finished an assignment and haven't been told about the newest transcripts.`,
-    none: "Every reviewer who finished has been told about the newest transcripts.",
+      `${people} finished a session and haven't been told about the newest conversations.`,
+    none: "Every reviewer who finished has been told about the newest conversations.",
     confirm:
       "Participants get one email or text, and members a push notification, saying more reviews are ready. Messages can't be recalled once sent.",
   },

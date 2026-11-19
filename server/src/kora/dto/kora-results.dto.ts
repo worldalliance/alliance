@@ -7,7 +7,7 @@ export class KoraExportsDto {
     additionalProperties: true,
     isArray: true,
     description:
-      "Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }",
+      "Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its conversations come from, each { id, retired }",
   })
   exports: Record<string, unknown>[];
 
@@ -33,39 +33,26 @@ export class KoraQuestionCountsDto {
 }
 
 export class KoraAnswerCountsDto {
-  @ApiProperty({ description: "Reviewers who answered the profile" })
-  profiles: number;
+  @ApiProperty({ description: "Sessions whose feedback was answered" })
+  sessions: number;
 
   @ApiProperty({ type: () => KoraQuestionCountsDto, isArray: true })
-  profile: KoraQuestionCountsDto[];
+  feedback: KoraQuestionCountsDto[];
 
-  @ApiProperty({ description: "Exit surveys answered" })
-  exitSurveys: number;
-
-  @ApiProperty({ type: () => KoraQuestionCountsDto, isArray: true })
-  exitSurvey: KoraQuestionCountsDto[];
-
-  constructor(input: {
-    profiles: number;
-    profile: QuestionCounts[];
-    exitSurveys: number;
-    exitSurvey: QuestionCounts[];
-  }) {
-    this.profiles = input.profiles;
-    this.profile = input.profile;
-    this.exitSurveys = input.exitSurveys;
-    this.exitSurvey = input.exitSurvey;
+  constructor(input: { sessions: number; feedback: QuestionCounts[] }) {
+    this.sessions = input.sessions;
+    this.feedback = input.feedback;
   }
 }
 
-export type KoraAssignmentExport = {
+export type KoraSessionExport = {
   id: string;
   reviewerId: string;
-  completedAt: Date | null;
+  endedAt: Date | null;
   export: Record<string, unknown> | null;
 };
 
-export class KoraAssignmentExportDto {
+export class KoraSessionExportDto {
   @ApiProperty()
   id: string;
 
@@ -73,15 +60,15 @@ export class KoraAssignmentExportDto {
   reviewerId: string;
 
   @ApiProperty({ type: Date, nullable: true })
-  completedAt: Date | null;
+  endedAt: Date | null;
 
   @ApiProperty({ type: "object", additionalProperties: true, nullable: true })
   export: Record<string, unknown> | null;
 
-  constructor(input: KoraAssignmentExport) {
+  constructor(input: KoraSessionExport) {
     this.id = input.id;
     this.reviewerId = input.reviewerId;
-    this.completedAt = input.completedAt;
+    this.endedAt = input.endedAt;
     this.export = input.export;
   }
 }

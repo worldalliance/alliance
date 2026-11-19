@@ -1,17 +1,18 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "bun:test";
-import { KoraCategory, KoraSaveState, type KoraExport } from "../src/index.js";
-import { parseKoraExport } from "../src/parse.js";
-import { SAMPLE_EXPORT as sampleExport } from "../src/sample-export.js";
+import { KoraSaveState, type KoraExport, type KoraNext } from "../src/index.js";
 import {
   button,
   clone,
   el,
   expectValid,
-  handle,
+  item,
+  judgeScreen,
   mount,
-  rank,
+  pick,
+  readScreen,
   saves,
+  text,
   tick,
   unmount,
   useMountHarness,
@@ -19,145 +20,130 @@ import {
 
 useMountHarness();
 
+const session = (items = [item()]) => ({
+  id: "session-1",
+  number: 2,
+  budgetUnits: 5,
+  items,
+});
+
 describe("mountKoraReview: saving and resuming", () => {
-  it("resumes a partly answered export exactly, and re-exports it unchanged", async () => {
-    const saved = clone(sampleExport) as unknown as KoraExport;
-    mount({ savedExport: saved });
-    await tick(50);
-
-    // Reopened on the same pair, with the half-answered ranking below it.
-    expect(el.querySelector(".thread h1")?.textContent).toBe(
-      "Essay due tomorrow",
-    );
-    expect(el.querySelector(".show-replies")).toBeNull();
-    expect(el.querySelector<HTMLElement>(".pair")!.hidden).toBe(false);
-    const pairId = el.querySelector<HTMLElement>(".pair-id-text")!;
-    expect(pairId.hidden).toBe(true);
-    button("#").click();
-    expect([pairId.hidden, pairId.textContent]).toEqual([false, "SAMPLE-01"]);
-    // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
-    const groups = [...rank().querySelectorAll(".seg")].map(
-      (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
-    );
-    expect(groups.slice(0, 2).sort()).toEqual(["Safe", "Unsafe"]);
-    // The saved mark is drawn, with its note in the list.
-    expect(el.querySelectorAll(".tk.neg").length).toBeGreaterThan(0);
-    expect(el.querySelector(".ann-n")?.textContent).toContain(
-      "Tells the child to hand in its work",
-    );
-    expect(el.textContent).toContain("2 of 3");
-
-    // Nothing is saved just for mounting.
-    await tick(5000);
-    expect(saves).toHaveLength(0);
-
-    // Re-picking an answer the reviewer already gave is a change: the export round-trips.
-    const safe = [
-      ...rank().querySelectorAll('button[aria-pressed="true"]'),
-    ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
-    safe.click();
-    await handle!.flush();
-    expect(saves).toHaveLength(1);
-    const out = saves[0]!;
-    expectValid(out);
-    const strip = (e: KoraExport) => ({
-      ...e,
-      exportedAt: "",
-      results: e.results.map((r) => ({ ...r, timeMs: 0 })),
-    });
-    expect(strip(out)).toEqual(strip(saved));
-  });
-
-  it("debounces saves to about two seconds after the last change, one in flight at a time", async () => {
-    let release!: () => void;
-    let inFlight = 0,
-      max = 0;
-    const opts = mount({
-      save: vi.fn((e: KoraExport) => {
-        saves.push(clone(e));
-        inFlight++;
-        max = Math.max(max, inFlight);
-        return new Promise<void>((res) => {
-          release = () => {
-            inFlight--;
-            res();
-          };
-        });
-      }),
-    });
-    await tick(10);
-    button("Got it").click();
-    await tick(1300);
-    expect(opts.save).not.toHaveBeenCalled();
-    await tick(2000);
-    expect(opts.save).toHaveBeenCalledTimes(1);
-    expect(saves[0]!.currentTranscriptId).toBe("SAMPLE-01");
-
-    // A change while that save hangs: no second save until it settles.
-    button("Unsafe", rank()).click();
-    await tick(10_000);
-    expect(opts.save).toHaveBeenCalledTimes(1);
-    release();
-    await tick(0);
-    expect(opts.save).toHaveBeenCalledTimes(2);
-    release();
-    await tick(0);
-    expect(max).toBe(1);
-    expectValid(saves[1]!);
-    expect(
-      Object.keys(saves[1]!.results[0]!).filter((k) => k.startsWith("q")),
-    ).toHaveLength(1);
-  });
-
-  it("keeps working after a failed save, and reports Failed then Saved", async () => {
-    let refuse = true;
-    const opts = mount({
-      save: vi.fn(async (e: KoraExport) => {
-        if (refuse) throw new Error("refused");
-        saves.push(clone(e));
-      }),
-    });
-    await tick(10);
-    button("Got it").click();
-    await tick(3000);
-    expect(opts.onSaveStateChange).toHaveBeenCalledWith(KoraSaveState.Failed);
-    expect(el.textContent).not.toMatch(/fail|error|couldn't save/i); // the host shows the error, not the tool
-
-    refuse = false;
-    button("Unsafe", rank()).click();
-    await tick(2100);
-    expect(opts.onSaveStateChange).toHaveBeenLastCalledWith(
-      KoraSaveState.Saved,
-    );
-    expect(opts.onSaveStateChange).toHaveBeenCalledTimes(2);
-    expect(saves).toHaveLength(1);
-    expect(saves[0]!.results[0]!.startedAt).not.toBeNull(); // nothing from before the failure was lost
-    expectValid(saves[0]!);
-  });
-
-  it("stores nothing in the browser and refuses an export from another reviewer", async () => {
-    const setItem = vi.spyOn(Storage.prototype, "setItem");
+  it("saves a valid export about two seconds after a change, and on nothing at all", async () => {
     mount();
-    await tick(3000);
-    expect(setItem).not.toHaveBeenCalled();
-    expect(document.cookie).toBe("");
-    unmount();
-    expect(el.children).toHaveLength(0);
-    const other = clone(sampleExport) as unknown as KoraExport;
-    other.reviewer.id = "someone-else";
-    expect(() => mount({ savedExport: other })).toThrow(/different reviewerId/);
+    await tick(2100);
+    expect(saves).toHaveLength(1);
+    expectValid(saves[0]);
+    expect(saves[0].place).toEqual({
+      conversationId: "C-1",
+      screen: "read",
+    });
+
+    pick("comp", 1);
+    await tick(2100);
+    expect(saves.at(-1)!.ratings[0].comprehensionAnswer).toBe(1);
   });
 
-  it("repeats opt-outs from earlier assignments in the export", async () => {
-    const saved = parseKoraExport(clone(sampleExport));
-    mount({ savedExport: saved, optOutCategories: [KoraCategory.Violence] });
-    await tick(50);
-    const safe = [
-      ...rank().querySelectorAll('button[aria-pressed="true"]'),
-    ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
-    safe.click();
-    await handle!.flush();
-    expectValid(saves[0]!);
-    expect(saves[0]!.optOutCategories).toEqual([KoraCategory.Violence]);
+  it("reopens the Judge screen with the answers and highlights already given", async () => {
+    mount();
+    await tick(10);
+    const reply = el.querySelector<HTMLElement>('.bubble[tabindex="0"]')!;
+    reply.focus();
+    reply.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    );
+    reply.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "+", bubbles: true }),
+    );
+    await tick(10);
+    await readScreen();
+    button("Not OK").click();
+    await tick(2100);
+
+    const saved = clone(saves.at(-1)!);
+    expect(saved.place.screen).toBe("judge");
+    unmount();
+    document.body.innerHTML = "";
+
+    const el2 = document.createElement("div");
+    document.body.append(el2);
+    mount({ savedExport: saved });
+    await tick(10);
+
+    expect(text()).toContain("Now judge the AI's answers");
+    expect(el.querySelectorAll(".tk.pos").length).toBeGreaterThan(0);
+    expect(text()).toContain("How serious would it be");
+  });
+
+  it("keeps the time already spent, so a soft block doesn't start again", async () => {
+    const blocked = session([item({ position: 1, firstTimeOnRisk: true })]);
+    mount({ session: { ...blocked, number: 1 } });
+    await tick(30_000);
+    pick("comp", 0);
+    await tick(2100);
+    const saved = clone(saves.at(-1)!);
+    expect(saved.ratings[0].timeMsRead).toBeGreaterThanOrEqual(30_000);
+    unmount();
+
+    mount({ session: { ...blocked, number: 1 }, savedExport: saved });
+    await tick(10);
+    expect((button("Next") as HTMLButtonElement).disabled).toBe(true);
+    await tick(13_000);
+    expect((button("Next") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("shows the finished session again when the export says it is done", async () => {
+    mount();
+    await tick(10);
+    await readScreen();
+    await judgeScreen("OK");
+    button("Skip this").click();
+    await tick(2100);
+    const saved = clone(saves.at(-1)!);
+    expect(saved.isDone).toBe(true);
+    unmount();
+
+    const onComplete = vi.fn();
+    mount({ savedExport: saved, onComplete });
+    await tick(10);
+    expect(text()).toContain("Thank you — that is a full session");
+  });
+
+  it("reports a failed save and clears the report when the next one lands", async () => {
+    const onSaveStateChange = vi.fn();
+    let fail = true;
+    mount({
+      save: vi.fn(async (e: KoraExport) => {
+        if (fail) throw new Error("no");
+        saves.push(clone(e));
+      }),
+      onSaveStateChange,
+    });
+    await tick(2100);
+    expect(onSaveStateChange).toHaveBeenCalledWith(KoraSaveState.Failed);
+
+    fail = false;
+    pick("comp", 0);
+    await tick(2100);
+    expect(onSaveStateChange).toHaveBeenLastCalledWith(KoraSaveState.Saved);
+  });
+
+  it("drops a conversation the host withdraws", async () => {
+    const nextItem = vi.fn(
+      async (): Promise<KoraNext> => ({
+        item: item({ conversationId: "C-2" }),
+      }),
+    );
+    mount({
+      save: vi.fn(async (e: KoraExport) => {
+        saves.push(clone(e));
+        return { removed: ["C-1"] };
+      }),
+      next: nextItem,
+    });
+    await tick(2100);
+    expect(nextItem).toHaveBeenCalled();
+    expect(saves.at(-1)!.ratings.every((r) => r.conversationId !== "C-1")).toBe(
+      true,
+    );
   });
 });

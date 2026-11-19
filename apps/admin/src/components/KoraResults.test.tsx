@@ -9,19 +9,16 @@ serveApi(
   routes({
     "GET /kora/admin/results/answers": () =>
       Response.json({
-        profiles: 2,
-        profile: [
+        sessions: 2,
+        feedback: [
           {
-            question: "is_parent",
+            question: "f1",
             answers: [
-              { value: "yes", count: 1 },
-              { value: "no", count: 1 },
+              { value: "fully", count: 1 },
+              { value: "mostly", count: 1 },
             ],
           },
-        ],
-        exitSurveys: 1,
-        exitSurvey: [
-          { question: "exit_q1", answers: [{ value: "very", count: 1 }] },
+          { question: "f6", answers: [{ value: "about_right", count: 1 }] },
         ],
       }),
   }),
@@ -35,11 +32,12 @@ test("shows answer counts, never individual answers", async () => {
     queryWrapper(),
   );
 
-  await screen.findByText(/2 reviewers answered the profile and 1 answered/);
-  const profile = screen.getByRole("table", { name: "Profile" });
-  expect(within(profile).getByText("yes: 1, no: 1")).toBeTruthy();
-  const exit = screen.getByRole("table", { name: "Exit survey" });
-  expect(within(exit).getByText("very: 1")).toBeTruthy();
+  await screen.findByText(/2 sessions ended with their feedback answered/);
+  const feedback = screen.getByRole("table", {
+    name: "End-of-session feedback",
+  });
+  expect(within(feedback).getByText("fully: 1, mostly: 1")).toBeTruthy();
+  expect(within(feedback).getByText("about_right: 1")).toBeTruthy();
   expect(
     screen.getByRole("button", { name: "Download reviews (.jsonl)" }),
   ).toBeTruthy();

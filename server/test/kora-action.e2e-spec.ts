@@ -20,12 +20,16 @@ import {
   type TestContext,
 } from "./e2e-test-utils";
 import {
+  koraConversation,
+  koraJsonlFile,
+  koraSessionExport,
+} from "./kora-conversations";
+import {
   koraAdminActor,
   koraClosesAt,
   ORIGIN,
   setKoraProjectStatus,
 } from "./kora-fixtures";
-import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora review actions (e2e)", () => {
   let ctx: TestContext;
@@ -72,9 +76,11 @@ describe("Kora review actions (e2e)", () => {
 
   const uploadTwo = async () => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(koraPair("A1"), koraPair("A2")),
-      transcriptsPerAssignment: 2,
-      reviewsPerTranscript: 1,
+      conversationsText: koraJsonlFile(
+        koraConversation("A1"),
+        koraConversation("A2"),
+      ),
+      reviewsPerConversation: 1,
       closesAt: koraClosesAt(),
       actor: koraAdminActor(ctx),
     });
@@ -86,36 +92,85 @@ describe("Kora review actions (e2e)", () => {
       .agent(ctx.app.getHttpServer())
       .set("Authorization", `Bearer ${ctx.accessToken}`)
       .set("Origin", ORIGIN);
-  /** Rates the first `count` pairs the assignment gives, asking for each next one as the tool does. */
-  const rate = async (agent: ReturnType<typeof member>, count: number) => {
+  type Served = { id: string; riskId: string; contentHash: string };
+
+  /** Judges the first `count` conversations a session gives, asking for each next one as the tool does. */
+  const rate = async (
+    agent: ReturnType<typeof member>,
+    count: number,
+    options: { end?: boolean } = {},
+  ) => {
+    await agent
+      .patch("/kora/review/onboarding")
+      .send({ consented: true, onboarded: true })
+      .expect(200);
     const state = (await agent.get("/kora/review").expect(200)).body;
-    const id: string = state.assignment.id;
-    const transcripts: {
-      transcript: { transcriptId: string; category: string };
-      contentHash: string;
-    }[] = [...state.assignment.transcripts];
-    const send = () =>
+    const id: string = state.session.id;
+    const given: Served[] = state.session.items.map(
+      (i: { item: Served & { conversationId: string } }) => ({
+        id: i.item.conversationId,
+        riskId: i.item.riskId,
+        contentHash: i.item.contentHash,
+      }),
+    );
+    const send = (end = false) =>
       agent
-        .put(`/kora/review/assignments/${id}/export`)
+        .put(`/kora/review/sessions/${id}/export`)
         .send({
-          export: koraExport({
+          export: koraSessionExport({
             reviewerId: state.reviewerId,
-            assignmentId: id,
-            transcripts,
-            done: transcripts.map((t) => t.transcript.transcriptId),
+            sessionId: id,
+            conversations: given,
+            done: given.map((c) => c.id),
+            isDone: end,
+            feedback: end,
           }),
         })
         .expect(200);
     await send();
-    while (transcripts.length < count) {
-      const { next } = (
-        await agent.post(`/kora/review/assignments/${id}/next`).expect(200)
+    while (given.length < count) {
+      const { item } = (
+        await agent.post(`/kora/review/sessions/${id}/next`).expect(200)
       ).body;
-      if (!next) return id;
-      transcripts.push(next);
+      if (!item) break;
+      given.push({
+        id: item.conversationId,
+        riskId: item.riskId,
+        contentHash: item.contentHash,
+      });
       await send();
     }
+    if (options.end) await send(true);
     return id;
+  };
+
+  /** The tool's last save of a session, once its feedback screen is done. */
+  const endSession = async (
+    agent: ReturnType<typeof member>,
+    sessionId: string,
+  ) => {
+    const state = (await agent.get("/kora/review").expect(200)).body;
+    await agent
+      .put(`/kora/review/sessions/${sessionId}/export`)
+      .send({
+        export: koraSessionExport({
+          reviewerId: state.reviewerId,
+          sessionId,
+          conversations: (state.session?.items ?? []).map(
+            (i: { item: Served & { conversationId: string } }) => ({
+              id: i.item.conversationId,
+              riskId: i.item.riskId,
+              contentHash: i.item.contentHash,
+            }),
+          ),
+          done: (state.session?.items ?? []).map(
+            (i: { item: { conversationId: string } }) => i.item.conversationId,
+          ),
+          isDone: true,
+          feedback: true,
+        }),
+      })
+      .expect(200);
   };
   const eventuallyCompleted = async (actionId: number) => {
     for (let i = 0; i < 50 && !(await completed(actionId)); i++) {
@@ -124,41 +179,46 @@ describe("Kora review actions (e2e)", () => {
     return completed(actionId);
   };
 
-  it("completes a member's Kora actions when they finish their first assignment", async () => {
+  it("completes a member's Kora actions when they finish their first session", async () => {
     await uploadTwo();
     const kora = await liveAction(
-      "Review chatbot transcripts",
+      "Review chatbot conversations",
       ActionTaskKind.KoraReview,
     );
     const other = await liveAction("Some form action", ActionTaskKind.Form);
-    await rate(member(), 2);
+    await rate(member(), 2, { end: true });
 
     expect(await eventuallyCompleted(kora.id)).toBe(true);
     expect(await completed(other.id)).toBe(false);
   });
 
-  it("completes a member's Kora actions when, after a retire, nothing is left to give them", async () => {
+  it("completes a member's Kora actions when a retire leaves their session nothing more to give", async () => {
     const batch = await uploadTwo();
     const kora = await liveAction(
-      "Review chatbot transcripts",
+      "Review chatbot conversations",
       ActionTaskKind.KoraReview,
     );
-    const id = await rate(member(), 1);
+    const agent = member();
+    const id = await rate(agent, 1);
     expect(await completed(kora.id)).toBe(false);
 
     const retired = await ctx.app
       .get(KoraBatchActionsService)
       .retire({ batchId: batch.id, actor: koraAdminActor(ctx) });
     expect(retired.ok).toBe(true);
-    await member().post(`/kora/review/assignments/${id}/next`).expect(200);
+    expect(
+      (await agent.post(`/kora/review/sessions/${id}/next`).expect(200)).body
+        .done,
+    ).toBeTruthy();
+    await endSession(agent, id);
 
     expect(await eventuallyCompleted(kora.id)).toBe(true);
   });
 
-  it("leaves a member's Kora actions open when a retire empties an assignment they never rated", async () => {
+  it("leaves a member's Kora actions open when a retire empties a session they never judged", async () => {
     const batch = await uploadTwo();
     const kora = await liveAction(
-      "Review chatbot transcripts",
+      "Review chatbot conversations",
       ActionTaskKind.KoraReview,
     );
     await member().get("/kora/review").expect(200);

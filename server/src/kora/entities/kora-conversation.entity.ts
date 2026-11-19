@@ -1,3 +1,4 @@
+import { KoraItemType } from "@alliance/common/kora";
 import { ApiProperty } from "@nestjs/swagger";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -10,10 +11,10 @@ import {
 } from "typeorm";
 import { KoraBatch } from "./kora-batch.entity";
 
-/** One pair of conversations to review, keyed by KORA's transcriptId. */
+/** One conversation to review, keyed by KORA's conversation_id. */
 @Entity()
 @Index(["batchId", "position"], { unique: true })
-export class KoraTranscript {
+export class KoraConversation {
   @PrimaryColumn({ type: "varchar" })
   @ApiProperty()
   id: string;
@@ -29,11 +30,30 @@ export class KoraTranscript {
   @Column({ type: "int" })
   position: number;
 
+  @Index()
   @Column({ type: "varchar" })
   @ApiProperty()
-  category: string;
+  riskId: string;
 
-  /** The converted transcript, valid against the review tool's transcriptSchema when stored. */
+  @Column({
+    type: "enum",
+    enum: KoraItemType,
+    enumName: "KoraItemType",
+  })
+  @ApiProperty({ enum: KoraItemType, enumName: "KoraItemType" })
+  itemType: KoraItemType;
+
+  /** AI turns. Drives the session's load budget and the extended opt-in. */
+  @Column({ type: "int" })
+  @ApiProperty()
+  nTurns: number;
+
+  /** Behind the extended opt-in. From the import, defaulting to nTurns above the short length. */
+  @Column({ type: "boolean" })
+  @ApiProperty()
+  optIn: boolean;
+
+  /** The converted conversation, valid against conversationSchema when stored. */
   @Column({ type: "jsonb" })
   content: unknown;
 

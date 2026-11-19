@@ -39,13 +39,13 @@ type Claimed = {
   deliver: (url: string) => Promise<boolean>;
 };
 
-// A reviewer who finished an assignment, has none open, and hasn't been told
+// A reviewer who finished a session, has none open, and hasn't been told
 // since the newest batch arrived.
 const MORE_ELIGIBLE = `r."deletedAt" IS NULL
-  AND EXISTS (SELECT 1 FROM "kora_assignment" a WHERE a."reviewerId" = r."id"
-    AND a."completedAt" IS NOT NULL AND a."deletedAt" IS NULL)
-  AND NOT EXISTS (SELECT 1 FROM "kora_assignment" a WHERE a."reviewerId" = r."id"
-    AND a."completedAt" IS NULL AND a."deletedAt" IS NULL)
+  AND EXISTS (SELECT 1 FROM "kora_session" s WHERE s."reviewerId" = r."id"
+    AND s."endedAt" IS NOT NULL AND s."deletedAt" IS NULL)
+  AND NOT EXISTS (SELECT 1 FROM "kora_session" s WHERE s."reviewerId" = r."id"
+    AND s."endedAt" IS NULL AND s."deletedAt" IS NULL)
   AND (r."moreNotifiedAt" IS NULL
     OR r."moreNotifiedAt" < (SELECT MAX("createdAt") FROM "kora_batch"))`;
 

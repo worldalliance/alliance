@@ -1,4 +1,4 @@
-import { KORA_UPLOAD_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
+import { KORA_UPLOAD_NEEDS_CONVERSATIONS } from "@alliance/common/kora";
 import type { KoraBatchDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Play, Shuffle } from "lucide-react";
@@ -29,8 +29,8 @@ function PreviewLink({ batchId }: { batchId: string }) {
   return (
     <Link
       to={`/kora-participants/preview/${batchId}`}
-      aria-label="Preview a random transcript"
-      title="Preview a random transcript"
+      aria-label="Preview a random conversation"
+      title="Preview a random conversation"
       className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 text-zinc-700 hover:bg-zinc-50"
     >
       <Play className="h-4 w-4" aria-hidden="true" />
@@ -62,20 +62,19 @@ function UploadError({ error }: { error: Error }) {
 
 function UploadForm() {
   const [uploaded, setUploaded] = useState<KoraBatchDto | null>(null);
-  const [transcripts, setTranscripts] = useState<File | null>(null);
+  const [conversations, setConversations] = useState<File | null>(null);
   const [missingFile, setMissingFile] = useState(false);
   const upload = useUploadKoraBatch({ onSuccess: setUploaded });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMissingFile(!transcripts);
-    if (!transcripts) return;
+    setMissingFile(!conversations);
+    if (!conversations) return;
     const form = new FormData(event.currentTarget);
     setUploaded(null);
     upload.mutate({
-      transcripts,
-      transcriptsPerAssignment: Number(form.get("transcriptsPerAssignment")),
-      reviewsPerTranscript: Number(form.get("reviewsPerTranscript")),
+      conversations,
+      reviewsPerConversation: Number(form.get("reviewsPerConversation")),
       closesAt: closingInstant(String(form.get("closesAt"))),
     });
   };
@@ -84,31 +83,19 @@ function UploadForm() {
     <form onSubmit={onSubmit} className="space-y-3 text-sm">
       <div className="flex flex-wrap gap-4">
         <label>
-          Transcripts file from KORA (.jsonl, .json or .yaml)
+          Conversations file from KORA (.jsonl, .json or .yaml)
           <input
-            name="transcripts"
+            name="conversations"
             type="file"
-            onChange={(e) => setTranscripts(e.target.files?.[0] ?? null)}
+            onChange={(e) => setConversations(e.target.files?.[0] ?? null)}
             accept=".jsonl,.json,.yaml,.yml,application/json,application/yaml"
             className={FILE_FIELD}
           />
         </label>
         <label>
-          Transcripts per assignment
+          Reviews per conversation
           <input
-            name="transcriptsPerAssignment"
-            type="number"
-            min={1}
-            max={100}
-            defaultValue={10}
-            required
-            className={FIELD}
-          />
-        </label>
-        <label>
-          Reviews per transcript
-          <input
-            name="reviewsPerTranscript"
+            name="reviewsPerConversation"
             type="number"
             min={1}
             max={50}
@@ -146,14 +133,14 @@ function UploadForm() {
       <div aria-live="polite">
         {uploaded && (
           <p>
-            Read {uploaded.transcriptCount} transcripts.{" "}
+            Read {uploaded.conversationCount} conversations.{" "}
             <PreviewLink batchId={uploaded.id} />
           </p>
         )}
       </div>
       {missingFile && (
         <p role="alert" className="text-red-700">
-          {KORA_UPLOAD_NEEDS_TRANSCRIPTS}
+          {KORA_UPLOAD_NEEDS_CONVERSATIONS}
         </p>
       )}
       {upload.isError && <UploadError error={upload.error} />}
@@ -177,7 +164,8 @@ function BatchList() {
   if (batches.data.length === 0) {
     return (
       <p className="text-sm text-zinc-600">
-        No transcripts yet. Upload KORA&apos;s file to make the project active.
+        No conversations yet. Upload KORA&apos;s file to make the project
+        active.
       </p>
     );
   }
@@ -192,8 +180,7 @@ function BatchTable({ batches }: { batches: KoraBatchDto[] }) {
         <thead className="text-left text-zinc-500">
           <tr>
             <th className={CELL}>Uploaded</th>
-            <th className={CELL}>Transcripts</th>
-            <th className={CELL}>Per assignment</th>
+            <th className={CELL}>Conversations</th>
             <th className={CELL}>Reviews each</th>
             <th className={CELL}>Closes on</th>
             <th className={CELL}>Status</th>
@@ -209,9 +196,8 @@ function BatchTable({ batches }: { batches: KoraBatchDto[] }) {
           {batches.map((batch) => (
             <tr key={batch.id} className="border-t border-zinc-200">
               <td className={CELL}>{formatKoraDate(batch.createdAt)}</td>
-              <td className={CELL}>{batch.transcriptCount}</td>
-              <td className={CELL}>{batch.transcriptsPerAssignment}</td>
-              <td className={CELL}>{batch.reviewsPerTranscript}</td>
+              <td className={CELL}>{batch.conversationCount}</td>
+              <td className={CELL}>{batch.reviewsPerConversation}</td>
               <td className={CELL}>
                 <KoraBatchClosesAt batch={batch} />
               </td>
@@ -237,7 +223,7 @@ export function KoraBatches() {
   return (
     <section aria-labelledby="kora-batches" className="space-y-3">
       <h2 id="kora-batches" className="font-semibold">
-        Transcripts
+        Conversations
       </h2>
       <BatchList />
       <UploadForm />

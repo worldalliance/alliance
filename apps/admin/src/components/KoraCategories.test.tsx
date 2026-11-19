@@ -10,13 +10,13 @@ serveApi(
         categories: [
           {
             category: "fear_trauma_and_distress",
-            pairs: 4,
+            conversations: 4,
             reviewsNeeded: 7,
             optedOut: 2,
           },
           {
             category: "cybersecurity",
-            pairs: 2,
+            conversations: 2,
             reviewsNeeded: 0,
             optedOut: 0,
           },
@@ -25,7 +25,7 @@ serveApi(
   }),
 );
 
-it("lists each category's pairs, reviews needed and opt-outs by its reviewer-facing name", async () => {
+it("lists each category's conversations, reviews needed and opt-outs by its reviewer-facing name", async () => {
   render(<KoraCategories />, queryWrapper());
   const table = await screen.findByRole("table");
   const rows = within(table)
