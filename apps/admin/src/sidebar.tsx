@@ -1,13 +1,14 @@
 import { cn } from "@alliance/shared/styles/util";
-import { isProduction } from "@alliance/sharedweb/lib/config";
-import { LogOut, PanelLeft } from "lucide-react";
-import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import React, { useEffect, useMemo } from "react";
 import { Outlet } from "react-router";
 import AdminSearch from "./components/AdminSearch";
+import EnvironmentBadge from "./components/EnvironmentBadge";
 import MemberZoneLink from "./components/MemberZoneLink";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { MmsThreadsLiveProvider } from "./lib/mmsThreadsLive";
+import { useSidebarCollapsed } from "./lib/sidebarCollapsed";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
 import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
 import { useNeedsReplyCount } from "./lib/useTextThreadsAdmin";
@@ -28,107 +29,88 @@ const Sidebar: React.FC = () => {
     useGroupAssignmentMembersAdmin();
   const needsReplyCount = useNeedsReplyCount();
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [collapsed, setCollapsed] = useSidebarCollapsed();
 
-  // Only check admin status after loading is complete and we have a user
   useEffect(() => {
     if (!authLoading && user && !user.admin) {
       logout();
     }
   }, [authLoading, user, logout]);
 
-  const [sidebarWidth, setSidebarWidth] = useState<number>(220);
-
-  useLayoutEffect(() => {
-    if (isSidebarOpen) {
-      setSidebarWidth(220);
-    } else {
-      setSidebarWidth(48);
-    }
-  }, [isSidebarOpen]);
-
-  const isProd = isProduction();
+  const toggleLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   return (
-    <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-page">
-      <div
-        className="overflow-y-auto max-h-screen overflow-x-hidden flex flex-col justify-between relative transition-all duration-100 bg-[#f4f4f4]"
-        style={{
-          width: `${sidebarWidth}px`,
-          ...(isSidebarOpen
-            ? { overflowY: `auto` }
-            : { overflowY: `hidden`, backgroundColor: `transparent` }),
-        }}
+    <div className="flex h-screen bg-page">
+      <aside
+        className={cn(
+          "flex shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 transition-[width] duration-150 ease-out",
+          collapsed ? "w-14" : "w-60",
+        )}
       >
         <div
-          inert={!isSidebarOpen}
           className={cn(
-            "flex flex-col gap-y-3 sticky",
-            "p-5 py-6",
-            `w-[${sidebarWidth}px]`,
-            isSidebarOpen ? "translate-x-0" : "-translate-x-[300px]",
+            "flex gap-2 pt-4 pb-3",
+            collapsed ? "flex-col items-center px-2" : "items-start px-4",
           )}
         >
-          <h1
-            className={cn(
-              "text-[14pt] font-bold pb-0",
-              isProd ? "text-red-500" : "text-gray-900",
+          <div className={cn("flex flex-col gap-1", !collapsed && "flex-1")}>
+            {!collapsed && (
+              <span className="text-sm font-semibold text-zinc-900">
+                Alliance admin
+              </span>
             )}
+            <EnvironmentBadge collapsed={collapsed} />
+          </div>
+          <button
+            type="button"
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed(!collapsed)}
+            className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900"
           >
-            Alliance Admin
-          </h1>
-          {isProd && (
-            <span className="-mt-2 w-fit rounded-sm bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-              Production
+            <ToggleIcon size={16} aria-hidden />
+          </button>
+        </div>
+        <div className={cn("pb-3", collapsed ? "px-2.5" : "px-3")}>
+          <AdminSearch compact={collapsed} />
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 pb-4">
+          {!collapsed && (
+            <SidebarNav
+              groupAssignmentCount={membersUndergoingGroupAssignment.length}
+              needsReplyCount={needsReplyCount}
+              pendingOutreachPartnershipCount={pendingOutreachPartnershipCount}
+            />
+          )}
+        </div>
+        <div
+          className={cn(
+            "flex items-center gap-1 border-t border-zinc-200 py-2",
+            collapsed ? "flex-col px-2" : "px-3",
+          )}
+        >
+          <MemberZoneLink />
+          {!collapsed && (
+            <span className="min-w-0 flex-1 truncate text-xs text-zinc-600">
+              {user?.email}
             </span>
           )}
-          <AdminSearch />
-          <SidebarNav
-            groupAssignmentCount={membersUndergoingGroupAssignment.length}
-            needsReplyCount={needsReplyCount}
-            pendingOutreachPartnershipCount={pendingOutreachPartnershipCount}
-          />
+          <button
+            type="button"
+            aria-label="Log out"
+            title="Log out"
+            className="shrink-0 rounded-md p-1.5 text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900"
+            onClick={logout}
+          >
+            <LogOut size={16} aria-hidden />
+          </button>
         </div>
-        {isSidebarOpen && (
-          <div className="flex flex-row justify-between items-center p-3 px-5 pb-8">
-            <p className="text-sm text-gray-800 truncate">{user?.email}</p>
-            <button
-              type="button"
-              aria-label="Log out"
-              title="Log out"
-              className="shrink-0 rounded p-1.5 text-zinc-700 hover:bg-zinc-200 hover:text-black cursor-pointer"
-              onClick={logout}
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          aria-expanded={isSidebarOpen}
-          className={cn(
-            "absolute top-6 rounded-md p-1 hover:bg-zinc-200",
-            isSidebarOpen ? "right-6" : "right-0",
-            "cursor-pointer",
-          )}
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          <PanelLeft className="h-5 w-5" aria-hidden />
-        </button>
-      </div>
-      <MemberZoneLink />
-      <div className="flex-1 overflow-y-scroll max-h-screen">
-        <div
-          className="flex flex-col gap-y-5 min-h-0 flex-1 h-fit"
-          style={{
-            maxWidth: `calc(100vw - ${sidebarWidth}px)`,
-          }}
-        >
-          <Outlet />
-        </div>
-      </div>
+      </aside>
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <Outlet />
+      </main>
     </div>
   );
 };

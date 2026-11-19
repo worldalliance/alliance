@@ -32,7 +32,7 @@ export type SearchResult = {
   to: string;
 };
 
-export type SearchPage = { label: string; folder: string | null; to: string };
+export type SearchPage = { label: string; section: string | null; to: string };
 
 const PER_KIND = 5;
 
@@ -92,7 +92,7 @@ export const adminSearchResults = ({
     ).map((page) => ({
       kind: SearchKind.Page,
       label: page.label,
-      detail: page.folder,
+      detail: page.section,
       to: page.to,
     })),
     ...startsFirst(actions.filter(matches), (a) => a.name, query).map(

@@ -1,19 +1,18 @@
 import {
-  Baby,
+  AudioLines,
   BarChart2,
   Building2,
   Calendar,
   CirclePile,
+  Contact,
   FileText,
   Film,
   FolderKanban,
+  HandHeart,
   Handshake,
-  ImageUp,
   Link as LinkIcon,
   ListChecks,
   ListOrdered,
-  Mail,
-  MailPlus,
   Map,
   Megaphone,
   MessageSquare,
@@ -24,18 +23,14 @@ import {
   Plane,
   Radio,
   ScrollText,
-  Share2,
-  Sigma,
+  Smartphone,
   SquareActivity,
-  SquareMousePointer,
   UserPlus,
-  UserRoundCheck,
   Users,
   Waypoints,
 } from "lucide-react";
 import type React from "react";
 import type { SearchPage } from "../lib/adminSearch";
-import { SidebarFolder } from "../lib/sidebarFolders";
 
 export type NavLink = {
   to: string;
@@ -45,206 +40,169 @@ export type NavLink = {
   notifCount?: number | null;
 };
 
-export type NavFolder = {
-  folder: SidebarFolder;
-  label: string;
-  links: NavLink[];
-};
+export type NavSection =
+  | { label: null; links: NavLink[]; more?: never }
+  | { label: string; links: NavLink[]; more?: { to: string; label: string }[] };
 
-export type NavEntry = NavLink | NavFolder;
-
-export const isFolder = (entry: NavEntry): entry is NavFolder =>
-  "folder" in entry;
-
-export const navEntries = (counts: {
+export const navSections = (counts: {
   groupAssignmentCount: number;
   needsReplyCount: number | null;
   pendingOutreachPartnershipCount: number;
-}): NavEntry[] => [
-  { to: "/", label: "Stats", icon: <BarChart2 size={16} /> },
-  { to: "/projects", label: "Projects", icon: <FolderKanban size={16} /> },
+}): NavSection[] => [
   {
-    to: "/kora-participants",
-    label: "Kora participants",
-    icon: <Baby size={16} />,
-  },
-  { to: "/actions", label: "Actions", icon: <SquareActivity size={16} /> },
-  {
-    folder: SidebarFolder.ActionPlanning,
-    label: "Action Planning",
+    label: null,
     links: [
+      { to: "/", label: "Stats", icon: <BarChart2 size={16} /> },
+      {
+        to: "/needs-reply",
+        label: "Needs reply",
+        icon: <MessageSquareReply size={16} />,
+        notifCount: counts.needsReplyCount,
+      },
+      { to: "/texts", label: "Texts", icon: <Smartphone size={16} /> },
+    ],
+  },
+  {
+    label: "Work",
+    links: [
+      { to: "/projects", label: "Projects", icon: <FolderKanban size={16} /> },
+      { to: "/actions", label: "Actions", icon: <SquareActivity size={16} /> },
       { to: "/priority", label: "Priority", icon: <ListOrdered size={16} /> },
       {
         to: "/scheduled",
-        label: "Scheduled Plans",
+        label: "Scheduled plans",
         icon: <Calendar size={16} />,
       },
       { to: "/contracts", label: "Contracts", icon: <FileText size={16} /> },
-      { to: "/formulas", label: "Formulas", icon: <Sigma size={16} /> },
       {
-        to: "/member-lists",
-        label: "Member lists",
-        icon: <UserRoundCheck size={16} />,
+        to: "/kora-participants",
+        label: "Kora participants",
+        icon: <AudioLines size={16} />,
       },
+    ],
+    more: [
+      { to: "/forms", label: "Forms" },
+      { to: "/formulas", label: "Formulas" },
+      { to: "/member-lists", label: "Member lists" },
     ],
   },
   {
-    folder: SidebarFolder.Activity,
-    label: "Activity",
+    label: "People",
     links: [
+      { to: "/members", label: "Members", icon: <Users size={16} /> },
       {
-        to: "/invite-feed",
-        label: "Live Invite Feed",
-        icon: <Radio size={16} />,
+        to: "/groups",
+        label: "Groups",
+        icon: <CirclePile size={16} />,
+        notifCount: counts.groupAssignmentCount,
       },
+      { to: "/waitlist", label: "Waitlist", icon: <ListChecks size={16} /> },
       {
-        to: "/event-log",
-        label: "Event Log",
-        icon: <ScrollText size={16} />,
+        to: "/welcome-queue",
+        label: "Welcome queue",
+        icon: <MessageSquare size={16} />,
       },
+      { to: "/away", label: "Away members", icon: <Plane size={16} /> },
+      {
+        to: "/staff-directory",
+        label: "Staff directory",
+        icon: <Contact size={16} />,
+      },
+    ],
+    more: [
+      { to: "/members/tags", label: "Member tags" },
+      { to: "/waitlist-emails", label: "Waitlist emails" },
     ],
   },
   {
-    folder: SidebarFolder.InvitesSharing,
-    label: "Links",
+    label: "Growth",
     links: [
-      {
-        to: "/custom-links",
-        label: "Custom Links",
-        icon: <LinkIcon size={16} />,
-      },
-      {
-        to: "/hosted-docs",
-        label: "Hosted Docs",
-        icon: <FileText size={16} />,
-      },
+      { to: "/invites", label: "Invites", icon: <UserPlus size={16} /> },
       {
         to: "/invite-links",
-        label: "Invite Links",
+        label: "Invite links",
         icon: <LinkIcon size={16} />,
       },
-      { to: "/invites", label: "User Invites", icon: <UserPlus size={16} /> },
       {
-        to: "/invite-message-template",
-        label: "Invitation Message",
-        icon: <MailPlus size={16} />,
+        to: "/ambassador-program",
+        label: "Ambassador program",
+        icon: <HandHeart size={16} />,
       },
       {
-        to: "/share-links",
-        label: "Share Links",
-        icon: <Share2 size={16} />,
+        to: "/outreach-partnerships",
+        label: "Outreach partnerships",
+        icon: <Handshake size={16} />,
+        notifCount: counts.pendingOutreachPartnershipCount,
       },
-      {
-        to: "/share-targets",
-        label: "Share Targets",
-        icon: <SquareMousePointer size={16} />,
-      },
-    ],
-  },
-  {
-    folder: SidebarFolder.Waitlist,
-    label: "Waitlist",
-    links: [
-      { to: "/waitlist", label: "Entries", icon: <ListChecks size={16} /> },
-      { to: "/waitlist-emails", label: "Emails", icon: <Mail size={16} /> },
       {
         to: "/organizations",
         label: "Organizations",
         icon: <Building2 size={16} />,
       },
     ],
-  },
-  { to: "/members", label: "Members", icon: <Users size={16} /> },
-  {
-    to: "/needs-reply",
-    label: "Needs reply",
-    icon: <MessageSquareReply size={16} />,
-    notifCount: counts.needsReplyCount,
-  },
-  { to: "/texts", label: "Texts", icon: <MessagesSquare size={16} /> },
-  {
-    to: "/groups",
-    label: "Groups",
-    icon: <CirclePile size={16} />,
-    notifCount: counts.groupAssignmentCount,
-  },
-  {
-    folder: SidebarFolder.Community,
-    label: "Community",
-    links: [
-      {
-        to: "/welcome-queue",
-        label: "Welcome Queue",
-        icon: <MessageSquare size={16} />,
-      },
-      {
-        to: "/staff-directory",
-        label: "Staff Directory",
-        icon: <Users size={16} />,
-      },
-      { to: "/member-map", label: "Member Map", icon: <Map size={16} /> },
-      { to: "/away", label: "Away Members", icon: <Plane size={16} /> },
-      { to: "/clusters", label: "Clusters", icon: <Network size={16} /> },
-      {
-        to: "/friend-graph",
-        label: "Friend Graph",
-        icon: <Waypoints size={16} />,
-      },
+    more: [
+      { to: "/invite-message-template", label: "Invitation message" },
+      { to: "/invites/graph", label: "Invite graph" },
+      { to: "/custom-links", label: "Custom links" },
+      { to: "/share-links", label: "Share links" },
+      { to: "/share-targets", label: "Share targets" },
     ],
   },
   {
-    folder: SidebarFolder.Outreach,
-    label: "Outreach",
-    links: [
-      {
-        to: "/ambassador-program",
-        label: "Ambassador Program",
-        icon: <Handshake size={16} />,
-      },
-      {
-        to: "/outreach-partnerships",
-        label: "Outreach Partnerships",
-        icon: <Handshake size={16} />,
-        notifCount: counts.pendingOutreachPartnershipCount,
-      },
-    ],
-  },
-  {
-    folder: SidebarFolder.Content,
     label: "Content",
     links: [
       {
         to: "/action-updates",
-        label: "Action Updates",
+        label: "Action updates",
         icon: <Megaphone size={16} />,
       },
       {
         to: "/general-updates",
-        label: "General Updates",
+        label: "General updates",
         icon: <Newspaper size={16} />,
       },
       {
         to: "/posts",
-        label: "Forum Posts",
-        icon: <MessageSquare size={16} />,
+        label: "Forum posts",
+        icon: <MessagesSquare size={16} />,
       },
-      { to: "/image", label: "Image Upload", icon: <ImageUp size={16} /> },
       { to: "/videos", label: "Videos", icon: <Film size={16} /> },
+    ],
+    more: [
+      { to: "/hosted-docs", label: "Hosted docs" },
+      { to: "/image", label: "Image upload" },
+      { to: "/test-push", label: "Test push notification" },
+    ],
+  },
+  {
+    label: "Insights",
+    links: [
+      { to: "/event-log", label: "Event log", icon: <ScrollText size={16} /> },
+      {
+        to: "/invite-feed",
+        label: "Live invite feed",
+        icon: <Radio size={16} />,
+      },
+      { to: "/member-map", label: "Member map", icon: <Map size={16} /> },
+      { to: "/clusters", label: "Clusters", icon: <Network size={16} /> },
+      {
+        to: "/friend-graph",
+        label: "Friend graph",
+        icon: <Waypoints size={16} />,
+      },
     ],
   },
 ];
 
 export const searchPages = (): SearchPage[] =>
-  navEntries({
+  navSections({
     groupAssignmentCount: 0,
     needsReplyCount: 0,
     pendingOutreachPartnershipCount: 0,
-  }).flatMap<SearchPage>((entry) =>
-    isFolder(entry)
-      ? entry.links.map((link) => ({
-          label: link.label,
-          folder: entry.label,
-          to: link.to,
-        }))
-      : [{ label: entry.label, folder: null, to: entry.to }],
+  }).flatMap((section) =>
+    [...section.links, ...(section.more ?? [])].map((link) => ({
+      label: link.label,
+      section: section.label,
+      to: link.to,
+    })),
   );

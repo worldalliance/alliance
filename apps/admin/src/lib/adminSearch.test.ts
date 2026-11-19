@@ -3,8 +3,8 @@ import { adminSearchResults, SearchKind } from "./adminSearch";
 
 const lists = {
   pages: [
-    { label: "Event Log", folder: "Activity", to: "/event-log" },
-    { label: "Members", folder: null, to: "/members" },
+    { label: "Event Log", section: "Insights", to: "/event-log" },
+    { label: "Members", section: null, to: "/members" },
   ],
   actions: [
     { id: 4, name: "Call your senator", archived: false },
@@ -48,7 +48,7 @@ describe("adminSearchResults", () => {
     ]);
   });
 
-  it("finds pages inside folders and members by email or phone", () => {
+  it("finds pages inside sections and members by email or phone", () => {
     expect(search("log")).toEqual([
       { kind: SearchKind.Page, label: "Event Log", to: "/event-log" },
     ]);
