@@ -1,6 +1,7 @@
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { User } from "src/user/entities/user.entity";
 import { PhoneOptInService } from "src/user/phone-opt-in.service";
+import request from "supertest";
 import type { Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
 import { stubSavedSend } from "./opt-in-fixtures";
@@ -81,6 +82,30 @@ describe("Phone number opt-in confirmation (e2e)", () => {
     await userRepo.update(ctx.testUserId, { textByDefault: false });
 
     await confirm();
+
+    expect(sendMms).not.toHaveBeenCalled();
+  });
+
+  const update = (body: Record<string, unknown>) =>
+    request(ctx.app.getHttpServer())
+      .post("/user/update")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send(body)
+      .expect(201);
+
+  it("texts the confirmation when a profile update saves a number", async () => {
+    await update({ phoneNumber: "+14155552671" });
+
+    expect(sendMms).toHaveBeenCalledTimes(1);
+    expect(sendMms).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "+14155552671", body: welcomeMessage }),
+    );
+  });
+
+  it("sends nothing for a profile update without a number", async () => {
+    await saveNumber("+14155552671");
+
+    await update({ profileDescription: "No number here" });
 
     expect(sendMms).not.toHaveBeenCalled();
   });

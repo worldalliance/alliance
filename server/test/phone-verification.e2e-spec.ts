@@ -2,6 +2,7 @@ import { OtpError } from "@alliance/common/otp";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
 import { OptOutSource } from "src/mms/opt-out-source";
+import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import { EntityManager, type Repository } from "typeorm";
@@ -12,6 +13,7 @@ import {
   type TestContext,
   waitForLockWait,
 } from "./e2e-test-utils";
+import { stubSavedSend } from "./opt-in-fixtures";
 import {
   captureSentCodes,
   forgetRateEvents,
@@ -102,6 +104,27 @@ describe("Phone verification (e2e)", () => {
       expect.objectContaining({ phoneNumber, phoneNumberVerified: true }),
     );
     expect((await reload(member)).phoneNumberVerifiedAt).toBeInstanceOf(Date);
+  });
+
+  it("texts the opt-in confirmation once the number is verified", async () => {
+    const sendMms = stubSavedSend(ctx);
+    try {
+      const member = await createMember();
+      const phoneNumber = uniquePhone();
+
+      expect((await verify(member, phoneNumber)).status).toBe(204);
+
+      expect(sendMms).toHaveBeenCalledTimes(1);
+      expect(sendMms).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: phoneNumber,
+          userId: member.id,
+          body: welcomeMessage,
+        }),
+      );
+    } finally {
+      sendMms.mockRestore();
+    }
   });
 
   it("keeps the old number until the new one is verified", async () => {
