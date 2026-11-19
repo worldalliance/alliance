@@ -16,10 +16,13 @@ import {
   formatCapture,
 } from "../src/main/agent/claude/testing/capture";
 import { stubCapturesVariable } from "../src/main/agent/claude/testing/stub";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
+import { executableVariable } from "../src/main/cli-executable";
+import { AgentKind } from "../src/shared/agent-kind";
 import { appArgs } from "./app-args";
 
 export { captured };
+
+export const claudeExecutableVariable = executableVariable(AgentKind.Claude);
 
 export function writeTestCapture(params: {
   name: string;

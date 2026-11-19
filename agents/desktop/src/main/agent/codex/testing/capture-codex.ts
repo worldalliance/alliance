@@ -1,12 +1,13 @@
 // Runs the thin path against the real, signed-in Codex through the adapter, checks it, and saves the redacted traffic as captures.
 // Usage, from agents/desktop: bun src/main/agent/codex/testing/capture-codex.ts
-// ALLIANCE_AGENT_CODEX_EXECUTABLE names the codex to run when `which codex` finds a wrapper, such as a terminal's shim.
-import { execFileSync } from "node:child_process";
+// ALLIANCE_AGENT_CODEX_EXECUTABLE names the codex to run when the one on PATH is a wrapper, such as a terminal's shim.
 import { copyFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
+import { AgentKind } from "../../../../shared/agent-kind";
+import { findExecutable } from "../../../cli-executable";
 import { devCodexHome } from "../../../dev-app-data";
 import { readCapture } from "../../testing/capture-record";
 import {
@@ -33,9 +34,9 @@ writeFileSync(workFile, "hello\n");
 // The private config holds only the trust the adapter writes, so removing it makes the run trust the repository from scratch, keeping the sign-in.
 rmSync(path.join(home, "config.toml"), { force: true });
 
-const realCodex =
-  process.env.ALLIANCE_AGENT_CODEX_EXECUTABLE ??
-  execFileSync("which", ["codex"], { encoding: "utf8" }).trim();
+const realCodex = R.unwrap(
+  findExecutable({ agent: AgentKind.Codex, env: process.env, packaged: false }),
+);
 const real: CodexCli = { executable: realCodex, home };
 const recorded: CodexCli = {
   executable: fileURLToPath(

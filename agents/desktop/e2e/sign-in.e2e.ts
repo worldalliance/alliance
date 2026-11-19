@@ -10,9 +10,9 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { CaptureRecordKind } from "../src/main/agent/claude/testing/capture";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
 import {
   authStatusCapture,
+  claudeExecutableVariable,
   launch,
   writeClaude,
   writeTestCapture,

@@ -10,8 +10,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { R } from "../../../../common/src/result";
+import { AgentKind } from "../shared/agent-kind";
 import { createClaudeBackend } from "./agent/claude/backend";
-import { findClaudeExecutable } from "./claude-executable";
+import { findExecutable } from "./cli-executable";
 import { ConversationStore } from "./conversations";
 import { describeError } from "./describe-error";
 import { devClaudeConfigDir } from "./dev-app-data";
@@ -197,7 +198,11 @@ void app.whenReady().then(() => {
   closeSessions = registerIpc({
     findClaude: () =>
       R.map(
-        findClaudeExecutable({ env: process.env, packaged: app.isPackaged }),
+        findExecutable({
+          agent: AgentKind.Claude,
+          env: process.env,
+          packaged: app.isPackaged,
+        }),
         (executable) => {
           const cli = { executable, configDir };
           return { cli, backend: createClaudeBackend(cli) };

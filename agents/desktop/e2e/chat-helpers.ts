@@ -6,8 +6,7 @@ import {
 } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
-import { workFolder, writeClaude } from "./launch";
+import { claudeExecutableVariable, workFolder, writeClaude } from "./launch";
 
 export async function chooseFolder(app: ElectronApplication, folder: string) {
   await app.evaluate(({ dialog }, chosen) => {

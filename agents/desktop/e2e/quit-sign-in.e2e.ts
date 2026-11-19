@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
 import type { AgentApi } from "../src/shared/ipc";
 import { firstMessage } from "./ipc-helpers";
 import {
   captured,
+  claudeExecutableVariable,
   launch,
   runningCount,
   workFolder,

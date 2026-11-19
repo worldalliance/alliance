@@ -13,12 +13,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
 import { AgentEventKind } from "../src/shared/agent-event";
 import type { AgentApi } from "../src/shared/ipc";
 import { firstMessage, start } from "./ipc-helpers";
 import {
   captured,
+  claudeExecutableVariable,
   launch,
   noteOutlivedApp,
   outlivedApp,
