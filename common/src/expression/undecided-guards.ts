@@ -1,8 +1,8 @@
-import { IS_UNKNOWN } from "./catalog";
+import { IS_MISSING } from "./catalog";
 import { BinaryOp, ExprKind, UnaryOp, children, type Expr } from "./tree";
 
 /**
- * The reads `isUnknown` tests in `side`, or in `!side` when `negated`, through
+ * The reads `isMissing` tests in `side`, or in `!side` when `negated`, through
  * a chain of `||`, or of `&&` when `negated`, as either decides the chain,
  * and through the left of `??`, which keeps a decided left.
  */
@@ -27,7 +27,7 @@ export function readsGuardedBy(
       : undefined
     : side;
   return call?.kind === ExprKind.Call &&
-    call.fn === IS_UNKNOWN &&
+    call.fn === IS_MISSING &&
     call.args.length === 1
     ? [call.args[0]]
     : [];
@@ -97,8 +97,8 @@ const decidesAsMuch = (existing: GuardKind, added: GuardKind) => {
 };
 
 /**
- * The reads an `isUnknown` guard decides where the analysis stands. In
- * `… || isUnknown(x)`, `… && !isUnknown(x)` and `isUnknown(x) ? … : …`, an
+ * The reads an `isMissing` guard decides where the analysis stands. In
+ * `… || isMissing(x)`, `… && !isMissing(x)` and `isMissing(x) ? … : …`, an
  * unknown `x` in the other operand or branch can't leave the result
  * undecided: the guard decides it. Reads are matched by their tree, whatever
  * their spacing, quotes or parentheses, so each guard keeps the names it

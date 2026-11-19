@@ -32,22 +32,22 @@ describe("three-valued logic", () => {
     ["true || false", true],
     ["false || false", false],
     ['(state === "CA") ?? false', false],
-    ["isUnknown(state)", true],
-    ["isUnknown(count)", false],
-    ['isUnknown(state === "CA")', true],
+    ["isMissing(state)", true],
+    ["isMissing(count)", false],
+    ['isMissing(state === "CA")', true],
   ])("%s → %p", (...[text, expected, overrides]) => {
     expect(valueOf(text, overrides)).toBe(expected);
   });
 
   test("a guarded read of an unknown doesn't fail the condition", () => {
-    expect(valueOf("!isUnknown(count) && count > 5", { count: null })).toBe(
+    expect(valueOf("!isMissing(count) && count > 5", { count: null })).toBe(
       false,
     );
     expect(
-      valueOf("isUnknown(count) ? null : count > 5", { count: null }),
+      valueOf("isMissing(count) ? null : count > 5", { count: null }),
     ).toBe(null);
     expect(
-      valueOf('!isUnknown(tags) && tags.includes("x")', { tags: null }),
+      valueOf('!isMissing(tags) && tags.includes("x")', { tags: null }),
     ).toBe(false);
   });
 
@@ -118,7 +118,7 @@ describe("errors and pending", () => {
     expect(failureOf('waiting === "x" || broken === "y"')).toMatchObject({
       kind: FailureKind.Error,
     });
-    expect(failureOf("isUnknown(waiting)")).toMatchObject({
+    expect(failureOf("isMissing(waiting)")).toMatchObject({
       kind: FailureKind.Pending,
     });
     expect(failureOf('[1].some(x => broken === "x", waiting)')).toMatchObject({
@@ -173,12 +173,12 @@ describe("errors and pending", () => {
       }),
     ).toBe(3);
     expect(
-      run("isUnknown([1].reduce((sum, n) => Math.log(-1), count))", {
+      run("isMissing([1].reduce((sum, n) => Math.log(-1), count))", {
         overrides: { count: null },
       }),
     ).toMatchObject({ ok: false, error: { kind: FailureKind.Error } });
     expect(
-      failureOf("isUnknown([1].map(n => Math.log(-1), state))"),
+      failureOf("isMissing([1].map(n => Math.log(-1), state))"),
     ).toMatchObject({ kind: FailureKind.Error });
   });
 

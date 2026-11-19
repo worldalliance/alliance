@@ -155,10 +155,10 @@ export function sourceQueries({
     }
     return types?.some(isNullableType) ?? false;
   };
-  // `tsc` narrows the right of `isUnknown(x) && …` to a missing `x`, which the
+  // `tsc` narrows the right of `isMissing(x) && …` to a missing `x`, which the
   // interpreter evaluates whatever `x` holds, so a type rule there reads the
   // type `x` is declared with. So does one in the branch of
-  // `isUnknown(x) ? … : …` that runs only with `x` missing, where using `x`
+  // `isMissing(x) ? … : …` that runs only with `x` missing, where using `x`
   // gains nothing.
   const ruledTypes = (expr: Expr): ts.Type[] => {
     const type = typeOf(expr);
@@ -167,7 +167,7 @@ export function sourceQueries({
       (type.flags & ts.TypeFlags.Never) !== 0 || everyPart(type, NULLISH);
     if (!narrowed) return [type];
     if (expr.kind !== ExprKind.Index) return declaredTypes(expr) ?? [type];
-    // A guard can narrow the target instead, as `isUnknown(items)` does
+    // A guard can narrow the target instead, as `isMissing(items)` does
     // before `items[0]`.
     const targets = ruledTypes(expr.target);
     const items = targets.map(itemOf);

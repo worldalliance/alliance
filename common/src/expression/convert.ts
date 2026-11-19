@@ -7,8 +7,8 @@ import {
 } from "../forms/formula-allowlist";
 import { R, type Result } from "../result";
 import {
-  IS_UNKNOWN,
-  IS_UNKNOWN_HINT,
+  IS_MISSING,
+  IS_MISSING_HINT,
   type Diagnostic,
   type Scope,
 } from "./catalog";
@@ -26,7 +26,7 @@ import { ExprKind, LAMBDA_ONLY_AS_ARGUMENT, UnaryOp, type Expr } from "./tree";
 export const TYPE_ARGUMENTS =
   "TypeScript reads a `<` here and a `>` after it as a call with type arguments. Write the `<` comparison the other way round, with `>`.";
 
-const UNDEFINED_UNSUPPORTED = `\`undefined\` isn't supported. ${IS_UNKNOWN_HINT}`;
+const UNDEFINED_UNSUPPORTED = `\`undefined\` isn't supported. ${IS_MISSING_HINT}`;
 
 const MATH_FUNCTIONS: ReadonlySet<string> = new Set(MATH_FUNCTION_NAMES);
 
@@ -191,7 +191,7 @@ class Converter {
     if (ts.isNonNullExpression(node)) {
       return this.fail(
         node,
-        `\`!\` after a value isn't supported. ${IS_UNKNOWN_HINT}`,
+        `\`!\` after a value isn't supported. ${IS_MISSING_HINT}`,
       );
     }
     if (ts.isTaggedTemplateExpression(node) && node.typeArguments) {
@@ -207,7 +207,7 @@ class Converter {
     if (this.inputs.has(name)) return { kind: ExprKind.Input, id: name };
     const named = this.namedIds.get(name);
     if (named !== undefined) return { kind: ExprKind.Ref, id: named };
-    if (this.functions.has(name) || name === IS_UNKNOWN) {
+    if (this.functions.has(name) || name === IS_MISSING) {
       return this.fail(node, `\`${name}\` is a function; call it with (…).`);
     }
     return this.fail(
@@ -255,7 +255,7 @@ class Converter {
       return this.fail(
         node.operatorToken,
         comparesNull
-          ? IS_UNKNOWN_HINT
+          ? IS_MISSING_HINT
           : `Use \`${loose}\`; \`${node.operatorToken.getText(this.file)}\` isn't supported.`,
       );
     }
@@ -356,7 +356,7 @@ class Converter {
       if (this.isParam(name)) {
         return this.fail(callee, `\`${name}\` is a parameter, not a function.`);
       }
-      if (name !== IS_UNKNOWN && !this.functions.has(name)) {
+      if (name !== IS_MISSING && !this.functions.has(name)) {
         return this.fail(callee, `There's no function called \`${name}\`.`);
       }
       return {

@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { MATH_OBJECT_NAME } from "../forms/formula-allowlist";
-import { IS_UNKNOWN, type Scope } from "./catalog";
+import { IS_MISSING, type Scope } from "./catalog";
 import { INTERNAL_PREFIX } from "./check-world";
 
 // The parser reads text as a sloppy-mode script, where these are names, but
@@ -30,7 +30,7 @@ const UNDECLARABLE: ReadonlySet<string> = new Set([
 
 const LANGUAGE_NAMES: ReadonlySet<string> = new Set([
   MATH_OBJECT_NAME,
-  IS_UNKNOWN,
+  IS_MISSING,
   "undefined",
 ]);
 

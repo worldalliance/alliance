@@ -98,7 +98,7 @@ describe("operators", () => {
     ['items["length"]', 2],
     ['tags["1"]', "y"],
     ['"abc"["0"]', "a"],
-    ["isUnknown(state) ? 0 : 1", 0],
+    ["isMissing(state) ? 0 : 1", 0],
   ])("%s → %p", (text, expected) => {
     expect(valueOf(text)).toEqual(expected);
   });

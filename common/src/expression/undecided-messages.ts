@@ -42,7 +42,7 @@ export const NEEDLESS_FALLBACK =
   "This fallback can't change the result: the value before `??` always has one. Remove the `?? …`.";
 
 export const GUARDED_FALLBACK =
-  "This fallback isn't needed: an `isUnknown(…)` check already decides the result when the value is missing. Remove the `?? …`.";
+  "This fallback isn't needed: an `isMissing(…)` check already decides the result when the value is missing. Remove the `?? …`.";
 
 export const NEEDS_YES_NO = "This needs a yes/no value.";
 
@@ -53,4 +53,4 @@ export const textMessage = (culprit: Culprit) => {
 };
 
 export const unstoppedMessage = (read: string) =>
-  `This function can't take a missing value here, and gets one when \`${read}\` has none: \`&&\` and \`||\` run both sides, so a check beside one doesn't stop it. Add \`?? …\` to \`${read}\`, or check it with a ternary, which runs only the branch it takes, as in \`isUnknown(${read}) ? … : …\`.`;
+  `This function can't take a missing value here, and gets one when \`${read}\` has none: \`&&\` and \`||\` run both sides, so a check beside one doesn't stop it. Add \`?? …\` to \`${read}\`, or check it with a ternary, which runs only the branch it takes, as in \`isMissing(${read}) ? … : …\`.`;

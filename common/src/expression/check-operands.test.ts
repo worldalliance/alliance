@@ -94,7 +94,7 @@ test("+ on text and template parts show only text, numbers and yes/no values", (
 });
 
 test.each([
-  ["state === null", "Use isUnknown(…) to test for a missing value.", 10],
+  ["state === null", "Use isMissing(…) to test for a missing value.", 10],
   [
     "items[0] === state",
     "Only text, numbers and yes/no values can be compared.",
@@ -116,56 +116,56 @@ test.each([
 
 test("a hinted comparison's unknown its own ?? decides doesn't reach an outer one", () => {
   expect(problems("((state === null) ?? false) ?? true")).toEqual([
-    { message: "Use isUnknown(…) to test for a missing value.", at: "null" },
+    { message: "Use isMissing(…) to test for a missing value.", at: "null" },
     { message: NEEDLESS, at: "true" },
   ]);
 });
 
 test.each([
-  ["isUnknown(state) && !state", "This needs a yes/no value.", "state"],
-  ["isUnknown(total) && !total", "This needs a yes/no value.", "total"],
+  ["isMissing(state) && !state", "This needs a yes/no value.", "state"],
+  ["isMissing(total) && !total", "This needs a yes/no value.", "total"],
   [
-    'items.some(item => isUnknown(item["score"]) && !item["score"])',
+    'items.some(item => isMissing(item["score"]) && !item["score"])',
     "This needs a yes/no value.",
     'item["score"]',
   ],
   [
-    "isUnknown(state) ? (state || true) : false",
+    "isMissing(state) ? (state || true) : false",
     "This needs a yes/no value.",
     "state",
   ],
   [
-    "isUnknown(items[0]) && items[0] === items[0]",
+    "isMissing(items[0]) && items[0] === items[0]",
     "Only text, numbers and yes/no values can be compared.",
     "items[0]",
   ],
   [
-    "isUnknown(items) && items[0] === 1",
+    "isMissing(items) && items[0] === 1",
     "Only text, numbers and yes/no values can be compared.",
     "items[0]",
   ],
-  ["isUnknown(items) && !items[0]", "This needs a yes/no value.", "items[0]"],
-  ["isUnknown(marks) && !marks[0]", "This needs a yes/no value.", "marks[0]"],
+  ["isMissing(items) && !items[0]", "This needs a yes/no value.", "items[0]"],
+  ["isMissing(marks) && !marks[0]", "This needs a yes/no value.", "marks[0]"],
   [
-    "isUnknown(items) && items[0] < 1",
+    "isMissing(items) && items[0] < 1",
     "< compares two numbers or two pieces of text.",
     "items[0]",
   ],
-  ["isUnknown(items) && -items[0] > 0", "- needs a number.", "items[0]"],
+  ["isMissing(items) && -items[0] > 0", "- needs a number.", "items[0]"],
   [
-    'isUnknown(items) && !items[0]["name"]',
+    'isMissing(items) && !items[0]["name"]',
     "This needs a yes/no value.",
     'items[0]["name"]',
   ],
 ])(
-  "a read isUnknown narrows to missing in %s is still checked as declared",
+  "a read isMissing narrows to missing in %s is still checked as declared",
   (text, message, at) => {
     expect(problems(text, groupCondition)).toContainEqual({ message, at });
   },
 );
 
-test("a list's length read by key is checked as a number where isUnknown narrows it", () => {
-  passes('isUnknown(items["length"]) || items["length"] > 0', groupCondition);
+test("a list's length read by key is checked as a number where isMissing narrows it", () => {
+  passes('isMissing(items["length"]) || items["length"] > 0', groupCondition);
 });
 
 test.each([
@@ -223,8 +223,8 @@ test.each([
 
 test.each([
   ['count < "a"', 'count < "a"'],
-  ['isUnknown(count) && count < "a"', 'count < "a"'],
-  ['isUnknown(marks[0]) ? marks[0] < "a" : false', 'marks[0] < "a"'],
+  ['isMissing(count) && count < "a"', 'count < "a"'],
+  ['isMissing(marks[0]) ? marks[0] < "a" : false', 'marks[0] < "a"'],
 ])(
   "%s compares a number with text, which gets the rule's message alone",
   (text, at) => {
@@ -441,9 +441,9 @@ test.each([
   ["[1].includes(null)", "null"],
   ["[1].includes((null))", "(null)"],
   ["(state === null) ?? false", "null"],
-])("%s points at isUnknown at %s, and only that", (text, at) => {
+])("%s points at isMissing at %s, and only that", (text, at) => {
   expect(problems(text)).toEqual([
-    { message: "Use isUnknown(…) to test for a missing value.", at },
+    { message: "Use isMissing(…) to test for a missing value.", at },
   ]);
 });
 

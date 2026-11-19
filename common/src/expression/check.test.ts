@@ -152,7 +152,7 @@ describe("types", () => {
       ]);
       const value = named({ id: "5", name: "value", text: method });
       expect(
-        problems("isUnknown(value)", { ...condition, named: [value] }),
+        problems("isMissing(value)", { ...condition, named: [value] }),
       ).toEqual([{ message: METHOD_VALUE, at: "value@0" }]);
     },
   );
@@ -230,9 +230,9 @@ describe("named expressions", () => {
     text: "items.map(item => item.score ?? 0)",
   });
 
-  test("isUnknown narrows a named expression inside a list callback", () => {
+  test("isMissing narrows a named expression inside a list callback", () => {
     const x = named({ id: "3", name: "x", text: "state" });
-    passes("!isUnknown(x) && items.some(item => x.length > 1)", {
+    passes("!isMissing(x) && items.some(item => x.length > 1)", {
       ...condition,
       named: [x],
     });
@@ -328,12 +328,12 @@ describe("named expressions", () => {
   });
 
   test.each([
-    "isUnknown(count) || [count].length > 0",
-    "isUnknown(count) || highest([count]) > 0",
-    "!isUnknown(count) && [count].length > 0",
-    "isUnknown(count) || [count].map((c) => c + 1).length > 0",
-    "!isUnknown(count) && [count].some((c) => c > 0)",
-    "isUnknown(count) || [count].filter((c) => c > 0).length > 0",
+    "isMissing(count) || [count].length > 0",
+    "isMissing(count) || highest([count]) > 0",
+    "!isMissing(count) && [count].length > 0",
+    "isMissing(count) || [count].map((c) => c + 1).length > 0",
+    "!isMissing(count) && [count].some((c) => c > 0)",
+    "isMissing(count) || [count].filter((c) => c > 0).length > 0",
   ])(
     "a named expression a guard decides through a list isn't declared nullable: %s",
     (text) => {
@@ -364,9 +364,9 @@ describe("named expressions", () => {
     );
   });
 
-  test("isUnknown guards a named expression", () => {
+  test("isMissing guards a named expression", () => {
     expect(
-      passes("isUnknown(isCalifornia) ? 0 : isCalifornia ? 1 : 2", {
+      passes("isMissing(isCalifornia) ? 0 : isCalifornia ? 1 : 2", {
         ...variable,
         named: [isCalifornia],
       }).type,

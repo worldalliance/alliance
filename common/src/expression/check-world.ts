@@ -2,7 +2,7 @@ import { escapeRegExp } from "es-toolkit";
 import ts from "typescript";
 import { FORMULA_LIB } from "../forms/formula-lib";
 import { FORMULA_TARGET } from "../forms/formula-renderable";
-import { IS_UNKNOWN, TypeKind, type Catalog, type ValueType } from "./catalog";
+import { IS_MISSING, TypeKind, type Catalog, type ValueType } from "./catalog";
 import { BARE_KEY } from "./print";
 
 const LIB_FILE = "/lib.expression.d.ts";
@@ -127,11 +127,11 @@ const LIB_SNAPSHOT = ts.ScriptSnapshot.fromString(FORMULA_LIB);
 /** The declarations `tsc` checks expressions against, generated from a catalog. */
 function declarations(catalog: Catalog): string {
   return [
-    `declare function ${IS_UNKNOWN}(value: unknown): value is null | undefined;`,
+    `declare function ${IS_MISSING}(value: unknown): value is null | undefined;`,
     `declare const ${LIST_BRAND}: unique symbol;`,
     `interface Array<T> {`,
     `  readonly [${LIST_BRAND}]: true;`,
-    // So `marks.filter(m => !isUnknown(m))` has items that can't be missing,
+    // So `marks.filter(m => !isMissing(m))` has items that can't be missing,
     // while a predicate `tsc` infers from `k === "a"` keeps the items' type.
     `  filter(fn: (item: T, index: number, list: T[]) => item is T & {}): (T & {})[];`,
     `}`,

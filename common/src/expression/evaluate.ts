@@ -5,7 +5,7 @@ import {
 } from "../forms/formula-allowlist";
 import { R, type Result } from "../result";
 import {
-  IS_UNKNOWN,
+  IS_MISSING,
   TypeKind,
   isRecordValue,
   mismatch,
@@ -53,7 +53,7 @@ const takes = ({ fn, arity }: { fn: string; arity: number }) =>
 /**
  * Evaluates a tree. Unknown is `null`: comparisons with it are undecided
  * (`null`), `&&`, `||` and `!` follow SQL's three-valued rules, `??`,
- * `isUnknown`, nullable function parameters, a list's `concat` and a
+ * `isMissing`, nullable function parameters, a list's `concat` and a
  * `reduce` starting value take it, and other operations on it give `null`. `&&` and `||` evaluate both sides,
  * so an error on either fails the whole expression; `?:` and `??` evaluate
  * only the side they pick.
@@ -239,8 +239,8 @@ class Evaluator {
   }
 
   private call(fn: string, args: Value[]): Value {
-    if (fn === IS_UNKNOWN) {
-      if (args.length !== 1) throw evalError(`${IS_UNKNOWN} takes one value.`);
+    if (fn === IS_MISSING) {
+      if (args.length !== 1) throw evalError(`${IS_MISSING} takes one value.`);
       return args[0] === null;
     }
     const mathName = mathFunctionName(fn);

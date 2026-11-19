@@ -74,7 +74,7 @@ test.each([
   ["__mine", "A name can't start with `__`."],
   ["total", "`total` is already used by an input."],
   ["double", "`double` is already used by a function."],
-  ["isUnknown", "`isUnknown` is already used by the language."],
+  ["isMissing", "`isMissing` is already used by the language."],
   ["doubled", "`doubled` is already used by another named expression."],
 ])("the name %p is refused", (name, message) => {
   expect(problems([{ id: "c", name, source: "1" }])).toEqual([

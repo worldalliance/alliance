@@ -32,7 +32,7 @@ describe("printing parsed text", () => {
     "count ?? 1",
     "count ?? (isCalifornia ? 1 : 2)",
     '(state === "CA" || isCalifornia) && count > 1',
-    "isUnknown(count) ? null : count > 5",
+    "isMissing(count) ? null : count > 5",
     "(-2) ** 2",
     "-(-count)",
     "count - (1 - 2)",
@@ -70,7 +70,7 @@ describe("printing parsed text", () => {
     for (const text of [
       'state === "CA"',
       '(state !== "CA" && count > 5) || isCalifornia',
-      "isUnknown(count) ? null : count > 5",
+      "isMissing(count) ? null : count > 5",
       "(-count) ** 2",
       'items.some(item => item.name === "x")',
       "items.map((item, index) => ({ name: item.name, index: index }))",
@@ -158,11 +158,11 @@ const CHAIN_PARENS = "Remove the parentheses around this `?.` chain.";
 
 describe("parse errors", () => {
   test.each([
-    ["state == null", "Use isUnknown(…) to test for a missing value.", "=="],
-    ["state == (null)", "Use isUnknown(…) to test for a missing value.", "=="],
+    ["state == null", "Use isMissing(…) to test for a missing value.", "=="],
+    ["state == (null)", "Use isMissing(…) to test for a missing value.", "=="],
     [
       "((null)) != state",
-      "Use isUnknown(…) to test for a missing value.",
+      "Use isMissing(…) to test for a missing value.",
       "!=",
     ],
     ["state != 'CA'", "Use `!==`; `!=` isn't supported.", "!="],
@@ -170,20 +170,20 @@ describe("parse errors", () => {
     ["count < (-(1) > `x`)", NESTED_ORDERING, "<"],
     [
       "undefined",
-      "`undefined` isn't supported. Use isUnknown(…) to test for a missing value.",
+      "`undefined` isn't supported. Use isMissing(…) to test for a missing value.",
       "undefined",
     ],
     [
       "count!",
-      "`!` after a value isn't supported. Use isUnknown(…) to test for a missing value.",
+      "`!` after a value isn't supported. Use isMissing(…) to test for a missing value.",
       "count!",
     ],
     ["stat", "There's no input or named expression called `stat`.", "stat"],
     ["nope()", "There's no function called `nope`.", "nope"],
     [
-      "items.map(isUnknown => isUnknown(1))",
-      "`isUnknown` is a parameter, not a function.",
-      "isUnknown",
+      "items.map(isMissing => isMissing(1))",
+      "`isMissing` is a parameter, not a function.",
+      "isMissing",
     ],
     [
       "items.map(lookup => lookup())",
@@ -212,9 +212,9 @@ describe("parse errors", () => {
     ],
     ["({ prototype })", "`prototype` can't be used as a key.", "prototype"],
     ["lookup", "`lookup` is a function; call it with (…).", "lookup"],
-    ["isUnknown", "`isUnknown` is a function; call it with (…).", "isUnknown"],
+    ["isMissing", "`isMissing` is a function; call it with (…).", "isMissing"],
     ["x => 1", LAMBDA_ONLY_AS_ARGUMENT, "x => 1"],
-    ["isUnknown(() => 1)", LAMBDA_ONLY_AS_ARGUMENT, "() => 1"],
+    ["isMissing(() => 1)", LAMBDA_ONLY_AS_ARGUMENT, "() => 1"],
     ["items.some(x => true, () => 1)", LAMBDA_ONLY_AS_ARGUMENT, "() => 1"],
     [
       "lookup(count < 1, count > (2))",
@@ -299,7 +299,7 @@ describe("parse errors", () => {
     ["[1, , 2]", "A list can't have an empty item.", ","],
     [
       "items.some(undefined => true)",
-      "`undefined` isn't supported. Use isUnknown(…) to test for a missing value.",
+      "`undefined` isn't supported. Use isMissing(…) to test for a missing value.",
       "undefined",
     ],
     [

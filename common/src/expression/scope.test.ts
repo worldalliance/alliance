@@ -60,7 +60,7 @@ describe("scope check", () => {
     );
   });
 
-  test.each(["Math", "isUnknown", "undefined", "lookup", "isCalifornia"])(
+  test.each(["Math", "isMissing", "undefined", "lookup", "isCalifornia"])(
     "throws for an input called `%s`",
     (id) => {
       const clash: Scope = {
@@ -79,7 +79,7 @@ describe("scope check", () => {
   test.each([
     [["Math.abs"], "`Math.abs` doesn't read back as a name."],
     [["my-fn"], "`my-fn` doesn't read back as a name."],
-    [["isUnknown"], "`isUnknown` names two things in the scope."],
+    [["isMissing"], "`isMissing` names two things in the scope."],
     [["Math"], "`Math` names two things in the scope."],
     [["lookup", "lookup"], "`lookup` names two things in the scope."],
   ])("throws for functions called %j", (names, message) => {

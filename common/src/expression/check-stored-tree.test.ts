@@ -254,8 +254,8 @@ describe("a stored expression isn't told a fallback can't change its result", ()
       NEEDLESS,
     ],
     [
-      "the root, where an `isUnknown` guard makes one needless",
-      'isUnknown(state) ? false : ((state === "CA") ?? false)',
+      "the root, where an `isMissing` guard makes one needless",
+      'isMissing(state) ? false : ((state === "CA") ?? false)',
       root,
       GUARDED,
     ],

@@ -49,14 +49,14 @@ describe("undecided results", () => {
 
   test("nothing undecided inside a fallback whose result a guard decides is reported", () => {
     passes(
-      'isUnknown(count) || [count].some((m) => (m > 0) ?? (state === "CA" ? true : false))',
+      'isMissing(count) || [count].some((m) => (m > 0) ?? (state === "CA" ? true : false))',
     );
   });
 
   test.each([
-    "!isUnknown(marks.find((m) => m === 1)) && (marks.find((m) => m === 1) ?? 0) > 2",
+    "!isMissing(marks.find((m) => m === 1)) && (marks.find((m) => m === 1) ?? 0) > 2",
     "((true ? total : null) ?? 0) > 1",
-    "isUnknown(count) || [count].some((m) => ((true ? m : null) ?? 0) > 0)",
+    "isMissing(count) || [count].some((m) => ((true ? m : null) ?? 0) > 0)",
   ])(
     "the fallback in %s, which tsc requires, isn't called needless",
     (text) => {
@@ -84,7 +84,7 @@ describe("undecided results", () => {
     expect(problems("(double(total) ?? 0) > 1")).toEqual([
       { message: NEEDLESS, at: "0" },
     ]);
-    expect(problems('(state === "CA" || isUnknown(state)) ?? false')).toEqual([
+    expect(problems('(state === "CA" || isMissing(state)) ?? false')).toEqual([
       { message: GUARDED, at: "false" },
     ]);
   });
@@ -142,9 +142,9 @@ describe("undecided results", () => {
   );
 
   test.each([
-    'state === "CA" && ((isUnknown(state) === false) ?? false)',
+    'state === "CA" && ((isMissing(state) === false) ?? false)',
     'state === "CA" && ((((state === "CA") ?? false) || total > 1) ?? false)',
-    'isUnknown(state) ? false : (([state === "CA"].length > 0) ?? false)',
+    'isMissing(state) ? false : (([state === "CA"].length > 0) ?? false)',
   ])(
     "a read whose missing value can't reach the left of ?? leaves it needless: %s",
     (text) => {
@@ -228,8 +228,8 @@ describe("undecided results", () => {
     'true ? true : describe(state === "CA" ? 1 : 2) === "a"',
     '(true ? true : null) ?? (state === "CA")',
     '(false ? null : true) ?? (state === "CA")',
-    '(true ? (isUnknown(state) || state === "CA") : null) ?? (count === 1)',
-    '(true ? (isUnknown(count) || [count].length > 0) : null) ?? (state === "CA")',
+    '(true ? (isMissing(state) || state === "CA") : null) ?? (count === 1)',
+    '(true ? (isMissing(count) || [count].length > 0) : null) ?? (state === "CA")',
     '(true ? true : null) ?? (state === "CA" ? true : false)',
   ])("a literal that decides %s leaves nothing undecided", (text) => {
     expect(passes(text).mayBeUnknown).toBe(false);
@@ -260,11 +260,11 @@ describe("undecided results", () => {
     ['[state === "CA"]', 'state === "CA"'],
     ['describe(state === "CA" ? 1 : 2)', 'state === "CA"'],
     [
-      'isUnknown(describe(state === "CA" ? 1 : 2)) || describe(state === "CA" ? 1 : 2) === "x"',
+      'isMissing(describe(state === "CA" ? 1 : 2)) || describe(state === "CA" ? 1 : 2) === "x"',
       'state === "CA"',
     ],
-    ['isUnknown(describe(state === "CA" ? 1 : 2))', 'state === "CA"'],
-    ['isUnknown(sum([state === "CA" ? 1 : 2]))', 'state === "CA"'],
+    ['isMissing(describe(state === "CA" ? 1 : 2))', 'state === "CA"'],
+    ['isMissing(sum([state === "CA" ? 1 : 2]))', 'state === "CA"'],
   ])("an undecided value can't reach %s unhandled", (text, at) => {
     expect(problems(text, variable)).toContainEqual({
       message: UNDECIDED_STATE,
@@ -300,7 +300,7 @@ describe("undecided results", () => {
       "boolean",
     );
     expect(
-      passes("marks.filter(m => !isUnknown(m)).includes(1)").mayBeUnknown,
+      passes("marks.filter(m => !isMissing(m)).includes(1)").mayBeUnknown,
     ).toBe(false);
     expect(
       passes("items.map(item => item.score).includes(3) ?? false").type,
