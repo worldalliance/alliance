@@ -564,7 +564,7 @@ describe("the form canvas in a narrow window", () => {
     });
     selectElement("Town");
     fireEvent.click(
-      settings().getByRole("button", { name: "Insert a variable" }),
+      settings().getByRole("button", { name: "Insert a formula" }),
     );
     expect(settings().getByRole("listbox")).toBeTruthy();
     fireEvent.keyDown(settings().getByPlaceholderText("Enter field label"), {

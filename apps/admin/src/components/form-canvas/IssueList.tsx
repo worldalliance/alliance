@@ -63,7 +63,7 @@ export function issueLocation(schema: FormSchema, target: IssueTarget): string {
       return `Output view: ${view?.title || "Untitled view"}`;
     }
     case IssueTargetKind.Variables:
-      return "Variables";
+      return "Formulas";
     case IssueTargetKind.Rows:
       return "Rows";
     case IssueTargetKind.Form:

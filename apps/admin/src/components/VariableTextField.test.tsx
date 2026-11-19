@@ -36,7 +36,7 @@ const renderField = (initial: string) => {
     input,
     type: (value: string) => fireEvent.change(input, { target: { value } }),
     openPicker: () =>
-      fireEvent.click(screen.getByLabelText("Insert a variable")),
+      fireEvent.click(screen.getByLabelText("Insert a formula")),
     pickTotal: () => fireEvent.click(screen.getByRole("option")),
   };
 };

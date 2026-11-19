@@ -29,7 +29,7 @@ const EDITOR_TABS: { tab: FormEditorTab; label: string }[] = [
   { tab: "shareable", label: "Shareable Text" },
   { tab: "outputs", label: "Output View" },
   { tab: "aggregates", label: "Aggregate Views" },
-  { tab: "variables", label: "Variables" },
+  { tab: "variables", label: "Formulas" },
   { tab: "rows", label: "Rows" },
 ];
 

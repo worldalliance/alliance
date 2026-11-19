@@ -178,7 +178,7 @@ function convert(
         return R.failure(
           known
             ? `Unknown input "${node.name}". Available: ${known}.`
-            : `Unknown input "${node.name}". This variable has no inputs yet.`,
+            : `Unknown input "${node.name}". This formula has no inputs yet.`,
         );
       }
       return R.success({ kind: ExprKind.Input, name: node.name });

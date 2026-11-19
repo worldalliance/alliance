@@ -1306,7 +1306,7 @@ describe("validateFormSchema: variables", () => {
       pages: [page("p1", [numberField("qty")])],
       variables: [variable(), variable()],
     });
-    expect(errors).toEqual(['Duplicate variable name "total"']);
+    expect(errors).toEqual(['Duplicate formula name "total"']);
   });
 });
 

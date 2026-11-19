@@ -301,7 +301,7 @@ describe("VariableBuilder inputs from another form", () => {
       />,
     );
 
-    expect(screen.getByText(/Output views can't show a variable/)).toBeTruthy();
+    expect(screen.getByText(/Output views can't show a formula/)).toBeTruthy();
     expect(screen.getByText("in view › t.text")).toBeTruthy();
   });
 });
