@@ -15,7 +15,7 @@ import {
   type DevPorts,
   type PortContext,
 } from "./dev-ports";
-import { BASE_PORTS, MAX_PORT_SLOT, PORT_SLOT_STRIDE } from "./dev-ports-base";
+import { BASE_PORTS, MAX_PORT_SLOT, slotPorts } from "./dev-ports-base";
 import { NodeEnv } from "./node-env";
 
 const fixtureRoot = path.join(
@@ -482,8 +482,18 @@ describe("devViteDefine", () => {
 
 describe("port slots", () => {
   const allPorts = Array.from({ length: MAX_PORT_SLOT + 1 }, (_, slot) =>
-    Object.values(BASE_PORTS).map((base) => base + slot * PORT_SLOT_STRIDE),
+    Object.values(slotPorts(slot)),
   ).flat();
+
+  it("puts the main checkout's slot on the base ports and steps by the stride", () => {
+    expect(slotPorts(0)).toEqual(BASE_PORTS);
+    expect(slotPorts(3)).toEqual({
+      server: 3305,
+      frontend: 5473,
+      admin: 5474,
+      mobile: 8385,
+    });
+  });
 
   it("never gives two services or slots the same port", () => {
     expect(new Set(allPorts).size).toBe(allPorts.length);

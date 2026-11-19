@@ -11,6 +11,9 @@ Creates a git worktree with its own ports and database, as a child of the checko
 Removes a worktree created above and its descendants, children first: checkouts, databases, port slots, and branches the script created, unpushed commits and uncommitted work included. A branch that existed before its worktree is kept; remotes are never touched. A failure leaves what it could not remove, plus its ancestors, and exits nonzero; rerunning finishes once that is resolved. It refuses a removal that includes the checkout it runs in. Records live in `.git/alliance-worktrees/`. Also `bun run worktree:rm`.
 `--list` prints the names it accepts. Those names tab-complete in zsh once `scripts/completions` is on `fpath` ahead of `compinit`; the script's header has the two lines to paste into `~/.zshrc`.
 
+`list-worktrees.ts`
+Prints every worktree of the repository holding the working directory as versioned JSON, each git worktree joined to its record, plus records git has no worktree for, each with a state such as `half-removed` or `invalid`. It is for the desktop app, which reads it instead of the record files. `--help` describes every field.
+
 `with-env.sh [command...]`
 Runs a command with this checkout's worktree env sourced. No arguments prints the resolved ports and database names, which is what `bun run ports` does.
 

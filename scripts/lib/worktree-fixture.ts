@@ -14,6 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { slotPorts } from "../../common/src/dev-ports-base";
 import { fixtureGit } from "./fixture-git";
 
 const SCRIPTS_DIR = join(import.meta.dir, "..");
@@ -247,10 +248,7 @@ export class WorktreeFixture {
         JSON.stringify({
           name,
           slot,
-          server: 3005 + slot * 100,
-          frontend: 5173 + slot * 100,
-          admin: 5174 + slot * 100,
-          mobile: 8085 + slot * 100,
+          ...slotPorts(slot),
           database: `alliance_${name}`,
           testDatabase: `alliance_${name}_test`,
         }),
