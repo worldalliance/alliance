@@ -108,16 +108,6 @@ export function checkExpression({
   scope: Scope;
   rule: ResultRule;
 }): Result<CheckedExpression, Diagnostic[]> {
-  const internal = [
-    ...scope.catalog.inputs.map((input) => input.id),
-    ...scope.catalog.functions.map((fn) => fn.name),
-    ...scope.named.map((named) => named.name),
-  ].find((name) => name.startsWith(INTERNAL_PREFIX));
-  if (internal !== undefined) {
-    throw new Error(
-      `\`${internal}\` starts with \`${INTERNAL_PREFIX}\`, which the save check keeps for its own names.`,
-    );
-  }
   checkScope(scope);
   const nameOf = (id: string) =>
     scope.named.find((named) => named.id === id)?.name;
