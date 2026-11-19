@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { R } from "../../../../../../../common/src/result";
-import { gitEnvironment } from "../trust";
+import { gitEnvironment } from "../../../git-environment";
 import { CODEX_VERSION } from "../version";
 
 export const captureDir = (version: string) =>

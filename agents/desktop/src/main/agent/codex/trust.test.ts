@@ -12,8 +12,9 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import { R } from "../../../../../../common/src/result";
 import { setEnv } from "../../../../../../common/src/set-env";
+import { gitEnvironment } from "../../git-environment";
 import { RpcConnection } from "./rpc";
-import { gitEnvironment, trustRepositoryHooks } from "./trust";
+import { trustRepositoryHooks } from "./trust";
 
 const scratch = realpathSync(
   mkdtempSync(path.join(tmpdir(), "codex-trust-test-")),

@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
 import { describeError } from "../../describe-error";
+import { gitEnvironment } from "../../git-environment";
 import { queryTimeoutMs } from "../cli-process";
 import type { Fits } from "./fits";
 import type { ConfigBatchWriteParams } from "./protocol/v2/ConfigBatchWriteParams.gen";
@@ -96,12 +97,6 @@ const countHooks = (file: string): Result<number, Error> =>
           ),
       )
     : R.success(0);
-
-// A GIT_DIR or GIT_WORK_TREE inherited from a git hook or rebase would point git at another repository.
-export const gitEnvironment = () =>
-  Object.fromEntries(
-    Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")),
-  );
 
 const onlyAtCheckoutTop =
   "Alliance agent runs Codex only at the top of a checkout whose git directory is its .git folder, or of a linked worktree of one, since Codex runs the hooks of every .codex folder from there down and keys their trust by the folder holding .git";

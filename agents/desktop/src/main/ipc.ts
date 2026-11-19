@@ -1,10 +1,3 @@
-import {
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  type IpcMainEvent,
-  type IpcMainInvokeEvent,
-} from "electron";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout } from "node:timers/promises";
@@ -15,15 +8,14 @@ import {
   type AgentApi,
   type Conversation,
   IpcChannel,
-  type IpcReplies,
   type IpcResult,
-  type RendererEvents,
 } from "../shared/ipc";
 import { queryTimeoutMs } from "./agent/cli-process";
 import type { AgentBackend, AgentSession } from "./agent/session";
 import { type ConversationStore, conversationTitle } from "./conversations";
+import { pickFolder } from "./folder-picker";
 import { isNotFound } from "./fs-error";
-import { fromRendererOnly, isRendererFrame } from "./renderer-frame";
+import { rendererIpc } from "./renderer-ipc";
 
 export type Agent = {
   backend: AgentBackend;
@@ -119,14 +111,7 @@ export function registerIpc(params: {
     return toIpc(await run(agent.value));
   };
 
-  const toRenderer = <C extends keyof RendererEvents>(
-    channel: C,
-    payload: RendererEvents[C],
-  ) => {
-    for (const { webContents } of BrowserWindow.getAllWindows())
-      if (isRendererFrame({ frame: webContents.mainFrame, rendererUrl }))
-        webContents.send(channel, payload);
-  };
+  const { handle, on, toRenderer } = rendererIpc(rendererUrl);
 
   const removeIfUnread = async (session: AgentSession) => {
     if (await session.firstMessageRead) return;
@@ -189,35 +174,6 @@ export function registerIpc(params: {
     return R.failure(quittingError());
   };
 
-  // Per Electron's security checklist, so a frame that slips past the CSP or navigation lock can't run an agent.
-  const handle = <C extends keyof IpcReplies>(
-    channel: C,
-    listener: (
-      event: IpcMainInvokeEvent,
-      arg: unknown,
-    ) => IpcReplies[C] | Promise<IpcReplies[C]>,
-  ) =>
-    ipcMain.handle(
-      channel,
-      fromRendererOnly({
-        rendererUrl,
-        listener,
-        refuse: () => {
-          throw new Error(`${channel} called from outside the app's page`);
-        },
-      }),
-    );
-  const on = (channel: IpcChannel, listener: (arg: unknown) => void) =>
-    ipcMain.on(
-      channel,
-      fromRendererOnly({
-        rendererUrl,
-        listener: (_event: IpcMainEvent, arg: unknown) => listener(arg),
-        refuse: () =>
-          console.error(`${channel} sent from outside the app's page`),
-      }),
-    );
-
   handle(IpcChannel.SignInStatus, (_, agent) => {
     const kind = parseArg(agentArg, agent);
     if (!kind.ok) return toIpc(kind);
@@ -254,22 +210,9 @@ export function registerIpc(params: {
     signIns.get(kind.value)?.abort();
   });
 
-  handle(IpcChannel.ChooseFolder, async (event) => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    const options: Electron.OpenDialogOptions = {
-      properties: ["openDirectory", "createDirectory"],
-    };
-    const chosen = await R.fromPromise(
-      window
-        ? dialog.showOpenDialog(window, options)
-        : dialog.showOpenDialog(options),
-    );
-    return toIpc(
-      R.map(chosen, ({ canceled, filePaths }) =>
-        canceled ? undefined : filePaths[0],
-      ),
-    );
-  });
+  handle(IpcChannel.ChooseFolder, async (event) =>
+    toIpc(await pickFolder(event)),
+  );
 
   handle(IpcChannel.ListConversations, async () =>
     toIpc(await conversations.list()),
