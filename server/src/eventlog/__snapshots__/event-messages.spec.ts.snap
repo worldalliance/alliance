@@ -84,7 +84,7 @@ exports[`renderEvent renders every event type 1`] = `
   },
   {
     "message": "Couldn't send a staff text to +15555550100: timed out after 10000ms",
-    "slack": "Couldn't send a staff text to +15555550100: timed out after 10000ms",
+    "slack": "Couldn't send a staff text to <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|+15555550100>: timed out after 10000ms",
     "type": "sms_failure",
   },
   {
