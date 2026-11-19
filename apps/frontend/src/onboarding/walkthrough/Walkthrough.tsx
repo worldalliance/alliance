@@ -1,30 +1,25 @@
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { ProgressSegments } from "../chrome";
+import { useLocation, useSearchParams } from "react-router";
 import "../onboarding.css";
-import { MOCK_PARAM } from "../useMockTasks";
 import {
+  FIRST_TASK_ANCHOR,
   TOUR_INTRO_PARAM,
   WALKTHROUGH_PARAM,
-  WALKTHROUGH_STEPS,
-  walkthroughStepHref,
-  type WalkthroughAnchor,
+  WALKTHROUGH_PATH,
 } from "./steps";
 import { WalkthroughIntro } from "./WalkthroughIntro";
 
-/** How long a step waits for its anchor before settling for no spotlight. */
-const ANCHOR_TIMEOUT_MS = 1800;
+/** How long the tour waits for the task before ending unseen. */
+const ANCHOR_TIMEOUT_MS = 10_000;
 
-/** Frames an anchor may go missing for mid-render before the spotlight drops. */
+/** Frames the task may go missing for mid-render before the tour ends. */
 const MISSES_BEFORE_DROP = 12;
 
 const PADDING = 8;
 
-/** Clear space kept between an anchor and the edges it is scrolled between. */
+/** Clear space kept between the task and the edges it is scrolled between. */
 const SAFE_GAP = 16;
 
 /** Enough to settle a smooth scroll, without letting a fight run forever. */
@@ -32,44 +27,11 @@ const MAX_SCROLLS = 6;
 
 const SCROLL_SETTLE_MS = 420;
 
-const TOUR_BUTTON = "min-h-11 w-full gap-2 rounded-lg";
-
-const TOUR_PRIMARY = "border-transparent bg-white text-(--ob-navy)";
-
-const TOUR_SECONDARY =
-  "border-white/70 bg-transparent text-white hover:bg-white/10";
-
-const TOUR_TERTIARY =
-  "-mt-1.5 -mr-2 shrink-0 rounded px-2 py-1.5 text-[length:var(--ob-ui)] text-white/70 underline underline-offset-2 hover:text-white";
-
 type Box = { top: number; left: number; width: number; height: number };
 
-/** Tagged with its anchor so a frame left over from the last step can't show. */
-type Measurement = Box & { anchor: WalkthroughAnchor };
-
-// Absolute children (the profile menu) sit outside the anchor's own box.
-function visibleBox(el: HTMLElement): Box {
-  let top = Infinity;
-  let left = Infinity;
-  let right = -Infinity;
-  let bottom = -Infinity;
-  const add = (node: Element) => {
-    const r = node.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) return;
-    top = Math.min(top, r.top);
-    left = Math.min(left, r.left);
-    right = Math.max(right, r.right);
-    bottom = Math.max(bottom, r.bottom);
-  };
-  add(el);
-  for (const child of el.children) add(child);
-  return { top, left, width: right - left, height: bottom - top };
-}
-
-function sameBox(a: Measurement | null, b: Measurement) {
+function sameBox(a: Box | null, b: Box) {
   return (
     a !== null &&
-    a.anchor === b.anchor &&
     Math.abs(a.top - b.top) < 1 &&
     Math.abs(a.left - b.left) < 1 &&
     Math.abs(a.width - b.width) < 1 &&
@@ -77,7 +39,9 @@ function sameBox(a: Measurement | null, b: Measurement) {
   );
 }
 
-function Spotlight({ box, deferred }: { box: Box; deferred?: boolean }) {
+const TASK_SELECTOR = `[data-walkthrough="${FIRST_TASK_ANCHOR}"]`;
+
+function Spotlight({ box, onDismiss }: { box: Box; onDismiss: () => void }) {
   const shade = "pointer-events-auto fixed bg-black/60";
   // Clamped to the viewport: an anchor taller than the screen would otherwise
   // make shades thousands of pixels long, which the compositor mishandles.
@@ -91,29 +55,27 @@ function Spotlight({ box, deferred }: { box: Box; deferred?: boolean }) {
       <div
         className={shade}
         style={{ top: 0, left: 0, right: 0, height: top }}
+        onClick={onDismiss}
       />
       <div
         className={shade}
         style={{ top: bottom, left: 0, right: 0, bottom: 0 }}
+        onClick={onDismiss}
       />
       <div
         className={shade}
         style={{ top, left: 0, width: left, height: bottom - top }}
+        onClick={onDismiss}
       />
       <div
         className={shade}
         style={{ top, left: right, right: 0, height: bottom - top }}
+        onClick={onDismiss}
       />
-      {/* Over the cutout, not around it: clicking the thing the tour is
-          pointing at must not navigate out from under it. */}
       <div
-        className="pointer-events-auto fixed rounded-lg ring-2 ring-white/80"
+        className="pointer-events-none fixed rounded-lg ring-2 ring-white/80"
         style={{ top, left, width: right - left, height: bottom - top }}
-      >
-        {deferred && (
-          <div className="size-full rounded-lg bg-[var(--ob-navy)]/30 backdrop-grayscale" />
-        )}
-      </div>
+      />
     </>
   );
 }
@@ -156,37 +118,31 @@ function pinnedHeaderBottom(): number {
 
 /**
  * How far to scroll to bring `box` inside the band between the pinned header
- * and the dialogue. An anchor taller than the band gets its head pinned to the
- * band's top instead.
+ * and the dialogue. A task taller than the band gets its foot, where Begin is,
+ * pinned to the band's bottom instead.
  */
-function scrollDelta(
+export function scrollDelta(
   box: Box,
   safeBottom: number,
   headerBottom: number,
 ): number {
   const top = headerBottom + SAFE_GAP;
   const bottom = safeBottom - SAFE_GAP;
-  if (box.height > bottom - top || box.top < top) return box.top - top;
-  if (box.top + box.height > bottom) return box.top + box.height - bottom;
+  if (box.height > bottom - top || box.top + box.height > bottom) {
+    return box.top + box.height - bottom;
+  }
+  if (box.top < top) return box.top - top;
   return 0;
 }
 
 export function Walkthrough() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const navigate = useNavigate();
 
-  const raw = searchParams.get(WALKTHROUGH_PARAM);
-  const index = raw === null ? -1 : Number(raw);
-  const step = WALKTHROUGH_STEPS[index];
-
-  const anchor = step?.anchor;
-
-  const [measured, setMeasured] = useState<Measurement | null>(null);
-  const [dialogue, setDialogue] = useState<HTMLDivElement | null>(null);
-  const [dialogueBox, setDialogueBox] = useState<Box | null>(null);
-
-  const intro = searchParams.get(TOUR_INTRO_PARAM) !== null;
+  const open =
+    searchParams.has(WALKTHROUGH_PARAM) &&
+    location.pathname === WALKTHROUGH_PATH;
+  const intro = searchParams.has(TOUR_INTRO_PARAM);
 
   const endIntro = useCallback(() => {
     setSearchParams(
@@ -197,12 +153,6 @@ export function Walkthrough() {
       { replace: true, preventScrollReset: true },
     );
   }, [setSearchParams]);
-
-  const mocked = searchParams.get(MOCK_PARAM) === "1";
-  const stepHref = useCallback(
-    (at: number) => walkthroughStepHref(at, mocked),
-    [mocked],
-  );
 
   const close = useCallback(() => {
     setSearchParams(
@@ -215,33 +165,44 @@ export function Walkthrough() {
     );
   }, [setSearchParams]);
 
-  const advance = useCallback(() => {
-    const next = index + 1;
-    if (next >= WALKTHROUGH_STEPS.length) {
-      close();
-      return;
-    }
-    navigate(stepHref(next), { replace: true, preventScrollReset: true });
-  }, [index, close, navigate, stepHref]);
+  if (!open) return null;
+  return <OpenWalkthrough intro={intro} close={close} endIntro={endIntro} />;
+}
 
-  const retreat = useCallback(() => {
-    if (index <= 0) return;
-    navigate(stepHref(index - 1), { replace: true, preventScrollReset: true });
-  }, [index, navigate, stepHref]);
+function OpenWalkthrough({
+  intro,
+  close,
+  endIntro,
+}: {
+  intro: boolean;
+  close: () => void;
+  endIntro: () => void;
+}) {
+  const [measured, setMeasured] = useState<Box | null>(null);
+  const [seen, setSeen] = useState(false);
+  const [dialogue, setDialogue] = useState<HTMLDivElement | null>(null);
+  const [dialogueBox, setDialogueBox] = useState<Box | null>(null);
 
-  const onStepPath = Boolean(step) && location.pathname === step.path;
-
+  // Captured: the task's own handlers may stop propagation.
   useEffect(() => {
-    if (!step || onStepPath) return;
-    const next = index + 1;
-    const followed =
-      next < WALKTHROUGH_STEPS.length &&
-      location.pathname === WALKTHROUGH_STEPS[next].path;
-    navigate(stepHref(followed ? next : index), {
-      replace: true,
-      preventScrollReset: true,
-    });
-  }, [step, onStepPath, navigate, index, stepHref, location.pathname]);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    const onClick = (event: MouseEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest(TASK_SELECTOR)
+      ) {
+        close();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [close]);
 
   useLayoutEffect(() => {
     if (!dialogue) return;
@@ -252,23 +213,21 @@ export function Walkthrough() {
       width: r.width,
       height: r.height,
     });
-  }, [dialogue, index]);
+  }, [dialogue]);
 
-  // A step whose anchor never turns up still gets its say; it just loses the
-  // spotlight rather than skipping and jumping the count.
+  // The dialogue stays hidden until the task turns up, and the tour ends once
+  // it is gone, so it never introduces a task that isn't there.
   useEffect(() => {
-    if (!step || !onStepPath || !anchor) return;
-
     let frame = 0;
-    let found = false;
+    let shown = false;
     let misses = 0;
     let scrolls = 0;
     let lastScroll = 0;
     const deadline = Date.now() + ANCHOR_TIMEOUT_MS;
 
-    // Measured per step and on resize, never per frame: the scan walks every
-    // element in the page, and the bar it finds does not move while a step is
-    // on screen.
+    // Measured once and on resize, never per frame: the scan walks every
+    // element in the page, and the bar it finds does not move while the tour
+    // is on screen.
     let headerBottom = pinnedHeaderBottom();
     const remeasureHeader = () => {
       headerBottom = pinnedHeaderBottom();
@@ -276,15 +235,14 @@ export function Walkthrough() {
     window.addEventListener("resize", remeasureHeader);
 
     const tick = () => {
-      const el = document.querySelector<HTMLElement>(
-        `[data-walkthrough="${anchor}"]`,
-      );
-      const r = el ? visibleBox(el) : null;
+      const el = document.querySelector<HTMLElement>(TASK_SELECTOR);
+      const r = el?.getBoundingClientRect();
       if (el && r && r.height > 0) {
-        found = true;
+        if (!shown) setSeen(true);
+        shown = true;
         misses = 0;
 
-        // The dialogue covers the foot of the screen, so the anchor is scrolled
+        // The dialogue covers the foot of the screen, so the task is scrolled
         // into what is left above it rather than to the viewport's own middle.
         const safeBottom = dialogueBox?.top ?? window.innerHeight;
         const delta = scrollDelta(r, safeBottom, headerBottom);
@@ -299,8 +257,7 @@ export function Walkthrough() {
         }
 
         setMeasured((previous) => {
-          const box: Measurement = {
-            anchor,
+          const box: Box = {
             top: r.top,
             left: r.left,
             width: r.width,
@@ -308,11 +265,14 @@ export function Walkthrough() {
           };
           return sameBox(previous, box) ? previous : box;
         });
-      } else if (
-        found ? ++misses > MISSES_BEFORE_DROP : Date.now() > deadline
-      ) {
-        setMeasured(null);
-        found = false;
+      } else if (shown) {
+        if (++misses > MISSES_BEFORE_DROP) {
+          close();
+          return;
+        }
+      } else if (Date.now() > deadline) {
+        close();
+        return;
       }
       frame = requestAnimationFrame(tick);
     };
@@ -322,14 +282,7 @@ export function Walkthrough() {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", remeasureHeader);
     };
-  }, [step, onStepPath, anchor, dialogueBox]);
-
-  useEffect(() => setMeasured(null), [index]);
-
-  if (!step || !onStepPath) return null;
-
-  const spotlight = measured?.anchor === anchor ? measured : null;
-  const isLast = index + 1 === WALKTHROUGH_STEPS.length;
+  }, [dialogueBox, close]);
 
   return (
     <div
@@ -339,64 +292,24 @@ export function Walkthrough() {
       <div
         className={cn("transition-opacity duration-300", intro && "opacity-0")}
       >
-        {spotlight ? (
-          <Spotlight box={spotlight} deferred={step.deferred} />
-        ) : (
-          <div className="pointer-events-auto fixed inset-0 bg-black/60" />
-        )}
+        {seen && measured && <Spotlight box={measured} onDismiss={close} />}
 
         <div
           ref={setDialogue}
-          role="dialog"
-          aria-live="polite"
+          role="status"
           className={cn(
             "pointer-events-auto fixed bottom-4 left-1/2 z-10 w-[min(30rem,calc(100vw-1.5rem))]",
             "-translate-x-1/2 rounded-xl bg-[var(--ob-navy)] p-4 text-white sm:bottom-8 sm:p-5",
             "shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]",
+            !seen && "invisible",
           )}
         >
-          <div className="flex items-start justify-between gap-4">
-            <p className="text-[length:var(--ob-body)] font-semibold">
-              {step.title()}
-            </p>
-            <button type="button" className={TOUR_TERTIARY} onClick={close}>
-              Skip
-            </button>
-          </div>
+          <p className="text-[length:var(--ob-body)] font-semibold">
+            Your first task
+          </p>
           <p className="mt-1 text-[length:var(--ob-ui)] leading-snug text-pretty text-white/85">
-            {step.body()}
+            Welcome to the Alliance! Start with this task.
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4">
-            {index > 0 && (
-              <Button
-                color={ButtonColor.Outline}
-                className={cn(TOUR_BUTTON, TOUR_SECONDARY)}
-                onClick={retreat}
-              >
-                <ArrowLeft className="size-4" aria-hidden />
-                Back
-              </Button>
-            )}
-            <Button
-              color={ButtonColor.WhiteBorderless}
-              className={cn(
-                TOUR_BUTTON,
-                TOUR_PRIMARY,
-                index === 0 && "col-span-2",
-              )}
-              onClick={advance}
-            >
-              {isLast ? "Get started" : "Next"}
-            </Button>
-          </div>
-          <p className="sr-only">
-            Step {index + 1} of {WALKTHROUGH_STEPS.length}
-          </p>
-          <ProgressSegments
-            segments={WALKTHROUGH_STEPS.length}
-            filled={index + 1}
-            className="mt-4 gap-1.5 [--ob-bar:2px]"
-          />
         </div>
       </div>
 

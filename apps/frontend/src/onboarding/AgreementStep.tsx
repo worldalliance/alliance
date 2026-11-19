@@ -128,6 +128,8 @@ export function AgreementStep({
   received: boolean;
 }) {
   const [showFull, setShowFull] = useState(false);
+  // A reload after Join loses the name, and an empty field can't be signed.
+  const showSignature = !received || signedName !== "";
 
   return (
     <div
@@ -192,30 +194,35 @@ export function AgreementStep({
           </button>
         </div>
 
-        <div
-          className={cn(
-            "flex shrink-0 flex-col gap-2 border-t border-black/10 py-[clamp(0.55rem,1.4vh,0.95rem)] text-[length:var(--ob-ui)]",
-            CARD_SURFACE,
-            CARD_INLINE_PAD,
-          )}
-        >
-          <input
-            name="signedName"
-            type="text"
-            autoComplete="name"
-            placeholder="Sign your full name"
-            aria-label="Sign your full name"
-            value={signedName}
-            onChange={(e) => onSignedNameChange(e.target.value)}
-            className={cn(FIELD, FIELD_IDLE)}
-          />
+        {(showSignature || error) && (
+          <div
+            className={cn(
+              "flex shrink-0 flex-col gap-2 border-t border-black/10 py-[clamp(0.55rem,1.4vh,0.95rem)] text-[length:var(--ob-ui)]",
+              CARD_SURFACE,
+              CARD_INLINE_PAD,
+            )}
+          >
+            {showSignature && (
+              <input
+                name="signedName"
+                type="text"
+                autoComplete="name"
+                placeholder="Sign your full name"
+                aria-label="Sign your full name"
+                value={signedName}
+                readOnly={received}
+                onChange={(e) => onSignedNameChange(e.target.value)}
+                className={cn(FIELD, FIELD_IDLE)}
+              />
+            )}
 
-          {error && (
-            <p className="shrink-0 font-medium text-red-600" role="alert">
-              {error}
-            </p>
-          )}
-        </div>
+            {error && (
+              <p className="shrink-0 font-medium text-red-600" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
 
         <div
           className="grid shrink-0 transition-[grid-template-rows] duration-[380ms] ease-out"

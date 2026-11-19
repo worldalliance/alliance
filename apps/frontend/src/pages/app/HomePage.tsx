@@ -36,7 +36,7 @@ import { useTaskActionsData } from "../../lib/useTaskActionsData";
 import { useSidFromParams } from "../../lib/utils";
 import { MOCK_TASK_FORMS, MOCK_TASKS } from "../../onboarding/mockTasks";
 import { useMockTasks } from "../../onboarding/useMockTasks";
-import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
+import { FIRST_TASK_ANCHOR } from "../../onboarding/walkthrough/steps";
 import LargeActionCard from "./LargeActionCard";
 import TaskNavigatorList, { type TaskNavigatorItem } from "./TaskNavigatorList";
 
@@ -53,7 +53,7 @@ export function clientLoader() {
 }
 
 // The page's queries keep themselves fresh; rerunning the loader on a
-// search-only navigation, as the walkthrough's steps make, refetches them all.
+// search-only navigation, as closing the walkthrough makes, refetches them all.
 export const shouldRevalidate = () => false;
 
 const HomePage = () => {
@@ -189,7 +189,7 @@ const HomePage = () => {
           />
 
           {selectedTaskNavigatorItem?.kind === "action" ? (
-            <div data-walkthrough={WalkthroughAnchor.CurrentTask}>
+            <div data-walkthrough={FIRST_TASK_ANCHOR}>
               <LargeActionCard
                 action={selectedTaskNavigatorItem.action}
                 staticTaskFormSchema={

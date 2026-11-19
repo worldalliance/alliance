@@ -40,6 +40,7 @@ import {
   EmailDivider,
   riseStyle,
 } from "./chrome";
+import { clearDraft } from "./useOnboardingDraft";
 
 const REVIEW_FAILURE_PARAMS = [REVIEW_SIGN_IN_FAILED_PARAM];
 
@@ -159,6 +160,7 @@ export function AccountStep({
       body: { email: next.email, password: next.password, mode: "cookie" },
     });
     if (res.response.ok) {
+      clearDraft();
       await onLogin();
       navigate(redirectAfterLogin);
       return;

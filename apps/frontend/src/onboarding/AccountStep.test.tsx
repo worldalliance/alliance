@@ -260,6 +260,25 @@ describe("AccountStep", () => {
     });
   });
 
+  it("forgets the signup draft once a login succeeds, before the member loads", async () => {
+    window.localStorage.setItem(
+      "alliance:onboarding-draft",
+      JSON.stringify({ email: "member@example.com", password: "s3cret" }),
+    );
+    onLogin.mockImplementationOnce(() => new Promise(() => {}));
+    render(<Harness />);
+
+    fillWithoutReact("member@example.com", "s3cret");
+    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    await waitFor(() => expect(onLogin).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        window.localStorage.getItem("alliance:onboarding-draft"),
+      ).toBeNull(),
+    );
+  });
+
   it("shows the message the page that sent the member here hands over", () => {
     render(
       <Harness

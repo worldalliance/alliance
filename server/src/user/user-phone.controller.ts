@@ -19,6 +19,7 @@ import {
   StartPhoneCodeDto,
   VerifyPhoneCodeDto,
 } from "./dto/phone-verification.dto";
+import { PhoneOptInService } from "./phone-opt-in.service";
 import {
   PHONE_PURPOSE,
   PhoneVerificationService,
@@ -35,6 +36,7 @@ function webOtpHost(req: Request): string | null {
 export class UserPhoneController {
   constructor(
     private readonly phoneVerificationService: PhoneVerificationService,
+    private readonly phoneOptInService: PhoneOptInService,
   ) {}
 
   @Post("code")
@@ -71,5 +73,6 @@ export class UserPhoneController {
     if (!verified.ok) {
       throw otpRefusalException(verified.error, PHONE_PURPOSE);
     }
+    await this.phoneOptInService.confirm(req.user.sub);
   }
 }

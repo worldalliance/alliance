@@ -27,7 +27,6 @@ interface Referred extends Named {
 export enum SmsFailureKind {
   SendFailed = "send_failed",
   DeliveryFailed = "delivery_failed",
-  OptInFailed = "opt_in_failed",
   SignatureRejected = "signature_rejected",
 }
 
@@ -68,7 +67,6 @@ export interface EventPayloads {
         phoneNumber: string;
         errorCode: number;
       }
-    | { kind: SmsFailureKind.OptInFailed; member: Named; phoneNumber: string }
     | {
         kind: SmsFailureKind.SignatureRejected;
         webhookUrl: string;
@@ -153,8 +151,6 @@ function smsFailure(payload: EventPayloads[EventType.SmsFailure]): EventText {
       return text`Couldn't send a text to ${adminLink(payload.phoneNumber, `/member/${payload.userId}`)}: ${payload.error}`;
     case SmsFailureKind.DeliveryFailed:
       return text`Twilio reported error ${{ label: String(payload.errorCode), url: `https://www.twilio.com/docs/api/errors/${payload.errorCode}` }} for a text to ${payload.phoneNumber}.`;
-    case SmsFailureKind.OptInFailed:
-      return text`Couldn't send the texting opt-in message to ${member(payload.member)} at ${payload.phoneNumber}.`;
     case SmsFailureKind.SignatureRejected: {
       const since =
         payload.rejections === 1

@@ -18,6 +18,7 @@ import {
 } from "./flow";
 import { GrantmakingCard } from "./GrantmakingCard";
 import { JoinPhase, PANEL_FADE_MS } from "./joinPhase";
+import { PHONE_SKIP_LABEL, PhoneStep } from "./PhoneStep";
 // import { MobileAppFooter, MobileAppStep } from "./MobileAppStep";
 import {
   CommitmentStep,
@@ -44,6 +45,7 @@ export function OnboardingPanel({
   goNext,
   join,
   agreementSigned,
+  joined,
   submitting,
   latestContract,
   inviter,
@@ -52,6 +54,7 @@ export function OnboardingPanel({
   signedName,
   onSignedNameChange,
   error,
+  phone,
 }: {
   step: OnboardingStep;
   skipPanelMorph: boolean;
@@ -60,6 +63,8 @@ export function OnboardingPanel({
   goNext: () => void;
   join: () => void;
   agreementSigned: boolean;
+  /** The agreement is signed, so the agreement step only moves on to the phone step. */
+  joined: boolean;
   submitting: boolean;
   latestContract: ContractDto | null;
   inviter: ReferrerProfileDto | null;
@@ -68,6 +73,16 @@ export function OnboardingPanel({
   signedName: string;
   onSignedNameChange: (name: string) => void;
   error: string | null;
+  phone: {
+    number: string;
+    onNumberChange: (phoneNumber: string) => void;
+    /** A whole, valid number is entered, which "Get started" waits for. */
+    complete: boolean;
+    save: () => void;
+    refused: boolean;
+    skip: () => void;
+    logOut?: () => void;
+  };
 }) {
   const isAccount = step === OnboardingStep.Account;
   const filled = FILLED_SEGMENTS[step];
@@ -120,9 +135,11 @@ export function OnboardingPanel({
               <FooterNav
                 onBack={goBack}
                 onNext={join}
-                nextLabel="Join"
+                nextLabel={joined ? "Continue" : "Join"}
                 nextDisabled={
-                  !agreementSigned || submitting || joinPhase !== JoinPhase.Idle
+                  !(joined || agreementSigned) ||
+                  submitting ||
+                  joinPhase !== JoinPhase.Idle
                 }
                 loading={submitting}
                 index={4}
@@ -138,7 +155,7 @@ export function OnboardingPanel({
                 signedName={signedName}
                 onSignedNameChange={onSignedNameChange}
                 error={error}
-                received={joinPhase !== JoinPhase.Idle}
+                received={joined || joinPhase !== JoinPhase.Idle}
               />
             ) : (
               <p
@@ -149,6 +166,32 @@ export function OnboardingPanel({
                 page.
               </p>
             )}
+          </StepLayout>
+        );
+      case OnboardingStep.Phone:
+        return (
+          <StepLayout
+            eyebrow={STEP_EYEBROW[step]}
+            footer={
+              <FooterNav
+                onBack={goBack}
+                onNext={phone.refused ? phone.skip : phone.save}
+                nextLabel={phone.refused ? PHONE_SKIP_LABEL : "Get started"}
+                nextDisabled={
+                  !(phone.refused || phone.complete) ||
+                  joinPhase !== JoinPhase.Idle
+                }
+                loading={submitting}
+                index={4}
+              />
+            }
+          >
+            <PhoneStep
+              phoneNumber={phone.number}
+              onPhoneNumberChange={phone.onNumberChange}
+              refused={phone.refused}
+              onLogOut={phone.logOut}
+            />
           </StepLayout>
         );
       case OnboardingStep.MobileApp:

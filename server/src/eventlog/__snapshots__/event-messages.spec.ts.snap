@@ -83,11 +83,6 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_failure",
   },
   {
-    "message": "Couldn't send the texting opt-in message to Jane Doe at +15555550100.",
-    "slack": "Couldn't send the texting opt-in message to <https://admin.example.org/member/5|Jane Doe> at +15555550100.",
-    "type": "sms_failure",
-  },
-  {
     "message": "Twilio's inbound webhook is being rejected: its signature didn't match. Members' STOP and START replies aren't being honoured until this is fixed. Check that the webhook URL in the Twilio console is exactly https://api.example.org/mms/inbound.",
     "slack": "Twilio's inbound webhook is being rejected: its signature didn't match. Members' STOP and START replies aren't being honoured until this is fixed. Check that the webhook URL in the Twilio console is exactly https://api.example.org/mms/inbound.",
     "type": "sms_failure",

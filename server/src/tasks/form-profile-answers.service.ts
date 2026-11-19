@@ -3,26 +3,20 @@ import {
   type CityFieldValue,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { NodeEnv } from "@alliance/common/node-env";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { updateLive } from "src/datasources/soft-delete";
-import { EventType } from "src/eventlog/event-log.entity";
-import { SmsFailureKind } from "src/eventlog/event-messages";
-import { EventLogService } from "src/eventlog/eventlog.service";
 import { ImagesService } from "src/images/images.service";
-import { MmsService } from "src/mms/mms.service";
 import { NotificationSettingsService } from "src/notification-settings/notification-settings.service";
-import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { PhoneNumberTakenException } from "src/user/phone-number-taken.exception";
+import { PhoneOptInService } from "src/user/phone-opt-in.service";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
 import { DataSource } from "typeorm";
-import { env } from "../config/env";
 
 function getFirstAutoExtractAnswer(
   schema: FormSchema,
@@ -124,8 +118,7 @@ export class FormProfileAnswersService {
   private readonly logger = new Logger(FormProfileAnswersService.name);
   constructor(
     private userService: UserService,
-    private mmsService: MmsService,
-    private eventLogService: EventLogService,
+    private phoneOptInService: PhoneOptInService,
     private notificationSettingsService: NotificationSettingsService,
     private imagesService: ImagesService,
     private dataSource: DataSource,
@@ -133,8 +126,8 @@ export class FormProfileAnswersService {
 
   /**
    * Copies auto-extract answers onto the member's profile and notification
-   * defaults, texting the welcome MMS to the extracted phone number if the
-   * member has not opted in. A phone number another account holds is
+   * defaults, then sends the opt-in confirmation to a saved phone number
+   * (PhoneOptInService.confirm). A phone number another account holds is
    * skipped, so the member finishes the form without it. Throws on an invalid
    * time zone or an unusable photo before any other side effect.
    */
@@ -183,43 +176,29 @@ export class FormProfileAnswersService {
       "textarea",
     );
 
+    const email = getCheckboxExtractionValue(
+      schema,
+      answers,
+      "emailNotifications",
+    );
+    if (text !== null || email !== null) {
+      await this.notificationSettingsService.update(user.id, {
+        defaults: {
+          ...(text !== null && { text }),
+          ...(email !== null && { email }),
+        },
+      });
+    }
+
     const userUpdates: Partial<UpdateProfileDto> = {};
 
     if (phoneNumber) {
-      this.logger.log(`Extracted phone number: ${phoneNumber}`);
       const parsed = toE164(phoneNumber);
 
       if (R.isFailure(parsed)) {
-        this.logger.warn(`Could not parse phone number: ${phoneNumber}`);
+        this.logger.warn(`Could not parse user ${user.id}'s phone number`);
       } else if (await this.savePhoneNumber(user, parsed.value)) {
-        const normalized = parsed.value;
-        this.logger.log(`Valid phone number: ${normalized}`);
-
-        if (!user.optInMms && text !== false) {
-          const mms = await this.mmsService.sendMms({
-            to: normalized,
-            userId: user.id,
-            body: welcomeMessage,
-            mediaUrls: [],
-            tracking: null,
-          });
-          if (mms) {
-            await this.userService.setOptInMms(user.id, mms.id);
-          } else {
-            if (env("NODE_ENV") === NodeEnv.Production) {
-              await this.eventLogService.sendMessage({
-                type: EventType.SmsFailure,
-                payload: {
-                  kind: SmsFailureKind.OptInFailed,
-                  member: user,
-                  phoneNumber: normalized,
-                },
-                userId: user.id,
-                blob: { to: normalized },
-              });
-            }
-          }
-        }
+        await this.phoneOptInService.confirm(user.id);
       }
     }
 
@@ -263,20 +242,6 @@ export class FormProfileAnswersService {
 
     if (Object.keys(userUpdates).length > 0) {
       await this.userService.update(user.id, userUpdates);
-    }
-
-    const email = getCheckboxExtractionValue(
-      schema,
-      answers,
-      "emailNotifications",
-    );
-    if (text !== null || email !== null) {
-      await this.notificationSettingsService.update(user.id, {
-        defaults: {
-          ...(text !== null && { text }),
-          ...(email !== null && { email }),
-        },
-      });
     }
   }
 

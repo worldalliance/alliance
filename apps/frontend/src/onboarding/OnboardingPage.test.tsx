@@ -3,7 +3,13 @@ import { membershipAgreement } from "@alliance/shared/lib/copy";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router";
 import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
@@ -12,11 +18,17 @@ import * as landingBodyModule from "../site/sections/LandingBody";
 import { testAuthUser } from "../stories/testData";
 import OnboardingPage from "./OnboardingPage";
 import * as onboardingPanelModule from "./OnboardingPanel";
-import { OnboardingStep } from "./flow";
+import { PHONE_HEADLINE, PHONE_REFUSED, PHONE_SKIP_LABEL } from "./PhoneStep";
+import { isPhoneStepDeferred, OnboardingStep, phoneStepHref } from "./flow";
+import { walkthroughStartHref } from "./walkthrough/steps";
 
 let contract: ContractDto | null;
 let signRefusal: { status: number; message: string } | null;
 let signUnreachable: boolean;
+let profileUpdates: unknown[];
+let profileUnreachable: boolean;
+let profileRefusal: { status: number; message: string } | null;
+let signatures: number;
 
 serveApi(
   routes({
@@ -24,6 +36,7 @@ serveApi(
     "POST /auth/register": () => Response.json({}),
     "GET /auth/me": () => Response.json({ user: testAuthUser }),
     "POST /contract/sign/:id": () => {
+      signatures += 1;
       if (signUnreachable) throw new TypeError("Failed to fetch");
       return signRefusal === null
         ? Response.json({ date: "2026-03-10T12:00:00.000Z" })
@@ -43,6 +56,20 @@ serveApi(
     "GET /user/slug/:id": () =>
       Response.json({ profilePicture: null, displayName: "" }),
     "GET /user/signupSocialProof": () => Response.json({ profiles: [] }),
+    "POST /user/update": async ({ request }) => {
+      if (profileUnreachable) throw new TypeError("Failed to fetch");
+      if (profileRefusal) {
+        return Response.json(
+          {
+            statusCode: profileRefusal.status,
+            message: profileRefusal.message,
+          },
+          { status: profileRefusal.status },
+        );
+      }
+      profileUpdates.push(await request.json());
+      return Response.json(testAuthUser);
+    },
   }),
 );
 
@@ -56,7 +83,12 @@ beforeEach(() => {
   contract = null;
   signRefusal = null;
   signUnreachable = false;
+  profileUpdates = [];
+  profileUnreachable = false;
+  profileRefusal = null;
+  signatures = 0;
   localStorage.clear();
+  sessionStorage.clear();
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
   // The OAuth return URL the account step builds needs a real origin.
@@ -104,12 +136,21 @@ window.happyDOM.setURL("https://test.alliance/onboarding");
  * Returns a call that settles auth on the user it is given, keeping the page
  * mounted.
  */
-const visit = (url: string, user?: UserDto, { authLoading = false } = {}) => {
+const visit = (
+  url: string,
+  user?: UserDto,
+  {
+    authLoading = false,
+    logout = noop,
+  }: { authLoading?: boolean; logout?: () => Promise<void> } = {},
+) => {
   const queryClient = new QueryClient();
   const page = (pageUser: UserDto | undefined, loading: boolean) => (
     <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={{ ...authValue(pageUser), loading }}>
+        <AuthContext.Provider
+          value={{ ...authValue(pageUser), loading, logout }}
+        >
           <InviteSessionProvider>
             <OnboardingPage />
             <Search />
@@ -139,6 +180,15 @@ test("a provider sign-in by someone who still owes the agreement enters the flow
 
 test("a provider sign-in by a member who has entered it goes to the platform", async () => {
   visit("/onboarding?google=signed_in", member(true));
+
+  await waitFor(() => expect(pathname()).toBe("/tasks"));
+});
+
+test("a provider sign-in sends a member to no other site", async () => {
+  visit(
+    "/onboarding?google=signed_in&redirect=//elsewhere.example",
+    member(true),
+  );
 
   await waitFor(() => expect(pathname()).toBe("/tasks"));
 });
@@ -239,12 +289,14 @@ test("forgets the tab's invitation once signup has used it", async () => {
   expect(sessionStorage.getItem("alliance:invite")).toBeNull();
 });
 
+const agreement: ContractDto = {
+  id: 1,
+  markdown: "",
+  description: [{ point: "Act together", subtext: "" }],
+};
+
 test("forgets the tab's invitation once email signup has used it", async () => {
-  contract = {
-    id: 1,
-    markdown: "",
-    description: [{ point: "Act together", subtext: "" }],
-  };
+  contract = agreement;
   sessionStorage.setItem(
     "alliance:invite",
     JSON.stringify({ explicit: null, saved: "good" }),
@@ -273,11 +325,7 @@ test("forgets the tab's invitation once email signup has used it", async () => {
 });
 
 const failToSign = async (expected: string) => {
-  contract = {
-    id: 1,
-    markdown: "",
-    description: [{ point: "Act together", subtext: "" }],
-  };
+  contract = agreement;
   visit(`/onboarding?step=${OnboardingStep.Agreement}`, member(false));
 
   fireEvent.change(await screen.findByLabelText("Sign your full name"), {
@@ -327,4 +375,208 @@ test("offers no invitation on the signup it leads to", async () => {
 
   await screen.findByRole("link", { name: /Log In/ });
   expect(screen.queryByRole("link", { name: "Accept invite" })).toBeNull();
+});
+
+const joinToPhoneStep = async () => {
+  contract = agreement;
+  visit(`/onboarding?step=${OnboardingStep.Agreement}`, member(false));
+  fireEvent.change(await screen.findByLabelText("Sign your full name"), {
+    target: { value: "Sam Member" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Join" }));
+  await screen.findByText(PHONE_HEADLINE);
+  expect(step()).toBe(OnboardingStep.Phone);
+};
+
+test("asks for a phone number after the agreement, and saves it before entering the platform", async () => {
+  await joinToPhoneStep();
+
+  const getStarted = screen.getByRole<HTMLButtonElement>("button", {
+    name: /Get started/,
+  });
+  expect(getStarted.disabled).toBe(true);
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "415" },
+  });
+  expect(getStarted.disabled).toBe(true);
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await waitFor(() =>
+    expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
+  );
+  expect(profileUpdates).toEqual([{ phoneNumber: "+14155552671" }]);
+});
+
+test("returns a member the platform sent to the phone step to the page they opened", async () => {
+  contract = agreement;
+  visit(phoneStepHref("/actions/5?tab=1"), member(true));
+  fireEvent.change(await screen.findByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await waitFor(() => expect(pathname()).toBe("/actions/5"));
+  expect(search()).toBe("?tab=1");
+});
+
+test("offers a way to log out only to a member the platform sent to the phone step", async () => {
+  contract = agreement;
+  const logout = jest.fn(noop);
+  visit(phoneStepHref("/tasks"), member(true), { logout });
+  fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
+  expect(logout).toHaveBeenCalledTimes(1);
+});
+
+test("offers no way to log out during signup", async () => {
+  await joinToPhoneStep();
+  expect(screen.queryByRole("button", { name: "Log out" })).toBeNull();
+});
+
+test("lets a member the platform sent to the phone step in without a number for the visit once theirs is refused", async () => {
+  contract = agreement;
+  profileRefusal = { status: 409, message: "Taken" };
+  visit(phoneStepHref("/actions/5"), member(true));
+  fireEvent.change(await screen.findByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: new RegExp(PHONE_SKIP_LABEL) }),
+  );
+
+  await waitFor(() => expect(pathname()).toBe("/actions/5"));
+  expect(isPhoneStepDeferred(testAuthUser.id)).toBe(true);
+});
+
+test("keeps a member the platform sent to the phone step there over a stale signup draft", async () => {
+  localStorage.setItem(
+    "alliance:onboarding-draft",
+    JSON.stringify({
+      email: "member@example.com",
+      password: "a long password",
+      step: OnboardingStep.Account,
+      referralCode: null,
+      savedAt: Date.now(),
+    }),
+  );
+  contract = agreement;
+  const settleAuth = visit(phoneStepHref("/tasks"), undefined, {
+    authLoading: true,
+  });
+  settleAuth(member(true));
+
+  await screen.findByText(PHONE_HEADLINE);
+  expect(step()).toBe(OnboardingStep.Phone);
+});
+
+test("resumes a signed-out visitor's draft without waiting for the session", () => {
+  localStorage.setItem(
+    "alliance:onboarding-draft",
+    JSON.stringify({
+      email: "member@example.com",
+      password: "a long password",
+      step: OnboardingStep.Minutes,
+      referralCode: null,
+      savedAt: Date.now(),
+    }),
+  );
+  visit("/onboarding", undefined, { authLoading: true });
+
+  expect(step()).toBe(OnboardingStep.Minutes);
+});
+
+test("gives a member who left at the phone step the first-task tour once the platform sends them back", async () => {
+  await joinToPhoneStep();
+  cleanup();
+
+  visit(phoneStepHref("/tasks"), member(true));
+  fireEvent.change(await screen.findByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await waitFor(() =>
+    expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
+  );
+});
+
+test("goes back from the phone step to the signed agreement without signing it again", async () => {
+  await joinToPhoneStep();
+
+  fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Agreement));
+  expect(
+    screen.getByLabelText<HTMLInputElement>("Sign your full name").readOnly,
+  ).toBe(true);
+
+  fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+  await screen.findByText(PHONE_HEADLINE);
+  expect(step()).toBe(OnboardingStep.Phone);
+  expect(signatures).toBe(1);
+});
+
+test("keeps the agreement signed after a reload on the phone step", async () => {
+  contract = agreement;
+  visit(`/onboarding?step=${OnboardingStep.Phone}`, member(true));
+  await screen.findByText(PHONE_HEADLINE);
+
+  fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Agreement));
+  expect(screen.getByText("Agreement received")).toBeTruthy();
+  expect(screen.queryByLabelText("Sign your full name")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+  await screen.findByText(PHONE_HEADLINE);
+  expect(signatures).toBe(0);
+});
+
+test("lets the member try another number when the phone number never reached the server", async () => {
+  await joinToPhoneStep();
+  profileUnreachable = true;
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  expect(await screen.findByText(PHONE_REFUSED)).toBeTruthy();
+  expect(step()).toBe(OnboardingStep.Phone);
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552672" },
+  });
+  expect(screen.queryByText(PHONE_REFUSED)).toBeNull();
+  expect(
+    screen.getByRole<HTMLButtonElement>("button", { name: /Get started/ })
+      .disabled,
+  ).toBe(false);
+});
+
+test("lets the member continue without a number once the server refuses theirs", async () => {
+  await joinToPhoneStep();
+  profileRefusal = {
+    status: 409,
+    message:
+      "This phone number is already linked to an account. Enter a different number.",
+  };
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  expect(await screen.findByText(PHONE_REFUSED)).toBeTruthy();
+  fireEvent.click(
+    await screen.findByRole("button", { name: new RegExp(PHONE_SKIP_LABEL) }),
+  );
+
+  await waitFor(() =>
+    expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
+  );
+  expect(profileUpdates).toEqual([]);
 });

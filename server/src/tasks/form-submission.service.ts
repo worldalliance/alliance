@@ -106,9 +106,7 @@ export class FormSubmissionService {
     submitFormDto: SubmitFormDto,
   ): Promise<ParsedFormResponse> {
     const form = await this.tasksService.getForm(formId);
-    const user = await this.userService.findOneOrFail(userId, {
-      optInMms: true,
-    });
+    const user = await this.userService.findOneOrFail(userId);
 
     await assertAssignedForm(this.actionFormVariantService, {
       actionId: submitFormDto.actionId,

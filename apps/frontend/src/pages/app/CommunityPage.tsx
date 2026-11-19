@@ -31,7 +31,6 @@ import PillTab from "../../components/PillTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import { useCommunityEditor } from "../../lib/useCommunityEditor";
-import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import MyGroupsPage from "./MyGroupsPage";
 import PageSpinner from "./PageSpinner";
 
@@ -282,10 +281,7 @@ const CommunityPage = () => {
           </div>
           <div className="mx-2 space-y-2 mt-8">
             {tab !== "groups" && (
-              <Card
-                className="relative z-0 px-4 md:px-8 pb-6 gap-y-2"
-                data-walkthrough={WalkthroughAnchor.Group}
-              >
+              <Card className="relative z-0 px-4 md:px-8 pb-6 gap-y-2">
                 <CommunityProfile
                   community={community}
                   amLeader={amLeader ?? false}

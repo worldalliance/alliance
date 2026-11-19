@@ -65,6 +65,7 @@ import {
   UserDto,
 } from "./dto/user.dto";
 import { FriendService } from "./friend.service";
+import { PhoneOptInService } from "./phone-opt-in.service";
 import { UserAdminService } from "./user-admin.service";
 import { UserDirectoryService } from "./user-directory.service";
 import { UserVisibilityContextService } from "./user-visibility-context.service";
@@ -88,6 +89,7 @@ export class UserController {
     private readonly ambassadorProgramService: AmbassadorProgramService,
     private readonly ambassadorInviteGoalService: AmbassadorInviteGoalService,
     private readonly friendService: FriendService,
+    private readonly phoneOptInService: PhoneOptInService,
   ) {}
 
   @Get("me")
@@ -112,9 +114,11 @@ export class UserController {
     @Body() updateActionDto: UpdateProfileDto,
     @Request() req: JwtRequest,
   ): Promise<ProfileDto> {
-    return new ProfileDto(
-      await this.userService.update(req.user.sub, updateActionDto),
-    );
+    const user = await this.userService.update(req.user.sub, updateActionDto);
+    if (updateActionDto.phoneNumber) {
+      await this.phoneOptInService.confirm(user.id);
+    }
+    return new ProfileDto(user);
   }
 
   @Get("mylocation")

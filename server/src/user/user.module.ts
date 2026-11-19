@@ -9,6 +9,7 @@ import { Community } from "src/community/entities/community.entity";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { ImagesModule } from "src/images/images.module";
 import { MailModule } from "src/mail/mail.module";
+import { MmsModule } from "src/mms/mms.module";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { OtpModule } from "src/otp/otp.module";
 import { PushModule } from "src/push/push.module";
@@ -34,6 +35,7 @@ import { User } from "./entities/user.entity";
 import { FriendService } from "./friend.service";
 import { GroupAssignmentService } from "./group-assignment.service";
 import { OnetimeInviteService } from "./onetime-invite.service";
+import { PhoneOptInService } from "./phone-opt-in.service";
 import { PhoneVerificationService } from "./phone-verification.service";
 import { ReferralService } from "./referral.service";
 import { TagService } from "./tag.service";
@@ -76,6 +78,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     ActionVisibilityModule,
     JwtModule,
     ImagesModule,
+    forwardRef(() => MmsModule),
     MailModule,
     forwardRef(() => OtpModule),
     ShareUrlsModule,
@@ -115,6 +118,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserDirectoryService,
     PhoneVerificationService,
     IsUserAlreadyExist,
+    PhoneOptInService,
   ],
   exports: [
     UserService,
@@ -124,6 +128,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     FriendService,
     UserVisibilityContextService,
     AccountEmailService,
+    PhoneOptInService,
   ],
 })
 export class UserModule {}

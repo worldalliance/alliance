@@ -22,7 +22,6 @@ import AwayRangesSection from "../../components/AwayRangesSection";
 import { ContractDescriptionList } from "../../components/ContractDescriptionList";
 import LoadFailed from "../../components/LoadFailed";
 import { useAuth } from "../../lib/AuthContext";
-import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 
 function SignedContractActions({
   message,
@@ -123,11 +122,7 @@ const MembershipPage: React.FC = () => {
         {(previousSignedContract ||
           previousContractLoadFailed ||
           latestContract) && (
-          <Card
-            style={CardStyle.White}
-            className="p-6"
-            data-walkthrough={WalkthroughAnchor.Contract}
-          >
+          <Card style={CardStyle.White} className="p-6">
             <h2 className="font-semibold! text-2xl! mb-4">
               {membershipAgreement.heading}
             </h2>
@@ -225,7 +220,6 @@ const MembershipPage: React.FC = () => {
 
         <Card
           id="away-periods"
-          data-walkthrough={WalkthroughAnchor.AwayRanges}
           style={CardStyle.White}
           className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
         >

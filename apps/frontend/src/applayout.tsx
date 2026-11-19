@@ -5,8 +5,16 @@ import { isStaging } from "@alliance/sharedweb/lib/config";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useEffect, useRef } from "react";
-import { href, Outlet, useNavigate, useNavigation } from "react-router";
+import {
+  href,
+  Navigate,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useNavigation,
+} from "react-router";
 import { useAuth } from "./lib/AuthContext";
+import { isPhoneStepDeferred, phoneStepHref } from "./onboarding/flow";
 
 export function HydrateFallback() {
   return (
@@ -36,9 +44,11 @@ export default function AppLayout() {
     loading: authLoading,
     logout,
     isImpersonation,
+    user,
   } = useAuth();
 
   const navigate = useNavigate();
+  const location = useLocation();
   const navigation = useNavigation();
   // Each request refused after a failed refresh settles, or refused again on
   // retry, reports the session ended.
@@ -79,6 +89,25 @@ export default function AppLayout() {
       <div className="fixed top-[var(--navbar-top-bar-height)] right-0 bottom-0 left-0 md:left-[var(--nav-width)] flex items-center justify-center bg-page">
         <Spinner size="large" />
       </div>
+    );
+  }
+
+  // Deleting an account never waits on giving a number, and an admin
+  // impersonating a member must not be made to enter one for them.
+  if (
+    user?.hasActiveContract &&
+    !user.phoneNumber &&
+    !isPhoneStepDeferred(user.id) &&
+    !isImpersonation &&
+    location.pathname !== href("/deleteaccount")
+  ) {
+    return (
+      <Navigate
+        to={phoneStepHref(
+          `${location.pathname}${location.search}${location.hash}`,
+        )}
+        replace
+      />
     );
   }
 

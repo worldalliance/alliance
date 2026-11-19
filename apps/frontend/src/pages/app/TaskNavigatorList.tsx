@@ -9,7 +9,6 @@ import {
   type ActiveFollowUpFormEntry,
 } from "@alliance/shared/lib/homePage";
 import { useMemo } from "react";
-import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import {
   TaskNavigatorCompletedRow,
   TaskNavigatorTodoActionRow,
@@ -102,10 +101,7 @@ export default function TaskNavigatorList({
   );
 
   return (
-    <div
-      className="overflow-hidden"
-      data-walkthrough={WalkthroughAnchor.TaskList}
-    >
+    <div className="overflow-hidden">
       <div className="flex flex-col gap-y-2">
         {currentWeekTodoActions.length > 0 && (
           <p className="text-zinc-600 mb-1">
