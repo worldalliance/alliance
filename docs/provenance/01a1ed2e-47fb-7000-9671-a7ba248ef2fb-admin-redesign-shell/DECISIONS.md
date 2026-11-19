@@ -67,7 +67,7 @@ These follow requirement 6 and the values the `ux-forms-platform` **Visual syste
 - 14 px body text, 20 px semibold page titles.
 - A 4 px spacing scale and 100–150 ms transitions.
 
-The redesigned pieces use zinc, amber, `rounded-md` and named text sizes. Normalising the rest of the admin panel to that scale is separate work, which `01a1eb0a-3d46-7000-8d98-c3e8f06b4484-admin-action-flow-and-visual-cleanup` requirement 3 left out. No new theme tokens were added because the Tailwind palette already serves as the token set.
+The redesigned pieces use zinc, amber, `rounded-md` and named text sizes. Normalising the rest of the admin panel to that scale is separate work, which `01a1eb0a-3d46-7000-8d98-c3e8f06b4484-admin-action-flow-and-visual-cleanup` requirement 3 left out at a teammate's request, dropping its normalisation commit (28e8bad56). Asked whether to fold that commit back into this stack, the owner answered "I don't care", which leaves whether the work happens here to the agent: it stays separate work, as that requirement left it. Fold it in if two class vocabularies side by side cost more than a separate PR. No new theme tokens were added because the Tailwind palette already serves as the token set.
 
 `PageShell` page widths:
 

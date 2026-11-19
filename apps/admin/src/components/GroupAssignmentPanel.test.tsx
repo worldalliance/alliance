@@ -111,7 +111,7 @@ it("says why an assignment was refused, keeping the members queued", async () =>
   assignStatus = 400;
   await assignToNorth();
 
-  expect(await screen.findByText("North is full")).toBeTruthy();
+  expect((await screen.findByRole("alert")).textContent).toBe("North is full");
   expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
   expect(
     query.client.getQueryData(queryKeys.groupAssignmentMembersAdmin()),

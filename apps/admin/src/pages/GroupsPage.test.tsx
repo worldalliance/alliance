@@ -80,15 +80,29 @@ it("lists the groups, showing unused capacity once they load", async () => {
   expect(screen.queryByText("Unused capacity")).toBeNull();
   expect(await screen.findByText("North")).toBeTruthy();
   expect(screen.getByText("Unused capacity")).toBeTruthy();
+  expect(
+    screen.getAllByRole("heading").map((heading) => heading.textContent),
+  ).toEqual(["Groups", "All groups", "North", "Create group"]);
 });
 
 it("says when the groups failed to load", async () => {
   listStatus = 500;
   renderPage();
 
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Unable to load communities. Please try again.",
+  );
+});
+
+it("announces a failed groups load once while members await assignment", async () => {
+  listStatus = 500;
+  queue = [makeUser({ id: 9, name: "Ada" })];
+  renderPage();
+
+  await screen.findByText("Unable to load groups. Please try again.");
   expect(
-    await screen.findByText("Unable to load communities. Please try again."),
-  ).toBeTruthy();
+    screen.getAllByRole("alert").map((alert) => alert.textContent),
+  ).toEqual(["Unable to load communities. Please try again."]);
 });
 
 it("lists a created group and clears the form", async () => {
@@ -108,7 +122,9 @@ it("says why a create was refused", async () => {
 
   fillAndCreate();
 
-  expect(await screen.findByText("That name is taken")).toBeTruthy();
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "That name is taken",
+  );
 });
 
 it("keeps loading while offline rather than saying there are no groups", async () => {
@@ -136,11 +152,9 @@ it("says when the members awaiting assignment failed to load", async () => {
   queueStatus = 500;
   renderPage();
 
-  expect(
-    await screen.findByText(
-      "Unable to load members awaiting group assignment. Please try again.",
-    ),
-  ).toBeTruthy();
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Unable to load members awaiting group assignment. Please try again.",
+  );
 });
 
 it("closes the assignment panel once its last member is assigned", async () => {
