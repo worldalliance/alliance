@@ -1,3 +1,4 @@
+import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
 import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
 import { format } from "date-fns";
@@ -88,3 +89,13 @@ export const memberLocalTime = (
     () => LocalTimeUnknown.InvalidTimeZone,
   );
 };
+
+export const threadContactName = (thread: {
+  phoneNumber: string;
+  members: { name: string }[];
+}): string =>
+  thread.members.length === 0
+    ? formatPhoneNumberForDisplay(thread.phoneNumber)
+    : new Intl.ListFormat("en", { type: "conjunction" }).format(
+        thread.members.map((member) => member.name),
+      );

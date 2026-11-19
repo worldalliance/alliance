@@ -155,6 +155,22 @@ it("sends a text, adds it to the thread and refreshes Needs Reply", async () => 
   await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
 });
 
+it("marks the number's thread page stale after a send here", async () => {
+  const client = renderSection();
+  const pageKey = queryKeys.numberTextThreadAdmin(
+    "00000000-0000-4000-8000-000000000001",
+  );
+  client.setQueryData(pageKey, thread);
+  fireEvent.change(await screen.findByLabelText("Text Sam"), {
+    target: { value: "Happy to help" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  await waitFor(() =>
+    expect(client.getQueryState(pageKey)?.isInvalidated).toBe(true),
+  );
+});
+
 it("frees the composer without waiting for Needs Reply to refresh", async () => {
   needsReplyGate = new Promise(() => {});
   const { wrapper: Wrapper } = queryWrapper();

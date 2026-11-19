@@ -1,13 +1,24 @@
+import {
+  mmsThreadGetNumberThreadAdmin,
+  mmsThreadMarkThreadHandledAdmin,
+  mmsThreadMarkThreadNeedsReplyAdmin,
+  mmsThreadMarkThreadOptedOutAdmin,
+  mmsThreadSendInThreadAdmin,
+} from "@alliance/shared/client";
 import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   type DataTag,
   type QueryKey,
+  partialMatchKey,
+  queryOptions,
   useMutation,
   useMutationState,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
 import { usePatchAnyQueryData } from "./usePatchQueryData";
 
 type ThreadMark<Id> = { id: Id; throughId: number };
@@ -32,8 +43,21 @@ export function useThreadActions<
   const { id, queryKey, optOutKey } = params;
   const queryClient = useQueryClient();
   const patch = usePatchAnyQueryData();
-  const refreshViews = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.needsReplyAdmin() });
+  const refreshViews = (target: Id) => {
+    const keys = [
+      queryKey(target),
+      queryKeys.needsReplyAdmin(),
+      queryKeys.memberTextThreadsAdminAll(),
+      queryKeys.numberTextThreadsAdminAll(),
+    ];
+    // One call, so a query under several keys refetches once, and a poll
+    // already in flight restarts rather than landing the state before the
+    // change.
+    return queryClient.invalidateQueries({
+      predicate: (query) =>
+        keys.some((key) => partialMatchKey(query.queryKey, key)),
+    });
+  };
 
   const send = useMutation({
     mutationFn: params.sendText,
@@ -45,8 +69,7 @@ export function useThreadActions<
       );
       // An undelivered text doesn't answer the contact, so only the server
       // knows the reply state now.
-      void queryClient.invalidateQueries({ queryKey: queryKey(input.id) });
-      void refreshViews();
+      void refreshViews(input.id);
     },
   });
 
@@ -58,7 +81,7 @@ export function useThreadActions<
       }),
     onSuccess: async (_, target) => {
       await patch(queryKey(target), (prev) => ({ ...prev, optedOut: true }));
-      void refreshViews();
+      void refreshViews(target);
     },
     onError: (_, target) =>
       queryClient.invalidateQueries({ queryKey: queryKey(target) }),
@@ -71,20 +94,14 @@ export function useThreadActions<
     select: (mutation) => mutation.state.variables,
   });
 
-  const afterReplyStateChange = (target: Id) =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKey(target) }),
-      refreshViews(),
-    ]);
-
   const markHandled = useMutation({
     mutationFn: params.markHandled,
-    onSettled: (_, __, input) => afterReplyStateChange(input.id),
+    onSettled: (_data, _error, input) => refreshViews(input.id),
   });
 
   const markNeedsReply = useMutation({
     mutationFn: params.markNeedsReply,
-    onSettled: (_, __, input) => afterReplyStateChange(input.id),
+    onSettled: (_data, _error, input) => refreshViews(input.id),
   });
 
   return {
@@ -100,4 +117,55 @@ export function useThreadActions<
     markingNeedsReply:
       markNeedsReply.isPending && markNeedsReply.variables.id === id,
   };
+}
+
+const numberThreadQuery = (threadId: string) =>
+  queryOptions({
+    queryKey: queryKeys.numberTextThreadAdmin(threadId),
+    queryFn: () => fetchNumberThread({ threadId }),
+    refetchInterval: milliseconds({ seconds: 10 }),
+  });
+
+export const fetchNumberThread = (params: {
+  threadId: string;
+  before?: number;
+}) =>
+  mmsThreadGetNumberThreadAdmin({
+    path: { threadId: params.threadId },
+    query: { before: params.before },
+    throwOnError: true,
+  }).then((r) => r.data);
+
+export function useNumberThreadAdmin(threadId: string) {
+  const thread = useQuery(numberThreadQuery(threadId));
+  const actions = useThreadActions({
+    id: threadId,
+    queryKey: (id: string) => numberThreadQuery(id).queryKey,
+    sendText: (input) =>
+      mmsThreadSendInThreadAdmin({
+        path: { threadId: input.id },
+        body: { body: input.body },
+        throwOnError: true,
+      }).then((r) => r.data),
+    markOptedOut: (id) =>
+      mmsThreadMarkThreadOptedOutAdmin({
+        path: { threadId: id },
+        throwOnError: true,
+      }),
+    optOutKey: ["markThreadOptedOutAdmin"],
+    markHandled: (input) =>
+      mmsThreadMarkThreadHandledAdmin({
+        path: { threadId: input.id },
+        body: { throughId: input.throughId },
+        throwOnError: true,
+      }),
+    markNeedsReply: (input) =>
+      mmsThreadMarkThreadNeedsReplyAdmin({
+        path: { threadId: input.id },
+        body: { throughId: input.throughId },
+        throwOnError: true,
+      }),
+  });
+
+  return { thread, ...actions };
 }

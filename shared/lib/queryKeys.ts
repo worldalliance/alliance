@@ -32,6 +32,10 @@ const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
 
+const memberTextThreadsAdminAll = () => ["mmsThreadGetThreadAdmin"] as const;
+const numberTextThreadsAdminAll = () =>
+  ["mmsThreadGetNumberThreadAdmin"] as const;
+
 const actionAdminAll = () => ["actionsFindOneAdmin"] as const;
 
 /** Prefix over a group's member progress and contact info, so a membership
@@ -305,10 +309,14 @@ export const queryKeys = {
     ["analyticsGetMemberCompletionRetentionAdmin"] as const,
   memberReliabilityWindowAdmin: (weeks: number | null) =>
     ["analyticsGetMemberReliabilityWindowAdmin", weeks] as const,
+  memberTextThreadsAdminAll,
   memberTextThreadAdmin: (userId: number) =>
-    ["mmsThreadGetThreadAdmin", userId] as const,
+    [...memberTextThreadsAdminAll(), userId] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
   needsReplyAdmin: () => ["mmsThreadNeedsReplyAdmin"] as const,
+  numberTextThreadsAdminAll,
+  numberTextThreadAdmin: (threadId: string) =>
+    [...numberTextThreadsAdminAll(), threadId] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,

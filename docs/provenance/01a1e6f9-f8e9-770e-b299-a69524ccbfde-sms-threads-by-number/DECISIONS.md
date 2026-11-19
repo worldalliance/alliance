@@ -39,7 +39,7 @@ The member page keeps reading the member's thread through the user-id endpoints 
 
 ## 5. The member page keeps its texts section
 
-`MemberTextsSection` keeps showing the thread for the member's current number, with history, composer and opt-out button, and links to the thread page. On the thread page, the composer's quiet-hours warning uses the time zone of the number's member when it has exactly one, and is skipped otherwise. Its internals are extracted into a thread component shared with the thread page, with the query cache keyed by thread id so both views stay in step. The codex second opinion agreed. EVIDENCE.md, "Inbox products", found no established practice either way.
+`MemberTextsSection` keeps showing the thread for the member's current number, with history, composer and opt-out button, and links to the thread page. It loads through the user-id endpoints, which return the thread id for the link. On the thread page, the composer's quiet-hours warning uses the time zone the number's members share, and is skipped when they have none or differ; the review loop widened it from a sole member's zone, since a shared zone says the hour as surely. Its internals are extracted into a thread component shared with the thread page. The codex second opinion agreed. EVIDENCE.md, "Inbox products", found no established practice either way. While implementing, the agent kept the member view cached by user id and the thread page by thread id; a send, opt-out or mark in either refetches both, Needs reply and the Texts page, and both poll every 10 seconds as the member view did. Where the warning is skipped, the composer says the recipient's local time is unknown.
 
 ## 6. No "attach to member" action
 
@@ -72,7 +72,7 @@ A thread shows the members who currently have its number. When a member changes 
 
 ## Out of scope
 
-Assigning threads to staff, outbound media, creating a member or sending an invite from a thread, deletion or export requests for a non-member's texts, logging thread views, translation, analytics, a block action, and quiet-hours warnings for numbers without exactly one member.
+Assigning threads to staff, outbound media, creating a member or sending an invite from a thread, deletion or export requests for a non-member's texts, logging thread views, translation, analytics, a block action, and quiet-hours warnings for numbers whose members have no shared time zone.
 
 ## Separate work found
 
