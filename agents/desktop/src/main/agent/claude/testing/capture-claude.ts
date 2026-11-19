@@ -94,6 +94,11 @@ check(
   !kinds(interrupted).includes(AgentEventKind.Error),
   "an interrupt emits no error",
 );
+const ended = interrupted.at(-1);
+check(
+  ended?.kind === AgentEventKind.TurnEnded && ended.interrupted,
+  "the turn ended as interrupted",
+);
 check(
   !/\b300\b/.test(deltaText(interrupted)),
   "the interrupt cut the turn short",
