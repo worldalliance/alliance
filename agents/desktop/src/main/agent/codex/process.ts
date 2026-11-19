@@ -16,12 +16,12 @@ export type CodexCli = {
 };
 
 // The CLI reads its credentials, endpoints, home and a parent session's markers from these two namespaces, so none of them pass through but its custom root certificate, which a TLS-intercepting proxy needs.
-// The desktop-app task's Credentials decision removes the Claude credentials, Anthropic's whole namespace and Claude Code's OAuth token, from every agent process.
+// Claude's namespaces, Anthropic's and every CLAUDE* variable, stay out too, so no Claude credential or setting reaches a Codex session.
 const inherited = (name: string) =>
   (name === "CODEX_CA_CERTIFICATE" ||
     (!name.startsWith("CODEX") && !name.startsWith("OPENAI_"))) &&
   !name.startsWith("ANTHROPIC_") &&
-  name !== "CLAUDE_CODE_OAUTH_TOKEN";
+  !name.startsWith("CLAUDE");
 
 export function codexEnvironment(
   home: string,
