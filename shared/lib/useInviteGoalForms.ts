@@ -47,6 +47,11 @@ const parseTarget = (value: string) => {
 const isDateInput = (value: string) =>
   !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
 
+const newGoalDates = () => ({
+  start: todayDateInputValue(),
+  due: oneMonthFromTodayDateInputValue(),
+});
+
 export function useInviteGoalForms(params: {
   currentGoal: AmbassadorInviteGoalWithStatsDto | undefined;
   createGoal: (
@@ -59,10 +64,9 @@ export function useInviteGoalForms(params: {
   const { currentGoal, createGoal, updateGoal } = params;
 
   const [goalTarget, setGoalTarget] = useState("");
-  const [goalStartDate, setGoalStartDate] = useState(todayDateInputValue);
-  const [goalDueDate, setGoalDueDate] = useState(
-    oneMonthFromTodayDateInputValue,
-  );
+  const [defaultGoalDates, setDefaultGoalDates] = useState(newGoalDates);
+  const [goalStartDate, setGoalStartDate] = useState(defaultGoalDates.start);
+  const [goalDueDate, setGoalDueDate] = useState(defaultGoalDates.due);
   const [editGoalStartDate, setEditGoalStartDate] = useState("");
   const [editGoalDueDate, setEditGoalDueDate] = useState("");
   const [editGoalTarget, setEditGoalTarget] = useState("");
@@ -101,7 +105,11 @@ export function useInviteGoalForms(params: {
       dueAt: dateInputToEndOfDayIso(goalDueDate),
     })
       .then(() => {
+        const dates = newGoalDates();
         setGoalTarget("");
+        setGoalStartDate(dates.start);
+        setGoalDueDate(dates.due);
+        setDefaultGoalDates(dates);
         setGoalFormMessage(null);
       })
       .catch((err: Error) => {
@@ -188,7 +196,15 @@ export function useInviteGoalForms(params: {
     [updateCurrentGoal],
   );
 
+  const newGoalDirty =
+    showProminentGoalForm &&
+    (goalTarget !== "" ||
+      goalStartDate !== defaultGoalDates.start ||
+      goalDueDate !== defaultGoalDates.due);
+
   return {
+    /** The new goal form is showing and holds a target or picked dates. */
+    newGoalDirty,
     goalTarget,
     setGoalTarget,
     goalStartDate,
