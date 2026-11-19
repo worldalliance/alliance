@@ -65,7 +65,10 @@ import {
   assignSocialProofArm,
   socialProofDelivery,
 } from "./reminder-social-proof";
-import { saveForLiveRecipient } from "./save-for-live-recipient";
+import {
+  lockReminderCoverage,
+  saveForLiveRecipient,
+} from "./save-for-live-recipient";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -284,12 +287,10 @@ export class ActionEventNotifWorker {
         actionSuite: null,
         build: async (manager) => {
           if (personal) {
-            // Serializes reserving coverage with reading it, so an overlapping
-            // run's catch-up sees this reservation.
-            await manager.query(
-              "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-              [`reminder-coverage:${plan.user.id}:${memberActionEvent.id}`],
-            );
+            await lockReminderCoverage(manager, {
+              userId: plan.user.id,
+              memberActionEventId: memberActionEvent.id,
+            });
           }
           if (plan.group.excludePreviouslyNotified) {
             uncompletedTasks = await notYetNotified(manager);
@@ -325,12 +326,6 @@ export class ActionEventNotifWorker {
       throw error;
     }
     if (!notif) return;
-    const release = (id: number) =>
-      updateLive(this.dataSource.manager, {
-        target: ActionEventNotif,
-        id,
-        changes: { deliveryPending: false },
-      });
 
     let send: () => Promise<boolean>;
     try {
@@ -352,14 +347,22 @@ export class ActionEventNotifWorker {
         push: { screen: "/", idempotencyKey: plan.group.id.toString() },
       });
     } catch (error) {
-      await release(notif.id);
+      await this.releaseReservation(notif.id);
       throw error;
     }
     if (await send()) {
       await recordDelivery(this.dataSource.manager, notif);
     } else {
-      await release(notif.id);
+      await this.releaseReservation(notif.id);
     }
+  }
+
+  private async releaseReservation(id: number) {
+    await updateLive(this.dataSource.manager, {
+      target: ActionEventNotif,
+      id,
+      changes: { deliveryPending: false },
+    });
   }
 
   /**
