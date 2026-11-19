@@ -2,6 +2,7 @@ import { ExceptionEvent } from "@alliance/common/analytics";
 import { R, type Result } from "@alliance/common/result";
 import { captureException } from "@alliance/shared/lib/analytics";
 import * as Updates from "expo-updates";
+import { shareInFlight } from "./shareInFlight";
 
 export const OTA_UPDATES_ENABLED = Updates.isEnabled && !__DEV__;
 
@@ -28,7 +29,7 @@ async function checkAndDownload(): Promise<Result<boolean, OtaFetchFailure>> {
  * Downloads a published update, if any, reporting a failure; `true` when a new
  * update was downloaded.
  */
-export async function fetchAvailableUpdate(): Promise<
+async function fetchAvailableUpdate(): Promise<
   Result<boolean, OtaFetchFailure>
 > {
   if (!OTA_UPDATES_ENABLED) return R.success(false);
@@ -42,3 +43,6 @@ export async function fetchAvailableUpdate(): Promise<
   }
   return fetched;
 }
+
+/** `fetchAvailableUpdate`, joining a download already under way. */
+export const downloadUpdateNow = shareInFlight(fetchAvailableUpdate);

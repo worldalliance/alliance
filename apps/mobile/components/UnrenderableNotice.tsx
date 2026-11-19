@@ -15,7 +15,7 @@ import {
   Linking,
   View,
 } from "react-native";
-import { fetchAvailableUpdate, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { downloadUpdateNow, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
 import { restartIntoUpdate } from "../lib/restartIntoUpdate";
 import { shareInFlight } from "../lib/shareInFlight";
 import { STORE, storeHasNewerBuild } from "../lib/storeUpdate";
@@ -30,7 +30,7 @@ import { RecoveryAction, updateRecoveryView } from "./updateRecoveryView";
 
 const search = shareInFlight(() =>
   searchForNewerVersion({
-    fetchOta: fetchAvailableUpdate,
+    fetchOta: downloadUpdateNow,
     storeHasNewer: storeHasNewerBuild,
   }),
 );

@@ -6,7 +6,7 @@ import { AccessibilityInfo, AppState, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { startForegroundUpdateChecks } from "../lib/foregroundUpdateChecks";
 import { onAppForegrounded } from "../lib/onAppForegrounded";
-import { fetchAvailableUpdate, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { downloadUpdateNow, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
 import { restartIntoUpdate } from "../lib/restartIntoUpdate";
 import { colors } from "../lib/style/colors";
 import Button, { ButtonColor } from "./system/Button";
@@ -33,7 +33,7 @@ const OtaUpdateBanner = () => {
     if (!OTA_UPDATES_ENABLED) return;
     return startForegroundUpdateChecks({
       appState: AppState,
-      check: fetchAvailableUpdate,
+      check: downloadUpdateNow,
     });
   }, []);
 
