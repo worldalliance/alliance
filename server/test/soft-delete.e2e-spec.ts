@@ -53,6 +53,7 @@ const NEVER_DELETED = [
   "KoraBatchEvent",
   "KoraProject",
   "KoraTranscript",
+  "Lease",
   "MmsThreadEvent",
 ];
 

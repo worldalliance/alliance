@@ -27,6 +27,7 @@ import { HealthModule } from "./health/health.module";
 import { HostedDocsModule } from "./hosted-docs/hosted-docs.module";
 import { ImagesModule } from "./images/images.module";
 import { KoraModule } from "./kora/kora.module";
+import { LeaseModule } from "./leases/lease.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
 import { LinkTrackingModule } from "./link-tracking/link-tracking.module";
@@ -87,6 +88,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     ClusterModule,
     TypeOrmModule.forRoot({ ...connectionOptions(), autoLoadEntities: true }),
     ScheduleModule.forRoot(),
+    LeaseModule,
     HealthModule,
     ActionsModule,
     ActionPartnershipsModule,
