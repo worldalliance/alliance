@@ -6,12 +6,13 @@ import {
   type UnrenderableContent,
   type UnrenderableSubject,
 } from "@alliance/shared/forms/unrenderable";
-import { useUnstableGlobalHref } from "expo-router";
+import { useIsFocused, useUnstableGlobalHref } from "expo-router";
 import * as Updates from "expo-updates";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  AppState,
   Linking,
   View,
 } from "react-native";
@@ -20,13 +21,20 @@ import { restartIntoUpdate } from "../lib/restartIntoUpdate";
 import { shareInFlight } from "../lib/shareInFlight";
 import { STORE, storeHasNewerBuild } from "../lib/storeUpdate";
 import { colors } from "../lib/style/colors";
+import { createUpdateRechecks } from "../lib/updateRechecks";
 import {
   searchForNewerVersion,
   type UpdateSearchOutcome,
 } from "../lib/updateSearch";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
-import { RecoveryAction, updateRecoveryView } from "./updateRecoveryView";
+import {
+  rechecksForUpdate,
+  RecoveryAction,
+  startNoticeRechecks,
+  startNoticeSearch,
+  updateRecoveryView,
+} from "./updateRecoveryView";
 
 const search = shareInFlight(() =>
   searchForNewerVersion({
@@ -34,6 +42,8 @@ const search = shareInFlight(() =>
     storeHasNewer: storeHasNewerBuild,
   }),
 );
+
+const onUpdateRecheck = createUpdateRechecks({ appState: AppState });
 
 // Shared by every notice, so a feed of cards that mount or change together
 // announces their message once, while a later screen's notice still announces.
@@ -89,22 +99,18 @@ function Remedy({
 function UpdateRecovery({ subject }: { subject: UnrenderableSubject }) {
   const { isUpdatePending } = Updates.useUpdates();
   const route = useUnstableGlobalHref();
+  const focused = useIsFocused();
   const [attempt, setAttempt] = useState(0);
   const [outcome, setOutcome] = useState<UpdateSearchOutcome | null>(null);
   const [restarting, setRestarting] = useState(false);
   const [restartFailed, setRestartFailed] = useState(false);
+  const searchedAt = useRef(0);
   const ready = OTA_UPDATES_ENABLED && isUpdatePending;
 
   useEffect(() => {
     if (ready) return;
-    let current = true;
     setOutcome(null);
-    void search().then((found) => {
-      if (current) setOutcome(found);
-    });
-    return () => {
-      current = false;
-    };
+    return startNoticeSearch({ search, setOutcome, searchedAt });
   }, [attempt, ready]);
 
   const restart = async () => {
@@ -123,6 +129,18 @@ function UpdateRecovery({ subject }: { subject: UnrenderableSubject }) {
     outcome,
     store: STORE,
   });
+  const rechecks = rechecksForUpdate({ outcome, view, focused });
+
+  useEffect(() => {
+    if (!rechecks) return;
+    return startNoticeRechecks({
+      onRecheck: onUpdateRecheck,
+      search,
+      setOutcome,
+      searchedAt,
+    });
+  }, [rechecks]);
+
   const button = recoveryButton({
     action: view.action,
     restarting,

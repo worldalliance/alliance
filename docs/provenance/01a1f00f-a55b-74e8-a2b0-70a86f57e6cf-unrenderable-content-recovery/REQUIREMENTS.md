@@ -14,6 +14,7 @@ Agent-proposed, user-approved.
 - Otherwise it shows "Getting the latest version…" while it checks for and downloads an update, then the same button.
 - If no over-the-air update exists but the app store has a newer build, the button opens the store ("Open App Store" / "Open Play Store").
 - If nothing newer exists anywhere, it says so plainly, with no restart advice.
+- While it says the version isn't out yet, it checks again by itself whenever the app returns to the foreground and every few minutes while it's on screen. When an update turns up it switches to "Restart to update"; the member still taps to restart. Agent-proposed, user-approved.
 - After the restart the member lands back on the same screen. Something opened on top of it, such as a task flow, needn't reopen. User-originated.
 - It never tells members to download from the store unless the store has a newer build.
 

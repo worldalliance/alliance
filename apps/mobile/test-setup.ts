@@ -26,9 +26,14 @@ mock.module("react-native", () => ({
   TouchableOpacity: Passthrough,
   ActivityIndicator: () => null,
   AccessibilityInfo: { announceForAccessibility: () => {} },
+  AppState: {
+    currentState: "active",
+    addEventListener: () => ({ remove: () => {} }),
+  },
   Linking: { openURL: async () => {} },
 }));
 mock.module("expo-router", () => ({
+  useIsFocused: () => true,
   useUnstableGlobalHref: () => "/",
 }));
 mock.module("expo-updates", () => ({
