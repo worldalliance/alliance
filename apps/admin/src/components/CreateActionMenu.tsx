@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { primaryButtonClass } from "./ui/controlStyles";
 
 const CreateActionMenu = () => {
   const navigate = useNavigate();
@@ -45,7 +46,7 @@ const CreateActionMenu = () => {
 
   return (
     <Menu.Root>
-      <Menu.Trigger className="flex shrink-0 items-center gap-1 rounded-md border border-green-700 bg-green-700 px-2 py-1 text-sm font-medium text-white hover:bg-green-800 cursor-pointer">
+      <Menu.Trigger className={primaryButtonClass}>
         <Plus size={16} aria-hidden />
         Create
       </Menu.Trigger>

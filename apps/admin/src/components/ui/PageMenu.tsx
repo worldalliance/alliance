@@ -5,6 +5,7 @@ import {
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { ChevronDown } from "lucide-react";
+import { secondaryButtonClass } from "./controlStyles";
 
 export type PageMenuItem = {
   label: string;
@@ -36,7 +37,7 @@ const PageMenu = ({ items }: { items: PageMenuItem[] }) => {
   const destructive = items.filter((item) => item.destructive);
   return (
     <Menu.Root>
-      <Menu.Trigger className="flex h-8 items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 outline-hidden hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-blue-600">
+      <Menu.Trigger className={secondaryButtonClass}>
         More
         <ChevronDown size={14} aria-hidden />
       </Menu.Trigger>
