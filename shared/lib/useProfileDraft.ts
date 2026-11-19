@@ -25,9 +25,10 @@ export function useProfileDraft({
 
   const reset = useCallback(() => {
     if (!profile) return;
-    setName(profile.displayName || "");
-    setBio(profile.profileDescription || "");
-    setAvatarUrl(profile.profilePicture || null);
+    const saved = savedProfile(profile);
+    setName(saved.name);
+    setBio(saved.bio);
+    setAvatarUrl(saved.avatarUrl);
   }, [profile]);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function useProfileDraft({
   }, [reset, isMe, isEditing]);
 
   const save = useCallback(async (): Promise<Result<unknown>> => {
-    const saved = await R.fromPromise(
+    const result = await R.fromPromise(
       updateProfile.mutateAsync({
         name,
         profileDescription: bio,
@@ -46,8 +47,8 @@ export function useProfileDraft({
         }),
       }),
     );
-    if (saved.ok) setIsEditing(false);
-    return saved;
+    if (result.ok) setIsEditing(false);
+    return result;
   }, [updateProfile, name, bio, avatarUrl, profile?.profilePicture]);
 
   const cancel = useCallback(() => {
@@ -55,8 +56,16 @@ export function useProfileDraft({
     setIsEditing(false);
   }, [reset]);
 
+  const saved = profile ? savedProfile(profile) : null;
+  const dirty =
+    isEditing &&
+    saved !== null &&
+    (name !== saved.name || bio !== saved.bio || avatarUrl !== saved.avatarUrl);
+
   return {
     isEditing,
+    /** Editing, with a value that differs from the saved profile. */
+    dirty,
     setIsEditing,
     name,
     setName,
@@ -67,5 +76,13 @@ export function useProfileDraft({
     isSaving: updateProfile.isPending,
     save,
     cancel,
+  };
+}
+
+function savedProfile(profile: ProfileDto) {
+  return {
+    name: profile.displayName || "",
+    bio: profile.profileDescription || "",
+    avatarUrl: profile.profilePicture || null,
   };
 }
