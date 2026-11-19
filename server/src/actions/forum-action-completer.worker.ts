@@ -6,15 +6,15 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
-import { LOCK_KEYS } from "src/notifs/lock-keys";
-import { withPgAdvisoryLock } from "src/notifs/lock-utils";
 import {
   CustomValidator,
   CustomValidatorType,
@@ -46,8 +46,6 @@ import {
   type ParsedAction,
 } from "./entities/action.entity";
 
-const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
-  LOCK_KEYS.forumActionCompleter;
 const AUTOCOMPLETE_TARGET_OFFSET_MS = milliseconds({ minutes: 5 });
 const AUTOCOMPLETE_WINDOW_MS = milliseconds({ minutes: 5 });
 
@@ -75,20 +73,12 @@ export class ForumActionCompleterWorker {
   ) {}
 
   @Cron("*/5 * * * *")
+  @WithoutOverlapping({ key: CronLease.ForumAutocomplete })
   async autocompleteForumActions() {
-    const ran = await withPgAdvisoryLock(
-      this.dataSource,
-      PROCESS_ONE_LOCK_KEY1,
-      PROCESS_ONE_LOCK_KEY2,
-      () => this.autocompleteDue(),
-    );
-
-    if (ran === null) {
-      this.logger.log("autocompleteForumActions skipped bc of lock");
-    }
+    await this.autocompleteDue();
   }
 
-  /** Skips the lock; production runs it through autocompleteForumActions. */
+  /** Skips the lease; production runs it through autocompleteForumActions. */
   async autocompleteDue() {
     const now = new Date();
     const targetDeadlineMs = now.getTime() + AUTOCOMPLETE_TARGET_OFFSET_MS;
@@ -106,6 +96,7 @@ export class ForumActionCompleterWorker {
       .then((rows) => rows.map(parseAction));
 
     for (const action of actions) {
+      assertLeaseHeld();
       const { event: memberActionEvent, deadlineEvent } =
         action.memberActionPhase;
 

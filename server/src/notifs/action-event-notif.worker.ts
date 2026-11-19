@@ -1,5 +1,6 @@
 // action-event-notif.worker.ts
 import { Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { loadedActionEventAction } from "src/actions/entities/action-event.entity";
@@ -12,6 +13,7 @@ import {
 import { MemberActionsService } from "src/actions/member-actions.service";
 import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
 import { updateLive } from "src/datasources/soft-delete";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { processKeywordReplacements } from "src/notifs/notification-keywords";
@@ -46,8 +48,6 @@ import {
 } from "./entities/experiment-assignment.entity";
 import { NotificationCategory } from "./entities/notification.entity";
 import { assignExperimentArm } from "./experiment-assignment";
-import { LOCK_KEYS } from "./lock-keys";
-import { withPgAdvisoryLock } from "./lock-utils";
 import {
   FIRST_MISS_COPY,
   getsMissedSuiteNotice,
@@ -76,9 +76,6 @@ export type UncompletedTaskSummary = {
   timeEstimate: number | null;
 };
 
-const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
-  LOCK_KEYS.actionEventNotif;
-
 @Injectable()
 export class ActionEventNotifWorker {
   private readonly logger = new Logger(ActionEventNotifWorker.name);
@@ -97,24 +94,15 @@ export class ActionEventNotifWorker {
   ) {}
 
   @Cron("*/3 * * * *")
+  @WithoutOverlapping({ key: CronLease.ActionEventNotifs })
   async dispatchDueNotifs() {
     if (!notifDeliveryEnabled()) {
       return;
     }
-
-    const ran = await withPgAdvisoryLock(
-      this.dataSource,
-      PROCESS_ONE_LOCK_KEY1,
-      PROCESS_ONE_LOCK_KEY2,
-      () => this.dispatchDue(),
-    );
-
-    if (ran === null) {
-      this.logger.log("processOne skipped bc of lock");
-    }
+    await this.dispatchDue();
   }
 
-  /** Skips the lock and the delivery gate; production runs it through dispatchDueNotifs. */
+  /** Skips the lease and the delivery gate; production runs it through dispatchDueNotifs. */
   async dispatchDue() {
     const now = new Date();
     const windowStart = new Date(
@@ -138,6 +126,7 @@ export class ActionEventNotifWorker {
         count: (skippedByGroup.get(plan.group.id)?.count ?? 0) + 1,
       });
     for (const plan of duePlans) {
+      assertLeaseHeld();
       const resolution = resolveMissedSuitePlan({
         group: plan.group,
         userId: plan.user.id,

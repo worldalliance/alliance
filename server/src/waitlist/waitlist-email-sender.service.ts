@@ -5,15 +5,15 @@ import {
 } from "@alliance/common/waitlistEmail";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { milliseconds } from "date-fns";
 import { randomUUID } from "node:crypto";
 import { InviteFeedEvents } from "src/invite-feed.events";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { EmailStatus, type Mail } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
-import { LOCK_KEYS } from "src/notifs/lock-keys";
-import { withPgSessionLock } from "src/notifs/lock-utils";
 import {
   signupUrl,
   waitlistUnsubscribeLink,
@@ -140,22 +140,21 @@ export class WaitlistEmailSender {
     private readonly inviteService: WaitlistInviteService,
   ) {}
 
-  /** Never rejects. Returns at once while another run holds the lock. */
+  /** Never rejects. Returns at once while another run holds the lease. */
   @Cron(CronExpression.EVERY_MINUTE)
   async run(): Promise<void> {
-    const ran = await R.fromPromiseFn(() => this.runLocked());
+    const ran = await R.fromPromiseFn(() => this.sendDueLeased());
     if (R.isFailure(ran)) {
       this.logger.error("Waitlist email sending stopped", ran.error);
     }
   }
 
-  private async runLocked(): Promise<void> {
-    await withPgSessionLock(this.dataSource, ...LOCK_KEYS.waitlistEmail, () =>
-      this.sendDue(),
-    );
+  @WithoutOverlapping({ key: CronLease.WaitlistEmails })
+  private async sendDueLeased(): Promise<void> {
+    await this.sendDue();
   }
 
-  /** Skips the lock; production runs it through run. */
+  /** Skips the lease; production runs it through run. */
   async sendDue(): Promise<void> {
     await this.markInterrupted();
     if (
@@ -172,6 +171,7 @@ export class WaitlistEmailSender {
       next !== null;
       next = await this.nextPending()
     ) {
+      assertLeaseHeld();
       if (await this.sendOne(next)) break;
     }
   }
@@ -266,7 +266,7 @@ export class WaitlistEmailSender {
     let issued = false;
     const prepared = await this.dataSource.transaction(async (manager) => {
       // Claiming only a still-pending recipient, under a row lock, keeps two
-      // runs from both sending it even if the advisory lock is lost.
+      // runs from both sending it even if the lease is lost.
       const stillPending = await manager.findOne(WaitlistEmailRecipient, {
         where: {
           id: recipientId,

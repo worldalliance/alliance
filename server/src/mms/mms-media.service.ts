@@ -8,16 +8,16 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { randomUUID } from "crypto";
 import { milliseconds, minutesToSeconds } from "date-fns";
 import { requireEnv } from "src/config/env";
-import { LOCK_KEYS } from "src/notifs/lock-keys";
-import { withPgSessionLock } from "src/notifs/lock-utils";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
-import { DataSource, IsNull, LessThan, Not, Raw } from "typeorm";
+import { IsNull, LessThan, Not, Raw } from "typeorm";
 import { MmsMedia } from "./mms-media.entity";
 
 // image/jpg isn't a registered type, but Twilio's accepted MMS types list it.
@@ -84,12 +84,15 @@ export class MmsMediaService {
     @InjectRepository(MmsMedia)
     private readonly mediaRepository: Repository<MmsMedia>,
     @Inject("S3_CLIENT") private readonly s3: S3Client,
-    private readonly dataSource: DataSource,
   ) {}
 
-  /** Never rejects: a failure is logged and counted, and the cron retries it. */
+  /**
+   * Rejects only once its leased run loses its lease; any other failure is
+   * logged and counted, and the cron retries it.
+   */
   async copyToS3(media: MmsMedia[]): Promise<void> {
     for (const item of media) {
+      assertLeaseHeld();
       const copied = await this.copyOne(item);
       if (copied.ok) {
         if (copied.value) await this.deleteFromTwilio([item]);
@@ -135,9 +138,13 @@ export class MmsMediaService {
     }
   }
 
-  /** Never rejects: a failure is logged and counted, and the cron retries it. */
+  /**
+   * Rejects only once its leased run loses its lease; any other failure is
+   * logged and counted, and the cron retries it.
+   */
   async deleteFromTwilio(media: MmsMedia[]): Promise<void> {
     for (const item of media) {
+      assertLeaseHeld();
       const deleted = await R.fromPromiseFn(() =>
         fetch(`${item.twilioUrl}.json`, {
           method: "DELETE",
@@ -179,37 +186,32 @@ export class MmsMediaService {
     }
   }
 
-  /** The lock keeps cron runs from overlapping; a webhook's copy still can. */
+  /** The lease keeps cron runs from overlapping; a webhook's copy still can. */
   @Cron(CronExpression.EVERY_MINUTE)
+  @WithoutOverlapping({ key: CronLease.MmsMediaCopy })
   async copyPending(): Promise<void> {
     if (!notifDeliveryEnabled()) return;
-    await withPgSessionLock(
-      this.dataSource,
-      ...LOCK_KEYS.mmsMediaCopy,
-      async () => {
-        await this.copyToS3(
-          await this.mediaRepository.find({
-            where: {
-              s3Key: IsNull(),
-              copyAttempts: LessThan(MAX_COPY_ATTEMPTS),
-              lastCopyAttemptAt: backedOff("copyAttempts"),
-            },
-            order: { copyAttempts: "ASC", id: "ASC" },
-            take: 50,
-          }),
-        );
-        await this.deleteFromTwilio(
-          await this.mediaRepository.find({
-            where: {
-              s3Key: Not(IsNull()),
-              twilioDeletedAt: IsNull(),
-              lastTwilioDeleteAttemptAt: backedOff("twilioDeleteAttempts"),
-            },
-            order: { twilioDeleteAttempts: "ASC", id: "ASC" },
-            take: 50,
-          }),
-        );
-      },
+    await this.copyToS3(
+      await this.mediaRepository.find({
+        where: {
+          s3Key: IsNull(),
+          copyAttempts: LessThan(MAX_COPY_ATTEMPTS),
+          lastCopyAttemptAt: backedOff("copyAttempts"),
+        },
+        order: { copyAttempts: "ASC", id: "ASC" },
+        take: 50,
+      }),
+    );
+    await this.deleteFromTwilio(
+      await this.mediaRepository.find({
+        where: {
+          s3Key: Not(IsNull()),
+          twilioDeletedAt: IsNull(),
+          lastTwilioDeleteAttemptAt: backedOff("twilioDeleteAttempts"),
+        },
+        order: { twilioDeleteAttempts: "ASC", id: "ASC" },
+        take: 50,
+      }),
     );
   }
 

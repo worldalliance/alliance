@@ -20,6 +20,30 @@ Shutdown hooks also make the existing listener drains (task badges, cohort decis
 
 ## 4. Every e2e test app loads `LeaseModule`
 
-A decorated method called on an instance `LocksModule` doesn't know throws, and many specs call cron entry points. `createTestApp` imports `LeaseModule`, so those calls take real leases on the test database.
+A decorated method called on an instance `LocksModule` doesn't know throws, and many specs call cron entry points. `createTestApp` imports `LeaseModule`, so those calls take real leases on the test database. `createTestApp` and `testConnectionOptions` take a `poolSize` for the pool test.
 
 `createTestApp` builds the schema once, when the DataSource connects with `testConnectionOptions`' `dropSchema` and `synchronize`, and no longer drops and rebuilds it after `app.listen()`: an app importing `ScheduleModule` starts its crons at listen, and they failed against the half-built schema. Test apps now keep the triggers `LegacyDeletedFlagService` installs on `post` and `comment` at bootstrap, which the second drop removed with their tables, as production does.
+
+## 5. The package's `@WithoutOverlapping({ key })`, not a hand-written wrapper
+
+It is the package's per-run lease that skips on contention (REQUIREMENTS.md 4): it renews every `ttl / 3`, fails closed when the store errors or times out (`storeTimeout`, 10 s by default), releases at shutdown, and puts the run's signal in `LocksContext`. A wrapper around `Locks.acquire` would repeat that. Its skips log at `debug` where the advisory-lock wrappers logged "skipped bc of lock" at `log`; the old lines were noise on every overlapping tick, so the package's level stands.
+
+Every decorator sets an explicit `key` from the `CronLease` enum (`server/src/leases/cron-lease.ts`), since the default key is the class and method name, which a rename changes. The package rejects two jobs on one key unless both set it.
+
+## 6. A lost lease stops the run through `assertLeaseHeld()` at each item
+
+`LocksContext` reads a module-level `AsyncLocalStorage`, so `assertLeaseHeld()` (`server/src/leases/cron-lease.ts`) can check the run's signal from any service the job calls, with no constructor changes. It throws the signal's reason (a `LockLostError`) at the start of each item: a member, plan, candidate, recipient, recognition batch or MMS item. Outside a leased run it does nothing, so tests, webhooks and the admin endpoint that call the same code are unaffected. The item already started finishes; the overlap hardening in ALL-2235 is what keeps that item safe against a run that took over.
+
+Where a job has no loop of items, nothing checks: the participant-count reload (one publish, fenced by its computation).
+
+## 7. Cron entry points that others call directly stay unleased
+
+The leased method is the one `@nestjs/schedule` calls. The waitlist sender's `run()` is called fire-and-forget by `WaitlistEmailService` and documents that it never rejects. A decorated method rejects when the store fails, so `run()` stays undecorated and catches, and calls a decorated private `sendDueLeased()`.
+
+## 8. `logDivergences` drops its lock
+
+It only reads and logs (REQUIREMENTS.md 7 allows dropping it). Unleased, two processes would both log the same divergences.
+
+## 9. `pool-options.spec.ts` loses its lock-based assertion here
+
+The assertion computed the deadlock minimum from `LOCK_KEYS`, which this PR deletes, and the formula no longer applies once no job holds a connection for its lock. The pool stays at 30, with a comment pointing at ALL-2369, which sizes it from production metrics. This takes the "drop the spec's lock-based assertion and the `poolSize` comment" part of ALL-2369's scope, because deleting `lock-keys.ts` forces it.

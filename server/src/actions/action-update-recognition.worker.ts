@@ -1,18 +1,13 @@
 import { Injectable } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectDataSource } from "@nestjs/typeorm";
-import { LOCK_KEYS } from "src/notifs/lock-keys";
-import { withPgSessionLock } from "src/notifs/lock-utils";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import { DataSource } from "typeorm";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 
 @Injectable()
 export class ActionUpdateRecognitionWorker {
-  constructor(
-    private readonly recognition: ActionUpdateRecognitionService,
-    @InjectDataSource() private readonly dataSource: DataSource,
-  ) {}
+  constructor(private readonly recognition: ActionUpdateRecognitionService) {}
 
   /** Also retries held updates, so repairing one is all it takes to send it. */
   @Cron(CronExpression.EVERY_MINUTE)
@@ -21,20 +16,16 @@ export class ActionUpdateRecognitionWorker {
   }
 
   @Cron(CronExpression.EVERY_30_SECONDS)
+  @WithoutOverlapping({ key: CronLease.RecognitionDelivery })
   async deliverPrepared() {
     if (!notifDeliveryEnabled()) {
       return;
     }
     // A large send outlasts a tick; one loop at a time keeps it from fanning out.
-    await withPgSessionLock(
-      this.dataSource,
-      ...LOCK_KEYS.actionUpdateRecognitionDelivery,
-      async () => {
-        let more = true;
-        while (more) {
-          more = await this.recognition.deliverPrepared();
-        }
-      },
-    );
+    let more = true;
+    while (more) {
+      assertLeaseHeld();
+      more = await this.recognition.deliverPrepared();
+    }
   }
 }

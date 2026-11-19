@@ -13,7 +13,9 @@ import { SlugSubscriber } from "./slug.subscriber";
 
 const repoRoot = path.resolve(__dirname, "..", "..", "..");
 
-export const testConnectionOptions = (): TypeOrmModuleOptions => {
+export const testConnectionOptions = (
+  options: { poolSize?: number } = {},
+): TypeOrmModuleOptions => {
   if (env("NODE_ENV") !== NodeEnv.Test) {
     throw new Error(
       `testConnectionOptions() requires NODE_ENV=${NodeEnv.Test}, got ${env("NODE_ENV")} — refusing to run dropSchema against a database resolved without server/.env.test`,
@@ -48,5 +50,6 @@ export const testConnectionOptions = (): TypeOrmModuleOptions => {
     subscribers: [SlugSubscriber],
     synchronize: true,
     dropSchema: true,
+    poolSize: options.poolSize,
   };
 };

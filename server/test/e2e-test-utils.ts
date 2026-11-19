@@ -1,6 +1,6 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { MailerModule } from "@nestjs-modules/mailer";
-import { INestApplication, Type } from "@nestjs/common";
+import { DynamicModule, INestApplication, Type } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
@@ -206,8 +206,8 @@ export function signImpersonationToken(
 }
 
 export async function createTestApp(
-  modules: Type<unknown>[],
-  options: { enableThrottle?: boolean } = {},
+  modules: (Type<unknown> | DynamicModule)[],
+  options: { enableThrottle?: boolean; poolSize?: number } = {},
 ): Promise<TestContext> {
   const builder = Test.createTestingModule({
     imports: [
@@ -223,7 +223,9 @@ export async function createTestApp(
       }),
       EventEmitterModule.forRoot(),
       ThrottlerModule.forRoot(ALL_THROTTLERS),
-      TypeOrmModule.forRoot(testConnectionOptions()),
+      TypeOrmModule.forRoot(
+        testConnectionOptions({ poolSize: options.poolSize }),
+      ),
       LeaseModule,
       PosthogModule,
       AuthModule,
