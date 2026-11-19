@@ -21,7 +21,7 @@ The file records the present state, not the session's story:
 
 - This session, as `claude:$CLAUDE_CODE_SESSION_ID` or `codex:$CODEX_THREAD_ID`, so the reader can fetch its transcript per `(root)/agents/skills/provenance/SKILL.md` **Transcripts** when the file falls short.
 - When it was written, the directory the work happens in, its branch and HEAD commit, and its uncommitted changes, so the reader can tell whether the repository has moved since.
-- The task as the user set it, and its provenance directory.
+- The task as the user set it, the Linear issue it claims if any, and its provenance directory.
 - The skills in use and where the work stands in each, such as which review-loop round finished and what is due next.
 - What is done and how it was verified: commands and results.
 - The next step, concrete enough to start on, and what remains after it.

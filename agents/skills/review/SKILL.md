@@ -35,6 +35,10 @@ Some claims resist testing (an external service, a race, a migration against pro
 - You may start up development servers as well. Stop all background tasks before your final output.
 - You may use playwright to check UI behavior on the web.
 
+# Agent docs
+
+Judge a doc an agent reads (`SKILL.md`, `AGENTS.md`, a prompt, docs those point at) against `(root)/agents/skills/writing-for-agents/SKILL.md`. Such a doc leaves a case it doesn't name to the reader's judgement, so a gap ("it doesn't cover X") is a finding only when it shows how a capable agent following the text would act wrongly, or names a fact that agent couldn't work out.
+
 # Tiers
 
 - **Must-fix** — shipping it is wrong. Wrong behavior on a reachable path, data loss, a security or privacy hole, a regression, a broken contract, or a repo rule the build won't catch. The author changes the code before merge.
