@@ -8,6 +8,8 @@ Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; c
 
 Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Applying fixes** governs your git writes: commit, amend, rebase, reorder and split without asking. Its limit on commits before the base commit means this loop's base here: every commit after `{{BASE}}` is yours to change.
 
+Before your first change to the repository, add your bullet to the task's provenance `SESSIONS.md` per `agents/skills/provenance/SKILL.md`.
+
 ## 1. Ledger and answers
 
 `{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists, and find earlier lines on the same work by their requirement or decision as well as their handle; a finding repeats one only when it describes the same defect. Don't re-file a follow-up, revive a dropped issue or restore cut work unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
