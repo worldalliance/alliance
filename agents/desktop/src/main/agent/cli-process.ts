@@ -65,7 +65,12 @@ export async function spawnSessionCli(params: {
 /** An aborted signal sends the CLI SIGTERM, then SIGKILL if it outlives cancelKillAfterMs, and the result is a failure once it has exited. */
 export function runCli(
   cli: CliCommand,
-  run: { args: readonly string[]; signal?: AbortSignal },
+  run: {
+    args: readonly string[];
+    signal?: AbortSignal;
+    /** Hears stderr as it arrives, such as a command's progress. */
+    onStderr?: (chunk: string) => void;
+  },
 ): Promise<Result<Exited, Error>> {
   return new Promise((resolve) => {
     const couldNotRun = (error: unknown) =>
@@ -112,7 +117,10 @@ export function runCli(
     let stderr = "";
     // Node leaves the pipes unset when spawn fails with EMFILE, which the error handler reports.
     child.stdout?.setEncoding("utf8").on("data", (chunk) => (stdout += chunk));
-    child.stderr?.setEncoding("utf8").on("data", (chunk) => (stderr += chunk));
+    child.stderr?.setEncoding("utf8").on("data", (chunk: string) => {
+      stderr += chunk;
+      run.onStderr?.(chunk);
+    });
     child.once("error", (error) => {
       if (!run.signal?.aborted) resolve(couldNotRun(error));
     });
