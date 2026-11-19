@@ -19,6 +19,7 @@ import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyToClipboard } from "../lib/clipboard";
 import { getSiteUrl } from "../lib/config";
+import { useBlockResumeRestart } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import InviteGroupSelect from "./InviteGroupSelect";
@@ -41,6 +42,9 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
     useInvitePlacement(communities, user?.id);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
+  useBlockResumeRestart(
+    inviteeName !== "" || newGroupName !== "" || newGroupDescription !== "",
+  );
   const [creatingGroup, setCreatingGroup] = useState(false);
 
   const isLeader = leaderCommunities.length > 0;

@@ -28,6 +28,7 @@ import {
   useWalkthroughScroll,
   WalkthroughAnchor,
 } from "../../lib/onboarding/walkthrough";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
@@ -146,6 +147,9 @@ export default function MembershipScreen() {
     user,
     showError: (message) => Alert.alert("Error", message),
   });
+  useBlockResumeRestart(
+    !latestSigned && (signedName !== "" || confirmation !== ""),
+  );
 
   const handleContractSuspend = () => {
     Alert.alert(membershipAgreement.suspend, suspendContractConfirmation, [

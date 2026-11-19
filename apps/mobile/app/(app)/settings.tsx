@@ -29,6 +29,7 @@ import Card, { CardStyle } from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 
 const BUILD_INFO_TAPS = 5;
@@ -89,6 +90,7 @@ export default function SettingsPage() {
     saveError,
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
+  useBlockResumeRestart(saveStatus !== "saved");
 
   const notificationSettings = useNotificationSettings();
   const [statusTaps, setStatusTaps] = useState(0);

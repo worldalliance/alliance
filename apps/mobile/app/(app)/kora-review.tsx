@@ -5,12 +5,15 @@ import { WebView } from "react-native-webview";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Text from "../../components/system/Text";
 import { getApiUrl } from "../../lib/config";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 import { useWebHandoffCode } from "../../lib/useWebHandoff";
 
 /** Kora reviews in a webview, signed in with a single-use handoff code. */
 export default function KoraReviewScreen() {
   const handoff = useWebHandoffCode();
+  // The review tool's note drafts and unsaved annotations live in the WebView.
+  useBlockResumeRestart(true);
 
   const close = (
     <View className="flex-row justify-end border-b border-zinc-200 px-4 py-2">

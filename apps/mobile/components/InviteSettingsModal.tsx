@@ -11,6 +11,7 @@ import { Check, Trash2, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, TouchableOpacity, View } from "react-native";
 import { copyOrAlert } from "../lib/clipboard";
+import { useBlockResumeRestart } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
@@ -71,6 +72,7 @@ function InviteSettingsForm({
     changes,
     options,
   } = useInviteSettingsDraft({ target, leaderCommunities });
+  useBlockResumeRestart(dirty);
 
   const handleCopy = useCallback(async () => {
     if (await copyOrAlert(target.url)) {

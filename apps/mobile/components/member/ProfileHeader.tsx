@@ -17,6 +17,7 @@ import { useAppDrawer } from "../../lib/AppDrawerContext";
 import { useAuth } from "../../lib/AuthContext";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { resolveProfileImageUri } from "../../lib/profileImageUri";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { ImageLightboxModal } from "../ImageLightbox";
@@ -44,6 +45,7 @@ export default function ProfileHeader({
   });
   const {
     isEditing,
+    dirty: profileDirty,
     setIsEditing,
     name: editName,
     setName: setEditName,
@@ -55,6 +57,7 @@ export default function ProfileHeader({
     save: saveProfile,
     cancel: handleCancelEdit,
   } = useProfileDraft({ userId: profile.id, profile, isMe });
+  useBlockResumeRestart(profileDirty);
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
   const [pfpLightboxOpen, setPfpLightboxOpen] = useState(false);
 

@@ -1,6 +1,8 @@
+import { hasContent } from "@alliance/common/editableContent";
 import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
 import { useState } from "react";
 import { TouchableOpacity } from "react-native";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import Text from "../system/Text";
 import { ReplyForm, type SubmitReply } from "./ReplyForm";
 
@@ -41,6 +43,7 @@ export const TopLevelComposer = ({
     body: "",
     attachments: [],
   });
+  useBlockResumeRestart(hasContent(content));
 
   if (replyingTo) return null;
 

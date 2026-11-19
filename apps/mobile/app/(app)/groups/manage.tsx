@@ -19,6 +19,7 @@ import {
   useMyCommunities,
 } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
+import { isEqual } from "es-toolkit";
 import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
@@ -42,6 +43,7 @@ import Button, {
 import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontFamily, FontWeight } from "../../../components/system/Text";
 import { useAuth } from "../../../lib/AuthContext";
+import { useBlockResumeRestart } from "../../../lib/resumeRestarts";
 import { colors } from "../../../lib/style/colors";
 
 const sortByName = (a: CommunityDto, b: CommunityDto) =>
@@ -83,6 +85,7 @@ export default function GroupManageScreen() {
   const [error, setError] = useState<string | null>(null);
   const [newCommunity, setNewCommunity] =
     useState<CreateCommunityDto>(INITIAL_COMMUNITY);
+  useBlockResumeRestart(!isEqual(newCommunity, INITIAL_COMMUNITY));
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(
