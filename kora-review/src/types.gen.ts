@@ -87,7 +87,7 @@ export interface KoraExport {
   profile: KoraProfile | null;
   exitSurvey: KoraExitSurvey | null;
   /**
-   * Categories the reviewer chose to skip for the rest of the assignment.
+   * Categories the reviewer chose to skip, in this assignment or an earlier one. Pairs in them are not assigned to the reviewer again.
    */
   optOutCategories: KoraCategory[];
   /**
@@ -217,7 +217,7 @@ export interface KoraAnnotation {
   orphaned?: boolean;
 }
 /**
- * Profile answers. Every question offers prefer_not_to_say; null means not asked or skipped.
+ * Profile answers. Optional questions offer prefer_not_to_say; required ones hold it only in older exports. null means not asked or skipped.
  */
 export interface KoraProfile {
   is_parent: "yes" | "no" | "prefer_not_to_say" | null;

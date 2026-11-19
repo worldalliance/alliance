@@ -39,4 +39,8 @@ export class KoraAssignmentTranscript {
     default: KoraReviewStatus.Pending,
   })
   status: KoraReviewStatus;
+
+  /** The last save that changed this transcript's result; the release window runs from here. */
+  @Column({ type: "timestamptz", default: () => "now()" })
+  lastActivityAt: Date;
 }

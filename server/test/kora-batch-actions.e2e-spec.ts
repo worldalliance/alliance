@@ -21,8 +21,17 @@ import { forgetRateEvents } from "./otp-fixtures";
 
 describe("Kora batch retire, reactivate and delete (e2e)", () => {
   let h: KoraHarness;
-  const { state, more, save, ids, exportOf, finish, participant, upload } =
-    koraReviewClient(() => h);
+  const {
+    state,
+    more,
+    save,
+    next,
+    ids,
+    exportOf,
+    finish,
+    participant,
+    upload,
+  } = koraReviewClient(() => h);
 
   const admin = (method: "get" | "post" | "delete", path: string) =>
     request(h.ctx.app.getHttpServer())
@@ -54,25 +63,46 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     const newer = await upload(2, { prefix: "B", perAssignment: 4 });
     const reviewer = await participant();
     const first = await state(reviewer);
-    expect(ids(first.assignment)).toHaveLength(4);
-    const [rated] = ids(first.assignment).filter((id) => id.startsWith("B"));
-    await save(
-      reviewer,
-      first.assignment?.id ?? "",
-      exportOf(first, { done: [rated] }),
-    ).expect(200);
+    const id = first.assignment?.id ?? "";
+    const given = [...(first.assignment?.transcripts ?? [])];
+    const rateGiven = () => {
+      const all = {
+        ...first,
+        assignment: first.assignment && {
+          ...first.assignment,
+          transcripts: given,
+        },
+      };
+      return save(
+        reviewer,
+        id,
+        exportOf(all, { done: ids(all.assignment) }),
+      ).expect(200);
+    };
+    const givenIds = () => given.map((t) => t.transcript.transcriptId);
+    while (!givenIds().some((t) => t.startsWith("B"))) {
+      await rateGiven();
+      const t = await next(reviewer, id);
+      if (!t) throw new Error("ran out before a B pair");
+      given.push(t);
+    }
+    await rateGiven();
+    const rated = givenIds();
+    const unrated = await next(reviewer, id);
 
     const retired = await admin("post", `/batches/${newer}/retire`).expect(200);
     expect(retired.body.retiredAt).not.toBeNull();
 
-    const after = await state(reviewer);
-    const kept = ids(after.assignment);
-    expect(kept.filter((id) => id.startsWith("B"))).toEqual([rated]);
-    expect(kept).toHaveLength(3);
+    const kept = ids((await state(reviewer)).assignment);
+    expect(kept.slice(0, rated.length)).toEqual(rated);
+    const unratedB = unrated?.transcript.transcriptId.startsWith("B")
+      ? [unrated.transcript.transcriptId]
+      : [];
+    for (const b of unratedB) expect(kept).not.toContain(b);
 
     const fresh = await state(await participant());
     expect(batchesOf(ids(fresh.assignment))).toEqual(new Set(["A"]));
-    expect(fresh.assignment?.transcripts).toHaveLength(2);
+    expect(fresh.assignment?.size).toBe(2);
 
     const reactivated = await admin(
       "post",
@@ -103,14 +133,14 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     ]);
   });
 
-  it("completes an assignment left with nothing to rate, and says none are left once every batch is retired", async () => {
+  it("finishes an assignment a retire left with nothing to give, and says none are left", async () => {
     const only = await upload(3);
     const reviewer = await participant();
     const s = await state(reviewer);
 
     await admin("post", `/batches/${only}/retire`).expect(200);
 
-    expect((await state(reviewer)).phase).toBe(KoraReviewPhase.Finished);
+    expect((await state(reviewer)).phase).toBe(KoraReviewPhase.NoneLeft);
     expect((await more(reviewer)).phase).toBe(KoraReviewPhase.NoneLeft);
     const stored = await h.ctx.dataSource
       .getRepository(KoraAssignment)
@@ -126,31 +156,49 @@ describe("Kora batch retire, reactivate and delete (e2e)", () => {
     );
   });
 
-  it("accepts a save from a tool loaded before the retire, dropping the removed pairs", async () => {
+  it("accepts a save from a tool loaded before the retire, dropping the removed pair and saying so", async () => {
     await upload(2, { prefix: "A", perAssignment: 2 });
     const newer = await upload(2, { prefix: "B", perAssignment: 4 });
     const reviewer = await participant();
     const loaded = await state(reviewer);
-    expect(loaded.assignment?.transcripts).toHaveLength(4);
+    const id = loaded.assignment?.id ?? "";
+    const given = [...(loaded.assignment?.transcripts ?? [])];
+    const withGiven = () => ({
+      ...loaded,
+      assignment: loaded.assignment && {
+        ...loaded.assignment,
+        transcripts: given,
+      },
+    });
+    while (!given.at(-1)?.transcript.transcriptId.startsWith("B")) {
+      await save(
+        reviewer,
+        id,
+        exportOf(withGiven(), { done: ids(withGiven().assignment) }),
+      ).expect(200);
+      const t = await next(reviewer, id);
+      if (!t) throw new Error("ran out before a B pair");
+      given.push(t);
+    }
+    const removed = given.at(-1)?.transcript.transcriptId ?? "";
 
     await admin("post", `/batches/${newer}/retire`).expect(200);
-    const kept = ids(loaded.assignment).filter((id) => id.startsWith("A"));
-    const removed = ids(loaded.assignment).filter((id) => id.startsWith("B"));
-
     expect(
       (
-        await save(reviewer, loaded.assignment?.id ?? "", {
-          ...exportOf(loaded, { done: ids(loaded.assignment) }),
-          currentTranscriptId: removed[0],
+        await save(reviewer, id, {
+          ...exportOf(withGiven(), { done: ids(withGiven().assignment) }),
+          currentTranscriptId: removed,
         }).expect(200)
       ).body,
-    ).toEqual({ completed: true });
+    ).toEqual({ completed: false, removed: [removed] });
     const stored = await h.ctx.dataSource
       .getRepository(KoraAssignment)
-      .findOneByOrFail({ id: loaded.assignment?.id });
+      .findOneByOrFail({ id });
     const results = JSON.stringify(stored.export);
-    for (const id of kept) expect(results).toContain(`"${id}"`);
-    for (const id of removed) expect(results).not.toContain(`"${id}"`);
+    for (const kept of given.slice(0, -1)) {
+      expect(results).toContain(`"${kept.transcript.transcriptId}"`);
+    }
+    expect(results).not.toContain(`"${removed}"`);
   });
 
   it("marks each exported line with its batches and whether they're retired", async () => {

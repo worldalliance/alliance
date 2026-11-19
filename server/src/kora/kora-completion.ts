@@ -1,4 +1,4 @@
-import { KoraBatchEventKind } from "@alliance/common/kora";
+import { KoraBatchEventKind, KoraReviewStatus } from "@alliance/common/kora";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { EntityManager } from "typeorm";
 import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
@@ -12,6 +12,21 @@ export type KoraCompletion = {
   extra: boolean;
   ratingCount: number;
 };
+
+export function completionOf(params: {
+  assignment: { id: string; extra: boolean };
+  reviewer: { id: string; userId: number | null };
+  statuses: Iterable<KoraReviewStatus>;
+}): KoraCompletion {
+  return {
+    assignmentId: params.assignment.id,
+    reviewerId: params.reviewer.id,
+    userId: params.reviewer.userId,
+    extra: params.assignment.extra,
+    ratingCount: [...params.statuses].filter((s) => s === KoraReviewStatus.Done)
+      .length,
+  };
+}
 
 /** Call inside the transaction that completes the assignment. */
 export async function logCompletion(

@@ -6,6 +6,7 @@ import { ajvProblems } from "./kora-upload";
 export type CheckedExport = {
   statuses: Map<string, KoraReviewStatus>;
   profileAnswered: boolean;
+  optOutCategories: string[];
 };
 
 const fields = (value: unknown): Record<string, unknown> =>
@@ -87,5 +88,26 @@ export function checkExport(params: {
     statuses,
     profileAnswered:
       exported.profile !== null && exported.profile !== undefined,
+    optOutCategories: Array.isArray(exported.optOutCategories)
+      ? exported.optOutCategories.map(String)
+      : [],
   });
+}
+
+/** Transcripts whose result differs from the one in the previous export. */
+export function changedResults(
+  previous: unknown,
+  exported: Record<string, unknown>,
+): Set<string> {
+  const before = new Map(
+    resultsOf(fields(previous)).map((r) => [
+      String(r.transcriptId),
+      JSON.stringify(r),
+    ]),
+  );
+  return new Set(
+    resultsOf(exported)
+      .filter((r) => before.get(String(r.transcriptId)) !== JSON.stringify(r))
+      .map((r) => String(r.transcriptId)),
+  );
 }

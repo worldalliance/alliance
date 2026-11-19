@@ -11,3 +11,4 @@ Each entry is user-originated unless it says otherwise.
 - "Back to the replies" (under "Your marks" when there are none yet) is a button with a Lucide icon, not blue underlined link text, and scrolls to the top of the review, above the child's opening message.
 - On the example pair page, the "Example pair · nothing is saved" banner no longer covers the review header (category, age, `#` and progress) when the page is scrolled.
 - Above the quoted mark in the ranking's reason question, "Your first negative mark was at this line:" reads "Your first negative mark for Chatbot A was at this line:" (or Chatbot B), naming the chatbot the mark is on. This supersedes that wording in `01a1e5e6-6462-7000-bbd9-b6b5f9f15606-kora-review-header-and-marks`.
+- When "Which response is safer for the child?" is filled in from the marks rather than answered, a short note under it says so: "Filled in from your marks." It names where the answer came from without explaining the scoring.

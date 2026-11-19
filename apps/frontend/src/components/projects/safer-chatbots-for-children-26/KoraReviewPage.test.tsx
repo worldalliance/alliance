@@ -28,11 +28,13 @@ const reviewing = (extra = false): KoraReviewStateDto => ({
   phase: KoraReviewPhase.Reviewing,
   reviewerId: "rv1",
   collectProfile: true,
+  optOutCategories: [],
   reviewed: extra,
   extraReviews: 0,
   assignment: {
     id: "as1",
     extra,
+    size: 1,
     transcripts: [{ transcript: sampleTranscript, contentHash: HASH }],
     savedExport: null,
   },
@@ -45,6 +47,7 @@ const summary = (
   phase,
   reviewerId: "rv1",
   collectProfile: false,
+  optOutCategories: [],
   reviewed,
   extraReviews,
 });

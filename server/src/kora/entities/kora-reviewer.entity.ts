@@ -49,6 +49,10 @@ export class KoraReviewer {
   @Column({ type: "timestamptz", nullable: true })
   moreNotifiedAt: Date | null;
 
+  /** Categories the reviewer skipped in any assignment; never assigned to them again. */
+  @Column({ type: "text", array: true, default: () => "'{}'" })
+  optOutCategories: string[];
+
   @CreateDateColumnTz()
   createdAt: Date;
 

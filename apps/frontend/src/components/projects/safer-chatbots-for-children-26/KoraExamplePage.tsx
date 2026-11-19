@@ -32,6 +32,7 @@ const OPTIONS: KoraToolOptions = {
   reviewerId: "example",
   assignment: {
     batchId: "example",
+    size: 1,
     transcripts: [
       {
         transcript: EXAMPLE_PAIR,
@@ -43,6 +44,7 @@ const OPTIONS: KoraToolOptions = {
   collectProfile: false,
   collectExitSurvey: false,
   save: () => Promise.resolve(),
+  next: () => Promise.resolve(null),
 };
 
 export default function KoraExamplePage() {

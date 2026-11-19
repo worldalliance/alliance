@@ -5535,6 +5535,26 @@ export type KoraAdminOverviewDto = {
     abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
 };
 
+export type KoraAdminCategoryDto = {
+    category: string;
+    /**
+     * Pairs in open batches
+     */
+    pairs: number;
+    /**
+     * Reviews its pairs still need to reach their targets
+     */
+    reviewsNeeded: number;
+    /**
+     * Reviewers who opted out of it
+     */
+    optedOut: number;
+};
+
+export type KoraAdminCategoriesDto = {
+    categories: Array<KoraAdminCategoryDto>;
+};
+
 export type KoraBatchDto = {
     id: string;
     transcriptsPerAssignment: number;
@@ -5606,6 +5626,13 @@ export type KoraReviewAssignmentDto = {
      * Requested after finishing an earlier one
      */
     extra: boolean;
+    /**
+     * How many transcripts the assignment asks for
+     */
+    size: number;
+    /**
+     * Those given so far; the next comes from the next endpoint
+     */
     transcripts: Array<KoraTranscriptPreviewDto>;
     savedExport: {
         [key: string]: unknown;
@@ -5619,6 +5646,10 @@ export type KoraReviewStateDto = {
      */
     reviewerId: string;
     collectProfile: boolean;
+    /**
+     * Categories the reviewer opted out of in any assignment
+     */
+    optOutCategories: Array<string>;
     /**
      * Has finished at least one assignment
      */
@@ -5663,9 +5694,20 @@ export type SaveKoraExportDto = {
 
 export type KoraExportSavedDto = {
     /**
-     * Every transcript is done or opted out
+     * The assignment is finished
      */
     completed: boolean;
+    /**
+     * Transcripts no longer in the assignment whose results the save dropped; the tool removes them
+     */
+    removed: Array<string>;
+};
+
+export type KoraNextTranscriptDto = {
+    /**
+     * Null once the assignment is full or nothing is left to give
+     */
+    next: KoraTranscriptPreviewDto | null;
 };
 
 export type KoraExportsDto = {
@@ -16960,6 +17002,28 @@ export type KoraAdminOverviewResponses = {
 
 export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
 
+export type KoraAdminCategoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/categories';
+};
+
+export type KoraAdminCategoriesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminCategoriesError = KoraAdminCategoriesErrors[keyof KoraAdminCategoriesErrors];
+
+export type KoraAdminCategoriesResponses = {
+    200: KoraAdminCategoriesDto;
+};
+
+export type KoraAdminCategoriesResponse = KoraAdminCategoriesResponses[keyof KoraAdminCategoriesResponses];
+
 export type KoraAdminDeleteParticipantData = {
     body?: never;
     path: {
@@ -17315,6 +17379,30 @@ export type KoraReviewSaveResponses = {
 };
 
 export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
+
+export type KoraReviewNextData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/next';
+};
+
+export type KoraReviewNextErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewNextError = KoraReviewNextErrors[keyof KoraReviewNextErrors];
+
+export type KoraReviewNextResponses = {
+    200: KoraNextTranscriptDto;
+};
+
+export type KoraReviewNextResponse = KoraReviewNextResponses[keyof KoraReviewNextResponses];
 
 export type KoraResultsExportsData = {
     body?: never;

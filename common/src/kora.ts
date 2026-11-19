@@ -35,6 +35,8 @@ export enum KoraReviewStatus {
   Pending = "pending",
   Done = "done",
   OptedOut = "opted_out",
+  /** Left unfinished past the release window, so it went back to the pool and out of the assignment. */
+  Released = "released",
 }
 
 /** A row on the participant's home base: an offered user-batch, or one of their assignments. */

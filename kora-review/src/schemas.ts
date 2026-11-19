@@ -155,7 +155,7 @@ export const exportSchema: Record<string, unknown> = {
     exitSurvey: { anyOf: [{ $ref: "#/$defs/exitSurvey" }, { type: "null" }] },
     optOutCategories: {
       description:
-        "Categories the reviewer chose to skip for the rest of the assignment.",
+        "Categories the reviewer chose to skip, in this assignment or an earlier one. Pairs in them are not assigned to the reviewer again.",
       type: "array",
       uniqueItems: true,
       items: { $ref: "#/$defs/category" },
@@ -381,7 +381,7 @@ export const exportSchema: Record<string, unknown> = {
     profile: {
       title: "KoraProfile",
       description:
-        "Profile answers. Every question offers prefer_not_to_say; null means not asked or skipped.",
+        "Profile answers. Optional questions offer prefer_not_to_say; required ones hold it only in older exports. null means not asked or skipped.",
       type: "object",
       additionalProperties: false,
       required: [

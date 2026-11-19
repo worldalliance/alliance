@@ -19,7 +19,10 @@ import {
 } from "@nestjs/common";
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
-import { KoraAdminOverviewDto } from "./dto/kora-admin.dto";
+import {
+  KoraAdminCategoriesDto,
+  KoraAdminOverviewDto,
+} from "./dto/kora-admin.dto";
 import {
   KoraAdminProjectDto,
   KoraNotifyQueuedDto,
@@ -110,6 +113,12 @@ export class KoraAdminController {
   @ApiOkResponse({ type: KoraAdminOverviewDto })
   async overview(): Promise<KoraAdminOverviewDto> {
     return new KoraAdminOverviewDto(await this.adminService.overview());
+  }
+
+  @Get("categories")
+  @ApiOkResponse({ type: KoraAdminCategoriesDto })
+  async categories(): Promise<KoraAdminCategoriesDto> {
+    return new KoraAdminCategoriesDto(await this.adminService.categories());
   }
 
   @Delete("participants/:id")

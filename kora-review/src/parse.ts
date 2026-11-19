@@ -6,6 +6,7 @@ import type {
   KoraProfile,
   KoraTranscript,
 } from "./types.gen.js";
+import { KoraCategory } from "./types.gen.js";
 
 const transcriptShape = z.fromJSONSchema(transcriptSchema);
 const transcript = z.custom<KoraTranscript>(
@@ -26,6 +27,11 @@ const exported = z.custom<KoraExport>(
 /** Parses a transcript the server stored after checking it against transcriptSchema with ajv. */
 export function parseKoraTranscript(value: unknown): KoraTranscript {
   return transcript.parse(value);
+}
+
+/** Parses the categories a reviewer opted out of, as the server stored them from earlier exports. */
+export function parseKoraCategories(value: unknown): KoraCategory[] {
+  return z.array(z.enum(KoraCategory)).parse(value);
 }
 
 /** Parses an export the server stored after checking it against the batch's export schema. */

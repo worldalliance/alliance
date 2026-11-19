@@ -23,6 +23,7 @@ import type { JwtRequest } from "src/auth/tokens";
 import {
   KoraExportSavedDto,
   KoraHomeDto,
+  KoraNextTranscriptDto,
   KoraReviewStateDto,
   SaveKoraExportDto,
 } from "./dto/kora-review.dto";
@@ -116,5 +117,22 @@ export class KoraReviewController {
       }
     }
     return new KoraExportSavedDto(saved.value);
+  }
+
+  @Post("assignments/:id/next")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AllowedOriginGuard)
+  @ApiOkResponse({ type: KoraNextTranscriptDto })
+  async next(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Req() req: JwtRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<KoraNextTranscriptDto> {
+    const next = await this.reviewService.next({
+      identity: await this.identity(req, res),
+      assignmentId: id,
+    });
+    if (!next.ok) throw new NotFoundException("Assignment not found");
+    return new KoraNextTranscriptDto(next.value);
   }
 }

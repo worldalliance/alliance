@@ -165,7 +165,7 @@ export const CATEGORIES: readonly CategoryConfig[] = [
 /** Wording of the content warning. {label} is the category's label. */
 export const CONTENT_WARNING = {
   title: "The next pair is about {label}",
-  body: "The child is simulated, but the content is realistic. You can skip this pair, or every pair on this topic.",
+  body: "The child is simulated, but the content is realistic. You can skip this pair, or every pair on this topic, now and in later batches.",
   continueLabel: "Continue",
   skipOneLabel: "Skip this pair",
   skipAllLabel: "Skip all {label} pairs",

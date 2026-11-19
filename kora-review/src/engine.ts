@@ -19,7 +19,11 @@ import { createSheet } from "./engine/sheet.js";
 import { createSurveys } from "./engine/surveys.js";
 import type { KoraExport } from "./types.gen.js";
 
-export type Engine = { buildExport: () => KoraExport; destroy: () => void };
+export type Engine = {
+  buildExport: () => KoraExport;
+  remove: (ids: string[]) => void;
+  destroy: () => void;
+};
 
 export function createEngine(host: HTMLElement, o: EngineOptions): Engine {
   let built: Late | null = null;
@@ -48,6 +52,7 @@ export function createEngine(host: HTMLElement, o: EngineOptions): Engine {
   ctx.start();
   return {
     buildExport: ctx.buildExport,
+    remove: ctx.remove,
     destroy() {
       ctx.disconnectResize();
       ctx.teardown();

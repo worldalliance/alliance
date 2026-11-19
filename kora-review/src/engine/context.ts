@@ -1,5 +1,5 @@
-import type { KoraAssignment } from "../index.js";
-import type { KoraExport } from "../types.gen.js";
+import type { KoraAssignedTranscript, KoraAssignment } from "../index.js";
+import type { KoraCategory, KoraExport } from "../types.gen.js";
 import type { createAnnotations } from "./annotations.js";
 import type { createFeedback } from "./feedback.js";
 import type { createFlow } from "./flow.js";
@@ -23,6 +23,8 @@ export type EngineOptions = {
   savedExport: KoraExport | null;
   collectProfile: boolean;
   collectExitSurvey: boolean;
+  optOutCategories: KoraCategory[];
+  next: () => Promise<KoraAssignedTranscript | null>;
   onChange: () => void;
   onComplete: () => void;
   onHidden: () => void;
@@ -42,6 +44,7 @@ export type Late = {
   renderAnns(): void;
   renderExit(): void;
   renderFinish(): void;
+  renderLoading(state: { failed: boolean }): void;
   renderProfile(): void;
   renderRank(): void;
   renderReview(slow?: boolean): void;

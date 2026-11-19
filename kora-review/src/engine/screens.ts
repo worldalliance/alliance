@@ -16,6 +16,7 @@ export function createScreens(ctx: ScreensCtx) {
     category,
     changed,
     ensure,
+    fetchNext,
     finishFlow,
     firstPendingIndex,
     h,
@@ -43,14 +44,11 @@ export function createScreens(ctx: ScreensCtx) {
       S.warned !== t.id
     );
   }
-  const pendingIn = (id: string) =>
-    S.list.filter((t) => t.category === id && !reviewed(res(t))).length;
   function renderWarning({ then }: { then: string }) {
     const w = CONTENT_WARNING,
       t = transcript(then),
       c = category(t.category);
-    const label = c.label,
-      n = pendingIn(c.id);
+    const label = c.label;
     app.replaceChildren(
       h(
         "main",
@@ -63,11 +61,7 @@ export function createScreens(ctx: ScreensCtx) {
         ),
         c.description ? h("p", { class: "lede" }, c.description) : null,
         h("p", { class: "lede" }, w.body),
-        h(
-          "p",
-          { class: "fine" },
-          `${plural(n, "pair")} on this topic left to review. ${progressText()}.`,
-        ),
+        h("p", { class: "fine" }, `${progressText()}.`),
         h(
           "div",
           { class: "oo-acts" },
@@ -90,17 +84,15 @@ export function createScreens(ctx: ScreensCtx) {
             },
             w.skipOneLabel,
           ),
-          n > 1
-            ? h(
-                "button",
-                {
-                  class: "big ghost",
-                  type: "button",
-                  onclick: () => skipCategory(c.id),
-                },
-                w.skipAllLabel.replace("{label}", label),
-              )
-            : null,
+          h(
+            "button",
+            {
+              class: "big ghost",
+              type: "button",
+              onclick: () => skipCategory(c.id),
+            },
+            w.skipAllLabel.replace("{label}", label),
+          ),
         ),
       ),
     );
@@ -129,6 +121,45 @@ export function createScreens(ctx: ScreensCtx) {
       if (t.category === cid && res(t).status !== "done")
         ensure(t).optedOut = true;
     afterSkip(`Skipping all ${catLabel(cid)} pairs.`);
+  }
+
+  /* ---------- Waiting for the next pair ---------- */
+  function renderLoading({ failed }: { failed: boolean }) {
+    app.replaceChildren(
+      h(
+        "main",
+        { class: "finish wrap", "aria-busy": failed ? "false" : "true" },
+        h("div", { class: "brand" }, brandMark(), "TRANSCRIPT REVIEW"),
+        h(
+          "h1",
+          { class: "qtitle", tabindex: "-1", "data-focus": "" },
+          failed ? "Couldn't load the next pair" : "Loading the next pair…",
+        ),
+        failed
+          ? h(
+              "p",
+              { class: "lede" },
+              "Your answers so far are saved. Check your connection, then try again.",
+            )
+          : null,
+        failed
+          ? h(
+              "div",
+              { class: "oo-acts" },
+              h(
+                "button",
+                {
+                  class: "big primary",
+                  type: "button",
+                  onclick: () => void fetchNext(),
+                },
+                "Try again",
+              ),
+            )
+          : null,
+      ),
+    );
+    if (failed) announce("Couldn't load the next pair.");
   }
 
   /* ---------- Finish ---------- */
@@ -178,5 +209,5 @@ export function createScreens(ctx: ScreensCtx) {
     );
   }
 
-  return { needsWarning, renderFinish, renderWarning };
+  return { needsWarning, renderFinish, renderLoading, renderWarning };
 }

@@ -67,6 +67,7 @@ export type Result = Pick<
 
 export type Screen =
   | "boot"
+  | "loading"
   | "profile"
   | "warning"
   | "review"
@@ -114,6 +115,10 @@ export type SheetState = { mode: SheetMode } & SheetOpts;
 export type State = {
   all: Transcript[];
   list: Transcript[];
+  /** How many pairs the assignment asks for; more are fetched one at a time up to it. */
+  size: number;
+  /** The host has nothing more to give. */
+  exhausted: boolean;
   results: Record<string, Result>;
   history: Record<string, Annotation[][]>;
   screen: Screen;

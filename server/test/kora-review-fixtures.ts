@@ -10,13 +10,16 @@ import {
 import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 import { uniqueEmail } from "./otp-fixtures";
 
+export type ReviewTranscript = {
+  transcript: { transcriptId: string; category: string };
+  contentHash: string;
+};
+
 export type ReviewAssignment = {
   id: string;
   extra: boolean;
-  transcripts: {
-    transcript: { transcriptId: string; category: string };
-    contentHash: string;
-  }[];
+  size: number;
+  transcripts: ReviewTranscript[];
   savedExport: Record<string, unknown> | null;
 };
 
@@ -24,6 +27,7 @@ export type ReviewState = {
   phase: KoraReviewPhase;
   reviewerId: string;
   collectProfile: boolean;
+  optOutCategories: string[];
   extraReviews: number;
   assignment?: ReviewAssignment;
 };
@@ -52,12 +56,41 @@ export function koraReviewClient(harness: () => KoraHarness) {
       transcripts: s.assignment?.transcripts ?? [],
       ...options,
     });
-  const finish = (browser: TestAgent, s: ReviewState) =>
-    save(
-      browser,
-      s.assignment?.id ?? "",
-      exportOf(s, { done: ids(s.assignment) }),
-    ).expect(200);
+  const next = async (
+    browser: TestAgent,
+    assignmentId: string,
+  ): Promise<ReviewTranscript | null> =>
+    (
+      await browser
+        .post(`/kora/review/assignments/${assignmentId}/next`)
+        .set("Origin", ORIGIN)
+        .expect(200)
+    ).body.next;
+  /** Ranks each transcript the assignment gives, as the tool does, until it gives no more. */
+  const finish = async (browser: TestAgent, s: ReviewState) => {
+    const id = s.assignment?.id ?? "";
+    const given = [...(s.assignment?.transcripts ?? [])];
+    const rankAll = () => {
+      const all = {
+        ...s,
+        assignment: s.assignment && { ...s.assignment, transcripts: given },
+      };
+      return save(
+        browser,
+        id,
+        exportOf(all, { done: ids(all.assignment) }),
+      ).expect(200);
+    };
+    for (;;) {
+      await rankAll();
+      const more = await next(browser, id);
+      if (!more) {
+        const { body } = await rankAll();
+        return { body, given: given.map((t) => t.transcript.transcriptId) };
+      }
+      given.push(more);
+    }
+  };
   const participant = async () => {
     const h = harness();
     const browser = h.browser();
@@ -93,5 +126,15 @@ export function koraReviewClient(harness: () => KoraHarness) {
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
     return uploaded.value.batch.id;
   };
-  return { state, more, save, ids, exportOf, finish, participant, upload };
+  return {
+    state,
+    more,
+    save,
+    next,
+    ids,
+    exportOf,
+    finish,
+    participant,
+    upload,
+  };
 }

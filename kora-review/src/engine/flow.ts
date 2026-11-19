@@ -5,6 +5,7 @@ export function createFlow(ctx: FlowCtx) {
   const {
     o,
     S,
+    addTranscript,
     allReviewed,
     app,
     cancel,
@@ -19,11 +20,13 @@ export function createFlow(ctx: FlowCtx) {
     icon,
     iso,
     later,
+    needsMore,
     nextPendingIndex,
     on,
     progressText,
     reducedMotion,
     refreshList,
+    removeTranscripts,
     res,
     reviewed,
     restore,
@@ -39,6 +42,8 @@ export function createFlow(ctx: FlowCtx) {
     ctx.late().renderExit(...args);
   const renderFinish: Late["renderFinish"] = (...args) =>
     ctx.late().renderFinish(...args);
+  const renderLoading: Late["renderLoading"] = (...args) =>
+    ctx.late().renderLoading(...args);
   const renderProfile: Late["renderProfile"] = (...args) =>
     ctx.late().renderProfile(...args);
   const renderReview: Late["renderReview"] = (...args) =>
@@ -60,6 +65,7 @@ export function createFlow(ctx: FlowCtx) {
     closeSheet();
     closeIntro();
     if (screen === "finish") renderFinish();
+    else if (screen === "loading") renderLoading({ failed: false });
     else if (screen === "warning" && opts) renderWarning(opts);
     else if (screen === "profile") renderProfile();
     else if (screen === "exit") renderExit();
@@ -210,16 +216,41 @@ export function createFlow(ctx: FlowCtx) {
   function finishFlow() {
     if (!allReviewed()) {
       const i = firstPendingIndex();
-      if (i !== -1) {
-        openTranscript(i);
-        return;
-      }
+      if (i !== -1) openTranscript(i);
+      else if (needsMore()) void fetchNext();
+      return;
     }
     if (needsExit()) {
       go("exit");
       return;
     }
     complete();
+  }
+  let fetching = false;
+  async function fetchNext() {
+    if (fetching) return;
+    fetching = true;
+    go("loading");
+    try {
+      const item = await o.next();
+      if (isDestroyed()) return;
+      if (item) addTranscript(item);
+      else S.exhausted = true;
+    } catch {
+      if (!isDestroyed()) renderLoading({ failed: true });
+      return;
+    } finally {
+      fetching = false;
+    }
+    finishFlow();
+  }
+  /** Pairs the host took out of the assignment leave silently; the reviewer moves on if they were on one. */
+  function remove(ids: string[]) {
+    const shown = S.screen === "review" ? cur()?.id : undefined;
+    removeTranscripts(ids);
+    const i = shown ? S.list.findIndex((t) => t.id === shown) : -1;
+    if (i !== -1) S.idx = i;
+    else if (S.screen === "review" || S.screen === "warning") finishFlow();
   }
   function complete() {
     const first = !S.isDone;
@@ -259,11 +290,13 @@ export function createFlow(ctx: FlowCtx) {
     bankTime,
     changed,
     complete,
+    fetchNext,
     finishFlow,
     go,
     goNext,
     introShown,
     openTranscript,
+    remove,
     start,
     startReviewing,
   };

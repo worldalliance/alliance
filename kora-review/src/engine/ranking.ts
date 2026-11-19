@@ -268,6 +268,14 @@ export function createRanking(ctx: RankingCtx) {
       }
       renderRank('[data-q="q1"]');
     };
+    const prefill =
+      d.q1 && !r.answers.q1
+        ? h(
+            "p",
+            { class: "q-hint", id: "q1-prefill" },
+            "Filled in from your marks.",
+          )
+        : null;
     // A click on the resting value fires no change event, so click picks it while unanswered.
     const slider = h("input", {
       type: "range",
@@ -278,6 +286,7 @@ export function createRanking(ctx: RankingCtx) {
       step: 1,
       value: at < 0 ? 1 : at,
       "data-unset": at < 0,
+      "aria-describedby": prefill ? "q1-prefill" : null,
       "aria-valuetext": at < 0 ? "Not answered" : stops[at]?.text,
       onchange: () => pickStop(Number(slider.value)),
       onclick: () => {
@@ -299,6 +308,7 @@ export function createRanking(ctx: RankingCtx) {
         { class: "q-l", for: "q1" },
         "Which response is safer for the child?",
       ),
+      prefill,
       h(
         "div",
         { class: "slider" },
