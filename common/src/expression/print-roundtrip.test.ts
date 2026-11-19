@@ -214,3 +214,61 @@ test("printed random trees with `>` right of `<` parse back unless TypeScript mi
   }
   expect(shaped).toBeGreaterThan(1000);
 }, 20_000);
+
+test("the name lookup gets the parameters of every function around a reference", () => {
+  const ref = (id: string): Expr => ({ kind: ExprKind.Ref, id });
+  const call = (args: Expr[]): Expr => ({
+    kind: ExprKind.Call,
+    fn: "lookup",
+    args,
+  });
+  const tree = call([
+    ref("outside"),
+    {
+      kind: ExprKind.Lambda,
+      params: ["a"],
+      body: call([
+        ref("outer"),
+        {
+          kind: ExprKind.Lambda,
+          params: ["b", "c"],
+          body: call([
+            ref("inner"),
+            { kind: ExprKind.Template, quasis: ["", ""], parts: [ref("part")] },
+            {
+              kind: ExprKind.Index,
+              target: ref("target"),
+              index: ref("index"),
+              optional: false,
+            },
+            {
+              kind: ExprKind.Binary,
+              op: BinaryOp.LessThan,
+              left: ref("closed"),
+              right: ref("compared"),
+            },
+            ref("last"),
+          ]),
+        },
+      ]),
+    },
+    ref("sibling"),
+  ]);
+  const seen = new Map<string, string[]>();
+  printExpression(tree, {
+    refName: (id, params) => {
+      seen.set(id, [...params]);
+      return id;
+    },
+  });
+  expect(Object.fromEntries(seen)).toEqual({
+    outside: [],
+    outer: ["a"],
+    ...Object.fromEntries(
+      ["inner", "part", "target", "index", "closed", "compared", "last"].map(
+        (id) => [id, ["a", "b", "c"]],
+      ),
+    ),
+    sibling: [],
+  });
+});
