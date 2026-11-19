@@ -1,47 +1,32 @@
 import type { LeafCondition } from "@alliance/common/cohort-expression";
 import type { ActionStatus } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
-import chroma from "chroma-js";
 import {
   cohortSegmentsText,
   type CohortSegment,
 } from "../lib/describeCohortExpression";
-import { swatchColors } from "../lib/identitySwatch";
+import { StatusTone } from "../lib/statusTone";
+import StatusPill, { ActionStatusPill } from "./ui/StatusPill";
 
-const STATUS_SHORT: Record<ActionStatus, string> = {
-  draft: "draft",
-  planned: "planned",
-  office_action: "office",
-  member_action: "member",
-  resolution: "resolution",
-  completed: "completed",
-  failed: "failed",
-  abandoned: "abandoned",
+const CHIPPED: Record<LeafCondition["type"], boolean> = {
+  Tag: false,
+  Manual: false,
+  CompletedAction: false,
+  MissedActionDeadline: false,
+  FormFieldValue: false,
+  GroupLead: false,
+  USMember: true,
+  NonUSMember: true,
+  AllMembers: false,
+  Staff: false,
 };
-
-const lighten = (color: string) => chroma.mix(color, "white", 0.65).hex();
-
-const CHIP_COLORS: Record<LeafCondition["type"], string | null> = {
-  Tag: null,
-  Manual: null,
-  CompletedAction: null,
-  MissedActionDeadline: null,
-  FormFieldValue: null,
-  GroupLead: null,
-  USMember: lighten(swatchColors("USMember").from),
-  NonUSMember: lighten(swatchColors("NonUSMember").from),
-  AllMembers: null,
-  Staff: null,
-};
-
-const CHIP = "rounded border border-black/10 px-1 leading-4 shrink-0";
 
 const ActionTimelineRowMeta = ({
   status,
   archived,
   participants,
 }: {
-  status: ActionStatus;
+  /** Left out where the row's phase pill already shows the status. */
+  status?: ActionStatus;
   archived?: boolean;
   participants?: CohortSegment[];
 }) => (
@@ -49,33 +34,15 @@ const ActionTimelineRowMeta = ({
     className="flex items-center gap-x-1 text-xs text-zinc-500 whitespace-nowrap overflow-hidden"
     title={participants && cohortSegmentsText(participants)}
   >
-    <span
-      className={cn(
-        CHIP,
-        "bg-zinc-100 text-[10px] font-medium uppercase text-zinc-600",
-      )}
-    >
-      {STATUS_SHORT[status]}
-    </span>
-    {archived && (
-      <span
-        className={cn(
-          CHIP,
-          "bg-zinc-200 text-xs font-medium uppercase text-zinc-700",
-        )}
-      >
-        archived
-      </span>
-    )}
+    {status && <ActionStatusPill status={status} />}
+    {archived && <StatusPill tone={StatusTone.Neutral} label="Archived" />}
     {participants && (
       <span className="truncate">
-        {participants.map((segment, index) => {
-          const color = segment.leaf && CHIP_COLORS[segment.leaf];
-          return color ? (
+        {participants.map((segment, index) =>
+          segment.leaf && CHIPPED[segment.leaf] ? (
             <span
               key={index}
-              className={cn(CHIP, "text-zinc-800")}
-              style={{ backgroundColor: color }}
+              className="rounded-md border border-zinc-200 bg-zinc-100 px-1 text-zinc-800"
             >
               {segment.text}
             </span>
@@ -83,8 +50,8 @@ const ActionTimelineRowMeta = ({
             <span key={index} className="whitespace-pre">
               {segment.text}
             </span>
-          );
-        })}
+          ),
+        )}
       </span>
     )}
   </div>

@@ -2,14 +2,15 @@ import { withCount } from "@alliance/common/plural";
 import { format, isFuture } from "date-fns";
 import type { CohortSegment } from "../lib/describeCohortExpression";
 import {
-  COUNT_COLORS,
   COUNT_LABELS,
+  COUNT_TONES,
   StepCountBucket,
   type ProjectCard,
   type ProjectStep,
 } from "../lib/projectCards";
 import ProjectMiniTimeline from "./ProjectMiniTimeline";
 import ProjectStepRows from "./ProjectStepRows";
+import StatusPill from "./ui/StatusPill";
 
 const startedText = (startedAt: Date | null) => {
   if (!startedAt) return "Not started";
@@ -22,12 +23,11 @@ export const ProjectCounts = ({ card }: { card: ProjectCard }) => (
     {Object.values(StepCountBucket)
       .filter((bucket) => card.counts[bucket] > 0)
       .map((bucket) => (
-        <span
+        <StatusPill
           key={bucket}
-          className={`rounded px-1.5 py-0.5 text-xs font-medium ${COUNT_COLORS[bucket]}`}
-        >
-          {card.counts[bucket]} {COUNT_LABELS[bucket]}
-        </span>
+          tone={COUNT_TONES[bucket]}
+          label={`${card.counts[bucket]} ${COUNT_LABELS[bucket]}`}
+        />
       ))}
   </div>
 );

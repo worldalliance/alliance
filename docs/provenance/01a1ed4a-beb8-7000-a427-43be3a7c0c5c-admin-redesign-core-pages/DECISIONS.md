@@ -60,4 +60,11 @@ URL updates replace the history entry rather than push, as the Actions page did 
 
 ## Colour
 
-Green is kept only where it is status (the "Member action" pill, completion bars and rates). The green primary and "View" buttons become zinc. Links on these pages are `blue-600`. Existing status pills keep their colours, as instructed.
+Green is kept only where it is status (the "Member action" pill, completion bars and rates). The green primary and "View" buttons become zinc. Links on these pages are `blue-600`. A closed action's progress bar on the Actions list was blue and is now green like an open one's.
+
+## One status vocabulary
+
+Every status pill on Projects, the project page and the Actions list (list and timeline) is PR 2's `StatusPill` with its four tones, from `01a1ed4c-b082-7000-8af8-b95656de79ef-admin-action-workspace`, and carries a word:
+- Project step counts (`COUNT_TONES` in `lib/projectCards.ts`, replacing purple, blue and orange classes): "live" is positive; "planned", "draft", "wrapping up" and "done" are neutral. "Done" mixes completed, failed and abandoned steps and "wrapping up" mixes office action (neutral) with resolution (attention), so neither takes one outcome's colour. The count words stay, since they summarise several statuses that the per-step pills name.
+- An action's own status, in the Actions list card and in timeline and step rows, is `ActionStatusPill`: the status words and tones `lib/actionStatusDisplay` holds. The timeline's short uppercase status chips ("member", "office") are gone. A detailed step row on the project page shows the status beside its phase pill, except for a closed step, whose phase pill already names the status. The phase alone would misreport an office or resolution step with no member action as Draft.
+- Pills that are not statuses are neutral: Archived, Optional, Standalone action, and the US and non-US member chips in a step's audience, which used hashed pastel colours.

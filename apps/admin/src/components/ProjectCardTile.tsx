@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { CohortSegment } from "../lib/describeCohortExpression";
 import { ProjectCardKind, type ProjectCard } from "../lib/projectCards";
+import { StatusTone } from "../lib/statusTone";
 import { useCreateProjectAdmin } from "../lib/useProjectsAdmin";
 import { ActionCategoryIcons } from "./ActionCategoryIcons";
 import ProjectCardBody, {
@@ -13,6 +14,7 @@ import ProjectCardBody, {
 } from "./ProjectCardBody";
 import { ProjectNameInput } from "./ProjectNameInput";
 import ProjectWarnings from "./ProjectWarnings";
+import StatusPill from "./ui/StatusPill";
 
 const MakeProject = ({
   actionId,
@@ -88,9 +90,7 @@ const ProjectCardTile = ({
         </div>
         <div className="flex flex-wrap items-center gap-1">
           {card.kind === ProjectCardKind.Standalone && (
-            <span className="rounded-md border border-zinc-200 px-1.5 py-0.5 text-xs text-zinc-600">
-              Standalone action
-            </span>
+            <StatusPill tone={StatusTone.Neutral} label="Standalone action" />
           )}
           <ProjectCounts card={card} />
         </div>

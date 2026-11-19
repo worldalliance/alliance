@@ -16,7 +16,6 @@ interface ProgressBarWrapperProps {
 
 interface ProgressBarProps {
   percentage: number;
-  barColor: string;
   label: string;
 }
 
@@ -31,15 +30,11 @@ const ProgressBarWrapper: React.FC<ProgressBarWrapperProps> = ({
 );
 
 // Reusable progress bar component
-const ProgressBar: React.FC<ProgressBarProps> = ({
-  percentage,
-  barColor,
-  label,
-}) => (
+const ProgressBar: React.FC<ProgressBarProps> = ({ percentage, label }) => (
   <>
     <div className="w-full h-2 bg-gray-100 rounded-[2px]">
       <div
-        className={cn("h-2 rounded-[2px]", barColor)}
+        className="h-2 rounded-[2px] bg-green"
         style={{ width: `${Math.min(percentage, 100)}%` }}
       />
     </div>
@@ -58,42 +53,20 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
     return null;
   }
 
-  // Completion progress for various statuses
   const completionStatuses: ActionStatus[] = [
     "member_action",
     "office_action",
     "resolution",
   ];
 
-  if (completionStatuses.includes(status)) {
+  if (completionStatuses.includes(status) || usersJoined > 0) {
     const percentage =
       usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
-    const statusColors = {
-      member_action: "bg-green",
-      office_action: "bg-green",
-      resolution: "bg-green",
-    } as const;
 
     return (
       <ProgressBarWrapper className={className}>
         <ProgressBar
           percentage={percentage}
-          barColor={statusColors[status as keyof typeof statusColors]}
-          label={`${usersCompleted} / ${usersJoined} completed`}
-        />
-      </ProgressBarWrapper>
-    );
-  }
-
-  // For other statuses, show basic progress bar if there are users
-  if (usersJoined > 0) {
-    const percentage = (usersCompleted / usersJoined) * 100;
-
-    return (
-      <ProgressBarWrapper className={className}>
-        <ProgressBar
-          percentage={percentage}
-          barColor="bg-blue-500"
           label={`${usersCompleted} / ${usersJoined} completed`}
         />
       </ProgressBarWrapper>

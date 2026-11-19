@@ -6,6 +6,7 @@ import type {
 } from "@alliance/shared/client";
 import { addDays, addHours, isAfter, isBefore } from "date-fns";
 import { ActionPhase, actionPhase } from "./actionPhase";
+import { StatusTone } from "./statusTone";
 
 export enum ProjectLifecycle {
   Live = "live",
@@ -50,12 +51,12 @@ export const COUNT_LABELS: Record<StepCountBucket, string> = {
   [StepCountBucket.Done]: "done",
 };
 
-export const COUNT_COLORS: Record<StepCountBucket, string> = {
-  [StepCountBucket.Live]: "bg-purple-100 text-purple-800",
-  [StepCountBucket.Planned]: "bg-blue-100 text-blue-800",
-  [StepCountBucket.Draft]: "bg-zinc-100 text-zinc-700",
-  [StepCountBucket.WrappingUp]: "bg-orange-100 text-orange-800",
-  [StepCountBucket.Done]: "bg-green-100 text-green-800",
+export const COUNT_TONES: Record<StepCountBucket, StatusTone> = {
+  [StepCountBucket.Live]: StatusTone.Live,
+  [StepCountBucket.Planned]: StatusTone.Neutral,
+  [StepCountBucket.Draft]: StatusTone.Neutral,
+  [StepCountBucket.WrappingUp]: StatusTone.Neutral,
+  [StepCountBucket.Done]: StatusTone.Neutral,
 };
 
 export enum ProjectFlagKind {
