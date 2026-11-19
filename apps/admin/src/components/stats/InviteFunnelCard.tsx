@@ -23,22 +23,22 @@ const InviteFunnelCard: React.FC = () => {
 
     const bars = [
       {
-        label: "Invites Created",
+        label: "Invites created",
         value: inviteFunnel.invitesCreated,
         color: "#6366f1",
       },
       {
-        label: "Invites Used",
+        label: "Invites used",
         value: inviteFunnel.invitesUsed,
         color: "#8b5cf6",
       },
       {
-        label: "Signed Contract",
+        label: "Signed contract",
         value: inviteFunnel.contractSigned,
         color: "#a855f7",
       },
       {
-        label: "Finished Onboarding",
+        label: "Finished onboarding",
         value: inviteFunnel.onboardingCompleted,
         color: "#c084fc",
       },

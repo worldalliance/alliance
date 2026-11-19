@@ -208,7 +208,7 @@ describe("StatsPage invite funnel", () => {
   it("charts the funnel's stages", async () => {
     renderPage();
 
-    await screen.findByText("Finished Onboarding");
+    await screen.findByText("Finished onboarding");
     expect(screen.queryByText("Loading invite funnel…")).toBeNull();
   });
 

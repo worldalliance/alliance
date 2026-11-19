@@ -58,7 +58,7 @@ describe("CompletionRateCharts", () => {
 
     fireEvent.mouseMove(weekly, { clientX: 999 });
 
-    expect(screen.getByText("Completed / Joined")).toBeTruthy();
+    expect(screen.getByText("Completed / joined")).toBeTruthy();
     expect(screen.getByText("6/10")).toBeTruthy();
     expect(screen.getByText("Action 1")).toBeTruthy();
     expect(
@@ -79,10 +79,10 @@ describe("CompletionRateCharts", () => {
 
     fireEvent.mouseMove(cumulative, { clientX: 999 });
 
-    expect(screen.getByText("Avg Rate").nextSibling?.textContent).toBe(
+    expect(screen.getByText("Average rate").nextSibling?.textContent).toBe(
       "55.00%",
     );
-    expect(screen.getByText("Total Actions").nextSibling?.textContent).toBe(
+    expect(screen.getByText("Total actions").nextSibling?.textContent).toBe(
       "2",
     );
   });

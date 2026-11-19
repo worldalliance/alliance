@@ -31,7 +31,7 @@ describe("ReminderClickRateCard", () => {
     const { wrapper } = queryWrapper();
     const { container } = render(<ReminderClickRateCard />, { wrapper });
 
-    await screen.findByText("Email Click Rate (Avg by Action)");
+    await screen.findByText("Email click rate (average by action)");
     expect(
       screen.getByText("No texted reminder data in this range."),
     ).toBeTruthy();
@@ -50,7 +50,7 @@ describe("ReminderClickRateCard", () => {
   it("leaves out reminder groups sent before the chosen start date", async () => {
     const { wrapper } = queryWrapper();
     render(<ReminderClickRateCard />, { wrapper });
-    await screen.findByText("Email Click Rate (Avg by Action)");
+    await screen.findByText("Email click rate (average by action)");
 
     const from = screen
       .getByText("From")

@@ -10,13 +10,13 @@ export const reminderChannelStyles: Record<
   { title: string; emptyMessage: string; fill: string; rateClassName: string }
 > = {
   [ReminderChannel.Email]: {
-    title: "Email Click Rate (Avg by Action)",
+    title: "Email click rate (average by action)",
     emptyMessage: "No emailed reminder data in this range.",
     fill: "#2563eb",
     rateClassName: "text-blue-600",
   },
   [ReminderChannel.Text]: {
-    title: "Text Click Rate (Avg by Action)",
+    title: "Text click rate (average by action)",
     emptyMessage: "No texted reminder data in this range.",
     fill: "#ea580c",
     rateClassName: "text-orange-600",

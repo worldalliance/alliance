@@ -55,7 +55,7 @@ URL updates replace the history entry rather than push, as the Actions page did 
 - The daily-stats range controls used to float between two charts and drive a table collapsed at the bottom of the page. They now head a "Daily stats" Section whose table shows inline, scrolling past 24 rem. The per-action table is likewise an inline "Action stats" Section.
 - The date-range pair, hand-written five times with labels not tied to their inputs, is one `DateRangeInputs` component whose labels wrap their inputs.
 - Values stay available as text: the bar charts and funnel already print their values, and the daily and per-action tables give the time series' figures. The line charts (members over time, completion rates, completion curves, cohort reliability) still show exact values only on hover; adding text alternatives for them is new work rather than layout, so it is listed as an open question for the owner rather than done here.
-- Chart titles are sentence case, per the root `AGENTS.md` **Capitalisation** rule.
+- Chart titles, legends and funnel labels are sentence case, per the root `AGENTS.md` **Capitalisation** rule.
 - Order is unchanged apart from Daily stats, which sits where its controls used to be.
 
 ## Colour

@@ -297,14 +297,14 @@ const MembersOverTimeChart: React.FC<{
             className="w-4 h-4 rounded"
             style={{ backgroundColor: "rgba(22, 163, 74, 0.8)" }}
           />
-          <span className="text-sm text-gray-600">Active Members</span>
+          <span className="text-sm text-gray-600">Active members</span>
         </div>
         <div className="flex items-center gap-2">
           <div
             className="w-4 h-4 rounded"
             style={{ backgroundColor: "rgba(239, 68, 68, 0.9)" }}
           />
-          <span className="text-sm text-gray-600">Churned Members</span>
+          <span className="text-sm text-gray-600">Churned members</span>
         </div>
       </div>
     </Section>

@@ -55,7 +55,7 @@ const CompletionRateCharts: React.FC<{
     () => [
       {
         key: "avgRate",
-        label: "Avg Rate",
+        label: "Average rate",
         color: "#15803d",
         getValue: (d) => (d.avgRate as number) ?? 0,
       },
@@ -80,7 +80,7 @@ const CompletionRateCharts: React.FC<{
     () => [
       {
         key: "weekRate",
-        label: "Weekly Rate",
+        label: "Weekly rate",
         color: "#16a34a",
         getValue: (d) => (d.weekRate as number) ?? 0,
       },
@@ -122,12 +122,12 @@ const CompletionRateCharts: React.FC<{
           title: fullDateFormatter.format(point.date),
           items: [
             {
-              label: "Avg Rate",
+              label: "Average rate",
               value: `${((point.avgRate as number) * 100).toFixed(2)}%`,
               color: "#15803d",
             },
             {
-              label: "Total Actions",
+              label: "Total actions",
               value: point.actionCount as number,
             },
             ...actionNameItems(point),
@@ -152,7 +152,7 @@ const CompletionRateCharts: React.FC<{
           title: `Week of ${fullDateFormatter.format(point.date)}`,
           items: [
             {
-              label: "Weekly Rate",
+              label: "Weekly rate",
               value: `${((point.weekRate as number) * 100).toFixed(2)}%`,
               color: "#16a34a",
             },
@@ -161,7 +161,7 @@ const CompletionRateCharts: React.FC<{
               value: point.actionCount as number,
             },
             {
-              label: "Completed / Joined",
+              label: "Completed / joined",
               value: `${point.completedCount as number}/${
                 point.joinedCount as number
               }`,
