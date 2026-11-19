@@ -2,6 +2,11 @@
 
 All agent decisions unless labelled otherwise.
 
+## Telling "too old" from "broken"
+
+- `formUnrenderable` (`common/src/forms/unrenderable.ts`) blames the client when `unknownKind` is set and the content otherwise. `variablesError` alone can't tell them apart: its strings mix authoring errors with this build not knowing a kind (EVIDENCE.md, Repository behaviour), so every kind evaluation can fail on is caught as `unknownKind` first (below).
+- Display-only content: `readDisplayOnlySchemaForMember` blames the client for every parse failure. The server parses each display-only snapshot with its own build when serving it and serves an empty schema when that fails (`server/src/tasks/display-only-snapshot.ts`), and member clients are never newer than the server, so a schema the client rejects was written by a newer build. Splitting by zod issue code misread a widened type or relaxed bound as broken content.
+
 ## Kinds this build doesn't know
 
 - `unknownKind` also covers the kinds that used to surface only through `variablesError`: unknown formula input kinds in variables and options formulas (`findUnknownVariableInputKind`) and unknown list sub-field kinds (`findUnknownFormElementKind` now looks inside lists). Member clients cast stored schemas rather than parse them, so these kinds do reach the renderer. An options formula's unknown input kind no longer throws while ordering the options formulas (`dependencies` in `formula-options.ts`), which crashed the form before the block could show.
