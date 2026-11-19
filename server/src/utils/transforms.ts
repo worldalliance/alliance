@@ -31,3 +31,7 @@ export const toDateTime = ({ value }: TransformFnParams): unknown =>
   isRFC3339(value) && isISO8601(value, { strict: true })
     ? new Date(value)
     : value;
+
+/** For UUIDs, which Postgres compares regardless of case and returns in lower case. */
+export const toLowerCase = ({ value }: { value: unknown }): unknown =>
+  typeof value === "string" ? value.toLowerCase() : value;
