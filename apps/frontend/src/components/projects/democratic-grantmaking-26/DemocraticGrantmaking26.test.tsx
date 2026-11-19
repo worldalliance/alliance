@@ -49,7 +49,7 @@ test("opens with a waitlist screen above the rest of the page", async () => {
   const title = within(intro).getByRole("heading", { level: 1 });
   expect(title.textContent).toContain("Vote on where we donate $100,000");
   expect(
-    within(intro).getByText("Fall 2026").compareDocumentPosition(title) &
+    within(intro).getByText("This winter").compareDocumentPosition(title) &
       Node.DOCUMENT_POSITION_FOLLOWING,
   ).not.toBe(0);
   expect(

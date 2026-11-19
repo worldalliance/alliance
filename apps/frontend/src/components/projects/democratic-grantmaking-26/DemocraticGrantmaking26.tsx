@@ -76,7 +76,7 @@ function WaitlistScreen() {
       >
         <div className="flex flex-col gap-4 lg:gap-5">
           <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
-            Fall 2026
+            This winter
           </p>
           <h1 className="site-display font-medium text-5xl sm:text-6xl lg:text-7xl">
             Vote on where we donate{" "}
