@@ -188,14 +188,15 @@ const FORMATS: {
       ? text`Contract suspended automatically for ${referred(p.member)}: they missed ${String(p.missedSuites)} action suites in a row.`
       : text`${referred(p.member)} suspended their contract.`,
   [EventType.SmsUnsubscribe]: ({ phoneNumber, member: m, source }) => {
-    if (!m) {
-      return text`${phoneNumber} opted out of texts, but no member has that number.`;
-    }
     switch (source.kind) {
       case OptOutSource.Keyword:
-        return text`${member(m)} opted out of texts by replying “${source.rawBody}”.`;
+        return m
+          ? text`${member(m)} opted out of texts by replying “${source.rawBody}”.`
+          : text`${phoneNumber} opted out of texts, but no member has that number.`;
       case OptOutSource.Staff:
-        return text`${member(source.staff)} marked ${member(m)} as opted out of texts.`;
+        return m
+          ? text`${member(source.staff)} marked ${member(m)} as opted out of texts.`
+          : text`${member(source.staff)} marked ${phoneNumber} as opted out of texts. No member has that number.`;
       default:
         throw new Error(`unknown opt-out source: ${source satisfies never}`);
     }

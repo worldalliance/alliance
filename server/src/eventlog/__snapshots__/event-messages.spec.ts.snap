@@ -48,6 +48,11 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_unsubscribe",
   },
   {
+    "message": "Sam Lee marked +15555550100 as opted out of texts. No member has that number.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> marked +15555550100 as opted out of texts. No member has that number.",
+    "type": "sms_unsubscribe",
+  },
+  {
     "message": "Jane Doe opted back in to texts by replying “START”.",
     "slack": "<https://admin.example.org/member/5|Jane Doe> opted back in to texts by replying “START”.",
     "type": "sms_resubscribe",

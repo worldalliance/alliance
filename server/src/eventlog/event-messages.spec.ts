@@ -38,6 +38,11 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
       member: null,
       source: { kind: OptOutSource.Keyword, rawBody: "STOP" },
     },
+    {
+      phoneNumber: "+15555550100",
+      member: null,
+      source: { kind: OptOutSource.Staff, staff: sam },
+    },
   ],
   [EventType.SmsResubscribe]: [
     { phoneNumber: "+15555550100", member: jane, rawBody: "START" },
