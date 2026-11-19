@@ -47,6 +47,7 @@ test(
       expect(f.dbComment(`alliance_${name}`)).toBe(tag);
       expect(f.dbComment(`alliance_${name}_test`)).toBe(tag);
       expect(f.instanceId(name)).toBe(f.record(name).id);
+      expect(f.record(name).created).toBe("1");
     }
   },
   TIMEOUT,
@@ -270,7 +271,7 @@ test(
     await proc.exited;
     f.release("hold-install");
 
-    expect(f.record("cut").name).toBe("cut");
+    expect(f.record("cut").created).toBe("0");
     const removal = f.remove(["cut"]);
 
     expect(removal.exitCode).toBe(0);

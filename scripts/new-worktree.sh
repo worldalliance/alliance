@@ -240,6 +240,7 @@ test_db=$test_db_name
 branch=$branch
 branch_created=$branch_created
 slot=$slot
+created=0
 RECORD
 mv "$staging" "$instances/$new_id"
 id="$new_id"
@@ -428,6 +429,7 @@ set_env_key ADMIN_URL "http://localhost:$admin_port" "$worktree_env"
 echo "==> bun install"
 (cd "$worktree_dir" && bun install 9>&-)
 
+set_record_field "$id" created 1
 created=1
 
 echo
