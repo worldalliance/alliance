@@ -54,6 +54,7 @@ describe("printing parsed text", () => {
     'items.map(x => ({ a: x })["a"])',
     "items.map(x => ({ a: x }).a ? 1 : 2)",
     '({ "\u{1E5D0}": 1, café: 2 }).café',
+    '"\\uD83D\\uDE00"',
     "[(count < 1), count > (count ?? 0)]",
     "lookup((count < 1), count > `x`)",
     "(count < 1) === (count >= 1)",
@@ -154,6 +155,7 @@ describe("printing parsed text", () => {
   });
 });
 
+const UNSTORABLE = "This text has a character that can't be stored.";
 const CHAIN_PARENS = "Remove the parentheses around this `?.` chain.";
 
 describe("parse errors", () => {
@@ -278,6 +280,13 @@ describe("parse errors", () => {
       "This number has more digits than can be stored.",
       "4503599627370496.5",
     ],
+    ['"a\\u0000b"', UNSTORABLE, '"a\\u0000b"'],
+    ["`a${count}\\0`", UNSTORABLE, "}\\0`"],
+    ["`\\0${count}`", UNSTORABLE, "`\\0${"],
+    ['({ "\\0": 1 })', UNSTORABLE, '"\\0"'],
+    ['"\\uD800"', UNSTORABLE, '"\\uD800"'],
+    ["`a\\uDC00`", UNSTORABLE, "`a\\uDC00`"],
+    ['({ "\\uD800": 1 })', UNSTORABLE, '"\\uD800"'],
     ["count | 1", "`count | 1` isn't supported in expressions.", "count | 1"],
     [
       "({ count = 5 })",

@@ -83,6 +83,17 @@ class Converter {
     );
   }
 
+  /**
+   * Postgres jsonb can't store U+0000 or an unpaired surrogate, so a tree
+   * holding either can't be saved.
+   */
+  private storable(node: ts.Node & { text: string }): string {
+    if (/[\0\p{Cs}]/u.test(node.text)) {
+      this.fail(node, "This text has a character that can't be stored.");
+    }
+    return node.text;
+  }
+
   private unsupported(node: ts.Node): Expr {
     return this.fail(node, unsupportedMessage(node.getText(this.file)));
   }
@@ -116,17 +127,21 @@ class Converter {
         : this.fail(node, "This number has more digits than can be stored.");
     }
     if (ts.isStringLiteral(node)) {
-      return { kind: ExprKind.Literal, value: node.text };
+      return { kind: ExprKind.Literal, value: this.storable(node) };
     }
     if (ts.isNoSubstitutionTemplateLiteral(node)) {
-      return { kind: ExprKind.Template, quasis: [node.text], parts: [] };
+      return {
+        kind: ExprKind.Template,
+        quasis: [this.storable(node)],
+        parts: [],
+      };
     }
     if (ts.isTemplateExpression(node)) {
       return {
         kind: ExprKind.Template,
         quasis: [
-          node.head.text,
-          ...node.templateSpans.map((s) => s.literal.text),
+          this.storable(node.head),
+          ...node.templateSpans.map((s) => this.storable(s.literal)),
         ],
         parts: node.templateSpans.map((span) => this.convert(span.expression)),
       };
@@ -219,7 +234,9 @@ class Converter {
       const entry = ts.isPropertyAssignment(property)
         ? (ts.isIdentifier(property.name) ||
             ts.isStringLiteral(property.name)) && {
-            key: property.name.text,
+            key: ts.isStringLiteral(property.name)
+              ? this.storable(property.name)
+              : property.name.text,
             value: property.initializer,
           }
         : ts.isShorthandPropertyAssignment(property) && {
