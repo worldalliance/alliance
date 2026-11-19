@@ -386,7 +386,7 @@ describe("a scripted session", () => {
     await Promise.all(sessions.map((session) => R.unwrap(session).close()));
   });
 
-  test("a setup that never gets an answer fails before its app-server has exited, as does the launch queued behind it", async () => {
+  test("a setup that never gets an answer fails before its app-server has exited, as does the launch queued behind it, and settled, called between the two failures, waits for both to exit", async () => {
     const hung = path.join(scratch, "hung-codex");
     const log = path.join(scratch, "hung-codex.log");
     writeFileSync(
@@ -410,15 +410,16 @@ describe("a scripted session", () => {
         `couldn't start ${hung} in ${scratch}: Codex didn't finish setting up within 0.1 seconds.`,
       ),
     );
-    expect(
-      await Promise.all([
-        backend.start({ cwd: scratch }),
-        backend.start({ cwd: scratch }),
-      ]),
-    ).toEqual([failed, failed]);
+    const first = backend.start({ cwd: scratch });
+    const second = backend.start({ cwd: scratch });
+    expect(await first).toEqual(failed);
+    const settled = backend.settled();
+    expect(await second).toEqual(failed);
     expect(readFileSync(log, "utf8")).toBe("started\nstarted\n");
-    while (readFileSync(log, "utf8") !== "started\nstarted\nexited\nexited\n")
-      await Bun.sleep(50);
+    await settled;
+    expect(readFileSync(log, "utf8")).toBe(
+      "started\nstarted\nexited\nexited\n",
+    );
   });
 
   test("a CLI that exits during setup fails the launch at once with its stderr", async () => {

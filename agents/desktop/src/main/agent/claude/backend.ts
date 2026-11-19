@@ -180,5 +180,7 @@ export function createClaudeBackend(
         );
       return track({ cwd, sessionId, sessionArgs: ["--resume", sessionId] });
     },
+    // A Claude Code session is returned as soon as its CLI runs.
+    settled: () => Promise.resolve(),
   };
 }

@@ -270,6 +270,7 @@ export function createCodexBackend(
   },
 ): AgentBackend {
   const sessions = sessionRegistry();
+  const failedCloses = new Set<Promise<void>>();
   let versionChecked = false;
   // Every app-server shares cli.home: overlapping first launches race to create its sqlite state, and overlapping hook trust writes to its config.toml overwrite each other.
   let setupQueue: Promise<unknown> = Promise.resolve();
@@ -341,8 +342,10 @@ export function createCodexBackend(
     if (!set.ok) return set;
     const { session, opened } = set.value;
     if (!opened.ok) {
-      // Close may wait out the kill timeouts on an app-server that hangs; onClosing makes a resume of its thread wait for that.
-      void session.close();
+      // Close may wait out the kill timeouts on an app-server that hangs; onClosing makes a resume of its thread wait for that, and settled the app's quit.
+      const closed = session.close();
+      failedCloses.add(closed);
+      void closed.finally(() => failedCloses.delete(closed));
       return failedToStart(params.cwd)(opened.error);
     }
     session.attachThread(opened.value);
@@ -378,5 +381,8 @@ export function createCodexBackend(
             ),
         }).catch(failedToStart(cwd)),
       ),
+    settled: async () => {
+      while (failedCloses.size) await Promise.allSettled(failedCloses);
+    },
   };
 }

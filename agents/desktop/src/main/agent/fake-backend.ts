@@ -143,6 +143,7 @@ export function createFakeBackend(params: FakeBackendParams): AgentBackend {
       const resumed = live.get(sessionId);
       return resumed ? R.success(resumed) : open(ended);
     },
+    settled: () => Promise.resolve(),
   };
 }
 
