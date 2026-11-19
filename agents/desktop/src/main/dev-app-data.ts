@@ -7,6 +7,6 @@ const devAppData = (appData: string) =>
 export const devClaudeConfigDir = (appData: string): string =>
   path.join(devAppData(appData), "claude");
 
-/** The one CODEX_HOME that the Codex capture run signs in to from any checkout, apart from a packaged app's. */
+/** The one CODEX_HOME that development runs and the Codex capture run sign in to from any checkout, apart from a packaged app's. */
 export const devCodexHome = (appData: string): string =>
   path.join(devAppData(appData), "codex");

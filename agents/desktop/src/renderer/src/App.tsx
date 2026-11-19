@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { R } from "../../../../../common/src/result";
+import { AgentKind } from "../../shared/agent-kind";
 import type { Conversation, IpcResult } from "../../shared/ipc";
 import { agent } from "./agent";
 import {
@@ -127,7 +128,7 @@ export function App() {
 
   useEffect(() => {
     let current = true;
-    void agent.claudeSignedIn().then((signedIn) => {
+    void agent.signedIn(AgentKind.Claude).then((signedIn) => {
       if (current) setClaude(claudeState(signedIn));
     });
     void list();
@@ -150,7 +151,7 @@ export function App() {
 
   const checkClaude = async () => {
     setClaude({ access: ClaudeAccess.Checking });
-    setClaude(claudeState(await agent.claudeSignedIn()));
+    setClaude(claudeState(await agent.signedIn(AgentKind.Claude)));
   };
 
   const title =
@@ -167,10 +168,10 @@ export function App() {
     signInCancelled.current = false;
     setClaude({ access: ClaudeAccess.SigningIn, cancelling: false });
     signingIn.current = true;
-    const signedIn = await agent.signIn();
+    const signedIn = await agent.signIn(AgentKind.Claude);
     signingIn.current = false;
     if (!signInCancelled.current) setClaude({ access: ClaudeAccess.Checking });
-    const checked = claudeState(await agent.claudeSignedIn());
+    const checked = claudeState(await agent.signedIn(AgentKind.Claude));
     if (signInCancelled.current) return setClaude(checked);
     switch (checked.access) {
       case ClaudeAccess.SignedIn:
@@ -218,7 +219,11 @@ export function App() {
     text: string;
   }): Promise<IpcResult<void>> => {
     const { folder, text } = input;
-    const started = await agent.start({ folder, firstMessage: text });
+    const started = await agent.start({
+      folder,
+      firstMessage: text,
+      agent: AgentKind.Claude,
+    });
     if (!started.ok) return started;
     const { id } = started.value;
     setChats((all) => ({ ...all, [id]: firstMessage(all[id], text) }));
@@ -356,7 +361,7 @@ export function App() {
             if (!signingIn.current) return;
             signInCancelled.current = true;
             setClaude({ access: ClaudeAccess.SigningIn, cancelling: true });
-            agent.cancelSignIn();
+            agent.cancelSignIn(AgentKind.Claude);
           }}
           onCheckAgain={() => void checkClaude()}
         />

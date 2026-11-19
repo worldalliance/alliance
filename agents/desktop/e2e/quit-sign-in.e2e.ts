@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
+import { AgentKind } from "../src/shared/agent-kind";
 import type { AgentApi } from "../src/shared/ipc";
 import { firstMessage } from "./ipc-helpers";
 import {
@@ -14,9 +15,9 @@ import {
 // page.evaluate callbacks run in the renderer, where the preload defines window.agent.
 declare const window: { agent: AgentApi };
 
-const authCalls: Record<string, () => Promise<unknown>> = {
-  login: () => window.agent.signIn(),
-  status: () => window.agent.claudeSignedIn(),
+const authCalls: Record<string, (agent: AgentKind) => Promise<unknown>> = {
+  login: (agent) => window.agent.signIn(agent),
+  status: (agent) => window.agent.signedIn(agent),
 };
 
 for (const [command, call] of Object.entries(authCalls))
@@ -30,7 +31,7 @@ fi
 exec "${process.env[claudeExecutableVariable]}" "$@"
 `);
     const { app, page } = await launch({ captures: [], claude });
-    void page.evaluate(call).catch(() => undefined);
+    void page.evaluate(call, AgentKind.Claude).catch(() => undefined);
     await expect.poll(() => existsSync(`${claude}.started`)).toBe(true);
     const closed = app.waitForEvent("close");
     await app.evaluate(({ app }) => app.quit());
@@ -69,12 +70,15 @@ sleep 3
     claude,
     env: { ALLIANCE_AGENT_OPENING_WAIT_MS: "200" },
   });
-  void page.evaluate(() => window.agent.signIn()).catch(() => undefined);
+  void page
+    .evaluate((agent) => window.agent.signIn(agent), AgentKind.Claude)
+    .catch(() => undefined);
   await expect.poll(() => existsSync(`${claude}.started`)).toBe(true);
   void page
     .evaluate((input) => window.agent.start(input), {
       folder: workFolder(),
       firstMessage,
+      agent: AgentKind.Claude,
     })
     .catch(() => undefined);
   await expect.poll(() => existsSync(`${claude}.checking`)).toBe(true);

@@ -16,6 +16,8 @@ import {
   formatCapture,
 } from "../src/main/agent/claude/testing/capture";
 import { stubCapturesVariable } from "../src/main/agent/claude/testing/stub";
+import { captured as codexCaptured } from "../src/main/agent/codex/testing/capture";
+import { stubCapturesVariable as codexCapturesVariable } from "../src/main/agent/codex/testing/stub";
 import { executableVariable } from "../src/main/cli-executable";
 import { AgentKind } from "../src/shared/agent-kind";
 import { appArgs } from "./app-args";
@@ -48,7 +50,12 @@ export const authStatusCapture = (loggedIn: boolean): string =>
   });
 
 export async function launch(
-  params: { captures: string[]; env?: Record<string, string> } & (
+  params: {
+    captures: string[];
+    /** Codex's captures, after its version check's. */
+    codexCaptures?: string[];
+    env?: Record<string, string>;
+  } & (
     | {
         /** Runs in place of the stub that playwright.config.ts names. */
         claude?: string;
@@ -66,6 +73,10 @@ export async function launch(
     [stubCapturesVariable]: [captured("version"), ...params.captures].join(
       path.delimiter,
     ),
+    [codexCapturesVariable]: [
+      codexCaptured("version"),
+      ...(params.codexCaptures ?? []),
+    ].join(path.delimiter),
     ...(params.claude && { [claudeExecutableVariable]: params.claude }),
     ...(params.path !== undefined && { PATH: params.path }),
     ...params.env,

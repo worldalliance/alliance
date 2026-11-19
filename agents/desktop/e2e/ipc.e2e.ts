@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AgentEventKind } from "../src/shared/agent-event";
+import { AgentKind } from "../src/shared/agent-kind";
 import { type AgentApi, IpcChannel } from "../src/shared/ipc";
 import { firstMessage, start } from "./ipc-helpers";
 import {
@@ -152,11 +153,11 @@ test("a message to an unopened conversation, or a start in a file, is refused", 
   writeFileSync(file, "hello");
   const { app, page } = await launch({ captures: [] });
   const results = await page.evaluate(
-    async (folder) => [
+    async ({ folder, agent }) => [
       await window.agent.send({ sessionId: "never-opened", text: "Hi" }),
-      await window.agent.start({ folder, firstMessage: "Hi" }),
+      await window.agent.start({ folder, firstMessage: "Hi", agent }),
     ],
-    file,
+    { folder: file, agent: AgentKind.Claude },
   );
   expect(results).toEqual([
     { ok: false, error: "This conversation isn't open. Reopen it." },
@@ -177,6 +178,7 @@ test("a conversation that can't be saved closes its CLI and fails to start", asy
   const started = await page.evaluate((input) => window.agent.start(input), {
     folder: workFolder(),
     firstMessage,
+    agent: AgentKind.Claude,
   });
   expect(!started.ok && started.error).toContain("EISDIR");
   expect(runningCount(claude)).toBe(0);
@@ -225,7 +227,7 @@ test("a new conversation whose CLI exits before reading its first message is rem
       if (!started.ok) throw new Error(started.error);
       return { started: started.value.id, removed: await removed };
     },
-    { folder: workFolder(), firstMessage },
+    { folder: workFolder(), firstMessage, agent: AgentKind.Claude },
   );
   expect(ids.removed).toBe(ids.started);
   expect(await page.evaluate(() => window.agent.listConversations())).toEqual({
@@ -245,21 +247,33 @@ test("an invalid argument comes back as an error, even without Claude Code", asy
       Object.assign(globalThis, { uncaught: error.message }),
     );
   });
-  const results = await page.evaluate(async () => {
+  const results = await page.evaluate(async (agent) => {
     window.agent.interrupt("");
-    const unknownField = { folder: "/", firstMessage: "Hello", model: "x" };
+    const unknownField = {
+      folder: "/",
+      firstMessage: "Hello",
+      agent,
+      model: "x",
+    };
     return [
-      await window.agent.start({ folder: "relative", firstMessage: "Hello" }),
+      await window.agent.start({
+        folder: "relative",
+        firstMessage: "Hello",
+        agent,
+      }),
       await window.agent.start(unknownField),
       await window.agent.resume(""),
       await window.agent.send({ sessionId: "some-id", text: "  \n" }),
+      // @ts-expect-error -- an agent the app doesn't know
+      await window.agent.signedIn("gemini"),
     ];
-  });
+  }, AgentKind.Claude);
   expect(results).toEqual([
     { ok: false, error: expect.stringContaining("not an absolute path") },
     { ok: false, error: expect.stringContaining('"model"') },
     { ok: false, error: expect.stringContaining("Invalid argument") },
     { ok: false, error: expect.stringContaining("an empty message") },
+    { ok: false, error: expect.stringContaining("Invalid argument") },
   ]);
   expect(
     await app.evaluate(() => Reflect.get(globalThis, "uncaught")),
@@ -278,6 +292,7 @@ test("a handler that throws comes back as an error", async () => {
   const result = await page.evaluate((input) => window.agent.start(input), {
     folder: workFolder(),
     firstMessage,
+    agent: AgentKind.Claude,
   });
   expect(result).toEqual({ ok: false, error: expect.stringContaining("boom") });
   await app.close();
@@ -298,6 +313,7 @@ test("a page other than the app's own is refused and hears no session events", a
   const result = await other.evaluate((input) => window.agent.start(input), {
     folder: workFolder(),
     firstMessage,
+    agent: AgentKind.Claude,
   });
   expect(result).toEqual({
     ok: false,
@@ -348,7 +364,9 @@ test("a Claude Code installed while the app runs is found on the next check", as
     captures: [authStatusCapture(true)],
     path: [bin, "/usr/bin", "/bin"].join(path.delimiter),
   });
-  const before = await page.evaluate(() => window.agent.claudeSignedIn());
+  const signedIn = () =>
+    page.evaluate((agent) => window.agent.signedIn(agent), AgentKind.Claude);
+  const before = await signedIn();
   expect(!before.ok && before.error).toContain("couldn't find Claude Code");
   // The stub's shebang needs bun, which the narrowed PATH leaves out.
   const bun = execFileSync("sh", ["-c", "command -v bun"], {
@@ -359,7 +377,7 @@ test("a Claude Code installed while the app runs is found on the next check", as
     `#!/bin/sh\nexec "${bun}" "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
   chmodSync(path.join(bin, "claude"), 0o755);
-  expect(await page.evaluate(() => window.agent.claudeSignedIn())).toEqual({
+  expect(await signedIn()).toEqual({
     ok: true,
     value: true,
   });

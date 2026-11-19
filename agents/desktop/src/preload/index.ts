@@ -25,9 +25,9 @@ const listen = <C extends keyof RendererEvents>(
 };
 
 const api: AgentApi = {
-  claudeSignedIn: () => invoke(IpcChannel.ClaudeStatus),
-  signIn: () => invoke(IpcChannel.SignIn),
-  cancelSignIn: () => ipcRenderer.send(IpcChannel.CancelSignIn),
+  signedIn: (agent) => invoke(IpcChannel.SignInStatus, agent),
+  signIn: (agent) => invoke(IpcChannel.SignIn, agent),
+  cancelSignIn: (agent) => ipcRenderer.send(IpcChannel.CancelSignIn, agent),
   chooseFolder: () => invoke(IpcChannel.ChooseFolder),
   listConversations: () => invoke(IpcChannel.ListConversations),
   start: (input) => invoke(IpcChannel.Start, input),

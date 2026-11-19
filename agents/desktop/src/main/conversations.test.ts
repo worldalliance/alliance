@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { AgentKind } from "../shared/agent-kind";
 import type { Conversation } from "../shared/conversation";
 import { ConversationStore, conversationTitle } from "./conversations";
 
@@ -27,6 +28,7 @@ const conversation = (id: string): Conversation => ({
   folder: "/work",
   title: `Conversation ${id}`,
   startedAt: "2026-11-10T12:00:00.000Z",
+  agent: AgentKind.Codex,
 });
 
 describe("ConversationStore", () => {
@@ -154,6 +156,34 @@ describe("ConversationStore", () => {
     const listed = await new ConversationStore(file).list();
     expect(!listed.ok && listed.error.message).toContain(
       "at conversations[0].startedAt",
+    );
+  });
+
+  test("a version 1 list reads as Claude's conversations, and the next write saves version 2", async () => {
+    const file = storeFile();
+    mkdirSync(path.dirname(file));
+    const { agent: _, ...old } = conversation("a");
+    writeFileSync(file, JSON.stringify({ version: 1, conversations: [old] }));
+    const store = new ConversationStore(file);
+    expect(await store.list()).toEqual({
+      ok: true,
+      value: [{ ...old, agent: AgentKind.Claude }],
+    });
+    await store.add(conversation("b"));
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({
+      version: 2,
+      conversations: [conversation("b"), { ...old, agent: AgentKind.Claude }],
+    });
+  });
+
+  test("a version 2 conversation without its agent fails", async () => {
+    const file = storeFile();
+    mkdirSync(path.dirname(file));
+    const { agent: _, ...old } = conversation("a");
+    writeFileSync(file, JSON.stringify({ version: 2, conversations: [old] }));
+    const listed = await new ConversationStore(file).list();
+    expect(!listed.ok && listed.error.message).toContain(
+      "at conversations[0].agent",
     );
   });
 });
