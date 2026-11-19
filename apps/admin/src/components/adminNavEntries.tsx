@@ -25,6 +25,7 @@ import {
   Radio,
   ScrollText,
   Share2,
+  Sigma,
   SquareActivity,
   SquareMousePointer,
   UserPlus,
@@ -78,6 +79,7 @@ export const navEntries = (counts: {
         icon: <Calendar size={16} />,
       },
       { to: "/contracts", label: "Contracts", icon: <FileText size={16} /> },
+      { to: "/formulas", label: "Formulas", icon: <Sigma size={16} /> },
     ],
   },
   {

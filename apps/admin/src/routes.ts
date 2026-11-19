@@ -39,6 +39,8 @@ export default [
       route("/new-suite", "pages/NewActionSuitePage.tsx"),
       route("/", "pages/StatsPage.tsx"),
       route("/forms", "pages/FormsList.tsx"),
+      route("/formulas", "pages/FormulasPage.tsx"),
+      route("/formulas/:formulaId", "pages/FormulaPage.tsx"),
       route("/forms/:formId/responses", "pages/FormResponses.tsx"),
       route("/forms/:formId/snapshots", "pages/FormSnapshotMigration.tsx"),
       route("/forms/:formId", "pages/FormBuilder.tsx"),
