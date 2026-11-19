@@ -1,8 +1,9 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { isCanonicalE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- registration opens the session, and join reloads the member itself
-import { authRegister } from "@alliance/shared/client";
+import { authRegister, userUpdate } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { membershipAgreement } from "@alliance/shared/lib/copy";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
@@ -112,6 +113,9 @@ const OnboardingPage = () => {
   const [signedName, setSignedName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [phoneRefused, setPhoneRefused] = useState(false);
+  const [joinedNow, setJoinedNow] = useState(false);
   const [joinPhase, setJoinPhase] = useState(JoinPhase.Idle);
   // A provider hands the member back on a later screen. Morphing the panel out
   // of the sign-up hero from there just plays the account screen underneath it.
@@ -121,6 +125,9 @@ const OnboardingPage = () => {
   // A provider signs the member in before the flow starts, so a session counts
   // as an account the same way registering at Join does.
   const registered = registeredRef.current || isAuthenticated;
+  // Signing reloads the member, but a failed reload leaves hasActiveContract
+  // false.
+  const joined = joinedNow || (user?.hasActiveContract ?? false);
 
   const goTo = useCallback(
     (next: OnboardingStep) => {
@@ -242,6 +249,10 @@ const OnboardingPage = () => {
   // signed agreement.
   const join = useCallback(async () => {
     if (submitting) return;
+    if (joined) {
+      goTo(OnboardingStep.Phone);
+      return;
+    }
     if (!latestContract) {
       setError("The membership agreement is unavailable. Please try again.");
       return;
@@ -306,21 +317,41 @@ const OnboardingPage = () => {
     //   goTo(OnboardingStep.MobileApp);
     //   return;
     // }
-    await enterPlatform();
+    setJoinedNow(true);
     setSubmitting(false);
+    goTo(OnboardingStep.Phone);
   }, [
     submitting,
+    joined,
     registered,
     signedName,
     email,
     password,
     referralCode,
     latestContract,
-    enterPlatform,
+    goTo,
     clearInvite,
     fetchMe,
     contractSignature,
   ]);
+
+  const shownPhoneNumber = phoneNumber ?? user?.phoneNumber ?? "";
+  const phoneComplete = isCanonicalE164(shownPhoneNumber);
+
+  const savePhone = useCallback(async () => {
+    if (submitting || !phoneComplete) return;
+    setSubmitting(true);
+    const saved = await R.fromPromise(
+      userUpdate({ body: { phoneNumber: shownPhoneNumber } }),
+    );
+    if (!saved.ok || !saved.value.response.ok) {
+      setPhoneRefused(true);
+      setSubmitting(false);
+      return;
+    }
+    await enterPlatform();
+    setSubmitting(false);
+  }, [submitting, phoneComplete, shownPhoneNumber, enterPlatform]);
 
   // Every provider sign-in returns here, so until auth says where the member
   // belongs, any step shown is the wrong one for someone.
@@ -380,6 +411,7 @@ const OnboardingPage = () => {
           goNext={goNext}
           join={join}
           agreementSigned={agreementSigned}
+          joined={joined}
           submitting={submitting}
           latestContract={latestContract}
           inviter={inviter}
@@ -388,6 +420,17 @@ const OnboardingPage = () => {
           signedName={signedName}
           onSignedNameChange={setSignedName}
           error={error}
+          phone={{
+            number: shownPhoneNumber,
+            complete: phoneComplete,
+            onNumberChange: (number) => {
+              setPhoneNumber(number);
+              setPhoneRefused(false);
+            },
+            save: () => void savePhone(),
+            refused: phoneRefused,
+            skip: () => void enterPlatform(),
+          }}
         />
       </div>
 

@@ -12,11 +12,17 @@ import * as landingBodyModule from "../site/sections/LandingBody";
 import { testAuthUser } from "../stories/testData";
 import OnboardingPage from "./OnboardingPage";
 import * as onboardingPanelModule from "./OnboardingPanel";
+import { PHONE_HEADLINE, PHONE_REFUSED, PHONE_SKIP_LABEL } from "./PhoneStep";
 import { OnboardingStep } from "./flow";
+import { walkthroughStartHref } from "./walkthrough/steps";
 
 let contract: ContractDto | null;
 let signRefusal: { status: number; message: string } | null;
 let signUnreachable: boolean;
+let profileUpdates: unknown[];
+let profileUnreachable: boolean;
+let profileRefusal: { status: number; message: string } | null;
+let signatures: number;
 
 serveApi(
   routes({
@@ -24,6 +30,7 @@ serveApi(
     "POST /auth/register": () => Response.json({}),
     "GET /auth/me": () => Response.json({ user: testAuthUser }),
     "POST /contract/sign/:id": () => {
+      signatures += 1;
       if (signUnreachable) throw new TypeError("Failed to fetch");
       return signRefusal === null
         ? Response.json({ date: "2026-03-10T12:00:00.000Z" })
@@ -43,6 +50,20 @@ serveApi(
     "GET /user/slug/:id": () =>
       Response.json({ profilePicture: null, displayName: "" }),
     "GET /user/signupSocialProof": () => Response.json({ profiles: [] }),
+    "POST /user/update": async ({ request }) => {
+      if (profileUnreachable) throw new TypeError("Failed to fetch");
+      if (profileRefusal) {
+        return Response.json(
+          {
+            statusCode: profileRefusal.status,
+            message: profileRefusal.message,
+          },
+          { status: profileRefusal.status },
+        );
+      }
+      profileUpdates.push(await request.json());
+      return Response.json(testAuthUser);
+    },
   }),
 );
 
@@ -56,6 +77,10 @@ beforeEach(() => {
   contract = null;
   signRefusal = null;
   signUnreachable = false;
+  profileUpdates = [];
+  profileUnreachable = false;
+  profileRefusal = null;
+  signatures = 0;
   localStorage.clear();
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
@@ -239,12 +264,14 @@ test("forgets the tab's invitation once signup has used it", async () => {
   expect(sessionStorage.getItem("alliance:invite")).toBeNull();
 });
 
+const agreement: ContractDto = {
+  id: 1,
+  markdown: "",
+  description: [{ point: "Act together", subtext: "" }],
+};
+
 test("forgets the tab's invitation once email signup has used it", async () => {
-  contract = {
-    id: 1,
-    markdown: "",
-    description: [{ point: "Act together", subtext: "" }],
-  };
+  contract = agreement;
   sessionStorage.setItem(
     "alliance:invite",
     JSON.stringify({ explicit: null, saved: "good" }),
@@ -273,11 +300,7 @@ test("forgets the tab's invitation once email signup has used it", async () => {
 });
 
 const failToSign = async (expected: string) => {
-  contract = {
-    id: 1,
-    markdown: "",
-    description: [{ point: "Act together", subtext: "" }],
-  };
+  contract = agreement;
   visit(`/onboarding?step=${OnboardingStep.Agreement}`, member(false));
 
   fireEvent.change(await screen.findByLabelText("Sign your full name"), {
@@ -327,4 +350,115 @@ test("offers no invitation on the signup it leads to", async () => {
 
   await screen.findByRole("link", { name: /Log In/ });
   expect(screen.queryByRole("link", { name: "Accept invite" })).toBeNull();
+});
+
+const joinToPhoneStep = async () => {
+  contract = agreement;
+  visit(`/onboarding?step=${OnboardingStep.Agreement}`, member(false));
+  fireEvent.change(await screen.findByLabelText("Sign your full name"), {
+    target: { value: "Sam Member" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Join" }));
+  await screen.findByText(PHONE_HEADLINE);
+  expect(step()).toBe(OnboardingStep.Phone);
+};
+
+test("asks for a phone number after the agreement, and saves it before entering the platform", async () => {
+  await joinToPhoneStep();
+
+  const getStarted = screen.getByRole<HTMLButtonElement>("button", {
+    name: /Get started/,
+  });
+  expect(getStarted.disabled).toBe(true);
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "415" },
+  });
+  expect(getStarted.disabled).toBe(true);
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  await waitFor(() =>
+    expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
+  );
+  expect(profileUpdates).toEqual([{ phoneNumber: "+14155552671" }]);
+});
+
+test("goes back from the phone step to the signed agreement without signing it again", async () => {
+  await joinToPhoneStep();
+
+  fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Agreement));
+  expect(
+    screen.getByLabelText<HTMLInputElement>("Sign your full name").readOnly,
+  ).toBe(true);
+
+  fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+  await screen.findByText(PHONE_HEADLINE);
+  expect(step()).toBe(OnboardingStep.Phone);
+  expect(signatures).toBe(1);
+});
+
+test("keeps the agreement signed after a reload on the phone step", async () => {
+  contract = agreement;
+  visit(`/onboarding?step=${OnboardingStep.Phone}`, member(true));
+  await screen.findByText(PHONE_HEADLINE);
+
+  fireEvent.click(screen.getByRole("button", { name: /Back/ }));
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Agreement));
+  expect(screen.getByText("Agreement received")).toBeTruthy();
+  expect(screen.queryByLabelText("Sign your full name")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+  await screen.findByText(PHONE_HEADLINE);
+  expect(signatures).toBe(0);
+});
+
+test("lets the member try another number when the phone number never reached the server", async () => {
+  await joinToPhoneStep();
+  profileUnreachable = true;
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  expect(await screen.findByText(PHONE_REFUSED)).toBeTruthy();
+  expect(step()).toBe(OnboardingStep.Phone);
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552672" },
+  });
+  expect(screen.queryByText(PHONE_REFUSED)).toBeNull();
+  expect(
+    screen.getByRole<HTMLButtonElement>("button", { name: /Get started/ })
+      .disabled,
+  ).toBe(false);
+});
+
+test("lets the member continue without a number once the server refuses theirs", async () => {
+  await joinToPhoneStep();
+  profileRefusal = {
+    status: 409,
+    message:
+      "This phone number is already linked to an account. Enter a different number.",
+  };
+
+  fireEvent.change(screen.getByLabelText("Phone number"), {
+    target: { value: "4155552671" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+  expect(await screen.findByText(PHONE_REFUSED)).toBeTruthy();
+  fireEvent.click(
+    await screen.findByRole("button", { name: new RegExp(PHONE_SKIP_LABEL) }),
+  );
+
+  await waitFor(() =>
+    expect(`${pathname()}${search()}`).toBe(walkthroughStartHref()),
+  );
+  expect(profileUpdates).toEqual([]);
 });

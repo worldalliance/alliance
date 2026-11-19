@@ -5,6 +5,7 @@ export enum OnboardingStep {
   Scale = "scale",
   Minutes = "minutes",
   Agreement = "agreement",
+  Phone = "phone",
   MobileApp = "mobile-app",
 }
 
@@ -20,13 +21,14 @@ export const STEP_ORDER: OnboardingStep[] = [
   OnboardingStep.Scale,
   OnboardingStep.Minutes,
   OnboardingStep.Agreement,
+  OnboardingStep.Phone,
   // App-download screen is out of the flow.
   // OnboardingStep.MobileApp,
 ];
 
-export const PROGRESS_SEGMENTS = 5;
+export const PROGRESS_SEGMENTS = 6;
 
-/** The agreement and the app screen tie: one step, two screens. */
+/** The phone and app screens tie: one step, two screens. */
 export const FILLED_SEGMENTS: Record<OnboardingStep, number> = {
   [OnboardingStep.Account]: 0,
   [OnboardingStep.Community]: 1,
@@ -34,7 +36,8 @@ export const FILLED_SEGMENTS: Record<OnboardingStep, number> = {
   [OnboardingStep.Scale]: 3,
   [OnboardingStep.Minutes]: 4,
   [OnboardingStep.Agreement]: 5,
-  [OnboardingStep.MobileApp]: 5,
+  [OnboardingStep.Phone]: 6,
+  [OnboardingStep.MobileApp]: 6,
 };
 
 export const STEP_TONE: Record<OnboardingStep, PanelTone> = {
@@ -44,6 +47,7 @@ export const STEP_TONE: Record<OnboardingStep, PanelTone> = {
   [OnboardingStep.Scale]: PanelTone.Navy,
   [OnboardingStep.Minutes]: PanelTone.Navy,
   [OnboardingStep.Agreement]: PanelTone.Navy,
+  [OnboardingStep.Phone]: PanelTone.Navy,
   [OnboardingStep.MobileApp]: PanelTone.Green,
 };
 
@@ -54,6 +58,7 @@ export const STEP_EYEBROW: Record<OnboardingStep, string | null> = {
   [OnboardingStep.Scale]: "What is the Alliance?",
   [OnboardingStep.Minutes]: "What is the Alliance?",
   [OnboardingStep.Agreement]: "Membership Agreement",
+  [OnboardingStep.Phone]: "Notifications",
   [OnboardingStep.MobileApp]: "The Alliance",
 };
 
@@ -65,7 +70,7 @@ export function isOnboardingStep(
 
 /**
  * The download prompt is the last screen, and only where an app store link is
- * any use. Everywhere else the flow ends at the agreement and hands straight
+ * any use. Everywhere else the flow ends at the phone step and hands straight
  * over to the walkthrough.
  */
 export const MOBILE_WEB_QUERY = "(max-width: 767px)";
