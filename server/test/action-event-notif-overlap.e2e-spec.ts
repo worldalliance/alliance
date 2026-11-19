@@ -3,6 +3,7 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
 import {
   ReminderCohortType,
@@ -10,10 +11,13 @@ import {
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import { ActionEventNotifDeliveryService } from "src/notifs/action-event-notif-delivery.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
+import { NotifsService } from "src/notifs/notifs.service";
 import {
   ContractEvent,
   ContractEventType,
@@ -21,7 +25,12 @@ import {
 import { User } from "src/user/entities/user.entity";
 import { EntitySubscriberInterface } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  setPreference,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
   let ctx: TestContext;
@@ -35,12 +44,34 @@ describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
     await closeTestApp(ctx.app);
   });
 
-  afterEach(() => jest.restoreAllMocks());
+  const missedInApp = () => ({
+    userId: ctx.testUserId,
+    kind: NotificationKind.MissedDeadline,
+    channel: NotificationChannel.InApp,
+  });
+  const suiteIds: number[] = [];
+  const missedGroupIds: number[] = [];
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    await setPreference(ctx, { ...missedInApp(), enabled: true });
+    // The spec's tests share a member, whose third consecutive missed suite
+    // gets no notice.
+    if (suiteIds.length > 0)
+      await ctx.dataSource
+        .getRepository(ActionSuite)
+        .softDelete(suiteIds.splice(0));
+    if (missedGroupIds.length > 0)
+      await ctx.dataSource
+        .getRepository(ReminderGroup)
+        .softDelete(missedGroupIds.splice(0));
+  });
 
   const phoneNumber = "+14155550142";
 
   const siblingGroups = async (
     groups: Array<{ excludePreviouslyNotified: boolean; sendAt: Date }>,
+    missedSuite?: { closedAt: Date },
   ) => {
     const now = Date.now();
     const ago = (ms: number) => new Date(now - ms);
@@ -56,6 +87,12 @@ describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
       automatic: false,
       contractId: ctx.defaultContractId,
     });
+    const actionSuite =
+      missedSuite &&
+      (await ctx.dataSource
+        .getRepository(ActionSuite)
+        .save({ name: "Overlap suite" }));
+    if (actionSuite) suiteIds.push(actionSuite.id);
     const actionRepo = ctx.dataSource.getRepository(Action);
     const action = await actionRepo.save(
       actionRepo.create({
@@ -64,6 +101,7 @@ describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
         body: "Body copy",
         shortDescription: "Short description",
         cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+        suite: actionSuite,
       }),
     );
     const eventRepo = ctx.dataSource.getRepository(ActionEvent);
@@ -98,6 +136,36 @@ describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
           }),
         ),
       );
+    }
+    if (missedSuite) {
+      const deadlineEvent = await eventRepo.save(
+        eventRepo.create({
+          title: "Overlap deadline",
+          description: "desc",
+          newStatus: ActionStatus.OfficeAction,
+          date: missedSuite.closedAt,
+          action,
+        }),
+      );
+      const missedGroup = await groupRepo.save(
+        groupRepo.create({
+          name: "Overlap missed suite",
+          memberActionEvent,
+          deadlineEvent,
+          actionSuite,
+          timingMode: ReminderGroupTimingMode.FromDeadline,
+          sendAtSecondsFromDeadline: 0,
+          cohortType: ReminderCohortType.AllUncompleted,
+          emailSubject: "You missed an Alliance task",
+          emailMessage: "Hi #{firstname}\n#{missedactioncontext}",
+          textMessage: "Missed text",
+          pushMessage: "Missed push",
+          useSuiteTaskCount: true,
+          allSent: false,
+        }),
+      );
+      missedGroupIds.push(missedGroup.id);
+      saved.push(missedGroup);
     }
     await saveLiveCohortDecisions(ctx);
     return saved;
@@ -219,23 +287,40 @@ describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
     }
   };
 
+  const laterCatchUp = () => ({
+    excludePreviouslyNotified: true,
+    sendAt: new Date(Date.now() + 60_000),
+  });
+
   it.each([
-    ["a concurrent catch-up's", true],
-    ["a concurrent non-catch-up's", false],
+    [
+      "a concurrent catch-up's",
+      () =>
+        siblingGroups([
+          laterCatchUp(),
+          { excludePreviouslyNotified: true, sendAt: minutesAgo(5) },
+        ]),
+    ],
+    [
+      "a concurrent non-catch-up's",
+      () =>
+        siblingGroups([
+          laterCatchUp(),
+          { excludePreviouslyNotified: false, sendAt: minutesAgo(5) },
+        ]),
+    ],
+    [
+      "a concurrent missed-suite notice's",
+      () => siblingGroups([laterCatchUp()], { closedAt: minutesAgo(5) }),
+    ],
   ])(
     "holds a catch-up's coverage read until %s reservation commits",
-    async (_, excludePreviouslyNotified) => {
+    async (_, setUp) => {
       // The first run plans only the due group. The second, started once the
       // other group is due too, reaches that one first, so the two runs
       // reserve different groups and only the coverage lock keeps the
       // catch-up's read after the first run's reservation.
-      const [later, due] = await siblingGroups([
-        {
-          excludePreviouslyNotified: true,
-          sendAt: new Date(Date.now() + 60_000),
-        },
-        { excludePreviouslyNotified, sendAt: minutesAgo(5) },
-      ]);
+      const [later, due] = await setUp();
       let release!: () => void;
       const released = new Promise<void>((resolve) => (release = resolve));
       let paused!: () => void;
@@ -276,4 +361,105 @@ describe("ActionEventNotifWorker overlapping runs (e2e)", () => {
       ).toHaveLength(1);
     },
   );
+
+  it("releases a missed-suite notice's reservation when it failed before sending, so a catch-up sends", async () => {
+    const [later, missed] = await siblingGroups([laterCatchUp()], {
+      closedAt: minutesAgo(5),
+    });
+    await setPreference(ctx, { ...missedInApp(), enabled: false });
+    jest
+      .spyOn(ctx.app.get(ActionEventNotifDeliveryService), "prepare")
+      .mockRejectedValueOnce(new Error("render failed"));
+    const spy = jest.spyOn(ctx.app.get(MmsService), "sendMms");
+    const worker = ctx.app.get(ActionEventNotifWorker);
+
+    await expect(worker.dispatchDue()).rejects.toThrow("render failed");
+    await ctx.dataSource
+      .getRepository(ReminderGroup)
+      .update(later.id, { sendAtAbsolute: minutesAgo(10) });
+    await worker.dispatchDue();
+
+    expect(
+      await ctx.dataSource.getRepository(ActionEventNotif).findOneByOrFail({
+        reminderGroup: { id: missed.id },
+      }),
+    ).toMatchObject({ sent: false, deliveryPending: false });
+    expect(
+      spy.mock.calls.filter(([params]) => params.to === phoneNumber),
+    ).toHaveLength(1);
+  });
+
+  it("keeps a missed-suite notice counted when its in-app entry was saved but not recorded, so a catch-up does not send", async () => {
+    const [later, missed] = await siblingGroups([laterCatchUp()], {
+      closedAt: minutesAgo(5),
+    });
+    const notifs = ctx.app.get(NotifsService);
+    const sendNotif = notifs.sendNotif.bind(notifs);
+    jest.spyOn(notifs, "sendNotif").mockImplementationOnce(async (params) => {
+      const notification = await sendNotif(params);
+      // The next query builder is the write recording the entry.
+      jest
+        .spyOn(ctx.dataSource.manager, "createQueryBuilder")
+        .mockImplementationOnce(() => {
+          throw new Error("write failed");
+        });
+      return notification;
+    });
+    const spy = jest.spyOn(ctx.app.get(MmsService), "sendMms");
+    const worker = ctx.app.get(ActionEventNotifWorker);
+
+    await expect(worker.dispatchDue()).rejects.toThrow("write failed");
+    await ctx.dataSource
+      .getRepository(ReminderGroup)
+      .update(later.id, { sendAtAbsolute: minutesAgo(10) });
+    await worker.dispatchDue();
+
+    expect(
+      await ctx.dataSource.getRepository(ActionEventNotif).findOneByOrFail({
+        reminderGroup: { id: missed.id },
+      }),
+    ).toMatchObject({ sent: false, deliveryPending: true });
+    expect(
+      spy.mock.calls.filter(([params]) => params.to === phoneNumber),
+    ).toHaveLength(0);
+  });
+
+  it("sends a catch-up nothing while a missed-suite notice with no in-app entry sends its text", async () => {
+    const [later, missed] = await siblingGroups([laterCatchUp()], {
+      closedAt: minutesAgo(5),
+    });
+    await setPreference(ctx, { ...missedInApp(), enabled: false });
+    const mms = ctx.app.get(MmsService);
+    const sendMms = mms.sendMms.bind(mms);
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let sending!: () => void;
+    const noticeSending = new Promise<void>((resolve) => (sending = resolve));
+    const spy = jest
+      .spyOn(mms, "sendMms")
+      .mockImplementationOnce(async (params) => {
+        sending();
+        await released;
+        return sendMms(params);
+      });
+    const worker = ctx.app.get(ActionEventNotifWorker);
+
+    const first = worker.dispatchDue();
+    await noticeSending;
+    await ctx.dataSource
+      .getRepository(ReminderGroup)
+      .update(later.id, { sendAtAbsolute: minutesAgo(10) });
+    await worker.dispatchDue();
+    release();
+    await first;
+
+    expect(
+      spy.mock.calls.filter(([params]) => params.to === phoneNumber),
+    ).toHaveLength(1);
+    expect(
+      await ctx.dataSource.getRepository(ActionEventNotif).findOneByOrFail({
+        reminderGroup: { id: missed.id },
+      }),
+    ).toMatchObject({ sent: true, deliveryPending: false });
+  });
 });

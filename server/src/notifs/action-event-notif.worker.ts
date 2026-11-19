@@ -396,28 +396,34 @@ export class ActionEventNotifWorker {
         }
       : null;
 
+    const memberActionEvent = loadedReminderGroupMemberActionEvent(plan.group);
+    const personal = cohortNotifiesRecipientPersonally(plan.group.cohortType);
     let notif: ActionEventNotif | null;
     try {
       notif = await saveForLiveRecipient(this.dataSource, {
         plan,
         actionSuite: suite,
-        build: async () =>
-          this.actionEventNotifsRepository.create({
+        build: async (manager) => {
+          if (personal && notice) {
+            await lockReminderCoverage(manager, {
+              userId: plan.user.id,
+              memberActionEventId: memberActionEvent.id,
+            });
+          }
+          return this.actionEventNotifsRepository.create({
             user: plan.user,
             reminderGroup: plan.group,
-            memberActionEvent: cohortNotifiesRecipientPersonally(
-              plan.group.cohortType,
-            )
-              ? loadedReminderGroupMemberActionEvent(plan.group)
-              : undefined,
+            memberActionEvent: personal ? memberActionEvent : undefined,
             notifiedActionIds:
               notice?.standing.missedActions.map((action) => action.id) ?? [],
             sent: false,
+            deliveryPending: notice !== null,
             type: ActionEventNotifType.MissedDeadline,
             idempotency_key: missedSuiteNoticeKey(suiteId, plan.user.id),
             missNumber: standing?.missNumber ?? null,
             missedSuiteCopy: notice?.copy ?? null,
-          } satisfies Partial<ActionEventNotif>),
+          } satisfies Partial<ActionEventNotif>);
+        },
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -437,52 +443,62 @@ export class ActionEventNotifWorker {
         notice.standing,
       );
 
-    const inAppMessage = await buildReminderMessage({
-      template: templates.pushMessage,
-      renderText: render,
-      recipient: plan.user,
-      action: loadedActionEventAction(
-        loadedReminderGroupMemberActionEvent(plan.group),
-      ),
-      tasks: notice.standing.missedActions,
-    });
-    if (inAppMessage.text.trim()) {
-      notif.notification = await this.notifsService.sendNotif({
-        user: plan.user,
-        category: NotificationCategory.ActionEvent,
-        message: inAppMessage,
-        destination: null,
-        webAppLocation: tasksUrl(),
-        mobileAppLocation: tasksUrl(),
-        associatedUsers: [],
-        shouldPush: false,
+    let send: () => Promise<boolean>;
+    try {
+      const inAppMessage = await buildReminderMessage({
+        template: templates.pushMessage,
+        renderText: render,
+        recipient: plan.user,
+        action: loadedActionEventAction(memberActionEvent),
+        tasks: notice.standing.missedActions,
       });
-      notif.sent = notif.notification.visible;
-    } else {
-      this.logger.error(
-        `missed-suite reminder group ${plan.group.id} has blank push copy; skipped its in-app entry`,
-      );
+      if (inAppMessage.text.trim()) {
+        notif.notification = await this.notifsService.sendNotif({
+          user: plan.user,
+          category: NotificationCategory.ActionEvent,
+          message: inAppMessage,
+          destination: null,
+          webAppLocation: tasksUrl(),
+          mobileAppLocation: tasksUrl(),
+          associatedUsers: [],
+          shouldPush: false,
+        });
+        notif.sent = notif.notification.visible;
+        // An opening of the text reads this entry through notificationId,
+        // even when a later send fails.
+        await updateLive(this.dataSource.manager, {
+          target: ActionEventNotif,
+          id: notif.id,
+          changes: {
+            sent: notif.sent,
+            notification: { id: notif.notification.id },
+          },
+        });
+      } else {
+        this.logger.error(
+          `missed-suite reminder group ${plan.group.id} has blank push copy; skipped its in-app entry`,
+        );
+      }
+      send = await this.delivery.prepare({
+        notif,
+        user: plan.user,
+        channels: await this.preferences.channelsFor(
+          plan.user,
+          NotificationKind.MissedDeadline,
+        ),
+        tracking: reminderTracking(plan, notif),
+        templates,
+        render,
+        push: {
+          screen: "/",
+          idempotencyKey: `missed-suite-${suiteId}`,
+          notification: notif.notification,
+        },
+      });
+    } catch (error) {
+      if (!notif.sent) await this.releaseReservation(notif.id);
+      throw error;
     }
-    // An opening of the text reads this entry through notificationId, even
-    // when a later send fails.
-    if (notif.notification)
-      await recordDelivery(this.dataSource.manager, notif);
-    const send = await this.delivery.prepare({
-      notif,
-      user: plan.user,
-      channels: await this.preferences.channelsFor(
-        plan.user,
-        NotificationKind.MissedDeadline,
-      ),
-      tracking: reminderTracking(plan, notif),
-      templates,
-      render,
-      push: {
-        screen: "/",
-        idempotencyKey: `missed-suite-${suiteId}`,
-        notification: notif.notification,
-      },
-    });
     await send();
     await recordDelivery(this.dataSource.manager, notif);
   }
