@@ -92,7 +92,11 @@ type Placed = {
   excused: Excused[];
 };
 
-function printNames({
+/**
+ * The names `checkExpression` prints a tree with, so a caller showing that
+ * tree's diagnostics prints the text they are located in.
+ */
+export function printNames({
   scope,
   deletedNames,
 }: {
