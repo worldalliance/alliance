@@ -4,6 +4,7 @@ import {
   loadedReminderGroupMemberActionEvent,
   ReminderGroup,
 } from "src/actions/entities/reminder-group.entity";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { lockLive } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import type { DataSource, EntityManager } from "typeorm";
@@ -44,4 +45,16 @@ export function saveForLiveRecipient(
       )
     );
   });
+}
+
+/** Serializes reserving coverage on a member's event with reading it, so an
+ * overlapping run's catch-up sees the reservation. */
+export async function lockReminderCoverage(
+  manager: EntityManager,
+  params: { userId: number; memberActionEventId: number },
+) {
+  await lockUntilCommit(
+    manager,
+    `reminder-coverage:${params.userId}:${params.memberActionEventId}`,
+  );
 }

@@ -1,14 +1,40 @@
 import { Injectable } from "@nestjs/common";
+import { loadedActionEventAction } from "src/actions/entities/action-event.entity";
+import { loadedReminderGroupMemberActionEvent } from "src/actions/entities/reminder-group.entity";
+import {
+  NOTIF_SOURCE,
+  reminderContext,
+} from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { EmailStatus } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { PushService } from "src/push/push.service";
 import type { User } from "src/user/entities/user.entity";
+import type { NotificationPlan } from "./dto/notification-plan.dto";
 import type { ActionEventNotif } from "./entities/action-event-notif.entity";
 import type { Notification } from "./entities/notification.entity";
 import type { ChannelTemplates } from "./missed-suite-notice";
 import { NotificationChannel } from "./notif-utils";
+
+export const reminderTracking = (
+  plan: NotificationPlan,
+  notif: ActionEventNotif,
+): TrackedMessage => ({
+  owner: { userId: plan.user.id },
+  source: NOTIF_SOURCE[notif.type],
+  context: reminderContext({
+    group: plan.group,
+    action: loadedActionEventAction(
+      loadedReminderGroupMemberActionEvent(plan.group),
+    ),
+    notifiedActionIds: notif.notifiedActionIds,
+    actionSuiteId: notif.actionSuite?.id ?? null,
+    missNumber: notif.missNumber,
+    missedSuiteCopy: notif.missedSuiteCopy,
+  }),
+  actionEventNotifId: notif.id,
+});
 
 @Injectable()
 export class ActionEventNotifDeliveryService {
