@@ -22,7 +22,7 @@ Metro holds the foreground, so background it. ~20s to the first bundle. `BROWSER
 
 ## Authenticating
 
-`SecureStorage` is localStorage on web. Mint an access token (see the skill's admin section) and seed it on the context to land as any user without a password:
+`SecureStorage` is localStorage on web. Mint an access token (the skill's **Authenticating**) and seed it on the context to land as any user without a password:
 
 ```ts
 const context = await browser.newContext({
@@ -36,7 +36,7 @@ await context.addInitScript(
 
 Use `addInitScript`, not `page.evaluate` after a `goto`. `AuthContext` reads the token on mount and clears it when it finds nothing, so a racing write lands you on `/onboarding` with empty localStorage.
 
-Mint it with an expiry that outlives the run. Nothing seeds `alliance.secure.refreshToken`, and `refreshingFetch` in `apps/mobile/lib/session.ts` refreshes only when it finds one, so the session ends at the first 401 after the token expires.
+Mint it with an expiry that outlives the run, the script's second argument, in hours. Nothing seeds `alliance.secure.refreshToken`, and `refreshingFetch` in `apps/mobile/lib/session.ts` refreshes only when it finds one, so the session ends at the first 401 after the token expires.
 
 `citesting/src/test-user.ts` holds the seeded user CI logs in as.
 

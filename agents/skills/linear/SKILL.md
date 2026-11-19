@@ -13,7 +13,9 @@ Mint with at least `read` and `write`: `scope=read,write,...`
 
 There is one team, `ALL` / Alliance.
 
-To pull a label's issues, filter `issues` by `labels: {name: {eq: …}}`. Traversing `issueLabels` → `issues` exceeds Linear's query complexity limit.
+A project's `description` holds at most 255 characters; its body goes in `content`.
+
+A query may cost at most 10,000 complexity points, and each nested connection multiplies the cost by its page size, so a project's issues with their labels or relations can exceed it; a query that does gets under it with a small `first:` on each nested connection (`issues(first: 50) { nodes { labels(first: 10) { … } } }`). Page through with `pageInfo { hasNextPage endCursor }` rather than trusting one page to hold everything. For a label's issues, filter `issues` by `labels: {name: {eq: …}}` rather than traversing `issueLabels` → `issues`.
 
 ## Filing an issue
 

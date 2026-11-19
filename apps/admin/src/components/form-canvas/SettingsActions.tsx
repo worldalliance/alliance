@@ -45,7 +45,7 @@ export function SettingsAction({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
         destructive
           ? "border-red-200 text-red-700 hover:bg-red-50"
           : "border-gray-200 text-gray-700 hover:bg-gray-50",
@@ -79,7 +79,7 @@ export function SettingsIconAction({
       aria-disabled={disabled}
       aria-label={label}
       title={label}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 aria-disabled:cursor-not-allowed aria-disabled:text-gray-300 aria-disabled:hover:bg-transparent"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 aria-disabled:cursor-not-allowed aria-disabled:text-gray-300 aria-disabled:hover:bg-transparent"
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>

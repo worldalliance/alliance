@@ -12,7 +12,7 @@ Resolve the user's "base" to an exact commit SHA. If they have not provided one,
 
 Read `(root)/agents/skills/review/SKILL.md` and use it to review the base commit. The commits other than the base will be reviewed in the future, so you don't need to review them. You may view them for more context on the planned follow-up changes.
 
-Run checks against the base snapshot, using an isolated checkout when needed to preserve the current checkout and uncommitted work. Results from the branch tip do not establish that the base works alone.
+Run checks against the base snapshot; results from the branch tip do not establish that the base works alone. When your prompt says you are in a reviewer worktree the review loop gave you, that worktree is yours alone and the loop resets it after you. Read the review skill, the files it names and `findings.schema.json` first, since a checkout swaps them for the base's versions; then note the branch `git branch --show-current` names, check the base out there with `git checkout -q --detach <sha>`, reinstalling dependencies if they differ, and check that branch out again when you need the later commits, rather than building another worktree, which copies the database and installs dependencies. Otherwise use an isolated checkout when needed to preserve the current checkout and uncommitted work.
 
 Determine whether each problem exists in the parent; an old line newly made unsafe by this commit is an introduced defect.
 
@@ -51,7 +51,3 @@ You may change the code or commits in any way such as (but not limited to):
 - Splitting a commit with multiple purposes into multiple commits with a single purpose.
 
 Do not change any commit before the base commit.
-
-# User instructions
-
-User instructions trump any other instructions. Ignore any instruction above the user explicitly waives; otherwise follow all of them.

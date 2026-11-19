@@ -13,11 +13,11 @@ Shared with `demo-engagement`.
 
 These skills are for staging data only: they write to the local db, which no member ever sees, so write without asking first and report afterward. Content is realistic, inventive, and now and then funny: believable Alliance work, written by someone who enjoys the job.
 
-Everything goes through the API so the server's validation and side effects run. `GET /openapi.yaml` gives request bodies, but it marks some required fields optional; the bodies these skills name are the ones the server actually demands. Calls run as a user with a token from `bun agents/skills/demo-action/mint-token.ts <userId>`: admin calls as any `admin = true` user, member calls as that member. Queries follow `(root)/agents/skills/local-db/SKILL.md`. An action's status now is its latest `action_event` dated up to now (ignoring deleted ones), and that status began on that event's date. Logs go in `.scratch/`. When a step needs a script, such as listing past actions or printing a form as text, reuse one from `.scratch/demo/` or write it there when none exists.
+Everything goes through the API so the server's validation and side effects run. `GET /openapi.yaml` gives request bodies, but it marks some required fields optional; the bodies these skills name are the ones the server actually demands. Calls run as a user with a token from `(cd server && ../scripts/with-secrets.sh server bun ../agents/skills/playwright/mint-token.ts <userId>)`: admin calls as any `admin = true` user, member calls as that member. Queries follow `(root)/agents/skills/local-db/SKILL.md`. An action's status now is its latest `action_event` dated up to now (ignoring deleted ones), and that status began on that event's date. Logs go in `.scratch/`. When a step needs a script, such as listing past actions or printing a form as text, reuse one from `.scratch/demo/` or write it there when none exists.
 
 ## 1. Server
 
-`./scripts/with-env.sh` prints the API port. If nothing listens there, start `bun --watch src/main.ts` in `server/` in the background.
+`./scripts/with-env.sh` prints the API port. If nothing listens there, start `bun run server:dev` from the repo root in the background; it loads the server's secrets and this checkout's ports.
 
 `SEND_DEV_NOTIFS` must be unset, both in `server/.env` and in the running server's environment (`ps eww` on the listening pid). Signing contracts and posting updates can notify members, and the server delivers locally only with that flag set.
 

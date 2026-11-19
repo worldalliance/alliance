@@ -4,9 +4,11 @@ You are the Fixer in the role chart of `agents/skills/review-loop/SKILL.md`. Tha
 
 This is round {{ROUND}} of the review loop on branch `{{BRANCH}}`, in this checkout. The loop's base is `{{BASE}}`, where the branch meets `origin/main`. Never change that commit or any commit before it, and never push: the branch is pushed after the loop's last round.
 
-Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `agents/skills/review-base/findings.schema.json`).
+Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` from a Claude reviewer and `{{FINDINGS}}/<sha>.codex.json` from a Codex reviewer, either or both (schema: `agents/skills/review-base/findings.schema.json`). The two reviewers rate severity differently, Codex far more often must-fix, so classify each finding on its merits.
 
 Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Applying fixes** governs your git writes: commit, amend, rebase, reorder and split without asking. Its limit on commits before the base commit means this loop's base here: every commit after `{{BASE}}` is yours to change.
+
+Before your first change to the repository, add your bullet to the task's provenance `SESSIONS.md` per `agents/skills/provenance/SKILL.md`.
 
 ## 1. Ledger and answers
 

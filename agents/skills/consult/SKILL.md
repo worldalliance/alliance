@@ -11,7 +11,7 @@ A fact only the user knows, such as how they work, goes to them first, without a
 
 1. **Step back.** Before drafting, a brainstormer gets the situation and the goal behind the request, not your framing of the questions, and suggests many varied ideas, bad ones welcome: what problem is worth solving, what lies past the request (root `AGENTS.md` **The problem behind the request**), what nobody mentioned. Alongside it, a researcher looks up the established practice for the decision, insofar as any exists.
 2. **Draft** the questions and options from what they found.
-3. **Second opinion, last**, from the other vendor's model: it challenges the framing, judges the draft and both reports, and gives its own view. Having seen the others' work, it is a critic, not independent confirmation.
+3. **Second opinion, last**, from the other vendor's model, or a fresh agent of your own vendor where the other isn't set up (`subagents` **When a CLI isn't set up**): it challenges the framing, judges the draft and both reports, and gives its own view. Having seen the others' work, it is a critic, not independent confirmation.
 
 Each new set of questions gets its own round, since the agents cover only what they saw.
 
