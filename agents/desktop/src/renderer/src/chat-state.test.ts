@@ -33,7 +33,7 @@ describe("chat state", () => {
   test("sending adds the message and starts a turn", () => {
     expect(asked.items).toEqual([{ kind: ItemKind.User, key: 0, text: "Hi" }]);
     expect(asked.turn).toBe(TurnState.Running);
-    expect(turnStatus(asked)).toBe("Claude is working…");
+    expect(turnStatus(asked, "Codex")).toBe("Codex is working…");
   });
 
   test("a start's first message goes ahead of events that arrived before start resolved, which keep the turn's state", () => {
@@ -50,7 +50,7 @@ describe("chat state", () => {
     expect(running.turn).toBe(TurnState.Running);
     const ended = firstMessage(play(emptyChat, [delta, turnEnded]), "Hi");
     expect(ended.turn).toBe(TurnState.Idle);
-    expect(turnStatus(ended)).toBe("Claude finished.");
+    expect(turnStatus(ended, "Claude")).toBe("Claude finished.");
     expect(new Set(ended.items.map((item) => item.key)).size).toBe(2);
   });
 
@@ -152,7 +152,7 @@ describe("chat state", () => {
       ["Bash", ToolStatus.Failed, "no"],
       ["Edit", ToolStatus.Unfinished, undefined],
     ]);
-    expect(turnStatus(chat)).toBe("Claude finished.");
+    expect(turnStatus(chat, "Claude")).toBe("Claude finished.");
   });
 
   test("turn ended closes a block an interrupt left streaming", () => {
@@ -166,17 +166,17 @@ describe("chat state", () => {
   test("a stopped turn says so", () => {
     const stopping = stopRequested(asked);
     expect(stopping.turn).toBe(TurnState.Stopping);
-    expect(turnStatus(stopping)).toBe("Stopping…");
+    expect(turnStatus(stopping, "Claude")).toBe("Stopping…");
     const stopped = applyEvent(stopping, turnStopped);
     expect(stopped.items.at(-1)?.kind).toBe(ItemKind.Stopped);
     expect(stopped.turn).toBe(TurnState.Idle);
-    expect(turnStatus(stopped)).toBe("Stopped.");
+    expect(turnStatus(stopped, "Claude")).toBe("Stopped.");
   });
 
   test("a stop that missed the turn's end leaves the reply finished", () => {
     const finished = applyEvent(stopRequested(asked), turnEnded);
     expect(finished.items.at(-1)?.kind).toBe(ItemKind.User);
-    expect(turnStatus(finished)).toBe("Claude finished.");
+    expect(turnStatus(finished, "Claude")).toBe("Claude finished.");
   });
 
   test("stopping between turns changes nothing", () => {
@@ -198,7 +198,8 @@ describe("chat state", () => {
       needsResume: false,
       refused: false,
     });
-    expect(turnStatus(chat)).toBe("Claude ran into a problem.");
+    expect(turnStatus(chat, "Claude")).toBe("Claude ran into a problem.");
+    expect(turnStatus(chat, "Codex")).toBe("Codex ran into a problem.");
   });
 
   test("a refused send ends the turn it started with its error", () => {
@@ -208,7 +209,7 @@ describe("chat state", () => {
       refused: true,
     });
     expect(chat.turn).toBe(TurnState.Idle);
-    expect(turnStatus(chat)).toBe("Your message wasn't sent.");
+    expect(turnStatus(chat, "Claude")).toBe("Your message wasn't sent.");
   });
 
   test("a refused send's message leaves the transcript", () => {
@@ -219,7 +220,7 @@ describe("chat state", () => {
       ItemKind.Stopped,
       ItemKind.Error,
     ]);
-    expect(turnStatus(chat)).toBe("Your message wasn't sent.");
+    expect(turnStatus(chat, "Claude")).toBe("Your message wasn't sent.");
   });
 
   test("a session resumed mid-turn reads as working", () => {
@@ -227,16 +228,16 @@ describe("chat state", () => {
   });
 
   test("the status line is empty before the first turn", () => {
-    expect(turnStatus(emptyChat)).toBe("");
+    expect(turnStatus(emptyChat, "Claude")).toBe("");
   });
 
   test("a turn resumed midway says how it ended", () => {
     const resumed = resumedMidTurn(emptyChat);
     const reply = { kind: AgentEventKind.AssistantText, text: "Done" } as const;
-    expect(turnStatus(play(resumed, [reply, turnEnded]))).toBe(
+    expect(turnStatus(play(resumed, [reply, turnEnded]), "Claude")).toBe(
       "Claude finished.",
     );
-    expect(turnStatus(play(resumed, [turnStopped]))).toBe("Stopped.");
+    expect(turnStatus(play(resumed, [turnStopped]), "Claude")).toBe("Stopped.");
   });
 
   test("a turn resumed midway that leaves no item says it finished", () => {
@@ -248,7 +249,7 @@ describe("chat state", () => {
     };
     const chat = play(resumedMidTurn(emptyChat), [toolFinished, turnEnded]);
     expect(chat.items).toEqual([]);
-    expect(turnStatus(chat)).toBe("Claude finished.");
+    expect(turnStatus(chat, "Claude")).toBe("Claude finished.");
   });
 
   test("a reopen marks the errors before it", () => {
@@ -264,13 +265,15 @@ describe("chat state", () => {
   });
 
   test("a turn whose end is all this view hears says how it ended", () => {
-    expect(turnStatus(play(emptyChat, [turnEnded]))).toBe("Claude finished.");
-    expect(turnStatus(firstMessage(play(emptyChat, [turnEnded]), "Hi"))).toBe(
+    expect(turnStatus(play(emptyChat, [turnEnded]), "Claude")).toBe(
       "Claude finished.",
     );
-    expect(turnStatus(firstMessage(play(emptyChat, [turnStopped]), "Hi"))).toBe(
-      "Stopped.",
-    );
+    expect(
+      turnStatus(firstMessage(play(emptyChat, [turnEnded]), "Hi"), "Claude"),
+    ).toBe("Claude finished.");
+    expect(
+      turnStatus(firstMessage(play(emptyChat, [turnStopped]), "Hi"), "Claude"),
+    ).toBe("Stopped.");
   });
 
   test("a turn resumed after a refused send says how it ended", () => {
@@ -279,7 +282,9 @@ describe("chat state", () => {
       "mid-turn",
     );
     const resumed = resumedMidTurn(reopened(refused));
-    expect(turnStatus(play(resumed, [turnEnded]))).toBe("Claude finished.");
+    expect(turnStatus(play(resumed, [turnEnded]), "Claude")).toBe(
+      "Claude finished.",
+    );
   });
 
   test("only the latest turn decides the status", () => {
@@ -288,6 +293,6 @@ describe("chat state", () => {
       turnEnded,
     ]);
     const next = play(sendMessage(failed, "Again"), [turnEnded]);
-    expect(turnStatus(next)).toBe("Claude finished.");
+    expect(turnStatus(next, "Claude")).toBe("Claude finished.");
   });
 });

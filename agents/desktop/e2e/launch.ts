@@ -16,10 +16,16 @@ import {
   formatCapture,
 } from "../src/main/agent/claude/testing/capture";
 import { stubCapturesVariable } from "../src/main/agent/claude/testing/stub";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
+import { codexConfigArgs } from "../src/main/agent/codex/process";
+import { captured as codexCaptured } from "../src/main/agent/codex/testing/capture";
+import { stubCapturesVariable as codexCapturesVariable } from "../src/main/agent/codex/testing/stub";
+import { executableVariable } from "../src/main/cli-executable";
+import { AgentKind } from "../src/shared/agent-kind";
 import { appArgs } from "./app-args";
 
 export { captured };
+
+export const claudeExecutableVariable = executableVariable(AgentKind.Claude);
 
 export function writeTestCapture(params: {
   name: string;
@@ -44,8 +50,28 @@ export const authStatusCapture = (loggedIn: boolean): string =>
     records: authStatusReply(loggedIn),
   });
 
+/** What `codex login status` writes, exiting 1 when signed out. */
+export const codexLoginStatusCapture = (signedIn: boolean): string =>
+  writeTestCapture({
+    name: `codex-login-status-${signedIn}`,
+    args: [...codexConfigArgs, "login", "status"],
+    records: [
+      { kind: CaptureRecordKind.StdinClosed },
+      {
+        kind: CaptureRecordKind.Stderr,
+        text: signedIn ? "Logged in using ChatGPT\n" : "Not logged in\n",
+      },
+      { kind: CaptureRecordKind.Exit, code: signedIn ? 0 : 1 },
+    ],
+  });
+
 export async function launch(
-  params: { captures: string[]; env?: Record<string, string> } & (
+  params: {
+    captures: string[];
+    /** Codex's captures, after its version check's. */
+    codexCaptures?: string[];
+    env?: Record<string, string>;
+  } & (
     | {
         /** Runs in place of the stub that playwright.config.ts names. */
         claude?: string;
@@ -63,6 +89,10 @@ export async function launch(
     [stubCapturesVariable]: [captured("version"), ...params.captures].join(
       path.delimiter,
     ),
+    [codexCapturesVariable]: [
+      codexCaptured("version"),
+      ...(params.codexCaptures ?? []),
+    ].join(path.delimiter),
     ...(params.claude && { [claudeExecutableVariable]: params.claude }),
     ...(params.path !== undefined && { PATH: params.path }),
     ...params.env,

@@ -45,4 +45,6 @@ export interface AgentBackend {
     cwd: string;
     sessionId: string;
   }): Promise<Result<AgentSession, Error>>;
+  /** Resolves once each CLI whose session failed to open, and so was never returned, has exited, including one that fails while this waits. */
+  settled(): Promise<void>;
 }

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { R } from "../../../../../common/src/result";
+import { AgentKind, agentWords, defaultAgent } from "../../shared/agent-kind";
 import type { Conversation, IpcResult } from "../../shared/ipc";
 import { agent } from "./agent";
+import { useAgentAccess } from "./agent-access";
 import {
   applyEvent,
   type Chat,
@@ -18,12 +20,6 @@ import {
 import { ChatView } from "./components/ChatView";
 import type { Draft } from "./components/Composer";
 import { type Listed, Sidebar } from "./components/Sidebar";
-import {
-  ClaudeAccess,
-  type ClaudeState,
-  signInHeading,
-  SignInPanel,
-} from "./components/SignInPanel";
 import { type NewConversation, StartView } from "./components/StartView";
 import { focusIfLost } from "./focus";
 
@@ -39,23 +35,6 @@ const newConversationDraft = "new";
 const draftsKey = "drafts";
 const chosenFolderKey = "chosen-folder";
 const storedDrafts = z.record(z.string(), z.string());
-
-const claudeState = (
-  signedIn: IpcResult<boolean>,
-): Extract<
-  ClaudeState,
-  {
-    access:
-      | ClaudeAccess.SignedIn
-      | ClaudeAccess.SignedOut
-      | ClaudeAccess.Unavailable;
-  }
-> =>
-  signedIn.ok
-    ? {
-        access: signedIn.value ? ClaudeAccess.SignedIn : ClaudeAccess.SignedOut,
-      }
-    : { access: ClaudeAccess.Unavailable, problem: signedIn.error };
 
 // A read can finish after a start this window made, or miss one the window's previous load made, so it adds to the list rather than replacing it.
 const withListed = (
@@ -73,9 +52,6 @@ const withListed = (
 };
 
 export function App() {
-  const [claude, setClaude] = useState<ClaudeState>({
-    access: ClaudeAccess.Checking,
-  });
   const [conversations, setConversations] = useState<Listed>();
   const listedIds = useRef(new Set<string>());
   const [selected, setSelected] = useState<string>();
@@ -87,6 +63,7 @@ export function App() {
   const [newConversation, setNewConversation] = useState<NewConversation>(
     () => ({
       chosen: localStorage.getItem(chosenFolderKey) ?? undefined,
+      agent: defaultAgent,
       starting: false,
     }),
   );
@@ -94,8 +71,6 @@ export function App() {
     new Set(),
   );
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
-  const signInCancelled = useRef(false);
-  const signingIn = useRef(false);
 
   useEffect(
     () => localStorage.setItem(draftsKey, JSON.stringify(drafts)),
@@ -126,10 +101,6 @@ export function App() {
   );
 
   useEffect(() => {
-    let current = true;
-    void agent.claudeSignedIn().then((signedIn) => {
-      if (current) setClaude(claudeState(signedIn));
-    });
     void list();
     const unsubscribe = agent.onEvent(({ sessionId, event }) => {
       updateChat(sessionId, (chat) => applyEvent(chat, event));
@@ -142,56 +113,29 @@ export function App() {
       setRemoved((all) => new Set(all).add(id)),
     );
     return () => {
-      current = false;
       unsubscribe();
       unsubscribeRemoved();
     };
   }, [updateChat, list]);
 
-  const checkClaude = async () => {
-    setClaude({ access: ClaudeAccess.Checking });
-    setClaude(claudeState(await agent.claudeSignedIn()));
-  };
-
+  const selectedConversation =
+    selected === undefined
+      ? undefined
+      : conversations?.all.find((c) => c.id === selected);
   const title =
     selected === undefined
       ? "New conversation"
-      : conversations?.all.find((c) => c.id === selected)?.title ||
-        "Conversation";
+      : selectedConversation?.title || "Conversation";
+  const selectedAgent =
+    selected === undefined
+      ? newConversation.agent
+      : selectedConversation?.agent;
+  const access = useAgentAccess(selectedAgent);
+  const selectedSignedIn = selectedAgent && access.signedIn(selectedAgent);
 
   useEffect(() => {
-    document.title = `${claude.access === ClaudeAccess.SignedIn ? title : signInHeading[claude.access]} – Alliance agent`;
-  }, [claude.access, title]);
-
-  const signIn = async () => {
-    signInCancelled.current = false;
-    setClaude({ access: ClaudeAccess.SigningIn, cancelling: false });
-    signingIn.current = true;
-    const signedIn = await agent.signIn();
-    signingIn.current = false;
-    if (!signInCancelled.current) setClaude({ access: ClaudeAccess.Checking });
-    const checked = claudeState(await agent.claudeSignedIn());
-    if (signInCancelled.current) return setClaude(checked);
-    switch (checked.access) {
-      case ClaudeAccess.SignedIn:
-        return setClaude(checked);
-      case ClaudeAccess.Unavailable:
-        return setClaude(
-          signedIn.ok || signedIn.error === checked.problem
-            ? checked
-            : { ...checked, problem: `${signedIn.error}\n${checked.problem}` },
-        );
-      case ClaudeAccess.SignedOut:
-        return setClaude({
-          access: ClaudeAccess.SignedOut,
-          problem: signedIn.ok
-            ? "Claude Code still reports you're signed out."
-            : signedIn.error,
-        });
-      default:
-        throw new Error(`unknown access: ${checked satisfies never}`);
-    }
-  };
+    document.title = `${title} – Alliance agent`;
+  }, [title]);
 
   const draft = (key: string): Draft => ({
     text: drafts[key] ?? "",
@@ -218,7 +162,11 @@ export function App() {
     text: string;
   }): Promise<IpcResult<void>> => {
     const { folder, text } = input;
-    const started = await agent.start({ folder, firstMessage: text });
+    const started = await agent.start({
+      folder,
+      firstMessage: text,
+      agent: newConversation.agent,
+    });
     if (!started.ok) return started;
     const { id } = started.value;
     setChats((all) => ({ ...all, [id]: firstMessage(all[id], text) }));
@@ -255,10 +203,13 @@ export function App() {
     if (selected !== undefined) void reopen(selected);
   }, [reopen, selected]);
 
-  const select = (id: string) => {
-    setSelected(id);
-    if (open[id] === undefined) void reopen(id);
-  };
+  // A conversation opens once it is selected and its agent is signed in, so a signed-out agent's CLI never starts for it.
+  const selectedUnopened =
+    selected !== undefined && open[selected] === undefined;
+  useEffect(() => {
+    if (selectedSignedIn && selectedUnopened && selected !== undefined)
+      void reopen(selected);
+  }, [selectedSignedIn, selectedUnopened, selected, reopen]);
 
   const notOpenPanel = (id: string) => {
     const state = open[id] ?? Opened.Opening;
@@ -308,10 +259,11 @@ export function App() {
       ...rest,
       [newConversationDraft]: typed ? `${text}\n${typed}` : text,
     }));
-    const folder = conversations?.all.find((c) => c.id === id)?.folder;
+    const moved = conversations?.all.find((c) => c.id === id);
     setNewConversation((state) => ({
       ...state,
-      chosen: folder ?? state.chosen,
+      chosen: moved?.folder ?? state.chosen,
+      agent: moved?.agent ?? state.agent,
       problem: undefined,
     }));
     setConversations(
@@ -321,9 +273,8 @@ export function App() {
     setSelected(undefined);
   };
 
-  const removedPanel = (id: string) => {
-    const note =
-      "Claude Code stopped before reading your first message, so this conversation wasn't kept.";
+  const removedPanel = (id: string, kind: AgentKind) => {
+    const note = `${agentWords[kind].product} stopped before reading your first message, so this conversation wasn't kept.`;
     if (!unsentText(id))
       return (
         <p className="panel" role="status" tabIndex={-1} ref={focusIfLost}>
@@ -346,21 +297,6 @@ export function App() {
   };
 
   const main = () => {
-    if (claude.access !== ClaudeAccess.SignedIn)
-      return (
-        <SignInPanel
-          state={claude}
-          onSignIn={() => void signIn()}
-          onCancel={() => {
-            // Once the sign-in's reply arrives, a Cancel has nothing to stop and would hide why it failed.
-            if (!signingIn.current) return;
-            signInCancelled.current = true;
-            setClaude({ access: ClaudeAccess.SigningIn, cancelling: true });
-            agent.cancelSignIn();
-          }}
-          onCheckAgain={() => void checkClaude()}
-        />
-      );
     if (selected === undefined)
       return (
         conversations !== undefined && (
@@ -369,14 +305,17 @@ export function App() {
             defaultFolder={conversations.all[0]?.folder}
             draft={draft(newConversationDraft)}
             state={newConversation}
+            signInPanel={access.signInPanel(newConversation.agent)}
             onChange={setNewConversation}
             onStart={start}
           />
         )
       );
+    if (!selectedAgent)
+      throw new Error(`selected conversation ${selected} isn't listed`);
     const notOpen = removed.has(selected)
-      ? removedPanel(selected)
-      : notOpenPanel(selected);
+      ? removedPanel(selected, selectedAgent)
+      : (access.signInPanel(selectedAgent) ?? notOpenPanel(selected));
     const chat = chats[selected] ?? emptyChat;
     if (notOpen && chat.items.length === 0)
       return (
@@ -388,6 +327,7 @@ export function App() {
     return (
       <ChatView
         key={selected}
+        agentName={agentWords[selectedAgent].name}
         title={title}
         chat={chat}
         resumed={!startedHere.has(selected)}
@@ -405,15 +345,13 @@ export function App() {
 
   return (
     <div className="app">
-      {claude.access === ClaudeAccess.SignedIn && (
-        <Sidebar
-          conversations={conversations}
-          selected={selected}
-          onSelect={select}
-          onNew={() => setSelected(undefined)}
-          onRetry={list}
-        />
-      )}
+      <Sidebar
+        conversations={conversations}
+        selected={selected}
+        onSelect={setSelected}
+        onNew={() => setSelected(undefined)}
+        onRetry={list}
+      />
       <main className="main">{main()}</main>
     </div>
   );

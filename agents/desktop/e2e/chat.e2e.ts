@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { IpcChannel } from "../src/shared/ipc";
 import {
   chooseFolder,
@@ -13,9 +13,11 @@ import {
 import {
   authStatusCapture,
   captured,
+  claudeExecutableVariable,
   launch,
   unreadingClaude,
   workFolder,
+  writeClaude,
 } from "./launch";
 
 test("a conversation streams replies, shows tool calls, stops, and resumes after a relaunch", async () => {
@@ -329,13 +331,29 @@ test("a conversation whose CLI exits before reading its first message isn't offe
   await app.close();
 });
 
-test("saved conversations stay out of reach until Claude is signed in", async () => {
-  saveConversation(workFolder());
-  const { app, page } = await launch({ captures: [authStatusCapture(false)] });
-  await expect(
-    page.getByRole("heading", { name: "Sign in to Claude" }),
-  ).toBeVisible();
-  await expect(page.getByRole("navigation")).toHaveCount(0);
+test("a saved conversation, which counts as Claude's, shows Sign in to Claude and opens when sign-in finishes", async () => {
+  saveConversation(workFolder(), "3f0c2a8e-5b7d-4c1e-9a2f-6d8e1b4c7a90");
+  const signedIn = test.info().outputPath("signed-in");
+  const claude =
+    writeClaude(`case "$*" in *--resume*) touch "$0.resumed"; exit 1;; esac
+[ "$2" = login ] && touch "${signedIn}" && exit 0
+[ "$2" = status ] && [ -e "${signedIn}" ] && echo '{"loggedIn":true}' && exit 0
+exec "${process.env[claudeExecutableVariable]}" "$@"
+`);
+  const resumed = () => existsSync(`${claude}.resumed`);
+  const { app, page } = await launch({
+    captures: [authStatusCapture(false)],
+    claude,
+  });
+  const saved = page.getByRole("button", { name: /^Saved/ });
+  await expect(saved).toContainText("Claude · work");
+  await saved.click();
+  const signIn = page.getByRole("button", { name: "Sign in to Claude" });
+  await expect(signIn).toBeVisible();
+  await expect(saved).toBeFocused();
+  await signIn.click();
+  await expect.poll(resumed).toBe(true);
+  await expect(signIn).toHaveCount(0);
   await app.close();
 });
 
@@ -353,7 +371,7 @@ test("a conversation that fails to open keeps focus off the page", async () => {
   await app.close();
 });
 
-test("the message box is read-only while a conversation starts, then the chat's takes focus", async () => {
+test("the message box and agent choice are read-only while a conversation starts, then the chat's message box takes focus", async () => {
   const { claude, release } = heldClaude();
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
@@ -364,6 +382,14 @@ test("the message box is read-only while a conversation starts, then the chat's 
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await expect(page.getByLabel("Message Claude")).not.toBeEditable();
+  const codex = page.getByRole("radio", { name: "Codex" });
+  // Playwright waits for an aria-disabled control to become enabled before clicking it.
+  await codex.click({ force: true });
+  await expect(codex).not.toBeChecked();
+  await expect(page.locator("label", { has: codex })).toHaveCSS(
+    "opacity",
+    "0.7",
+  );
   release();
   await expect(status(page)).toHaveText("Claude finished.");
   await expect(page.getByLabel("Message Claude")).toBeFocused();

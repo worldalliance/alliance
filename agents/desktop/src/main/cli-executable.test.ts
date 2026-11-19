@@ -8,11 +8,16 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { AgentKind } from "../shared/agent-kind";
 import { CLAUDE_CODE_VERSION } from "./agent/claude/protocol";
-import {
-  claudeExecutableVariable,
-  findClaudeExecutable,
-} from "./claude-executable";
+import { CODEX_VERSION } from "./agent/codex/version";
+import { executableVariable, findExecutable } from "./cli-executable";
+
+const claudeExecutableVariable = executableVariable(AgentKind.Claude);
+const findClaudeExecutable = (params: {
+  env: NodeJS.ProcessEnv;
+  packaged: boolean;
+}) => findExecutable({ ...params, agent: AgentKind.Claude });
 
 let dir: string | undefined;
 afterEach(() => {
@@ -49,7 +54,7 @@ function binDirs(): {
   };
 }
 
-describe("findClaudeExecutable", () => {
+describe("findExecutable for Claude", () => {
   test("finds the first executable claude on PATH", () => {
     const bins = binDirs();
     const PATH = [
@@ -98,5 +103,39 @@ describe("findClaudeExecutable", () => {
       packaged: true,
     });
     expect(found.ok).toBe(false);
+  });
+});
+
+describe("findExecutable for Codex", () => {
+  test("finds codex on PATH, or the executable its own variable names", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "codex-path-"));
+    dir = root;
+    writeFileSync(path.join(root, "codex"), "");
+    chmodSync(path.join(root, "codex"), 0o755);
+    expect(
+      findExecutable({
+        agent: AgentKind.Codex,
+        env: { PATH: root, [claudeExecutableVariable]: "/claude" },
+        packaged: false,
+      }),
+    ).toEqual({ ok: true, value: path.join(root, "codex") });
+    expect(
+      findExecutable({
+        agent: AgentKind.Codex,
+        env: { [executableVariable(AgentKind.Codex)]: "/stub" },
+        packaged: false,
+      }),
+    ).toEqual({ ok: true, value: "/stub" });
+  });
+
+  test("says how to install Codex when PATH has none", () => {
+    const found = findExecutable({
+      agent: AgentKind.Codex,
+      env: { PATH: binDirs().without },
+      packaged: false,
+    });
+    expect(!found.ok && found.error.message).toBe(
+      `couldn't find Codex. Install Codex ${CODEX_VERSION} so that codex is on PATH.`,
+    );
   });
 });

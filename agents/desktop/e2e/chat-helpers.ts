@@ -6,8 +6,7 @@ import {
 } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
-import { workFolder, writeClaude } from "./launch";
+import { claudeExecutableVariable, workFolder, writeClaude } from "./launch";
 
 export async function chooseFolder(app: ElectronApplication, folder: string) {
   await app.evaluate(({ dialog }, chosen) => {
@@ -49,13 +48,13 @@ export function writeConversations(contents: string) {
   writeFileSync(path.join(userData, "conversations.json"), contents);
 }
 
-export function saveConversation(folder: string) {
+export function saveConversation(folder: string, id = "saved") {
   writeConversations(
     JSON.stringify({
       version: 1,
       conversations: [
         {
-          id: "saved",
+          id,
           folder,
           title: "Saved",
           startedAt: "2026-11-10T12:00:00.000Z",

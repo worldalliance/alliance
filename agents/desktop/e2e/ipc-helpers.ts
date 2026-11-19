@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { AgentEventKind } from "../src/shared/agent-event";
+import { AgentKind } from "../src/shared/agent-kind";
 import type { AgentApi } from "../src/shared/ipc";
 import { workFolder } from "./launch";
 
@@ -9,7 +10,10 @@ declare const window: { agent: AgentApi };
 export const firstMessage = "Change hello to goodbye in a.txt";
 
 /** Resolves to the started conversation's id once its first turn ends. */
-export async function start(page: Page): Promise<string> {
+export async function start(
+  page: Page,
+  on = { agent: AgentKind.Claude, folder: workFolder() },
+): Promise<string> {
   const started = await page.evaluate(
     async ({ input, turnEnded }) => {
       const ended = new Promise<void>((resolve) => {
@@ -22,7 +26,7 @@ export async function start(page: Page): Promise<string> {
       return result;
     },
     {
-      input: { folder: workFolder(), firstMessage },
+      input: { ...on, firstMessage },
       turnEnded: AgentEventKind.TurnEnded,
     },
   );

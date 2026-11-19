@@ -46,7 +46,7 @@ export type ChatItem =
       message: string;
       /** True when the conversation takes another message only once reopened. */
       needsResume: boolean;
-      /** True when the session refused the message, so Claude never got it. */
+      /** True when the session refused the message, so the agent never got it. */
       refused: boolean;
     }
   | { kind: ItemKind.Stopped; key: number };
@@ -287,21 +287,21 @@ export function applyEvent(current: Chat, event: AgentEvent): Chat {
   }
 }
 
-const outcomeStatus: Record<TurnOutcome, string> = {
-  [TurnOutcome.Finished]: "Claude finished.",
+const outcomeStatus = (agentName: string): Record<TurnOutcome, string> => ({
+  [TurnOutcome.Finished]: `${agentName} finished.`,
   [TurnOutcome.Stopped]: "Stopped.",
-  [TurnOutcome.Problem]: "Claude ran into a problem.",
+  [TurnOutcome.Problem]: `${agentName} ran into a problem.`,
   [TurnOutcome.NotSent]: "Your message wasn't sent.",
-};
+});
 
-export function turnStatus(chat: Chat): string {
+export function turnStatus(chat: Chat, agentName: string): string {
   switch (chat.turn) {
     case TurnState.Running:
-      return "Claude is working…";
+      return `${agentName} is working…`;
     case TurnState.Stopping:
       return "Stopping…";
     case TurnState.Idle:
-      return chat.outcome ? outcomeStatus[chat.outcome] : "";
+      return chat.outcome ? outcomeStatus(agentName)[chat.outcome] : "";
     default:
       throw new Error(`unknown turn state: ${chat.turn satisfies never}`);
   }

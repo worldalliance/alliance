@@ -10,12 +10,16 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { R } from "../../../../common/src/result";
+import { AgentKind } from "../shared/agent-kind";
+import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
 import { createClaudeBackend } from "./agent/claude/backend";
-import { findClaudeExecutable } from "./claude-executable";
+import { isSignedInToCodex, signInToCodex } from "./agent/codex/auth";
+import { createCodexBackend } from "./agent/codex/backend";
+import { findExecutable } from "./cli-executable";
 import { ConversationStore } from "./conversations";
 import { describeError } from "./describe-error";
-import { devClaudeConfigDir } from "./dev-app-data";
-import { registerIpc } from "./ipc";
+import { devClaudeConfigDir, devCodexHome } from "./dev-app-data";
+import { type Agent, registerIpc } from "./ipc";
 
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
@@ -191,17 +195,38 @@ void app.whenReady().then(() => {
   if (headless) app.dock?.hide();
   protocol.handle("app", serveRenderer);
   const userData = app.getPath("userData");
-  const configDir = devData
-    ? devClaudeConfigDir(app.getPath("appData"))
-    : path.join(userData, "claude");
+  const appData = app.getPath("appData");
+  const agents: Record<AgentKind, (executable: string) => Agent> = {
+    [AgentKind.Claude]: (executable) => {
+      const cli = {
+        executable,
+        configDir: devData
+          ? devClaudeConfigDir(appData)
+          : path.join(userData, "claude"),
+      };
+      return {
+        backend: createClaudeBackend(cli),
+        isSignedIn: (signal) => isSignedInToClaude(cli, signal),
+        signIn: (signal) => signInToClaude(cli, signal),
+      };
+    },
+    [AgentKind.Codex]: (executable) => {
+      const cli = {
+        executable,
+        home: devData ? devCodexHome(appData) : path.join(userData, "codex"),
+      };
+      return {
+        backend: createCodexBackend(cli),
+        isSignedIn: (signal) => isSignedInToCodex(cli, signal),
+        signIn: (signal) => signInToCodex(cli, signal),
+      };
+    },
+  };
   closeSessions = registerIpc({
-    findClaude: () =>
+    findAgent: (agent) =>
       R.map(
-        findClaudeExecutable({ env: process.env, packaged: app.isPackaged }),
-        (executable) => {
-          const cli = { executable, configDir };
-          return { cli, backend: createClaudeBackend(cli) };
-        },
+        findExecutable({ agent, env: process.env, packaged: app.isPackaged }),
+        agents[agent],
       ),
     conversations: new ConversationStore(
       path.join(userData, "conversations.json"),

@@ -99,7 +99,8 @@ button.primary:not([aria-disabled="true"]):active {
   filter: brightness(0.85);
 }
 
-button[aria-disabled="true"] {
+button[aria-disabled="true"],
+label:has(> input[aria-disabled="true"]) {
   opacity: 0.7;
 }
 
@@ -392,4 +393,28 @@ div.error p {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+.agent-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  border: 0;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+
+.agent-choice legend {
+  float: left;
+  font-weight: 600;
+  padding: 0;
+  margin-inline-end: var(--space-2);
+}
+
+.agent-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height);
 }

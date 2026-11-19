@@ -3,14 +3,26 @@ import path from "node:path";
 import writeFileAtomic from "write-file-atomic";
 import { z } from "zod";
 import { R, type Result } from "../../../../common/src/result";
+import { AgentKind } from "../shared/agent-kind";
 import { type Conversation, conversationSchema } from "../shared/conversation";
 import { describeError } from "./describe-error";
 import { isNotFound } from "./fs-error";
 
-const stored = z.object({
-  version: z.literal(1),
-  conversations: z.array(conversationSchema),
-});
+// Version 1 predates the agent field, and every conversation it holds is Claude's. Version 2 makes an older build fail on the file rather than drop the field.
+const stored = z.discriminatedUnion("version", [
+  z.object({
+    version: z.literal(1),
+    conversations: z.array(
+      conversationSchema
+        .omit({ agent: true })
+        .transform((c): Conversation => ({ ...c, agent: AgentKind.Claude })),
+    ),
+  }),
+  z.object({
+    version: z.literal(2),
+    conversations: z.array(conversationSchema),
+  }),
+]);
 
 const titleLength = 80;
 
@@ -67,7 +79,7 @@ export class ConversationStore {
       const listed = await this.list();
       if (!listed.ok) return listed;
       const next = JSON.stringify(
-        { version: 1, conversations: change(listed.value) },
+        { version: 2, conversations: change(listed.value) },
         null,
         2,
       );

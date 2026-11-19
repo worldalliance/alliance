@@ -1,13 +1,14 @@
 import type { Result } from "../../../../common/src/result";
 import type { AgentEvent } from "./agent-event";
+import type { AgentKind } from "./agent-kind";
 import type { Conversation } from "./conversation";
 
 export type { Conversation } from "./conversation";
 
 export enum IpcChannel {
-  ClaudeStatus = "claude:status",
-  SignIn = "claude:sign-in",
-  CancelSignIn = "claude:cancel-sign-in",
+  SignInStatus = "agent:status",
+  SignIn = "agent:sign-in",
+  CancelSignIn = "agent:cancel-sign-in",
   ChooseFolder = "folder:choose",
   ListConversations = "conversations:list",
   Start = "session:start",
@@ -31,7 +32,7 @@ export type RendererEvents = {
 
 /** What each invoked channel's main-process handler returns. */
 export type IpcReplies = {
-  [IpcChannel.ClaudeStatus]: IpcResult<boolean>;
+  [IpcChannel.SignInStatus]: IpcResult<boolean>;
   [IpcChannel.SignIn]: IpcResult<void>;
   [IpcChannel.ChooseFolder]: IpcResult<string | undefined>;
   [IpcChannel.ListConversations]: IpcResult<Conversation[]>;
@@ -47,10 +48,10 @@ type Reply<C extends keyof IpcReplies> = Promise<IpcReplies[C]>;
 
 /** A method returning an IpcResult resolves to a failure when its handler throws. */
 export type AgentApi = {
-  claudeSignedIn(): Reply<IpcChannel.ClaudeStatus>;
+  signedIn(agent: AgentKind): Reply<IpcChannel.SignInStatus>;
   /** Resolves once the browser sign-in finishes, fails or is cancelled. */
-  signIn(): Reply<IpcChannel.SignIn>;
-  cancelSignIn(): void;
+  signIn(agent: AgentKind): Reply<IpcChannel.SignIn>;
+  cancelSignIn(agent: AgentKind): void;
   /** Succeeds with undefined when the user cancels. */
   chooseFolder(): Reply<IpcChannel.ChooseFolder>;
   listConversations(): Reply<IpcChannel.ListConversations>;
@@ -58,6 +59,7 @@ export type AgentApi = {
   start(input: {
     folder: string;
     firstMessage: string;
+    agent: AgentKind;
   }): Reply<IpcChannel.Start>;
   /** turnRunning is true when the session was still live and mid-turn. */
   resume(sessionId: string): Reply<IpcChannel.Resume>;

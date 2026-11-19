@@ -13,12 +13,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import { claudeExecutableVariable } from "../src/main/claude-executable";
 import { AgentEventKind } from "../src/shared/agent-event";
+import { AgentKind } from "../src/shared/agent-kind";
 import type { AgentApi } from "../src/shared/ipc";
 import { firstMessage, start } from "./ipc-helpers";
 import {
   captured,
+  claudeExecutableVariable,
   launch,
   noteOutlivedApp,
   outlivedApp,
@@ -45,7 +46,7 @@ const savedConversation = () => ({
 const startNew = (page: Page): Promise<boolean> =>
   page.evaluate(
     (input) => window.agent.start(input).then((result) => result.ok),
-    { folder: workFolder(), firstMessage },
+    { folder: workFolder(), firstMessage, agent: AgentKind.Claude },
   );
 
 const savedConversations = (): { id: string }[] =>
@@ -135,6 +136,7 @@ test("quitting while a conversation starts waits for its CLI too", async () => {
   await page.evaluate((input) => void window.agent.start(input), {
     folder: workFolder(),
     firstMessage,
+    agent: AgentKind.Claude,
   });
   await expect.poll(() => runningCount(claude)).toBeGreaterThan(0);
   await app.close();
@@ -154,6 +156,7 @@ test("quitting waits only so long for a conversation still starting", async () =
   await page.evaluate((input) => void window.agent.start(input), {
     folder: workFolder(),
     firstMessage,
+    agent: AgentKind.Claude,
   });
   await expect.poll(() => runningCount(claude)).toBeGreaterThan(0);
   // On Linux the CLI inherits the pipes Playwright gave the app, so app.close also waits out the left-behind sleep; the app's own exit is what's timed.
@@ -276,7 +279,7 @@ exit $status
   await page.evaluate(
     (input) =>
       void Promise.all([window.agent.start(input), window.agent.start(input)]),
-    { folder: workFolder(), firstMessage },
+    { folder: workFolder(), firstMessage, agent: AgentKind.Claude },
   );
   await firstTurnEnded;
   const closed = app.waitForEvent("close");
@@ -332,7 +335,7 @@ exit $status
     env: { ALLIANCE_AGENT_OPENING_WAIT_MS: "500" },
   });
   const firstTurnEnded = nextTurnEnd(page);
-  const input = { folder: workFolder(), firstMessage };
+  const input = { folder: workFolder(), firstMessage, agent: AgentKind.Claude };
   const first = page.evaluate((input) => window.agent.start(input), input);
   await reached("check-1");
   // Both enter the version check before the first start's check passes, so neither skips it.
@@ -498,9 +501,12 @@ test("a conversation, resume or sign-in asked for once the quit begins is refuse
     async ({ input, id }) => [
       await window.agent.start(input),
       await window.agent.resume(id),
-      await window.agent.signIn(),
+      await window.agent.signIn(input.agent),
     ],
-    { input: { folder: workFolder(), firstMessage }, id },
+    {
+      input: { folder: workFolder(), firstMessage, agent: AgentKind.Claude },
+      id,
+    },
   );
   expect(refused).toEqual([quitting, quitting, quitting]);
   await closed;
