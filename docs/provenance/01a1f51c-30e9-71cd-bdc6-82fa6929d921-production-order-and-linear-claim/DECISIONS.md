@@ -1,0 +1,6 @@
+# Decisions
+
+- The deploy-order rule goes in the root `AGENTS.md` **Breaking changes** section, beside the rule that each step starts once the previous one is live everywhere, since that is the rule agents applied with staging alone in mind, and it holds for every repository task.
+- The rule points at `.github/actions/deploy-guard/live-commit.sh`, which prints the commit production runs, because the `production` branch can be ahead of it (when this task was written the branch tip `86ffb5c` was ahead of the newest `production-live` deployment `c67ebad`) and only a `production-live` deployment whose newest status is `success` counts, which an agent can't tell without reading the deploy scripts. Squash-merge commits, reverts, failed rollbacks and mobile builds are left to the agent; a review loop had grown them into a command recipe in `docs/deploying.md`, which was cut as too specific.
+- A PR waiting on production says so in its description, since a person merges it from GitHub, where an agent's handoff isn't visible.
+- Agents leave pushing `production` to the user, since it releases everything merged to `main`, and the rule says so even where a skill waives asking before git writes, as review-base's **Applying fixes** does.

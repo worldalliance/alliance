@@ -85,6 +85,8 @@ Change a shape by expand-migrate-contract when something depending on it can't s
 
 Each step starts once the previous one is live everywhere that depends on it, installed clients included (shown by a forced minimum version or by no traffic from older builds); consecutive steps may ship together only where they land atomically, and a database migration and the server deploy land at different times.
 
+Any change that must be live before another follows the same order. Merging to `main` deploys only staging; production deploys when someone pushes `main` to `production` (`docs/deploying.md`), every so often, taking everything merged since in one deploy. So a PR whose prerequisite must be live in production stays unmerged, its description saying what it waits for, until production runs the prerequisite, which can lag the `production` branch: `GITHUB_REPOSITORY=worldalliance/alliance bash .github/actions/deploy-guard/live-commit.sh production` prints the commit production runs. Pushing `production` releases everything on `main` to members, so leave it to the user, even where a skill waives asking before git writes.
+
 Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
 
 ## Capitalisation
