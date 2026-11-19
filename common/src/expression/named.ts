@@ -82,18 +82,55 @@ const NAMED_RULE: ResultRule = { undecided: Undecided.Allowed };
  * one reads is listed whether or not the save broke it. On success, returns
  * the saved named expressions and the fixed dependents as trees.
  */
-export function checkNamedSave({
+export function checkNamedSave(params: {
+  catalog: Catalog;
+  named: readonly NamedExpression[];
+  dependents?: readonly Dependent[];
+  save: readonly NamedSave[];
+  deleted?: readonly string[];
+}): Result<
+  { named: NamedExpression[]; dependents: FixedDependent[] },
+  SaveProblem[]
+> {
+  return checkChange({ ...params, everything: false });
+}
+
+/**
+ * Checks every stored named expression and stored dependent, as a change to
+ * the catalog or to the check itself can break any of them. Reports problems
+ * as `checkNamedSave` does, without the needless-fallback check stored
+ * expressions are spared.
+ */
+export function checkStored({
+  catalog,
+  named,
+  dependents = [],
+}: {
+  catalog: Catalog;
+  named: readonly NamedExpression[];
+  dependents?: readonly Extract<Dependent, { stored: Expr }>[];
+}): Result<void, SaveProblem[]> {
+  return R.map(
+    checkChange({ catalog, named, dependents, save: [], everything: true }),
+    () => undefined,
+  );
+}
+
+function checkChange({
   catalog,
   named,
   dependents = [],
   save,
   deleted = [],
+  everything,
 }: {
   catalog: Catalog;
   named: readonly NamedExpression[];
   dependents?: readonly Dependent[];
   save: readonly NamedSave[];
   deleted?: readonly string[];
+  /** Checks every stored expression, not only those reading a change. */
+  everything: boolean;
 }): Result<
   { named: NamedExpression[]; dependents: FixedDependent[] },
   SaveProblem[]
@@ -113,15 +150,18 @@ export function checkNamedSave({
   }
   const kept = named.filter((each) => !changed.has(each.id));
 
-  const nameProblems = save.flatMap((each): SaveProblem[] => {
-    const message = nameProblem(each.name, {
-      catalog,
-      others: [...kept, ...save.filter((other) => other !== each)],
-    });
-    return message === undefined
-      ? []
-      : [{ kind: SaveProblemKind.Name, id: each.id, message }];
-  });
+  const all = [...kept, ...save];
+  const nameProblems = (everything ? all : save).flatMap(
+    (each): SaveProblem[] => {
+      const message = nameProblem(each.name, {
+        catalog,
+        others: all.filter((other) => other !== each),
+      });
+      return message === undefined
+        ? []
+        : [{ kind: SaveProblemKind.Name, id: each.id, message }];
+    },
+  );
   if (nameProblems.length > 0) return R.failure(nameProblems);
 
   // The parser reads only names from the scope.
@@ -259,7 +299,7 @@ export function checkNamedSave({
   if (!problems.empty) return R.failure(problems.list());
 
   const readsChanged = (tree: Expr) =>
-    [...readsOf(tree)].some((id) => changed.has(id));
+    everything || [...readsOf(tree)].some((id) => changed.has(id));
   for (const each of kept) {
     if (!readsChanged(each.tree)) continue;
     checkRoot({
