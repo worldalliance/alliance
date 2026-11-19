@@ -53,3 +53,7 @@ Read 2026-11-18 at commit 94cc44094c.
 - `readDisplayOnlySchema` returns null for any parse failure, losing whether a block kind was unknown.
 - `apps/frontend/src/lib/useFullLoadOnNewBuild.ts` already turns the next navigation into a full load once a new web build is deployed.
 - `shared/useTaskFlow.ts` holds the task flow's open state in memory, so a web reload closes it.
+
+## Dependency behaviour
+
+- expo-notifications 57.0.19, source read 2026-11-18, not run on a device: on Android, `NotificationManager.onNotificationResponseFromExtras` keeps a tap that started the app while no listener was registered in `pendingNotificationResponsesFromExtras`, and `onNotificationResponseReceived` keeps every tap that arrives with no listener registered in `pendingNotificationResponses`; neither list is ever cleared, and `addListener` replays every entry of both to each new listener (`android/.../notifications/NotificationManager.kt`). `clearLastNotificationResponse` clears only the emitter's last response, not that list. iOS drops a pending response once a delegate handles it.

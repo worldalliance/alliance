@@ -105,6 +105,7 @@ export enum ExceptionEvent {
   UnregisterDeviceFailed = "unregister_device_failed",
   ContentNeedsNewerClient = "content_needs_newer_client",
   ContentUnrenderable = "content_unrenderable",
+  HandledPushTapsFailed = "handled_push_taps_failed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -215,4 +216,5 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   // Its own PostHog destination posts it to Slack once per piece of content a
   // day (unrenderable-content-recovery REQUIREMENTS, Alerts for broken content).
   [ExceptionEvent.ContentUnrenderable]: false,
+  [ExceptionEvent.HandledPushTapsFailed]: false,
 };
