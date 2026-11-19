@@ -103,10 +103,17 @@ export function checkExpression({
   source,
   scope,
   rule,
+  stored,
 }: {
   source: string | Expr;
   scope: Scope;
   rule: ResultRule;
+  /**
+   * Expressions already stored, which a change elsewhere can leave with a
+   * needless fallback that shouldn't block re-checking them: the root when
+   * `root`, and the named expressions whose ids are in `named`.
+   */
+  stored?: { root: boolean; named: ReadonlySet<string> };
 }): Result<CheckedExpression, Diagnostic[]> {
   checkScope(scope);
   const nameOf = (id: string) =>
@@ -196,6 +203,9 @@ export function checkExpression({
       checker,
       file,
       offset: at.offset,
+      reportNeedlessFallbacks: !(at.named === undefined
+        ? stored?.root
+        : stored?.named.has(at.named.id)),
     });
     at.excused = analysis.excused;
     diagnostics.push(

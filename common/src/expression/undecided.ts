@@ -79,9 +79,9 @@ type Analysis = {
  * value that isn't yes/no where yes/no is needed, a list or record compared,
  * shown in text, sought or sorted without a function, `<`, `>`, `<=` or `>=`
  * on anything but two numbers or two pieces of text, and `-` on anything but
- * a number. It points a comparison or lookup with `null` at `isUnknown`, and
- * reports a `??` whose left side can't be missing, in place of `tsc`'s TS2869
- * and TS2881.
+ * a number. It points a comparison or lookup with `null` at `isUnknown`. It
+ * excuses `tsc`'s TS2869 and TS2881 on a `??` whose left side can't be
+ * missing, and reports that `??` itself when `reportNeedlessFallbacks` is set.
  */
 export function analyze({
   tree,
@@ -89,6 +89,7 @@ export function analyze({
   checker,
   file,
   offset,
+  reportNeedlessFallbacks,
 }: {
   tree: Expr;
   source: ReadonlyMap<Expr, ts.Expression>;
@@ -96,6 +97,7 @@ export function analyze({
   file: ts.SourceFile;
   /** Where the expression's text starts in `file`. */
   offset: number;
+  reportNeedlessFallbacks: boolean;
 }): Analysis {
   const diagnostics: Diagnostic[] = [];
   const excused: Excused[] = [];
@@ -896,7 +898,9 @@ export function analyze({
             ) {
               excuse(left.right, NEVER_NULLISH);
             }
-            report(right, guarded ? GUARDED_FALLBACK : NEEDLESS_FALLBACK);
+            if (reportNeedlessFallbacks) {
+              report(right, guarded ? GUARDED_FALLBACK : NEEDLESS_FALLBACK);
+            }
           }
           restore(saved);
           if (!guarded && !narrowedLeft) {

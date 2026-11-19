@@ -2,6 +2,8 @@ import { R } from "../result";
 import { type NamedExpression } from "./catalog";
 import { checkExpression } from "./check";
 import {
+  GUARDED,
+  NEEDLESS,
   catalog,
   condition,
   named,
@@ -228,3 +230,66 @@ test.each([
     );
   },
 );
+
+describe("a stored expression isn't told a fallback can't change its result", () => {
+  const safe = named({ id: "s", name: "safe", text: "total ?? 0" });
+  const check = (
+    source: string,
+    stored?: { root: boolean; named: ReadonlySet<string> },
+  ) =>
+    checkExpression({
+      source,
+      scope: { catalog, named: [safe] },
+      rule: variable,
+      stored,
+    });
+
+  const root = { root: true, named: new Set<string>() };
+  test.each([
+    ["the root", "total ?? 0", root, NEEDLESS],
+    [
+      "a named expression",
+      "safe",
+      { root: false, named: new Set(["s"]) },
+      NEEDLESS,
+    ],
+    [
+      "the root, where an `isUnknown` guard makes one needless",
+      'isUnknown(state) ? false : ((state === "CA") ?? false)',
+      root,
+      GUARDED,
+    ],
+  ])("in %s", (_, source, stored, message) => {
+    expect(check(source)).toEqual(
+      R.failure([expect.objectContaining({ message })]),
+    );
+    expect(check(source, stored).ok).toBe(true);
+  });
+
+  test("but is still told its other problems", () => {
+    expect(check("((total && true) ?? false) ?? true", root)).toEqual(
+      R.failure([
+        expect.objectContaining({ message: "This needs a yes/no value." }),
+      ]),
+    );
+  });
+
+  test("but a stored root's named expressions still are", () => {
+    expect(check("safe", root)).toEqual(
+      R.failure([
+        expect.objectContaining({ message: NEEDLESS, namedExpression: "safe" }),
+      ]),
+    );
+  });
+
+  test("and so is an unstored root reading stored ones", () => {
+    expect(check("safe ?? 0", { root: false, named: new Set(["s"]) })).toEqual(
+      R.failure([
+        expect.objectContaining({
+          message: NEEDLESS,
+          namedExpression: undefined,
+        }),
+      ]),
+    );
+  });
+});
