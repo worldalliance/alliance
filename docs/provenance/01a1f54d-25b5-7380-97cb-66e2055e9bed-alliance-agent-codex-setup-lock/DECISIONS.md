@@ -1,5 +1,9 @@
 # Decisions
 
+## The lock covers app-server setup, not the version check
+
+`withCodexHomeLock` (`agents/desktop/src/main/agent/codex/home-lock.ts`) wraps creating the home, spawning the app-server, `initialize`, hook trust and opening the thread: the steps the codex-adapter task measured racing on a shared CODEX_HOME (`docs/provenance/01a1eb56-c1a4-7029-9df3-911550b88646-alliance-agent-codex-adapter/EVIDENCE.md`, "Overlapping launches"). `codex --version` touches no state, so it stays outside. The in-process `setupQueue` stays too: it orders one app's setups first-come first-served, which proper-lockfile's polling doesn't (agent decision).
+
 ## Lock timings
 
 The lock is a directory, `alliance-agent-setup.lock`, inside the home, with proper-lockfile's defaults: a holder refreshes it every 5 seconds and a lock untouched for 10 seconds counts as stale, so a crashed app frees it. A waiter polls every 500 ms for up to 60 seconds, twice the backend's 30-second setup timeout, and then fails with a message saying another Alliance agent may be setting Codex up there. proper-lockfile's own retries cover every error, so the helper polls itself and retries only `ELOCKED`: any other error, such as `EACCES`, fails at once with a message naming it. The 60 seconds bounds the whole wait rather than each holder: polling isn't fair, so a waiter behind one app's back-to-back setups can time out, where a bound per holder could leave it waiting indefinitely (agent decision).

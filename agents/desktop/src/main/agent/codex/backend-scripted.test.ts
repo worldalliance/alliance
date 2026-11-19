@@ -11,6 +11,7 @@ import {
 } from "../testing/capture-record";
 import { kinds, text, turn } from "../testing/turn";
 import { createCodexBackend } from "./backend";
+import * as homeLock from "./home-lock";
 import { codexConfigArgs } from "./process";
 import { RpcConnection } from "./rpc";
 import { captured, gitCheckout } from "./testing/capture";
@@ -362,7 +363,7 @@ describe("a scripted session", () => {
     await again.close();
   });
 
-  test("overlapping starts set up one app-server at a time, since they share one CODEX_HOME", async () => {
+  test("overlapping starts from two backends, as from two apps sharing one CODEX_HOME, set up one app-server at a time", async () => {
     replay(captured("version"), writeCapture([...opening, ...ending]));
     const steps: string[] = [];
     const request = RpcConnection.prototype.request;
@@ -377,12 +378,39 @@ describe("a scripted session", () => {
     const backend = createCodexBackend(cli);
     const sessions = await Promise.all([
       backend.start({ cwd: scratch }),
-      backend.start({ cwd: scratch }),
+      createCodexBackend(cli).start({ cwd: scratch }),
     ]);
     spy.mockRestore();
     const second = steps.indexOf("initialize sent", 1);
     expect(steps.slice(0, second)).toContain("thread/start answered");
     expect(steps.slice(second)).toEqual(steps.slice(0, second));
+    await Promise.all(sessions.map((session) => R.unwrap(session).close()));
+  });
+
+  test("overlapping starts from one backend queue for the lock rather than share its wait", async () => {
+    replay(captured("version"), writeCapture([...opening, ...ending]));
+    const steps: string[] = [];
+    const withCodexHomeLock = homeLock.withCodexHomeLock;
+    const spy = spyOn(homeLock, "withCodexHomeLock").mockImplementation(
+      async (...args) => {
+        steps.push("lock wanted");
+        const result = await withCodexHomeLock(...args);
+        steps.push("lock released");
+        return result;
+      },
+    );
+    const backend = createCodexBackend(cli);
+    const sessions = await Promise.all([
+      backend.start({ cwd: scratch }),
+      backend.start({ cwd: scratch }),
+    ]);
+    spy.mockRestore();
+    expect(steps).toEqual([
+      "lock wanted",
+      "lock released",
+      "lock wanted",
+      "lock released",
+    ]);
     await Promise.all(sessions.map((session) => R.unwrap(session).close()));
   });
 
