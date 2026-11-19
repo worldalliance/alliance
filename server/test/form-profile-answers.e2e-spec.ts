@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { Logger } from "@nestjs/common";
 import { milliseconds } from "date-fns";
 import sharp from "sharp";
 import { CreateActionDto } from "src/actions/dto/action.dto";
@@ -293,6 +294,26 @@ describe("Form answers saved to the member's account (e2e)", () => {
     expect(saved.phoneNumber).toBe("+14155551234");
     expect(saved.textByDefault).toBe(false);
     expect(ctx.app.get(MmsService).sendMms).not.toHaveBeenCalled();
+  });
+
+  it("keeps a phone answer it can't parse out of the account and the logs", async () => {
+    const logged: unknown[] = [];
+    for (const level of ["log", "warn", "error", "debug", "verbose"] as const) {
+      jest
+        .spyOn(Logger.prototype, level)
+        .mockImplementation((message: unknown) => {
+          logged.push(message);
+        });
+    }
+
+    await submit({
+      answers: { phone: "415555", "text-notifications": true },
+      status: 201,
+    });
+
+    expect((await member()).phoneNumber).toBeNull();
+    expect(ctx.app.get(MmsService).sendMms).not.toHaveBeenCalled();
+    expect(logged.join("\n")).not.toContain("415555");
   });
 
   it("texts the opt-in confirmation once the form turns texts on", async () => {

@@ -193,11 +193,10 @@ export class FormProfileAnswersService {
     const userUpdates: Partial<UpdateProfileDto> = {};
 
     if (phoneNumber) {
-      this.logger.log(`Extracted phone number: ${phoneNumber}`);
       const parsed = toE164(phoneNumber);
 
       if (R.isFailure(parsed)) {
-        this.logger.warn(`Could not parse phone number: ${phoneNumber}`);
+        this.logger.warn(`Could not parse user ${user.id}'s phone number`);
       } else if (await this.savePhoneNumber(user, parsed.value)) {
         await this.phoneOptInService.confirm(user.id);
       }
