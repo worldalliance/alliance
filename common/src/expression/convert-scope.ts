@@ -67,14 +67,36 @@ const SCOPE_MESSAGES: Record<NameRuleBreak, string> = {
   [NameRuleBreak.Taken]: "names two things in the scope",
 };
 
-export function checkScope(scope: Scope): void {
-  const names = [
-    ...scope.catalog.functions.map((fn) => fn.name),
-    ...scope.catalog.inputs.map((input) => input.id),
-    ...scope.named.map((named) => named.name),
+export enum ScopeHolder {
+  Function = "function",
+  Input = "input",
+  Named = "named",
+}
+
+/** Every name the scope holds, so each rule on them reads one list. */
+export function scopeNames({
+  catalog,
+  named,
+}: {
+  catalog: Scope["catalog"];
+  named: readonly { name: string }[];
+}): { name: string; holder: ScopeHolder }[] {
+  return [
+    ...catalog.functions.map((fn) => ({
+      name: fn.name,
+      holder: ScopeHolder.Function,
+    })),
+    ...catalog.inputs.map((input) => ({
+      name: input.id,
+      holder: ScopeHolder.Input,
+    })),
+    ...named.map((each) => ({ name: each.name, holder: ScopeHolder.Named })),
   ];
+}
+
+export function checkScope(scope: Scope): void {
   const taken = new Set<string>();
-  for (const name of names) {
+  for (const { name } of scopeNames(scope)) {
     const broken = nameRuleBreak(name, taken);
     if (broken !== undefined) {
       throw new Error(`\`${name}\` ${SCOPE_MESSAGES[broken]}.`);
