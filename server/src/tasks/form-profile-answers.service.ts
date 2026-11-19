@@ -3,15 +3,11 @@ import {
   type CityFieldValue,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { NodeEnv } from "@alliance/common/node-env";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { updateLive } from "src/datasources/soft-delete";
-import { EventType } from "src/eventlog/event-log.entity";
-import { SmsFailureKind } from "src/eventlog/event-messages";
-import { EventLogService } from "src/eventlog/eventlog.service";
 import { ImagesService } from "src/images/images.service";
 import { MmsService } from "src/mms/mms.service";
 import { NotificationSettingsService } from "src/notification-settings/notification-settings.service";
@@ -22,7 +18,6 @@ import { PhoneNumberTakenException } from "src/user/phone-number-taken.exception
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
 import { DataSource } from "typeorm";
-import { env } from "../config/env";
 
 function getFirstAutoExtractAnswer(
   schema: FormSchema,
@@ -125,7 +120,6 @@ export class FormProfileAnswersService {
   constructor(
     private userService: UserService,
     private mmsService: MmsService,
-    private eventLogService: EventLogService,
     private notificationSettingsService: NotificationSettingsService,
     private imagesService: ImagesService,
     private dataSource: DataSource,
@@ -205,19 +199,6 @@ export class FormProfileAnswersService {
           });
           if (mms) {
             await this.userService.setOptInMms(user.id, mms.id);
-          } else {
-            if (env("NODE_ENV") === NodeEnv.Production) {
-              await this.eventLogService.sendMessage({
-                type: EventType.SmsFailure,
-                payload: {
-                  kind: SmsFailureKind.OptInFailed,
-                  member: user,
-                  phoneNumber: normalized,
-                },
-                userId: user.id,
-                blob: { to: normalized },
-              });
-            }
           }
         }
       }

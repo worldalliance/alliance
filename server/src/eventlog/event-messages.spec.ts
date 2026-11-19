@@ -76,11 +76,6 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
       errorCode: 30003,
     },
     {
-      kind: SmsFailureKind.OptInFailed,
-      member: jane,
-      phoneNumber: "+15555550100",
-    },
-    {
       kind: SmsFailureKind.SignatureRejected,
       webhookUrl: "https://api.example.org/mms/inbound",
       rejections: 1,

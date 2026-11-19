@@ -7,7 +7,6 @@ import { AiDetectionModule } from "src/ai-detection/ai-detection.module";
 import { AuthModule } from "src/auth/auth.module";
 import { Guest } from "src/auth/entities/guest.entity";
 import { ContractModule } from "src/contract/contract.module";
-import { EventLogModule } from "src/eventlog/eventlog.module";
 import { ForumModule } from "src/forum/forum.module";
 import { ImagesModule } from "src/images/images.module";
 import { MmsModule } from "src/mms/mms.module";
@@ -51,7 +50,6 @@ import { TasksService } from "./tasks.service";
     ForumModule,
     ActionsModule,
     MmsModule,
-    EventLogModule,
     AiDetectionModule,
     ContractModule,
     AuthModule,

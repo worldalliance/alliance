@@ -152,7 +152,7 @@ describe("MmsService sendStaffText", () => {
     });
     expect(saved).toEqual([]);
     expect(sendEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: EventType.SmsFailure }),
+      expect.objectContaining({ type: EventType.SmsFailure, userId: 42 }),
     );
   });
 
@@ -184,7 +184,7 @@ describe("MmsService sendStaffText", () => {
       error: { kind: StaffSendFailureKind.Failed },
     });
     expect(sendEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: EventType.SmsFailure }),
+      expect.objectContaining({ type: EventType.SmsFailure, userId: 42 }),
     );
   });
 
@@ -201,7 +201,7 @@ describe("MmsService sendStaffText", () => {
       expect.stringContaining("timed out after 5ms"),
     );
     expect(sendEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: EventType.SmsFailure }),
+      expect.objectContaining({ type: EventType.SmsFailure, userId: 42 }),
     );
     const landedAt = Date.now();
     land({ sid: "SM2", status: "queued", errorCode: null, errorMessage: null });

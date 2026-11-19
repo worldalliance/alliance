@@ -249,6 +249,7 @@ describe("MmsService sendMms", () => {
         payload: expect.objectContaining({
           error: "sendMms timed out after 5ms",
         }),
+        userId: USER_ID,
       }),
     );
   });
