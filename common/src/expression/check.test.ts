@@ -422,7 +422,7 @@ describe("named expressions", () => {
     expect(result).toEqual(
       R.failure([
         {
-          message: "This uses an input that no longer exists.",
+          message: "This uses something that no longer exists.",
           start: 0,
           end: 9,
           namedExpression: "broken",
@@ -444,8 +444,7 @@ describe("named expressions", () => {
     };
     expect(problems("a", { ...variable, named: [a, b] })).toEqual([
       {
-        message:
-          "These named expressions refer to each other in a loop: a → b → a.",
+        message: "These formulas refer to each other in a loop: a → b → a.",
         at: "a",
       },
     ]);

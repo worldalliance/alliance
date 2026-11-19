@@ -210,10 +210,7 @@ class Converter {
     if (this.functions.has(name) || name === IS_MISSING) {
       return this.fail(node, `\`${name}\` is a function; call it with (…).`);
     }
-    return this.fail(
-      node,
-      `There's no input or named expression called \`${name}\`.`,
-    );
+    return this.fail(node, `Nothing here is called \`${name}\`.`);
   }
 
   private record(node: ts.ObjectLiteralExpression): Expr {

@@ -360,8 +360,8 @@ class Problems {
 
 const HOLDER_WORDS: Record<ScopeHolder, string> = {
   [ScopeHolder.Function]: "a function",
-  [ScopeHolder.Input]: "an input",
-  [ScopeHolder.Named]: "another named expression",
+  [ScopeHolder.Input]: "something formulas can read",
+  [ScopeHolder.Named]: "another formula",
 };
 
 function nameProblem(

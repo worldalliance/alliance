@@ -195,7 +195,7 @@ describe("errors and pending", () => {
     ["items[0].toString", "There's no field `toString` here."],
     [
       "mistyped",
-      "Input `mistyped` doesn't match its type: expected number, got text",
+      "`mistyped` doesn't match its type: expected number, got text",
     ],
     ["count / zero", "/ didn't give a finite number."],
     ["Math.log(-1)", "Math.log didn't give a finite number."],
@@ -241,16 +241,19 @@ describe("errors and pending", () => {
     expect(run(text, { overrides })).toEqual(
       R.failure({
         kind: FailureKind.Error,
-        message: `Input \`${id}\` doesn't match its type: ${problem}`,
+        message: `\`${id}\` doesn't match its type: ${problem}`,
       }),
     );
   });
 
   test.each<[Expr, string]>([
-    [{ kind: ExprKind.Input, id: "gone" }, "There's no input `gone`."],
+    [
+      { kind: ExprKind.Input, id: "gone" },
+      "This uses something that no longer exists.",
+    ],
     [
       { kind: ExprKind.Ref, id: "gone" },
-      "Named expression `gone` doesn't exist.",
+      "This uses a formula that no longer exists.",
     ],
     [
       { kind: ExprKind.Call, fn: "gone", args: [] },

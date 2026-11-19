@@ -72,10 +72,10 @@ test.each([
   ["class", "`class` can't be a name."],
   ["eval", "`eval` can't be a name."],
   ["__mine", "A name can't start with `__`."],
-  ["total", "`total` is already used by an input."],
+  ["total", "`total` is already used by something formulas can read."],
   ["double", "`double` is already used by a function."],
   ["isMissing", "`isMissing` is already used by the language."],
-  ["doubled", "`doubled` is already used by another named expression."],
+  ["doubled", "`doubled` is already used by another formula."],
 ])("the name %p is refused", (name, message) => {
   expect(problems([{ id: "c", name, source: "1" }])).toEqual([
     {
@@ -98,7 +98,7 @@ test("a saved tree's problem is located in its printed text", () => {
       text: "gone",
       diagnostics: [
         expect.objectContaining({
-          message: "This uses an input that no longer exists.",
+          message: "This uses something that no longer exists.",
           start: 0,
           end: 4,
         }),
@@ -176,7 +176,7 @@ test.each([
       text,
       diagnostics: [
         {
-          message: "This uses a named expression that no longer exists.",
+          message: "This uses a formula that no longer exists.",
           start: 0,
           end: text.length,
         },

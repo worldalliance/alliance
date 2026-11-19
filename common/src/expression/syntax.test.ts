@@ -178,7 +178,7 @@ describe("parse errors", () => {
       "`!` after a value isn't supported. Use isMissing(…) to test for a missing value.",
       "count!",
     ],
-    ["stat", "There's no input or named expression called `stat`.", "stat"],
+    ["stat", "Nothing here is called `stat`.", "stat"],
     ["nope()", "There's no function called `nope`.", "nope"],
     [
       "items.map(isMissing => isMissing(1))",

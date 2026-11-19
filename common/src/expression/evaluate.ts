@@ -33,6 +33,8 @@ import {
   BinaryOp,
   ExprKind,
   LAMBDA_ONLY_AS_ARGUMENT,
+  REMOVED_FORMULA,
+  REMOVED_INPUT,
   mathFunctionName,
   type Expr,
 } from "./tree";
@@ -181,7 +183,7 @@ class Evaluator {
       definition === undefined
         ? R.failure({
             kind: FailureKind.Error,
-            message: `There's no input \`${id}\`.`,
+            message: REMOVED_INPUT,
           })
         : R.flatMap(this.bindings.readInput(id), (value) => {
             const problem = mismatch(value, definition.type);
@@ -189,7 +191,7 @@ class Evaluator {
               ? R.success(value)
               : R.failure({
                   kind: FailureKind.Error,
-                  message: `Input \`${id}\` doesn't match its type: ${problem}`,
+                  message: `\`${id}\` doesn't match its type: ${problem}`,
                 });
           });
     this.inputs.set(id, read);
@@ -203,7 +205,7 @@ class Evaluator {
     if (named === undefined) {
       return R.failure({
         kind: FailureKind.Error,
-        message: `Named expression \`${id}\` doesn't exist.`,
+        message: REMOVED_FORMULA,
       });
     }
     if (this.evaluating.has(id)) {

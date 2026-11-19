@@ -23,7 +23,13 @@ import { checkScope, nameRuleBreak, scopeNames } from "./convert-scope";
 import { dependencyOrder, reads } from "./dependencies";
 import { parseExpression } from "./parse";
 import { printExpression, type PrintNames } from "./print";
-import { ExprKind, children, type Expr } from "./tree";
+import {
+  ExprKind,
+  REMOVED_FORMULA,
+  REMOVED_INPUT,
+  children,
+  type Expr,
+} from "./tree";
 import { analyze, type Excused } from "./undecided";
 import {
   NOT_ASSIGNABLE,
@@ -169,22 +175,18 @@ export function checkExpression({
   const order = dependencyOrder([root], scope.named);
   if (!order.ok) {
     return whole(
-      `These named expressions refer to each other in a loop: ${order.error.join(" → ")}.`,
+      `These formulas refer to each other in a loop: ${order.error.join(" → ")}.`,
     );
   }
   // Printed, a removed input would read whatever now has its name.
   const inputIds = new Set(scope.catalog.inputs.map((input) => input.id));
   const untypable = (tree: Expr, printed: string): Diagnostic | undefined => {
     const direct = reads(tree, []);
-    const gone = [...direct.named].some((id) => nameOf(id) === undefined)
-      ? "a named expression"
+    const message = [...direct.named].some((id) => nameOf(id) === undefined)
+      ? REMOVED_FORMULA
       : [...direct.inputs].some((id) => !inputIds.has(id))
-        ? "an input"
-        : undefined;
-    const message =
-      gone === undefined
-        ? scopeProblem(tree, nameOf)
-        : `This uses ${gone} that no longer exists.`;
+        ? REMOVED_INPUT
+        : scopeProblem(tree, nameOf);
     return message === undefined
       ? undefined
       : { message, start: 0, end: printed.length };
