@@ -49,12 +49,13 @@ The task's research into sources outside the repository, such as standards, docu
 
 ## SESSIONS.md
 
-One bullet per agent session that changed the repository for the task, code included. Before a session first makes such a change, including a session continuing an existing task, it adds its own bullet unless one is already there:
+One bullet per agent session that changed the repository for the task, code included. A spawned session, such as a review-loop fixer or another subagent, runs with `REVIEW_LOOP_ROLE` set (`(root)/agents/skills/subagents/SKILL.md`), so the snippet follows its id with that role, as in `- claude:<id> (subagent)`, and a reader looking for the user's own words can skip it. Before a session first makes such a change, including a session continuing an existing task, it adds its own bullet unless one is already there:
 
 ```bash
-line="- claude:${CLAUDE_CODE_SESSION_ID:?}"   # Codex: line="- codex:${CODEX_THREAD_ID:?}"
+id="claude:${CLAUDE_CODE_SESSION_ID:?}"   # Codex: id="codex:${CODEX_THREAD_ID:?}"
+role="${REVIEW_LOOP_ROLE:+ ($REVIEW_LOOP_ROLE)}"
 f=docs/provenance/<task-dir>/SESSIONS.md
-grep -qxF -- "$line" "$f" 2>/dev/null || echo "$line" >> "$f"
+grep -qE -- "^- $id( |\$)" "$f" 2>/dev/null || echo "- $id$role" >> "$f"
 ```
 
 Run the check your CLI's session-start hook runs as well. Codex's hooks run the main checkout's script, even from a worktree:
