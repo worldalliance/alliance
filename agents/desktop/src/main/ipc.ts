@@ -19,7 +19,8 @@ import {
   type RendererEvents,
 } from "../shared/ipc";
 import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
-import { type ClaudeCli, queryTimeoutMs } from "./agent/claude/process";
+import type { ClaudeCli } from "./agent/claude/process";
+import { queryTimeoutMs } from "./agent/cli-process";
 import type { AgentBackend, AgentSession } from "./agent/session";
 import { type ConversationStore, conversationTitle } from "./conversations";
 import { isNotFound } from "./fs-error";

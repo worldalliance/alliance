@@ -6,6 +6,7 @@ import path from "node:path";
 import { R } from "../../../../../../common/src/result";
 import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
 import type { AgentSession } from "../session";
+import { kinds, onFifthDelta, text, turn } from "../testing/turn";
 import { createClaudeBackend } from "./backend";
 import { claudeSessionArgs } from "./protocol";
 import { CaptureRecordKind, captured } from "./testing/capture";
@@ -15,7 +16,6 @@ import {
   stopReplay,
   writeCapture,
 } from "./testing/stub";
-import { onFifthDelta, text, turn } from "./testing/turn";
 
 const scratch = mkdtempSync(path.join(tmpdir(), "claude-backend-test-"));
 
@@ -25,8 +25,6 @@ function stubCaptures(...files: string[]): void {
 
 afterEach(stopReplay);
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
-
-const kinds = (events: AgentEvent[]) => events.map((event) => event.kind);
 
 async function startEditSession(): Promise<AgentSession> {
   stubCaptures(captured("edit-and-interrupt-session"));

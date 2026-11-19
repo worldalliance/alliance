@@ -9,7 +9,7 @@ const second: AgentEvent = {
 };
 
 function setup() {
-  const listeners = new SessionListeners("session-1");
+  const listeners = new SessionListeners(() => "session-1");
   const heard: AgentEvent[] = [];
   const record = (event: AgentEvent) => heard.push(event);
   return { listeners, heard, record };

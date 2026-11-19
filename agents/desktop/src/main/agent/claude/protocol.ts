@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
-import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
+import { AgentEventKind, type TurnEvent } from "../../../shared/agent-event";
 import { describeError } from "../../describe-error";
 import type { AgentMessage } from "../session";
 
@@ -23,8 +23,6 @@ export enum ClaudeLineKind {
   /** The CLI's init line, which it writes once it has read a turn's message. Claude Code keeps the session's transcript from then on. */
   MessageRead = "message_read",
 }
-
-export type TurnEvent = Exclude<AgentEvent, { kind: AgentEventKind.TurnEnded }>;
 
 export type ClaudeLine =
   | { kind: ClaudeLineKind.Events; events: TurnEvent[] }

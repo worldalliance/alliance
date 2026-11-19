@@ -12,6 +12,7 @@
   "include": [
     "electron.vite.config.ts",
     "playwright.config.ts",
+    "scripts",
     "src/main",
     "src/preload",
     "src/shared",
