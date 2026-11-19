@@ -59,6 +59,8 @@ Read 2026-11-18 at commit 94cc44094c.
 Checked 2026-11-18 by research subagents.
 
 - Expo, [downloading updates](https://docs.expo.dev/eas-update/download-updates/) (vendor documentation): lists checking when the app is foregrounded or at some interval as common patterns, with no advice against polling (rechecked 2026-11-19); downloading in the background is safe.
+- CodePush, [API docs](https://github.com/microsoft/react-native-code-push/blob/master/docs/api-js.md) (vendor documentation, retired 2025): `ON_NEXT_RESUME` applies an update only after `minimumBackgroundDuration` seconds in the background. `disallowRestart` queues every restart, that one included, until `allowRestart`, for components such as onboarding that "need to ensure that no end-user interruptions can occur during their lifetime"; `allowRestart` then restarts at once if one was requested (checked 2026-11-19).
+- Shorebird, [update strategies](https://docs.shorebird.dev/code-push/update-strategies/) (vendor recommendation): don't restart in the middle of what the user is doing; wait for the background or prompt.
 - Apple, [background updates](https://developer.apple.com/documentation/usernotifications/pushing-background-updates-to-your-app) (vendor documentation): silent pushes are low priority and not guaranteed, so they weren't used.
 
 ## Dependency behaviour

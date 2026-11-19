@@ -43,6 +43,7 @@ All agent decisions unless labelled otherwise.
 ## Getting updates to members sooner
 
 - Push checks: only a push the app shows triggers a check while open, not the silent task-badge push, which fires on every task change and would check on each. Pushes join the download already in flight (`downloadUpdateNow`), and pushes go through es-toolkit's `throttle` (`checkForUpdateOnPush`): the first checks at once, a steady stream checks about once a minute, and a check always follows the latest push, so a busy chat, with a push per message, doesn't poll, and an update published inside the minute is still found. This is the agent's reading of the requirement's "immediately". A launch from a tap checks once more right after expo-updates' own launch check; one extra request per such launch was judged cheaper than telling the launch tap apart.
+- `shouldResumeRestart` also refuses while a text input is focused, a backstop for a screen added later without a blocker, per Shorebird's advice against restarting mid-task (EVIDENCE.md).
 
 ## Deploy order
 
