@@ -69,7 +69,6 @@ type PasswordSession = {
   refresh_token: string;
   isAdmin: boolean;
   userId: number;
-  switchedDomainAt: Date | null;
 };
 
 @Injectable()
@@ -418,7 +417,6 @@ export class AuthService {
       refresh_token: await this.generateRefreshToken(user),
       isAdmin: user.admin,
       userId: user.id,
-      switchedDomainAt: user.switchedDomainAt,
     };
   }
 

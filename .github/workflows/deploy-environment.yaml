@@ -543,15 +543,15 @@ jobs:
 
       # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
       # certificate. Last, so a PostHog outage doesn't skip the checks above.
-      # Installed apps send analytics to the legacy domain.
       - name: Check PostHog proxy
         env:
-          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
+          LEGACY: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}
+          NEW: ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          for host in $HOSTS; do
-            echo "Checking PostHog proxy on $host..."
+          for probe in "$NEW 200" "$LEGACY 410"; do
+            read -r host expected <<< "$probe"
             status=$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "https://$host/events/static/array.js")
-            if [ "$status" != 200 ]; then echo "https://$host/events/static/array.js answered $status"; exit 1; fi
+            if [ "$status" != "$expected" ]; then echo "https://$host/events/static/array.js answered $status, expected $expected"; exit 1; fi
           done
           echo "PostHog proxy https ok"
 
@@ -574,15 +574,16 @@ jobs:
         id: config
         uses: ./.github/actions/deployed-config
 
-      # Installed apps call the API on the legacy domain.
       - name: Check API health
         env:
-          HOSTS: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }} ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
+          LEGACY: ${{ steps.config.outputs.LEGACY_DOMAIN_NAME }}
+          NEW: ${{ steps.config.outputs.NEW_DOMAIN_NAME }}
         run: |
-          for host in $HOSTS; do
-            echo "Checking API health on $host..."
-            status=$(curl --silent --show-error -o /dev/null -w '%{http_code}' "https://$host/api/")
-            if [ "$status" != 200 ]; then echo "https://$host/api/ answered $status"; exit 1; fi
+          image='/api/images/check.webp?check=1'
+          for probe in "$NEW /api/ 200 " "$LEGACY /api/ 410 " "$LEGACY $image 301 https://$NEW$image"; do
+            read -r host path expected location <<< "$probe"
+            got=$(curl --silent --show-error -o /dev/null -w '%{http_code} %{redirect_url}' "https://$host$path")
+            if [ "$got" != "$expected ${location:-}" ]; then echo "https://$host$path answered '$got', expected '$expected ${location:-}'"; exit 1; fi
           done
           echo "API health ok"
 

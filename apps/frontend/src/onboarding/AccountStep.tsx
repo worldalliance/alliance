@@ -4,7 +4,6 @@ import {
   REVIEW_SIGN_IN_FAILED_PARAM,
   REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
 } from "@alliance/common/review-account";
-import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 // eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
@@ -15,11 +14,6 @@ import {
 } from "@alliance/shared/lib/useInvite";
 import { useAppOrigin } from "@alliance/sharedweb/lib/appOrigin";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
-import {
-  newDomainUrl,
-  redirectAlreadyTried,
-  redirectToNewDomain,
-} from "@alliance/sharedweb/lib/domainMigration";
 import { oauthStartUrl } from "@alliance/sharedweb/lib/oauth";
 import { useStripSearchParams } from "@alliance/sharedweb/lib/useStripSearchParams";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -161,30 +155,6 @@ export function AccountStep({
     if (res.response.ok) {
       await onLogin();
       navigate(redirectAfterLogin);
-      return;
-    }
-    if (res.error?.message === ACCOUNT_MOVED_MESSAGE) {
-      const target = {
-        hostname: window.location.hostname,
-        pathname: window.location.pathname,
-        search: window.location.search,
-        hash: "",
-      };
-      if (redirectAlreadyTried(new Date())) {
-        setError(
-          <>
-            We tried to send you to {ALLIANCE_DOMAIN} and you ended up back
-            here, so we&apos;ve stopped trying.{" "}
-            <a className="underline" href={newDomainUrl(target)}>
-              Log in at {ALLIANCE_DOMAIN}
-            </a>
-            , and update the bookmark or saved password that brought you here.
-          </>,
-        );
-        setPending(false);
-        return;
-      }
-      redirectToNewDomain(target, new Date());
       return;
     }
     if (res.error?.message === REVIEW_ACCOUNT_MESSAGE) {

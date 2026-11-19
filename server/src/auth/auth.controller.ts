@@ -3,12 +3,7 @@ import { thrownStack } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import { REVIEW_SIGN_IN_FAILED_PARAM } from "@alliance/common/review-account";
 import {
-  ACCOUNT_MOVED_MESSAGE,
-  isLegacyAllianceHost,
-} from "@alliance/common/url";
-import {
   Body,
-  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -25,7 +20,6 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import {
   ApiBearerAuth,
-  ApiConflictResponse,
   ApiCookieAuth,
   ApiForbiddenResponse,
   ApiOkResponse,
@@ -92,9 +86,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
-  @ApiConflictResponse({
-    description: "Migrated account signing in on the legacy domain",
-  })
   @ApiForbiddenResponse({
     description: "Review account, which signs in on staging",
   })
@@ -105,22 +96,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
     this.clearHeaderModeCookies(res, signInDto.mode);
-    const { access_token, refresh_token, isAdmin, userId, switchedDomainAt } =
+    const { access_token, refresh_token, isAdmin, userId } =
       await this.authService.login(signInDto.email, signInDto.password);
-
-    // BACKCOMPAT(ALL-2152): remove once no build loaded on a legacy host before
-    // the cutover still signs in there. A migrated account's cookie session
-    // cannot follow it to the new domain, where every legacy-host page load
-    // sends it, so a cookie sign-in here only strands it. switchedDomainAt is
-    // frozen at the accounts that opted in before the cutover. Header sessions
-    // carry their tokens with them, so they sign in on either domain.
-    if (
-      MODE_USES_COOKIES[signInDto.mode] &&
-      switchedDomainAt !== null &&
-      isLegacyAllianceHost(req.get("host") ?? "")
-    ) {
-      throw new ConflictException(ACCOUNT_MOVED_MESSAGE);
-    }
 
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
     this.recordLogin({ userId, email: signInDto.email, isAdmin });
