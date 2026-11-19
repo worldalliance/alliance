@@ -26,13 +26,19 @@ import {
 } from "expo-router";
 import { ArrowRight } from "lucide-react-native";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Modal, useWindowDimensions, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../lib/AuthContext";
+import { colors } from "../../lib/style/colors";
 import { formBlockedView } from "../forms/FormElements";
 import { useMobileFormState } from "../forms/useMobileFormState";
 import WithdrawalModal from "../forms/WithdrawalModal";
@@ -44,6 +50,7 @@ import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete from "./TaskFlowComplete";
 import TaskFlowHeader, { TaskFlowWithdrawButton } from "./TaskFlowHeader";
 import TaskFlowScreen, { TaskFlowPage, TaskFlowTitle } from "./TaskFlowScreen";
+import TaskOutline from "./TaskOutline";
 
 const PROGRESS_TIMING = timingFor(flowMotion.progress);
 
@@ -271,19 +278,32 @@ export default function TaskFlow({
 
   return (
     <View>
-      <View className="flex-row items-center gap-x-3">
-        <FlowButton
-          kind={readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary}
-          onPress={flow.begin}
-          loading={!position.loaded}
-          title={flow.beginLabel}
-          iconRight={ArrowRight}
-          className="flex-1"
-        />
-        {withdraw && !placeWithdraw ? (
-          <TaskFlowWithdrawButton onPress={openWithdraw} />
-        ) : null}
-      </View>
+      {flow.outline === null ? (
+        <View className="items-center">
+          <ActivityIndicator color={colors.green} />
+        </View>
+      ) : (
+        <>
+          {flow.outline.length > 0 ? (
+            <TaskOutline steps={flow.outline} className="mb-6" />
+          ) : null}
+          <View className="flex-row items-center gap-x-3">
+            <FlowButton
+              kind={
+                readOnly ? FlowButtonKind.Secondary : FlowButtonKind.Primary
+              }
+              onPress={flow.begin}
+              loading={!position.loaded}
+              title={flow.beginLabel}
+              iconRight={ArrowRight}
+              className="flex-1"
+            />
+            {withdraw && !placeWithdraw ? (
+              <TaskFlowWithdrawButton onPress={openWithdraw} />
+            ) : null}
+          </View>
+        </>
+      )}
       {completedFormResponse ? (
         <TaskAnswersCard
           className="mt-4 border border-zinc-200"

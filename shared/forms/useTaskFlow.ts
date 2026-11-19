@@ -5,6 +5,7 @@ import {
   type FormValue,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getFallbackVisiblePageIndex,
@@ -19,11 +20,14 @@ import {
   buildFlowScreens,
   flowProgress,
   flowResumeIndex,
+  flowScreenHeading,
   visibleFlowScreenIndices,
   withoutEmptySections,
 } from "./flowScreens";
 import { type SubmitOutcome } from "./submitOutcome";
 import { type FlowPosition } from "./useFlowPosition";
+import { SourceHistoriesStatus } from "./useVariableSourceHistories";
+import { type VariableInputsGate } from "./variableInputsGate";
 
 export enum FlowStage {
   Closed = "closed",
@@ -54,6 +58,8 @@ export const TASK_FLOW_MODE_RULES: Record<
     readOnly: boolean;
     /** The member can withdraw from the action. */
     withdraws: boolean;
+    /** The card outlines the task's steps by their page headers. */
+    outline: boolean;
     beginLabel: string;
     /** The begin label once the member has started. */
     resumeLabel: string;
@@ -64,6 +70,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     records: true,
     readOnly: false,
     withdraws: true,
+    outline: true,
     beginLabel: taskFlow.begin,
     resumeLabel: taskFlow.continue,
     lastLabel: taskFlow.submit,
@@ -72,6 +79,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     records: false,
     readOnly: false,
     withdraws: false,
+    outline: true,
     beginLabel: taskFlow.begin,
     resumeLabel: taskFlow.continue,
     lastLabel: taskFlow.submit,
@@ -80,6 +88,7 @@ export const TASK_FLOW_MODE_RULES: Record<
     records: false,
     readOnly: true,
     withdraws: false,
+    outline: false,
     beginLabel: taskFlow.view,
     resumeLabel: taskFlow.view,
     lastLabel: taskFlow.done,
@@ -110,10 +119,16 @@ export type TaskFlowFormState = Pick<
   | "visiblePageIndices"
   | "isElementCurrentlyVisible"
   | "visibilitySettled"
+  | "visibilityFailed"
   | "validateFieldValue"
   | "effectiveFormData"
+  | "variableValues"
+  | "variablesError"
 > & {
   schema: FormSchema;
+  draftSettled: boolean;
+  draftFailed: boolean;
+  gate: VariableInputsGate;
   activeUserKey: string | undefined;
   currentPageIndex: number;
   setCurrentPageIndex: (pageIndex: number) => void;
@@ -121,6 +136,24 @@ export type TaskFlowFormState = Pick<
   validateScreenFields: (fields: AnyField[]) => Promise<boolean>;
   submit: () => Promise<SubmitOutcome>;
 };
+
+function outlineInputFailed(form: TaskFlowFormState): boolean {
+  if (form.draftFailed) return true;
+  // Variables report an error while their inputs load, so the gate goes first.
+  switch (form.gate.status) {
+    case SourceHistoriesStatus.Loading:
+      return false;
+    case SourceHistoriesStatus.Failed:
+    case SourceHistoriesStatus.SourceDeleted:
+      return true;
+    case SourceHistoriesStatus.Ready:
+      return form.variablesError !== null || form.visibilityFailed;
+    default:
+      throw new Error(
+        `unknown variable inputs status: ${form.gate satisfies never}`,
+      );
+  }
+}
 
 /**
  * The full-screen task flow's stage and screen, over the form's own answer
@@ -338,6 +371,43 @@ export function useTaskFlow(params: {
   }, [stranded]);
 
   const nextIsLast = nextIndex === null;
+  // A failure before the outline lists shows the begin row without one. One
+  // arriving after the input recovers would push begin down, so it stays empty
+  // for this mount. Once listed, the outline keeps its last listing while an
+  // input fails or reloads, since emptying it would move begin up.
+  const inputFailed = outlineInputFailed(form);
+  const [outlineFailed, setOutlineFailed] = useState(false);
+  const [listedOutline, setListedOutline] = useState<string[] | null>(null);
+  if (inputFailed && listedOutline === null && !outlineFailed) {
+    setOutlineFailed(true);
+  }
+  const inputsReady =
+    !inputFailed &&
+    !outlineFailed &&
+    form.gate.status === SourceHistoriesStatus.Ready &&
+    form.visibilitySettled &&
+    form.draftSettled;
+  const liveOutline = inputsReady
+    ? [
+        ...new Set(
+          visibleIndices.flatMap((index) => {
+            const heading = flowScreenHeading({ screen: screens[index], form });
+            const text = heading?.trim();
+            return text ? [text] : [];
+          }),
+        ),
+      ]
+    : null;
+  if (liveOutline && !isEqual(liveOutline, listedOutline)) {
+    setListedOutline(liveOutline);
+  }
+  const outline = (): string[] | null => {
+    // An outline that can't list anything is empty rather than pending, so the
+    // begin row doesn't wait on it.
+    if (!rules.outline || !screens.some((screen) => screen.heading)) return [];
+    if (outlineFailed || (inputFailed && listedOutline === null)) return [];
+    return liveOutline ?? listedOutline;
+  };
 
   const next = () =>
     advance(async () => {
@@ -355,6 +425,14 @@ export function useTaskFlow(params: {
     open: IS_OPEN[stage],
     screen: visibleScreen,
     screenIndex,
+    /**
+     * The distinct non-blank headers of the visible pages, null until
+     * visibility, variables and the draft settle. Empty when the mode shows no
+     * outline, no page has a header, or visibility, variables or a draft fetch
+     * fail before it lists; once listed, it keeps its last listing while they
+     * fail or reload.
+     */
+    outline: outline(),
     progressSaved:
       rules.records && stage === FlowStage.Screens && pastFirstStep,
     nextLabel: nextIsLast ? rules.lastLabel : taskFlow.next,

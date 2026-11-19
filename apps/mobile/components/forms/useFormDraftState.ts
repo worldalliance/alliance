@@ -10,6 +10,7 @@ import {
   restorablePublicAnswers,
   serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
+import { useDraftSettled } from "@alliance/shared/forms/useDraftSettled";
 import { useFormDraftSync } from "@alliance/shared/forms/useFormDraftSync";
 import { type useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -150,18 +151,24 @@ export function useFormDraftState({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
-    useFormDraftSync({
-      enabled: draftSyncEnabled,
-      formId,
-      actionId,
-      formSnapshotId,
-      answers: formData,
-      publicAnswers,
-      currentPageIndex,
-      edited,
-      onSaved: setSyncedUpdatedAt,
-    });
+  const {
+    serverDraft,
+    settled: serverDraftSettled,
+    failed: draftFailed,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+  } = useFormDraftSync({
+    enabled: draftSyncEnabled,
+    formId,
+    actionId,
+    formSnapshotId,
+    answers: formData,
+    publicAnswers,
+    currentPageIndex,
+    edited,
+    onSaved: setSyncedUpdatedAt,
+  });
 
   useEffect(() => {
     if (!draftSyncEnabled || edited || !serverDraft) return;
@@ -196,6 +203,12 @@ export function useFormDraftState({
     defaultValueMap,
     outputFieldIds,
   ]);
+
+  const draftSettled = useDraftSettled({
+    localDraftRead,
+    fetchEnabled: draftSyncEnabled,
+    fetchSettled: serverDraftSettled,
+  });
 
   useEffect(() => {
     if (readOnly || !persistKey || !draftLoaded.current) return;
@@ -268,6 +281,10 @@ export function useFormDraftState({
     setPublicAnswers,
     currentPageIndex,
     setCurrentPageIndex,
+    /** Set once the draft stored on this device, and one synced from another, have been restored, found absent, or failed to load. */
+    draftSettled,
+    /** Set while the synced draft's fetch has failed or waits offline. */
+    draftFailed,
     saveFailed,
     pauseSyncing,
     resumeSyncing,
