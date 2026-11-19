@@ -65,6 +65,13 @@ export function meta() {
   });
 }
 
+/** `//host` is a URL on another site, not a path. */
+function inAppPath(target: string | null, fallback: string): string {
+  return target?.startsWith("/") && !target.startsWith("//")
+    ? target
+    : fallback;
+}
+
 /** The closing CTA sends people back up to the form rather than off the page. */
 const ACCOUNT_ANCHOR = "#create-account";
 
@@ -102,10 +109,10 @@ const OnboardingPage = () => {
   });
   const { data: memberCount } = useAllianceMemberCount();
 
-  const redirectAfterLogin = useMemo(() => {
-    const target = searchParams.get("redirect");
-    return target?.startsWith("/") ? target : href("/tasks");
-  }, [searchParams]);
+  const redirectAfterLogin = useMemo(
+    () => inAppPath(searchParams.get("redirect"), href("/tasks")),
+    [searchParams],
+  );
 
   const draft = useInitialDraft(referralCode);
   const [email, setEmail] = useState(draft?.email ?? "");

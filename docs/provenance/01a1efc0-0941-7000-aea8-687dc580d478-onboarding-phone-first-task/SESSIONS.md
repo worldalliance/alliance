@@ -3,3 +3,4 @@
 - claude:17ea8fb4-ca1a-4b53-a510-07db9b2c0bb2
 - claude:9842e140-7345-46bf-bab7-20f5aca00990
 - claude:72a6e14a-3d0a-4006-a02a-4b6bcd5182dc
+- claude:8608ecb8-ec06-461e-8226-1309d97fe354

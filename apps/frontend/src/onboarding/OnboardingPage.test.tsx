@@ -168,6 +168,15 @@ test("a provider sign-in by a member who has entered it goes to the platform", a
   await waitFor(() => expect(pathname()).toBe("/tasks"));
 });
 
+test("a provider sign-in sends a member to no other site", async () => {
+  visit(
+    "/onboarding?google=signed_in&redirect=//elsewhere.example",
+    member(true),
+  );
+
+  await waitFor(() => expect(pathname()).toBe("/tasks"));
+});
+
 test("a provider signup walks on from the screen it lands on", async () => {
   visit("/onboarding?google=signed_up");
 
