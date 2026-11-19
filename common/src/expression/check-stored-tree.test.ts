@@ -293,3 +293,36 @@ describe("a stored expression isn't told a fallback can't change its result", ()
     );
   });
 });
+
+const gone: Expr = { kind: ExprKind.Ref, id: "gone" };
+
+test.each([
+  ["the name it had", gone, [], "amount", 6],
+  [
+    "its id once something else holds that name",
+    gone,
+    [named({ id: "live", name: "amount", text: "1" })],
+    "amount",
+    4,
+  ],
+  [
+    "its id inside a function with a parameter of that name",
+    { kind: ExprKind.Lambda, params: ["amount"], body: gone },
+    [],
+    "amount",
+    14,
+  ],
+  ["its id when that name is the language's", gone, [], "undefined", 4],
+] satisfies [string, Expr, NamedExpression[], string, number][])(
+  "a deleted named expression's reader shows %s",
+  (_, source, live, name, end) => {
+    expect(
+      checkExpression({
+        source,
+        scope: { catalog, named: live },
+        rule: variable,
+        deletedNames: new Map([["gone", name]]),
+      }),
+    ).toMatchObject(R.failure([{ start: 0, end }]));
+  },
+);
