@@ -79,6 +79,9 @@ export default {
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,
         },
+        // The share sheet's "Save Image" ends the app without it.
+        NSPhotoLibraryAddUsageDescription:
+          "The app saves images you download to your photos.",
       },
       appleTeamId: "629G87T7R5",
       associatedDomains: VARIANT.hosts.flatMap((host) => [
@@ -142,7 +145,7 @@ export default {
             "./assets/fonts/LibreBaskerville.ttf",
             "./assets/fonts/LibreBaskerville-Bold.ttf",
             "./assets/fonts/LibreBaskerville-SemiBold.ttf",
-            "./assets/fonts/BerlingskeSerif-Blk.ttf",
+            "./assets/fonts/LibreCaslonText-Bold.ttf",
           ],
         },
       ],
