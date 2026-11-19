@@ -1,4 +1,7 @@
-import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
+import {
+  NON_MEMBER_REPLY_WINDOW_DAYS,
+  STAFF_TEXT_MAX_LENGTH,
+} from "@alliance/common/staffText";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -10,6 +13,7 @@ import {
   Min,
   ValidateBy,
 } from "class-validator";
+import { User } from "src/user/entities/user.entity";
 import { type NeedsReplyMember, ReplyState } from "../mms-inbox.service";
 import { MmsMedia } from "../mms-media.entity";
 import {
@@ -18,7 +22,11 @@ import {
   MmsMediaStatus,
 } from "../mms-media.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "../mms-thread-event.entity";
-import { type MmsThreadView, THREAD_PAGE_SIZE } from "../mms-thread.service";
+import {
+  type MmsThreadView,
+  type NumberThread,
+  THREAD_PAGE_SIZE,
+} from "../mms-thread.service";
 import { Mms } from "../mms.entity";
 
 export class MmsMediaDto {
@@ -113,6 +121,16 @@ export class MmsMessageDto extends PickType(Mms, [
   }
 }
 
+const ApiPageMessages = () =>
+  ApiProperty({
+    type: () => MmsMessageDto,
+    isArray: true,
+    description: `Up to ${THREAD_PAGE_SIZE} texts, oldest first: the newest, or those sent before \`before\``,
+  });
+
+const ApiPageHasOlder = () =>
+  ApiProperty({ description: "Older texts can be loaded with `before`" });
+
 export class MmsThreadDto {
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
@@ -134,14 +152,10 @@ export class MmsThreadDto {
   })
   replyState: ReplyState;
 
-  @ApiProperty({
-    type: () => MmsMessageDto,
-    isArray: true,
-    description: `Up to ${THREAD_PAGE_SIZE} texts, oldest first: the newest, or those sent before \`before\``,
-  })
+  @ApiPageMessages()
   messages: MmsMessageDto[];
 
-  @ApiProperty({ description: "Older texts can be loaded with `before`" })
+  @ApiPageHasOlder()
   hasOlder: boolean;
 
   constructor(input: MmsThreadView) {
@@ -149,6 +163,65 @@ export class MmsThreadDto {
     this.textable = input.textable;
     this.optedOut = input.optedOut;
     this.replyState = input.replyState;
+    this.messages = input.messages.map((message) => new MmsMessageDto(message));
+    this.hasOlder = input.hasOlder;
+  }
+}
+
+export class ThreadMemberDto extends PickType(User, [
+  "id",
+  "name",
+  "timeZone",
+]) {
+  constructor(input: User) {
+    super();
+    this.id = input.id;
+    this.name = input.name;
+    this.timeZone = input.timeZone;
+  }
+}
+
+export class NumberThreadDto {
+  @ApiProperty()
+  threadId: string;
+
+  @ApiProperty({ description: "May be a short code or sender id" })
+  phoneNumber: string;
+
+  @ApiProperty({
+    type: () => ThreadMemberDto,
+    isArray: true,
+    description: "Non-deleted members with this number",
+  })
+  members: ThreadMemberDto[];
+
+  @ApiProperty({
+    description:
+      "False for a number staff can't text, such as a short code; opt-out and the reply window are reported separately in optedOut and replyWindowClosed",
+  })
+  textable: boolean;
+
+  @ApiProperty()
+  optedOut: boolean;
+
+  @ApiProperty({
+    description: `True for a number with no member that sent no text in the last ${NON_MEMBER_REPLY_WINDOW_DAYS} days`,
+  })
+  replyWindowClosed: boolean;
+
+  @ApiPageMessages()
+  messages: MmsMessageDto[];
+
+  @ApiPageHasOlder()
+  hasOlder: boolean;
+
+  constructor(input: NumberThread) {
+    this.threadId = input.thread.id;
+    this.phoneNumber = input.thread.phoneNumber;
+    this.members = input.members.map((member) => new ThreadMemberDto(member));
+    this.textable = input.textable;
+    this.optedOut = input.optedOut;
+    this.replyWindowClosed = input.replyWindowClosed;
     this.messages = input.messages.map((message) => new MmsMessageDto(message));
     this.hasOlder = input.hasOlder;
   }

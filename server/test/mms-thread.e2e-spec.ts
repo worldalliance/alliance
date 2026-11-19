@@ -358,7 +358,9 @@ describe("Staff texts (e2e)", () => {
 
     const { body } = await send(member.id, "Hello?").expect(400);
 
-    expect(body.message).toBe("This member's phone number isn't valid.");
+    expect(body.message).toBe(
+      "This phone number can't receive texts from staff.",
+    );
     expect((await thread(member.id)).body.textable).toBe(false);
   });
 

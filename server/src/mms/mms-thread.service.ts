@@ -1,14 +1,16 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import { isCanonicalE164 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
+import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { env } from "src/config/env";
 import { OptOutSource } from "src/mms/opt-out-source";
 import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
-import { In } from "typeorm";
+import { In, MoreThan } from "typeorm";
 import { z } from "zod";
 import {
   MmsInboxService,
@@ -17,6 +19,7 @@ import {
 } from "./mms-inbox.service";
 import { MmsMedia } from "./mms-media.entity";
 import { MmsNumberService } from "./mms-number.service";
+import { MmsThread } from "./mms-thread.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
 import { MmsService, type StaffSendFailure } from "./mms.service";
@@ -39,6 +42,16 @@ export type MmsThreadView = {
   hasOlder: boolean;
 };
 
+export type NumberThread = {
+  thread: MmsThread;
+  members: User[];
+  textable: boolean;
+  optedOut: boolean;
+  replyWindowClosed: boolean;
+  messages: Mms[];
+  hasOlder: boolean;
+};
+
 export const THREAD_PAGE_SIZE = 100;
 
 const THREAD_RELATIONS = {
@@ -50,6 +63,7 @@ const THREAD_RELATIONS = {
 export enum ThreadRefusal {
   MemberNotFound = "member_not_found",
   TextNotInThread = "text_not_in_thread",
+  ThreadNotFound = "thread_not_found",
 }
 
 export type ThreadMark = {
@@ -62,6 +76,7 @@ export enum StaffTextRefusal {
   NoPhoneNumber = "no_phone_number",
   InvalidNumber = "invalid_number",
   OptedOut = "opted_out",
+  ReplyWindowClosed = "reply_window_closed",
 }
 
 /** Staging's anonymized numbers pass there, so staff texting can be tried on
@@ -80,6 +95,8 @@ const textableNumber = (phoneNumber: string): boolean =>
 
 declare const textable: unique symbol;
 type TextableNumber = string & { readonly [textable]: true };
+declare const reachable: unique symbol;
+type ReachableNumber = TextableNumber & { readonly [reachable]: true };
 
 const checkTextable = (
   phoneNumber: string,
@@ -106,6 +123,8 @@ export class MmsThreadService {
     private readonly mmsRepository: Repository<Mms>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(MmsThread)
+    private readonly threadRepository: Repository<MmsThread>,
     private readonly mmsService: MmsService,
     private readonly mmsUnsubService: MmsUnsubService,
     private readonly mmsNumberService: MmsNumberService,
@@ -187,6 +206,32 @@ export class MmsThreadService {
     );
   }
 
+  async getNumberThread(params: {
+    threadId: string;
+    before?: number;
+  }): Promise<Result<NumberThread, ThreadRefusal>> {
+    const thread = await this.findThread(params.threadId);
+    if (!thread.ok) return thread;
+    const { phoneNumber } = thread.value;
+    const [page, members, optedOut] = await Promise.all([
+      this.threadPage(phoneNumber, params.before),
+      this.membersOn(phoneNumber),
+      this.mmsNumberService.optedOut(phoneNumber),
+    ]);
+    if (!page.ok) return page;
+    return R.success({
+      thread: thread.value,
+      members,
+      textable: textableNumber(phoneNumber),
+      optedOut,
+      replyWindowClosed: await this.replyWindowClosed({
+        phoneNumber,
+        members,
+      }),
+      ...page.value,
+    });
+  }
+
   private async threadPage(
     phoneNumber: string | null,
     before: number | undefined,
@@ -235,7 +280,29 @@ export class MmsThreadService {
     const { userId, ...rest } = params;
     const user = await this.findMember(userId);
     if (!user.ok) return user;
-    return this.sendStaffText({ ...rest, number: memberNumber(user.value) });
+    return this.sendStaffText({
+      ...rest,
+      to: await this.staffTextable(memberNumber(user.value)),
+    });
+  }
+
+  async sendInThread(params: {
+    threadId: string;
+    body: string;
+    adminId: number;
+  }): Promise<
+    Result<
+      Mms,
+      ThreadRefusal.ThreadNotFound | StaffTextRefusal | StaffSendFailure
+    >
+  > {
+    const { threadId, ...rest } = params;
+    const thread = await this.findThread(threadId);
+    if (!thread.ok) return thread;
+    return this.sendStaffText({
+      ...rest,
+      to: await this.replyableNumber(thread.value.phoneNumber),
+    });
   }
 
   async markOptedOut(params: {
@@ -250,13 +317,24 @@ export class MmsThreadService {
     });
   }
 
+  async markOptedOutInThread(params: {
+    threadId: string;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.ThreadNotFound | StaffTextRefusal>> {
+    const thread = await this.findThread(params.threadId);
+    if (!thread.ok) return thread;
+    return this.markNumberOptedOut({
+      number: checkTextable(thread.value.phoneNumber),
+      adminId: params.adminId,
+    });
+  }
+
   private async sendStaffText(params: {
-    number: Result<TextableNumber, StaffTextRefusal>;
+    to: Result<ReachableNumber, StaffTextRefusal>;
     body: string;
     adminId: number;
   }): Promise<Result<Mms, StaffTextRefusal | StaffSendFailure>> {
-    const { number, body, adminId } = params;
-    const to = await this.staffTextable(number);
+    const { to, body, adminId } = params;
     if (!to.ok) return to;
     const threadId = await this.mmsNumberService.ensureThread(to.value);
     const sent = await this.mmsService.sendStaffText({
@@ -317,11 +395,54 @@ export class MmsThreadService {
 
   private async staffTextable(
     number: Result<TextableNumber, StaffTextRefusal>,
-  ): Promise<Result<TextableNumber, StaffTextRefusal>> {
-    if (number.ok && (await this.mmsNumberService.optedOut(number.value))) {
+  ): Promise<Result<ReachableNumber, StaffTextRefusal>> {
+    if (!number.ok) return number;
+    if (await this.mmsNumberService.optedOut(number.value)) {
       return R.failure(StaffTextRefusal.OptedOut);
     }
+    // Safe: the number just passed the opt-out check, and only here brands one.
+    return R.success(number.value as ReachableNumber);
+  }
+
+  /** A member's number, or a non-member's that texted within the window.
+   * Opt-out is checked first, since staff can't wait it out as they can the
+   * window. */
+  private async replyableNumber(
+    phoneNumber: string,
+  ): Promise<Result<ReachableNumber, StaffTextRefusal>> {
+    const number = await this.staffTextable(checkTextable(phoneNumber));
+    if (!number.ok) return number;
+    const members = await this.membersOn(phoneNumber);
+    if (await this.replyWindowClosed({ phoneNumber, members })) {
+      return R.failure(StaffTextRefusal.ReplyWindowClosed);
+    }
     return number;
+  }
+
+  private async replyWindowClosed(params: {
+    phoneNumber: string;
+    members: User[];
+  }): Promise<boolean> {
+    const { phoneNumber, members } = params;
+    if (members.length > 0) return false;
+    const since = new Date(
+      Date.now() - milliseconds({ days: NON_MEMBER_REPLY_WINDOW_DAYS }),
+    );
+    return !(await this.mmsRepository.exists({
+      where: {
+        memberPhoneNumber: phoneNumber,
+        direction: MmsDirection.Inbound,
+        createdAt: MoreThan(since),
+      },
+    }));
+  }
+
+  /** Non-deleted members. */
+  private membersOn(phoneNumber: string): Promise<User[]> {
+    return this.userRepository.find({
+      where: { phoneNumber },
+      order: { id: "ASC" },
+    });
   }
 
   private async findMember(
@@ -329,5 +450,12 @@ export class MmsThreadService {
   ): Promise<Result<User, ThreadRefusal.MemberNotFound>> {
     const user = await this.userRepository.findOneBy({ id: userId });
     return user ? R.success(user) : R.failure(ThreadRefusal.MemberNotFound);
+  }
+
+  private async findThread(
+    threadId: string,
+  ): Promise<Result<MmsThread, ThreadRefusal.ThreadNotFound>> {
+    const thread = await this.threadRepository.findOneBy({ id: threadId });
+    return thread ? R.success(thread) : R.failure(ThreadRefusal.ThreadNotFound);
   }
 }

@@ -1562,10 +1562,11 @@ export type NeedsReplyMemberDto = {
     waitingSince: string;
 };
 
-/**
- * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
- */
-export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+export type ThreadMemberDto = {
+    id: number;
+    name: string;
+    timeZone: string | null;
+};
 
 export type MmsThreadEventKind = 'marked_handled' | 'marked_needs_reply';
 
@@ -1611,6 +1612,44 @@ export type MmsMessageDto = {
     media: Array<MmsMediaDto>;
 };
 
+export type NumberThreadDto = {
+    threadId: string;
+    /**
+     * May be a short code or sender id
+     */
+    phoneNumber: string;
+    /**
+     * Non-deleted members with this number
+     */
+    members: Array<ThreadMemberDto>;
+    /**
+     * False for a number staff can't text, such as a short code; opt-out and the reply window are reported separately in optedOut and replyWindowClosed
+     */
+    textable: boolean;
+    optedOut: boolean;
+    /**
+     * True for a number with no member that sent no text in the last 30 days
+     */
+    replyWindowClosed: boolean;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
+};
+
+export type SendStaffTextDto = {
+    body: string;
+};
+
+/**
+ * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+ */
+export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+
 export type MmsThreadDto = {
     phoneNumber: string | null;
     /**
@@ -1630,10 +1669,6 @@ export type MmsThreadDto = {
      * Older texts can be loaded with `before`
      */
     hasOlder: boolean;
-};
-
-export type SendStaffTextDto = {
-    body: string;
 };
 
 export type MarkThreadDto = {
@@ -8410,6 +8445,76 @@ export type MmsThreadNeedsReplyAdminResponses = {
 };
 
 export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+
+export type MmsThreadGetNumberThreadAdminData = {
+    body?: never;
+    path: {
+        threadId: string;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/by-id/{threadId}';
+};
+
+export type MmsThreadGetNumberThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetNumberThreadAdminError = MmsThreadGetNumberThreadAdminErrors[keyof MmsThreadGetNumberThreadAdminErrors];
+
+export type MmsThreadGetNumberThreadAdminResponses = {
+    200: NumberThreadDto;
+};
+
+export type MmsThreadGetNumberThreadAdminResponse = MmsThreadGetNumberThreadAdminResponses[keyof MmsThreadGetNumberThreadAdminResponses];
+
+export type MmsThreadSendInThreadAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}';
+};
+
+export type MmsThreadSendInThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendInThreadAdminError = MmsThreadSendInThreadAdminErrors[keyof MmsThreadSendInThreadAdminErrors];
+
+export type MmsThreadSendInThreadAdminResponses = {
+    201: MmsMessageDto;
+};
+
+export type MmsThreadSendInThreadAdminResponse = MmsThreadSendInThreadAdminResponses[keyof MmsThreadSendInThreadAdminResponses];
+
+export type MmsThreadMarkThreadOptedOutAdminData = {
+    body?: never;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/opt-out';
+};
+
+export type MmsThreadMarkThreadOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadOptedOutAdminError = MmsThreadMarkThreadOptedOutAdminErrors[keyof MmsThreadMarkThreadOptedOutAdminErrors];
+
+export type MmsThreadMarkThreadOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadOptedOutAdminResponse = MmsThreadMarkThreadOptedOutAdminResponses[keyof MmsThreadMarkThreadOptedOutAdminResponses];
 
 export type MmsThreadMediaAdminData = {
     body?: never;

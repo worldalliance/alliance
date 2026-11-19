@@ -1,3 +1,4 @@
+import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
 import {
   BadGatewayException,
   BadRequestException,
@@ -11,6 +12,7 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Query,
   Request,
@@ -19,6 +21,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiResponse,
@@ -33,6 +36,7 @@ import {
   MmsThreadDto,
   MmsThreadQueryDto,
   NeedsReplyMemberDto,
+  NumberThreadDto,
   SendStaffTextDto,
 } from "./dto/mms-thread.dto";
 import { MmsInboxService } from "./mms-inbox.service";
@@ -65,12 +69,20 @@ const refusalException: Record<
     new NotFoundException("Member not found"),
   [ThreadRefusal.TextNotInThread]: () =>
     new BadRequestException("That text isn't in this thread."),
+  [ThreadRefusal.ThreadNotFound]: () =>
+    new NotFoundException("Thread not found"),
   [StaffTextRefusal.NoPhoneNumber]: () =>
     new BadRequestException("This member has no phone number."),
   [StaffTextRefusal.InvalidNumber]: () =>
-    new BadRequestException("This member's phone number isn't valid."),
+    new BadRequestException(
+      "This phone number can't receive texts from staff.",
+    ),
   [StaffTextRefusal.OptedOut]: () =>
     new ConflictException("This number has opted out of texts."),
+  [StaffTextRefusal.ReplyWindowClosed]: () =>
+    new ConflictException(
+      `This number hasn't texted in the last ${NON_MEMBER_REPLY_WINDOW_DAYS} days, so staff can reply only once it texts again.`,
+    ),
   [MediaRefusal.NoCopy]: () => new NotFoundException(),
 };
 
@@ -90,6 +102,51 @@ export class MmsThreadController {
     return (await this.inboxService.needsReply()).map(
       (entry) => new NeedsReplyMemberDto(entry),
     );
+  }
+
+  @Get("by-id/:threadId")
+  @ApiOkResponse({ type: NumberThreadDto })
+  async getNumberThreadAdmin(
+    @Param("threadId", ParseUUIDPipe) threadId: string,
+    @Query() query: MmsThreadQueryDto,
+  ): Promise<NumberThreadDto> {
+    const thread = await this.threadService.getNumberThread({
+      threadId,
+      before: query.before,
+    });
+    if (!thread.ok) throw refusalException[thread.error]();
+    return new NumberThreadDto(thread.value);
+  }
+
+  @Post("by-id/:threadId")
+  @ApiCreatedResponse({ type: MmsMessageDto })
+  async sendInThreadAdmin(
+    @Param("threadId", ParseUUIDPipe) threadId: string,
+    @Body() body: SendStaffTextDto,
+    @Request() req: JwtRequest,
+  ): Promise<MmsMessageDto> {
+    const sent = await this.threadService.sendInThread({
+      threadId,
+      body: body.body,
+      adminId: req.user.sub,
+    });
+    if (sent.ok) return new MmsMessageDto(sent.value);
+    if (typeof sent.error === "string") throw refusalException[sent.error]();
+    throw sendFailureException(sent.error);
+  }
+
+  @Post("by-id/:threadId/opt-out")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async markThreadOptedOutAdmin(
+    @Param("threadId", ParseUUIDPipe) threadId: string,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    const marked = await this.threadService.markOptedOutInThread({
+      threadId,
+      adminId: req.user.sub,
+    });
+    if (!marked.ok) throw refusalException[marked.error]();
   }
 
   @Get("media/:id")
