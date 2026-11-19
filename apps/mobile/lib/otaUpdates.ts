@@ -1,6 +1,8 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { R, type Result } from "@alliance/common/result";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { milliseconds } from "date-fns";
+import { throttle } from "es-toolkit";
 import * as Updates from "expo-updates";
 import {
   type OtaFetchFailure,
@@ -44,3 +46,17 @@ async function fetchAvailableUpdate(): Promise<
 
 /** `fetchAvailableUpdate`, joining a download already under way. */
 export const downloadUpdateNow = shareInFlight(fetchAvailableUpdate);
+
+// A busy chat sends a push per message; one check a minute catches a new
+// update just as well.
+const PUSH_CHECK_GAP_MS = milliseconds({ minutes: 1 });
+
+/**
+ * `downloadUpdateNow` for a push, through es-toolkit's `throttle`: a steady
+ * stream of pushes checks about once per `PUSH_CHECK_GAP_MS`, and a check
+ * always follows the latest push.
+ */
+export const checkForUpdateOnPush = throttle(
+  () => void downloadUpdateNow(),
+  PUSH_CHECK_GAP_MS,
+);

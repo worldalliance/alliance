@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { notificationRoute } from "../lib/notificationRoute";
+import { checkForUpdateOnPush } from "../lib/otaUpdates";
 import { handledPushTaps, pushTapRunner } from "../lib/pushTaps";
 import { isVisualTestMode } from "../lib/visualTest";
 
@@ -99,19 +100,23 @@ export default function PushNotificationResponseHandler() {
       const data = response.notification.request.content.data as
         | PushData
         | undefined;
-      void taps.arrive(
-        {
-          tapId: response.notification.request.identifier,
-          cid: typeof data?.cid === "number" ? data.cid : undefined,
-          notificationId:
-            typeof data?.notificationId === "number"
-              ? data.notificationId
-              : undefined,
-          notificationSourceType: data?.notificationSourceType,
-          screen: data?.screen,
-        },
-        handlePendingNotificationAction,
-      );
+      void taps
+        .arrive(
+          {
+            tapId: response.notification.request.identifier,
+            cid: typeof data?.cid === "number" ? data.cid : undefined,
+            notificationId:
+              typeof data?.notificationId === "number"
+                ? data.notificationId
+                : undefined,
+            notificationSourceType: data?.notificationSourceType,
+            screen: data?.screen,
+          },
+          handlePendingNotificationAction,
+        )
+        .then((isNew) => {
+          if (isNew) checkForUpdateOnPush();
+        });
     },
     [handlePendingNotificationAction, taps],
   );

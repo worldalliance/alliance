@@ -54,6 +54,13 @@ Read 2026-11-18 at commit 94cc44094c.
 - `apps/frontend/src/lib/useFullLoadOnNewBuild.ts` already turns the next navigation into a full load once a new web build is deployed.
 - `shared/useTaskFlow.ts` holds the task flow's open state in memory, so a web reload closes it.
 
+## Applying updates quickly
+
+Checked 2026-11-18 by research subagents.
+
+- Expo, [downloading updates](https://docs.expo.dev/eas-update/download-updates/) (vendor documentation): lists checking when the app is foregrounded or at some interval as common patterns, with no advice against polling (rechecked 2026-11-19); downloading in the background is safe.
+- Apple, [background updates](https://developer.apple.com/documentation/usernotifications/pushing-background-updates-to-your-app) (vendor documentation): silent pushes are low priority and not guaranteed, so they weren't used.
+
 ## Dependency behaviour
 
 - expo-notifications 57.0.19, source read 2026-11-18, not run on a device: on Android, `NotificationManager.onNotificationResponseFromExtras` keeps a tap that started the app while no listener was registered in `pendingNotificationResponsesFromExtras`, and `onNotificationResponseReceived` keeps every tap that arrives with no listener registered in `pendingNotificationResponses`; neither list is ever cleared, and `addListener` replays every entry of both to each new listener (`android/.../notifications/NotificationManager.kt`). `clearLastNotificationResponse` clears only the emitter's last response, not that list. iOS drops a pending response once a delegate handles it.

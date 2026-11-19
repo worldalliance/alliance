@@ -17,8 +17,8 @@ const READY_MESSAGE = "A new version of Alliance is ready.";
 
 /**
  * Offers a restart into a downloaded update, whether expo-updates fetched it at
- * launch or a foreground check did while the app was running. Without the tap
- * it applies on the next cold start.
+ * launch or a later check did while the app was running. Without the tap it
+ * applies on the next cold start.
  */
 const OtaUpdateBanner = () => {
   const { isUpdatePending } = Updates.useUpdates();

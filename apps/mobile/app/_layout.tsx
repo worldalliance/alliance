@@ -23,6 +23,7 @@ import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
 import { notificationBehavior } from "../lib/notificationBehavior";
+import { checkForUpdateOnPush } from "../lib/otaUpdates";
 import { queryClient, refetchActions } from "../lib/queryClient";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
@@ -34,6 +35,7 @@ setNotificationHandler({
     notificationBehavior({
       data: notification.request.content.data,
       onTaskBadgePush: refetchActions,
+      onShownPush: checkForUpdateOnPush,
     }),
 });
 

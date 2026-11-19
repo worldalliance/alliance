@@ -40,3 +40,4 @@ Agent-proposed (research and second opinion), user-picked.
 
 - No gate that delays publishing content using a new kind until clients have adopted it: a feature has to be able to reach members within hours from a single push. User-originated.
 - The admin app deploys only after the mobile over-the-air update job for the same deploy has finished, so admins can't use a new kind before a mobile bundle that shows it exists. This orders publishing; it doesn't guarantee members have installed the update. Agent-proposed, user-approved.
+- Tapping a push notification, or receiving one while the app is open, checks for an over-the-air update immediately, ignoring the 15-minute limit on foreground checks. Applying the update still needs a restart. Agent-proposed, user-approved.
