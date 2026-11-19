@@ -1,7 +1,9 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { Mms } from "./mms.entity";
@@ -18,6 +20,12 @@ export class TwilioStatusWorker {
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
+  @WithoutOverlapping({ key: CronLease.TwilioStatus })
+  async processTwilioStatusOnSchedule() {
+    await this.processTwilioStatus();
+  }
+
+  /** Skips the lease; the schedule runs it through processTwilioStatusOnSchedule. */
   async processTwilioStatus() {
     if (!notifDeliveryEnabled()) {
       return;
@@ -26,6 +34,7 @@ export class TwilioStatusWorker {
       where: { status: "queued" },
     });
     for (const message of queuedMessages) {
+      assertLeaseHeld();
       try {
         await this.mmsService.refreshMmsData(message);
       } catch (error) {

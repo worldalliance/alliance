@@ -32,13 +32,15 @@ Every decorator sets an explicit `key` from the `CronLease` enum (`server/src/le
 
 ## 6. A lost lease stops the run through `assertLeaseHeld()` at each item
 
-`LocksContext` reads a module-level `AsyncLocalStorage`, so `assertLeaseHeld()` (`server/src/leases/cron-lease.ts`) can check the run's signal from any service the job calls, with no constructor changes. It throws the signal's reason (a `LockLostError`) at the start of each item: a member, plan, candidate, recipient, recognition batch or MMS item. Outside a leased run it does nothing, so tests, webhooks and the admin endpoint that call the same code are unaffected. The item already started finishes; the overlap hardening in ALL-2235 is what keeps that item safe against a run that took over.
+`LocksContext` reads a module-level `AsyncLocalStorage`, so `assertLeaseHeld()` (`server/src/leases/cron-lease.ts`) can check the run's signal from any service the job calls, with no constructor changes. It throws the signal's reason (a `LockLostError`) at the start of each item: a member, plan, candidate, action, recipient, recognition batch, MMS item or queued message. Outside a leased run it does nothing, so tests, webhooks and the admin endpoint that call the same code are unaffected. The item already started finishes; the overlap hardening in ALL-2235 is what keeps that item safe against a run that took over.
 
-Where a job has no loop of items, nothing checks: the participant-count reload (one publish, fenced by its computation).
+Where a job has no loop of items, nothing checks: daily stats (one insert, `orIgnore`), per-action stats and the participant-count reload (one publish, fenced by its computation). Invite-goal notifications send in parallel, so the check sits once before the sends.
 
 ## 7. Cron entry points that others call directly stay unleased
 
-The leased method is the one `@nestjs/schedule` calls. The waitlist sender's `run()` is called fire-and-forget by `WaitlistEmailService` and documents that it never rejects. A decorated method rejects when the store fails, so `run()` stays undecorated and catches, and calls a decorated private `sendDueLeased()`.
+The leased method is the one `@nestjs/schedule` calls. Where tests or other code call the job's method directly, the cron gets a thin leased entry point (`…OnSchedule`) and the method stays unleased: daily stats, per-action stats (also called by the admin endpoint in `analytics.controller.ts`), invite-goal notifications and the Twilio poll. The overlap tests of ALL-2239 run those methods twice at once to prove the writes are conflict-safe; behind a lease, the second run would skip and the tests would prove nothing.
+
+The waitlist sender's `run()` is called fire-and-forget by `WaitlistEmailService` and documents that it never rejects. A decorated method rejects when the store fails, so `run()` stays undecorated and catches, and calls a decorated private `sendDueLeased()`.
 
 ## 8. `logDivergences` drops its lock
 

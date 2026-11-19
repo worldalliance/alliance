@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import { inviteAcceptedSql } from "src/user/invite-claim";
 import { Not, type Repository } from "typeorm";
@@ -17,6 +19,7 @@ export class ActionStatsService {
   ) {}
 
   @Cron(CronExpression.EVERY_5_MINUTES)
+  @WithoutOverlapping({ key: CronLease.ActionStatRecount })
   async computeAllActionStats() {
     const actions = await this.actionRepository
       .find({
@@ -30,6 +33,7 @@ export class ActionStatsService {
       );
 
     for (const action of actions) {
+      assertLeaseHeld();
       await this.computeCustomActionStats(action);
     }
   }

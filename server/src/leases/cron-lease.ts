@@ -15,6 +15,11 @@ export enum CronLease {
   TaskBadgeSweep = "cron:task-badge-sweep",
   ReloadUsersJoined = "cron:reload-users-joined",
   MmsMediaCopy = "cron:mms-media-copy",
+  DailyStats = "cron:daily-stats",
+  ActionStatsAnalytics = "cron:action-stats-analytics",
+  ActionStatRecount = "cron:action-stat-recount",
+  AmbassadorInviteGoals = "cron:ambassador-invite-goals",
+  TwilioStatus = "cron:twilio-status",
 }
 
 const locksContext = new LocksContext();
