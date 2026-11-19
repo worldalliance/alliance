@@ -9,7 +9,6 @@ import { Guest } from "src/auth/entities/guest.entity";
 import { ContractModule } from "src/contract/contract.module";
 import { ForumModule } from "src/forum/forum.module";
 import { ImagesModule } from "src/images/images.module";
-import { MmsModule } from "src/mms/mms.module";
 import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { User } from "src/user/entities/user.entity";
@@ -49,7 +48,6 @@ import { TasksService } from "./tasks.service";
     UserModule,
     ForumModule,
     ActionsModule,
-    MmsModule,
     AiDetectionModule,
     ContractModule,
     AuthModule,

@@ -15,12 +15,14 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { MmsService } from "src/mms/mms.service";
+import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { TasksModule } from "src/tasks/tasks.module";
 import { User } from "src/user/entities/user.entity";
 import { Readable } from "stream";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
+import { stubSavedSend } from "./opt-in-fixtures";
 
 const UPLOAD_KEY = "1700000000000-upload.webp";
 
@@ -145,6 +147,10 @@ describe("Form answers saved to the member's account (e2e)", () => {
       textByDefault: true,
       emailByDefault: true,
     });
+    await ctx.dataSource.query(
+      `UPDATE "user" SET "optInMmsId" = NULL WHERE id = $1`,
+      [ctx.testUserId],
+    );
   });
 
   afterEach(async () => {
@@ -287,6 +293,26 @@ describe("Form answers saved to the member's account (e2e)", () => {
     expect(saved.phoneNumber).toBe("+14155551234");
     expect(saved.textByDefault).toBe(false);
     expect(ctx.app.get(MmsService).sendMms).not.toHaveBeenCalled();
+  });
+
+  it("texts the opt-in confirmation once the form turns texts on", async () => {
+    await userRepo.update(ctx.testUserId, { textByDefault: false });
+    const sendMms = stubSavedSend(ctx);
+
+    await submit({
+      answers: { phone: "+14155551234", "text-notifications": true },
+      status: 201,
+    });
+
+    expect(sendMms).toHaveBeenCalledTimes(1);
+    expect(sendMms).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "+14155551234", body: welcomeMessage }),
+    );
+    const saved = await userRepo.findOneOrFail({
+      where: { id: ctx.testUserId },
+      relations: { optInMms: true },
+    });
+    expect(saved.optInMms).not.toBeNull();
   });
 
   it("reads the answered one of two checkboxes for the same setting", async () => {
