@@ -19,10 +19,10 @@ import {
   withoutListBrand,
 } from "./check-world";
 import { convertExpression } from "./convert";
-import { checkScope } from "./convert-scope";
+import { checkScope, nameRuleBreak, scopeNames } from "./convert-scope";
 import { dependencyOrder, reads } from "./dependencies";
 import { parseExpression } from "./parse";
-import { printExpression } from "./print";
+import { printExpression, type PrintNames } from "./print";
 import { ExprKind, children, type Expr } from "./tree";
 import { analyze, type Excused } from "./undecided";
 import {
@@ -93,6 +93,36 @@ type Placed = {
 };
 
 /**
+ * The names `checkExpression` prints a tree with, so a caller showing that
+ * tree's diagnostics prints the text they are located in.
+ */
+export function printNames({
+  scope,
+  deletedNames,
+}: {
+  scope: Scope;
+  deletedNames?: ReadonlyMap<string, string>;
+}): PrintNames {
+  // A deleted named expression prints only in text the check rejects, which
+  // nothing reads back; a name the name rule rejects here would read as
+  // something else.
+  const held = scopeNames(scope).map(({ name }) => name);
+  const deletedName = (id: string, params: ReadonlySet<string>) => {
+    const name = deletedNames?.get(id);
+    return name !== undefined &&
+      nameRuleBreak(name, new Set([...held, ...params])) === undefined
+      ? name
+      : undefined;
+  };
+  return {
+    refName: (id, params) =>
+      scope.named.find((named) => named.id === id)?.name ??
+      deletedName(id, params) ??
+      id,
+  };
+}
+
+/**
  * The save check: `tsc` over declarations generated from the catalog, with the
  * expression's named expressions declared before it, plus the analysis that
  * requires a fallback wherever a result can be undecided. A named expression
@@ -103,27 +133,28 @@ export function checkExpression({
   source,
   scope,
   rule,
+  stored,
+  deletedNames,
 }: {
   source: string | Expr;
   scope: Scope;
   rule: ResultRule;
+  /**
+   * Expressions already stored, which a change elsewhere can leave with a
+   * needless fallback that shouldn't block re-checking them: the root when
+   * `root`, and the named expressions whose ids are in `named`.
+   */
+  stored?: { root: boolean; named: ReadonlySet<string> };
+  /**
+   * Old names of deleted named expressions, by id, so a reference to one reads
+   * by its name wherever that name wouldn't read as something else.
+   */
+  deletedNames?: ReadonlyMap<string, string>;
 }): Result<CheckedExpression, Diagnostic[]> {
-  const internal = [
-    ...scope.catalog.inputs.map((input) => input.id),
-    ...scope.catalog.functions.map((fn) => fn.name),
-    ...scope.named.map((named) => named.name),
-  ].find((name) => name.startsWith(INTERNAL_PREFIX));
-  if (internal !== undefined) {
-    throw new Error(
-      `\`${internal}\` starts with \`${INTERNAL_PREFIX}\`, which the save check keeps for its own names.`,
-    );
-  }
   checkScope(scope);
   const nameOf = (id: string) =>
     scope.named.find((named) => named.id === id)?.name;
-  // A deleted named expression prints as its id only in text that `untypable`
-  // below rejects, which nothing reads back.
-  const names = { refName: (id: string) => nameOf(id) ?? id };
+  const names = printNames({ scope, deletedNames });
   const parsed =
     typeof source === "string"
       ? parseExpression(source, scope)
@@ -206,6 +237,9 @@ export function checkExpression({
       checker,
       file,
       offset: at.offset,
+      reportNeedlessFallbacks: !(at.named === undefined
+        ? stored?.root
+        : stored?.named.has(at.named.id)),
     });
     at.excused = analysis.excused;
     diagnostics.push(

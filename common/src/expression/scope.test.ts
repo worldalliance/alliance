@@ -4,6 +4,7 @@ import { scope } from "./syntax-test-support";
 
 describe("scope check", () => {
   test.each([
+    "",
     "true",
     "null",
     "this",
@@ -45,6 +46,19 @@ describe("scope check", () => {
       );
     },
   );
+
+  test("throws for an input whose name starts with `__`", () => {
+    const internal: Scope = {
+      ...scope,
+      catalog: {
+        ...scope.catalog,
+        inputs: [{ id: "__x", label: "x", type: { kind: TypeKind.String } }],
+      },
+    };
+    expect(() => parseExpression("1", internal)).toThrow(
+      "`__x` starts with `__`, which the save check keeps for its own names.",
+    );
+  });
 
   test.each(["Math", "isUnknown", "undefined", "lookup", "isCalifornia"])(
     "throws for an input called `%s`",

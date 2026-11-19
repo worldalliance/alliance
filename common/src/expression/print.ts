@@ -209,20 +209,24 @@ export type PrintNames = {
   /**
    * The current name of a named expression; the printer throws for an id
    * with none, since printing the id would read back as another name. A
-   * name that a function parameter around the reference also has would print
-   * a read of the parameter, so callers rule that out.
+   * name in `params`, the function parameters around the reference, would
+   * print a read of the parameter, so callers rule that out.
    */
-  refName: (id: string) => string | undefined;
+  refName: (id: string, params: ReadonlySet<string>) => string | undefined;
 };
 
 /** Prints a tree in its canonical layout, which is what admins see as text. */
 export function printExpression(expr: Expr, names: PrintNames): string {
-  return render(toDoc(expr, names));
+  return render(toDoc(expr, names, new Set()));
 }
 
-function toDoc(expr: Expr, names: PrintNames): Doc {
+function toDoc(
+  expr: Expr,
+  names: PrintNames,
+  params: ReadonlySet<string>,
+): Doc {
   const at = (child: Expr, minimum: number): Doc => {
-    const doc = toDoc(child, names);
+    const doc = toDoc(child, names, params);
     return precedence(child) < minimum ? ["(", doc, ")"] : doc;
   };
   const list = ({
@@ -248,19 +252,26 @@ function toDoc(expr: Expr, names: PrintNames): Doc {
     exprs.map((item, index) => {
       const closed = index < exprs.length - 1 && endsInLessThan(item);
       if (item.kind === ExprKind.Lambda) return lambda(item, { closed });
-      return closed ? ["(", toDoc(item, names), ")"] : at(item, CONDITIONAL);
+      return closed
+        ? ["(", toDoc(item, names, params), ")"]
+        : at(item, CONDITIONAL);
     });
   const lambda = (
     expr: Extract<Expr, { kind: ExprKind.Lambda }>,
     { closed }: { closed: boolean },
   ): Doc => {
-    const params =
+    const head =
       expr.params.length === 1 ? expr.params[0] : `(${expr.params.join(", ")})`;
-    const body =
-      closed || startsWithRecord(expr.body)
-        ? ["(", toDoc(expr.body, names), ")"]
-        : at(expr.body, CONDITIONAL);
-    return [params, " => ", body];
+    const body = toDoc(expr.body, names, new Set([...params, ...expr.params]));
+    return [
+      head,
+      " => ",
+      closed ||
+      startsWithRecord(expr.body) ||
+      precedence(expr.body) < CONDITIONAL
+        ? ["(", body, ")"]
+        : body,
+    ];
   };
   const args = (exprs: readonly Expr[]) =>
     list({ open: "(", items: items(exprs), close: ")" });
@@ -271,7 +282,7 @@ function toDoc(expr: Expr, names: PrintNames): Doc {
     case ExprKind.Input:
       return expr.id;
     case ExprKind.Ref: {
-      const name = names.refName(expr.id);
+      const name = names.refName(expr.id, params);
       if (name === undefined) {
         throw new Error(`no name for named expression ${expr.id}`);
       }
@@ -306,7 +317,7 @@ function toDoc(expr: Expr, names: PrintNames): Doc {
         ...expr.parts.flatMap((part, index) => [
           escapeTemplate(expr.quasis[index]),
           "${",
-          toDoc(part, names),
+          toDoc(part, names, params),
           "}",
         ]),
         escapeTemplate(expr.quasis[expr.parts.length]),
@@ -347,7 +358,7 @@ function toDoc(expr: Expr, names: PrintNames): Doc {
       return [
         target(expr.target, at),
         expr.optional ? "?.[" : "[",
-        toDoc(expr.index, names),
+        toDoc(expr.index, names, params),
         "]",
       ];
     case ExprKind.Call:
