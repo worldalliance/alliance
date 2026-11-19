@@ -12,22 +12,24 @@ import { pressOnce } from "../press-once";
 const idleHint = "Press Enter to send, Shift+Enter for a new line.";
 const replying = Symbol("replying");
 
-const stopButton: Record<
+const stopButton = (
+  agentName: string,
+): Record<
   TurnState,
   { label: string; stopping: boolean; busy: string } | undefined
-> = {
+> => ({
   [TurnState.Idle]: undefined,
   [TurnState.Running]: {
     label: "Stop",
     stopping: false,
-    busy: "Claude is still replying. Wait for it to finish, or stop it.",
+    busy: `${agentName} is still replying. Wait for it to finish, or stop it.`,
   },
   [TurnState.Stopping]: {
     label: "Stopping…",
     stopping: true,
-    busy: "Claude is stopping. Send your message once it has stopped.",
+    busy: `${agentName} is stopping. Send your message once it has stopped.`,
   },
-};
+});
 
 /** The box's text, kept by the caller so it outlives the box. */
 export type Draft = {
@@ -37,6 +39,7 @@ export type Draft = {
 
 /** onSend returns whether the message went, so a refused one returns to the box. */
 export function Composer({
+  agentName,
   draft,
   turn,
   onSend,
@@ -44,6 +47,7 @@ export function Composer({
   pendingLabel,
   boxRef,
 }: {
+  agentName: string;
   draft: Draft;
   turn: TurnState;
   /** Replaces Send while the previous send is still being accepted, such as "Starting…". */
@@ -54,7 +58,7 @@ export function Composer({
 }) {
   const { text } = draft;
   const [problem, setProblem] = useState<string | typeof replying>();
-  const stop = stopButton[turn];
+  const stop = stopButton(agentName)[turn];
   if (!stop && problem === replying) setProblem(undefined);
   const shownProblem = problem === replying ? stop?.busy : problem;
   const inputId = useId();
@@ -91,7 +95,7 @@ export function Composer({
 
   return (
     <form className="composer">
-      <label htmlFor={inputId}>Message Claude</label>
+      <label htmlFor={inputId}>Message {agentName}</label>
       <textarea
         id={inputId}
         rows={3}

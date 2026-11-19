@@ -16,6 +16,7 @@ import {
   formatCapture,
 } from "../src/main/agent/claude/testing/capture";
 import { stubCapturesVariable } from "../src/main/agent/claude/testing/stub";
+import { codexConfigArgs } from "../src/main/agent/codex/process";
 import { captured as codexCaptured } from "../src/main/agent/codex/testing/capture";
 import { stubCapturesVariable as codexCapturesVariable } from "../src/main/agent/codex/testing/stub";
 import { executableVariable } from "../src/main/cli-executable";
@@ -47,6 +48,21 @@ export const authStatusCapture = (loggedIn: boolean): string =>
     name: `auth-status-${loggedIn}`,
     args: authStatusArgs,
     records: authStatusReply(loggedIn),
+  });
+
+/** What `codex login status` writes, exiting 1 when signed out. */
+export const codexLoginStatusCapture = (signedIn: boolean): string =>
+  writeTestCapture({
+    name: `codex-login-status-${signedIn}`,
+    args: [...codexConfigArgs, "login", "status"],
+    records: [
+      { kind: CaptureRecordKind.StdinClosed },
+      {
+        kind: CaptureRecordKind.Stderr,
+        text: signedIn ? "Logged in using ChatGPT\n" : "Not logged in\n",
+      },
+      { kind: CaptureRecordKind.Exit, code: signedIn ? 0 : 1 },
+    ],
   });
 
 export async function launch(

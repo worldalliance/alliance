@@ -1,4 +1,15 @@
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useId,
+} from "react";
+import {
+  type AgentKind,
+  agentKinds,
+  agentWords,
+  defaultAgent,
+} from "../../../shared/agent-kind";
 import type { IpcResult } from "../../../shared/ipc";
 import { agent } from "../agent";
 import { TurnState } from "../chat-state";
@@ -7,6 +18,7 @@ import { Composer, type Draft } from "./Composer";
 /** Kept by the caller, so a start still pending when the user comes back shows as pending. */
 export type NewConversation = {
   chosen?: string;
+  agent: AgentKind;
   starting: boolean;
   problem?: string;
 };
@@ -31,6 +43,8 @@ export function StartView({
   }) => Promise<IpcResult<void>>;
 }) {
   const folder = state.chosen ?? defaultFolder;
+  const { name } = agentWords[state.agent];
+  const choiceGroup = useId();
 
   const chooseFolder = async () => {
     if (state.starting) return;
@@ -48,7 +62,7 @@ export function StartView({
     if (!folder) {
       onChange((all) => ({
         ...all,
-        problem: "Choose a folder for Claude to work in first.",
+        problem: `Choose a folder for ${name} to work in first.`,
       }));
       return false;
     }
@@ -56,6 +70,7 @@ export function StartView({
     const started = await onStart({ folder, text });
     onChange((all) => ({
       ...all,
+      ...(started.ok && { agent: defaultAgent }),
       starting: false,
       problem: started.ok
         ? undefined
@@ -68,6 +83,29 @@ export function StartView({
     <>
       <div className="start">
         <h1>New conversation</h1>
+        <fieldset className="agent-choice">
+          <legend>Agent</legend>
+          {agentKinds.map((kind) => (
+            <label key={kind}>
+              <input
+                type="radio"
+                name={choiceGroup}
+                value={kind}
+                checked={state.agent === kind}
+                aria-disabled={state.starting || undefined}
+                onChange={() => {
+                  if (!state.starting)
+                    onChange((all) => ({
+                      ...all,
+                      agent: kind,
+                      problem: undefined,
+                    }));
+                }}
+              />
+              {agentWords[kind].name}
+            </label>
+          ))}
+        </fieldset>
         <div className="folder">
           <span className="folder-label">Folder</span>
           <span className="folder-path">{folder ?? "No folder chosen"}</span>
@@ -79,7 +117,7 @@ export function StartView({
             {folder ? "Change folder…" : "Choose folder…"}
           </button>
         </div>
-        <p className="hint">Claude can read and change files in this folder.</p>
+        <p className="hint">{name} can read and change files in this folder.</p>
         {state.problem && (
           <p className="error" role="alert">
             {state.problem}
@@ -90,6 +128,7 @@ export function StartView({
         <div className="not-open">{signInPanel}</div>
       ) : (
         <Composer
+          agentName={name}
           draft={draft}
           turn={TurnState.Idle}
           pendingLabel={state.starting ? "Starting…" : undefined}

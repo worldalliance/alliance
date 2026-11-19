@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { R } from "../../../../../common/src/result";
-import { AgentKind } from "../../shared/agent-kind";
+import { AgentKind, agentWords, defaultAgent } from "../../shared/agent-kind";
 import type { Conversation, IpcResult } from "../../shared/ipc";
 import { agent } from "./agent";
 import { useAgentAccess } from "./agent-access";
@@ -63,6 +63,7 @@ export function App() {
   const [newConversation, setNewConversation] = useState<NewConversation>(
     () => ({
       chosen: localStorage.getItem(chosenFolderKey) ?? undefined,
+      agent: defaultAgent,
       starting: false,
     }),
   );
@@ -126,7 +127,9 @@ export function App() {
       ? "New conversation"
       : selectedConversation?.title || "Conversation";
   const selectedAgent =
-    selected === undefined ? AgentKind.Claude : selectedConversation?.agent;
+    selected === undefined
+      ? newConversation.agent
+      : selectedConversation?.agent;
   const access = useAgentAccess(selectedAgent);
   const selectedSignedIn = selectedAgent && access.signedIn(selectedAgent);
 
@@ -162,7 +165,7 @@ export function App() {
     const started = await agent.start({
       folder,
       firstMessage: text,
-      agent: AgentKind.Claude,
+      agent: newConversation.agent,
     });
     if (!started.ok) return started;
     const { id } = started.value;
@@ -256,10 +259,11 @@ export function App() {
       ...rest,
       [newConversationDraft]: typed ? `${text}\n${typed}` : text,
     }));
-    const folder = conversations?.all.find((c) => c.id === id)?.folder;
+    const moved = conversations?.all.find((c) => c.id === id);
     setNewConversation((state) => ({
       ...state,
-      chosen: folder ?? state.chosen,
+      chosen: moved?.folder ?? state.chosen,
+      agent: moved?.agent ?? state.agent,
       problem: undefined,
     }));
     setConversations(
@@ -269,9 +273,8 @@ export function App() {
     setSelected(undefined);
   };
 
-  const removedPanel = (id: string) => {
-    const note =
-      "Claude Code stopped before reading your first message, so this conversation wasn't kept.";
+  const removedPanel = (id: string, kind: AgentKind) => {
+    const note = `${agentWords[kind].product} stopped before reading your first message, so this conversation wasn't kept.`;
     if (!unsentText(id))
       return (
         <p className="panel" role="status" tabIndex={-1} ref={focusIfLost}>
@@ -302,7 +305,7 @@ export function App() {
             defaultFolder={conversations.all[0]?.folder}
             draft={draft(newConversationDraft)}
             state={newConversation}
-            signInPanel={access.signInPanel(AgentKind.Claude)}
+            signInPanel={access.signInPanel(newConversation.agent)}
             onChange={setNewConversation}
             onStart={start}
           />
@@ -311,7 +314,7 @@ export function App() {
     if (!selectedAgent)
       throw new Error(`selected conversation ${selected} isn't listed`);
     const notOpen = removed.has(selected)
-      ? removedPanel(selected)
+      ? removedPanel(selected, selectedAgent)
       : (access.signInPanel(selectedAgent) ?? notOpenPanel(selected));
     const chat = chats[selected] ?? emptyChat;
     if (notOpen && chat.items.length === 0)
@@ -324,6 +327,7 @@ export function App() {
     return (
       <ChatView
         key={selected}
+        agentName={agentWords[selectedAgent].name}
         title={title}
         chat={chat}
         resumed={!startedHere.has(selected)}

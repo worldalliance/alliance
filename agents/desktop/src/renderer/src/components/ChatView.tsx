@@ -12,11 +12,13 @@ import { ToolCard } from "./ToolCard";
 const nearEndPx = 80;
 
 function ErrorItem({
+  agentName,
   message,
   needsResume,
   refused,
   onReopen,
 }: {
+  agentName: string;
   message: string;
   needsResume: boolean;
   refused: boolean;
@@ -26,8 +28,8 @@ function ErrorItem({
     <div className="error">
       <p>
         {refused
-          ? "Claude didn't get your message."
-          : "Claude couldn't finish this reply."}
+          ? `${agentName} didn't get your message.`
+          : `${agentName} couldn't finish this reply.`}
         {!needsResume && " Try sending your message again."}
         {needsResume &&
           onReopen &&
@@ -49,9 +51,11 @@ function ErrorItem({
 }
 
 const Item = memo(function Item({
+  agentName,
   item,
   onReopen,
 }: {
+  agentName: string;
   item: ChatItem;
   /** Undefined while the conversation can't be reopened from its transcript, or once a reopen followed the item. */
   onReopen: (() => void) | undefined;
@@ -67,7 +71,7 @@ const Item = memo(function Item({
     case ItemKind.Assistant:
       return (
         <>
-          <span className="visually-hidden">Claude: </span>
+          <span className="visually-hidden">{agentName}: </span>
           <div className="assistant" aria-busy={item.streaming || undefined}>
             {item.text}
           </div>
@@ -78,6 +82,7 @@ const Item = memo(function Item({
     case ItemKind.Error:
       return (
         <ErrorItem
+          agentName={agentName}
           message={item.message}
           needsResume={item.needsResume}
           refused={item.refused}
@@ -92,6 +97,7 @@ const Item = memo(function Item({
 });
 
 export function ChatView({
+  agentName,
   title,
   chat,
   resumed,
@@ -101,6 +107,7 @@ export function ChatView({
   onStop,
   onReopen,
 }: {
+  agentName: string;
   title: string;
   chat: Chat;
   /** Opened without this window having started it, so the view doesn't have its earlier messages. */
@@ -149,14 +156,15 @@ export function ChatView({
       >
         {resumed && (
           <p className="note">
-            Earlier messages in this conversation aren't shown here yet. Claude
-            still remembers them.
+            Earlier messages in this conversation aren't shown here yet.{" "}
+            {agentName} still remembers them.
           </p>
         )}
         <ol className="items">
           {chat.items.map((item) => (
             <li key={item.key}>
               <Item
+                agentName={agentName}
                 item={item}
                 onReopen={offersReopen(chat, item) ? onReopen : undefined}
               />
@@ -188,9 +196,10 @@ export function ChatView({
       ) : (
         <>
           <p className="turn-status" role="status">
-            {turnStatus(chat)}
+            {turnStatus(chat, agentName)}
           </p>
           <Composer
+            agentName={agentName}
             draft={draft}
             boxRef={box}
             turn={chat.turn}

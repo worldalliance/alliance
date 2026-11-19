@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { agentWords } from "../../../shared/agent-kind";
 import type { Conversation } from "../../../shared/ipc";
 import { focusIfLost } from "../focus";
 import { folderName } from "../format";
@@ -80,7 +81,10 @@ export function Sidebar({
                 onClick={() => onSelect(conversation.id)}
               >
                 <span className="title">{conversation.title}</span>
-                <span className="meta">{folderName(conversation.folder)}</span>
+                <span className="meta">
+                  {agentWords[conversation.agent].name} ·{" "}
+                  {folderName(conversation.folder)}
+                </span>
               </button>
             </li>
           ))}

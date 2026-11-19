@@ -3,6 +3,10 @@ export enum AgentKind {
   Codex = "codex",
 }
 
+export const agentKinds = Object.values(AgentKind);
+
+export const defaultAgent = AgentKind.Claude;
+
 type AgentWords = {
   /** The agent as the chat names it. */
   name: string;

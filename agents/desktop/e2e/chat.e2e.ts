@@ -346,6 +346,7 @@ exec "${process.env[claudeExecutableVariable]}" "$@"
     claude,
   });
   const saved = page.getByRole("button", { name: /^Saved/ });
+  await expect(saved).toContainText("Claude · work");
   await saved.click();
   const signIn = page.getByRole("button", { name: "Sign in to Claude" });
   await expect(signIn).toBeVisible();
@@ -370,7 +371,7 @@ test("a conversation that fails to open keeps focus off the page", async () => {
   await app.close();
 });
 
-test("the message box is read-only while a conversation starts, then the chat's takes focus", async () => {
+test("the message box and agent choice are read-only while a conversation starts, then the chat's message box takes focus", async () => {
   const { claude, release } = heldClaude();
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
@@ -381,6 +382,14 @@ test("the message box is read-only while a conversation starts, then the chat's 
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await expect(page.getByLabel("Message Claude")).not.toBeEditable();
+  const codex = page.getByRole("radio", { name: "Codex" });
+  // Playwright waits for an aria-disabled control to become enabled before clicking it.
+  await codex.click({ force: true });
+  await expect(codex).not.toBeChecked();
+  await expect(page.locator("label", { has: codex })).toHaveCSS(
+    "opacity",
+    "0.7",
+  );
   release();
   await expect(status(page)).toHaveText("Claude finished.");
   await expect(page.getByLabel("Message Claude")).toBeFocused();

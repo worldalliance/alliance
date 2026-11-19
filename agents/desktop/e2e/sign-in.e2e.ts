@@ -209,6 +209,7 @@ test("a signed-out user is asked to sign in, in place of the message box, before
     page.getByRole("button", { name: "Sign in to Claude" }),
   ).toBeFocused();
   await expect(page.getByLabel("Message Claude")).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: "Codex" })).toBeVisible();
   await expect(page.getByRole("navigation")).toBeVisible();
   await expect(page).toHaveTitle("New conversation – Alliance agent");
   await app.close();
