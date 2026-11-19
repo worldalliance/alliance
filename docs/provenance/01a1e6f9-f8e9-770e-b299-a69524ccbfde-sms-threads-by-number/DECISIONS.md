@@ -68,6 +68,7 @@ A thread shows the members who currently have its number. When a member changes 
 - The Needs reply sidebar badge, now counting numbers rather than members, stays the only staff alert.
 - `MmsService.sendStaffText` takes the thread instead of a user id for its logs and its SMS-failure alert. The alert is its own `SmsFailureKind.StaffSendFailed`, beside `main`'s `SendFailed`, which links the member page (`docs/provenance/01a1f067-6739-72a0-852d-fa30e18df18e-slack-message-copy`), since the thread may have no member or several.
 - A staff "Mark opted out" on a number no member holds logs that the staff member marked the number, not `main`'s line for a member-less opt-out, which reads as the number having replied STOP.
+- The Slack alert for an inbound text that isn't a keyword (`EventType.SmsInbound`) says whether the number has opted out through the number's state, as Needs reply reads it, and points a number no member holds to Needs reply too, now that Needs reply lists it.
 - The branch comes onto `main` (REQUIREMENTS.md 7) by rebasing, never by merging `main` in, as `agents/skills/review-loop/SKILL.md` requires, so each commit can be reviewed against one parent.
 
 ## Out of scope

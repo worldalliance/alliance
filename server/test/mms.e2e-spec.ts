@@ -421,20 +421,31 @@ describe("Inbound MMS keywords (e2e)", () => {
       );
     });
 
-    it("saying the member opted out when they have", async () => {
-      await userRepo.update(
-        { id: memberId },
-        { phoneNumberUnsubscribed: true },
-      );
+    it("saying a member's number opted out when it has", async () => {
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .upsert({ phoneNumber: "+14155559001", optedOut: true }, [
+          "phoneNumber",
+        ]);
 
       expect(await inboundMessage("+14155559001", "opted out hi")).toBe(
-        "Stopper texted: “opted out hi” They have opted out of texts.",
+        "Stopper texted: “opted out hi” The number has opted out of texts.",
       );
     });
 
     it("naming the number when no member has it", async () => {
       expect(await inboundMessage("+14155559998", "stranger hi")).toBe(
-        "+14155559998, which no member has, texted: “stranger hi”",
+        "+14155559998, which no member has, texted: “stranger hi” Reply from Needs reply.",
+      );
+    });
+
+    it("saying a number no member has opted out when it has", async () => {
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .insert({ phoneNumber: "+14155559997", optedOut: true });
+
+      expect(await inboundMessage("+14155559997", "stranger again")).toBe(
+        "+14155559997, which no member has, texted: “stranger again” The number has opted out of texts.",
       );
     });
 

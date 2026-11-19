@@ -8,7 +8,7 @@ import { User } from "src/user/entities/user.entity";
 import { lockPhoneNumber } from "src/user/user.utils";
 import type { EntityManager, Repository } from "typeorm";
 import { z } from "zod";
-import { setNumberOptedOut } from "./mms-number.service";
+import { numberOptedOut, setNumberOptedOut } from "./mms-number.service";
 import { MmsOptout } from "./mms-optout.entity";
 import { OptOutSource } from "./opt-out-source";
 
@@ -171,27 +171,25 @@ export class MmsUnsubService {
     body: string,
   ): Promise<void> {
     const found = await R.fromPromise(
-      this.userRepository.find({
-        where: { phoneNumber: from },
-        select: { id: true, name: true, phoneNumberUnsubscribed: true },
-      }),
+      Promise.all([
+        this.userRepository.find({
+          where: { phoneNumber: from },
+          select: { id: true, name: true },
+        }),
+        numberOptedOut(this.userRepository.manager, from),
+      ]),
     );
     if (!found.ok) {
       this.logger.error(
-        "Could not look up members for an unhandled text",
+        "Could not look up the number for an unhandled text",
         found.error,
       );
       return;
     }
-    const members = found.value;
+    const [members, optedOut] = found.value;
     this.eventLogService.sendMessage({
       type: EventType.SmsInbound,
-      payload: {
-        phoneNumber: from,
-        members,
-        optedOut: members.every((m) => m.phoneNumberUnsubscribed),
-        body,
-      },
+      payload: { phoneNumber: from, members, optedOut, body },
       blob: { from, to, body },
       userId: null,
     });

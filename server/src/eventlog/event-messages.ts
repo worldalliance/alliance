@@ -53,7 +53,7 @@ export interface EventPayloads {
   [EventType.SmsInbound]: {
     phoneNumber: string;
     members: Named[];
-    /** Every member on the number has opted out, so Needs reply omits them. */
+    /** The number has opted out, so Needs reply omits it. */
     optedOut: boolean;
     body: string;
   };
@@ -206,13 +206,14 @@ const FORMATS: {
       ? text`${member(m)} opted back in to texts by replying “${rawBody}”.`
       : text`${phoneNumber} replied “${rawBody}” to opt back in to texts, but no member has that number.`,
   [EventType.SmsInbound]: ({ phoneNumber, members, optedOut, body }) => {
-    if (members.length === 0) {
-      return text`${phoneNumber}, which no member has, texted: “${body}”`;
+    const texted =
+      members.length === 0
+        ? text`${phoneNumber}, which no member has, texted: “${body}”`
+        : text`${join(members.map(member), ", ")} texted: “${body}”`;
+    if (!optedOut) {
+      return text`${texted} Reply from ${adminLink("Needs reply", "/needs-reply")}.`;
     }
-    const texted = text`${join(members.map(member), ", ")} texted: “${body}”`;
-    return optedOut
-      ? text`${texted} They have opted out of texts.`
-      : text`${texted} Reply from ${adminLink("Needs reply", "/needs-reply")}.`;
+    return text`${texted} The number has opted out of texts.`;
   },
   [EventType.SmsFailure]: smsFailure,
   [EventType.ForumActionAutocomplete]: (p) =>

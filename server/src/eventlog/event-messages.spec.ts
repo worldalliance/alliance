@@ -64,6 +64,12 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
     {
       phoneNumber: "+15555550100",
       members: [],
+      optedOut: false,
+      body: "Who is this?",
+    },
+    {
+      phoneNumber: "+15555550100",
+      members: [],
       optedOut: true,
       body: "Who is this?",
     },

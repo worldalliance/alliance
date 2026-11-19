@@ -68,13 +68,18 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_inbound",
   },
   {
-    "message": "Jane Doe texted: “Who is this?” They have opted out of texts.",
-    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” They have opted out of texts.",
+    "message": "Jane Doe texted: “Who is this?” The number has opted out of texts.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” The number has opted out of texts.",
     "type": "sms_inbound",
   },
   {
-    "message": "+15555550100, which no member has, texted: “Who is this?”",
-    "slack": "+15555550100, which no member has, texted: “Who is this?”",
+    "message": "+15555550100, which no member has, texted: “Who is this?” Reply from Needs reply.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” Reply from <https://admin.example.org/needs-reply|Needs reply>.",
+    "type": "sms_inbound",
+  },
+  {
+    "message": "+15555550100, which no member has, texted: “Who is this?” The number has opted out of texts.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” The number has opted out of texts.",
     "type": "sms_inbound",
   },
   {
