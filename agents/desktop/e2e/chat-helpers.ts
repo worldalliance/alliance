@@ -48,13 +48,13 @@ export function writeConversations(contents: string) {
   writeFileSync(path.join(userData, "conversations.json"), contents);
 }
 
-export function saveConversation(folder: string) {
+export function saveConversation(folder: string, id = "saved") {
   writeConversations(
     JSON.stringify({
       version: 1,
       conversations: [
         {
-          id: "saved",
+          id,
           folder,
           title: "Saved",
           startedAt: "2026-11-10T12:00:00.000Z",

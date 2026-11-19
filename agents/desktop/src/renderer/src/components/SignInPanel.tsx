@@ -1,6 +1,8 @@
+import { type AgentKind, agentWords } from "../../../shared/agent-kind";
+import { focusIfLost } from "../focus";
 import { pressOnce } from "../press-once";
 
-export enum ClaudeAccess {
+export enum Access {
   Checking = "checking",
   SignedIn = "signed_in",
   SignedOut = "signed_out",
@@ -8,25 +10,22 @@ export enum ClaudeAccess {
   Unavailable = "unavailable",
 }
 
-export type ClaudeState = { access: ClaudeAccess.SignedIn } | SignInState;
+export type AccessState = { access: Access.SignedIn } | SignInState;
 
 type SignInState =
-  | { access: ClaudeAccess.Checking }
-  | { access: ClaudeAccess.SigningIn; cancelling: boolean }
-  | { access: ClaudeAccess.SignedOut; problem?: string }
-  | { access: ClaudeAccess.Unavailable; problem: string };
+  | { access: Access.Checking }
+  | { access: Access.SigningIn; cancelling: boolean }
+  | { access: Access.SignedOut; problem?: string }
+  | { access: Access.Unavailable; problem: string };
 
-/** Each state's window title, and its heading, or status text while checking. */
-export const signInHeading: Record<SignInState["access"], string> = {
-  [ClaudeAccess.Checking]: "Checking your Claude sign-in",
-  [ClaudeAccess.SignedOut]: "Sign in to Claude",
-  [ClaudeAccess.SigningIn]: "Sign in to Claude",
-  [ClaudeAccess.Unavailable]: "Claude isn't available",
-};
-
-// React's autoFocus focuses only form controls.
-const focusOnMount = (element: HTMLElement | null) => {
-  element?.focus();
+const heading = (agent: AgentKind): Record<SignInState["access"], string> => {
+  const { name } = agentWords[agent];
+  return {
+    [Access.Checking]: `Checking your ${name} sign-in`,
+    [Access.SignedOut]: `Sign in to ${name}`,
+    [Access.SigningIn]: `Sign in to ${name}`,
+    [Access.Unavailable]: `${name} isn't available`,
+  };
 };
 
 // The failure's own text, CLI output and exit codes included, stays behind Details so the alert reads as plain words.
@@ -42,44 +41,49 @@ function Problem({ summary, detail }: { summary: string; detail: string }) {
   );
 }
 
+/** Shown in place of the message box while the agent isn't signed in. It takes focus only from the page body, so selecting a conversation keeps focus on the sidebar. */
 export function SignInPanel({
+  agent,
   state,
   onSignIn,
   onCancel,
   onCheckAgain,
 }: {
+  agent: AgentKind;
   state: SignInState;
   onSignIn: () => void;
   onCancel: () => void;
   onCheckAgain: () => void;
 }) {
+  const { name, product, subscription } = agentWords[agent];
+  const headings = heading(agent);
   switch (state.access) {
-    case ClaudeAccess.Checking:
+    case Access.Checking:
       return (
-        <p className="panel" role="status" tabIndex={-1} ref={focusOnMount}>
-          {signInHeading[ClaudeAccess.Checking]}…
+        <p className="panel" role="status" tabIndex={-1} ref={focusIfLost}>
+          {headings[Access.Checking]}…
         </p>
       );
-    case ClaudeAccess.Unavailable:
+    case Access.Unavailable:
       return (
         <div className="panel">
-          <h1>{signInHeading[state.access]}</h1>
+          <h2>{headings[state.access]}</h2>
           <Problem
-            summary="Alliance agent couldn't check your Claude sign-in. Make sure Claude Code is installed and runs, then check again."
+            summary={`Alliance agent couldn't check your ${name} sign-in. Make sure ${product} is installed and runs, then check again.`}
             detail={state.problem}
           />
-          <button type="button" autoFocus {...pressOnce(onCheckAgain)}>
+          <button type="button" ref={focusIfLost} {...pressOnce(onCheckAgain)}>
             Check again
           </button>
         </div>
       );
-    case ClaudeAccess.SignedOut:
+    case Access.SignedOut:
       return (
         <div className="panel">
-          <h1>{signInHeading[state.access]}</h1>
+          <h2>{headings[state.access]}</h2>
           <p>
-            Alliance agent uses your own Claude subscription. Signing in opens
-            your browser.
+            Alliance agent uses your own {subscription} subscription. Signing in
+            opens your browser.
           </p>
           {state.problem && (
             <Problem
@@ -90,17 +94,17 @@ export function SignInPanel({
           <button
             type="button"
             className="primary"
-            autoFocus
+            ref={focusIfLost}
             {...pressOnce(onSignIn)}
           >
-            Sign in to Claude
+            {headings[Access.SignedOut]}
           </button>
         </div>
       );
-    case ClaudeAccess.SigningIn:
+    case Access.SigningIn:
       return (
         <div className="panel">
-          <h1>{signInHeading[state.access]}</h1>
+          <h2>{headings[state.access]}</h2>
           <p id="sign-in-instruction" role="status">
             {state.cancelling
               ? "Cancelling sign-in…"
@@ -109,7 +113,7 @@ export function SignInPanel({
           {/* aria-disabled rather than disabled keeps focus here until the CLI exits and Sign in takes it. */}
           <button
             type="button"
-            autoFocus
+            ref={focusIfLost}
             aria-describedby="sign-in-instruction"
             aria-disabled={state.cancelling || undefined}
             {...pressOnce(() => {

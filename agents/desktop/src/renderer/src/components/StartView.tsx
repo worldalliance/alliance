@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { IpcResult } from "../../../shared/ipc";
 import { agent } from "../agent";
 import { TurnState } from "../chat-state";
@@ -15,12 +15,15 @@ export function StartView({
   defaultFolder,
   draft,
   state,
+  signInPanel,
   onChange,
   onStart,
 }: {
   defaultFolder: string | undefined;
   draft: Draft;
   state: NewConversation;
+  /** The chosen agent's sign-in, shown in place of the message box until it is signed in. */
+  signInPanel: ReactNode;
   onChange: Dispatch<SetStateAction<NewConversation>>;
   onStart: (input: {
     folder: string;
@@ -83,12 +86,16 @@ export function StartView({
           </p>
         )}
       </div>
-      <Composer
-        draft={draft}
-        turn={TurnState.Idle}
-        pendingLabel={state.starting ? "Starting…" : undefined}
-        onSend={start}
-      />
+      {signInPanel ? (
+        <div className="not-open">{signInPanel}</div>
+      ) : (
+        <Composer
+          draft={draft}
+          turn={TurnState.Idle}
+          pendingLabel={state.starting ? "Starting…" : undefined}
+          onSend={start}
+        />
+      )}
     </>
   );
 }

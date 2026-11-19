@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import {
   chmodSync,
@@ -10,6 +10,9 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { CaptureRecordKind } from "../src/main/agent/claude/testing/capture";
+import { AgentKind } from "../src/shared/agent-kind";
+import { IpcChannel } from "../src/shared/ipc";
+import { writeConversations } from "./chat-helpers";
 import {
   authStatusCapture,
   claudeExecutableVariable,
@@ -23,6 +26,15 @@ const wrapClaude = (script: string): string =>
   writeClaude(
     `${script}\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
+
+// New conversation shows while signed out too, so only the message box shows the sign-in finished.
+const expectSignedIn = async (page: Page) => {
+  await expect(page.getByLabel("Message Claude")).toBeEditable();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to Claude" }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Checking your Claude sign-in")).toHaveCount(0);
+};
 
 test("cancelling sign-in, by click or keyboard but not a held key, returns to the sign-in panel without an error", async () => {
   const { app, page } = await launch({
@@ -83,10 +95,7 @@ test("a sign-in cancelled after it finished in the browser leaves the sign-in pa
   await page.getByRole("button", { name: "Sign in to Claude" }).click();
   await expect.poll(() => existsSync(signedIn)).toBe(true);
   await page.getByRole("button", { name: "Cancel sign-in" }).click();
-  await expect(
-    page.getByRole("heading", { name: "New conversation" }),
-  ).toBeVisible();
-  await expect(page).toHaveTitle("New conversation – Alliance agent");
+  await expectSignedIn(page);
   await app.close();
 });
 
@@ -168,10 +177,7 @@ test("a sign-in that finishes leaves the sign-in panel", async () => {
     ),
   });
   await page.getByRole("button", { name: "Sign in to Claude" }).click();
-  await expect(
-    page.getByRole("heading", { name: "New conversation" }),
-  ).toBeVisible();
-  await expect(page).toHaveTitle("New conversation – Alliance agent");
+  await expectSignedIn(page);
   await app.close();
 });
 
@@ -194,27 +200,23 @@ test("a sign-in that finishes while Claude Code still reports signed out says so
   await app.close();
 });
 
-test("a signed-out user is asked to sign in before starting", async () => {
+test("a signed-out user is asked to sign in, in place of the message box, before starting", async () => {
   const { app, page } = await launch({ captures: [authStatusCapture(false)] });
   await expect(
     page.getByRole("heading", { name: "Sign in to Claude" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Sign in to Claude" }),
-  ).toBeVisible();
-  await expect(page).toHaveTitle("Sign in to Claude – Alliance agent");
+  ).toBeFocused();
+  await expect(page.getByLabel("Message Claude")).toHaveCount(0);
+  await expect(page.getByRole("navigation")).toBeVisible();
+  await expect(page).toHaveTitle("New conversation – Alliance agent");
   await app.close();
 });
 
 test("a signed-in user isn't asked to sign in", async () => {
   const { app, page } = await launch({ captures: [authStatusCapture(true)] });
-  await expect(
-    page.getByRole("heading", { name: "New conversation" }),
-  ).toBeVisible();
-  await expect(page).toHaveTitle("New conversation – Alliance agent");
-  await expect(
-    page.getByRole("heading", { name: "Sign in to Claude" }),
-  ).toHaveCount(0);
+  await expectSignedIn(page);
   await app.close();
 });
 
@@ -350,7 +352,6 @@ test("Check again, but not a held Enter's repeats, finds Claude Code installed w
   );
   const checkAgain = page.getByRole("button", { name: "Check again" });
   await expect(checkAgain).toBeFocused();
-  await expect(page).toHaveTitle("Claude isn't available – Alliance agent");
   await checkAgain.evaluate((button) =>
     button.setAttribute("data-pressed", ""),
   );
@@ -380,5 +381,102 @@ test("Check again, but not a held Enter's repeats, finds Claude Code installed w
   await expect(
     page.getByRole("heading", { name: "Sign in to Claude" }),
   ).toBeVisible();
+  await app.close();
+});
+
+test("each agent checks, signs in and cancels on its own, and a saved conversation opens once its own agent signs in", async () => {
+  const saved = (agent: AgentKind) => ({
+    id: `${agent}-saved`,
+    agent,
+    title: `Saved on ${agent}`,
+    folder: test.info().outputPath("work"),
+    startedAt: "2026-11-10T12:00:00.000Z",
+  });
+  writeConversations(
+    JSON.stringify({
+      version: 2,
+      conversations: [saved(AgentKind.Claude), saved(AgentKind.Codex)],
+    }),
+  );
+  const { app, page } = await launch({ captures: [authStatusCapture(false)] });
+  await expect(
+    page.getByRole("button", { name: "Sign in to Claude" }),
+  ).toBeVisible();
+  // Each sign-in waits for the test to finish it, and Resume only records its call.
+  await app.evaluate(({ ipcMain }, channel) => {
+    const calls: { checks: string[]; resumes: string[] } = {
+      checks: [],
+      resumes: [],
+    };
+    const signedIn = new Set<string>();
+    const finish: Record<string, (ok: boolean) => void> = {};
+    Reflect.set(globalThis, "signInTest", { calls, finish });
+    for (const name of [channel.SignInStatus, channel.SignIn, channel.Resume])
+      ipcMain.removeHandler(name);
+    ipcMain.handle(channel.SignInStatus, (_, agent: string) => {
+      calls.checks.push(agent);
+      return { ok: true, value: signedIn.has(agent) };
+    });
+    ipcMain.handle(
+      channel.SignIn,
+      (_, agent: string) =>
+        new Promise((resolve) => {
+          finish[agent] = (ok: boolean) => {
+            if (ok) signedIn.add(agent);
+            resolve(ok ? { ok: true } : { ok: false, error: "Cancelled." });
+          };
+        }),
+    );
+    ipcMain.handle(channel.Resume, (_, id: string) => {
+      calls.resumes.push(id);
+      return { ok: true, value: { turnRunning: false } };
+    });
+  }, IpcChannel);
+  const calls = () =>
+    app.evaluate(() => Reflect.get(globalThis, "signInTest").calls);
+  const finish = (agent: AgentKind, ok: boolean) =>
+    app.evaluate(
+      (_, { agent, ok }) =>
+        Reflect.get(globalThis, "signInTest").finish[agent](ok),
+      { agent, ok },
+    );
+  const open = (agent: AgentKind) =>
+    page
+      .getByRole("button", { name: new RegExp(`^Saved on ${agent}`) })
+      .click();
+  const cancel = page.getByRole("button", { name: "Cancel sign-in" });
+  await page.reload();
+  await page.getByRole("button", { name: "Sign in to Claude" }).click();
+  await expect(cancel).toBeVisible();
+  expect(await calls()).toEqual({ checks: [AgentKind.Claude], resumes: [] });
+
+  await open(AgentKind.Codex);
+  await page.getByRole("button", { name: "Sign in to Codex" }).click();
+  await expect(cancel).toBeVisible();
+  await open(AgentKind.Claude);
+  await expect(cancel).toBeVisible();
+  await cancel.click();
+  await finish(AgentKind.Claude, false);
+  await expect(
+    page.getByRole("button", { name: "Sign in to Claude" }),
+  ).toBeVisible();
+  await open(AgentKind.Codex);
+  await expect(cancel).toBeVisible();
+
+  await open(AgentKind.Claude);
+  await finish(AgentKind.Codex, true);
+  await expect
+    .poll(async () => (await calls()).checks)
+    .toEqual([
+      AgentKind.Claude,
+      AgentKind.Codex,
+      AgentKind.Claude,
+      AgentKind.Codex,
+    ]);
+  expect((await calls()).resumes).toEqual([]);
+  await open(AgentKind.Codex);
+  await expect
+    .poll(async () => (await calls()).resumes)
+    .toEqual([`${AgentKind.Codex}-saved`]);
   await app.close();
 });
