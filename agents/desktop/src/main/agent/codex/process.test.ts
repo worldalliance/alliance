@@ -21,7 +21,7 @@ import { replay, stopReplay, stubCli, writeCapture } from "./testing/stub";
 
 afterEach(stopReplay);
 
-test("the environment keeps Codex's root certificate, drops its and OpenAI's other settings and the Claude credentials, and sets the private home", () => {
+test("the environment keeps Codex's root certificate, drops its and OpenAI's other settings and Claude's and Anthropic's namespaces, and sets the private home", () => {
   expect(
     codexEnvironment("/home/codex", {
       PATH: "/bin",
@@ -35,12 +35,12 @@ test("the environment keeps Codex's root certificate, drops its and OpenAI's oth
       ANTHROPIC_API_KEY: "[redacted]",
       ANTHROPIC_AUTH_TOKEN: "[redacted]",
       CLAUDE_CODE_OAUTH_TOKEN: "[redacted]",
-      CLAUDE_CONFIG_DIR: "/kept",
+      CLAUDE_CONFIG_DIR: "/home/user/.claude",
+      CLAUDE_CODE_USE_BEDROCK: "1",
     }),
   ).toEqual({
     PATH: "/bin",
     HOME: "/home/user",
-    CLAUDE_CONFIG_DIR: "/kept",
     CODEX_CA_CERTIFICATE: "/certs/proxy.pem",
     CODEX_HOME: "/home/codex",
   });

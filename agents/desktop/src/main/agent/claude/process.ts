@@ -14,12 +14,14 @@ export type ClaudeCli = {
   configDir: string;
 };
 
-// The CLI reads its settings, credentials, endpoint and nested-session markers from these two namespaces, so none of them pass through.
-// The desktop-app task's Credentials decision removes OPENAI_API_KEY from every agent process.
+// OpenAI's whole namespace stays out, and of Codex's own only the names ending in a KEY or TOKEN word; its other settings, such as CODEX_CA_CERTIFICATE, pass through for the tools a session runs.
+const codexCredential = /^CODEX_(.*_)?(KEY|TOKEN)$/;
+// The CLI reads its settings, credentials, endpoint and nested-session markers from the CLAUDE and ANTHROPIC_ namespaces, so none of them pass through.
 const inherited = (name: string) =>
   !name.startsWith("CLAUDE") &&
   !name.startsWith("ANTHROPIC_") &&
-  name !== "OPENAI_API_KEY";
+  !name.startsWith("OPENAI_") &&
+  !codexCredential.test(name);
 
 export function claudeEnvironment(
   configDir: string,

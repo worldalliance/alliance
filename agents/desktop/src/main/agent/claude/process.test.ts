@@ -18,7 +18,7 @@ import {
 
 const bun: ClaudeCli = { executable: process.execPath, configDir: "/config" };
 
-test("the CLI's environment drops its inherited namespaces and other credentials and turns off nonessential traffic", () => {
+test("the CLI's environment drops its own and OpenAI's namespaces and Codex's credentials and turns off nonessential traffic", () => {
   const env = claudeEnvironment("/config", {
     PATH: "/bin",
     HOME: "/home/user",
@@ -36,12 +36,27 @@ test("the CLI's environment drops its inherited namespaces and other credentials
     CLAUDE_CODE_MESSAGING_TOKEN: "m",
     CLAUDE_CONFIG_DIR: "/home/user/.claude",
     OPENAI_API_KEY: "d",
+    CODEX_API_KEY: "e",
+    OPENAI_BASE_URL: "http://gateway",
+    OPENAI_FEDERATION_RULE_ID: "rule",
+    OPENAI_IDENTITY_TOKEN_FILE: "/token",
+    CODEX_ACCESS_TOKEN: "f",
+    CODEX_CONNECTORS_TOKEN: "h",
+    CODEX_GUARDIAN_DECISIONS_API_KEY: "i",
+    CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN: "j",
+    CODEX_GITHUB_PERSONAL_ACCESS_TOKEN: "k",
+    CODEX_CA_CERTIFICATE: "/ca.pem",
+    CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT: "1",
+    CODEX_REFRESH_TOKEN_URL_OVERRIDE: "http://auth",
   });
   expect(env).toEqual({
     PATH: "/bin",
     HOME: "/home/user",
     SSH_AUTH_SOCK: "/agent.sock",
     GH_TOKEN: "g",
+    CODEX_CA_CERTIFICATE: "/ca.pem",
+    CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT: "1",
+    CODEX_REFRESH_TOKEN_URL_OVERRIDE: "http://auth",
     CLAUDE_CONFIG_DIR: "/config",
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
     DISABLE_FEEDBACK_COMMAND: "1",

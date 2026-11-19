@@ -22,6 +22,7 @@ import {
 } from "../../testing/capture-run";
 import { isSignedInToCodex, signInToCodex } from "../auth";
 import { createCodexBackend } from "../backend";
+import { withCodexHomeLock } from "../home-lock";
 import { checkCodexVersion, type CodexCli } from "../process";
 import { CODEX_VERSION } from "../version";
 import { capturedHooks, captureDir } from "./capture";
@@ -31,13 +32,17 @@ const { scratch, recordDir } = captureScratch("codex-capture");
 const workFile = path.join(scratch, "a.txt");
 const home = devCodexHome(appData);
 writeFileSync(workFile, "hello\n");
-// The private config holds only the trust the adapter writes, so removing it makes the run trust the repository from scratch, keeping the sign-in.
-rmSync(path.join(home, "config.toml"), { force: true });
 
 const realCodex = R.unwrap(
   findExecutable({ agent: AgentKind.Codex, env: process.env, packaged: false }),
 );
 const real: CodexCli = { executable: realCodex, home };
+// The private config holds only the trust the adapter writes, so removing it makes the run trust the repository from scratch, keeping the sign-in.
+R.unwrap(
+  await withCodexHomeLock({ cli: real }, async () =>
+    R.success(rmSync(path.join(home, "config.toml"), { force: true })),
+  ),
+);
 const recorded: CodexCli = {
   executable: fileURLToPath(
     new URL("../../testing/record-cli.ts", import.meta.url),

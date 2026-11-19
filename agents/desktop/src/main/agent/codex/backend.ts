@@ -15,12 +15,12 @@ import {
   ImageMediaType,
 } from "../session";
 import { type SessionHooks, sessionRegistry } from "../session-registry";
+import { withCodexHomeLock } from "./home-lock";
 import {
   checkCodexVersion,
   type CodexCli,
   codexConfigArgs,
   codexEnvironment,
-  createCodexHome,
 } from "./process";
 import {
   CodexNoticeKind,
@@ -272,7 +272,7 @@ export function createCodexBackend(
   const sessions = sessionRegistry();
   const failedCloses = new Set<Promise<void>>();
   let versionChecked = false;
-  // Every app-server shares cli.home: overlapping first launches race to create its sqlite state, and overlapping hook trust writes to its config.toml overwrite each other.
+  // Every app-server shares cli.home: overlapping first launches race to create its sqlite state, and overlapping hook trust writes to its config.toml overwrite each other. The queue orders this app's setups; withCodexHomeLock keeps other processes' out.
   let setupQueue: Promise<unknown> = Promise.resolve();
   const failedToStart = (cwd: string) => (error: unknown) =>
     couldNotStart({ executable: cli.executable, cwd, error });
@@ -282,19 +282,22 @@ export function createCodexBackend(
     openThread: (rpc: RpcConnection) => Promise<Result<string, Error>>;
   };
 
+  type SetUp = Result<
+    { session: CodexSession; opened: Result<string, Error> },
+    Error
+  >;
+
   /** Starts an app-server and opens its thread; a session whose handshake failed comes back with the failure, to be closed outside the queue. */
-  async function setUp(
-    params: Launch,
-  ): Promise<
-    Result<{ session: CodexSession; opened: Result<string, Error> }, Error>
-  > {
+  async function setUp(params: Launch): Promise<SetUp> {
     if (!versionChecked) {
       const checked = await checkCodexVersion(cli);
       if (!checked.ok) return checked;
       versionChecked = true;
     }
-    const home = await createCodexHome(cli);
-    if (!home.ok) return home;
+    return withCodexHomeLock({ cli }, () => startAppServer(params));
+  }
+
+  async function startAppServer(params: Launch): Promise<SetUp> {
     const child = await spawnSessionCli({
       executable: cli.executable,
       // --strict-config fails the launch on a key this version doesn't know, such as an override a later version renamed.
