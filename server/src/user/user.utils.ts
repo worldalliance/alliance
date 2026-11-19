@@ -16,24 +16,6 @@ export function textReachable(
   );
 }
 
-export function referralLabel(
-  user: Pick<User, "referredBy" | "referredByCampaign">,
-): string {
-  if (user.referredBy?.name) {
-    return `(invited by ${user.referredBy.name})`;
-  }
-  if (user.referredByCampaign?.name) {
-    return `(via campaign ${user.referredByCampaign.name})`;
-  }
-  return "";
-}
-
-export function memberWithReferral(
-  user: Pick<User, "name" | "referredBy" | "referredByCampaign">,
-): string {
-  return [user.name, referralLabel(user)].filter(Boolean).join(" ");
-}
-
 export function hasPassword(user: Pick<User, "password">): boolean {
   return Boolean(user.password);
 }

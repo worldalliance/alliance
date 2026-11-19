@@ -50,9 +50,7 @@ describe("Admin role toggles (e2e)", () => {
 
     const [entry, ...rest] = await roleChangeEntries(target.id);
     expect(rest).toEqual([]);
-    expect(entry?.message).toBe(
-      `Test Admin granted admin to Member (promote@example.com, id ${target.id})`,
-    );
+    expect(entry?.message).toBe("Test Admin granted admin to Member.");
     expect(entry?.blob).toMatchObject({
       targetId: target.id,
       actorId: ctx.adminUserId,
@@ -73,9 +71,7 @@ describe("Admin role toggles (e2e)", () => {
     ).toBe(false);
 
     const [entry] = await roleChangeEntries(target.id);
-    expect(entry?.message).toBe(
-      `Test Admin revoked admin from Member (demote@example.com, id ${target.id})`,
-    );
+    expect(entry?.message).toBe("Test Admin revoked admin from Member.");
     expect(entry?.blob).toMatchObject({ admin: false });
   });
 

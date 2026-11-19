@@ -1,13 +1,9 @@
-import { Campaign } from "src/campaign/entities/campaign.entity";
 import type { Queryable } from "src/datasources/advisory-lock";
 import { phoneNumberTransformer } from "src/utils/phone";
-import { User } from "./entities/user.entity";
 import {
   hasPassword,
   loadedUserTags,
   lockPhoneNumber,
-  memberWithReferral,
-  referralLabel,
   textReachable,
 } from "./user.utils";
 
@@ -35,78 +31,6 @@ describe("textReachable", () => {
     expect(textReachable({ ...reachable, phoneNumberUnsubscribed: true })).toBe(
       false,
     );
-  });
-});
-
-describe("referralLabel", () => {
-  it("labels a user-referred signup", () => {
-    expect(
-      referralLabel({
-        referredBy: { name: "Alice" } as User,
-        referredByCampaign: null,
-      }),
-    ).toBe("(invited by Alice)");
-  });
-
-  it("labels a campaign-referred signup", () => {
-    expect(
-      referralLabel({
-        referredBy: null,
-        referredByCampaign: { name: "Spring Drive" } as Campaign,
-      }),
-    ).toBe("(via campaign Spring Drive)");
-  });
-
-  it("prefers the referring user over the campaign", () => {
-    expect(
-      referralLabel({
-        referredBy: { name: "Alice" } as User,
-        referredByCampaign: { name: "Spring Drive" } as Campaign,
-      }),
-    ).toBe("(invited by Alice)");
-  });
-
-  it("is empty without a referrer", () => {
-    expect(referralLabel({ referredBy: null, referredByCampaign: null })).toBe(
-      "",
-    );
-  });
-
-  it("is empty when the referrer relation is not hydrated with a name", () => {
-    expect(
-      referralLabel({
-        referredBy: { id: 5 } as User,
-        referredByCampaign: null,
-      }),
-    ).toBe("");
-    expect(
-      referralLabel({
-        referredBy: null,
-        referredByCampaign: { id: 7 } as Campaign,
-      }),
-    ).toBe("");
-  });
-});
-
-describe("memberWithReferral", () => {
-  it("follows the name with the referral label", () => {
-    expect(
-      memberWithReferral({
-        name: "Bob",
-        referredBy: { name: "Alice" } as User,
-        referredByCampaign: null,
-      }),
-    ).toBe("Bob (invited by Alice)");
-  });
-
-  it("is the bare name without a referrer", () => {
-    expect(
-      memberWithReferral({
-        name: "Bob",
-        referredBy: null,
-        referredByCampaign: null,
-      }),
-    ).toBe("Bob");
   });
 });
 

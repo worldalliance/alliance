@@ -42,7 +42,7 @@ import {
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
-import { loadedUserCommunities, memberWithReferral } from "src/user/user.utils";
+import { loadedUserCommunities } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
 import {
   claimReinstatement,
@@ -379,7 +379,7 @@ export class ContractService {
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,
-        message: `${memberWithReferral(user)} signed their contract :)`,
+        payload: { member: user },
         userId: user.id,
         blob: null,
       }),
@@ -469,7 +469,7 @@ export class ContractService {
     if (!automatic) {
       await this.eventLogService.sendMessage({
         type: EventType.ContractSuspended,
-        message: `${memberWithReferral(user)} suspended their contract :(`,
+        payload: { member: user, automatic: false },
         userId: user.id,
         blob: null,
       });

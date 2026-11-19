@@ -288,14 +288,17 @@ export class ForumActionCompleterWorker {
     const plannedUsers = baseUsers.filter((user) => toCompleteSet.has(user.id));
 
     if (shouldWrite) {
+      const plannedById = new Map(plannedUsers.map((user) => [user.id, user]));
       for (const userId of toComplete) {
+        const member = plannedById.get(userId);
+        if (!member) throw new Error(`responder ${userId} not planned`);
         try {
           await this.actionActivityService.completeAction(action.id, userId, {
             adminCreated: true,
           });
           await this.eventLogService.sendMessage({
             type: EventType.ForumActionAutocomplete,
-            message: `Automatically completing action ${action.id} for user ${userId} based on forum participation`,
+            payload: { member, action },
             userId: userId,
             blob: null,
           });

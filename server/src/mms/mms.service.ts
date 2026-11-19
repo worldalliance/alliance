@@ -11,6 +11,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
+import { SmsFailureKind } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MessageChannel } from "src/link-tracking/message-tracking.entity";
 import {
@@ -225,7 +226,11 @@ export class MmsService {
         text: `Staff text to user ${userId} not sent: ${thrownMessage(sent.error)}`,
         error: sent.error,
       });
-      this.alertFailure({ to, errorMessage: thrownMessage(sent.error) });
+      this.alertFailure({
+        to,
+        userId,
+        errorMessage: thrownMessage(sent.error),
+      });
       const reason =
         sent.error instanceof Twilio.RestException &&
         sent.error.status === 400 &&
@@ -246,6 +251,7 @@ export class MmsService {
       );
       this.alertFailure({
         to,
+        userId,
         errorMessage: `timed out after ${this.sendTimeoutMs}ms`,
       });
       this.recordLateSend({
@@ -338,17 +344,26 @@ export class MmsService {
       text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
       error,
     });
-    this.alertFailure({ to, errorMessage });
+    this.alertFailure({ to, userId, errorMessage });
   }
 
-  private alertFailure(params: { to: string; errorMessage: string }) {
-    const { to, errorMessage } = params;
+  private alertFailure(params: {
+    to: string;
+    userId: number;
+    errorMessage: string;
+  }) {
+    const { to, userId, errorMessage } = params;
     if (env("NODE_ENV") !== NodeEnv.Production) return;
     this.eventLogService.sendMessage({
       type: EventType.SmsFailure,
-      message: `Failed to send MMS to ${to}: ${errorMessage}`,
+      payload: {
+        kind: SmsFailureKind.SendFailed,
+        phoneNumber: to,
+        userId,
+        error: errorMessage,
+      },
       blob: { errorMessage, to, from: this.senderFor(to) },
-      userId: null,
+      userId,
     });
   }
 
@@ -464,7 +479,11 @@ export class MmsService {
     if (message.errorCode) {
       this.eventLogService.sendMessage({
         type: EventType.SmsFailure,
-        message: `MMS to ${mms.to} failed with status ${message.status}. Error code: ${message.errorCode}`,
+        payload: {
+          kind: SmsFailureKind.DeliveryFailed,
+          phoneNumber: mms.to,
+          errorCode: message.errorCode,
+        },
         blob: message.toJSON(),
         userId: null,
       });

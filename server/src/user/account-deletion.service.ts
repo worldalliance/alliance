@@ -1,4 +1,4 @@
-import { type Result } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
   Injectable,
@@ -10,7 +10,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import { escapeSlackText } from "src/eventlog/slack-format";
 import { getImageSource } from "src/images/images.service";
 import { deleteClaimedWaitlistTracking } from "src/link-tracking/message-tracking.service";
 import { DataSource, type Repository } from "typeorm";
@@ -30,9 +29,13 @@ export class AccountDeletionService {
   // The event log is the system of record for deletion requests — the failure
   // is returned to the controller instead of treated as best-effort.
   async requestAccountDeletion(userId: number): Promise<Result<void, Error>> {
+    const member = await R.fromPromiseFn(() =>
+      this.userRepository.findOneByOrFail({ id: userId }),
+    );
+    if (R.isFailure(member)) return member;
     return this.eventLogService.sendMessage({
       type: EventType.AccountDeletionRequested,
-      message: `User ${userId} requested account deletion`,
+      payload: { member: member.value },
       userId: userId,
       blob: null,
     });
@@ -90,11 +93,6 @@ export class AccountDeletionService {
     const deleted = { id: user.id, name: user.name, email: user.email };
     const screenshotUrl = screenshotKey ? getImageSource(screenshotKey) : null;
 
-    const summary = `Admin ${admin.name} deleted the account for ${deleted.name} (${deleted.email}, id ${deleted.id}). Reason: ${reason}`;
-    const screenshotLink = screenshotUrl
-      ? ` — <${screenshotUrl}|screenshot>`
-      : "";
-
     const forwardAudit = await this.dataSource.transaction(async (manager) => {
       await manager.increment(User, { id: deleted.id }, "sessionGeneration", 1);
       await deleteClaimedWaitlistTracking({ manager, userId: deleted.id });
@@ -102,8 +100,7 @@ export class AccountDeletionService {
 
       return this.eventLogService.sendMessageInTransaction(manager, {
         type: EventType.AccountDeleted,
-        message: screenshotUrl ? `${summary} (${screenshotUrl})` : summary,
-        slackMessage: `${escapeSlackText(summary)}${screenshotLink}`,
+        payload: { admin, deleted, reason, screenshotUrl },
         userId: null,
         blob: {
           deletedUserId: deleted.id,

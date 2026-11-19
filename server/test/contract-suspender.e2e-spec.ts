@@ -10,6 +10,7 @@ import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import { ContractService } from "src/contract/contract.service";
+import { renderEvent } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { EmailType, Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
@@ -220,14 +221,14 @@ describe("ContractSuspenderWorker (e2e)", () => {
       kind: "automatic",
       suspend: () => ctx.app.get(ContractSuspenderWorker).processSuspensions(),
       message:
-        /^\[\w+\]: Suspending contract for Suspended Member \(invited by Inviting Member\)\. failure code /,
+        "Contract suspended automatically for Suspended Member (invited by Inviting Member): they missed 3 action suites in a row.",
     },
     {
       kind: "manual",
       suspend: (userId: number) =>
         ctx.app.get(ContractService).suspendContract({ userId }),
       message:
-        /^Suspended Member \(invited by Inviting Member\) suspended their contract :\($/,
+        "Suspended Member (invited by Inviting Member) suspended their contract.",
     },
   ])(
     "names who invited the member in the $kind suspension alert",
@@ -249,12 +250,9 @@ describe("ContractSuspenderWorker (e2e)", () => {
 
       await suspend(member.id);
 
-      expect(sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: member.id,
-          message: expect.stringMatching(message),
-        }),
-      );
+      const [[event]] = sendMessage.mock.calls;
+      expect(event).toMatchObject({ userId: member.id });
+      expect(renderEvent(event).message).toBe(message);
     },
   );
 

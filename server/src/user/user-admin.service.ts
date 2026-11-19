@@ -133,10 +133,9 @@ export class UserAdminService {
     ]);
     if (target.admin === admin) return null;
 
-    const verb = admin ? "granted admin to" : "revoked admin from";
     return {
       type: EventType.AdminRoleChanged,
-      message: `${actor.name} ${verb} ${target.name} (${target.email}, id ${target.id})`,
+      payload: { actor, target, admin },
       userId: target.id,
       blob: {
         targetId: target.id,

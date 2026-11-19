@@ -35,7 +35,11 @@ type SuspendPlanContext = {
  * failure streak that triggered it. `ContractEvent`'s `(user, autoSuspendKey)`
  * unique constraint dedupes on it, so it is never absent for a candidate.
  */
-export type SuspensionCandidate = { user: User; reasonKey: string };
+export type SuspensionCandidate = {
+  user: User;
+  reasonKey: string;
+  missedSuites: number;
+};
 
 @Injectable()
 export class ActionSuspensionService {
@@ -190,7 +194,13 @@ export class ActionSuspensionService {
       if (!user.hasActiveContract) return [];
       const run = trailingMissedSuiteIds(closedSuites, user.id);
       return run.length >= SUSPENSION_MISSED_SUITE_COUNT
-        ? [{ user, reasonKey: suspensionReasonKey(run) }]
+        ? [
+            {
+              user,
+              reasonKey: suspensionReasonKey(run),
+              missedSuites: run.length,
+            },
+          ]
         : [];
     });
   }

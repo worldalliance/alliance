@@ -1,7 +1,6 @@
 import {
   ActionActivityType,
   MEMBER_ACTION_DEADLINE_PASSED,
-  WITHDRAWAL_OPTION_LABELS,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
 import { AnalyticsEvent } from "@alliance/common/analytics";
@@ -195,13 +194,15 @@ export class ActionActivityService {
         reasonChars.length > OPT_OUT_REASON_PREVIEW_LENGTH
           ? `${reasonChars.slice(0, OPT_OUT_REASON_PREVIEW_LENGTH).join("")}...`
           : trimmedReason;
-      const label = adminCreated
-        ? "admin-created"
-        : WITHDRAWAL_OPTION_LABELS[option];
-      const detail = reason ? `${label}: ${reason}` : label;
       this.eventLogService.sendMessage({
         type: EventType.ActionOptOut,
-        message: `${user.name} opted out of action ${action.name} (${detail})`,
+        payload: {
+          member: user,
+          action,
+          option,
+          recordedByAdmin: adminCreated ?? false,
+          note: reason || null,
+        },
         userId,
         blob: {
           actionId,

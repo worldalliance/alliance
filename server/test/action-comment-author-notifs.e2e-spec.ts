@@ -1,9 +1,14 @@
+import { R } from "@alliance/common/result";
+import { setEnv } from "@alliance/common/set-env";
 import { milliseconds } from "date-fns";
 import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
+import { renderEvent } from "src/eventlog/event-messages";
+import { EventLogService } from "src/eventlog/eventlog.service";
 import { CreateCommentDto } from "src/forum/dto/comment.dto";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
@@ -126,6 +131,8 @@ describe("Action comment author notifications (e2e)", () => {
     testUser = await userRepo.findOneByOrFail({ id: ctx.testUserId });
   }, 50000);
 
+  afterEach(() => jest.restoreAllMocks());
+
   afterAll(async () => {
     await closeTestApp(ctx.app);
   });
@@ -238,5 +245,29 @@ describe("Action comment author notifications (e2e)", () => {
         { type: SegmentType.CommentExcerpt },
       ],
     });
+  });
+
+  it("logs a production comment as the member commenting on the action", async () => {
+    const commenter = await createUser();
+    const action = await createAction([]);
+    const sendMessage = jest
+      .spyOn(ctx.app.get(EventLogService), "sendMessage")
+      .mockResolvedValue(R.success(undefined));
+    jest
+      .spyOn(ctx.app.get(AiDetectionQueueService), "addDetectJob")
+      .mockResolvedValue();
+    const nodeEnv = process.env.NODE_ENV;
+    setEnv("NODE_ENV", "production");
+    try {
+      await comment({ token: commenter.token, action, body: "Logged" });
+    } finally {
+      setEnv("NODE_ENV", nodeEnv);
+    }
+
+    const [[event]] = sendMessage.mock.calls;
+    expect(event).toMatchObject({ userId: commenter.user.id });
+    expect(renderEvent(event).message).toBe(
+      `${commenter.user.name} commented on ${action.name}.`,
+    );
   });
 });

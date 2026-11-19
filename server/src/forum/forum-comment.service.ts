@@ -120,6 +120,15 @@ export class ForumCommentService {
       throw new BadRequestException("Reply cannot be empty");
     }
 
+    const loggedAction =
+      createCommentDto.parentObjectType === CommentParentObject.Action &&
+      env("NODE_ENV") === NodeEnv.Production
+        ? await this.actionRepository.findOne({
+            where: { id: createCommentDto.parentObjectId },
+            withDeleted: true,
+          })
+        : null;
+
     const reply = await this.commentRepository.manager.transaction(
       async (manager) => {
         await lockLiveAuthor(manager, userId);
@@ -158,14 +167,19 @@ export class ForumCommentService {
       },
     );
 
-    if (
-      createCommentDto.parentObjectType === CommentParentObject.Action &&
-      env("NODE_ENV") === NodeEnv.Production
-    ) {
+    const replyWithAuthor = await this.commentRepository.findOneOrFail({
+      where: { id: reply.id },
+      relations: { author: true, editableContent: true },
+    });
+
+    if (loggedAction) {
       this.eventLogService.sendMessage({
         type: EventType.ActionComment,
-        message: `New comment on action ${createCommentDto.parentObjectId}`,
-        slackMessage: `New comment on action ${createCommentDto.parentObjectId} <@U08P0TJ283T> <@U08NU231VGS> - <${env("APP_URL")}${commentUrl(reply)}|Open action>`,
+        payload: {
+          author: loadedCommentAuthor(replyWithAuthor),
+          action: loggedAction,
+          commentUrl: commentUrl(reply, undefined, true),
+        },
         userId: userId,
         blob: {
           actionId: createCommentDto.parentObjectId,
@@ -173,11 +187,6 @@ export class ForumCommentService {
         },
       });
     }
-
-    const replyWithAuthor = await this.commentRepository.findOneOrFail({
-      where: { id: reply.id },
-      relations: { author: true, editableContent: true },
-    });
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.Comment,
       entityId: replyWithAuthor.id,
@@ -336,7 +345,7 @@ export class ForumCommentService {
           if (!texting && !emailing) {
             this.eventLogService.sendMessage({
               type: EventType.ForumReplyNotifFailure,
-              message: `Did not notify ${parentAuthor.name} on ${post.title} because they have not enabled text/email notifications`,
+              payload: { recipient: parentAuthor, post },
               userId: comment.authorId,
               blob: {
                 postId: post.id,

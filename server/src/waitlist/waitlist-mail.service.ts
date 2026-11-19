@@ -116,7 +116,7 @@ export class WaitlistMailService {
       case MailClaim.ClaimedLastOfDay:
         await this.eventLogService.sendMessage({
           type: EventType.WaitlistMailCapReached,
-          message: `Public waitlist email reached its daily cap of ${dailyCap}. Confirmation and link emails stop until 00:00 UTC.`,
+          payload: { dailyCap },
           blob: null,
           userId: null,
         });

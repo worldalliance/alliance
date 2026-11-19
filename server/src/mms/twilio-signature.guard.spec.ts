@@ -5,7 +5,11 @@ import { milliseconds } from "date-fns";
 import type { Request } from "express";
 import "reflect-metadata";
 import { EventType } from "src/eventlog/event-log.entity";
-import { EventLogService } from "src/eventlog/eventlog.service";
+import { renderEvent } from "src/eventlog/event-messages";
+import {
+  type EventLogMessage,
+  EventLogService,
+} from "src/eventlog/eventlog.service";
 import { getExpectedTwilioSignature } from "twilio/lib/webhooks/webhooks";
 import { MmsController } from "./mms.controller";
 import {
@@ -128,8 +132,8 @@ const alertingGuard = () => {
 };
 
 const alertMessage = (sendMessage: jest.Mock, nth = 0): string => {
-  const [event] = sendMessage.mock.calls[nth] as [{ message: string }];
-  return event.message;
+  const [event] = sendMessage.mock.calls[nth] as [EventLogMessage];
+  return renderEvent(event).message;
 };
 
 describe("TwilioSignatureGuard", () => {
@@ -269,12 +273,10 @@ describe("TwilioSignatureGuard", () => {
       withEnv(enforcing(), () => reject(guard));
 
       expect(sendMessage).toHaveBeenCalledTimes(1);
-      const [[event]] = sendMessage.mock.calls as [
-        [{ type: EventType; message: string; blob: Record<string, unknown> }],
-      ];
+      const [[event]] = sendMessage.mock.calls as [[EventLogMessage]];
       expect(event.type).toBe(EventType.SmsFailure);
-      expect(event.message).toContain(PUBLIC_URL);
-      expect(event.blob.url).toBe(PUBLIC_URL);
+      expect(alertMessage(sendMessage)).toContain(PUBLIC_URL);
+      expect(event.blob?.url).toBe(PUBLIC_URL);
     });
 
     it("alerts once per window, reporting what it stood for", () => {

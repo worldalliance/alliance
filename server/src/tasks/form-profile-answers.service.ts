@@ -10,6 +10,7 @@ import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { updateLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
+import { SmsFailureKind } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ImagesService } from "src/images/images.service";
 import { MmsService } from "src/mms/mms.service";
@@ -208,7 +209,11 @@ export class FormProfileAnswersService {
             if (env("NODE_ENV") === NodeEnv.Production) {
               await this.eventLogService.sendMessage({
                 type: EventType.SmsFailure,
-                message: `Failed to send opt-in MMS to ${normalized}`,
+                payload: {
+                  kind: SmsFailureKind.OptInFailed,
+                  member: user,
+                  phoneNumber: normalized,
+                },
                 userId: user.id,
                 blob: { to: normalized },
               });
