@@ -3,32 +3,12 @@ import {
   mmsThreadMarkHandledAdmin,
   mmsThreadMarkNeedsReplyAdmin,
   mmsThreadMarkOptedOutAdmin,
-  mmsThreadNeedsReplyAdmin,
   mmsThreadSendTextAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useThreadActions } from "./useTextThreadsAdmin";
-
-const needsReplyQuery = queryOptions({
-  queryKey: queryKeys.needsReplyAdmin(),
-  queryFn: () =>
-    mmsThreadNeedsReplyAdmin({ throwOnError: true }).then((r) => r.data),
-  refetchInterval: milliseconds({ seconds: 30 }),
-});
-
-export function useNeedsReplyAdmin() {
-  return useQuery(needsReplyQuery);
-}
-
-/** The Needs reply badge's count: null until the list first loads if that
- * load fails, so a failure doesn't read as nobody waiting; a later failed
- * poll keeps the last count. */
-export function useNeedsReplyCount(): number | null {
-  const { data, isError } = useNeedsReplyAdmin();
-  return data?.length ?? (isError ? null : 0);
-}
 
 export const fetchMemberThread = (params: {
   userId: number;

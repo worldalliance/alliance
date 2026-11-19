@@ -1,4 +1,4 @@
-import type { NeedsReplyMemberDto } from "@alliance/shared/client/types.gen";
+import type { NeedsReplyThreadDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -14,13 +14,29 @@ import { milliseconds } from "date-fns";
 import { MemoryRouter } from "react-router";
 import NeedsReplyPage from "./NeedsReplyPage";
 
-let members: NeedsReplyMemberDto[];
+let threads: NeedsReplyThreadDto[];
+
+const threadIdOf = (userId: number) =>
+  `00000000-0000-4000-8000-${String(userId).padStart(12, "0")}`;
+
+const waiting = (input: {
+  userId: number;
+  name: string;
+  lastMessageBody: string;
+  waitingSince: string;
+}): NeedsReplyThreadDto => ({
+  threadId: threadIdOf(input.userId),
+  phoneNumber: `+1415555${String(input.userId).padStart(4, "0")}`,
+  members: [{ id: input.userId, name: input.name, timeZone: null }],
+  lastMessageBody: input.lastMessageBody,
+  waitingSince: input.waitingSince,
+});
 let status: number;
 
 serveApi(
   routes({
-    "GET /mms-threads/needs-reply": () =>
-      Response.json(status === 200 ? members : { message: "nope" }, {
+    "GET /mms-threads/needs-reply-threads": () =>
+      Response.json(status === 200 ? threads : { message: "nope" }, {
         status,
       }),
   }),
@@ -28,7 +44,7 @@ serveApi(
 
 beforeEach(() => {
   status = 200;
-  members = [];
+  threads = [];
 });
 
 afterEach(resetClock);
@@ -45,29 +61,45 @@ const renderPage = () => {
   return client;
 };
 
-it("links each waiting member to their page with their last text", async () => {
-  members = [
-    {
+it("links each waiting number to its thread with its last text", async () => {
+  threads = [
+    waiting({
       userId: 7,
       name: "Sam",
       lastMessageBody: "Is it still on?",
       waitingSince: new Date().toISOString(),
-    },
-    {
+    }),
+    waiting({
       userId: 8,
       name: "Kim",
       lastMessageBody: "",
+      waitingSince: new Date().toISOString(),
+    }),
+  ];
+  renderPage();
+
+  const sam = await screen.findByRole("link", { name: /Sam/ });
+  expect(sam.getAttribute("href")).toBe(`/texts/${threadIdOf(7)}`);
+  expect(sam.textContent).toContain("Is it still on?");
+  expect(screen.getByRole("link", { name: /Kim/ }).textContent).toContain(
+    "Sent an attachment",
+  );
+});
+
+it("names a waiting number no member has by its phone number", async () => {
+  threads = [
+    {
+      threadId: threadIdOf(9),
+      phoneNumber: "+14155550109",
+      members: [],
+      lastMessageBody: "Who is this?",
       waitingSince: new Date().toISOString(),
     },
   ];
   renderPage();
 
-  const sam = await screen.findByRole("link", { name: /Sam/ });
-  expect(sam.getAttribute("href")).toBe("/member/7");
-  expect(sam.textContent).toContain("Is it still on?");
-  expect(screen.getByRole("link", { name: /Kim/ }).textContent).toContain(
-    "Sent an attachment",
-  );
+  const row = await screen.findByRole("link", { name: /\(415\) 555-0109/ });
+  expect(row.getAttribute("href")).toBe(`/texts/${threadIdOf(9)}`);
 });
 
 it("says when nothing is waiting", async () => {
@@ -86,19 +118,19 @@ it("says when the list failed to load", async () => {
   ).toBeTruthy();
 });
 
-it("keeps how long each member has waited current", () => {
+it("keeps how long each number has waited current", () => {
   jest.useFakeTimers({ now: new Date("2026-11-11T20:00:00Z") });
   try {
-    members = [
-      {
+    threads = [
+      waiting({
         userId: 7,
         name: "Sam",
         lastMessageBody: "Hello?",
         waitingSince: "2026-11-11T19:58:00Z",
-      },
+      }),
     ];
     const { wrapper: Wrapper, client } = queryWrapper();
-    client.setQueryData(queryKeys.needsReplyAdmin(), members);
+    client.setQueryData(queryKeys.needsReplyAdmin(), threads);
     render(
       <Wrapper>
         <MemoryRouter>
@@ -117,13 +149,13 @@ it("keeps how long each member has waited current", () => {
 });
 
 it("keeps a loaded list, and its place, when a later poll fails", async () => {
-  members = [
-    {
+  threads = [
+    waiting({
       userId: 7,
       name: "Sam",
       lastMessageBody: "Is it still on?",
       waitingSince: new Date().toISOString(),
-    },
+    }),
   ];
   const client = renderPage();
   await screen.findByRole("link", { name: /Sam/ });
@@ -148,12 +180,13 @@ it("names the browser tab", () => {
 });
 
 describe("while staff point at or focus the list", () => {
-  const member = (userId: number, name: string): NeedsReplyMemberDto => ({
-    userId,
-    name,
-    lastMessageBody: "Hello?",
-    waitingSince: new Date().toISOString(),
-  });
+  const thread = (userId: number, name: string) =>
+    waiting({
+      userId,
+      name,
+      lastMessageBody: "Hello?",
+      waitingSince: new Date().toISOString(),
+    });
   const rowNames = () =>
     screen
       .getAllByRole("link")
@@ -172,18 +205,18 @@ describe("while staff point at or focus the list", () => {
   };
 
   beforeEach(() => {
-    members = [member(7, "Sam"), member(8, "Kim")];
+    threads = [thread(7, "Sam"), thread(8, "Kim")];
   });
   afterEach(() => {
     Reflect.deleteProperty(document, "hidden");
   });
 
-  it("keeps the row of a member no longer waiting in place and adds arrivals below", async () => {
+  it("keeps the row of a number no longer waiting in place and adds arrivals below", async () => {
     const client = renderPage();
     await screen.findByRole("link", { name: /Sam/ });
     fireEvent.pointerEnter(screen.getByRole("list"));
 
-    members = [member(9, "Lee"), member(8, "Kim")];
+    threads = [thread(9, "Lee"), thread(8, "Kim")];
     await poll(client);
 
     await screen.findByRole("link", { name: /Lee/ });
@@ -203,7 +236,7 @@ describe("while staff point at or focus the list", () => {
     const sam = await screen.findByRole("link", { name: /Sam/ });
     act(() => sam.focus());
 
-    members = [member(8, "Kim")];
+    threads = [thread(8, "Kim")];
     await poll(client);
     await screen.findByText("No longer waiting");
     expect(rowNames()).toEqual(["Sam", "Kim"]);
@@ -224,7 +257,7 @@ describe("while staff point at or focus the list", () => {
       );
     act(() => sam.focus());
 
-    members = [member(8, "Kim")];
+    threads = [thread(8, "Kim")];
     await poll(client);
 
     await waitFor(() => expect(rowNames()).toEqual(["Kim"]));
@@ -234,7 +267,7 @@ describe("while staff point at or focus the list", () => {
     const client = renderPage();
     await screen.findByRole("link", { name: /Sam/ });
     fireEvent.pointerEnter(screen.getByRole("list"));
-    members = [member(8, "Kim")];
+    threads = [thread(8, "Kim")];
     await poll(client);
     await screen.findByText("No longer waiting");
 
@@ -249,14 +282,14 @@ describe("while staff point at or focus the list", () => {
     act(() => screen.getByRole("link", { name: /Sam/ }).focus());
 
     setHidden(true);
-    members = [];
+    threads = [];
     await poll(client);
     await screen.findByText("No texts are waiting for a reply.");
     setHidden(false);
-    members = [member(8, "Kim")];
+    threads = [thread(8, "Kim")];
     await poll(client);
     await screen.findByRole("link", { name: /Kim/ });
-    members = [member(9, "Lee")];
+    threads = [thread(9, "Lee")];
     await poll(client);
 
     await screen.findByRole("link", { name: /Lee/ });
@@ -267,13 +300,13 @@ describe("while staff point at or focus the list", () => {
     const client = renderPage();
     const sam = await screen.findByRole("link", { name: /Sam/ });
     act(() => sam.focus());
-    members = [member(8, "Kim")];
+    threads = [thread(8, "Kim")];
     await poll(client);
     await screen.findByText("No longer waiting");
 
     setHidden(true);
     setHidden(false);
-    members = [member(9, "Lee"), member(8, "Kim")];
+    threads = [thread(9, "Lee"), thread(8, "Kim")];
     await poll(client);
 
     await screen.findByRole("link", { name: /Lee/ });
@@ -285,16 +318,16 @@ describe("while staff point at or focus the list", () => {
     await screen.findByRole("link", { name: /Sam/ });
     fireEvent.pointerEnter(screen.getByRole("list"));
     setHidden(true);
-    members = [];
+    threads = [];
     await poll(client);
     fireEvent.pointerLeave(
       await screen.findByText("No texts are waiting for a reply."),
     );
     setHidden(false);
-    members = [member(8, "Kim")];
+    threads = [thread(8, "Kim")];
     await poll(client);
     await screen.findByRole("link", { name: /Kim/ });
-    members = [member(9, "Lee")];
+    threads = [thread(9, "Lee")];
     await poll(client);
 
     await screen.findByRole("link", { name: /Lee/ });

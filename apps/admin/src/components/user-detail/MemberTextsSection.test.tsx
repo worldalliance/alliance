@@ -15,7 +15,7 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { useNeedsReplyAdmin } from "../../lib/useMemberTextsAdmin";
+import { useNeedsReplyAdmin } from "../../lib/useTextThreadsAdmin";
 import MemberTextsSection from "./MemberTextsSection";
 
 const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({
@@ -69,7 +69,7 @@ serveApi(
       await postGate;
       return Response.json(sent);
     },
-    "GET /mms-threads/needs-reply": async () => {
+    "GET /mms-threads/needs-reply-threads": async () => {
       await needsReplyGate;
       return Response.json([]);
     },

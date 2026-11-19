@@ -3,6 +3,7 @@ import {
   mmsThreadMarkThreadHandledAdmin,
   mmsThreadMarkThreadNeedsReplyAdmin,
   mmsThreadMarkThreadOptedOutAdmin,
+  mmsThreadNeedsReplyThreadsAdmin,
   mmsThreadSendInThreadAdmin,
 } from "@alliance/shared/client";
 import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
@@ -20,6 +21,25 @@ import {
 } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { usePatchAnyQueryData } from "./usePatchQueryData";
+
+const needsReplyQuery = queryOptions({
+  queryKey: queryKeys.needsReplyAdmin(),
+  queryFn: () =>
+    mmsThreadNeedsReplyThreadsAdmin({ throwOnError: true }).then((r) => r.data),
+  refetchInterval: milliseconds({ seconds: 30 }),
+});
+
+export function useNeedsReplyAdmin() {
+  return useQuery(needsReplyQuery);
+}
+
+/** The Needs reply badge's count: null until the list first loads if that
+ * load fails, so a failure doesn't read as nobody waiting; a later failed
+ * poll keeps the last count. */
+export function useNeedsReplyCount(): number | null {
+  const { data, isError } = useNeedsReplyAdmin();
+  return data?.length ?? (isError ? null : 0);
+}
 
 type ThreadMark<Id> = { id: Id; throughId: number };
 
@@ -46,7 +66,7 @@ export function useThreadActions<
   const refreshViews = (target: Id) => {
     const keys = [
       queryKey(target),
-      queryKeys.needsReplyAdmin(),
+      needsReplyQuery.queryKey,
       queryKeys.memberTextThreadsAdminAll(),
       queryKeys.numberTextThreadsAdminAll(),
     ];

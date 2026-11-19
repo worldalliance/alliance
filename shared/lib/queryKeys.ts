@@ -313,7 +313,7 @@ export const queryKeys = {
   memberTextThreadAdmin: (userId: number) =>
     [...memberTextThreadsAdminAll(), userId] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
-  needsReplyAdmin: () => ["mmsThreadNeedsReplyAdmin"] as const,
+  needsReplyAdmin: () => ["mmsThreadNeedsReplyThreadsAdmin"] as const,
   numberTextThreadsAdminAll,
   numberTextThreadAdmin: (threadId: string) =>
     [...numberTextThreadsAdminAll(), threadId] as const,

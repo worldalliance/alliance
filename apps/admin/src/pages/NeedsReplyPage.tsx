@@ -1,4 +1,4 @@
-import type { NeedsReplyMemberDto } from "@alliance/shared/client/types.gen";
+import type { NeedsReplyThreadDto } from "@alliance/shared/client/types.gen";
 import { useClockMinute } from "@alliance/shared/lib/useClockMinute";
 import { cn } from "@alliance/shared/styles/util";
 import { formatDistanceToNow } from "date-fns";
@@ -12,9 +12,10 @@ import {
 import { href, Link } from "react-router";
 import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import { useNeedsReplyAdmin } from "../lib/useMemberTextsAdmin";
+import { threadContactName } from "../lib/memberTexts";
+import { useNeedsReplyAdmin } from "../lib/useTextThreadsAdmin";
 
-type Row = { member: NeedsReplyMemberDto; left: boolean };
+type Row = { thread: NeedsReplyThreadDto; left: boolean };
 
 const subscribeToVisibility = (onChange: () => void) => {
   document.addEventListener("visibilitychange", onChange);
@@ -23,27 +24,27 @@ const subscribeToVisibility = (onChange: () => void) => {
 
 const nextRows = (params: {
   shown: Row[];
-  members: NeedsReplyMemberDto[];
+  threads: NeedsReplyThreadDto[];
   held: boolean;
 }): Row[] => {
-  const { shown, members, held } = params;
-  if (!held) return members.map((member) => ({ member, left: false }));
-  const latest = new Map(members.map((m) => [m.userId, m]));
+  const { shown, threads, held } = params;
+  if (!held) return threads.map((thread) => ({ thread, left: false }));
+  const latest = new Map(threads.map((t) => [t.threadId, t]));
   const kept = shown.map((row): Row => {
-    const member = latest.get(row.member.userId);
-    return member ? { member, left: false } : { ...row, left: true };
+    const thread = latest.get(row.thread.threadId);
+    return thread ? { thread, left: false } : { ...row, left: true };
   });
-  const keptIds = new Set(shown.map((row) => row.member.userId));
+  const keptIds = new Set(shown.map((row) => row.thread.threadId));
   return [
     ...kept,
-    ...members
-      .filter((m) => !keptIds.has(m.userId))
-      .map((member) => ({ member, left: false })),
+    ...threads
+      .filter((t) => !keptIds.has(t.threadId))
+      .map((thread) => ({ thread, left: false })),
   ];
 };
 
 /** So a poll never moves the row about to be clicked. */
-function useHeldRows(members: NeedsReplyMemberDto[] | undefined) {
+function useHeldRows(threads: NeedsReplyThreadDto[] | undefined) {
   const [pointerIn, setPointerIn] = useState(false);
   const [focusIn, setFocusIn] = useState(false);
   const hidden = useSyncExternalStore(
@@ -52,14 +53,14 @@ function useHeldRows(members: NeedsReplyMemberDto[] | undefined) {
   );
   const held = (pointerIn || focusIn) && !hidden;
   const [shown, setShown] = useState<{
-    members?: NeedsReplyMemberDto[];
+    threads?: NeedsReplyThreadDto[];
     held: boolean;
     rows: Row[];
   }>({ held: false, rows: [] });
   let rows = shown.rows;
-  if (members && (shown.members !== members || shown.held !== held)) {
-    rows = nextRows({ shown: shown.rows, members, held });
-    setShown({ members, held, rows });
+  if (threads && (shown.threads !== threads || shown.held !== held)) {
+    rows = nextRows({ shown: shown.rows, threads, held });
+    setShown({ threads, held, rows });
   }
   const list = useRef<HTMLDivElement>(null);
   // React fires no blur for a focused row that unmounts, and every unmount
@@ -86,12 +87,12 @@ function useHeldRows(members: NeedsReplyMemberDto[] | undefined) {
 
 const NeedsReplyPage = () => {
   const {
-    data: members,
+    data: threads,
     isError,
     isRefetchError,
     error,
   } = useNeedsReplyAdmin();
-  const { rows, listProps } = useHeldRows(members);
+  const { rows, listProps } = useHeldRows(threads);
   useClockMinute();
 
   return (
@@ -101,9 +102,9 @@ const NeedsReplyPage = () => {
         <div className="flex items-baseline gap-2">
           <h1 className="text-xl font-semibold">Needs reply</h1>
           <p role="status" className="text-sm text-zinc-600">
-            {members &&
-              (members.length > 0
-                ? `${members.length} waiting`
+            {threads &&
+              (threads.length > 0
+                ? `${threads.length} waiting`
                 : "None waiting")}
           </p>
           <SectionRefreshError
@@ -113,14 +114,15 @@ const NeedsReplyPage = () => {
           />
         </div>
         <p className="text-sm text-zinc-600">
-          Members with a text no staff member has answered yet, longest waiting
-          first. A member leaves the list once someone replies from their page,
-          marks their texts handled there, or they opt out of texts. They come
-          back if that reply fails to send or they text again.
+          Phone numbers with a text no staff member has answered yet, members or
+          not, longest waiting first. A number leaves the list once someone
+          replies, marks its texts handled, or it opts out of texts. It comes
+          back if that reply fails to send, if it texts again, or if someone
+          marks it needs reply.
         </p>
       </div>
       <div {...listProps}>
-        {!members ? (
+        {!threads ? (
           isError ? (
             <p role="alert" className="text-sm text-red-600">
               {adminRefusalMessage(
@@ -137,28 +139,26 @@ const NeedsReplyPage = () => {
           </p>
         ) : (
           <ul className="divide-y divide-zinc-200 border border-zinc-200 rounded">
-            {rows.map(({ member, left }) => (
-              <li key={member.userId}>
+            {rows.map(({ thread, left }) => (
+              <li key={thread.threadId}>
                 <Link
-                  to={href("/member/:userId", {
-                    userId: String(member.userId),
-                  })}
+                  to={href("/texts/:threadId", { threadId: thread.threadId })}
                   className="flex flex-col gap-0.5 px-3 py-2 hover:bg-zinc-50"
                 >
                   <span className="flex justify-between gap-2 text-sm">
                     <span
                       className={cn("font-medium", left && "text-zinc-500")}
                     >
-                      {member.name}
+                      {threadContactName(thread)}
                     </span>
                     <span className={cn("text-zinc-600", left && "italic")}>
                       {left
                         ? "No longer waiting"
-                        : `Waiting ${formatDistanceToNow(new Date(member.waitingSince))}`}
+                        : `Waiting ${formatDistanceToNow(new Date(thread.waitingSince))}`}
                     </span>
                   </span>
                   <span className="truncate text-sm text-zinc-600">
-                    {member.lastMessageBody || "Sent an attachment"}
+                    {thread.lastMessageBody || "Sent an attachment"}
                   </span>
                 </Link>
               </li>
