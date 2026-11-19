@@ -3,19 +3,28 @@ import {
   type PageItem,
 } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
+import {
+  formUnrenderable,
+  UnrenderableReason,
+} from "@alliance/common/forms/unrenderable";
 import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
+import { UnrenderableSubject } from "@alliance/shared/forms/unrenderable";
 import type React from "react";
 import Spinner from "../ui/Spinner";
 import FormPage from "./FormPage";
 import OutputPublicToggle from "./OutputPublicToggle";
 import RenderField from "./RenderField";
+import UnrenderableNotice from "./UnrenderableNotice";
 import { type WebFormState } from "./useWebFormState";
 import { variableInputsGateView } from "./variableInputsGateView";
 
 /** What shows in place of the form while it can't be filled in, or null. */
 export function formBlockedView(
   form: WebFormState,
-  { showVariableError = false }: { showVariableError?: boolean } = {},
+  {
+    showDetail = false,
+    draft = false,
+  }: { showDetail?: boolean; draft?: boolean } = {},
 ): React.ReactElement | null {
   const gate = variableInputsGateView({
     gate: form.gate,
@@ -23,19 +32,21 @@ export function formBlockedView(
   });
   if (gate !== null) return gate;
 
-  if (form.unknownKind || form.variablesError !== null) {
+  const unrenderable = formUnrenderable(form);
+  if (unrenderable !== null) {
+    // A newer build doesn't fix a draft's formula error.
+    const draftError = draft ? form.variablesError : null;
     return (
-      <div
-        className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800"
-        role="alert"
-      >
-        <p className="font-medium">This form can&apos;t be displayed</p>
-        <p className="mt-1 text-sm">
-          {showVariableError && form.variablesError !== null
-            ? form.variablesError
-            : "Refreshing the page may fix the issue."}
-        </p>
-      </div>
+      <UnrenderableNotice
+        subject={UnrenderableSubject.Form}
+        reason={
+          draftError === null
+            ? unrenderable.reason
+            : UnrenderableReason.ContentProblem
+        }
+        detail={draftError ?? unrenderable.detail}
+        showDetail={showDetail}
+      />
     );
   }
 

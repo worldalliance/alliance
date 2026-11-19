@@ -1,4 +1,6 @@
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import type { Unrenderable } from "@alliance/common/forms/unrenderable";
+import type { Result } from "@alliance/common/result";
 import DisplayOnlyRenderer from "@alliance/sharedweb/forms/DisplayOnlyRenderer";
 import BaseButton, {
   BaseButtonVariant,
@@ -7,7 +9,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 
 export interface LargeGeneralUpdateCardProps {
   title: string;
-  schema: DisplayOnlySchema | null;
+  schema: Result<DisplayOnlySchema, Unrenderable>;
   onDismiss?: () => void;
 }
 

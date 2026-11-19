@@ -227,7 +227,7 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
                 userId={response.user?.id}
                 user={response.user ?? undefined}
                 adminPreviewUserId={response.user?.id}
-                showVariableError
+                showDetail
                 disableOptionRandomization
                 fieldLabelRightContent={aiInlineLabels}
               />

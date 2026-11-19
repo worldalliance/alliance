@@ -181,7 +181,7 @@ it("won't draw a form whose options formula fails", () => {
     ]),
   );
 
-  expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+  expect(screen.getByText("There's a problem with this form")).toBeTruthy();
   expect(screen.queryByText("Picked")).toBeNull();
 });
 
@@ -198,7 +198,9 @@ it("won't draw a form whose options formula reads an input kind this build doesn
     ]),
   );
 
-  expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+  expect(
+    screen.getByText("This form needs the latest version of Alliance"),
+  ).toBeTruthy();
 });
 
 it("draws a read-only form whose options read a deleted form", async () => {
@@ -209,7 +211,9 @@ it("draws a read-only form whose options read a deleted form", async () => {
   renderForm(schemaOf([latestColors]), { renderFormAsCompleted: true });
 
   expect(await screen.findByRole("combobox", { name: "Pick" })).toBeTruthy();
-  expect(screen.queryByText("This form can't be displayed")).toBeNull();
+  expect(
+    screen.queryByText(/needs the latest version|problem with this form/),
+  ).toBeNull();
 });
 
 it("keeps a draft's selection while its options read a deleted form", async () => {

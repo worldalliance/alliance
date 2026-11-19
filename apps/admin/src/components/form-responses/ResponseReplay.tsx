@@ -111,7 +111,7 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
                       userId={currentResponse?.user?.id}
                       user={currentResponse?.user ?? undefined}
                       adminPreviewUserId={currentResponse?.user?.id}
-                      showVariableError
+                      showDetail
                       disableOptionRandomization
                       fieldLabelRightContent={currentResponseAiInlineLabels}
                     />

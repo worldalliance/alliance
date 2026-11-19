@@ -147,7 +147,9 @@ it("shows why a broken form can't open in place of its screens", async () => {
   renderFlow();
   fireEvent.click(await screen.findByRole("button", { name: taskFlow.begin }));
 
-  expect(await screen.findByText("This form can't be displayed")).toBeTruthy();
+  expect(
+    await screen.findByText("This form needs the latest version of Alliance"),
+  ).toBeTruthy();
   expect(
     screen.queryByRole("heading", { name: taskFlowFallbackTitle.reading }),
   ).toBeNull();

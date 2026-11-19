@@ -13,8 +13,10 @@ type FormRendererProps = WebFormStateParams & {
   disableOptionRandomization?: boolean;
   followUp?: boolean;
   fieldLabelRightContent?: Record<string, React.ReactNode>;
-  /** For admins: name the variable that blocks the form in place of the refresh advice. */
-  showVariableError?: boolean;
+  /** For staff: a neutral title and what blocks the form, in place of member advice. */
+  showDetail?: boolean;
+  /** An unsaved schema, so a formula error is the author's, not a sign of an old build. */
+  draft?: boolean;
 };
 
 export { computeFormStorageKey };
@@ -25,7 +27,8 @@ const FormRenderer = ({
   disableOptionRandomization,
   followUp,
   fieldLabelRightContent,
-  showVariableError,
+  showDetail,
+  draft,
   ...stateParams
 }: FormRendererProps) => {
   const { onSubmit, onAbandonAction } = stateParams;
@@ -51,7 +54,7 @@ const FormRenderer = ({
   const isLastPage = nextVisiblePageIndex === null;
   const isFirstPage = previousVisiblePageIndex === null;
 
-  const blocked = formBlockedView(form, { showVariableError });
+  const blocked = formBlockedView(form, { showDetail, draft });
   if (blocked !== null) return blocked;
 
   return (

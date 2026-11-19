@@ -1,37 +1,35 @@
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import type { Unrenderable } from "@alliance/common/forms/unrenderable";
+import { R, type Result } from "@alliance/common/result";
+import { UnrenderableSubject } from "@alliance/shared/forms/unrenderable";
 import { View } from "react-native";
 import { RenderDisplayBlockMobile } from "./forms/RenderDisplayBlock";
-import Text from "./system/Text";
+import UnrenderableNotice from "./UnrenderableNotice";
 
 export default function DisplayOnlyRenderer({
   schema,
 }: {
-  schema: DisplayOnlySchema | null;
+  schema: Result<DisplayOnlySchema, Unrenderable>;
 }) {
-  if (!schema) {
-    return (
-      <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-        <Text className="text-amber-800">
-          This update can&apos;t be displayed
-        </Text>
-        <Text className="text-sm text-amber-800 mt-1">
-          Updating the app may fix the issue.
-        </Text>
+  return R.match(schema, {
+    success: ({ blocks }) => (
+      <View className="gap-y-4">
+        {blocks.map((block, index) => (
+          <View key={block.id ?? `block-${index}`}>
+            <RenderDisplayBlockMobile
+              block={block}
+              hasRenderedNeighborAbove={index > 0}
+              hasRenderedNeighborBelow={index < blocks.length - 1}
+            />
+          </View>
+        ))}
       </View>
-    );
-  }
-
-  return (
-    <View className="gap-y-4">
-      {schema.blocks.map((block, index) => (
-        <View key={block.id ?? `block-${index}`}>
-          <RenderDisplayBlockMobile
-            block={block}
-            hasRenderedNeighborAbove={index > 0}
-            hasRenderedNeighborBelow={index < schema.blocks.length - 1}
-          />
-        </View>
-      ))}
-    </View>
-  );
+    ),
+    failure: ({ reason }) => (
+      <UnrenderableNotice
+        subject={UnrenderableSubject.Update}
+        reason={reason}
+      />
+    ),
+  });
 }

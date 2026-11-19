@@ -1,4 +1,4 @@
-import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import { readDisplayOnlySchemaForMember } from "@alliance/common/forms/display-only-schema";
 import { ActionUpdateDto } from "@alliance/shared/client";
 import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
@@ -16,6 +16,8 @@ export interface ActionUpdateCardProps {
   onActionPageTimeline?: boolean;
   border?: boolean;
   marksNotificationsRead?: boolean;
+  /** For staff: an update that can't be displayed shows why. */
+  staffView?: boolean;
 }
 
 const ActionUpdateCard = ({
@@ -25,10 +27,11 @@ const ActionUpdateCard = ({
   onActionPageTimeline = true, // if not on action page timeline, need to have action title and link
   border = false,
   marksNotificationsRead = true,
+  staffView = false,
 }: ActionUpdateCardProps) => {
   const { markCachedReadByContent } = useNotificationsCache();
   const schema = useMemo(
-    () => readDisplayOnlySchema(update.schema),
+    () => readDisplayOnlySchemaForMember(update.schema),
     [update.schema],
   );
 
@@ -82,14 +85,14 @@ const ActionUpdateCard = ({
           )}
         </div>
       </div>
-      {schema?.blocks.length !== 0 && (
+      {!(schema.ok && schema.value.blocks.length === 0) && (
         <div
           className={cn(
             "p-4 md:p-6 w-full gap-y-1 bg-white",
             border && "border border-zinc-200",
           )}
         >
-          <DisplayOnlyRenderer schema={schema} />
+          <DisplayOnlyRenderer schema={schema} showDetail={staffView} />
         </div>
       )}
     </div>

@@ -32,15 +32,19 @@ function storeBuildFor(
   }
 }
 
-export const STORE = run((): { url: string } | null => {
+export const STORE = run((): { url: string; name: string } | null => {
   const platform = Platform.OS;
   switch (platform) {
     case "ios":
-      return { url: "https://apps.apple.com/app/id6760088194" };
+      return {
+        url: "https://apps.apple.com/app/id6760088194",
+        name: "App Store",
+      };
     case "android":
       return Application.applicationId
         ? {
             url: `https://play.google.com/store/apps/details?id=${Application.applicationId}`,
+            name: "Play Store",
           }
         : null;
     case "macos":

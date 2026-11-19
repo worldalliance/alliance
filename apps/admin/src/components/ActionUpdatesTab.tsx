@@ -299,6 +299,7 @@ const ActionUpdatesTab = ({
             key={update.id}
             update={update}
             marksNotificationsRead={false}
+            staffView
             onDelete={
               deletingIds.has(update.id)
                 ? undefined

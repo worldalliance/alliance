@@ -1,28 +1,36 @@
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import type { Unrenderable } from "@alliance/common/forms/unrenderable";
+import { R, type Result } from "@alliance/common/result";
+import { UnrenderableSubject } from "@alliance/shared/forms/unrenderable";
 import RenderDisplayBlock from "./RenderDisplayBlock";
+import UnrenderableNotice from "./UnrenderableNotice";
 
 export default function DisplayOnlyRenderer({
   schema,
+  showDetail = false,
 }: {
-  schema: DisplayOnlySchema | null;
+  /** For staff: shows why it can't be displayed. */
+  showDetail?: boolean;
+  schema: Result<DisplayOnlySchema, Unrenderable>;
 }) {
-  if (!schema) {
-    return (
-      <div
-        className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800"
-        role="alert"
-      >
-        <p className="font-medium">This update can&apos;t be displayed</p>
-        <p className="mt-1 text-sm">Refreshing the page may fix the issue.</p>
+  return R.match(schema, {
+    success: ({ blocks }) => (
+      <div className="space-y-6">
+        {blocks.map((block, index) => (
+          <RenderDisplayBlock
+            key={block.id ?? `block-${index}`}
+            block={block}
+          />
+        ))}
       </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {schema.blocks.map((block, index) => (
-        <RenderDisplayBlock key={block.id ?? `block-${index}`} block={block} />
-      ))}
-    </div>
-  );
+    ),
+    failure: ({ reason, detail }) => (
+      <UnrenderableNotice
+        subject={UnrenderableSubject.Update}
+        reason={reason}
+        detail={detail}
+        showDetail={showDetail}
+      />
+    ),
+  });
 }
