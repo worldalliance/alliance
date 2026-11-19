@@ -14,10 +14,10 @@ export type CurrentFormula = {
   version: ParsedFormulaVersion;
 };
 
-/** Every formula that isn't deleted, with its latest version, by name. */
-export async function currentFormulas(
+/** Every formula that isn't deleted, with its latest version unparsed, by name. */
+export async function currentVersions(
   manager: EntityManager,
-): Promise<CurrentFormula[]> {
+): Promise<{ formula: Formula; version: FormulaVersion }[]> {
   const versions = await manager
     .createQueryBuilder(FormulaVersion, "version")
     .innerJoinAndSelect("version.formula", "formula")
@@ -27,11 +27,19 @@ export async function currentFormulas(
     .getMany();
   return versions
     .flatMap(({ formula, ...version }) =>
-      formula === undefined
-        ? []
-        : [{ formula, version: parseFormulaVersion({ ...version }) }],
+      formula === undefined ? [] : [{ formula, version: { ...version } }],
     )
     .sort((a, b) => a.formula.name.localeCompare(b.formula.name));
+}
+
+/** Every formula that isn't deleted, with its latest version, by name. */
+export async function currentFormulas(
+  manager: EntityManager,
+): Promise<CurrentFormula[]> {
+  return (await currentVersions(manager)).map(({ formula, version }) => ({
+    formula,
+    version: parseFormulaVersion(version),
+  }));
 }
 
 export const asNamed = ({

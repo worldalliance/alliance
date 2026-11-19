@@ -42,7 +42,7 @@ Writes `server/.env` for running the server without team credentials and prints 
 ## Deploy
 
 `deploy_backend.sh`
-Run by `deploy-environment.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, and rolls back to the old release on failure. A release that applies RemoveStreakRecognition stops the backend first and reverts the removal if the new backend fails; if that revert fails, the backend is left stopped and the job fails with an `::error::`.
+Run by `deploy-environment.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, re-checks every stored formula against the release and keeps the old release if one breaks or can't be read, checks again once the new backend is up for formulas saved meanwhile, and rolls back to the old release on failure. A release that applies RemoveStreakRecognition stops the backend first and reverts the removal if the new backend fails; if that revert fails, the backend is left stopped and the job fails with an `::error::`.
 
 `secrets_run.sh <command...>`
 `secrets_run.sh --path <prefix> [NAME...] [--path ...] -- <command...>`
