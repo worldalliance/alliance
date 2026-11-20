@@ -16,6 +16,8 @@ import { STAFF_TESTING_REQUIREMENTS } from "../../lib/staffTestingGate";
 export type ReadinessCheckItem = {
   id: string;
   label: string;
+  /** A short name for the item in a list of what is missing. */
+  summary: string;
   isReady: boolean;
   required?: boolean;
 };
@@ -99,7 +101,13 @@ export function actionReadinessItems(
   taskFormSchema: FormSchema | null,
 ): ReadinessCheckItem[] {
   const partOfSuite = Boolean(action.suite?.id);
-  const staffTestingItem = (id: string): ReadinessCheckItem => {
+  const staffTestingItem = ({
+    id,
+    summary,
+  }: {
+    id: string;
+    summary: string;
+  }): ReadinessCheckItem => {
     const requirement = STAFF_TESTING_REQUIREMENTS.find((r) => r.id === id);
     if (!requirement) {
       throw new Error(`unknown staff testing requirement: ${id}`);
@@ -107,43 +115,50 @@ export function actionReadinessItems(
     return {
       id,
       label: requirement.label,
+      summary,
       isReady: requirement.isReady(action),
       required: true,
     };
   };
   const items: ReadinessCheckItem[] = [
-    staffTestingItem("shortDescription"),
-    staffTestingItem("body"),
+    staffTestingItem({ id: "shortDescription", summary: "Short description" }),
+    staffTestingItem({ id: "body", summary: "Body" }),
     {
       id: "timeEstimate",
       label: "Time estimate set",
+      summary: "Time estimate",
       isReady: (action.timeEstimate ?? 0) > 0,
     },
     {
       id: "suite",
       label: "Part of a suite",
+      summary: "Suite",
       isReady: partOfSuite,
     },
     {
       id: "project",
       label: "Part of a project",
+      summary: "Project",
       isReady: Boolean(action.project),
     },
-    staffTestingItem("cohort"),
+    staffTestingItem({ id: "cohort", summary: "Cohort" }),
     {
       id: "authors",
       label: "Action authors set",
+      summary: "Authors",
       isReady: (action.authors?.length ?? 0) > 0,
     },
-    staffTestingItem("taskForm"),
+    staffTestingItem({ id: "taskForm", summary: "Task form" }),
     {
       id: "image",
       label: "Image set",
+      summary: "Image",
       isReady: Boolean(action.image),
     },
     {
       id: "outputView",
       label: "Task form has an output view, for the completion card",
+      summary: "Output view",
       isReady: (taskFormSchema?.outputViews.length ?? 0) > 0,
     },
   ];
@@ -160,6 +175,7 @@ export function actionReadinessItems(
   items.push({
     id: "readingTime",
     label: readingTimeLabel,
+    summary: "Reading time under 15 minutes",
     isReady: totalSeconds < 15 * secondsInMinute,
   });
 

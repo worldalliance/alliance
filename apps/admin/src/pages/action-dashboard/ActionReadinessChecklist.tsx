@@ -1,16 +1,9 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
-import Card from "@alliance/sharedweb/ui/Card";
-import {
-  AlertTriangle,
-  CheckIcon,
-  ChevronDown,
-  ChevronUp,
-  ListChecks,
-} from "lucide-react";
-import React, { useMemo } from "react";
+import { AlertTriangle, CheckIcon, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useId, useMemo } from "react";
 import type { FormWithSchema } from "../../components/FormResponsesView";
+import StatusPill from "../../components/ui/StatusPill";
+import { StatusTone } from "../../lib/statusTone";
 import {
   actionReadinessItems,
   type ReadinessCheckItem,
@@ -26,63 +19,70 @@ type ActionReadinessChecklistProps = {
 const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
   action,
   taskForm,
-  collapsed: checklistCollapsed,
-  onCollapsedChange: setChecklistCollapsed,
+  collapsed,
+  onCollapsedChange,
 }) => {
-  const readinessChecklist = useMemo<ReadinessCheckItem[]>(
+  const listId = useId();
+  const items = useMemo<ReadinessCheckItem[]>(
     () =>
       action ? actionReadinessItems(action, taskForm?.schema ?? null) : [],
     [action, taskForm],
   );
+  const missing = items.filter((item) => !item.isReady);
 
-  const readinessReadyCount = readinessChecklist.filter(
-    (item) => item.isReady,
-  ).length;
-  const readinessTotalCount = readinessChecklist.length;
-  const readinessComplete =
-    readinessTotalCount > 0 && readinessReadyCount === readinessTotalCount;
-
-  if (readinessTotalCount === 0) return null;
+  if (items.length === 0) return null;
 
   return (
-    <Card style={CardStyle.White}>
-      <button
-        type="button"
-        onClick={() => setChecklistCollapsed(!checklistCollapsed)}
-        className="w-full flex flex-col gap-y-2 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div className="flex items-center gap-2">
-          <ListChecks className="mt-0.5 h-5 w-5 text-green" strokeWidth={3} />
-          <h2 className="text-lg font-semibold">Checklist</h2>
-          {checklistCollapsed ? (
-            <ChevronDown className="h-5 w-5 text-gray-500" />
-          ) : (
-            <ChevronUp className="h-5 w-5 text-gray-500" />
-          )}
-        </div>
-        <span
-          className={cn(
-            "rounded-full px-3 py-1 text-sm font-medium",
-            readinessComplete
-              ? "bg-green/20 text-green-800"
-              : "bg-yellow-100 text-yellow-800",
-          )}
-        >
-          {readinessReadyCount}/{readinessTotalCount} ready
-        </span>
-      </button>
-      {!checklistCollapsed && (
-        <ul className="mt-4 divide-y divide-gray-200">
-          {readinessChecklist.map((item) => (
-            <li key={item.id} className="flex items-center gap-3 py-4">
+    <section className="rounded-md border border-zinc-200 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="text-sm font-semibold text-zinc-900">
+          <button
+            type="button"
+            aria-expanded={!collapsed}
+            aria-controls={collapsed ? undefined : listId}
+            onClick={() => onCollapsedChange(!collapsed)}
+            className="flex items-center gap-1 rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            {collapsed ? (
+              <ChevronDown size={16} aria-hidden />
+            ) : (
+              <ChevronUp size={16} aria-hidden />
+            )}
+            Checklist
+          </button>
+        </h2>
+        <StatusPill
+          tone={
+            missing.length === 0 ? StatusTone.Positive : StatusTone.Attention
+          }
+          label={`${items.length - missing.length}/${items.length} ready`}
+        />
+        {collapsed && missing.length > 0 && (
+          <p className="text-sm text-zinc-600">
+            Missing: {missing.map((item) => item.summary).join(", ")}
+          </p>
+        )}
+      </div>
+      {!collapsed && (
+        <ul id={listId} className="mt-2 divide-y divide-zinc-100">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center gap-3 py-2">
               {item.isReady ? (
-                <CheckIcon className="h-5 w-5 text-green" strokeWidth={3} />
+                <CheckIcon
+                  className="size-4 text-green-700"
+                  role="img"
+                  aria-label="Ready"
+                />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                <AlertTriangle
+                  className="size-4 text-amber-600"
+                  role="img"
+                  aria-label="Missing"
+                />
               )}
-              <p className="text-sm font-medium text-gray-900">{item.label}</p>
+              <p className="text-sm text-zinc-900">{item.label}</p>
               {item.required && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-zinc-500">
                   Required for staff testing
                 </span>
               )}
@@ -90,7 +90,7 @@ const ActionReadinessChecklist: React.FC<ActionReadinessChecklistProps> = ({
           ))}
         </ul>
       )}
-    </Card>
+    </section>
   );
 };
 

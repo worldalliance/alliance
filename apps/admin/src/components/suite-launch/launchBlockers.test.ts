@@ -53,10 +53,16 @@ const messages = (params: Parameters<typeof launchBlockers>[0]) =>
 
 describe("launchBlockers", () => {
   it("lets dismissed checklist items through, until another item goes missing", () => {
-    const body = { id: "body", label: "Full body content", isReady: false };
+    const body = {
+      id: "body",
+      label: "Full body content",
+      summary: "Body",
+      isReady: false,
+    };
     const project = {
       id: "project",
       label: "Part of a project",
+      summary: "Project",
       isReady: false,
     };
     const entry = { action, unready: [body, project], ownMemberStart: null };
@@ -76,7 +82,12 @@ describe("launchBlockers", () => {
       messages(
         withUnready([
           body,
-          { id: "form", label: "Task form linked", isReady: false },
+          {
+            id: "form",
+            label: "Task form linked",
+            summary: "Task form",
+            isReady: false,
+          },
         ]),
       ),
     ).toEqual(["1 action has unfinished checklist items."]);
@@ -207,7 +218,12 @@ describe("launchBlockers", () => {
             {
               action,
               unready: [
-                { id: "body", label: "Full body content", isReady: false },
+                {
+                  id: "body",
+                  label: "Full body content",
+                  summary: "Body",
+                  isReady: false,
+                },
               ],
               ownMemberStart: null,
             },
