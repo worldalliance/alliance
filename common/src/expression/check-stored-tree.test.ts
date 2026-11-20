@@ -52,7 +52,7 @@ test("a stored tree whose named expression was deleted fails", () => {
   ).toEqual(
     R.failure([
       {
-        message: "This uses a named expression that no longer exists.",
+        message: "This uses a formula that no longer exists.",
         start: 0,
         end: 4,
       },
@@ -68,7 +68,7 @@ test("a deleted named expression is reported where it's read", () => {
   };
   expect(problems("reader", { ...variable, named: [reader] })).toEqual([
     {
-      message: "This uses a named expression that no longer exists.",
+      message: "This uses a formula that no longer exists.",
       at: "reader@0",
     },
   ]);
@@ -83,7 +83,7 @@ test("named expressions reading a removed input are listed by name", () => {
     scope: { catalog: { ...catalog, inputs }, named: [b, a] },
     rule: variable,
   });
-  const message = "This uses an input that no longer exists.";
+  const message = "This uses something that no longer exists.";
   expect(result).toEqual(
     R.failure([
       { message, start: 0, end: 9, namedExpression: "a" },
@@ -110,7 +110,7 @@ test("a reader of a named expression reading a removed input gets only its probl
   ).toEqual(
     R.failure([
       {
-        message: "This uses an input that no longer exists.",
+        message: "This uses something that no longer exists.",
         start: 0,
         end: 9,
         namedExpression: "a",
@@ -150,7 +150,7 @@ test("a named expression's typing problem shows past its reader's removed input"
         namedExpression: "a",
       },
       {
-        message: "This uses an input that no longer exists.",
+        message: "This uses something that no longer exists.",
         start: 0,
         end: 5,
         namedExpression: "b",
@@ -162,7 +162,7 @@ test("a named expression's typing problem shows past its reader's removed input"
 test("a removed input whose id a named expression's name took is reported where it's read", () => {
   const taken = named({ id: "6", name: "gone", text: "5" });
   const gone: Expr = { kind: ExprKind.Input, id: "gone" };
-  const message = "This uses an input that no longer exists.";
+  const message = "This uses something that no longer exists.";
   expect(
     checkExpression({
       source: gone,
@@ -222,7 +222,7 @@ test.each([
     expect(result).toEqual(
       R.failure([
         {
-          message: `These named expressions refer to each other in a loop: ${path}.`,
+          message: `These formulas refer to each other in a loop: ${path}.`,
           start: 0,
           end: 1,
         },
@@ -254,8 +254,8 @@ describe("a stored expression isn't told a fallback can't change its result", ()
       NEEDLESS,
     ],
     [
-      "the root, where an `isUnknown` guard makes one needless",
-      'isUnknown(state) ? false : ((state === "CA") ?? false)',
+      "the root, where an `isMissing` guard makes one needless",
+      'isMissing(state) ? false : ((state === "CA") ?? false)',
       root,
       GUARDED,
     ],

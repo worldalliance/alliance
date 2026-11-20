@@ -29,7 +29,7 @@ test("a save that closes a loop is refused at the saved expression", () => {
       diagnostics: [
         expect.objectContaining({
           message:
-            "These named expressions refer to each other in a loop: doubled → amount → doubled.",
+            "These formulas refer to each other in a loop: doubled → amount → doubled.",
         }),
       ],
     },
@@ -149,20 +149,16 @@ test("a saved expression on a loop that also reaches a stored loop is told its o
     {
       id: "a",
       messages: [
-        "These named expressions refer to each other in a loop: doubled → amount → doubled.",
+        "These formulas refer to each other in a loop: doubled → amount → doubled.",
       ],
     },
     {
       id: "l1",
-      messages: [
-        "These named expressions refer to each other in a loop: l2 → l1 → l2.",
-      ],
+      messages: ["These formulas refer to each other in a loop: l2 → l1 → l2."],
     },
     {
       id: "l2",
-      messages: [
-        "These named expressions refer to each other in a loop: l1 → l2 → l1.",
-      ],
+      messages: ["These formulas refer to each other in a loop: l1 → l2 → l1."],
     },
   ]);
 });

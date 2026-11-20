@@ -179,7 +179,7 @@ describe("VariableBuilder list inputs", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Add variable"));
+    fireEvent.click(screen.getByText("Add formula"));
 
     expect(saved.at(-1)?.variables?.[0].formula).toBe(
       "input1.map(row => row.name).join(', ')",
@@ -307,7 +307,7 @@ describe("VariableBuilder variables", () => {
     );
     fireEvent.change(first!, { target: { value: "Oslo" } });
     fireEvent.change(second!, { target: { value: "Lima" } });
-    fireEvent.click(screen.getByLabelText("Delete variable a"));
+    fireEvent.click(screen.getByLabelText("Delete formula a"));
 
     expect(
       screen.getByLabelText<HTMLInputElement>("Sample answer for input1").value,

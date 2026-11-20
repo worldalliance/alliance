@@ -5,7 +5,7 @@ import {
 } from "../forms/formula-allowlist";
 import { R, type Result } from "../result";
 import {
-  IS_UNKNOWN,
+  IS_MISSING,
   TypeKind,
   isRecordValue,
   mismatch,
@@ -33,6 +33,8 @@ import {
   BinaryOp,
   ExprKind,
   LAMBDA_ONLY_AS_ARGUMENT,
+  REMOVED_FORMULA,
+  REMOVED_INPUT,
   mathFunctionName,
   type Expr,
 } from "./tree";
@@ -53,7 +55,7 @@ const takes = ({ fn, arity }: { fn: string; arity: number }) =>
 /**
  * Evaluates a tree. Unknown is `null`: comparisons with it are undecided
  * (`null`), `&&`, `||` and `!` follow SQL's three-valued rules, `??`,
- * `isUnknown`, nullable function parameters, a list's `concat` and a
+ * `isMissing`, nullable function parameters, a list's `concat` and a
  * `reduce` starting value take it, and other operations on it give `null`. `&&` and `||` evaluate both sides,
  * so an error on either fails the whole expression; `?:` and `??` evaluate
  * only the side they pick.
@@ -181,7 +183,7 @@ class Evaluator {
       definition === undefined
         ? R.failure({
             kind: FailureKind.Error,
-            message: `There's no input \`${id}\`.`,
+            message: REMOVED_INPUT,
           })
         : R.flatMap(this.bindings.readInput(id), (value) => {
             const problem = mismatch(value, definition.type);
@@ -189,7 +191,7 @@ class Evaluator {
               ? R.success(value)
               : R.failure({
                   kind: FailureKind.Error,
-                  message: `Input \`${id}\` doesn't match its type: ${problem}`,
+                  message: `\`${id}\` doesn't match its type: ${problem}`,
                 });
           });
     this.inputs.set(id, read);
@@ -203,7 +205,7 @@ class Evaluator {
     if (named === undefined) {
       return R.failure({
         kind: FailureKind.Error,
-        message: `Named expression \`${id}\` doesn't exist.`,
+        message: REMOVED_FORMULA,
       });
     }
     if (this.evaluating.has(id)) {
@@ -239,8 +241,8 @@ class Evaluator {
   }
 
   private call(fn: string, args: Value[]): Value {
-    if (fn === IS_UNKNOWN) {
-      if (args.length !== 1) throw evalError(`${IS_UNKNOWN} takes one value.`);
+    if (fn === IS_MISSING) {
+      if (args.length !== 1) throw evalError(`${IS_MISSING} takes one value.`);
       return args[0] === null;
     }
     const mathName = mathFunctionName(fn);

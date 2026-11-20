@@ -63,7 +63,7 @@ export type NamedExpression = {
    * The save check declares it as a variable, so callers keep it an
    * identifier that isn't a reserved word, `Math`, `undefined`, `eval`,
    * `arguments` or `globalThis`, doesn't start with `__`, and no input,
-   * function, `isUnknown` or other named expression uses.
+   * function, `isMissing` or other named expression uses.
    */
   name: string;
   tree: Expr;
@@ -72,7 +72,7 @@ export type NamedExpression = {
 /**
  * Function names, input ids and named-expression names read back as names,
  * which `true`, `class` or `my-name` don't, aren't `eval`, `arguments` or
- * `globalThis`, and differ from each other and from `Math`, `isUnknown` and
+ * `globalThis`, and differ from each other and from `Math`, `isMissing` and
  * `undefined`; the parser throws if not.
  */
 export type Scope = {
@@ -89,9 +89,9 @@ export type Diagnostic = {
   namedExpression?: string;
 };
 
-export const IS_UNKNOWN = "isUnknown";
+export const IS_MISSING = "isMissing";
 
-export const IS_UNKNOWN_HINT = "Use isUnknown(…) to test for a missing value.";
+export const IS_MISSING_HINT = "Use isMissing(…) to test for a missing value.";
 
 /** Describes where `value` departs from `type`, or `undefined` if it fits. */
 export function mismatch(value: Value, type: ValueType): string | undefined {

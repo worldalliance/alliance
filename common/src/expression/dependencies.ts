@@ -1,6 +1,6 @@
 import { R, type Result } from "../result";
 import { topologicalOrder } from "../topological-order";
-import { IS_UNKNOWN, type NamedExpression } from "./catalog";
+import { IS_MISSING, type NamedExpression } from "./catalog";
 import { ExprKind, children, mathFunctionName, type Expr } from "./tree";
 
 export type Reads = {
@@ -18,7 +18,7 @@ const directRefs = (expr: Expr): Set<string> => reads(expr, []).named;
 
 /**
  * What an expression reads, directly or through the named expressions it
- * references. `Math` functions and `isUnknown` aren't counted; a reference to
+ * references. `Math` functions and `isMissing` aren't counted; a reference to
  * a named expression missing from `named` is listed but not followed.
  */
 export function reads(expr: Expr, named: readonly NamedExpression[]): Reads {
@@ -34,7 +34,7 @@ export function reads(expr: Expr, named: readonly NamedExpression[]): Reads {
         found.inputs.add(node.id);
         return;
       case ExprKind.Call:
-        if (node.fn !== IS_UNKNOWN && mathFunctionName(node.fn) === undefined) {
+        if (node.fn !== IS_MISSING && mathFunctionName(node.fn) === undefined) {
           found.functions.add(node.fn);
         }
         return;

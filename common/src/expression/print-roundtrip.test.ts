@@ -149,7 +149,7 @@ function randomTrees({ misread }: { misread: boolean }) {
       case 12:
         return {
           kind: ExprKind.Call,
-          fn: ["lookup", "isUnknown", "Math.abs"][pick(3)],
+          fn: ["lookup", "isMissing", "Math.abs"][pick(3)],
           args: [next()],
         };
       case 13:

@@ -291,12 +291,12 @@ describe("a record read by a key input", () => {
   const check = (source: string) =>
     checkExpression({ source, scope, rule: variable });
 
-  test("reads the field the key names where isUnknown narrows it", () => {
-    expect(check("isUnknown(row[key]) && !row[key]").ok).toBe(true);
+  test("reads the field the key names where isMissing narrows it", () => {
+    expect(check("isMissing(row[key]) && !row[key]").ok).toBe(true);
   });
 
-  test("reads every field a key can name where isUnknown narrows it", () => {
-    expect(check("isUnknown(row[field]) && !row[field]")).toEqual(
+  test("reads every field a key can name where isMissing narrows it", () => {
+    expect(check("isMissing(row[field]) && !row[field]")).toEqual(
       R.failure([
         expect.objectContaining({ message: "This needs a yes/no value." }),
       ]),
@@ -308,7 +308,7 @@ describe("a record read by a key input", () => {
   });
 
   test("still has a fallback the guard makes needless reported", () => {
-    expect(check("isUnknown(pick) ? 0 : row[pick] ?? 0")).toEqual(
+    expect(check("isMissing(pick) ? 0 : row[pick] ?? 0")).toEqual(
       R.failure([expect.objectContaining({ message: GUARDED })]),
     );
   });
@@ -418,7 +418,7 @@ test("a fallback after a read by key is needless only when every value its key t
   expect(check("rec[key] === 1 && (rec[key] ?? 0) === 1").ok).toBe(true);
   expect(check('keyBC === "b" && (rec[keyBC] ?? 0) === 1').ok).toBe(true);
   expect(
-    check('key === "a" || (isUnknown(rec[key] ?? 1) ? 1 / 0 : 0) > 0').ok,
+    check('key === "a" || (isMissing(rec[key] ?? 1) ? 1 / 0 : 0) > 0').ok,
   ).toBe(true);
   const needless = "rec[keyB] === 1 && (rec[keyB] ?? 0) === 1";
   const fallback = needless.indexOf("0)");
@@ -447,8 +447,8 @@ test.each([
 );
 
 test.each([
-  'items.some(item => item.score === 1 || isUnknown(item["score"]))',
-  'items.some(item => item["score"] === 1 || isUnknown(item.score))',
+  'items.some(item => item.score === 1 || isMissing(item["score"]))',
+  'items.some(item => item["score"] === 1 || isMissing(item.score))',
 ])(
   "a guard on a key written as text decides the field it names in %s",
   (text) => {

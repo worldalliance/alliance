@@ -21,6 +21,7 @@ import { ContractModule } from "./contract/contract.module";
 import { CustomLinksModule } from "./custom-links/custom-links.module";
 import { connectionOptions } from "./datasources/connection-options";
 import { EventLogModule } from "./eventlog/eventlog.module";
+import { FormulasModule } from "./formulas/formulas.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
 import { HealthModule } from "./health/health.module";
@@ -104,6 +105,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     SearchModule,
     ShareUrlsModule,
     CustomLinksModule,
+    FormulasModule,
     HostedDocsModule,
     CampaignModule,
     TasksModule,

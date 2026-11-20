@@ -15,7 +15,7 @@ function describeUnresolvedReferences(
     ({ name, locations }) => `#{${name}} — in ${locations.join(", ")}`,
   );
   return [
-    "These references don't match any variable on this form, so respondents will see them exactly as written:",
+    "These references don't match any formula on this form, so respondents will see them exactly as written:",
     "",
     ...lines,
     "",
@@ -73,7 +73,7 @@ export function useSaveGate({
     <>
       <ConfirmDialog
         isOpen={confirmUnresolvedVariables}
-        title="Save with unmatched variable references?"
+        title="Save with unmatched formula references?"
         message={describeUnresolvedReferences(unresolvedVariableReferences)}
         isLoading={isSaving}
         onCancel={() => setConfirmUnresolvedVariables(false)}

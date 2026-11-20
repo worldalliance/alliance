@@ -246,7 +246,7 @@ describe("Formulas reading another form (e2e)", () => {
 
       const refused = await remove(source.id).expect(409);
       expect(refused.body.message).toBe(
-        `Variables or options formulas in "Destination" (#${destinationId}) read this form's answers. Change them to stop reading it, then delete it`,
+        `Formulas in "Destination" (#${destinationId}) read this form's answers. Change them to stop reading it, then delete it`,
       );
       expect(await formRepo.findOneBy({ id: source.id })).not.toBeNull();
 
@@ -264,7 +264,7 @@ describe("Formulas reading another form (e2e)", () => {
 
       const refused = await remove(source.id).expect(409);
       expect(refused.body.message).toBe(
-        `Variables or options formulas in "Destination" (#${created.body.id}) read this form's answers. Change them to stop reading it, then delete it`,
+        `Formulas in "Destination" (#${created.body.id}) read this form's answers. Change them to stop reading it, then delete it`,
       );
     });
 

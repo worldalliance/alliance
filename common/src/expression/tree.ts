@@ -44,6 +44,10 @@ export enum BinaryOp {
 export const LAMBDA_ONLY_AS_ARGUMENT =
   "A function can only be the first value passed to a list method.";
 
+export const REMOVED_FORMULA = "This uses a formula that no longer exists.";
+/** Leaves the input unnamed, since a formula may have taken its id as its name. */
+export const REMOVED_INPUT = "This uses something that no longer exists.";
+
 export type LiteralValue = string | number | boolean | null;
 
 /**

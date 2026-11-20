@@ -1,6 +1,6 @@
 /* alliance/max-lines 950 -- one recursive walk whose tallies, guard state, carried reads and reports every branch shares; codex's splits (flow helpers, operators, calls) each leave a propagation fix reading across them, behind interfaces into that state */
 import ts from "typescript";
-import { IS_UNKNOWN, IS_UNKNOWN_HINT, type Diagnostic } from "./catalog";
+import { IS_MISSING, IS_MISSING_HINT, type Diagnostic } from "./catalog";
 import {
   COMPARES_PRIMITIVES_ONLY,
   SHOWS_PRIMITIVES_ONLY,
@@ -73,13 +73,13 @@ type Analysis = {
  * where `tsc`'s types say it can't be, which `tsc` misses because it types
  * `===`, `&&`, `||` and `!` as plain yes/no. Unknown values may flow only into
  * three-valued operators, `===`/`!==`, either side of `??`, a ternary branch,
- * `isUnknown`, a function parameter that accepts a missing value, and the
+ * `isMissing`, a function parameter that accepts a missing value, and the
  * result; a ternary test or list predicate needs a decided yes/no, and a text
  * part needs a value. It also reports operands the interpreter rejects: a
  * value that isn't yes/no where yes/no is needed, a list or record compared,
  * shown in text, sought or sorted without a function, `<`, `>`, `<=` or `>=`
  * on anything but two numbers or two pieces of text, and `-` on anything but
- * a number. It points a comparison or lookup with `null` at `isUnknown`. It
+ * a number. It points a comparison or lookup with `null` at `isMissing`. It
  * excuses `tsc`'s TS2869 and TS2881 on a `??` whose left side can't be
  * missing, and reports that `??` itself when `reportNeedlessFallbacks` is set.
  */
@@ -205,7 +205,7 @@ export function analyze({
   const contained = (run: () => void) =>
     loud(() => isolated(() => held(run), { keepsNarrowed: true }));
   // A guard decides an unknown that reaches the read it guards, and an
-  // `isUnknown` argument's value is discarded whole.
+  // `isMissing` argument's value is discarded whole.
   const decidedByGuard = <T>(
     run: () => T,
     { discards }: { discards: boolean },
@@ -433,10 +433,10 @@ export function analyze({
       fedParams = saved;
     }
   };
-  // `tsc` narrows by an `isUnknown` on the right of `??` as if it ran.
+  // `tsc` narrows by an `isMissing` on the right of `??` as if it ran.
   const unrun = new Set<string>();
   const collectUnrun = (expr: Expr, { right }: { right: boolean }): void => {
-    if (right && expr.kind === ExprKind.Call && expr.fn === IS_UNKNOWN) {
+    if (right && expr.kind === ExprKind.Call && expr.fn === IS_MISSING) {
       expr.args.forEach((arg) => unrun.add(readKey(arg)));
     }
     const coalesce =
@@ -504,7 +504,7 @@ export function analyze({
     let hinted = false;
     for (const side of sides) {
       if (side.kind === ExprKind.Literal && side.value === null) {
-        report(side, IS_UNKNOWN_HINT);
+        report(side, IS_MISSING_HINT);
         excuse(side, NULL_OPERAND);
         hinted = true;
       }
@@ -615,9 +615,9 @@ export function analyze({
         return own(expr);
       }
       case ExprKind.Call:
-        if (expr.fn === IS_UNKNOWN) {
+        if (expr.fn === IS_MISSING) {
           // A guard beside `&&` or `||` doesn't make a fallback inside
-          // needless, since the fallback changes what `isUnknown` sees; a
+          // needless, since the fallback changes what `isMissing` sees; a
           // ternary test's does, since its branch runs only with the value.
           decidedByGuard(() => branchesOnly(() => expr.args.forEach(visit)), {
             discards: true,

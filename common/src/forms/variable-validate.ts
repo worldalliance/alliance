@@ -140,11 +140,11 @@ export function collectVariableErrors(
 
     if (!VARIABLE_NAME_REGEX.test(variable.name)) {
       push(
-        `Variable name "${variable.name}" may use only letters, numbers, underscores and dashes`,
+        `Formula name "${variable.name}" may use only letters, numbers, underscores and dashes`,
       );
     }
     if (declared.has(variable.name)) {
-      push(`Duplicate variable name "${variable.name}"`);
+      push(`Duplicate formula name "${variable.name}"`);
     }
     declared.add(variable.name);
 
@@ -177,7 +177,7 @@ export function collectVariableErrors(
           return `Input "${inputName}" counts members' answers, which an options formula can't read`;
         }
         if (input.kind === "random") {
-          return `Input "${inputName}" picks a random number, which only a variable can use`;
+          return `Input "${inputName}" picks a random number, which an options formula can't use`;
         }
         return undefined;
       },

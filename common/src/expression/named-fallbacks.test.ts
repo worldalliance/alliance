@@ -29,8 +29,8 @@ describe("a fallback the save makes needless", () => {
   test.each([
     ["it can't change the result", "(maybe ?? 0) > 1"],
     [
-      "an `isUnknown` guard decides it",
-      "isUnknown(count) ? false : ((count === maybe) ?? false)",
+      "an `isMissing` guard decides it",
+      "isMissing(count) ? false : ((count === maybe) ?? false)",
     ],
   ])("doesn't block stored expressions when %s", (_, text) => {
     const stored: Dependent = { id: "g", stored: tree(text), rule: condition };

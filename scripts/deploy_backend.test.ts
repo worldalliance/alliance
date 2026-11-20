@@ -80,9 +80,11 @@ describe.each(["absent", "applied"] as const)(
         "cache-rm",
         "validate",
         "migrate while running: old",
+        "check formulas",
         "delete old",
         "start new",
         "health new",
+        "check formulas",
       ]);
       expect(result.running).toBe("new");
     });
@@ -131,6 +133,33 @@ describe.each(["absent", "applied"] as const)(
         "migrate while running: old",
       ]);
       expect(result.output).toContain("The old backend is still running.");
+      expect(result).toMatchObject({ running: "old", release: "old" });
+    });
+
+    test("a failed formula re-check leaves the old backend running", () => {
+      const result = deploy({ FORMULAS: "fail" });
+      expect(result.exitCode).toBe(1);
+      expect(result.log.slice(-2)).toEqual([
+        "migrate while running: old",
+        "check formulas",
+      ]);
+      expect(result.output).toContain(
+        "Re-checking stored formulas failed; the log above says why.",
+      );
+      expect(result).toMatchObject({ running: "old", release: "old" });
+    });
+
+    test("a failed re-check after the swap restarts the old release", () => {
+      const result = deploy({ FORMULAS: "after-start" });
+      expect(result.exitCode).toBe(1);
+      expect(result.log.slice(-5)).toEqual([
+        "health new",
+        "check formulas",
+        "delete new",
+        "delete ",
+        "start old",
+      ]);
+      expect(result.output).toContain("This release breaks stored formulas.");
       expect(result).toMatchObject({ running: "old", release: "old" });
     });
 
@@ -226,11 +255,24 @@ describe("deploy_backend.sh with the removal pending", () => {
       "validate",
       "delete old",
       "migrate while running: ",
+      "check formulas",
       "delete ",
       "start new",
       "health new",
     ]);
     expect(result).toMatchObject({ running: "new", db: "applied" });
+  });
+
+  test("a failed formula re-check reverts the removal and restarts the old release", () => {
+    const result = deploy({ FORMULAS: "fail" });
+    expect(result.exitCode).toBe(1);
+    expect(result.log).toContain("check formulas");
+    expect(result.log).toContain("revert");
+    expect(result).toMatchObject({
+      running: "old",
+      release: "old",
+      db: "pending",
+    });
   });
 
   test("a preparation failure keeps the old backend and migrates nothing", () => {

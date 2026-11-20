@@ -403,7 +403,7 @@ export class TasksService {
         .map((reader) => `"${reader.title || "Untitled"}" (#${reader.id})`)
         .join(", ");
       throw new ConflictException(
-        `Variables or options formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
+        `Formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
       );
     }
     await softDeleteCascade(this.formRepository.manager, {

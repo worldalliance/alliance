@@ -195,7 +195,7 @@ function resolveRandomInput(
   seedScope: string | undefined,
 ): Result<ExprValue, string> {
   if (seedScope === undefined) {
-    return R.failure("A random input works only in a variable");
+    return R.failure("A random input doesn't work in an options formula");
   }
   return randomizationKey === undefined
     ? R.failure("No randomization key to pick a random number with")

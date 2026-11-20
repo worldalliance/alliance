@@ -58,7 +58,7 @@ describe("FormBuilder save conflict", () => {
       fireEvent.change(screen.getByPlaceholderText("Page title"), {
         target: { value: "Where" },
       });
-      fireEvent.click(screen.getByText("Variables"));
+      fireEvent.click(screen.getByText("Formulas"));
       const [first, second] = screen.getAllByLabelText<HTMLInputElement>(
         "Sample answer for input1",
       );
@@ -399,7 +399,7 @@ describe("FormBuilder save once a source form loads", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Variables"));
+    fireEvent.click(screen.getByText("Formulas"));
     await screen.findByRole("option", { name: /^Pets \(list\)/ });
     fireEvent.click(screen.getByText("Save Form"));
 

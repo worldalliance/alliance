@@ -9,67 +9,67 @@ import {
   variable,
 } from "./check-test-support";
 
-describe("isUnknown guards", () => {
+describe("isMissing guards", () => {
   test("a guarded starting value of reduce leaves a fallback in its function allowed", () => {
     expect(
       passes(
-        "isUnknown(count) || [1].reduce((n, x) => isUnknown(n ?? 0) ? 1 / 0 : 1, count) > 0",
+        "isMissing(count) || [1].reduce((n, x) => isMissing(n ?? 0) ? 1 / 0 : 1, count) > 0",
       ).mayBeUnknown,
     ).toBe(false);
   });
 
-  test("an isUnknown guard decides the read it guards", () => {
-    expect(passes('!isUnknown(state) && state === "CA"').mayBeUnknown).toBe(
+  test("an isMissing guard decides the read it guards", () => {
+    expect(passes('!isMissing(state) && state === "CA"').mayBeUnknown).toBe(
       false,
     );
-    expect(passes("!isUnknown(count) && count > 5").mayBeUnknown).toBe(false);
+    expect(passes("!isMissing(count) && count > 5").mayBeUnknown).toBe(false);
     expect(
-      passes("isUnknown(count) ? null : count > 5", groupCondition)
+      passes("isMissing(count) ? null : count > 5", groupCondition)
         .mayBeUnknown,
     ).toBe(true);
     expect(
-      passes("(isUnknown(count) ? null : count > 5) ?? false").mayBeUnknown,
+      passes("(isMissing(count) ? null : count > 5) ?? false").mayBeUnknown,
     ).toBe(false);
   });
 
   test.each([
-    "!isUnknown(marks.indexOf(1)) && !isUnknown(count) && marks.indexOf(1) > count",
-    "!isUnknown(count) && !isUnknown(marks.indexOf(1)) && marks.indexOf(1) > count",
-    "isUnknown(marks.indexOf(1)) || isUnknown(count) || marks.indexOf(1) > count",
-    "!isUnknown(marks.indexOf(1)) && !isUnknown(count) ? marks.indexOf(1) > count : false",
-    '((!isUnknown(state) && count === 1) ?? true) && state === "CA"',
+    "!isMissing(marks.indexOf(1)) && !isMissing(count) && marks.indexOf(1) > count",
+    "!isMissing(count) && !isMissing(marks.indexOf(1)) && marks.indexOf(1) > count",
+    "isMissing(marks.indexOf(1)) || isMissing(count) || marks.indexOf(1) > count",
+    "!isMissing(marks.indexOf(1)) && !isMissing(count) ? marks.indexOf(1) > count : false",
+    '((!isMissing(state) && count === 1) ?? true) && state === "CA"',
   ])("a guard earlier in a chain decides %s", (text) => {
     expect(passes(text).mayBeUnknown).toBe(false);
   });
 
   test.each([
-    'state === "CA" || isUnknown(state)',
-    'state !== "CA" && !isUnknown(state)',
-    '(state === "CA" || isUnknown(state)) && total > 1',
-    "items[0]?.score === 1 || isUnknown(items[0]?.score)",
-    'items.find(item => item.name === "a")?.score === 1 || isUnknown(items.find(item => item.name === "a")?.score)',
-    "marks.indexOf(3) === 1 || isUnknown(marks.indexOf(3))",
-    "marks.includes(3) || isUnknown(marks.includes(3))",
-    'state === "CA" || isUnknown((state))',
-    "marks.indexOf(count) === 1 || isUnknown(marks.indexOf(count))",
-    "(count === 1) === true || isUnknown(count === 1)",
-    "(count ?? marks.indexOf(3)) === 1 || isUnknown(count ?? marks.indexOf(3))",
-    "marks.indexOf( 3 ) === 1 || isUnknown(marks.indexOf(3))",
-    `items.find(item => item.name === 'a')?.score === 1 || isUnknown(items.find(item => item.name === "a")?.score)`,
+    'state === "CA" || isMissing(state)',
+    'state !== "CA" && !isMissing(state)',
+    '(state === "CA" || isMissing(state)) && total > 1',
+    "items[0]?.score === 1 || isMissing(items[0]?.score)",
+    'items.find(item => item.name === "a")?.score === 1 || isMissing(items.find(item => item.name === "a")?.score)',
+    "marks.indexOf(3) === 1 || isMissing(marks.indexOf(3))",
+    "marks.includes(3) || isMissing(marks.includes(3))",
+    'state === "CA" || isMissing((state))',
+    "marks.indexOf(count) === 1 || isMissing(marks.indexOf(count))",
+    "(count === 1) === true || isMissing(count === 1)",
+    "(count ?? marks.indexOf(3)) === 1 || isMissing(count ?? marks.indexOf(3))",
+    "marks.indexOf( 3 ) === 1 || isMissing(marks.indexOf(3))",
+    `items.find(item => item.name === 'a')?.score === 1 || isMissing(items.find(item => item.name === "a")?.score)`,
   ])("a guard on the other side decides %s", (text) => {
     expect(passes(text, groupCondition).mayBeUnknown).toBe(false);
   });
 
   test.each([
-    ["isUnknown(marks.indexOf(3) + 1)", condition],
-    ["isUnknown(`${marks.indexOf(3)}`)", condition],
-    ["isUnknown(double(marks.indexOf(3)))", condition],
-    ['!isUnknown(state === "CA" ? 1 : 2)', condition],
+    ["isMissing(marks.indexOf(3) + 1)", condition],
+    ["isMissing(`${marks.indexOf(3)}`)", condition],
+    ["isMissing(double(marks.indexOf(3)))", condition],
+    ['!isMissing(state === "CA" ? 1 : 2)', condition],
     [
-      "(marks.indexOf(3) + 1) === 1 || isUnknown(marks.indexOf(3) + 1)",
+      "(marks.indexOf(3) + 1) === 1 || isMissing(marks.indexOf(3) + 1)",
       condition,
     ],
-    ["isUnknown(marks.indexOf(3) + 1) ? 0 : marks.indexOf(3) + 1", variable],
+    ["isMissing(marks.indexOf(3) + 1) ? 0 : marks.indexOf(3) + 1", variable],
   ])(
     "a guard decides an unknown anywhere inside its read in %s",
     (text, rule) => {
@@ -79,12 +79,12 @@ describe("isUnknown guards", () => {
 
   test.each([
     [
-      "isUnknown(marks.map(m => m === count)) ? [] : marks.map(m => m === count)",
+      "isMissing(marks.map(m => m === count)) ? [] : marks.map(m => m === count)",
       "m === count",
     ],
-    ['isUnknown([state === "CA"]) ? [] : [state === "CA"]', 'state === "CA"'],
+    ['isMissing([state === "CA"]) ? [] : [state === "CA"]', 'state === "CA"'],
     [
-      'isUnknown({ ca: state === "CA" }) ? 0 : { ca: state === "CA" }',
+      'isMissing({ ca: state === "CA" }) ? 0 : { ca: state === "CA" }',
       'state === "CA"',
     ],
   ])("a guard doesn't decide an item its read holds in %s", (text, item) => {
@@ -92,11 +92,11 @@ describe("isUnknown guards", () => {
   });
 
   test.each([
-    ["isUnknown(marks.includes(3)) ? false : marks.includes(3)", condition],
-    ["!isUnknown(marks.includes(3)) ? marks.includes(3) : true", condition],
-    ["isUnknown(marks.indexOf(3)) ? -1 : marks.indexOf(3)", variable],
+    ["isMissing(marks.includes(3)) ? false : marks.includes(3)", condition],
+    ["!isMissing(marks.includes(3)) ? marks.includes(3) : true", condition],
+    ["isMissing(marks.indexOf(3)) ? -1 : marks.indexOf(3)", variable],
     [
-      'isUnknown(marks.indexOf(3)) ? "none" : describe(marks.indexOf(3) + 1)',
+      'isMissing(marks.indexOf(3)) ? "none" : describe(marks.indexOf(3) + 1)',
       variable,
     ],
   ])("a ternary guard decides %s", (text, rule) => {
@@ -104,20 +104,20 @@ describe("isUnknown guards", () => {
   });
 
   test.each([
-    'state === "CA" || isUnknown(count)',
-    'state === "CA" && isUnknown(state)',
+    'state === "CA" || isMissing(count)',
+    'state === "CA" && isMissing(state)',
   ])("a guard doesn't decide %s", (text) => {
     expect(problems(text)).toEqual([{ message: UNDECIDED_STATE, at: text }]);
   });
 
   test.each([
-    '((state === "CA") ?? false) || isUnknown(state)',
-    'isUnknown(state) || ((state === "CA") ?? false)',
-    'isUnknown(state) ? false : ((state === "CA") ?? false)',
-    "isUnknown(state) || ((state.length > 2) ?? false)",
-    "isUnknown(usBased) || (({ yes: 1, no: 2 }[usBased] > 0) ?? false)",
-    "isUnknown(count) || [isUnknown(count) || ((count > 1) ?? false)].length > 0",
-    'isUnknown(state) ? false : (isUnknown(state) || isUnknown((state === "CA") ?? false))',
+    '((state === "CA") ?? false) || isMissing(state)',
+    'isMissing(state) || ((state === "CA") ?? false)',
+    'isMissing(state) ? false : ((state === "CA") ?? false)',
+    "isMissing(state) || ((state.length > 2) ?? false)",
+    "isMissing(usBased) || (({ yes: 1, no: 2 }[usBased] > 0) ?? false)",
+    "isMissing(count) || [isMissing(count) || ((count > 1) ?? false)].length > 0",
+    'isMissing(state) ? false : (isMissing(state) || isMissing((state === "CA") ?? false))',
   ])("a fallback a guard makes needless says so: %s", (text) => {
     expect(problems(text)).toEqual([{ message: GUARDED, at: "false" }]);
   });
@@ -137,8 +137,8 @@ describe("isUnknown guards", () => {
   );
 
   test.each([
-    "isUnknown(count) || [count].length > 0",
-    "isUnknown(count) || [count].map((c) => c + 1).length > 0",
+    "isMissing(count) || [count].length > 0",
+    "isMissing(count) || [count].map((c) => c + 1).length > 0",
   ])(
     "a fallback after a left a guard decides through a list never runs: %s",
     (left) => {
@@ -168,27 +168,27 @@ describe("isUnknown guards", () => {
   });
 
   test("a guard on a read that can't be missing leaves the plain needless message", () => {
-    expect(problems("isUnknown(total) || ((total > 1) ?? false)")).toEqual([
+    expect(problems("isMissing(total) || ((total > 1) ?? false)")).toEqual([
       { message: NEEDLESS, at: "false" },
     ]);
   });
 
   test("a fallback a function or list receives isn't needless beside a guard", () => {
-    passes("isUnknown(count) || 1 / (describe(count ?? 1).length - 6) > 0");
-    passes("isUnknown(count) || sum([count ?? 1]) > 0");
+    passes("isMissing(count) || 1 / (describe(count ?? 1).length - 6) > 0");
+    passes("isMissing(count) || sum([count ?? 1]) > 0");
     passes(
-      'isUnknown(count) || [1].reduce((a, x) => describe(a) === "n=null" ? 1 / 0 : 1, count ?? 1) > 0',
+      'isMissing(count) || [1].reduce((a, x) => describe(a) === "n=null" ? 1 / 0 : 1, count ?? 1) > 0',
     );
     passes(
-      "isUnknown(count) || [count ?? 1].some(n => describe(n) === 'n=null')",
+      "isMissing(count) || [count ?? 1].some(n => describe(n) === 'n=null')",
     );
   });
 
   test.each([
-    "isUnknown(count) || [1, 2].reduce((a, x) => x === 1 ? (count ?? 0) : sum([a]), 0) > 0",
-    "!isUnknown(count) && [1, 2].reduce((a, x) => x === 1 ? (count ?? 0) : sum([a]), 0) > 0",
-    "isUnknown(count) || [1, 2].reduce((a, x) => sum([a]) + (count ?? 0), 0) > 0",
-    "isUnknown(count) || [1].some((y) => [1, 2].reduce((a, x) => x === 1 ? (count ?? 0) : sum([a]), 0) > 0)",
+    "isMissing(count) || [1, 2].reduce((a, x) => x === 1 ? (count ?? 0) : sum([a]), 0) > 0",
+    "!isMissing(count) && [1, 2].reduce((a, x) => x === 1 ? (count ?? 0) : sum([a]), 0) > 0",
+    "isMissing(count) || [1, 2].reduce((a, x) => sum([a]) + (count ?? 0), 0) > 0",
+    "isMissing(count) || [1].some((y) => [1, 2].reduce((a, x) => x === 1 ? (count ?? 0) : sum([a]), 0) > 0)",
   ])(
     "a fallback reduce's function gives back isn't needless beside a guard: %s",
     (text) => {
@@ -197,10 +197,10 @@ describe("isUnknown guards", () => {
   );
 
   test.each([
-    "isUnknown(marks.indexOf(3)) || highest([marks.indexOf(3)]) > 0",
-    "isUnknown(marks.indexOf(3)) || { n: marks.indexOf(3) }.n > 0",
-    "isUnknown(marks.indexOf(3)) || [1].map(x => marks.indexOf(3)).length > 0",
-    'isUnknown(marks.indexOf(3)) || describe(marks.indexOf(3) + 1) === "a"',
+    "isMissing(marks.indexOf(3)) || highest([marks.indexOf(3)]) > 0",
+    "isMissing(marks.indexOf(3)) || { n: marks.indexOf(3) }.n > 0",
+    "isMissing(marks.indexOf(3)) || [1].map(x => marks.indexOf(3)).length > 0",
+    'isMissing(marks.indexOf(3)) || describe(marks.indexOf(3) + 1) === "a"',
   ])("a guard still decides a read a function or list receives: %s", (text) => {
     passes(text);
   });
@@ -214,7 +214,7 @@ describe("isUnknown guards", () => {
   test("a deep nest of guards and fallbacks blames the guard only beside the read", () => {
     let text = 'state === "CA"';
     for (let depth = 0; depth < 40; depth += 1) {
-      text = `isUnknown(state) || ((${text}) ?? false)`;
+      text = `isMissing(state) || ((${text}) ?? false)`;
     }
     expect(problems(text)).toEqual([
       { message: GUARDED, at: "false" },
@@ -224,11 +224,11 @@ describe("isUnknown guards", () => {
 
   test.each([
     [
-      "isUnknown(count) || ((count === 1 ?? count === 2) ?? false)",
+      "isMissing(count) || ((count === 1 ?? count === 2) ?? false)",
       "count === 2",
     ],
     [
-      '!isUnknown(count) && ((count === 1 ?? state === "CA") ?? false)',
+      '!isMissing(count) && ((count === 1 ?? state === "CA") ?? false)',
       'state === "CA"',
     ],
   ])(
@@ -244,7 +244,7 @@ describe("isUnknown guards", () => {
   test("a guard before a needless fallback still decides the chain around it", () => {
     expect(
       problems(
-        '(((!isUnknown(state) && state === "CA") ?? true) && state === "CA") ?? true',
+        '(((!isMissing(state) && state === "CA") ?? true) && state === "CA") ?? true',
       ),
     ).toEqual([
       { message: GUARDED, at: "true" },
@@ -252,20 +252,20 @@ describe("isUnknown guards", () => {
     ]);
   });
 
-  test("a guard beside `||` outside an isUnknown argument leaves a fallback inside needed", () => {
-    passes("isUnknown(count) || (isUnknown(count ?? 1) ? 1 / 0 : 0) > 0");
+  test("a guard beside `||` outside an isMissing argument leaves a fallback inside needed", () => {
+    passes("isMissing(count) || (isMissing(count ?? 1) ? 1 / 0 : 0) > 0");
   });
 
-  test("a ternary test's guard outside an isUnknown argument makes a fallback inside needless", () => {
+  test("a ternary test's guard outside an isMissing argument makes a fallback inside needless", () => {
     expect(
-      problems("isUnknown(count) ? false : isUnknown(count ?? 1)"),
+      problems("isMissing(count) ? false : isMissing(count ?? 1)"),
     ).toEqual([{ message: GUARDED, at: "1" }]);
   });
 
   test("a ternary test's guard on a read stays unheld in a list inside its branch", () => {
     expect(
       problems(
-        "!isUnknown(count) && (isUnknown(count) ? 0 : [count ?? 0].length) > 0",
+        "!isMissing(count) && (isMissing(count) ? 0 : [count ?? 0].length) > 0",
       ),
     ).toEqual([{ message: GUARDED, at: "0" }]);
   });
@@ -279,7 +279,7 @@ describe("isUnknown guards", () => {
   });
 
   test("a guard on an input doesn't decide a lambda parameter of the same name", () => {
-    const text = "marks.some(count => count === 1) || isUnknown(count)";
+    const text = "marks.some(count => count === 1) || isMissing(count)";
     expect(problems(text)).toEqual([
       {
         message:
@@ -291,7 +291,7 @@ describe("isUnknown guards", () => {
 
   test("a guard on a parameter doesn't decide a nested lambda's parameter of the same name", () => {
     const text =
-      "items.every(i => isUnknown(i.score) || items.some(i => i.score === 2))";
+      "items.every(i => isMissing(i.score) || items.some(i => i.score === 2))";
     expect(problems(text)).toEqual([
       {
         message:
@@ -303,23 +303,23 @@ describe("isUnknown guards", () => {
 
   test("a guard on a parameter still decides it inside a nested lambda with other parameters", () => {
     passes(
-      "items.every(i => isUnknown(i.score) || items.some(j => i.score === 2))",
+      "items.every(i => isMissing(i.score) || items.some(j => i.score === 2))",
     );
   });
 
   test.each([
     [
-      'isUnknown([1].concat(state === "CA" ? 1 : 2)) ? false : [1].concat(state === "CA" ? 1 : 2).some(n => n > 1)',
+      'isMissing([1].concat(state === "CA" ? 1 : 2)) ? false : [1].concat(state === "CA" ? 1 : 2).some(n => n > 1)',
       condition,
       'state === "CA"',
     ],
     [
-      "!isUnknown([1].concat(marks.indexOf(3))) && sum([1].concat(marks.indexOf(3))) > 1",
+      "!isMissing([1].concat(marks.indexOf(3))) && sum([1].concat(marks.indexOf(3))) > 1",
       condition,
       "marks.indexOf(3)",
     ],
     [
-      "isUnknown([1].concat(marks.indexOf(3))) ? [] : [1].concat(marks.indexOf(3))",
+      "isMissing([1].concat(marks.indexOf(3))) ? [] : [1].concat(marks.indexOf(3))",
       variable,
       "marks.indexOf(3)",
     ],
@@ -330,8 +330,8 @@ describe("isUnknown guards", () => {
     },
   );
 
-  test("an isUnknown on the right of ?? that may not run decides nothing after it", () => {
-    const text = '((state === "CA") ?? isUnknown(count)) ? true : count === 1';
+  test("an isMissing on the right of ?? that may not run decides nothing after it", () => {
+    const text = '((state === "CA") ?? isMissing(count)) ? true : count === 1';
     expect(problems(text)).toEqual([
       {
         message:
@@ -340,15 +340,15 @@ describe("isUnknown guards", () => {
       },
     ]);
     expect(
-      passes("`${count ?? (isUnknown(total) ? 0 : 1)} ${total}`", variable)
+      passes("`${count ?? (isMissing(total) ? 0 : 1)} ${total}`", variable)
         .mayBeUnknown,
     ).toBe(false);
-    passes("(count ?? isUnknown(sum([1, 2]))) === 1 || sum([1, 2]) > 1");
+    passes("(count ?? isMissing(sum([1, 2]))) === 1 || sum([1, 2]) > 1");
   });
 
-  test("such an isUnknown decides nothing about a read through a target that can be missing", () => {
+  test("such an isMissing decides nothing about a read through a target that can be missing", () => {
     const text =
-      '((state === "CA") ?? isUnknown(items[0]?.name)) ? true : items[0]?.name === "a"';
+      '((state === "CA") ?? isMissing(items[0]?.name)) ? true : items[0]?.name === "a"';
     expect(problems(text)).toEqual([
       {
         message:
@@ -358,9 +358,9 @@ describe("isUnknown guards", () => {
     ]);
   });
 
-  test("such an isUnknown leaves a read through a target a guard covers known", () => {
+  test("such an isMissing leaves a read through a target a guard covers known", () => {
     passes(
-      "isUnknown(state) || ((count ?? isUnknown(state.length)) === true && state.length > 2)",
+      "isMissing(state) || ((count ?? isMissing(state.length)) === true && state.length > 2)",
     );
   });
 
@@ -370,7 +370,7 @@ describe("isUnknown guards", () => {
     ["", "((false ? total : null) ?? count) === 1", ""],
     ["", `(${found} ?? count) === 1`, ""],
     [
-      `isUnknown(${found}) && (`,
+      `isMissing(${found}) && (`,
       `(${found} ?? count) === 1`,
       " ? true : false)",
     ],
@@ -386,18 +386,18 @@ describe("isUnknown guards", () => {
   );
 
   test("a guard that decides a nullable left keeps its fallback from the result", () => {
-    passes(`isUnknown(${found}) || ((${found} ?? count) === 1 ? true : false)`);
+    passes(`isMissing(${found}) || ((${found} ?? count) === 1 ? true : false)`);
   });
 
   test("a list item whose missing value a guard decides keeps its fallback", () => {
     passes(
-      `isUnknown(${found}) || [(${found} ?? count) === 1].some((x) => x ?? false)`,
+      `isMissing(${found}) || [(${found} ?? count) === 1].some((x) => x ?? false)`,
     );
   });
 
   test.each([
     '(true ? true : null) ?? [state === "CA"].length > 0',
-    'isUnknown(count) || [count].some((m) => (m > 0) ?? ([state === "CA"].length > 0))',
+    'isMissing(count) || [count].some((m) => (m > 0) ?? ([state === "CA"].length > 0))',
   ])(
     "a list item in a fallback after a left proven known stays unreported in %s",
     (text) => {
@@ -452,13 +452,13 @@ describe("isUnknown guards", () => {
   ])(
     "a fallback after reduce's accumulator from an undecided start counted quietly stays allowed: %s",
     (start) => {
-      passes(`isUnknown([1].reduce((a, x) => a ?? false, ${start}))`);
+      passes(`isMissing([1].reduce((a, x) => a ?? false, ${start}))`);
     },
   );
 
   test("a fallback after reduce's accumulator a guarded read feeds stays allowed", () => {
     passes(
-      "isUnknown(count) || [1, 2].reduce((acc, m) => m === 1 ? count : (acc ?? 0), 0) > 0",
+      "isMissing(count) || [1, 2].reduce((acc, m) => m === 1 ? count : (acc ?? 0), 0) > 0",
     );
   });
 
@@ -513,12 +513,12 @@ describe("isUnknown guards", () => {
   });
 
   test.each([
-    `isUnknown(${found}) || ((${found} ?? describe(state === "CA" ? 1 : 2).length) === 1 ? true : false)`,
-    'isUnknown(count) || [count].some((m) => (m > 0) ?? (describe(state === "CA" ? 1 : 2) === "a"))',
-    `isUnknown(${found}) || (((${found} ?? null) ?? describe(state === "CA" ? 1 : 2).length) === 1 ? true : false)`,
-    'isUnknown(count) || sum([count ?? (state === "CA" ? 1 : 2)]) > 0',
-    'isUnknown(count) || highest([count ?? (state === "CA" ? 1 : 2)]) > 0',
-    'isUnknown(count) || describe(count ?? (state === "CA" ? 1 : 2)) === "a"',
+    `isMissing(${found}) || ((${found} ?? describe(state === "CA" ? 1 : 2).length) === 1 ? true : false)`,
+    'isMissing(count) || [count].some((m) => (m > 0) ?? (describe(state === "CA" ? 1 : 2) === "a"))',
+    `isMissing(${found}) || (((${found} ?? null) ?? describe(state === "CA" ? 1 : 2).length) === 1 ? true : false)`,
+    'isMissing(count) || sum([count ?? (state === "CA" ? 1 : 2)]) > 0',
+    'isMissing(count) || highest([count ?? (state === "CA" ? 1 : 2)]) > 0',
+    'isMissing(count) || describe(count ?? (state === "CA" ? 1 : 2)) === "a"',
   ])(
     "a fallback after a left proven known, as in %s, reports its function's undecided argument",
     (text) => {
@@ -531,7 +531,7 @@ describe("isUnknown guards", () => {
 
   test("a fallback a held read's list carries on saves once decided", () => {
     passes(
-      'isUnknown(count) || sum([count ?? ((state === "CA" ?? false) ? 1 : 2)]) > 0',
+      'isMissing(count) || sum([count ?? ((state === "CA" ?? false) ? 1 : 2)]) > 0',
     );
   });
 });

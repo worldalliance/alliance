@@ -46,7 +46,7 @@ const tree = (text: string) =>
 
 test("reads follow named expressions to inputs and functions", () => {
   expect(
-    reads(tree("middle > Math.abs(1) && !isUnknown(count)"), [base, middle]),
+    reads(tree("middle > Math.abs(1) && !isMissing(count)"), [base, middle]),
   ).toEqual({
     inputs: new Set(["state", "count"]),
     functions: new Set(["lookup"]),

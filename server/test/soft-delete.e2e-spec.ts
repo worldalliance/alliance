@@ -50,6 +50,7 @@ const PHYSICALLY_DELETED = [
 const NEVER_DELETED = [
   "EditableContent",
   "FormRowAssignment",
+  "FormulaVersion",
   "KoraBatchEvent",
   "KoraProject",
   "KoraTranscript",

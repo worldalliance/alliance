@@ -31,6 +31,13 @@ export const STUBS: Record<string, string> = {
       "src/config/validate-env.ts ")
         echo validate >> "$STATE/log"
         [ "\${CONFIG:-ok}" = ok ];;
+      "scripts/check-stored-formulas.ts ")
+        echo "check formulas" >> "$STATE/log"
+        case "\${FORMULAS:-ok}" in
+          ok) ;;
+          after-start) [ "$(cat "$STATE/pm2")" != new ] || { echo "This release breaks stored formulas." >&2; exit 1; };;
+          *) echo "This release breaks stored formulas." >&2; exit 1;;
+        esac;;
       "scripts/streak-recognition-removal.ts state")
         [ ! -e "$STATE/unreadable" ] || exit 1
         [ ! -e "$STATE/slow" ] || echo "query is slow: SELECT 1"

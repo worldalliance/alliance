@@ -7,8 +7,8 @@ import {
 } from "../forms/formula-allowlist";
 import { R, type Result } from "../result";
 import {
-  IS_UNKNOWN,
-  IS_UNKNOWN_HINT,
+  IS_MISSING,
+  IS_MISSING_HINT,
   type Diagnostic,
   type Scope,
 } from "./catalog";
@@ -26,7 +26,7 @@ import { ExprKind, LAMBDA_ONLY_AS_ARGUMENT, UnaryOp, type Expr } from "./tree";
 export const TYPE_ARGUMENTS =
   "TypeScript reads a `<` here and a `>` after it as a call with type arguments. Write the `<` comparison the other way round, with `>`.";
 
-const UNDEFINED_UNSUPPORTED = `\`undefined\` isn't supported. ${IS_UNKNOWN_HINT}`;
+const UNDEFINED_UNSUPPORTED = `\`undefined\` isn't supported. ${IS_MISSING_HINT}`;
 
 const MATH_FUNCTIONS: ReadonlySet<string> = new Set(MATH_FUNCTION_NAMES);
 
@@ -83,6 +83,17 @@ class Converter {
     );
   }
 
+  /**
+   * Postgres jsonb can't store U+0000 or an unpaired surrogate, so a tree
+   * holding either can't be saved.
+   */
+  private storable(node: ts.Node & { text: string }): string {
+    if (/[\0\p{Cs}]/u.test(node.text)) {
+      this.fail(node, "This text has a character that can't be stored.");
+    }
+    return node.text;
+  }
+
   private unsupported(node: ts.Node): Expr {
     return this.fail(node, unsupportedMessage(node.getText(this.file)));
   }
@@ -116,17 +127,21 @@ class Converter {
         : this.fail(node, "This number has more digits than can be stored.");
     }
     if (ts.isStringLiteral(node)) {
-      return { kind: ExprKind.Literal, value: node.text };
+      return { kind: ExprKind.Literal, value: this.storable(node) };
     }
     if (ts.isNoSubstitutionTemplateLiteral(node)) {
-      return { kind: ExprKind.Template, quasis: [node.text], parts: [] };
+      return {
+        kind: ExprKind.Template,
+        quasis: [this.storable(node)],
+        parts: [],
+      };
     }
     if (ts.isTemplateExpression(node)) {
       return {
         kind: ExprKind.Template,
         quasis: [
-          node.head.text,
-          ...node.templateSpans.map((s) => s.literal.text),
+          this.storable(node.head),
+          ...node.templateSpans.map((s) => this.storable(s.literal)),
         ],
         parts: node.templateSpans.map((span) => this.convert(span.expression)),
       };
@@ -191,7 +206,7 @@ class Converter {
     if (ts.isNonNullExpression(node)) {
       return this.fail(
         node,
-        `\`!\` after a value isn't supported. ${IS_UNKNOWN_HINT}`,
+        `\`!\` after a value isn't supported. ${IS_MISSING_HINT}`,
       );
     }
     if (ts.isTaggedTemplateExpression(node) && node.typeArguments) {
@@ -207,13 +222,10 @@ class Converter {
     if (this.inputs.has(name)) return { kind: ExprKind.Input, id: name };
     const named = this.namedIds.get(name);
     if (named !== undefined) return { kind: ExprKind.Ref, id: named };
-    if (this.functions.has(name) || name === IS_UNKNOWN) {
+    if (this.functions.has(name) || name === IS_MISSING) {
       return this.fail(node, `\`${name}\` is a function; call it with (…).`);
     }
-    return this.fail(
-      node,
-      `There's no input or named expression called \`${name}\`.`,
-    );
+    return this.fail(node, `Nothing here is called \`${name}\`.`);
   }
 
   private record(node: ts.ObjectLiteralExpression): Expr {
@@ -222,7 +234,9 @@ class Converter {
       const entry = ts.isPropertyAssignment(property)
         ? (ts.isIdentifier(property.name) ||
             ts.isStringLiteral(property.name)) && {
-            key: property.name.text,
+            key: ts.isStringLiteral(property.name)
+              ? this.storable(property.name)
+              : property.name.text,
             value: property.initializer,
           }
         : ts.isShorthandPropertyAssignment(property) && {
@@ -255,7 +269,7 @@ class Converter {
       return this.fail(
         node.operatorToken,
         comparesNull
-          ? IS_UNKNOWN_HINT
+          ? IS_MISSING_HINT
           : `Use \`${loose}\`; \`${node.operatorToken.getText(this.file)}\` isn't supported.`,
       );
     }
@@ -356,7 +370,7 @@ class Converter {
       if (this.isParam(name)) {
         return this.fail(callee, `\`${name}\` is a parameter, not a function.`);
       }
-      if (name !== IS_UNKNOWN && !this.functions.has(name)) {
+      if (name !== IS_MISSING && !this.functions.has(name)) {
         return this.fail(callee, `There's no function called \`${name}\`.`);
       }
       return {
