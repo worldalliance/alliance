@@ -4,6 +4,10 @@ import {
   UserActionSummaryDto,
   UserDto,
 } from "@alliance/shared/client/types.gen";
+import {
+  CONTRACT_STATUS_LABEL,
+  contractStatus,
+} from "@alliance/shared/lib/contract";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
@@ -17,6 +21,7 @@ import { keyBy } from "es-toolkit";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { CONTRACT_STATUS_TEXT_CLASS } from "../lib/contractStatusStyle";
 import { WithdrawalDetails } from "./WithdrawalInfo";
 
 export interface UserCardProps {
@@ -65,21 +70,7 @@ const UserCard = ({
 
   const tagIds = useMemo(() => new Set(tags.map((tag) => tag.id)), [tags]);
 
-  const latestEvent = user.lastContractEvent ?? null;
-
-  const contractStatusColor =
-    latestEvent === null
-      ? "text-zinc-500"
-      : latestEvent.type === "signed"
-        ? "text-green"
-        : "text-red-500";
-
-  const contractStatus =
-    latestEvent === null
-      ? "Not signed"
-      : latestEvent.type === "signed"
-        ? "Signed"
-        : "Suspended";
+  const contract = contractStatus(user.lastContractEvent);
 
   return (
     <Card style={CardStyle.White} className="flex-1 text-sm">
@@ -94,8 +85,10 @@ const UserCard = ({
       <div className="flex flex-row items-center border-b pb-2 mb-2 border-zinc-200">
         <p>
           Contract status:{" "}
-          <span className={cn("font-medium", contractStatusColor)}>
-            {contractStatus}
+          <span
+            className={cn("font-medium", CONTRACT_STATUS_TEXT_CLASS[contract])}
+          >
+            {CONTRACT_STATUS_LABEL[contract]}
           </span>
         </p>
       </div>

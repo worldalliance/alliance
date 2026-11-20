@@ -1,5 +1,9 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
+import {
+  CONTRACT_STATUS_LABEL,
+  contractStatus,
+} from "@alliance/shared/lib/contract";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { userFriendsQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
@@ -26,6 +30,7 @@ import UserRolesSection from "../components/user-detail/UserRolesSection";
 import UserTagsSection from "../components/user-detail/UserTagsSection";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { getApiUrl } from "../lib/config";
+import { CONTRACT_STATUS_TEXT_CLASS } from "../lib/contractStatusStyle";
 import { tagSummariesQuery } from "../lib/useTagsAdmin";
 import { userActionRelationsQuery } from "../lib/useUserActionRelationsAdmin";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
@@ -107,21 +112,7 @@ const UserDetail = ({
 
   const { currentAwayRange } = useUserAwayRangesAdmin(user.id);
 
-  const latestEvent = user.lastContractEvent ?? null;
-
-  const contractStatusColor =
-    latestEvent === null
-      ? "text-zinc-500"
-      : latestEvent.type === "signed"
-        ? "text-green"
-        : "text-red-700";
-
-  const contractStatus =
-    latestEvent === null
-      ? "Not signed"
-      : latestEvent.type === "signed"
-        ? "Signed"
-        : "Suspended";
+  const contract = contractStatus(user.lastContractEvent);
   const handleSuspendContract = useCallback(async () => {
     const confirmed = await confirm({
       title: "Suspend contract?",
@@ -153,8 +144,13 @@ const UserDetail = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-lg font-semibold text-zinc-900">{user.name}</h1>
-            <span className={cn("text-sm font-medium", contractStatusColor)}>
-              {contractStatus}
+            <span
+              className={cn(
+                "text-sm font-medium",
+                CONTRACT_STATUS_TEXT_CLASS[contract],
+              )}
+            >
+              {CONTRACT_STATUS_LABEL[contract]}
             </span>
             {currentAwayRange && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
@@ -245,8 +241,13 @@ const UserDetail = ({
                 Contract
               </h2>
               <div className="text-sm mb-2">
-                <span className={cn("font-medium", contractStatusColor)}>
-                  {contractStatus}
+                <span
+                  className={cn(
+                    "font-medium",
+                    CONTRACT_STATUS_TEXT_CLASS[contract],
+                  )}
+                >
+                  {CONTRACT_STATUS_LABEL[contract]}
                 </span>
               </div>
             </div>

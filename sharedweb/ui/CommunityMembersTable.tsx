@@ -9,7 +9,9 @@ import {
   getDeadlineTimestampByUserId,
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
+import { contractStatus, ContractStatus } from "@alliance/shared/lib/contract";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
+import { mapValues } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import DropdownSelect from "./DropdownSelect";
@@ -27,6 +29,24 @@ export enum ContractFilterMode {
   SUSPENDED = "Suspended",
   NOT_SIGNED = "Not signed",
 }
+
+const CONTRACT_FILTER_STATUS: Record<
+  ContractFilterMode,
+  ContractStatus | null
+> = {
+  [ContractFilterMode.ALL]: null,
+  [ContractFilterMode.SIGNED]: ContractStatus.Signed,
+  [ContractFilterMode.SUSPENDED]: ContractStatus.Suspended,
+  [ContractFilterMode.NOT_SIGNED]: ContractStatus.NotSigned,
+};
+
+export const matchesContractFilter = (
+  mode: ContractFilterMode,
+  user: Pick<ProfileDto, "lastContractEvent">,
+) => {
+  const status = CONTRACT_FILTER_STATUS[mode];
+  return status === null || contractStatus(user.lastContractEvent) === status;
+};
 
 type CommunityMembersTableProps = {
   leaders: ProfileDto[];
@@ -87,38 +107,18 @@ const CommunityMembersTable = ({
     [userActionRelations, actions, now],
   );
 
-  const filteredByContract = useMemo(() => {
-    if (contractFilter === ContractFilterMode.ALL) {
-      return members;
-    }
-    return members.filter((user) => {
-      if (contractFilter === ContractFilterMode.NOT_SIGNED) {
-        return !user.lastContractEvent;
-      }
-      if (contractFilter === ContractFilterMode.SIGNED) {
-        return user.lastContractEvent?.type === "signed";
-      }
-      if (contractFilter === ContractFilterMode.SUSPENDED) {
-        return user.lastContractEvent?.type === "suspended";
-      }
-      return true;
-    });
-  }, [contractFilter, members]);
+  const filteredByContract = useMemo(
+    () => members.filter((user) => matchesContractFilter(contractFilter, user)),
+    [contractFilter, members],
+  );
 
-  const membersByContract = useMemo(() => {
-    return {
-      [ContractFilterMode.ALL]: members,
-      [ContractFilterMode.SIGNED]: members.filter(
-        (user) => user.lastContractEvent?.type === "signed",
+  const membersByContract = useMemo(
+    () =>
+      mapValues(CONTRACT_FILTER_STATUS, (_, mode) =>
+        members.filter((user) => matchesContractFilter(mode, user)),
       ),
-      [ContractFilterMode.SUSPENDED]: members.filter(
-        (user) => user.lastContractEvent?.type === "suspended",
-      ),
-      [ContractFilterMode.NOT_SIGNED]: members.filter(
-        (user) => !user.lastContractEvent,
-      ),
-    };
-  }, [members]);
+    [members],
+  );
 
   const membersByCompletion = useMemo(() => {
     return {

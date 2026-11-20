@@ -7,3 +7,7 @@ All entries are agent decisions (agent judgement) unless marked otherwise. The b
 Found while verifying in the browser (dev build, 761 members): typing quickly into a `FilterBar` search dropped characters, and a second URL update before the first rendered undid the first. Both are fixed in PR 3's own commits and recorded in `01a1ed4a-beb8-7000-a427-43be3a7c0c5c-admin-redesign-core-pages`.
 
 `readBuckets`/`writeBuckets` delegate to a generic `readSetParam`/`writeSetParam` (`lib/setSearchParam.ts`), now that the members page has four set-valued params.
+
+## Contract status
+
+`contractStatus` and `CONTRACT_STATUS_LABEL` in `shared/lib/contract.ts` replace three copies of the "Signed / Suspended / Not signed" mapping (the members table, the member card and the member page). The text colours live in `lib/contractStatusStyle.ts` for the card and the contract section.
