@@ -3,8 +3,8 @@ import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { OptOutSource } from "src/mms/opt-out-source";
 import { z } from "zod";
+import { type InboundText, MmsInboundService } from "./mms-inbound.service";
 import { MmsMediaService } from "./mms-media.service";
-import { type InboundText, MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { MmsKeyword } from "./mms.entity";
 import { TwilioSignatureGuard } from "./twilio-signature.guard";
@@ -63,7 +63,7 @@ const START_KEYWORDS = new Set(["START", "YES", "UNSTOP"]);
 export class MmsController {
   constructor(
     private readonly mmsUnsubService: MmsUnsubService,
-    private readonly mmsThreadService: MmsThreadService,
+    private readonly mmsInboundService: MmsInboundService,
     private readonly mmsMediaService: MmsMediaService,
   ) {}
 
@@ -104,7 +104,7 @@ export class MmsController {
 
     const { MessageSid: sid, NumMedia: count } =
       inboundFieldsSchema.parse(body);
-    const media = await this.mmsThreadService.recordInbound({
+    const media = await this.mmsInboundService.recordInbound({
       sid,
       from,
       to: rawTo,

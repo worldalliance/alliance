@@ -4,6 +4,7 @@ import { EventLogModule } from "src/eventlog/eventlog.module";
 import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { S3Module } from "src/s3/s3.module";
 import { User } from "src/user/entities/user.entity";
+import { MmsInboundService } from "./mms-inbound.service";
 import { MmsInboxService } from "./mms-inbox.service";
 import { MmsMedia } from "./mms-media.entity";
 import { MmsMediaService } from "./mms-media.service";
@@ -39,6 +40,7 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
     TwilioStatusWorker,
     MmsUnsubService,
     MmsThreadService,
+    MmsInboundService,
     MmsMediaService,
     MmsNumberService,
     MmsInboxService,

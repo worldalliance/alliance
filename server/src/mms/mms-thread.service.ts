@@ -3,7 +3,6 @@ import { isCanonicalE164 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
 import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
 import { Injectable } from "@nestjs/common";
-import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { env } from "src/config/env";
@@ -12,28 +11,16 @@ import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
 import { In, MoreThan } from "typeorm";
-import { z } from "zod";
 import {
   MmsInboxService,
   type NumberMark,
   ReplyState,
 } from "./mms-inbox.service";
-import { MmsMedia } from "./mms-media.entity";
 import { MmsNumberService } from "./mms-number.service";
 import { MmsThread } from "./mms-thread.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
-import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
-import { emitThreadChanged } from "./mms.events";
+import { Mms, MmsDirection } from "./mms.entity";
 import { MmsService, type StaffSendFailure } from "./mms.service";
-
-export type InboundText = {
-  sid: string;
-  from: string;
-  to: string;
-  body: string;
-  keyword: MmsKeyword | null;
-  media: { url: string; contentType: string }[];
-};
 
 export type MmsThreadView = {
   threadId: string | null;
@@ -129,60 +116,7 @@ export class MmsThreadService {
     private readonly mmsUnsubService: MmsUnsubService,
     private readonly mmsNumberService: MmsNumberService,
     private readonly mmsInboxService: MmsInboxService,
-    private readonly eventEmitter: EventEmitter2,
   ) {}
-
-  /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
-  async recordInbound(text: InboundText): Promise<MmsMedia[]> {
-    const media = await this.insertInbound(text);
-    if (media === null) return [];
-    emitThreadChanged(this.eventEmitter, {
-      phoneNumber: text.from,
-      needsReplyChanged: true,
-    });
-    return media;
-  }
-
-  /** Null when the SID was already recorded. */
-  private insertInbound(text: InboundText): Promise<MmsMedia[] | null> {
-    return this.mmsRepository.manager.transaction(async (manager) => {
-      await this.mmsNumberService.ensureThread(text.from, manager);
-      const inserted = await manager
-        .createQueryBuilder()
-        .insert()
-        .into(Mms)
-        .values({
-          to: text.to,
-          from: text.from,
-          body: text.body,
-          direction: MmsDirection.Inbound,
-          keyword: text.keyword,
-          status: "received",
-          twilioSid: text.sid,
-          errorCode: null,
-          errorMessage: null,
-          cid: null,
-          sentById: null,
-        })
-        .orIgnore()
-        .returning(["id"])
-        .execute();
-      const row: unknown = inserted.raw[0];
-      if (row === undefined) return null;
-      const { id: mmsId } = z.object({ id: z.coerce.number() }).parse(row);
-      const mediaRepository = manager.getRepository(MmsMedia);
-      return mediaRepository.save(
-        text.media.map(({ url, contentType }) =>
-          mediaRepository.create({
-            mmsId,
-            twilioUrl: url,
-            contentType,
-            s3Key: null,
-          }),
-        ),
-      );
-    });
-  }
 
   /** The newest page of texts sent before the `before` text, oldest first. */
   async getThread(params: {

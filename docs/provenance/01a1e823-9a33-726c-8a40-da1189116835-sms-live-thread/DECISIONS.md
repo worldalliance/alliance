@@ -5,6 +5,7 @@ Agent decisions unless marked otherwise. Sources are in `EVIDENCE.md`.
 ## File layout
 
 - `mms.service.ts` would pass 500 lines once its saves announce thread changes, so Twilio status refresh (`refreshMmsData`) moved to `TwilioStatusWorker`, its only production caller, which fetches through `MmsService.fetchMessage`. The three send paths stay together, since they share dispatch, timeout, late-send recording and alerting. A Claude subagent's split suggestion stood in for Codex's, which was out of usage.
+- `mms-thread.service.ts` would pass 500 lines once staff sends check what the sender saw, so recording inbound texts moved to `MmsInboundService`, which only the Twilio webhook calls and which shares nothing with reading, sending or marking a thread. A Claude subagent asked for splits, standing in for Codex, which was out of usage, also proposed moving the rules for which numbers staff may text; that larger move wasn't needed to stay under the limit.
 
 ## Session refresh
 
