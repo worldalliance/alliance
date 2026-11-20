@@ -295,7 +295,7 @@ const ActionUpdatesTab = ({
         </Button>
       </div>
       <div className="flex flex-col gap-2">
-        <h2 className="font-bold">Existing updates</h2>
+        <h3 className="text-sm font-medium">Existing updates</h3>
         {deleteError && (
           <p className="text-sm text-red-700" role="alert">
             {deleteError}

@@ -40,7 +40,7 @@ it("links a task form finding to the form and a body finding to its text in the 
     bodyFinding
       ?.querySelector('[aria-label="Edit this text"]')
       ?.getAttribute("href"),
-  ).toBe("/actions/1?tab=details&field=body&from=4&to=6&text=++");
+  ).toBe("/actions/1?tab=content&field=body&from=4&to=6&text=++");
 });
 
 it("previews the actions assigned to a picked member", async () => {

@@ -94,7 +94,7 @@ export type FormResponsesViewProps = {
   /**
    * Prefix applied to every URL search param this view reads/writes (tab,
    * filters, variant, …). Set this when embedding the view inside another page
-   * that already owns bare param names like `tab` (e.g. the action dashboard).
+   * that already owns bare param names like `tab` (e.g. the action workspace).
    */
   paramNamespace?: string;
 };

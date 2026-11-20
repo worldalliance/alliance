@@ -234,7 +234,6 @@ export const clipboardCopy = {
   copyLink: "Copy link",
   copiedToClipboard: "Copied to clipboard",
   exportJson: "Export JSON",
-  inClipboard: "in clipboard",
 } as const;
 
 export const guestReferral = {

@@ -17,7 +17,7 @@ export default [
       ),
       route(
         "/projects/:projectId/action/:actionId",
-        "pages/ProjectActionPage.tsx",
+        "pages/ProjectActionRedirect.tsx",
       ),
       route("/actions", "pages/Actions.tsx"),
       route("/timeline", "pages/NewTimelinePage.tsx"),
@@ -28,7 +28,7 @@ export default [
       route("/groups", "pages/GroupsPage.tsx"),
       route("/groups/:id", "pages/GroupDetailPage.tsx"),
       route("/clusters", "pages/ClustersPage.tsx"),
-      route("/actions/:actionId", "pages/ActionDashboard.tsx"),
+      route("/actions/:actionId", "pages/ActionWorkspace.tsx"),
       route(
         "/actions/:actionId/updates/:updateId",
         "pages/ActionUpdatePage.tsx",

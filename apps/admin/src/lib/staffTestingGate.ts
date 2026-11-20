@@ -1,3 +1,5 @@
+import { ActionPhase } from "./actionPhase";
+
 type GateAction = {
   shortDescription?: string | null;
   body?: string | null;
@@ -49,3 +51,17 @@ export const missingForStaffTesting = (action: GateAction) =>
   STAFF_TESTING_REQUIREMENTS.filter(
     (requirement) => !requirement.isReady(action),
   );
+
+const EDITOR_STAFF_PREVIEW: Record<ActionPhase, boolean> = {
+  [ActionPhase.Draft]: false,
+  [ActionPhase.StaffTesting]: false,
+  [ActionPhase.Scheduled]: true,
+  [ActionPhase.Live]: true,
+  [ActionPhase.Closed]: false,
+};
+
+/** Where this is false the editor has no Staff preview checkbox, so Overview's readiness gate can't be bypassed through it. */
+export const editorShowsStaffPreview = (
+  action: { project?: unknown },
+  phase: ActionPhase,
+) => !action.project || EDITOR_STAFF_PREVIEW[phase];

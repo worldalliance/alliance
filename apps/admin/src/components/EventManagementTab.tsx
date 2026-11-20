@@ -34,7 +34,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           >
             <ChevronDown className="h-3 w-3 text-black" />
           </button>
-          <h2 className="text-lg font-semibold">Add new event</h2>
+          <h3 className="text-sm font-medium">Add new event</h3>
         </div>
         {addEventExpanded && (
           <CreateEventForm
@@ -47,7 +47,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           />
         )}
       </Card>
-      <h2 className="text-lg font-semibold mb-4">All events</h2>
+      <h3 className="text-sm font-medium">All events</h3>
       <div className="space-y-3 mb-3">
         {action.events && action.events.length > 0 ? (
           sortByDateDescending(action.events).map((event) => (
@@ -56,9 +56,9 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
               className="border border-gray-200 rounded-lg p-3 bg-white"
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium text-gray-900 text-sm">
+                <h4 className="font-medium text-gray-900 text-sm">
                   {event.title}
-                </h3>
+                </h4>
                 <ActionStatusPill status={event.newStatus} />
               </div>
 

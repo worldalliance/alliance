@@ -9,27 +9,24 @@ import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import React from "react";
 import type { SetURLSearchParams } from "react-router";
-import { ActionProjectSteps } from "../../components/ActionProjectControls";
 import { FailedLoadsBanner } from "../../components/FailedLoadsBanner";
-import {
-  ACTION_STATUS_COLORS,
-  ACTION_STATUS_LABELS,
-} from "../../lib/actionStatusDisplay";
-import ActionDashboardToolbar from "./ActionDashboardToolbar";
+import type { ActionPhase } from "../../lib/actionPhase";
+import PhaseHeader from "../project-action/PhaseHeader";
+import ReleasePanel from "../project-action/ReleasePanel";
 import ActionParticipationStats from "./ActionParticipationStats";
+import ActionProjectRow from "./ActionProjectRow";
 import ActionResponseReports from "./ActionResponseReports";
-import type { ActionExport } from "./useActionExport";
 import type { ActionReporting } from "./useActionReporting";
 
 type ActionOverviewTabProps = {
   action: ParsedActionDto;
+  phase: ActionPhase;
   reporting: ActionReporting;
-  actionExport: ActionExport;
-  imageUploading: boolean;
+  /** Edits not yet saved anywhere on the page, which block staff testing and release changes. */
   unsaved: boolean;
-  onDuplicate: () => Promise<void>;
-  onArchive: () => Promise<void>;
-  onTabChange: (tab: "events" | "responses") => void;
+  saving: boolean;
+  onStaffPreviewChange: (staffPreview: boolean) => void;
+  responsesHref: string;
   setSearchParams: SetURLSearchParams;
   incompleteUsersExpanded: boolean;
   setIncompleteUsersExpanded: (expanded: boolean) => void;
@@ -37,13 +34,12 @@ type ActionOverviewTabProps = {
 
 const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
   action,
+  phase,
   reporting,
-  actionExport,
-  imageUploading,
   unsaved,
-  onDuplicate,
-  onArchive,
-  onTabChange,
+  saving,
+  onStaffPreviewChange,
+  responsesHref,
   setSearchParams,
   incompleteUsersExpanded,
   setIncompleteUsersExpanded,
@@ -54,70 +50,45 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
 
   return (
     <div className="space-y-4 pb-4">
-      <ActionDashboardToolbar
+      <PhaseHeader
         action={action}
-        actionExport={actionExport}
-        imageUploading={imageUploading}
+        phase={phase}
         unsaved={unsaved}
-        onDuplicate={onDuplicate}
-        onArchive={onArchive}
+        busy={saving}
+        onStaffPreviewChange={onStaffPreviewChange}
       />
+      <ReleasePanel action={action} phase={phase} disabled={unsaved} />
+      <ActionProjectRow actionId={action.id} project={action.project ?? null} />
       <FailedLoadsBanner
         failed={reporting.failedLoads}
         consequence="The reports below are incomplete."
         className="rounded-md border"
       />
-      {action.project && (
-        <ActionProjectSteps
-          actionId={action.id}
-          projectId={action.project.id}
-        />
-      )}
-      <Card style={CardStyle.White}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">Status</h2>
-            <button
-              type="button"
-              aria-label={`${ACTION_STATUS_LABELS[action.status]}: open events`}
-              title="Open events"
-              className={cn(
-                "inline-flex items-center px-3 py-1 rounded-full cursor-pointer text-sm font-medium",
-                ACTION_STATUS_COLORS[action.status],
+      {action.usersJoined > 0 && (
+        <Card style={CardStyle.White}>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="font-medium">Completion progress</span>
+            <span className="text-zinc-600">
+              {action.usersCompleted} / {action.usersJoined} (
+              {Math.round(
+                (action.usersCompleted / (action.usersJoined || 1)) * 100,
               )}
-              onClick={() => onTabChange("events")}
-            >
-              {ACTION_STATUS_LABELS[action.status]}
-            </button>
+              %)
+            </span>
           </div>
-        </div>
-
-        {action.usersJoined > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="font-medium">Completion progress</span>
-              <span className="text-gray-600">
-                {action.usersCompleted} / {action.usersJoined} (
-                {Math.round(
+          <div className="w-full h-4 bg-zinc-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-green rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.min(
                   (action.usersCompleted / (action.usersJoined || 1)) * 100,
-                )}
-                %)
-              </span>
-            </div>
-            <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green rounded-full transition-all duration-300"
-                style={{
-                  width: `${Math.min(
-                    (action.usersCompleted / (action.usersJoined || 1)) * 100,
-                    100,
-                  )}%`,
-                }}
-              />
-            </div>
+                  100,
+                )}%`,
+              }}
+            />
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
 
       <ActionParticipationStats
         action={action}
@@ -167,7 +138,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         action={action}
         reporting={reporting}
         hasMemberActionStarted={memberActionStarted}
-        onTabChange={onTabChange}
+        responsesHref={responsesHref}
         setSearchParams={setSearchParams}
       />
     </div>

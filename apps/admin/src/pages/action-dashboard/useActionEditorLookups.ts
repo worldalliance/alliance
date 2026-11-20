@@ -5,6 +5,8 @@ import { useActionSuitesAdmin } from "../../lib/useActionSuitesAdmin";
 import { useAllActions } from "../../lib/useAllActions";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 
+export type ActionEditorLookups = ReturnType<typeof useActionEditorLookups>;
+
 export function useActionEditorLookups() {
   const { allActions, allActionsLoading, allActionsLoadFailed } =
     useAllActions();

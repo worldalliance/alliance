@@ -15,10 +15,6 @@ export function useActionExport(actionId: number | null) {
   const [exportActionSuite, setExportActionSuite] = useState(false);
   const [jsonCopied, setJsonCopied] = useState(false);
 
-  const handleExportActionOpen = async () => {
-    setExportActionOpen((prev) => !prev);
-  };
-
   const handleExportAction = async () => {
     if (actionId) {
       // Handed over unresolved: Safari only allows the write inside the click.
@@ -54,6 +50,7 @@ export function useActionExport(actionId: number | null) {
 
   return {
     exportActionOpen,
+    setExportActionOpen,
     exportActionEvents,
     setExportActionEvents,
     exportActionTaskForm,
@@ -61,7 +58,6 @@ export function useActionExport(actionId: number | null) {
     exportActionSuite,
     setExportActionSuite,
     jsonCopied,
-    handleExportActionOpen,
     handleExportAction,
   };
 }

@@ -39,7 +39,7 @@ it("lists events newest first without reordering the action's events", () => {
   );
 
   expect(
-    screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+    screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent),
   ).toEqual(["Newer", "Older"]);
   expect(events.map((event) => event.id)).toEqual([1, 2]);
 });

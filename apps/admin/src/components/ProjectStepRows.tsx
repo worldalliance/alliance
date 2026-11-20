@@ -9,6 +9,7 @@ import {
   ActionEditorSection,
   missingForStaffTesting,
 } from "../lib/staffTestingGate";
+import { actionSectionPath } from "../pages/action-dashboard/workspaceLocation";
 import ActionPhasePill from "./ActionPhasePill";
 import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
 
@@ -24,11 +25,6 @@ const stepDates = (step: ProjectStep) => {
 
 const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
 
-export const stepPath = (step: Pick<ProjectStep, "id" | "project">) =>
-  step.project
-    ? `/projects/${step.project.id}/action/${step.id}`
-    : `/actions/${step.id}`;
-
 const NextStep = ({
   step,
   phase,
@@ -42,8 +38,8 @@ const NextStep = ({
     case ActionPhase.StaffTesting:
       return (
         <Link
-          to={`${stepPath(step)}#${ActionEditorSection.Release}`}
-          className="rounded border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50"
+          to={actionSectionPath(step.id, ActionEditorSection.Release)}
+          className="rounded-md border border-zinc-300 px-2 py-0.5 text-xs hover:bg-zinc-50"
         >
           Schedule release
         </Link>
@@ -126,8 +122,8 @@ const ProjectStepRows = ({
               {index + 1}
             </span>
             <Link
-              to={stepPath(step)}
-              className="min-w-0 flex-1 rounded hover:bg-zinc-50"
+              to={`/actions/${step.id}`}
+              className="min-w-0 flex-1 rounded-md hover:bg-zinc-50"
             >
               <div className="truncate text-sm font-medium text-black">
                 {step.name}

@@ -3,22 +3,15 @@ import type { ProjectDto } from "@alliance/shared/client";
 import { optionSections } from "@alliance/shared/forms/optionSections";
 import { cn } from "@alliance/shared/styles/util";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { format } from "date-fns";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Link } from "react-router";
 import {
   useAssignActionProjectAdmin,
   useCreateProjectAdmin,
-  useDeleteProjectAdmin,
-  useProjectAdmin,
   useProjectsAdmin,
   useUpdateProjectAdmin,
 } from "../lib/useProjectsAdmin";
-import { ActionCategoryPicker } from "./ActionCategoryIcons";
-import ConfirmDialog from "./ConfirmDialog";
 import { ProjectNameInput } from "./ProjectNameInput";
 
 const NO_PROJECT = "none";
@@ -35,8 +28,8 @@ enum LoadAlert {
   HandingOff = "handing-off",
 }
 
-const iconButtonClassName =
-  "rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50";
+const buttonClassName =
+  "flex h-8 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2.5 text-sm text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900";
 
 export function ActionProjectControls({
   actionId,
@@ -135,8 +128,8 @@ export function ActionProjectControls({
   }
 
   return (
-    <div className="flex flex-row items-center gap-1">
-      <span id={labelId} className="sr-only">
+    <div className="flex flex-wrap items-center gap-2">
+      <span id={labelId} className="w-16 text-sm text-zinc-600">
         Project
       </span>
       <div ref={selectRef} className="w-64">
@@ -165,22 +158,20 @@ export function ActionProjectControls({
       {project && (
         <button
           type="button"
-          aria-label="Rename project"
-          title="Rename project"
-          className={iconButtonClassName}
+          className={buttonClassName}
           onClick={() => setMode(EditMode.Rename)}
         >
-          <Pencil size={14} />
+          <Pencil size={14} aria-hidden />
+          Rename project
         </button>
       )}
       <button
         type="button"
-        aria-label="New project for this action"
-        title="New project for this action"
-        className={iconButtonClassName}
+        className={buttonClassName}
         onClick={() => setMode(EditMode.Create)}
       >
-        <Plus size={14} />
+        <Plus size={14} aria-hidden />
+        New project
       </button>
       {loadAlert !== LoadAlert.Hidden && (
         <p
@@ -206,100 +197,6 @@ export function ActionProjectControls({
           </button>
         </p>
       )}
-    </div>
-  );
-}
-
-export function ActionProjectSteps({
-  actionId,
-  projectId,
-}: {
-  actionId: number;
-  projectId: number;
-}) {
-  const toast = useToast();
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  const { data: project, error } = useProjectAdmin(projectId);
-
-  const remove = useDeleteProjectAdmin({
-    onSuccess: () => setConfirmingDelete(false),
-    onError: (error) =>
-      toast.error(
-        errorMessage({ error, fallback: "Could not delete the project" }),
-      ),
-  });
-
-  const updateCategory = useUpdateProjectAdmin({
-    onError: (error) =>
-      toast.error(
-        errorMessage({
-          error,
-          fallback: "Could not change the project's categories",
-        }),
-      ),
-  });
-
-  if (error) {
-    return (
-      <p className="text-sm text-red-600">
-        {errorMessage({ error, fallback: "Could not load the project" })}
-      </p>
-    );
-  }
-  if (!project) return null;
-
-  return (
-    <div className="rounded border border-gray-2 bg-white p-3 text-sm">
-      <div className="flex flex-row items-center justify-between gap-2 mb-2">
-        <div className="flex flex-row items-center gap-2">
-          <p className="font-medium">{project.name}</p>
-          <ActionCategoryPicker
-            value={project.category}
-            onChange={(category) =>
-              updateCategory.mutate({ id: projectId, body: { category } })
-            }
-            disabled={updateCategory.isPending}
-          />
-        </div>
-        <Button
-          color={ButtonColor.Red}
-          onClick={() => setConfirmingDelete(true)}
-          className="!px-2 !py-1 !text-xs gap-x-1"
-        >
-          <Trash2 size={12} />
-          Delete project
-        </Button>
-      </div>
-      <ol className="flex flex-col gap-1">
-        {project.steps.map((step) => (
-          <li key={step.actionId} className="flex flex-row gap-3">
-            <span className="w-24 shrink-0 text-zinc-500">
-              {step.memberActionAt
-                ? format(new Date(step.memberActionAt), "MMM d, yyyy")
-                : "Unscheduled"}
-            </span>
-            {step.actionId === actionId ? (
-              <span className="font-medium">{step.actionName}</span>
-            ) : (
-              <Link
-                to={`/actions/${step.actionId}?tab=overview`}
-                className="text-blue-600 hover:underline"
-              >
-                {step.actionName}
-              </Link>
-            )}
-          </li>
-        ))}
-      </ol>
-      <ConfirmDialog
-        isOpen={confirmingDelete}
-        title={`Delete project "${project.name}"?`}
-        message={`Its ${project.steps.length} action(s) will no longer belong to a project. The actions themselves are not deleted.`}
-        onConfirm={() => remove.mutate(projectId)}
-        onCancel={() => setConfirmingDelete(false)}
-        isLoading={remove.isPending}
-      />
     </div>
   );
 }

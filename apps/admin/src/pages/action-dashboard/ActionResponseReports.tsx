@@ -1,19 +1,19 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import React from "react";
-import type { SetURLSearchParams } from "react-router";
+import { Link, type SetURLSearchParams } from "react-router";
 import FormResponseStatistics from "../../components/FormResponseStatistics";
 import type { FormResponseFilter } from "../../lib/responseFilter";
 import type { ActionReporting } from "./useActionReporting";
+import { moveToTab, WorkspaceTab } from "./workspaceLocation";
 
 type ActionResponseReportsProps = {
   action: ParsedActionDto;
   reporting: ActionReporting;
   hasMemberActionStarted: boolean;
-  onTabChange: (tab: "responses") => void;
+  responsesHref: string;
   setSearchParams: SetURLSearchParams;
 };
 
@@ -21,14 +21,14 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
   action,
   reporting: { shareUrlStats, shareUrlStatsLoading, taskForm, formResponses },
   hasMemberActionStarted,
-  onTabChange,
+  responsesHref,
   setSearchParams,
 }) => (
   <>
     {action.publicOnly && (
       <Card style={CardStyle.White}>
         <h2 className="font-semibold mb-4">
-          Invite Stats (
+          Invite stats (
           {shareUrlStats.reduce((sum, s) => sum + s.inviteCount, 0)} total
           public submissions)
         </h2>
@@ -91,15 +91,14 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
         <Card style={CardStyle.White}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">
-              Response Statistics ({formResponses.length} responses)
+              Response statistics ({formResponses.length} responses)
             </h2>
-            <Button
-              onClick={() => onTabChange("responses")}
-              color={ButtonColor.White}
-              size="small"
+            <Link
+              to={responsesHref}
+              className="text-sm text-blue-600 underline"
             >
-              View All Responses →
-            </Button>
+              View all responses
+            </Link>
           </div>
           <FormResponseStatistics
             form={taskForm}
@@ -107,7 +106,7 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
             onFilterSelect={(filter: FormResponseFilter) => {
               setSearchParams((prev) => {
                 const next = new URLSearchParams(prev);
-                next.set("tab", "responses");
+                moveToTab(next, { tab: WorkspaceTab.Responses });
                 next.set("resp_tab", "replays");
                 next.set("resp_filterField", filter.fieldId);
                 next.set("resp_filterOp", filter.op);
