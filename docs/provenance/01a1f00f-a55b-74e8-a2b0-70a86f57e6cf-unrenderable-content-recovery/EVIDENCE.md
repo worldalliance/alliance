@@ -14,6 +14,21 @@ Checked 2026-11-18 by research subagents; categories per root `AGENTS.md` **Esta
 - Expo, [`reloadAsync`](https://docs.expo.dev/versions/latest/sdk/updates/#updatesreloadasyncoptions) (vendor recommendation): reloads into the update expo-updates selects locally; it rejects when updates are disabled or in development. A reload without a downloaded update doesn't run newer code.
 - Vite, [load error handling](https://vite.dev/guide/build#load-error-handling) (vendor recommendation): its example reloads on failed dynamic imports. That is a different failure from unknown content kinds.
 
+## Mobile component tests
+
+Checked 2026-11-19 by a research subagent.
+
+- Expo, [unit testing](https://docs.expo.dev/develop/unit-testing/) (vendor recommendation): component tests use Jest with the `jest-expo` preset and React Native Testing Library; Bun appears only as a package manager.
+- React Native, [testing overview](https://reactnative.dev/docs/testing-overview) (vendor recommendation): Jest with React Native Testing Library; mock only what can't run, such as native modules.
+- Bun, [DOM testing](https://bun.com/docs/test/dom) (vendor documentation): Bun's runner works with React Testing Library through happy-dom registered in a preload; React Native isn't mentioned.
+- Bun can't parse the real `react-native` package's Flow sources ([oven-sh/bun#10083](https://github.com/oven-sh/bun/issues/10083), vendor issue tracker).
+- react-native-fast-image, [PR #1123](https://github.com/DylanVann/react-native-fast-image/pull/1123) (common practice, a single example): moved its tests to Bun by replacing `react-native` with a small stand-in module registered through `mock.module`.
+- Jest, [mock functions](https://jestjs.io/docs/mock-functions) (vendor documentation): a side effect is checked by recording calls at its boundary.
+
+### Experiment
+
+2026-11-19, Bun 1.4.4, at this branch's tip: rendering the mobile `UnrenderableNotice` with `@testing-library/react` 16.3.2 over happy-dom 20.11.1, with stand-ins for `react-native`, `expo-router` and `expo-updates`, records one `captureException` with `report` true and none with it false, and the other 48 mobile test files pass with those stand-ins preloaded.
+
 ## Repository behaviour
 
 Read 2026-11-18 at commit 94cc44094c.

@@ -3,8 +3,8 @@
 [install]
 linker = "hoisted"
 
-# `bun test` ignores the package.json `test` script, so the Metro globals the
-# app's modules read have to be preloaded here for CI (which runs `bun test`)
-# to pick them up.
+# `bun test` ignores the package.json `test` script, so the test preloads (DOM,
+# the Metro globals and native stand-ins the app's modules read) have to be
+# named here for CI (which runs `bun test`) to pick them up.
 [test]
-preload = ["./test-setup.ts"]
+preload = ["@alliance/shared/lib/testing/preload.ts", "./test-setup.ts"]

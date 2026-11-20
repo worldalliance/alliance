@@ -5,7 +5,7 @@ import {
 } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { afterAll, describe, expect, it, mock, spyOn } from "bun:test";
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
 import { AuthTabFlow, ClientFailure } from "./oauthResult";
 import {
@@ -14,10 +14,8 @@ import {
   type NativeSignIn,
 } from "./oauthSignIn";
 
-const consoleError = spyOn(console, "error").mockImplementation(() => {});
-
-afterAll(() => {
-  consoleError.mockRestore();
+beforeEach(() => {
+  spyOn(console, "error").mockImplementation(() => {});
 });
 
 const api = serveApi(routes({}));
