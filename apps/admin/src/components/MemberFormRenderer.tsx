@@ -28,7 +28,8 @@ export function MemberFormRenderer({
         userId={previewUserId}
         user={user}
         adminPreviewUserId={previewUserId}
-        showVariableError
+        showDetail
+        draft
         initialPageIndex={initialPageIndex}
       />
     </PreviewBoundary>

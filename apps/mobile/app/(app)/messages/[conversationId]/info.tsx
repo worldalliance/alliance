@@ -32,6 +32,7 @@ import Text, {
 import { useAuth } from "../../../../lib/AuthContext";
 import { useConversations } from "../../../../lib/messages";
 import { pickImageDataUri } from "../../../../lib/pickImageDataUri";
+import { useBlockResumeRestart } from "../../../../lib/resumeRestarts";
 import { colors } from "../../../../lib/style/colors";
 
 const explain = ({ title, message }: Explanation) =>
@@ -71,6 +72,11 @@ export default function ConversationInfoScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
+  useBlockResumeRestart(
+    isEditing &&
+      (editingTitle !== selectedConvo?.title ||
+        editingPhoto !== (selectedConvo?.photo ?? null)),
+  );
   const { busy: saving, run: save } = useOneAtATime();
   const [search, setSearch] = useState("");
   const [hasLeft, setHasLeft] = useState(false);

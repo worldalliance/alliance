@@ -1,3 +1,4 @@
+import { hasContent } from "@alliance/common/editableContent";
 import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
 import {
@@ -11,10 +12,12 @@ import { canReplyAtDepth } from "@alliance/shared/lib/commentTree";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
+import { isEqual } from "es-toolkit";
 import { Pin, X } from "lucide-react-native";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 import EditableContentForm from "../EditableContentForm";
 import EditableContentRenderer from "../EditableContentRenderer";
@@ -71,15 +74,23 @@ export const ReplyItem = memo(function ReplyItemView({
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState<CreateEditableContentDto>({
-    body: reply.editableContent.body ?? "",
-    attachments: reply.editableContent.attachments ?? [],
-  });
+  const savedContent = useMemo<CreateEditableContentDto>(
+    () => ({
+      body: reply.editableContent.body ?? "",
+      attachments: reply.editableContent.attachments ?? [],
+    }),
+    [reply.editableContent.body, reply.editableContent.attachments],
+  );
+  const [editContent, setEditContent] = useState(savedContent);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [nestedDraft, setNestedDraft] = useState<CreateEditableContentDto>({
     body: "",
     attachments: [],
   });
+  useBlockResumeRestart(
+    hasContent(nestedDraft) ||
+      (isEditing && !isEqual(editContent, savedContent)),
+  );
   const deleteError = shared.deleteErrorFor(reply.id);
   const viewRef = useRef<View>(null);
   const canNest = canReplyAtDepth(depth);
@@ -111,15 +122,8 @@ export const ReplyItem = memo(function ReplyItemView({
 
   useEffect(() => {
     if (isEditing) return;
-    setEditContent({
-      body: reply.editableContent.body ?? "",
-      attachments: reply.editableContent.attachments ?? [],
-    });
-  }, [
-    isEditing,
-    reply.editableContent.body,
-    reply.editableContent.attachments,
-  ]);
+    setEditContent(savedContent);
+  }, [isEditing, savedContent]);
 
   const saveEdit = async () => {
     setIsSavingEdit(true);
@@ -229,10 +233,7 @@ export const ReplyItem = memo(function ReplyItemView({
                 void saveEdit();
               }}
               onCancel={() => {
-                setEditContent({
-                  body: reply.editableContent.body ?? "",
-                  attachments: reply.editableContent.attachments ?? [],
-                });
+                setEditContent(savedContent);
                 setEditError(null);
                 setIsEditing(false);
               }}

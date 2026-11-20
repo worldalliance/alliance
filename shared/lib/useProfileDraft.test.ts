@@ -107,6 +107,36 @@ describe("useProfileDraft", () => {
     await waitFor(() => expect(draft.current.isSaving).toBe(false));
   });
 
+  it("is dirty only while editing a value away from the saved one", () => {
+    const draft = render().result;
+    act(() => draft.current.setIsEditing(true));
+    expect(draft.current.dirty).toBe(false);
+
+    act(() => draft.current.setBio("Hello"));
+    expect(draft.current.dirty).toBe(true);
+
+    act(() => draft.current.setBio(""));
+    expect(draft.current.dirty).toBe(false);
+
+    act(() => draft.current.setName("Grace"));
+    expect(draft.current.dirty).toBe(true);
+
+    act(() => {
+      draft.current.setName("Ada");
+      draft.current.setAvatarUrl(null);
+    });
+    expect(draft.current.dirty).toBe(true);
+  });
+
+  it("isn't dirty on another member's profile, whose empty draft differs from the saved one", () => {
+    const draft = renderHook(
+      () => useProfileDraft({ userId: 8, profile, isMe: false }),
+      { wrapper: queryWrapper().wrapper },
+    ).result;
+    expect(draft.current.name).toBe("");
+    expect(draft.current.dirty).toBe(false);
+  });
+
   it("discards the draft on cancel", () => {
     const draft = render().result;
     act(() => {

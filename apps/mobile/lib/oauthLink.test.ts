@@ -6,7 +6,7 @@ import {
 import { R, type Result } from "@alliance/common/result";
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { afterAll, describe, expect, it, mock, spyOn } from "bun:test";
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { NETWORK_FAILURE_MESSAGE } from "./network";
 import {
   interruptedLinkFeedback,
@@ -16,10 +16,8 @@ import {
 import { AuthTabFlow, ClientFailure, UNFINISHED } from "./oauthResult";
 import type { NativeCredential, NativeSignIn } from "./oauthSignIn";
 
-const consoleError = spyOn(console, "error").mockImplementation(() => {});
-
-afterAll(() => {
-  consoleError.mockRestore();
+beforeEach(() => {
+  spyOn(console, "error").mockImplementation(() => {});
 });
 
 const api = serveApi(routes({}));

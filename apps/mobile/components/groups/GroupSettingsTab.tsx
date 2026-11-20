@@ -14,10 +14,12 @@ import {
   UPDATE_GROUP_SESSION_EXPIRED,
   useMyCommunities,
 } from "@alliance/shared/lib/useMyCommunities";
+import { isEqual } from "es-toolkit";
 import { Trash2 } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, TouchableOpacity, View } from "react-native";
 import { pickImageDataUri } from "../../lib/pickImageDataUri";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 import KeyboardAwareScrollView from "../KeyboardAwareScrollView";
 import ProfileImage from "../ProfileImage";
@@ -70,6 +72,9 @@ export function GroupSettingsTab({
     if (isEditing) return;
     resetFormFromCommunity(community);
   }, [community, isEditing, resetFormFromCommunity]);
+  useBlockResumeRestart(
+    isEditing && !isEqual(editForm, communityToCreateCommunityDto(community)),
+  );
 
   const handleCancel = useCallback(() => {
     resetFormFromCommunity(community);

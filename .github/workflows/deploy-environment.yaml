@@ -335,12 +335,16 @@ jobs:
             sudo nginx -t || { echo "nginx config invalid"; exit 1; }
             sudo systemctl reload nginx
 
+  # Waits for the OTA job so admins can't publish a new form kind before a
+  # mobile bundle that renders it exists, but runs even when the OTA failed.
   deploy-admin-app:
     runs-on: ubuntu-latest
     needs:
       - guard
       - deploy-nest-backend
       - deploy-react-app
+      - publish-mobile-ota
+    if: ${{ !cancelled() && needs.deploy-nest-backend.result == 'success' && needs.deploy-react-app.result == 'success' }}
     environment: ${{ inputs.environment }}-hosts
     permissions:
       actions: read
@@ -427,6 +431,9 @@ jobs:
       - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
+    # Explicit because publish-mobile-ota, which may fail without blocking, is
+    # an ancestor through the admin deploy.
+    if: &after-admin-deploy ${{ !cancelled() && needs.deploy-admin-app.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - *refuse-partial-rerun
@@ -464,6 +471,7 @@ jobs:
       - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
+    if: *after-admin-deploy
     runs-on: ubuntu-latest
     steps:
       - *refuse-partial-rerun
@@ -561,6 +569,7 @@ jobs:
       - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
+    if: *after-admin-deploy
     runs-on: ubuntu-latest
     steps:
       - *refuse-partial-rerun

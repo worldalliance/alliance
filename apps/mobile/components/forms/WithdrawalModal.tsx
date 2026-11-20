@@ -18,6 +18,7 @@ import {
 } from "lucide-react-native";
 import { Fragment, useState } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Text, { FontWeight } from "../system/Text";
@@ -73,6 +74,9 @@ export default function WithdrawalModal({
   const [withdrawalOption, setWithdrawalOption] =
     useState<WithdrawalOption | null>(null);
   const [customReason, setCustomReason] = useState("");
+  useBlockResumeRestart(
+    visible && (withdrawalOption !== null || customReason !== ""),
+  );
 
   return (
     <FormModal visible={visible} onClose={onClose}>

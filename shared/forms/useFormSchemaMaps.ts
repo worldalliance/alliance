@@ -8,8 +8,10 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { useMemo } from "react";
 import {
+  findUncompilableFormula,
   findUnknownConditionKind,
   findUnknownFormElementKind,
+  findUnknownVariableInputKind,
 } from "../formrenderer";
 import { resolveFieldDefaultValue } from "./formDrafts";
 
@@ -52,7 +54,10 @@ export function useFormSchemaMaps(args: {
 
   const unknownKind = useMemo(
     () =>
-      findUnknownFormElementKind(schema) ?? findUnknownConditionKind(schema),
+      findUnknownFormElementKind(schema) ??
+      findUnknownConditionKind(schema) ??
+      findUnknownVariableInputKind(schema) ??
+      findUncompilableFormula(schema),
     [schema],
   );
 

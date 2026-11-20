@@ -1,4 +1,4 @@
-import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import { readDisplayOnlySchemaForMember } from "@alliance/common/forms/display-only-schema";
 import { ActionUpdateDto } from "@alliance/shared/client";
 import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
@@ -22,7 +22,7 @@ export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
   });
 
   const schema = useMemo(
-    () => readDisplayOnlySchema(update.schema),
+    () => readDisplayOnlySchemaForMember(update.schema),
     [update.schema],
   );
 
@@ -43,9 +43,12 @@ export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
           </View>
         </View>
       </View>
-      {schema?.blocks.length !== 0 && (
+      {!(schema.ok && schema.value.blocks.length === 0) && (
         <View className="p-3 bg-white">
-          <DisplayOnlyRenderer schema={schema} />
+          <DisplayOnlyRenderer
+            schema={schema}
+            content={{ actionUpdateId: update.id }}
+          />
         </View>
       )}
     </View>

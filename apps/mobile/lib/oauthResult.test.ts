@@ -10,7 +10,15 @@ import {
   __resetAnalyticsForTests,
   registerAnalytics,
 } from "@alliance/shared/lib/analytics";
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  spyOn,
+  type Mock,
+} from "bun:test";
 import { WebBrowserResultType } from "expo-web-browser/build/WebBrowser.types";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
 import { AuthTabResultType } from "../modules/auth-tab/src/AuthTab.types";
@@ -35,10 +43,10 @@ import {
   type OAuthFailure,
 } from "./oauthResult";
 
-const consoleError = spyOn(console, "error").mockImplementation(() => {});
+let consoleError: Mock<typeof console.error>;
 
-afterEach(() => {
-  consoleError.mockClear();
+beforeEach(() => {
+  consoleError = spyOn(console, "error").mockImplementation(() => {});
 });
 
 describe("reportOAuthFailure", () => {

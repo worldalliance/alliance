@@ -7,6 +7,7 @@ import Button, { ButtonColor } from "../../../components/system/Button";
 import Card, { CardStyle } from "../../../components/system/Card";
 import Input from "../../../components/system/Input";
 import Text, { FontWeight } from "../../../components/system/Text";
+import { useBlockResumeRestart } from "../../../lib/resumeRestarts";
 
 export default function CreatePostScreen() {
   const [title, setTitle] = useState("");
@@ -15,6 +16,7 @@ export default function CreatePostScreen() {
   const [titleError, setTitleError] = useState("");
   const [contentError, setContentError] = useState("");
   const { create } = useForumPost(undefined);
+  useBlockResumeRestart(title !== "" || content !== "");
 
   const validateForm = () => {
     let isValid = true;

@@ -91,6 +91,7 @@ export enum ExceptionEvent {
   DeleteCommentError = "delete_comment_error",
   OtaForegroundUpdateFailed = "ota_foreground_update_failed",
   OtaRestartFailed = "ota_restart_failed",
+  ResumeRouteFailed = "resume_route_failed",
   RequestFailed = "request_failed",
   ClearSessionTokensFailed = "clear_session_tokens_failed",
   SessionLoadFailed = "session_load_failed",
@@ -102,6 +103,9 @@ export enum ExceptionEvent {
   LinkOpeningsUnreadable = "link_openings_unreadable",
   LinkOpeningExpired = "link_opening_expired",
   UnregisterDeviceFailed = "unregister_device_failed",
+  ContentNeedsNewerClient = "content_needs_newer_client",
+  ContentUnrenderable = "content_unrenderable",
+  HandledPushTapsFailed = "handled_push_taps_failed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -196,6 +200,7 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.DeleteCommentError]: false,
   [ExceptionEvent.OtaForegroundUpdateFailed]: false,
   [ExceptionEvent.OtaRestartFailed]: true,
+  [ExceptionEvent.ResumeRouteFailed]: false,
   [ExceptionEvent.RequestFailed]: false,
   [ExceptionEvent.ClearSessionTokensFailed]: true,
   [ExceptionEvent.SessionLoadFailed]: false,
@@ -207,4 +212,9 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.LinkOpeningsUnreadable]: false,
   [ExceptionEvent.LinkOpeningExpired]: false,
   [ExceptionEvent.UnregisterDeviceFailed]: false,
+  [ExceptionEvent.ContentNeedsNewerClient]: false,
+  // Its own PostHog destination posts it to Slack once per piece of content a
+  // day (unrenderable-content-recovery REQUIREMENTS, Alerts for broken content).
+  [ExceptionEvent.ContentUnrenderable]: false,
+  [ExceptionEvent.HandledPushTapsFailed]: false,
 };

@@ -1,9 +1,11 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 // eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import {
   NotificationDto,
   NotificationSourceType,
   pushMarkOpened,
 } from "@alliance/shared/client";
+import { captureException } from "@alliance/shared/lib/analytics";
 import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import {
   addNotificationResponseReceivedListener,
@@ -12,10 +14,12 @@ import {
   type NotificationResponse,
 } from "expo-notifications";
 import { router } from "expo-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { notificationRoute } from "../lib/notificationRoute";
+import { checkForUpdateOnPush } from "../lib/otaUpdates";
+import { handledPushTaps, pushTapRunner } from "../lib/pushTaps";
 import { isVisualTestMode } from "../lib/visualTest";
 
 type PushData = {
@@ -26,6 +30,7 @@ type PushData = {
 };
 
 type PendingNotificationAction = {
+  tapId: string;
   cid?: number;
   notificationId?: number;
   notificationSourceType?: NotificationSourceType;
@@ -35,11 +40,16 @@ type PendingNotificationAction = {
 export default function PushNotificationResponseHandler() {
   const { isAuthenticated, isLoading } = useAuth();
   const { markRead } = useNotificationsCache();
-  const pendingNotificationActionRef = useRef<PendingNotificationAction | null>(
-    null,
-  );
   const authStateRef = useRef({ isAuthenticated, isLoading });
-  const lastHandledResponseIdentifierRef = useRef<string | null>(null);
+  const [taps] = useState(() =>
+    pushTapRunner<PendingNotificationAction>({
+      taps: handledPushTaps((error) =>
+        captureException(ExceptionEvent.HandledPushTapsFailed, error),
+      ),
+      canRun: () =>
+        !authStateRef.current.isLoading && authStateRef.current.isAuthenticated,
+    }),
+  );
   const responseSub = useRef<EventSubscription | null>(null);
 
   const markNotificationReadFromTap = useCallback(
@@ -87,36 +97,28 @@ export default function PushNotificationResponseHandler() {
       if (!response) {
         return;
       }
-
-      const responseIdentifier = response.notification.request.identifier;
-      if (lastHandledResponseIdentifierRef.current === responseIdentifier) {
-        return;
-      }
-      lastHandledResponseIdentifierRef.current = responseIdentifier;
-
       const data = response.notification.request.content.data as
         | PushData
         | undefined;
-      const pendingAction: PendingNotificationAction = {
-        cid: typeof data?.cid === "number" ? data.cid : undefined,
-        notificationId:
-          typeof data?.notificationId === "number"
-            ? data.notificationId
-            : undefined,
-        notificationSourceType: data?.notificationSourceType,
-        screen: data?.screen,
-      };
-
-      const authState = authStateRef.current;
-      if (authState.isLoading || !authState.isAuthenticated) {
-        // Last tap wins while auth is unavailable.
-        pendingNotificationActionRef.current = pendingAction;
-        return;
-      }
-
-      handlePendingNotificationAction(pendingAction);
+      void taps
+        .arrive(
+          {
+            tapId: response.notification.request.identifier,
+            cid: typeof data?.cid === "number" ? data.cid : undefined,
+            notificationId:
+              typeof data?.notificationId === "number"
+                ? data.notificationId
+                : undefined,
+            notificationSourceType: data?.notificationSourceType,
+            screen: data?.screen,
+          },
+          handlePendingNotificationAction,
+        )
+        .then((isNew) => {
+          if (isNew) checkForUpdateOnPush();
+        });
     },
-    [handlePendingNotificationAction],
+    [handlePendingNotificationAction, taps],
   );
 
   useEffect(() => {
@@ -124,18 +126,8 @@ export default function PushNotificationResponseHandler() {
   }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated) {
-      return;
-    }
-
-    const pendingAction = pendingNotificationActionRef.current;
-    if (!pendingAction) {
-      return;
-    }
-
-    pendingNotificationActionRef.current = null;
-    handlePendingNotificationAction(pendingAction);
-  }, [handlePendingNotificationAction, isAuthenticated, isLoading]);
+    taps.resume(handlePendingNotificationAction);
+  }, [handlePendingNotificationAction, isAuthenticated, isLoading, taps]);
 
   useEffect(() => {
     if (isVisualTestMode || Platform.OS === "web") {

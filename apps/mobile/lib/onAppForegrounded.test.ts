@@ -3,7 +3,7 @@ import { fakeAppState } from "./fakeAppState";
 import { onAppForegrounded } from "./onAppForegrounded";
 
 it("calls back on each return from the background, until stopped", () => {
-  const { appState, change, remove } = fakeAppState();
+  const { appState, change } = fakeAppState();
   const callback = mock(() => {});
   const stop = onAppForegrounded(appState, callback);
 
@@ -15,7 +15,9 @@ it("calls back on each return from the background, until stopped", () => {
   expect(callback).toHaveBeenCalledTimes(2);
 
   stop();
-  expect(remove).toHaveBeenCalled();
+  change("background");
+  change("active");
+  expect(callback).toHaveBeenCalledTimes(2);
 });
 
 it("skips an inactive bounce that never leaves the foreground", () => {

@@ -330,6 +330,7 @@ export function useMobileFormState({
 
   return {
     schema,
+    content: { formId: id, formSnapshotId, actionId },
     readOnly,
     user,
     activeUserKey,

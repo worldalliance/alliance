@@ -334,8 +334,11 @@
       },
       "devDependencies": {
         "@babel/core": "^7.25.2",
+        "@happy-dom/global-registrator": "^20.11.1",
         "@hey-api/openapi-ts": "^0.67.3",
         "@react-native-community/cli": "20.2.0",
+        "@testing-library/dom": "^10.4.0",
+        "@testing-library/react": "^16.3.2",
         "@types/hast": "^3.0.4",
         "@types/jest": "^29.5.14",
         "@types/markdown-it": "10.0.2",

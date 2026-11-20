@@ -22,6 +22,7 @@ import {
   useConversations,
   useLiveConvoMessages,
 } from "../../../../lib/messages";
+import { useBlockResumeRestart } from "../../../../lib/resumeRestarts";
 import { colors } from "../../../../lib/style/colors";
 
 export default function ConversationScreen() {
@@ -64,6 +65,7 @@ export default function ConversationScreen() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  useBlockResumeRestart(message !== "" || attachments.length > 0);
 
   const listRef = useRef<LegendListRef>(null);
 

@@ -14,6 +14,7 @@ import DeviceRegistration from "../components/DeviceRegistration";
 import { KeyboardExtenderPortalProvider } from "../components/KeyboardExtenderPortal";
 import OtaUpdateBanner from "../components/OtaUpdateBanner";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
+import ResumeAfterRestart from "../components/ResumeAfterRestart";
 import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
 import { AuthProvider } from "../lib/AuthContext";
@@ -22,7 +23,12 @@ import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
 import { notificationBehavior } from "../lib/notificationBehavior";
+import { checkForUpdateOnPush } from "../lib/otaUpdates";
 import { queryClient, refetchActions } from "../lib/queryClient";
+import {
+  blockResumeRestartDuringWrites,
+  memberActionHandlers,
+} from "../lib/resumeRestarts";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 
@@ -33,6 +39,7 @@ setNotificationHandler({
     notificationBehavior({
       data: notification.request.content.data,
       onTaskBadgePush: refetchActions,
+      onShownPush: checkForUpdateOnPush,
     }),
 });
 
@@ -51,12 +58,14 @@ export default function RootLayout() {
   useEffect(() => {
     client.setConfig({
       baseUrl: getApiUrl(),
-      fetch: refreshingFetch({
-        // eslint-disable-next-line no-restricted-globals -- the generated client's transport
-        fetch: fetch.bind(globalThis),
-        getRefreshToken,
-        saveTokens: saveSessionTokens,
-      }),
+      fetch: blockResumeRestartDuringWrites(
+        refreshingFetch({
+          // eslint-disable-next-line no-restricted-globals -- the generated client's transport
+          fetch: fetch.bind(globalThis),
+          getRefreshToken,
+          saveTokens: saveSessionTokens,
+        }),
+      ),
       throwOnError: true,
     });
     return startLinkOpenings({
@@ -68,13 +77,14 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{ flex: 1 }} {...memberActionHandlers}>
           <KeyboardProvider>
             <PostHogProvider>
               <AuthProvider>
                 <KeyboardExtenderPortalProvider>
                   <DeviceRegistration />
                   <PushNotificationResponseHandler />
+                  <ResumeAfterRestart />
                   <UpdateAvailableModal />
                   <StatusBar style="dark" />
                   <Slot />

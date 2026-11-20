@@ -18,6 +18,8 @@ import {
   findMatchingConversation,
   useConversations,
 } from "../../../lib/messages";
+import { newMessageHoldsInput } from "../../../lib/newMessageHoldsInput";
+import { useBlockResumeRestart } from "../../../lib/resumeRestarts";
 import { colors } from "../../../lib/style/colors";
 
 export default function NewMessageScreen() {
@@ -34,23 +36,26 @@ export default function NewMessageScreen() {
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const target = Array.isArray(to) ? to[0] : to;
+  const linkUserId = target ? parseInt(target, 10) : NaN;
+  useBlockResumeRestart(
+    newMessageHoldsInput({ selectedUserIds, linkUserId, message, attachments }),
+  );
 
   useEffect(() => {
-    const target = Array.isArray(to) ? to[0] : to;
-    if (!target || !user?.id) return;
-    const userId = parseInt(target, 10);
-    if (Number.isNaN(userId)) return;
-
-    const existing = findMatchingConversation(conversations, user.id, [userId]);
+    if (Number.isNaN(linkUserId) || !user?.id) return;
+    const existing = findMatchingConversation(conversations, user.id, [
+      linkUserId,
+    ]);
     if (existing) {
       router.replace(`/messages/${existing.id}`);
       return;
     }
 
     setSelectedUserIds((prev) =>
-      prev.length === 1 && prev[0] === userId ? prev : [userId],
+      prev.length === 1 && prev[0] === linkUserId ? prev : [linkUserId],
     );
-  }, [conversations, to, user?.id]);
+  }, [conversations, linkUserId, user?.id]);
 
   const recipients = useMemo(
     () =>

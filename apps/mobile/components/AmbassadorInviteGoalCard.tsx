@@ -14,6 +14,7 @@ import {
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, TouchableOpacity, View } from "react-native";
+import { useBlockResumeRestart } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import { CurrentInviteGoal } from "./CurrentInviteGoal";
 import DatePickerField from "./forms/DatePickerField";
@@ -54,7 +55,9 @@ export default function AmbassadorInviteGoalCard() {
     goalFormMessage,
     submitNewGoal,
     showProminentGoalForm,
+    newGoalDirty,
   } = goalForms;
+  useBlockResumeRestart(newGoalDirty);
 
   useEffect(() => {
     setEditGoalOpen(false);

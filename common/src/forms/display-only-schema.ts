@@ -19,6 +19,7 @@ import {
   type DisplayKind,
 } from "./display-blocks";
 import type { FormSchema } from "./form-schema";
+import { UnrenderableReason, type Unrenderable } from "./unrenderable";
 
 // Omitting only optional properties preserves assignability to DisplayBlock.
 const PER_VIEWER_FIELDS = {
@@ -167,4 +168,17 @@ export function readDisplayOnlySchema(
 ): DisplayOnlySchema | null {
   const parsed = displayOnlySchema.safeParse(value);
   return parsed.success ? parsed.data : null;
+}
+
+export function readDisplayOnlySchemaForMember(
+  value: unknown,
+): Result<DisplayOnlySchema, Unrenderable> {
+  const parsed = displayOnlySchema.safeParse(value);
+  if (parsed.success) return R.success(parsed.data);
+  // The server serves only schemas its own build parses, so one this build
+  // rejects was written by a newer build.
+  return R.failure({
+    reason: UnrenderableReason.OutdatedClient,
+    detail: describeSchemaIssues(parsed.error).join("; "),
+  });
 }
