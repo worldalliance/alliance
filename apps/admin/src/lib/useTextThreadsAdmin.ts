@@ -12,6 +12,7 @@ import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   type DataTag,
+  type QueryFunction,
   type QueryKey,
   partialMatchKey,
   queryOptions,
@@ -21,6 +22,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
+import { maxBy } from "es-toolkit";
+import { staffTextConflict } from "./memberTexts";
 import { useMmsThreadsLive } from "./mmsThreadsLive";
 import { usePatchAnyQueryData } from "./usePatchQueryData";
 
@@ -80,10 +83,18 @@ type ThreadMark<Id> = { id: Id; throughId: number };
 export function useThreadActions<
   Id,
   T extends { messages: MmsMessageDto[]; optedOut: boolean },
+  Key extends QueryKey,
 >(params: {
   id: Id;
-  queryKey: (id: Id) => DataTag<QueryKey, T, Error>;
-  sendText: (input: { id: Id; body: string }) => Promise<MmsMessageDto>;
+  query: (id: Id) => {
+    queryKey: DataTag<Key, T, Error>;
+    queryFn?: QueryFunction<T, Key>;
+  };
+  sendText: (input: {
+    id: Id;
+    body: string;
+    afterId: number | null;
+  }) => Promise<MmsMessageDto>;
   /** Must answer 409 only for a number that has already opted out, which
    * the hook treats as success. */
   markOptedOut: (id: Id) => Promise<unknown>;
@@ -91,7 +102,8 @@ export function useThreadActions<
   markHandled: (input: ThreadMark<Id>) => Promise<unknown>;
   markNeedsReply: (input: ThreadMark<Id>) => Promise<unknown>;
 }) {
-  const { id, queryKey, optOutKey } = params;
+  const { id, optOutKey } = params;
+  const queryKey = (target: Id) => params.query(target).queryKey;
   const queryClient = useQueryClient();
   const patch = usePatchAnyQueryData();
   const refreshViews = (target: Id) => {
@@ -122,6 +134,24 @@ export function useThreadActions<
       // An undelivered text doesn't answer the contact, so only the server
       // knows the reply state now.
       void refreshViews(input.id);
+    },
+    // Awaited so the refusal reaches the composer once the new texts show,
+    // after one attempt rather than the query's retries. A failure stays on
+    // the query, where the composer reads it.
+    onError: async (thrown, input) => {
+      if (staffTextConflict(thrown) === null) return;
+      const query = params.query(input.id);
+      await queryClient.cancelQueries({
+        queryKey: query.queryKey,
+        exact: true,
+      });
+      await queryClient
+        .fetchQuery({
+          ...query,
+          staleTime: 0,
+          retry: false,
+        })
+        .catch(() => {});
     },
   });
 
@@ -157,7 +187,15 @@ export function useThreadActions<
   });
 
   return {
-    send: (body: string) => send.mutateAsync({ id, body }),
+    newestTextId: () =>
+      maxBy(
+        queryClient.getQueryData(queryKey(id))?.messages ?? [],
+        (message) => message.id,
+      )?.id ?? null,
+    threadLoadFailed: () =>
+      queryClient.getQueryState(queryKey(id))?.status === "error",
+    send: (body: string, afterId: number | null) =>
+      send.mutateAsync({ id, body, afterId }),
     sentId: send.data?.id,
     markOptedOut: () => markOptedOut.mutateAsync(id),
     markingOptedOut: pendingOptOuts.includes(id),
@@ -194,11 +232,11 @@ export function useNumberThreadAdmin(threadId: string) {
   });
   const actions = useThreadActions({
     id: threadId,
-    queryKey: (id: string) => numberThreadQuery(id).queryKey,
+    query: numberThreadQuery,
     sendText: (input) =>
       mmsThreadSendInThreadAdmin({
         path: { threadId: input.id },
-        body: { body: input.body },
+        body: { body: input.body, afterId: input.afterId },
         throwOnError: true,
       }).then((r) => r.data),
     markOptedOut: (id) =>

@@ -6,7 +6,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import type { QueryClient } from "@tanstack/react-query";
+import type { DefaultOptions, QueryClient } from "@tanstack/react-query";
 import {
   fireEvent,
   render,
@@ -52,6 +52,12 @@ serveApi(
     "POST /mms-threads/7": async ({ request }) => {
       const body = await request.json();
       sentBodies.push(body);
+      if (body.afterId !== thread.messages.at(-1)?.id) {
+        return Response.json(
+          { statusCode: 409, error: "newer_texts", message: "Newer texts" },
+          { status: 409 },
+        );
+      }
       if (sendRefusal) {
         postSaved();
         await postGate;
@@ -115,8 +121,8 @@ beforeEach(() => {
   };
 });
 
-const renderSection = () => {
-  const { wrapper: Wrapper, client } = queryWrapper();
+const renderSection = (queries?: DefaultOptions["queries"]) => {
+  const { wrapper: Wrapper, client } = queryWrapper(queries);
   client.setQueryData(queryKeys.needsReplyAdmin(), []);
   render(
     <Wrapper>
@@ -183,7 +189,7 @@ it("sends a text, adds it to the thread and refreshes Needs Reply", async () => 
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
   expect(await screen.findByText("Happy to help")).toBeTruthy();
-  expect(sentBodies).toEqual([{ body: "Happy to help" }]);
+  expect(sentBodies).toEqual([{ body: "Happy to help", afterId: 5 }]);
   await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
 });
 

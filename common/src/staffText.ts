@@ -6,3 +6,10 @@ export const STAFF_TEXT_MAX_LENGTH = 1600;
 export const NON_MEMBER_REPLY_WINDOW_DAYS = 30;
 
 export const THREAD_SEARCH_MAX_LENGTH = 40;
+
+/** The `error` of a refused staff text that the composer acts on.
+ * `NumberChanged` comes only from a member's thread, whose number can change. */
+export enum StaffTextConflict {
+  NewerTexts = "newer_texts",
+  NumberChanged = "number_changed",
+}

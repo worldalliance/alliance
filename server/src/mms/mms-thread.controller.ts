@@ -1,4 +1,7 @@
-import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
+import {
+  NON_MEMBER_REPLY_WINDOW_DAYS,
+  StaffTextConflict,
+} from "@alliance/common/staffText";
 import {
   BadGatewayException,
   BadRequestException,
@@ -9,6 +12,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -65,7 +69,7 @@ const sendFailureException = (failure: StaffSendFailure): Error => {
 };
 
 const refusalException: Record<
-  ThreadRefusal | StaffTextRefusal | MediaRefusal,
+  ThreadRefusal | StaffTextRefusal | StaffTextConflict | MediaRefusal,
   () => Error
 > = {
   [ThreadRefusal.MemberNotFound]: () =>
@@ -86,6 +90,16 @@ const refusalException: Record<
     new ConflictException(
       `This number hasn't texted in the last ${NON_MEMBER_REPLY_WINDOW_DAYS} days, so staff can reply only once it texts again.`,
     ),
+  [StaffTextConflict.NewerTexts]: () =>
+    new ConflictException(
+      "New texts arrived while you were writing. Read them, then send again.",
+      { description: StaffTextConflict.NewerTexts },
+    ),
+  [StaffTextConflict.NumberChanged]: () =>
+    new ConflictException(
+      "This member's phone number changed while you were writing. Check the thread, then send again.",
+      { description: StaffTextConflict.NumberChanged },
+    ),
   [MediaRefusal.NoCopy]: () => new NotFoundException(),
 };
 
@@ -93,6 +107,8 @@ const refusalException: Record<
 @UseGuards(AdminGuard)
 @ApiUnauthorizedResponse()
 export class MmsThreadController {
+  private readonly logger = new Logger(MmsThreadController.name);
+
   constructor(
     private readonly threadService: MmsThreadService,
     private readonly mediaService: MmsMediaService,
@@ -154,10 +170,15 @@ export class MmsThreadController {
     @Body() body: SendStaffTextDto,
     @Request() req: JwtRequest,
   ): Promise<MmsMessageDto> {
+    // BACKCOMPAT(staff-text-after-id)
+    if (body.afterId === undefined) {
+      this.logger.log(`Staff text in thread ${threadId} sent without afterId`);
+    }
     const sent = await this.threadService.sendInThread({
       threadId,
       body: body.body,
       adminId: req.user.sub,
+      afterId: body.afterId,
     });
     if (sent.ok) return new MmsMessageDto(sent.value);
     if (typeof sent.error === "string") throw refusalException[sent.error]();
@@ -245,10 +266,15 @@ export class MmsThreadController {
     @Body() body: SendStaffTextDto,
     @Request() req: JwtRequest,
   ): Promise<MmsMessageDto> {
+    // BACKCOMPAT(staff-text-after-id)
+    if (body.afterId === undefined) {
+      this.logger.log(`Staff text to member ${userId} sent without afterId`);
+    }
     const sent = await this.threadService.send({
       userId,
       body: body.body,
       adminId: req.user.sub,
+      afterId: body.afterId,
     });
     if (sent.ok) return new MmsMessageDto(sent.value);
     if (typeof sent.error === "string") throw refusalException[sent.error]();

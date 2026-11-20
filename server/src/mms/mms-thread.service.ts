@@ -1,7 +1,10 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import { isCanonicalE164 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
-import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
+import {
+  NON_MEMBER_REPLY_WINDOW_DAYS,
+  StaffTextConflict,
+} from "@alliance/common/staffText";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
@@ -58,6 +61,8 @@ export enum ThreadRefusal {
 }
 
 export type ThreadMark = { throughId: number; adminId: number };
+
+type StaffText = { body: string; adminId: number; afterId?: number | null };
 
 export enum StaffTextRefusal {
   NoPhoneNumber = "no_phone_number",
@@ -217,14 +222,17 @@ export class MmsThreadService {
     return R.success({ messages, hasOlder: ids.length > THREAD_PAGE_SIZE });
   }
 
-  async send(params: {
-    userId: number;
-    body: string;
-    adminId: number;
-  }): Promise<
+  /** A member's number can change while staff write, so `afterId` missing
+   * from their current thread means it did. */
+  async send(
+    params: StaffText & { userId: number },
+  ): Promise<
     Result<
       Mms,
-      ThreadRefusal.MemberNotFound | StaffTextRefusal | StaffSendFailure
+      | ThreadRefusal.MemberNotFound
+      | StaffTextRefusal
+      | StaffTextConflict
+      | StaffSendFailure
     >
   > {
     const { userId, ...rest } = params;
@@ -233,17 +241,20 @@ export class MmsThreadService {
     return this.sendStaffText({
       ...rest,
       to: await this.staffTextable(memberNumber(user.value)),
+      notInThread: StaffTextConflict.NumberChanged,
     });
   }
 
-  async sendInThread(params: {
-    threadId: string;
-    body: string;
-    adminId: number;
-  }): Promise<
+  async sendInThread(
+    params: StaffText & { threadId: string },
+  ): Promise<
     Result<
       Mms,
-      ThreadRefusal.ThreadNotFound | StaffTextRefusal | StaffSendFailure
+      | ThreadRefusal.ThreadNotFound
+      | ThreadRefusal.TextNotInThread
+      | StaffTextRefusal
+      | StaffTextConflict.NewerTexts
+      | StaffSendFailure
     >
   > {
     const { threadId, ...rest } = params;
@@ -252,6 +263,7 @@ export class MmsThreadService {
     return this.sendStaffText({
       ...rest,
       to: await this.replyableNumber(thread.value.phoneNumber),
+      notInThread: ThreadRefusal.TextNotInThread,
     });
   }
 
@@ -279,13 +291,34 @@ export class MmsThreadService {
     });
   }
 
-  private async sendStaffText(params: {
-    to: Result<ReachableNumber, StaffTextRefusal>;
-    body: string;
-    adminId: number;
-  }): Promise<Result<Mms, StaffTextRefusal | StaffSendFailure>> {
-    const { to, body, adminId } = params;
+  /** Refuses the text when `afterId`, the newest text the sender saw, isn't
+   * in the thread, or when the thread has a text newer than it, or any text
+   * when it is null, other than the sender's own.
+   * BACKCOMPAT(staff-text-after-id): without `afterId` it sends regardless. */
+  private async sendStaffText<NotInThread>(
+    params: StaffText & {
+      to: Result<ReachableNumber, StaffTextRefusal>;
+      notInThread: NotInThread;
+    },
+  ): Promise<
+    Result<
+      Mms,
+      | StaffTextRefusal
+      | StaffTextConflict.NewerTexts
+      | NotInThread
+      | StaffSendFailure
+    >
+  > {
+    const { to, body, adminId, afterId } = params;
     if (!to.ok) return to;
+    if (afterId !== undefined) {
+      if (afterId !== null && !(await this.inThread(to.value, afterId))) {
+        return R.failure(params.notInThread);
+      }
+      if (await this.newerText({ phoneNumber: to.value, afterId, adminId })) {
+        return R.failure(StaffTextConflict.NewerTexts);
+      }
+    }
     const threadId = await this.mmsNumberService.ensureThread(to.value);
     const sent = await this.mmsService.sendStaffText({
       to: to.value,
@@ -299,6 +332,24 @@ export class MmsThreadService {
       relations: THREAD_RELATIONS,
     });
     return R.success(mms);
+  }
+
+  /** Newer means inserted later: a staff text's createdAt is taken before its
+   * Twilio call, so a reply saved after `afterId` can sort before it. The
+   * sender's own texts aren't news to them, so a draft written while their
+   * last send was in flight isn't refused over it. */
+  private async newerText(params: {
+    phoneNumber: string;
+    afterId: number | null;
+    adminId: number;
+  }): Promise<boolean> {
+    const { phoneNumber, afterId, adminId } = params;
+    const query = this.mmsRepository
+      .createQueryBuilder("mms")
+      .where("mms.memberPhoneNumber = :phoneNumber", { phoneNumber })
+      .andWhere("mms.sentById IS DISTINCT FROM :adminId", { adminId });
+    if (afterId !== null) query.andWhere("mms.id > :afterId", { afterId });
+    return query.getExists();
   }
 
   private async markNumberOptedOut(params: {

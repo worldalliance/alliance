@@ -1,6 +1,7 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
 import type { NumberThreadDto } from "@alliance/shared/client/types.gen";
+import type { ComponentProps } from "react";
 import { href, Link, useParams } from "react-router";
 import TextComposer from "../components/texts/TextComposer";
 import TextThreadSection, {
@@ -21,7 +22,8 @@ export default function TextThreadPage() {
 }
 
 function NumberThread({ threadId }: { threadId: string }) {
-  const { thread, send, ...actions } = useNumberThreadAdmin(threadId);
+  const { thread, send, newestTextId, threadLoadFailed, ...actions } =
+    useNumberThreadAdmin(threadId);
   const data = thread.data;
   const contactName = data ? threadContactName(data) : "Text thread";
 
@@ -50,8 +52,13 @@ function NumberThread({ threadId }: { threadId: string }) {
           thread={thread}
           fetchOlder={(before) => fetchNumberThread({ threadId, before })}
           emptyText="No texts with this number yet."
-          composer={(loaded) => (
-            <Composer thread={loaded} contactName={contactName} send={send} />
+          composer={(loaded, onConflictShown) => (
+            <Composer
+              thread={loaded}
+              contactName={contactName}
+              conflict={{ newestTextId, threadLoadFailed, onConflictShown }}
+              send={send}
+            />
           )}
         />
       )}
@@ -86,11 +93,16 @@ function ThreadPeople({ thread }: { thread: NumberThreadDto }) {
 function Composer({
   thread,
   contactName,
+  conflict,
   send,
 }: {
   thread: NumberThreadDto;
   contactName: string;
-  send: (body: string) => Promise<unknown>;
+  conflict: Pick<
+    ComponentProps<typeof TextComposer>,
+    "newestTextId" | "threadLoadFailed" | "onConflictShown"
+  >;
+  send: (body: string, afterId: number | null) => Promise<unknown>;
 }) {
   if (!thread.textable) {
     return (
@@ -119,6 +131,7 @@ function Composer({
       recipientName={contactName}
       phoneNumber={thread.phoneNumber}
       timeZone={otherZones.length === 0 ? (timeZone ?? null) : null}
+      {...conflict}
       send={send}
     />
   );

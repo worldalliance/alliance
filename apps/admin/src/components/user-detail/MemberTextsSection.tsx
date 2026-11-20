@@ -14,7 +14,8 @@ export default function MemberTextsSection({
 }: {
   member: { id: number; name: string; timeZone: string | null };
 }) {
-  const { thread, send, ...actions } = useMemberTextsAdmin(member.id);
+  const { thread, send, newestTextId, threadLoadFailed, ...actions } =
+    useMemberTextsAdmin(member.id);
   const threadId = thread.data?.threadId;
 
   return (
@@ -29,7 +30,7 @@ export default function MemberTextsSection({
           ? "No texts with this member yet."
           : "No phone number on file, so this member can't be texted."
       }
-      composer={(data) =>
+      composer={(data, onConflictShown) =>
         !data.phoneNumber ? null : !data.textable ? (
           <ComposerNotice>
             This member&apos;s phone number isn&apos;t valid, so they can&apos;t
@@ -43,6 +44,9 @@ export default function MemberTextsSection({
             recipientName={member.name}
             phoneNumber={data.phoneNumber}
             timeZone={member.timeZone}
+            newestTextId={newestTextId}
+            threadLoadFailed={threadLoadFailed}
+            onConflictShown={onConflictShown}
             send={send}
           />
         )

@@ -26,7 +26,16 @@ let respond: () => Response | Promise<Response>;
 serveApi(
   routes({
     "GET /mms-threads/needs-reply-threads": () => respond(),
-    "GET /mms-threads/7": () => new Promise(() => {}),
+    "GET /mms-threads/7": () =>
+      Response.json({
+        phoneNumber: "+14155550123",
+        textable: true,
+        optedOut: false,
+        replyState: "answered",
+        // A staff text saved after id 5 can be dated before it.
+        messages: [{ id: 4 }, { id: 6 }, { id: 5 }],
+        hasOlder: false,
+      }),
     "GET /mms-threads/by-id/:threadId": () => new Promise(() => {}),
   }),
 );
@@ -110,4 +119,11 @@ it("polls only as a backstop while the socket is connected", () => {
     milliseconds({ seconds: 10 }),
     milliseconds({ seconds: 10 }),
   ]);
+});
+
+it("takes the newest text to be the last one saved, not the last one dated", async () => {
+  const view = renderHook(() => useMemberTextsAdmin(7), queryWrapper());
+
+  await waitFor(() => expect(view.result.current.thread.isSuccess).toBe(true));
+  expect(view.result.current.newestTextId()).toBe(6);
 });

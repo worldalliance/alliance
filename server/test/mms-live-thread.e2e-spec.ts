@@ -1,3 +1,4 @@
+import { StaffTextConflict } from "@alliance/common/staffText";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { randomUUID } from "crypto";
 import { io, type Socket } from "socket.io-client";
@@ -20,8 +21,116 @@ const {
   byId,
   threadIdFor,
   createMember,
+  saveBroadcast,
   mmsRepo,
 } = mmsThreadApp();
+
+const sendAfter = (userId: number, afterId: number | null | undefined) =>
+  supertest(server())
+    .post(`/mms-threads/${userId}`)
+    .set("Authorization", admin())
+    .send({ body: "Hi from the team", afterId });
+
+describe("Staff texts sent over newer texts (e2e)", () => {
+  it("refuses a text when the thread has one newer than the sender saw", async () => {
+    const member = await createMember("+14155558201");
+    const seen = await saveBroadcast("+14155558201");
+    await inbound({ from: "+14155558201", body: "Are you there?" }).expect(201);
+
+    const { body } = await sendAfter(member.id, seen.id).expect(409);
+
+    expect(body.error).toBe(StaffTextConflict.NewerTexts);
+  });
+
+  it("sends when the sender saw the newest text", async () => {
+    const member = await createMember("+14155558202");
+    const newest = await saveBroadcast("+14155558202");
+    await sendAfter(member.id, newest.id).expect(201);
+  });
+
+  it("refuses a sender who saw no texts once the thread has one", async () => {
+    const member = await createMember("+14155558203");
+    await sendAfter(member.id, null).expect(201);
+    await inbound({ from: "+14155558203", body: "Thanks" }).expect(201);
+    await sendAfter(member.id, null).expect(409);
+  });
+
+  it("refuses a text when another admin replied after the one seen", async () => {
+    const member = await createMember("+14155558208");
+    const otherAdmin = await createMember(null);
+    const seen = await saveBroadcast("+14155558208");
+    const reply = await saveBroadcast("+14155558208");
+    await mmsRepo().update(reply.id, { sentById: otherAdmin.id });
+
+    const { body } = await sendAfter(member.id, seen.id).expect(409);
+
+    expect(body.error).toBe(StaffTextConflict.NewerTexts);
+  });
+
+  it("doesn't count the sender's own texts as new to them", async () => {
+    const member = await createMember("+14155558207");
+    const seen = await saveBroadcast("+14155558207");
+    await sendAfter(member.id, seen.id).expect(201);
+    await sendAfter(member.id, seen.id).expect(201);
+  });
+
+  it("sends regardless when the sender names no text", async () => {
+    const member = await createMember("+14155558204");
+    await saveBroadcast("+14155558204");
+    await sendAfter(member.id, undefined).expect(201);
+  });
+
+  it("refuses a sender whose newest seen text is from another thread", async () => {
+    const member = await createMember("+14155558205");
+    const elsewhere = await saveBroadcast("+14155558299");
+
+    const { body } = await sendAfter(member.id, elsewhere.id).expect(409);
+
+    expect(body.error).toBe(StaffTextConflict.NumberChanged);
+  });
+
+  it("refuses over a staff text saved later but dated before the one seen", async () => {
+    const member = await createMember("+14155558206");
+    const seen = await saveBroadcast("+14155558206");
+    const late = await saveBroadcast("+14155558206");
+    await mmsRepo().update(late.id, {
+      createdAt: new Date(seen.createdAt.getTime() - 3000),
+    });
+
+    const { body } = await sendAfter(member.id, seen.id).expect(409);
+
+    expect(body.error).toBe(StaffTextConflict.NewerTexts);
+  });
+
+  const sendInThreadAfter = (threadId: string, afterId: number | null) =>
+    supertest(server())
+      .post(byId(threadId))
+      .set("Authorization", admin())
+      .send({ body: "The Alliance", afterId });
+
+  it("refuses a text in a number's thread over a newer text, member or not", async () => {
+    await inbound({ from: "+14155558217", body: "Who is this?" }).expect(201);
+    const seen = await mmsRepo().findOneByOrFail({
+      memberPhoneNumber: "+14155558217",
+    });
+    const threadId = await threadIdFor("+14155558217");
+    await inbound({ from: "+14155558217", body: "Hello?" }).expect(201);
+
+    const { body } = await sendInThreadAfter(threadId, seen.id).expect(409);
+
+    expect(body.error).toBe(StaffTextConflict.NewerTexts);
+  });
+
+  it("refuses a text in a number's thread naming a text from another thread as a bad request", async () => {
+    await inbound({ from: "+14155558218", body: "Hi" }).expect(201);
+    const elsewhere = await saveBroadcast("+14155558298");
+
+    await sendInThreadAfter(
+      await threadIdFor("+14155558218"),
+      elsewhere.id,
+    ).expect(400);
+  });
+});
 
 describe("Live SMS threads socket (e2e)", () => {
   const open: Socket[] = [];

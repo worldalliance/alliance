@@ -33,11 +33,11 @@ export function useMemberTextsAdmin(userId: number) {
   });
   const actions = useThreadActions({
     id: userId,
-    queryKey: (id: number) => threadQuery(id).queryKey,
+    query: threadQuery,
     sendText: (input) =>
       mmsThreadSendTextAdmin({
         path: { userId: input.id },
-        body: { body: input.body },
+        body: { body: input.body, afterId: input.afterId },
         throwOnError: true,
       }).then((r) => r.data),
     markOptedOut: (id) =>

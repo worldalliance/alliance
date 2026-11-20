@@ -34,6 +34,7 @@ let handledBodies: unknown[];
 let needsReplyBodies: unknown[];
 let handledRefused: boolean;
 let heldThread: Promise<NumberThreadDto> | null;
+let newerTextOnSend: MmsMessageDto | null;
 
 serveApi(
   routes({
@@ -41,6 +42,7 @@ serveApi(
       if (heldThread) {
         const held = heldThread;
         heldThread = null;
+        newerTextOnSend = null;
         return Response.json(await held);
       }
       return threadExists
@@ -50,6 +52,17 @@ serveApi(
     [`POST /mms-threads/by-id/${THREAD_ID}`]: async ({ request }) => {
       const body = await request.json();
       sentBodies.push(body);
+      if (newerTextOnSend) {
+        thread = {
+          ...thread,
+          messages: [...thread.messages, newerTextOnSend],
+        };
+        newerTextOnSend = null;
+        return Response.json(
+          { statusCode: 409, error: "newer_texts", message: "Newer texts" },
+          { status: 409 },
+        );
+      }
       thread = { ...thread, replyState: "answered" };
       return Response.json({
         ...inbound("Happy to help"),
@@ -158,9 +171,28 @@ it("names a number with no member by the number, and sends in its thread", async
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
   expect(await screen.findByText("Happy to help")).toBeTruthy();
-  expect(sentBodies).toEqual([{ body: "Happy to help" }]);
+  expect(sentBodies).toEqual([{ body: "Happy to help", afterId: 1 }]);
   await waitFor(() =>
     expect(screen.queryByRole("button", { name: "Mark handled" })).toBeNull(),
+  );
+});
+
+it("warns of texts that arrived while staff wrote, and sends anyway after them", async () => {
+  newerTextOnSend = { ...inbound("Never mind"), id: 3 };
+  renderPage();
+  fireEvent.change(await screen.findByLabelText("Text (415) 555-0101"), {
+    target: { value: "Happy to help" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  fireEvent.click(await screen.findByRole("button", { name: "Send anyway" }));
+
+  expect(screen.getByText("Never mind")).toBeTruthy();
+  await waitFor(() =>
+    expect(sentBodies).toEqual([
+      { body: "Happy to help", afterId: 1 },
+      { body: "Happy to help", afterId: 3 },
+    ]),
   );
 });
 
