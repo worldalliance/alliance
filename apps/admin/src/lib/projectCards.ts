@@ -31,7 +31,7 @@ export enum StepCountBucket {
   Done = "done",
 }
 
-export const STEP_COUNT_BUCKET: Record<ActionStatus, StepCountBucket> = {
+const STEP_COUNT_BUCKET: Record<ActionStatus, StepCountBucket> = {
   member_action: StepCountBucket.Live,
   planned: StepCountBucket.Planned,
   draft: StepCountBucket.Draft,

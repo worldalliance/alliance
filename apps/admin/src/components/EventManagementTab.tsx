@@ -2,15 +2,11 @@ import { AdminActionDto } from "@alliance/shared/client";
 import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import {
-  ACTION_STATUS_COLORS,
-  ACTION_STATUS_LABELS,
-} from "../lib/actionStatusDisplay";
 import CreateEventForm, { type AddActionEvent } from "./CreateEventForm";
+import { ActionStatusPill } from "./ui/StatusPill";
 
 // Status options for event creation
 
@@ -63,14 +59,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
                 <h3 className="font-medium text-gray-900 text-sm">
                   {event.title}
                 </h3>
-                <span
-                  className={cn(
-                    "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                    ACTION_STATUS_COLORS[event.newStatus],
-                  )}
-                >
-                  {ACTION_STATUS_LABELS[event.newStatus]}
-                </span>
+                <ActionStatusPill status={event.newStatus} />
               </div>
 
               {event.description && (
