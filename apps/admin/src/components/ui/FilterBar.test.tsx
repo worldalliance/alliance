@@ -320,3 +320,33 @@ it("offers Clear all for an empty selection", () => {
   renderBar({ selected: [], checked: false });
   expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
 });
+
+it("shows each option's count beside it", async () => {
+  render(
+    <FilterBar
+      search={{ label: "Search things", value: "", onChange: mock() }}
+      filters={[
+        {
+          kind: FilterKind.Options,
+          key: "kind",
+          label: "Kind",
+          options: [
+            { value: "a", label: "Alpha", count: 3 },
+            { value: "b", label: "Beta", count: 0 },
+          ],
+          selected: new Set(["a", "b"]),
+          defaultSelected: new Set(["a", "b"]),
+          onChange: mock(),
+        },
+      ]}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  const kind = await screen.findByRole("group", { name: "Kind" });
+  expect(
+    within(kind).getByRole("checkbox", { name: /^Alpha ?, 3 matching$/ }),
+  ).toBeTruthy();
+  expect(
+    within(kind).getByRole("checkbox", { name: /^Beta ?, 0 matching$/ }),
+  ).toBeTruthy();
+});

@@ -16,12 +16,19 @@ export enum FilterKind {
   Toggle = "toggle",
 }
 
+type FilterOption = {
+  value: string;
+  label: string;
+  /** How many items the option matches, shown beside it in the popover. */
+  count?: number;
+};
+
 /** Narrows to the checked options; with every option checked it filters nothing. */
 type OptionsFilter = {
   kind: FilterKind.Options;
   key: string;
   label: string;
-  options: readonly { value: string; label: string }[];
+  options: readonly FilterOption[];
   selected: ReadonlySet<string>;
   defaultSelected: ReadonlySet<string>;
   onChange: (selected: Set<string>) => void;
@@ -116,7 +123,14 @@ const FilterControl = ({ filter }: { filter: FilterDefinition }) => {
                   filter.onChange(next);
                 }}
               />
-              {option.label}
+              <span className="flex-1">{option.label}</span>
+              {option.count !== undefined && (
+                <span className="tabular-nums text-xs text-zinc-500">
+                  <span className="sr-only">, </span>
+                  {option.count}
+                  <span className="sr-only"> matching</span>
+                </span>
+              )}
             </label>
           ))}
         </fieldset>
