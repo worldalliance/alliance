@@ -2,7 +2,8 @@ import type { MemberReliabilityWindowDto } from "@alliance/shared/client";
 import { type Pending, pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { renderHook, waitFor } from "@testing-library/react";
+import { focusManager, onlineManager } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useMemberReliabilityWindowAdmin } from "./useMemberReliabilityWindowAdmin";
 
 const reliability = (weeks: number): MemberReliabilityWindowDto => ({
@@ -34,17 +35,6 @@ beforeEach(() => {
 });
 
 describe("useMemberReliabilityWindowAdmin", () => {
-  it("requests nothing until given a week count", async () => {
-    const view = renderHook(
-      () => useMemberReliabilityWindowAdmin(null),
-      queryWrapper(),
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(requested).toEqual([]);
-    expect(view.result.current.isFetching).toBe(false);
-  });
-
   it("reads the window for the week count", async () => {
     const view = renderHook(
       () => useMemberReliabilityWindowAdmin(5),
@@ -110,5 +100,23 @@ describe("useMemberReliabilityWindowAdmin", () => {
 
     await waitFor(() => expect(view.result.current.isError).toBe(true));
     expect(view.result.current.error).toMatchObject({ statusCode: 403 });
+  });
+
+  it("reloads only when asked, not on refocus or reconnect", async () => {
+    const view = renderHook(
+      () => useMemberReliabilityWindowAdmin(5),
+      queryWrapper(),
+    );
+    await waitFor(() => expect(view.result.current.isSuccess).toBe(true));
+
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+      onlineManager.setOnline(false);
+      onlineManager.setOnline(true);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(requested).toHaveLength(1);
   });
 });

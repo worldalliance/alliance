@@ -1,24 +1,14 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useMissedActionsAdmin } from "../../lib/useMissedActionsAdmin";
 
 const MissedActionsCard: React.FC = () => {
-  const [missedActionsRequested, setMissedActionsRequested] =
-    useState<boolean>(false);
   const {
     data: missedActions,
     isFetching: missedActionsLoading,
     error: missedActionsError,
     refetch: refetchMissedActions,
-  } = useMissedActionsAdmin({ enabled: missedActionsRequested });
-
-  const handleLoadMissedActions = useCallback(() => {
-    if (missedActionsRequested) {
-      void refetchMissedActions();
-    } else {
-      setMissedActionsRequested(true);
-    }
-  }, [missedActionsRequested, refetchMissedActions]);
+  } = useMissedActionsAdmin();
 
   const missedActionGroups = useMemo(() => {
     if (!missedActions) {
@@ -48,16 +38,15 @@ const MissedActionsCard: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={handleLoadMissedActions}
+          onClick={() => void refetchMissedActions()}
           disabled={missedActionsLoading}
           className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
         >
-          {missedActionsLoading ? "Loading..." : "View actions"}
+          {missedActionsLoading ? "Loading..." : "Refresh"}
         </button>
       </div>
       <div className="grid gap-4 p-4 md:grid-cols-2">
-        {!missedActionsRequested ? null : missedActionsLoading &&
-          !missedActions ? (
+        {missedActionsLoading && !missedActions ? (
           <p className="text-sm text-gray-600">Loading missed actions...</p>
         ) : missedActionGroups && !missedActionsError ? (
           missedActionGroups.map(({ title, members }) => (

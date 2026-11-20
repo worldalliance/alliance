@@ -2,9 +2,11 @@ import React, { useCallback, useState } from "react";
 import { useAppliedQuery } from "../../lib/useAppliedQuery";
 import { useMemberReliabilityWindowAdmin } from "../../lib/useMemberReliabilityWindowAdmin";
 
+const DEFAULT_WEEKS: number = 5;
+
 const MemberReliabilityCard: React.FC = () => {
   const [memberReliabilityWeeksInput, setMemberReliabilityWeeksInput] =
-    useState<string>("5");
+    useState(String(DEFAULT_WEEKS));
   const [memberReliabilityWeeksError, setMemberReliabilityWeeksError] =
     useState<string | null>(null);
 
@@ -15,6 +17,7 @@ const MemberReliabilityCard: React.FC = () => {
     apply: applyMemberReliabilityWeeks,
   } = useAppliedQuery({
     useQueryFor: useMemberReliabilityWindowAdmin,
+    initial: DEFAULT_WEEKS,
     loadErrorFallback:
       "Unable to load reliability data right now. Please try again soon.",
   });
@@ -72,7 +75,7 @@ const MemberReliabilityCard: React.FC = () => {
             disabled={memberReliabilityLoading}
             className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
           >
-            {memberReliabilityLoading ? "Loading..." : "View reliability"}
+            {memberReliabilityLoading ? "Loading..." : "Apply"}
           </button>
         </form>
       </div>

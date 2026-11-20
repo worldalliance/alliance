@@ -41,6 +41,18 @@ serveApi(
         : Response.json({}, { status: contractStatusHistoryStatus });
     },
     "GET /analytics/aggregate-stats": () => Response.json(null),
+    "GET /analytics/missed-actions": () =>
+      Response.json({ missedLastAction: [], missedLastTwoActions: [] }),
+    "GET /analytics/member-reliability-window": () =>
+      Response.json({
+        weeks: 5,
+        firstWeek: { assignedCount: 0, completedCount: 0, completionRate: 0 },
+        fourthWeekOrLater: {
+          assignedCount: 0,
+          completedCount: 0,
+          completionRate: 0,
+        },
+      }),
     "GET /analytics/invite-funnel": () =>
       inviteFunnelStatus === 200
         ? Response.json({
@@ -257,32 +269,34 @@ describe("StatsPage platform tenure cohort", () => {
     fireEvent.submit(form);
   };
 
-  it("shows the cohort for the requested weeks", async () => {
+  it("shows the cohort for the default weeks on load, then for the requested ones", async () => {
     renderPage();
 
-    viewCohort("4");
-
     await screen.findByText("37");
-    expect(
-      platformTenureCohortRequests.map((url) =>
-        url.searchParams.get("weeksOnPlatform"),
-      ),
-    ).toEqual(["4"]);
+    viewCohort("6");
+
+    await waitFor(() =>
+      expect(
+        platformTenureCohortRequests.map((url) =>
+          url.searchParams.get("weeksOnPlatform"),
+        ),
+      ).toEqual(["4", "6"]),
+    );
   });
 
   it("refuses a week count that isn't a whole number without requesting it", async () => {
     renderPage();
+    await screen.findByText("37");
 
     viewCohort("-1");
 
     await screen.findByText("Weeks on platform must be a whole number.");
-    expect(platformTenureCohortRequests).toEqual([]);
+    expect(platformTenureCohortRequests).toHaveLength(1);
   });
 
   it("retries the same weeks after a failed load", async () => {
     platformTenureCohortStatus = 500;
     renderPage();
-    viewCohort("4");
     await screen.findByText(
       "Unable to load this cohort right now. Please try again soon.",
     );
@@ -296,7 +310,6 @@ describe("StatsPage platform tenure cohort", () => {
 
   it("drops the shown cohort when reloading it fails", async () => {
     renderPage();
-    viewCohort("4");
     await screen.findByText("37");
 
     platformTenureCohortStatus = 500;
@@ -310,7 +323,6 @@ describe("StatsPage platform tenure cohort", () => {
 
   it("says it is loading, not that it failed, while retrying a failed reload", async () => {
     renderPage();
-    viewCohort("4");
     await screen.findByText("37");
     platformTenureCohortStatus = 500;
     viewCohort("4");
@@ -335,8 +347,6 @@ describe("StatsPage platform tenure cohort", () => {
     platformTenureCohortStatus = 403;
     platformTenureCohortMessage = "Admins only";
     renderPage();
-
-    viewCohort("4");
 
     await screen.findByText("Admins only");
   });

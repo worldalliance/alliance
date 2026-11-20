@@ -3,9 +3,12 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useAppliedQuery } from "../../lib/useAppliedQuery";
 import { usePlatformTenureCohortAdmin } from "../../lib/usePlatformTenureCohortAdmin";
 
+const DEFAULT_WEEKS: number = 4;
+
 const PlatformTenureCohortCard: React.FC = () => {
-  const [platformTenureWeeksInput, setPlatformTenureWeeksInput] =
-    useState<string>("4");
+  const [platformTenureWeeksInput, setPlatformTenureWeeksInput] = useState(
+    String(DEFAULT_WEEKS),
+  );
   const [platformTenureWeeksError, setPlatformTenureWeeksError] = useState<
     string | null
   >(null);
@@ -17,6 +20,7 @@ const PlatformTenureCohortCard: React.FC = () => {
     apply: applyPlatformTenureWeeks,
   } = useAppliedQuery({
     useQueryFor: usePlatformTenureCohortAdmin,
+    initial: DEFAULT_WEEKS,
     loadErrorFallback:
       "Unable to load this cohort right now. Please try again soon.",
   });
@@ -81,7 +85,7 @@ const PlatformTenureCohortCard: React.FC = () => {
             disabled={platformTenureCohortLoading}
             className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
           >
-            {platformTenureCohortLoading ? "Loading..." : "View cohort"}
+            {platformTenureCohortLoading ? "Loading..." : "Apply"}
           </button>
         </form>
       </div>

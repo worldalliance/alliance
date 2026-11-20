@@ -3,10 +3,11 @@ import { useCallback, useState } from "react";
 import { adminRefusalMessage } from "./adminRefusal";
 
 export function useAppliedQuery<TInput extends string | number, TData>(params: {
-  useQueryFor: (applied: TInput | null) => UseQueryResult<TData>;
+  useQueryFor: (applied: TInput) => UseQueryResult<TData>;
+  initial: TInput;
   loadErrorFallback: string;
 }) {
-  const [applied, setApplied] = useState<TInput | null>(null);
+  const [applied, setApplied] = useState<TInput>(params.initial);
   const { data, isFetching, error, refetch } = params.useQueryFor(applied);
 
   const apply = useCallback(

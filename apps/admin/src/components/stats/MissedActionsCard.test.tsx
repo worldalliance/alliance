@@ -28,12 +28,8 @@ afterEach(() => {
 });
 
 describe("MissedActionsCard", () => {
-  it("lists each group's members once requested", async () => {
+  it("lists each group's members on load", async () => {
     render(<MissedActionsCard />, queryWrapper());
-    expect(screen.queryByText("Missed last action")).toBeNull();
-    expect(missedActionsRequests).toBe(0);
-
-    fireEvent.click(screen.getByRole("button", { name: "View actions" }));
 
     const member = await screen.findByRole("link", { name: "Ada Member" });
     expect(member.getAttribute("href")).toBe("/member/7");
@@ -41,12 +37,12 @@ describe("MissedActionsCard", () => {
     expect(screen.getByText("No members.")).toBeTruthy();
   });
 
-  it("reloads on each later click", async () => {
+  it("reloads on each Refresh click", async () => {
     render(<MissedActionsCard />, queryWrapper());
-    fireEvent.click(screen.getByRole("button", { name: "View actions" }));
     await screen.findByRole("link", { name: "Ada Member" });
+    expect(missedActionsRequests).toBe(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "View actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     await waitFor(() => expect(missedActionsRequests).toBe(2));
   });
@@ -55,18 +51,15 @@ describe("MissedActionsCard", () => {
     missedActionsStatus = 500;
     render(<MissedActionsCard />, queryWrapper());
 
-    fireEvent.click(screen.getByRole("button", { name: "View actions" }));
-
     await screen.findByText("Unable to load missed actions.");
   });
 
   it("says the load failed when a reload fails", async () => {
     render(<MissedActionsCard />, queryWrapper());
-    fireEvent.click(screen.getByRole("button", { name: "View actions" }));
     await screen.findByRole("link", { name: "Ada Member" });
 
     missedActionsStatus = 500;
-    fireEvent.click(screen.getByRole("button", { name: "View actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     await screen.findByText("Unable to load missed actions.");
     expect(screen.queryByRole("link", { name: "Ada Member" })).toBeNull();

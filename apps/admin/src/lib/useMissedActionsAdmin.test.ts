@@ -32,14 +32,8 @@ beforeEach(() => {
 });
 
 describe("useMissedActionsAdmin", () => {
-  it("loads nothing until enabled, then reads the missed actions", async () => {
-    const view = renderHook(
-      ({ enabled }) => useMissedActionsAdmin({ enabled }),
-      { ...queryWrapper(), initialProps: { enabled: false } },
-    );
-    expect(view.result.current.fetchStatus).toBe("idle");
-
-    view.rerender({ enabled: true });
+  it("reads the missed actions", async () => {
+    const view = renderHook(() => useMissedActionsAdmin(), queryWrapper());
 
     await waitFor(() =>
       expect(view.result.current.data).toEqual(missedActions),
@@ -48,10 +42,7 @@ describe("useMissedActionsAdmin", () => {
   });
 
   it("reloads only when asked, not on refocus or reconnect", async () => {
-    const view = renderHook(
-      () => useMissedActionsAdmin({ enabled: true }),
-      queryWrapper(),
-    );
+    const view = renderHook(() => useMissedActionsAdmin(), queryWrapper());
     await waitFor(() => expect(view.result.current.isSuccess).toBe(true));
 
     await act(async () => {
@@ -71,7 +62,7 @@ describe("useMissedActionsAdmin", () => {
     status = 500;
 
     const view = renderHook(
-      () => useMissedActionsAdmin({ enabled: true }),
+      () => useMissedActionsAdmin(),
       queryWrapper({ retry: retryUnlessRefused(3), retryDelay: 0 }),
     );
 
@@ -82,10 +73,7 @@ describe("useMissedActionsAdmin", () => {
   it("surfaces a refused load as an error carrying its status", async () => {
     status = 403;
 
-    const view = renderHook(
-      () => useMissedActionsAdmin({ enabled: true }),
-      queryWrapper(),
-    );
+    const view = renderHook(() => useMissedActionsAdmin(), queryWrapper());
 
     await waitFor(() => expect(view.result.current.isError).toBe(true));
     expect(view.result.current.error).toMatchObject({ statusCode: 403 });
