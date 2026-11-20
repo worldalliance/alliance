@@ -1,4 +1,5 @@
 import type { ActionStatus } from "@alliance/shared/client";
+import { StatusTone } from "./statusTone";
 
 export const ACTION_STATUS_LABELS: Record<ActionStatus, string> = {
   draft: "Draft",
@@ -20,6 +21,17 @@ export const ACTION_STATUS_COLORS: Record<ActionStatus, string> = {
   completed: "bg-green-100 text-green-800",
   failed: "bg-red-100 text-red-800",
   abandoned: "bg-gray-100 text-gray-600",
+};
+
+export const ACTION_STATUS_TONES: Record<ActionStatus, StatusTone> = {
+  draft: StatusTone.Neutral,
+  planned: StatusTone.Neutral,
+  office_action: StatusTone.Neutral,
+  member_action: StatusTone.Live,
+  resolution: StatusTone.Attention,
+  completed: StatusTone.Positive,
+  failed: StatusTone.Negative,
+  abandoned: StatusTone.Neutral,
 };
 
 export const DEFAULT_EVENT_NAMES: Record<ActionStatus, string> = {
