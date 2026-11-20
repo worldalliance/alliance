@@ -33,4 +33,4 @@ Fetch-then-compute: DB reads up top, pure logic on the fetched data after. Keeps
 
 ## Tests
 
-End-to-end: `(cd server && bun run test:e2e)`
+End-to-end: which suites to run locally is under **Server e2e** in `(root)/agents/skills/implement/SKILL.md`.
