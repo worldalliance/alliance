@@ -25,6 +25,7 @@ import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
 import { notificationBehavior } from "../lib/notificationBehavior";
 import { checkForUpdateOnPush } from "../lib/otaUpdates";
 import { queryClient, refetchActions } from "../lib/queryClient";
+import { blockResumeRestartDuringWrites } from "../lib/resumeRestarts";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 
@@ -54,12 +55,14 @@ export default function RootLayout() {
   useEffect(() => {
     client.setConfig({
       baseUrl: getApiUrl(),
-      fetch: refreshingFetch({
-        // eslint-disable-next-line no-restricted-globals -- the generated client's transport
-        fetch: fetch.bind(globalThis),
-        getRefreshToken,
-        saveTokens: saveSessionTokens,
-      }),
+      fetch: blockResumeRestartDuringWrites(
+        refreshingFetch({
+          // eslint-disable-next-line no-restricted-globals -- the generated client's transport
+          fetch: fetch.bind(globalThis),
+          getRefreshToken,
+          saveTokens: saveSessionTokens,
+        }),
+      ),
       throwOnError: true,
     });
     return startLinkOpenings({
