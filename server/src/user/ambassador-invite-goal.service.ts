@@ -4,10 +4,12 @@ import {
   ForbiddenException,
   Injectable,
 } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { softDeleteCascade, writeUnderLive } from "src/datasources/soft-delete";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import { notifMessage } from "src/notifs/notification-content";
 import { NotifsService } from "src/notifs/notifs.service";
@@ -177,6 +179,12 @@ export class AmbassadorInviteGoalService {
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
+  @WithoutOverlapping({ key: CronLease.AmbassadorInviteGoals })
+  async sendDueAmbassadorInviteGoalNotificationsOnSchedule(): Promise<void> {
+    await this.sendDueAmbassadorInviteGoalNotifications();
+  }
+
+  /** Skips the lease; the schedule runs it through sendDueAmbassadorInviteGoalNotificationsOnSchedule. */
   async sendDueAmbassadorInviteGoalNotifications(): Promise<void> {
     const now = new Date();
     const lookbackAt = new Date(
@@ -245,6 +253,7 @@ export class AmbassadorInviteGoalService {
         : [];
     });
 
+    assertLeaseHeld();
     await Promise.all([
       ...halfwayGoalsDue.map(async ({ goal, sendTime }) => {
         await this.sendAmbassadorInviteGoalHalfwayNotif(goal, sendTime);

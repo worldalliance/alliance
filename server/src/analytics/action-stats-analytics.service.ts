@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { hasTakenEffect } from "@alliance/common/actionEvent";
 import { Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
@@ -16,6 +17,7 @@ import {
   parseAction,
 } from "src/actions/entities/action.entity";
 import { startComputation } from "src/datasources/computation";
+import { CronLease } from "src/leases/cron-lease";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
@@ -74,6 +76,12 @@ export class ActionStatsAnalyticsService {
   }
 
   @Cron("0 9 * * *") // Daily at 9 AM
+  @WithoutOverlapping({ key: CronLease.ActionStatsAnalytics })
+  async calculateActionStatsOnSchedule() {
+    await this.calculateActionStats();
+  }
+
+  /** Skips the lease; the schedule runs it through calculateActionStatsOnSchedule. */
   async calculateActionStats() {
     this.logger.log("Starting action stats calculation");
 

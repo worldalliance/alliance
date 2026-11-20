@@ -4,6 +4,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
 import { lockLiveIds } from "src/datasources/soft-delete";
+import { assertLeaseHeld } from "src/leases/cron-lease";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
@@ -118,7 +119,7 @@ export class CohortDecisionService {
     });
 
     // Ordinary decisions first, so a backfill cannot delay this pass's
-    // launches. It still holds the lock, so later passes skip until it ends.
+    // launches. It still holds the lease, so later passes skip until it ends.
     const work = [
       ...openCatchUp.map(({ action, enrollment }) => {
         const decided = decidedByAction.get(action.id) ?? new Set<number>();
@@ -157,6 +158,7 @@ export class CohortDecisionService {
     action: ParsedAction,
     resolve: () => Promise<DecisionRow[]>,
   ): Promise<boolean> {
+    assertLeaseHeld();
     const result = await R.fromPromiseFn(async () =>
       this.insert(await resolve()),
     );

@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
@@ -28,7 +28,7 @@ import type { Repository } from "src/utils/Repository";
  * commits. Each channel is tried once; a failure is logged and never retried.
  */
 @Injectable()
-export class ContractReinstatedListener implements OnModuleDestroy {
+export class ContractReinstatedListener implements OnApplicationShutdown {
   private readonly logger = new Logger(ContractReinstatedListener.name);
   private readonly detachedWork = new DetachedWorkTracker();
 
@@ -57,7 +57,7 @@ export class ContractReinstatedListener implements OnModuleDestroy {
     this.eventEmitter.on(ContractEvents.Reinstated, this.onContractReinstated);
   }
 
-  async onModuleDestroy() {
+  async onApplicationShutdown() {
     this.eventEmitter.off(ContractEvents.Reinstated, this.onContractReinstated);
     await this.detachedWork.drain();
   }

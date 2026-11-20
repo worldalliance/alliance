@@ -1,10 +1,12 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { ActionSuspensionService } from "src/actions/action-suspension.service";
 import { ContractService } from "src/contract/contract.service";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
@@ -17,11 +19,6 @@ import { User } from "src/user/entities/user.entity";
 import { textReachable } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, In } from "typeorm";
-import { LOCK_KEYS } from "../notifs/lock-keys";
-import { withPgAdvisoryLock } from "../notifs/lock-utils";
-
-const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
-  LOCK_KEYS.contractSuspender;
 
 @Injectable()
 export class ContractSuspenderWorker {
@@ -38,24 +35,15 @@ export class ContractSuspenderWorker {
   ) {}
 
   @Cron("*/10 * * * *")
+  @WithoutOverlapping({ key: CronLease.ContractSuspensions })
   async processSuspensions() {
     if (!notifDeliveryEnabled()) {
       return;
     }
-
-    const ran = await withPgAdvisoryLock(
-      this.dataSource,
-      PROCESS_ONE_LOCK_KEY1,
-      PROCESS_ONE_LOCK_KEY2,
-      () => this.suspendDue(),
-    );
-
-    if (ran === null) {
-      this.logger.log("suspender processOne skipped bc of lock");
-    }
+    await this.suspendDue();
   }
 
-  /** Skips the lock and the delivery gate; production runs it through processSuspensions. */
+  /** Skips the lease and the delivery gate; production runs it through processSuspensions. */
   async suspendDue() {
     const now = new Date();
 
@@ -78,6 +66,7 @@ export class ContractSuspenderWorker {
     );
 
     for (const { user, reasonKey, missedSuites } of candidates) {
+      assertLeaseHeld();
       const suspension = await R.fromPromiseFn(() =>
         this.contractService.suspendContract({
           userId: user.id,

@@ -11,8 +11,6 @@ describe("Legacy forum deleted flag (e2e)", () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
-    // createTestApp rebuilds the schema after boot, which drops the trigger.
-    await ctx.app.get(LegacyDeletedFlagService).onApplicationBootstrap();
   }, 50000);
 
   afterAll(async () => {

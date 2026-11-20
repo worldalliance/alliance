@@ -1,6 +1,6 @@
 import { ConversationType } from "@alliance/common/conversationType";
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { NotificationKind } from "src/notification-settings/notification-kind";
@@ -20,7 +20,7 @@ import { MessagingEvents } from "./messaging.events";
 import { MessagingGateway } from "./messaging.gateway";
 
 @Injectable()
-export class MessagePushListener implements OnModuleDestroy {
+export class MessagePushListener implements OnApplicationShutdown {
   private readonly logger = new Logger(MessagePushListener.name);
   private readonly detachedWork = new DetachedWorkTracker();
 
@@ -45,7 +45,7 @@ export class MessagePushListener implements OnModuleDestroy {
     this.eventEmitter.on(MessagingEvents.MessageCreated, this.onMessageCreated);
   }
 
-  async onModuleDestroy() {
+  async onApplicationShutdown() {
     this.eventEmitter.off(
       MessagingEvents.MessageCreated,
       this.onMessageCreated,

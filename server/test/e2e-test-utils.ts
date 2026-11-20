@@ -1,6 +1,6 @@
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { MailerModule } from "@nestjs-modules/mailer";
-import { INestApplication, Type } from "@nestjs/common";
+import { DynamicModule, INestApplication, Type } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
@@ -14,6 +14,7 @@ import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
+import { LeaseModule } from "src/leases/lease.module";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import {
   NotificationPreference,
@@ -205,8 +206,8 @@ export function signImpersonationToken(
 }
 
 export async function createTestApp(
-  modules: Type<unknown>[],
-  options: { enableThrottle?: boolean } = {},
+  modules: (Type<unknown> | DynamicModule)[],
+  options: { enableThrottle?: boolean; poolSize?: number } = {},
 ): Promise<TestContext> {
   const builder = Test.createTestingModule({
     imports: [
@@ -222,7 +223,10 @@ export async function createTestApp(
       }),
       EventEmitterModule.forRoot(),
       ThrottlerModule.forRoot(ALL_THROTTLERS),
-      TypeOrmModule.forRoot(testConnectionOptions()),
+      TypeOrmModule.forRoot(
+        testConnectionOptions({ poolSize: options.poolSize }),
+      ),
+      LeaseModule,
       PosthogModule,
       AuthModule,
       ForumModule,
@@ -251,9 +255,6 @@ export async function createTestApp(
   await app.listen(0, "127.0.0.1");
 
   const dataSource = moduleFixture.get(DataSource);
-
-  // Initialize database
-  await dataSource.synchronize(true);
 
   const userRepo = dataSource.getRepository(User);
   const tagRepo = dataSource.getRepository(Tag);

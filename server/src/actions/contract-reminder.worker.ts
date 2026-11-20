@@ -1,9 +1,11 @@
 import { nameParts } from "@alliance/common/nameParts";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { CONTRACT_REMINDER_COPY } from "src/mail/contract-reminder-copy";
 import { MailNotSentError, MailService } from "src/mail/mail.service";
 import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
@@ -11,10 +13,6 @@ import { assignExperimentArm } from "src/notifs/experiment-assignment";
 import { User } from "src/user/entities/user.entity";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, IsNull, Repository } from "typeorm";
-import { LOCK_KEYS } from "../notifs/lock-keys";
-import { withPgAdvisoryLock } from "../notifs/lock-utils";
-
-const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.contractReminder;
 
 @Injectable()
 export class ContractReminderWorker {
@@ -28,24 +26,15 @@ export class ContractReminderWorker {
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
+  @WithoutOverlapping({ key: CronLease.ContractReminders })
   async sendContractReminders() {
     if (!notifDeliveryEnabled()) {
       return;
     }
-
-    const ran = await withPgAdvisoryLock(
-      this.dataSource,
-      LOCK_KEY1,
-      LOCK_KEY2,
-      () => this.sendDueReminders(),
-    );
-
-    if (ran === null) {
-      this.logger.log("contract reminder skipped bc of lock");
-    }
+    await this.sendDueReminders();
   }
 
-  /** Skips the lock and the delivery gate; production runs it through sendContractReminders. */
+  /** Skips the lease and the delivery gate; production runs it through sendContractReminders. */
   async sendDueReminders() {
     const cutoff = new Date(Date.now() - milliseconds({ days: 1 }));
 
@@ -64,6 +53,7 @@ export class ContractReminderWorker {
     }
 
     for (const user of users) {
+      assertLeaseHeld();
       try {
         const arm = await assignExperimentArm(this.dataSource.manager, {
           experiment: Experiment.ContractReminder,

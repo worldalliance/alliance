@@ -1,4 +1,4 @@
-import { Logger, OnModuleDestroy } from "@nestjs/common";
+import { Logger, OnApplicationShutdown } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -38,7 +38,7 @@ export class MessagingOverviewGateway
     OnGatewayInit,
     OnGatewayConnection,
     OnGatewayDisconnect,
-    OnModuleDestroy
+    OnApplicationShutdown
 {
   @WebSocketServer()
   server: Server;
@@ -88,7 +88,7 @@ export class MessagingOverviewGateway
     );
   }
 
-  async onModuleDestroy() {
+  async onApplicationShutdown() {
     this.eventEmitter.off(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.off(
       MessagingEvents.MessageCreated,
