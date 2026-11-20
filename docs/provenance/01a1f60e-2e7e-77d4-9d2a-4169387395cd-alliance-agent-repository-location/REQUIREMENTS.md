@@ -12,3 +12,7 @@ task: Do ALL-2033 (Alliance agent: find or clone the repository) on the current 
 - When a found copy's scripts don't support what the app needs, the app shows "Update needed". It offers a fast-forward to the latest `main`, which the user confirms, only when the copy is on `main` with no uncommitted changes; otherwise it explains what to do. (agent-proposed, user-approved)
 - Until tasks replace it (ALL-2035), the folder picker for a new conversation stays, and a new conversation defaults to the repository rather than the last folder used. (agent-proposed, user-approved)
 - The UI calls it the "Alliance repository", with the actions "Clone" and "Use existing copy", and says in one plain line: "Agents work on their own copy of this for each task." (agent-proposed, user-approved)
+
+## Desktop CI
+
+- The e2e tests in `agents/desktop/e2e/window.e2e.ts` that only run on macOS are skipped before their hooks launch the app, so on Linux CI they never launch and quit it. This PR doesn't fix the Linux quit hang that a quit straight after launch sets off, which predates it; ALL-2387 tracks that hang, and its first step tells a test-harness cause from an app one by quitting another way than Playwright's debugger connection. (agent-proposed, user-approved)

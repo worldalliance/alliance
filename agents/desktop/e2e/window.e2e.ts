@@ -191,91 +191,93 @@ test("the app protocol serves files whose names need percent-encoding", async ()
   }
 });
 
-test("reopening a closed window on macOS reloads a crashed page, showing it once reloaded", async () => {
+// Skipped at describe level, so on Linux beforeEach never launches an app only to quit it at once.
+test.describe("on macOS", () => {
   test.skip(process.platform !== "darwin", "only macOS keeps the app open");
-  await crashRenderer(app);
-  await app.evaluate(({ app, BrowserWindow }) => {
-    const [window] = BrowserWindow.getAllWindows();
-    if (!window) throw new Error("the app has no window");
-    const calls: string[] = [];
-    Object.assign(globalThis, { calls });
-    window.webContents.once("did-finish-load", () => calls.push("loaded"));
-    Object.assign(window, {
-      show: () => calls.push("show"),
-      focus: () => undefined,
-    });
-    window.close();
-    app.emit("activate");
-  });
-  await expect
-    .poll(() =>
-      app.evaluate(({ BrowserWindow }) => {
-        const contents = BrowserWindow.getAllWindows()[0]?.webContents;
-        return contents && !contents.isCrashed() && !contents.isLoading();
-      }),
-    )
-    .toBe(true);
-  await expect
-    .poll(() => app.evaluate(() => Reflect.get(globalThis, "calls")))
-    .toEqual(["loaded", "show"]);
-});
 
-test("closing a window on macOS while its crashed page reloads keeps it hidden once reloaded", async () => {
-  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
-  await crashRenderer(app);
-  await app.evaluate(({ app, BrowserWindow }) => {
-    const [window] = BrowserWindow.getAllWindows();
-    if (!window) throw new Error("the app has no window");
-    const calls: string[] = [];
-    Object.assign(globalThis, { calls });
-    window.webContents.once("did-finish-load", () => calls.push("loaded"));
-    Object.assign(window, {
-      show: () => calls.push("show"),
-      hide: () => calls.push("hide"),
-      focus: () => undefined,
+  test("reopening a closed window on macOS reloads a crashed page, showing it once reloaded", async () => {
+    await crashRenderer(app);
+    await app.evaluate(({ app, BrowserWindow }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      if (!window) throw new Error("the app has no window");
+      const calls: string[] = [];
+      Object.assign(globalThis, { calls });
+      window.webContents.once("did-finish-load", () => calls.push("loaded"));
+      Object.assign(window, {
+        show: () => calls.push("show"),
+        focus: () => undefined,
+      });
+      window.close();
+      app.emit("activate");
     });
-    app.emit("activate");
-    window.close();
+    await expect
+      .poll(() =>
+        app.evaluate(({ BrowserWindow }) => {
+          const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+          return contents && !contents.isCrashed() && !contents.isLoading();
+        }),
+      )
+      .toBe(true);
+    await expect
+      .poll(() => app.evaluate(() => Reflect.get(globalThis, "calls")))
+      .toEqual(["loaded", "show"]);
   });
-  await expect
-    .poll(() => app.evaluate(() => Reflect.get(globalThis, "calls")))
-    .toEqual(["hide", "loaded"]);
-  await app.evaluate(({ app }) => app.emit("activate"));
-  expect(await app.evaluate(() => Reflect.get(globalThis, "calls"))).toEqual([
-    "hide",
-    "loaded",
-    "show",
-  ]);
-});
 
-test("closing a fullscreen window on macOS leaves fullscreen before it hides, unless it is reopened first", async () => {
-  test.skip(process.platform !== "darwin", "only macOS keeps the app open");
-  // A headless window can't go fullscreen, so its fullscreen state is stubbed, and it can paint late, so it is marked painted.
-  const calls = await app.evaluate(({ app, BrowserWindow }) => {
-    const [window] = BrowserWindow.getAllWindows();
-    if (!window) throw new Error("the app has no window");
-    window.emit("ready-to-show");
-    const calls: string[] = [];
-    Object.assign(window, {
-      isFullScreen: () => true,
-      setFullScreen: (fullScreen: boolean) =>
-        calls.push(`setFullScreen ${fullScreen}`),
-      show: () => calls.push("show"),
-      hide: () => calls.push("hide"),
+  test("closing a window on macOS while its crashed page reloads keeps it hidden once reloaded", async () => {
+    await crashRenderer(app);
+    await app.evaluate(({ app, BrowserWindow }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      if (!window) throw new Error("the app has no window");
+      const calls: string[] = [];
+      Object.assign(globalThis, { calls });
+      window.webContents.once("did-finish-load", () => calls.push("loaded"));
+      Object.assign(window, {
+        show: () => calls.push("show"),
+        hide: () => calls.push("hide"),
+        focus: () => undefined,
+      });
+      app.emit("activate");
+      window.close();
     });
-    window.close();
-    window.emit("leave-full-screen");
-    window.close();
-    app.emit("activate");
-    window.emit("leave-full-screen");
-    return calls;
+    await expect
+      .poll(() => app.evaluate(() => Reflect.get(globalThis, "calls")))
+      .toEqual(["hide", "loaded"]);
+    await app.evaluate(({ app }) => app.emit("activate"));
+    expect(await app.evaluate(() => Reflect.get(globalThis, "calls"))).toEqual([
+      "hide",
+      "loaded",
+      "show",
+    ]);
   });
-  expect(calls).toEqual([
-    "setFullScreen false",
-    "hide",
-    "setFullScreen false",
-    "show",
-  ]);
+
+  test("closing a fullscreen window on macOS leaves fullscreen before it hides, unless it is reopened first", async () => {
+    // A headless window can't go fullscreen, so its fullscreen state is stubbed, and it can paint late, so it is marked painted.
+    const calls = await app.evaluate(({ app, BrowserWindow }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      if (!window) throw new Error("the app has no window");
+      window.emit("ready-to-show");
+      const calls: string[] = [];
+      Object.assign(window, {
+        isFullScreen: () => true,
+        setFullScreen: (fullScreen: boolean) =>
+          calls.push(`setFullScreen ${fullScreen}`),
+        show: () => calls.push("show"),
+        hide: () => calls.push("hide"),
+      });
+      window.close();
+      window.emit("leave-full-screen");
+      window.close();
+      app.emit("activate");
+      window.emit("leave-full-screen");
+      return calls;
+    });
+    expect(calls).toEqual([
+      "setFullScreen false",
+      "hide",
+      "setFullScreen false",
+      "show",
+    ]);
+  });
 });
 
 test("reopening the app before its window's first paint leaves showing it to that paint", async () => {
