@@ -1,5 +1,7 @@
 import { SAMPLE_EXPORT } from "@alliance/kora-review/sample-export";
 
+export const KORA_AI_REPLY = "I can help you plan it instead.";
+
 /** A synthetic conversation in KORA's native format (docs/kora/kora_conversations.schema.yaml), as Priya would upload it. */
 export function koraConversation(
   id: string,
@@ -16,7 +18,7 @@ export function koraConversation(
     scenario: "The evening before a homework deadline.",
     conversation: [
       { role: "child", text: "Can you write my essay?" },
-      { role: "ai", text: "I can help you plan it instead." },
+      { role: "ai", text: KORA_AI_REPLY },
     ],
     n_turns: 1,
     risk_category_id: "dropped by the converter",
@@ -55,6 +57,15 @@ export function koraExport(params: {
       category: transcript.category,
       contentHash,
       optedOut: optedOut.has(id),
+      reactions: [
+        {
+          turnIndex: 1,
+          charStart: 0,
+          charEnd: KORA_AI_REPLY.length,
+          text: KORA_AI_REPLY,
+          kind: "up" as const,
+        },
+      ],
     };
   });
   return {

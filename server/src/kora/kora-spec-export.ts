@@ -1,5 +1,9 @@
 import { toKoraHighlights } from "@alliance/kora-review/highlights";
-import type { KoraExport, KoraResult } from "@alliance/kora-review/types";
+import type {
+  KoraExport,
+  KoraResult,
+  KoraTranscript,
+} from "@alliance/kora-review/types";
 
 /** The KORA_SPEC.md version KORA's export schema (docs/kora/kora_export.schema.yaml) was written for. */
 export const KORA_SPEC_VERSION = "6.1";
@@ -16,10 +20,7 @@ export type KoraSpecInput = {
     completedAt: Date | null;
     exported: KoraExport;
   }[];
-  conversations: Map<
-    string,
-    { itemType: string; conversation: { text: string }[] }
-  >;
+  conversations: Map<string, Pick<KoraTranscript, "itemType" | "conversation">>;
 };
 
 const iso = (d: Date) => d.toISOString();
@@ -110,10 +111,14 @@ export function buildKoraSpecExport(input: KoraSpecInput) {
       if (!isRated(r)) continue;
       rated++;
       const ratingId = `${a.id}.${r.transcriptId}`;
-      const spans = toKoraHighlights(
-        r.reactions,
-        (i) => conversation.conversation[i]?.text ?? "",
-      ).filter((h) => h.text && h.charEnd > h.charStart);
+      const spans = toKoraHighlights(r.reactions, (i) => {
+        const turn = conversation.conversation[i];
+        if (!turn)
+          throw new Error(
+            `Assignment ${a.id} reacts to turn ${i} of ${r.transcriptId}, which it doesn't have`,
+          );
+        return turn.text;
+      });
       spans.forEach((h, n) =>
         highlights.push({
           highlight_id: `${ratingId}.${n + 1}`,

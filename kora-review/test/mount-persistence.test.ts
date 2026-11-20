@@ -10,6 +10,7 @@ import {
   expectValid,
   handle,
   mount,
+  pairs,
   rank,
   saves,
   tick,
@@ -148,5 +149,37 @@ describe("mountKoraReview: saving and resuming", () => {
     await handle!.flush();
     expectValid(saves[0]!);
     expect(saves[0]!.optOutCategories).toEqual([KoraCategory.Violence]);
+  });
+
+  it("quotes a thumbs-down passage that shares its line with a later thumbs up", async () => {
+    const saved = clone(sampleExport) as unknown as KoraExport;
+    const reply = pairs.find((p) => p.transcriptId === "SAMPLE-01")!
+      .conversation[1]!.text;
+    const on = (text: string, kind: "up" | "down") => {
+      const charStart = reply.indexOf(text);
+      return {
+        turnIndex: 1,
+        charStart,
+        charEnd: charStart + text.length,
+        text,
+        kind,
+      };
+    };
+    // One paragraph, which is one line without layout, as two lines can become one when the reply rewraps.
+    saved.results[0]!.reactions = [
+      on("Volcanoes are openings in the Earth's crust", "down"),
+      on("There are three main types", "up"),
+    ];
+    saved.results[0]!.q2_confidence = 2;
+    saved.results[0]!.q3_severity = 3;
+    mount({ savedExport: saved });
+    await tick(50);
+
+    expect(rank().querySelector(".q-quote")?.textContent).toContain(
+      "Volcanoes are openings",
+    );
+    expect(
+      rank().querySelector(".q-quote")?.previousElementSibling?.textContent,
+    ).toBe("The passage you gave a thumbs down:");
   });
 });

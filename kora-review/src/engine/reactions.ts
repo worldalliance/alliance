@@ -1,3 +1,4 @@
+import { thumbsDownPassages } from "../highlights.js";
 import type { Late, ReactionsCtx } from "./context.js";
 import type { IconName } from "./runtime.js";
 import {
@@ -121,31 +122,38 @@ export function createReactions(ctx: ReactionsCtx) {
   }
   const views = () => Object.values(S.views).sort((a, b) => a.mi - b.mi);
 
+  // From the saved reactions, not the lines, so a reflow that puts two reactions on one line can't hide a passage the export has.
   function passages(): Passage[] {
-    const out: Passage[] = [];
-    for (const v of views()) {
-      const run: Line[] = [];
-      const close = () => {
-        const first = run[0],
-          last = run[run.length - 1];
-        if (first && last)
-          out.push({
-            mi: v.mi,
-            turn: aiTurn(cur(), v.mi),
-            first,
-            last,
-            text: lineText(v, first, last),
-          });
-        run.length = 0;
-      };
-      for (const l of lines(v)) {
-        const k = kindOn(v.mi, l);
-        if (k === ReactionKind.Down) run.push(l);
-        else if (k) close();
-      }
-      close();
-    }
-    return out;
+    const spans = list().map((r) => ({
+      turn: r.mi,
+      start: r.start,
+      end: r.end,
+      down: r.kind === ReactionKind.Down,
+    }));
+    return thumbsDownPassages(spans).flatMap((p) => {
+      const v = S.views[p.turn];
+      if (!v) return [];
+      const ls = lines(v);
+      const at = (offset: number) =>
+        ls.find(
+          (l) =>
+            offset >= v.tokens[l.first]!.start &&
+            offset < v.tokens[l.last]!.end,
+        );
+      const first = at(p.start),
+        last = at(p.end - 1);
+      return first && last
+        ? [
+            {
+              mi: v.mi,
+              turn: aiTurn(cur(), v.mi),
+              first,
+              last,
+              text: lineText(v, first, last),
+            },
+          ]
+        : [];
+    });
   }
 
   /** Picking the reaction a line already has removes it. */

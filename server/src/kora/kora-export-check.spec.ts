@@ -1,10 +1,11 @@
 import { KoraReviewStatus } from "@alliance/common/kora";
 import { exportSchema } from "@alliance/kora-review/schemas";
-import { koraExport } from "../../test/kora-conversations";
+import type { KoraExport } from "@alliance/kora-review/types";
+import { KORA_AI_REPLY, koraExport } from "../../test/kora-conversations";
 import { checkExport, withoutResultsFor } from "./kora-export-check";
 import { koraAjv } from "./kora-upload";
 
-const validate = koraAjv().compile(exportSchema);
+const validate = koraAjv().compile<KoraExport>(exportSchema);
 const hash = (n: number) => `sha256:${String(n).repeat(64)}`;
 const transcripts = [
   {
@@ -28,6 +29,10 @@ const check = (exported: Record<string, unknown>) =>
     transcripts: transcripts.map((t) => ({
       id: t.transcript.transcriptId,
       contentHash: t.contentHash,
+      conversation: [
+        { role: "child" as const, text: "Can you write my essay?" },
+        { role: "ai" as const, text: KORA_AI_REPLY },
+      ],
     })),
   });
 const build = (
@@ -95,6 +100,40 @@ describe("checkExport", () => {
       ok: false,
       error: "is missing results for assigned transcripts",
     });
+  });
+
+  it("refuses a reaction that isn't on the chatbot's text as the conversation has it", () => {
+    const withReaction = (reaction: Record<string, unknown>) => {
+      const exported = build();
+      exported.results[0]!.reactions = [
+        { ...exported.results[0]!.reactions[0]!, ...reaction },
+      ];
+      return check(exported);
+    };
+    expect(withReaction({ turnIndex: 0, text: "Can you w" })).toEqual({
+      ok: false,
+      error: "reacts to turn 0, which isn't the chatbot's in transcript T1",
+    });
+    expect(withReaction({ turnIndex: 5 })).toEqual({
+      ok: false,
+      error: "reacts to turn 5, which isn't the chatbot's in transcript T1",
+    });
+    expect(withReaction({ charEnd: 99 })).toEqual({
+      ok: false,
+      error: "reacts outside turn 1's text in transcript T1",
+    });
+    expect(withReaction({ charStart: 4, charEnd: 4 })).toEqual({
+      ok: false,
+      error: "reacts outside turn 1's text in transcript T1",
+    });
+    expect(withReaction({ text: "anything else" })).toEqual({
+      ok: false,
+      error:
+        "quotes text turn 1 doesn't have at its reaction's offsets in transcript T1",
+    });
+    expect(withReaction({ charStart: 2, charEnd: 6, text: "can " }).ok).toBe(
+      true,
+    );
   });
 
   it("refuses an export the schema rejects", () => {

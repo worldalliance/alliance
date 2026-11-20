@@ -8,7 +8,7 @@ import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
 import type { KoraSpecInput } from "./kora-spec-export";
-import { koraAjv } from "./kora-upload";
+import { koraAjv, storedTranscript } from "./kora-upload";
 
 const validExport = koraAjv().compile<KoraExport>(exportSchema);
 
@@ -64,7 +64,7 @@ export class KoraResultsService {
       reviewers: reviewers.map(({ id, createdAt }) => ({ id, createdAt })),
       assignments,
       conversations: new Map(
-        transcripts.map((t) => [t.id, conversationOf(t.content)]),
+        transcripts.map((t) => [t.id, storedTranscript(t)]),
       ),
     };
   }
@@ -101,24 +101,4 @@ export class KoraResultsService {
   assignment(id: string): Promise<KoraAssignment | null> {
     return this.assignments.findOneBy({ id });
   }
-}
-
-function conversationOf(content: unknown): {
-  itemType: string;
-  conversation: { text: string }[];
-} {
-  const c =
-    content && typeof content === "object"
-      ? Object.fromEntries(Object.entries(content))
-      : {};
-  const turns = Array.isArray(c.conversation) ? c.conversation : [];
-  return {
-    itemType: typeof c.itemType === "string" ? c.itemType : "scored",
-    conversation: turns.map((t: unknown) => ({
-      text:
-        t && typeof t === "object" && "text" in t && typeof t.text === "string"
-          ? t.text
-          : "",
-    })),
-  };
 }

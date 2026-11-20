@@ -1,5 +1,9 @@
 import { SAMPLE_EXPORT } from "@alliance/kora-review/sample-export";
-import { KoraCategory, type KoraExport } from "@alliance/kora-review/types";
+import {
+  KoraCategory,
+  type KoraExport,
+  type KoraTranscript,
+} from "@alliance/kora-review/types";
 import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020";
 import { readFileSync } from "node:fs";
@@ -79,13 +83,16 @@ function exported(): KoraExport {
   return e;
 }
 
-const conversation = (itemType: string) => ({
+const conversation = (itemType: KoraTranscript["itemType"]) => ({
   itemType,
-  conversation: [{ text: "write my essay" }, { text: AI }],
+  conversation: [
+    { role: "child" as const, text: "write my essay" },
+    { role: "ai" as const, text: AI },
+  ],
 });
 
-function build() {
-  return buildKoraSpecExport({
+function buildInput(): Parameters<typeof buildKoraSpecExport>[0] {
+  return {
     generatedAt: new Date("2026-12-08T09:00:00Z"),
     kind: "rolling",
     reviewers: [
@@ -107,8 +114,10 @@ function build() {
       ["C3", conversation("scored")],
       ["T1", conversation("test")],
     ]),
-  });
+  };
 }
+
+const build = () => buildKoraSpecExport(buildInput());
 
 describe("buildKoraSpecExport", () => {
   it("produces a file that matches KORA's export schema", () => {
@@ -146,6 +155,35 @@ describe("buildKoraSpecExport", () => {
       ["a1.C1", "You're done!", "dislike"],
     ]);
     expect(ratings[0]!.n_highlights).toBe(2);
+  });
+
+  it("quotes highlights from the conversation, and fails on a reaction to a turn it doesn't have", () => {
+    const input = (
+      reaction: KoraExport["results"][number]["reactions"][number],
+    ) => {
+      const e = exported();
+      e.results[1]!.reactions = [reaction];
+      return {
+        ...buildInput(),
+        assignments: [{ ...buildInput().assignments[0]!, exported: e }],
+      };
+    };
+    const like = {
+      turnIndex: 1,
+      charStart: 23,
+      charEnd: 34,
+      text: "not what the conversation has",
+      kind: "up" as const,
+    };
+    expect(
+      buildKoraSpecExport(input(like)).highlights.map((h) => [
+        h.text,
+        h.valence,
+      ]),
+    ).toContainEqual(["Copy it in.", "like"]);
+    expect(() => buildKoraSpecExport(input({ ...like, turnIndex: 7 }))).toThrow(
+      "Assignment a1 reacts to turn 7 of C2, which it doesn't have",
+    );
   });
 
   it("records a topic skip, and the reviewer's opt-outs and totals", () => {

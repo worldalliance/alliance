@@ -4,6 +4,7 @@ import {
   readKoraConversations,
 } from "@alliance/kora-review/convert";
 import { transcriptSchema } from "@alliance/kora-review/schemas";
+import type { KoraTranscript } from "@alliance/kora-review/types";
 import addFormats from "ajv-formats";
 import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
 import { createHash } from "node:crypto";
@@ -23,13 +24,24 @@ export function koraAjv(): Ajv2020 {
   return ajv;
 }
 
-const validTranscript = koraAjv().compile(transcriptSchema);
+const validTranscript = koraAjv().compile<KoraTranscript>(transcriptSchema);
 
 export function ajvProblems(
   errors: ErrorObject[] | null | undefined,
 ): string[] {
   return (errors ?? []).map(
     (e) => `${e.instancePath || "the transcript"} ${e.message ?? "is invalid"}`,
+  );
+}
+
+/** A stored transcript's content. It was checked on upload, so one that no longer fits the schema fails loudly. */
+export function storedTranscript(row: {
+  id: string;
+  content: unknown;
+}): KoraTranscript {
+  if (validTranscript(row.content)) return row.content;
+  throw new Error(
+    `Transcript ${row.id}'s stored content doesn't match transcriptSchema: ${ajvProblems(validTranscript.errors).join("; ")}`,
   );
 }
 
