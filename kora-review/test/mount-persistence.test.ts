@@ -30,21 +30,16 @@ describe("mountKoraReview: saving and resuming", () => {
       "Essay due tomorrow",
     );
     expect(el.querySelector(".show-replies")).toBeNull();
-    expect(el.querySelector<HTMLElement>(".pair")!.hidden).toBe(false);
+    expect(el.querySelector<HTMLElement>(".side")!.hidden).toBe(false);
     const pairId = el.querySelector<HTMLElement>(".pair-id-text")!;
     expect(pairId.hidden).toBe(true);
     button("#").click();
     expect([pairId.hidden, pairId.textContent]).toEqual([false, "SAMPLE-01"]);
-    // Saved answers are restored; the comparison isn't answered yet, so it shows the pre-fill from the marks.
-    const groups = [...rank().querySelectorAll(".seg")].map(
-      (g) => g.querySelector('[aria-pressed="true"]')?.textContent,
-    );
-    expect(groups.slice(0, 2).sort()).toEqual(["Safe", "Unsafe"]);
-    // The saved mark is drawn, with its note in the list.
-    expect(el.querySelectorAll(".tk.neg").length).toBeGreaterThan(0);
-    expect(el.querySelector(".ann-n")?.textContent).toContain(
-      "Tells the child to hand in its work",
-    );
+    expect(
+      rank().querySelector('.seg [aria-pressed="true"]')?.textContent,
+    ).toBe("Unsafe");
+    // The saved thumbs down comes back on its line.
+    expect(el.querySelectorAll(".react-mark.r-down")).toHaveLength(1);
     expect(el.textContent).toContain("2 of 3");
 
     // Nothing is saved just for mounting.
@@ -52,10 +47,7 @@ describe("mountKoraReview: saving and resuming", () => {
     expect(saves).toHaveLength(0);
 
     // Re-picking an answer the reviewer already gave is a change: the export round-trips.
-    const safe = [
-      ...rank().querySelectorAll('button[aria-pressed="true"]'),
-    ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
-    safe.click();
+    button("Unsafe", rank()).click();
     await handle!.flush();
     expect(saves).toHaveLength(1);
     const out = saves[0]!;
@@ -152,10 +144,7 @@ describe("mountKoraReview: saving and resuming", () => {
     const saved = parseKoraExport(clone(sampleExport));
     mount({ savedExport: saved, optOutCategories: [KoraCategory.Violence] });
     await tick(50);
-    const safe = [
-      ...rank().querySelectorAll('button[aria-pressed="true"]'),
-    ].find((b) => b.textContent === "Safe") as HTMLButtonElement;
-    safe.click();
+    button("Unsafe", rank()).click();
     await handle!.flush();
     expectValid(saves[0]!);
     expect(saves[0]!.optOutCategories).toEqual([KoraCategory.Violence]);

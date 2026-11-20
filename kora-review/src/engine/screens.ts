@@ -21,6 +21,7 @@ export function createScreens(ctx: ScreensCtx) {
     firstPendingIndex,
     h,
     icon,
+    iso,
     openTranscript,
     plural,
     progressText,
@@ -31,6 +32,11 @@ export function createScreens(ctx: ScreensCtx) {
   } = ctx;
 
   /* ---------- Content warning before sensitive pairs ---------- */
+  // A category's label, lower-cased to sit mid-sentence; no label starts with a proper noun.
+  const topicOf = (cid: string) => {
+    const label = catLabel(cid);
+    return label.charAt(0).toLowerCase() + label.slice(1);
+  };
   // Shown before each pending pair in a sensitive category the reviewer hasn't opened yet and hasn't skipped.
   function needsWarning(t: Transcript) {
     const c = CAT.get(t.category),
@@ -48,7 +54,7 @@ export function createScreens(ctx: ScreensCtx) {
     const w = CONTENT_WARNING,
       t = transcript(then),
       c = category(t.category);
-    const label = c.label;
+    const topic = topicOf(c.id);
     app.replaceChildren(
       h(
         "main",
@@ -57,7 +63,7 @@ export function createScreens(ctx: ScreensCtx) {
         h(
           "h1",
           { class: "qtitle", tabindex: "-1", "data-focus": "" },
-          w.title.replace("{label}", label),
+          w.title.replace("{topic}", topic),
         ),
         c.description ? h("p", { class: "lede" }, c.description) : null,
         h("p", { class: "lede" }, w.body),
@@ -80,18 +86,9 @@ export function createScreens(ctx: ScreensCtx) {
             {
               class: "big ghost",
               type: "button",
-              onclick: () => skipOne(then),
-            },
-            w.skipOneLabel,
-          ),
-          h(
-            "button",
-            {
-              class: "big ghost",
-              type: "button",
               onclick: () => skipCategory(c.id),
             },
-            w.skipAllLabel.replace("{label}", label),
+            w.skipAllLabel.replace("{topic}", topic),
           ),
         ),
       ),
@@ -110,17 +107,12 @@ export function createScreens(ctx: ScreensCtx) {
     if (i === -1) finishFlow();
     else openTranscript(i);
   }
-  function skipOne(id: string) {
-    const t = transcript(id);
-    ensure(t).optedOut = true;
-    afterSkip("Skipped this pair.");
-  }
   function skipCategory(cid: KoraCategory) {
     if (!S.optOutCats.includes(cid)) S.optOutCats.push(cid);
     for (const t of S.all)
       if (t.category === cid && res(t).status !== "done")
-        ensure(t).optedOut = true;
-    afterSkip(`Skipping all ${catLabel(cid)} pairs.`);
+        Object.assign(ensure(t), { optedOut: true, optedOutAt: iso() });
+    afterSkip(`Skipping all conversations of ${topicOf(cid)}.`);
   }
 
   /* ---------- Waiting for the next pair ---------- */
@@ -133,7 +125,9 @@ export function createScreens(ctx: ScreensCtx) {
         h(
           "h1",
           { class: "qtitle", tabindex: "-1", "data-focus": "" },
-          failed ? "Couldn't load the next pair" : "Loading the next pair…",
+          failed
+            ? "Couldn't load the next conversation"
+            : "Loading the next conversation…",
         ),
         failed
           ? h(
@@ -159,7 +153,7 @@ export function createScreens(ctx: ScreensCtx) {
           : null,
       ),
     );
-    if (failed) announce("Couldn't load the next pair.");
+    if (failed) announce("Couldn't load the next conversation.");
   }
 
   /* ---------- Finish ---------- */
@@ -182,14 +176,14 @@ export function createScreens(ctx: ScreensCtx) {
         h(
           "p",
           { class: "lede" },
-          `You ranked ${plural(done, "pair")}${skipped ? ` and skipped ${skipped}` : ""}. Your answers are saved.`,
+          `You reviewed ${plural(done, "conversation")}${skipped ? ` and skipped ${skipped}` : ""}. Your answers are saved.`,
         ),
         h(
           "ul",
           { class: "flist" },
           ts.map((t) => {
             const r = res(t),
-              call = reviewed(r) ? callOf(t, r) : null;
+              call = reviewed(r) ? callOf(r) : null;
             return h(
               "li",
               { class: "frow" },

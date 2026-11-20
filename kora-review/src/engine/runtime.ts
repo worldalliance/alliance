@@ -5,15 +5,15 @@ export type IconName =
   | "up"
   | "arrowUp"
   | "down"
-  | "lock"
   | "right"
   | "flip"
   | "trash"
   | "x"
   | "note"
   | "chat"
-  | "scale"
-  | "skip";
+  | "asterisk"
+  | "chevronDown";
+
 type Listener<E> = (e: E) => void;
 type ListenOpts = boolean | AddEventListenerOptions;
 
@@ -134,7 +134,6 @@ export function createRuntime(ctx: RuntimeCtx) {
   const ICONS: Record<IconName, string> = {
     up: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
     down: '<g transform="rotate(180 12 12)"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></g>',
-    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
     right: '<path d="m9 18 6-6-6-6"/>',
     flip: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
@@ -142,10 +141,10 @@ export function createRuntime(ctx: RuntimeCtx) {
       '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     note: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
+    asterisk:
+      '<path d="M12 6v12"/><path d="M17.196 9 6.804 15"/><path d="m6.804 9 10.392 6"/>',
     chat: '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/>',
-    scale:
-      '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
-    skip: '<path d="m5 4 10 8-10 8V4z"/><path d="M19 5v14"/>',
   };
   function icon(name: IconName) {
     const s = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -164,29 +163,15 @@ export function createRuntime(ctx: RuntimeCtx) {
   /* ---------- DOM skeleton, all inside the host's element ---------- */
   const rootEl = h("div", { class: "kora-review", "data-kora-review": "" });
   const app = h("div", { class: "kr-app" });
-  const sheetIn = h("div", { class: "wrap sheet-in" });
-  const sheetEl = h(
-    "div",
-    {
-      class: "kr-sheet",
-      role: "dialog",
-      "aria-modal": "false",
-      "aria-label": "Annotate",
-      hidden: true,
-    },
-    h("div", { class: "sheet-card" }, sheetIn),
-  );
-  const toasts = h("div", { class: "kr-toasts" });
   const live = h("div", {
     class: "sr",
     "aria-live": "polite",
     "aria-atomic": "true",
   });
-  rootEl.append(app, sheetEl, toasts, live);
+  rootEl.append(app, live);
   host.append(rootEl);
   const $ = (id: string) => rootEl.querySelector<HTMLElement>("#" + P + id);
   const $$ = (sel: string) => rootEl.querySelectorAll<HTMLElement>(sel);
-  const setVar = (k: string, v: string) => rootEl.style.setProperty(k, v);
 
   function announce(msg: string) {
     live.textContent = "";
@@ -221,10 +206,6 @@ export function createRuntime(ctx: RuntimeCtx) {
     raf,
     reducedMotion,
     rootEl,
-    setVar,
-    sheetEl,
-    sheetIn,
-    toasts,
     win,
   };
 }

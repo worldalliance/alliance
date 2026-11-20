@@ -186,17 +186,5 @@ export function createMarkdownRenderer(ctx: MarkdownRendererCtx) {
     }
     return view;
   }
-  function spanText(v: Words, lo: number, hi: number) {
-    let s = "";
-    for (let k = lo; k <= hi; k++) {
-      s += v.tokens[k].text;
-      if (k < hi) {
-        s += (v.gaps[k] || []).map((g) => g.textContent).join("");
-        if (v.tokens[k + 1].blk !== v.tokens[k].blk) s += " ";
-      }
-    }
-    return s.replace(/\s+/g, " ").trim();
-  }
-
-  return { renderMarkdown, spanText };
+  return { renderMarkdown };
 }

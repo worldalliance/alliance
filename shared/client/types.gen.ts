@@ -5886,6 +5886,45 @@ export type KoraExportsDto = {
     }>;
 };
 
+export type KoraSpecExportDto = {
+    /**
+     * export_id, kind, generated_at, spec_version and row counts
+     */
+    export: {
+        [key: string]: unknown;
+    };
+    /**
+     * One per completed rating
+     */
+    ratings: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per highlighted passage
+     */
+    highlights: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per session started
+     */
+    sessions: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per conversation skipped
+     */
+    skips: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per reviewer
+     */
+    reviewers: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
 export type KoraAnswerCountDto = {
     value: string;
     count: number;
@@ -17821,6 +17860,30 @@ export type KoraResultsExportsResponses = {
 };
 
 export type KoraResultsExportsResponse = KoraResultsExportsResponses[keyof KoraResultsExportsResponses];
+
+export type KoraResultsKoraExportData = {
+    body?: never;
+    path?: never;
+    query?: {
+        kind?: 'rolling' | 'final';
+    };
+    url: '/kora/admin/results/kora-export';
+};
+
+export type KoraResultsKoraExportErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsKoraExportError = KoraResultsKoraExportErrors[keyof KoraResultsKoraExportErrors];
+
+export type KoraResultsKoraExportResponses = {
+    200: KoraSpecExportDto;
+};
+
+export type KoraResultsKoraExportResponse = KoraResultsKoraExportResponses[keyof KoraResultsKoraExportResponses];
 
 export type KoraResultsAnswersData = {
     body?: never;

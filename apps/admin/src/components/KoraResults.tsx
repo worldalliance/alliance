@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   useDownloadKoraExports,
+  useDownloadKoraSpecExport,
   useKoraAnswersAdmin,
 } from "../lib/useKoraResultsAdmin";
 
@@ -55,6 +56,18 @@ export function KoraResults() {
     },
   });
 
+  const koraFile = useDownloadKoraSpecExport({
+    onReady: (json) =>
+      downloadBlob(
+        new Blob([json], { type: "application/json" }),
+        `kora-export-${format(new Date(), "yyyy-MM-dd")}.json`,
+      ),
+    onError: (err) => {
+      toast.error(adminRefusalMessage(err, "Couldn't download. Try again."));
+      console.error(err);
+    },
+  });
+
   return (
     <section aria-labelledby="kora-results" className="space-y-3 text-sm">
       <h2 id="kora-results" className="font-semibold">
@@ -67,7 +80,20 @@ export function KoraResults() {
         onClick={() => download.mutate()}
       >
         {download.isPending ? "Preparing…" : "Download reviews (.jsonl)"}
+      </Button>{" "}
+      <Button
+        color={ButtonColor.Black}
+        size="small"
+        disabled={koraFile.isPending}
+        onClick={() => koraFile.mutate("rolling")}
+      >
+        {koraFile.isPending ? "Preparing…" : "Download KORA export (.json)"}
       </Button>
+      <p className="text-zinc-600">
+        The KORA export holds ratings, highlights, sessions, skips and reviewers
+        in KORA&apos;s format. Demographics, consent and end-of-session feedback
+        are empty until the tool collects them.
+      </p>
       {answers.isPending && <p>Loading answers…</p>}
       {answers.isError && (
         <p className="text-red-600" role="alert">

@@ -1,5 +1,8 @@
 import { R, type Result } from "@alliance/common/result";
-import { fromKoraPair, readKoraPairs } from "@alliance/kora-review/convert";
+import {
+  fromKoraConversation,
+  readKoraConversations,
+} from "@alliance/kora-review/convert";
 import { transcriptSchema } from "@alliance/kora-review/schemas";
 import addFormats from "ajv-formats";
 import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
@@ -43,7 +46,7 @@ export function checkTranscripts(params: {
   const rejected: RejectedLine[] = [];
   const checked: CheckedTranscript[] = [];
   const seen = new Map<string, number>();
-  const records = readKoraPairs(params.text);
+  const records = readKoraConversations(params.text);
   for (const record of records) {
     if (!record.ok) {
       rejected.push({
@@ -52,7 +55,7 @@ export function checkTranscripts(params: {
       });
       continue;
     }
-    const content = fromKoraPair(record.record);
+    const content = fromKoraConversation(record.record);
     const problems = validTranscript(content)
       ? []
       : ajvProblems(validTranscript.errors);

@@ -227,7 +227,10 @@ test("shows a signed-in participant their home base once the project is active",
   status = KoraProjectStatus.Active;
   renderPage();
 
-  await screen.findByRole("heading", { level: 1, name: "Rank 10 pairs" });
+  await screen.findByRole("heading", {
+    level: 1,
+    name: "Review 10 conversations",
+  });
   expect(screen.queryByText("Thank you for joining the waitlist")).toBeNull();
   expect(screen.queryByText(/KoraBench/)).toBeNull();
   expect(screen.queryByRole("switch", { name: "Remind me" })).toBeNull();

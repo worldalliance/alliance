@@ -7,7 +7,7 @@ import {
   ORIGIN,
   type KoraHarness,
 } from "./kora-fixtures";
-import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
+import { koraExport, koraConversation, koraConversationsFile } from "./kora-conversations";
 import { uniqueEmail } from "./otp-fixtures";
 
 export type ReviewTranscript = {
@@ -48,7 +48,7 @@ export function koraReviewClient(harness: () => KoraHarness) {
     (a?.transcripts ?? []).map((t) => t.transcript.transcriptId);
   const exportOf = (
     s: ReviewState,
-    options: { done?: string[]; optedOut?: string[]; note?: string } = {},
+    options: { done?: string[]; optedOut?: string[]; worry?: string } = {},
   ) =>
     koraExport({
       reviewerId: s.reviewerId,
@@ -108,9 +108,9 @@ export function koraReviewClient(harness: () => KoraHarness) {
   ): Promise<string> => {
     const { ctx } = harness();
     const uploaded = await ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(
+      transcriptsText: koraConversationsFile(
         ...Array.from({ length: count }, (_, i) =>
-          koraPair(`${options.prefix ?? "R"}${i + 1}`, {
+          koraConversation(`${options.prefix ?? "R"}${i + 1}`, {
             risk_id:
               i % 2
                 ? "fear_trauma_and_distress"

@@ -25,7 +25,7 @@ import {
   ORIGIN,
   setKoraProjectStatus,
 } from "./kora-fixtures";
-import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
+import { koraExport, koraConversation, koraConversationsFile } from "./kora-conversations";
 
 describe("Kora review actions (e2e)", () => {
   let ctx: TestContext;
@@ -72,7 +72,7 @@ describe("Kora review actions (e2e)", () => {
 
   const uploadTwo = async () => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(koraPair("A1"), koraPair("A2")),
+      transcriptsText: koraConversationsFile(koraConversation("A1"), koraConversation("A2")),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
       closesAt: koraClosesAt(),

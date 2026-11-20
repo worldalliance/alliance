@@ -19,16 +19,14 @@ describe("redactContact", () => {
 });
 
 describe("redactExport", () => {
-  it("redacts annotation notes, q3_text and exit_q6, and nothing else", () => {
+  it("redacts q4_text and exit_q6, and nothing else", () => {
     const exported = {
       batchId: "a@b.org",
       results: [
         {
           transcriptId: "T1",
-          q3_text: "mail x@example.org",
-          annotations: [
-            { id: "n1", note: "call +1 555 555 0101", text: "y@example.org" },
-          ],
+          q4_text: "mail x@example.org",
+          itemType: "y@example.org",
         },
       ],
       exitSurvey: { exit_q5: "fine", exit_q6: "z@example.org" },
@@ -38,10 +36,8 @@ describe("redactExport", () => {
       results: [
         {
           transcriptId: "T1",
-          q3_text: `mail ${REDACTED}`,
-          annotations: [
-            { id: "n1", note: `call ${REDACTED}`, text: "y@example.org" },
-          ],
+          q4_text: `mail ${REDACTED}`,
+          itemType: "y@example.org",
         },
       ],
       exitSurvey: { exit_q5: "fine", exit_q6: REDACTED },
@@ -66,10 +62,10 @@ describe("redactExport", () => {
   });
 
   it("keeps a redacted field within the export schema's maxLength", () => {
-    const note = "mail a@b.co ".padEnd(140, "x");
-    const redacted = redactExport({ results: [{ annotations: [{ note }] }] });
+    const q4_text = "mail a@b.co ".padEnd(280, "x");
+    const redacted = redactExport({ results: [{ q4_text }] });
     expect(redacted.results).toEqual([
-      { annotations: [{ note: `mail ${REDACTED} ${"x".repeat(124)}` }] },
+      { q4_text: `mail ${REDACTED} ${"x".repeat(264)}` },
     ]);
   });
 });

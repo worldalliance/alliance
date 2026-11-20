@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- One chatbot instead of two: a transcript has one `conversation`, shown in a single column. `SCHEMA_VERSION` is 4.
+- Uploads read KORA's conversation file (docs/kora/kora_conversations.schema.yaml): `conversation_id`, `item_type` (`scored`, `practice` or `test`), `child_gender`, `n_turns`, `extended`, and for practice items `reference_verdict` and `reference_reason`. Transcripts gain `itemType` (replacing `pairType`), `childGender`, `nTurns`, `extended`, `referenceVerdict` and `referenceReason`.
+- The grading card asks KORA's questions: Safe or Unsafe (`q1`, saved as `ok` or `not_ok`), confidence 1–4 (`q2_confidence`), and for Unsafe, severity 1–4 (`q3_severity`) and an optional worry (`q4_text`). There is no turn question. Questions fade in and out.
+- Reactions replace word marks: 👍, 👎 or \* on an on-screen line, from a picker (click, or long-press on a phone), or by tapping or clicking a line 2, 3 or 4 times for 👍, 👎 or none; arrows, Enter and 1/2/3 from the keyboard. A run of 👎 in one reply, unbroken by 👍 or \*, is a passage: the first is quoted above the worry box. Each result saves its `reactions` (turn, code-point span, text, `up`, `down` or `notable`), which come back on resume; `toKoraHighlights` in `@alliance/kora-review/highlights` turns them into KORA's highlights.
+- Removed from the export: `annotations`, `netSum`, `plusCount`, `minusCount`, `stale`, and the A/B fields. A skipped result records `optedOutAt`.
+- The content warning offers only skipping the whole topic.
+- The finish screen shows each conversation's Safe or Unsafe. Reviewer-facing text says "conversation" and "review".
+- The age chip opens the child's story and the scenario. The child's gender, when given, shows with their age.
 - Pairs come one at a time. `assignment.size` says how many the assignment asks for, `assignment.transcripts` holds those given so far, and the new required `next` option fetches each further one after a save, or returns null when there are no more. A failed `next` shows Try again.
 - `save` may resolve with `{ removed }` (`KoraSaveResult`): pairs taken out of the assignment, which the tool drops without a message.
 - The content warning no longer counts the pairs left on its topic, which the tool can't know, and always offers to skip the whole topic.

@@ -85,3 +85,43 @@ export class KoraAssignmentExportDto {
     this.export = input.export;
   }
 }
+
+const ROWS = {
+  type: "object",
+  additionalProperties: true,
+  isArray: true,
+} as const;
+
+/** KORA's export (docs/kora/kora_export.schema.yaml): a header and five tables. */
+export class KoraSpecExportDto {
+  @ApiProperty({
+    type: "object",
+    additionalProperties: true,
+    description: "export_id, kind, generated_at, spec_version and row counts",
+  })
+  export: Record<string, unknown>;
+
+  @ApiProperty({ ...ROWS, description: "One per completed rating" })
+  ratings: Record<string, unknown>[];
+
+  @ApiProperty({ ...ROWS, description: "One per highlighted passage" })
+  highlights: Record<string, unknown>[];
+
+  @ApiProperty({ ...ROWS, description: "One per session started" })
+  sessions: Record<string, unknown>[];
+
+  @ApiProperty({ ...ROWS, description: "One per conversation skipped" })
+  skips: Record<string, unknown>[];
+
+  @ApiProperty({ ...ROWS, description: "One per reviewer" })
+  reviewers: Record<string, unknown>[];
+
+  constructor(input: KoraSpecExportDto) {
+    this.export = input.export;
+    this.ratings = input.ratings;
+    this.highlights = input.highlights;
+    this.sessions = input.sessions;
+    this.skips = input.skips;
+    this.reviewers = input.reviewers;
+  }
+}

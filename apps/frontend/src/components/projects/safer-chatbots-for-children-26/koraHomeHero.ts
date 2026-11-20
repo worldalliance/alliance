@@ -56,14 +56,14 @@ export function heroOf(home: KoraHomeDto, now: Date): Hero {
     return {
       heading:
         (open.progress === 0
-          ? HOME_COPY.rank(open.total)
-          : HOME_COPY.rankMore(left)) + deadline(open.closesAt, now),
+          ? HOME_COPY.review(open.total)
+          : HOME_COPY.reviewMore(left)) + deadline(open.closesAt, now),
       action: {
         kind: HeroAction.Continue,
         label:
           open.progress === 0
-            ? HOME_COPY.startRanking
-            : HOME_COPY.continueRanking,
+            ? HOME_COPY.startReviewing
+            : HOME_COPY.continueReviewing,
       },
       note: open.progress === 0 ? HOME_COPY.startIntro(open.total) : null,
     };
@@ -74,18 +74,18 @@ export function heroOf(home: KoraHomeDto, now: Date): Hero {
   );
   if (ready && latest && statusOf(latest) === KoraUserBatchStatus.Done) {
     return {
-      heading: HOME_COPY.rankedAll(latest.total),
+      heading: HOME_COPY.reviewedAll(latest.total),
       action: {
         kind: HeroAction.Start,
-        label: HOME_COPY.rankAnother(ready.total),
+        label: HOME_COPY.reviewAnother(ready.total),
       },
       note: null,
     };
   }
   if (ready) {
     return {
-      heading: HOME_COPY.rank(ready.total) + deadline(ready.closesAt, now),
-      action: { kind: HeroAction.Start, label: HOME_COPY.startRanking },
+      heading: HOME_COPY.review(ready.total) + deadline(ready.closesAt, now),
+      action: { kind: HeroAction.Start, label: HOME_COPY.startReviewing },
       note: HOME_COPY.startIntro(ready.total),
     };
   }

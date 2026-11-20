@@ -1,52 +1,33 @@
 import type {
-  KoraAnnotation,
   KoraCategory,
   KoraExitSurvey,
   KoraProfile,
   KoraResult,
+  KoraTranscript as KoraTranscriptSource,
 } from "../types.gen.js";
 
-export type Side = "a" | "b";
-export type Safety = NonNullable<KoraResult["q0_a"]>;
-export type Strength = "clearly" | "somewhat";
+export type Safety = NonNullable<KoraResult["q1"]>;
 
 export type Message = { role: "user" | "assistant"; content: string };
 
-/** A pair as the engine holds it: A's turns then B's in one message list. */
 export type Transcript = {
   id: string;
   category: KoraCategory;
   hash: string;
-  pairType: string | null;
+  itemType: KoraTranscriptSource["itemType"];
   context: {
     title: string;
     childAge: number | null;
+    childGender: string | null;
+    background: string | null;
+    scenario: string | null;
   };
   messages: Message[];
-  pair: { na: number };
 };
 
-/** An annotation with messageIndex into the combined message list. */
-export type Annotation = Pick<
-  KoraAnnotation,
-  "id" | "start" | "end" | "text" | "value" | "createdAt" | "note" | "orphaned"
-> & { messageIndex: number };
-
-export type AnswerKey = "q0_a" | "q0_b" | "q1" | "q2_turn" | "q3_text";
+export type AnswerKey = "q1" | "q2_confidence" | "q3_severity" | "q4_text";
 
 export type Answers = Partial<Pick<KoraResult, AnswerKey>>;
-
-/** "clearly_a" as its strength and side. */
-export function q1Parts(q1: NonNullable<KoraResult["q1"]>): {
-  strength: Strength;
-  side: Side;
-} {
-  const [strength, side] = q1.split("_");
-  return {
-    strength: strength === "clearly" ? "clearly" : "somewhat",
-    side: side === "a" ? "a" : "b",
-  };
-}
 
 export type Result = Pick<
   KoraResult,
@@ -55,15 +36,12 @@ export type Result = Pick<
   | "contentHash"
   | "status"
   | "optedOut"
-  | "netSum"
-  | "plusCount"
-  | "minusCount"
+  | "optedOutAt"
   | "startedAt"
   | "completedAt"
   | "timeMs"
   | "pairPosition"
-  | "stale"
-> & { answers: Answers; annotations: Annotation[] };
+> & { answers: Answers };
 
 export type Screen =
   | "boot"
@@ -80,10 +58,9 @@ export type Token = {
   text: string;
   el: HTMLElement;
   blk: number;
-  ann?: Annotation | null;
 };
 
-/** One rendered message's words, for selecting and marking them. */
+/** One rendered message's words, grouped into on-screen lines for reactions. */
 export type Words = {
   mi: number;
   tokens: Token[];
@@ -91,26 +68,44 @@ export type Words = {
   content: string;
 };
 
-/** A reply on the review screen, with its bubble and its list of marks. */
+/** A reply on the review screen, with its bubble. */
 export type View = Words & { bubble: HTMLElement };
 
-/** Token indexes within one message. */
-export type Selection = { mi: number; anchor: number; focus: number };
+export enum ReactionKind {
+  Up = "up",
+  Down = "down",
+  Notable = "notable",
+}
 
-export type PairDraft = {
-  q0: Partial<Record<Side, Safety>>;
-  q1: { side: Side; strength: Strength } | null;
-  turn: number | "none" | null;
-  quote: string | null;
-  reason: string;
-  reasonEdited: boolean;
+/** A reaction on the on-screen line spanning UTF-16 offsets [start, end) of message `mi`'s text. */
+export type Reaction = {
+  mi: number;
+  start: number;
+  end: number;
+  kind: ReactionKind;
 };
 
-export type SheetMode = "new" | "edit";
+/** One on-screen line of a reply: its first and last token, and where it sits relative to the bubble. */
+export type Line = { first: number; last: number; top: number; bottom: number };
 
-export type SheetOpts = { kb?: boolean };
+/** A run of 👎 lines in one reply, not broken by a 👍 or *; lines between them belong to it. */
+export type Passage = {
+  mi: number;
+  turn: number;
+  first: Line;
+  last: Line;
+  text: string;
+};
 
-export type SheetState = { mode: SheetMode } & SheetOpts;
+export type PairDraft = {
+  q1: Safety | null;
+  confidence: number | null;
+  severity: number | null;
+  quote: Passage | null;
+  /** More than one 👎 passage, so the quote is the first. */
+  moreQuotes: boolean;
+  reason: string;
+};
 
 export type State = {
   all: Transcript[];
@@ -120,14 +115,13 @@ export type State = {
   /** The host has nothing more to give. */
   exhausted: boolean;
   results: Record<string, Result>;
-  history: Record<string, Annotation[][]>;
+  /** Reactions per transcript, saved with its result. */
+  reactions: Record<string, Reaction[]>;
   screen: Screen;
   idx: number;
   views: Record<number, View>;
-  sel: Selection | null;
-  editing: string | null;
-  sheet: SheetState | null;
-  noteDraft: string;
+  /** The line keyboard focus is on, in a reply. */
+  kbLine: { mi: number; line: number } | null;
   lastCategory: string | null;
   optOutCats: KoraCategory[];
   profile: KoraProfile | null;

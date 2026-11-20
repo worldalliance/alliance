@@ -1,6 +1,6 @@
 import { KoraReviewStatus } from "@alliance/common/kora";
 import { exportSchema } from "@alliance/kora-review/schemas";
-import { koraExport } from "../../test/kora-pairs";
+import { koraExport } from "../../test/kora-conversations";
 import { checkExport, withoutResultsFor } from "./kora-export-check";
 import { koraAjv } from "./kora-upload";
 

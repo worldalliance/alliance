@@ -8,7 +8,6 @@ import type { KoraCategory, KoraExport, KoraTranscript } from "./types.gen.js";
 export { exportSchema, SCHEMA_VERSION, transcriptSchema } from "./schemas.js";
 export { KoraCategory } from "./types.gen.js";
 export type {
-  KoraAnnotation,
   KoraConversation,
   KoraExitSurvey,
   KoraExport,
@@ -113,8 +112,7 @@ function checkAssigned(item: KoraAssignedTranscript, where: string): void {
     );
   if (typeof item.contentHash !== "string" || !HASH.test(item.contentHash))
     fail(`${where}.contentHash must look like "sha256:<64 hex digits>".`);
-  checkTurns(t.conversationA, `${where}.transcript.conversationA`);
-  checkTurns(t.conversationB, `${where}.transcript.conversationB`);
+  checkTurns(t.conversation, `${where}.transcript.conversation`);
 }
 
 // A light structural check so a mistake fails loudly at mount rather than mid-review.

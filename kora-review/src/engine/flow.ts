@@ -32,8 +32,8 @@ export function createFlow(ctx: FlowCtx) {
     restore,
     rootEl,
   } = ctx;
-  const closeSheet: Late["closeSheet"] = (...args) =>
-    ctx.late().closeSheet(...args);
+  const closePicker: Late["closePicker"] = (...args) =>
+    ctx.late().closePicker(...args);
   const playOpener: Late["playOpener"] = (...args) =>
     ctx.late().playOpener(...args);
   const needsWarning: Late["needsWarning"] = (...args) =>
@@ -60,9 +60,8 @@ export function createFlow(ctx: FlowCtx) {
     bankTime();
     const was = S.screen;
     S.screen = screen;
-    S.sel = null;
-    S.editing = null;
-    closeSheet();
+    S.kbLine = null;
+    closePicker();
     closeIntro();
     if (screen === "finish") renderFinish();
     else if (screen === "loading") renderLoading({ failed: false });
@@ -97,10 +96,8 @@ export function createFlow(ctx: FlowCtx) {
     const wasStarted = !!res(target).startedAt;
     S.idx = clamp(i, 0, S.list.length - 1);
     S.screen = "review";
-    S.sel = null;
-    S.editing = null;
-    S.noteDraft = "";
-    closeSheet();
+    S.kbLine = null;
+    closePicker();
     const t = cur();
     ensure(t).startedAt ||= iso();
     renderReview(!wasStarted);
@@ -148,7 +145,7 @@ export function createFlow(ctx: FlowCtx) {
         h(
           "p",
           { class: "intro-hint" },
-          "Two chatbots answered the same child. Mark what each got right and wrong with thumbs, then say which responded more safely.",
+          "A chatbot answered a child. Provide reactions inline, then say whether it responded safely.",
         ),
         gotIt,
       ),

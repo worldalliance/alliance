@@ -43,6 +43,9 @@ test("shows answer counts, never individual answers", async () => {
   expect(
     screen.getByRole("button", { name: "Download reviews (.jsonl)" }),
   ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Download KORA export (.json)" }),
+  ).toBeTruthy();
 });
 
 test("writes one export per line", () => {

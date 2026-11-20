@@ -2,7 +2,7 @@ import addFormats from "ajv-formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "bun:test";
 import sample from "../samples/transcript.json";
-import { fromKoraPair, readKoraPairs } from "../src/convert.js";
+import { fromKoraConversation, readKoraConversations } from "../src/convert.js";
 import { parseKoraExport, parseKoraTranscript } from "../src/parse.js";
 import { SAMPLE_EXPORT } from "../src/sample-export.js";
 import { transcriptSchema } from "../src/schemas.js";
@@ -12,24 +12,24 @@ addFormats(ajv);
 const validTranscript = ajv.compile(transcriptSchema);
 
 const nativeOf = (t: typeof sample, id = t.transcriptId) => ({
-  pair_id: id,
+  conversation_id: id,
   risk_id: t.category,
   risk_category_id: "dropped",
-  pair_type: t.pairType,
+  item_type: t.itemType,
+  n_turns: 2,
   scenario_title: t.scenarioTitle,
   child_age: t.childAge,
   age_band: t.ageBand,
   child_background: t.childBackground,
   scenario: t.scenario,
-  conversation_a: t.conversationA.map((turn) => ({
+  conversation: t.conversation.map((turn) => ({
     ...turn,
     model: "dropped",
   })),
-  conversation_b: t.conversationB,
   feedback_text: "dropped",
 });
 
-describe("readKoraPairs", () => {
+describe("readKoraConversations", () => {
   it("numbers JSON Lines from 1, skipping blank lines, and reports a bad line without stopping", () => {
     const text = [
       JSON.stringify(nativeOf(sample, "P1")),
@@ -37,7 +37,7 @@ describe("readKoraPairs", () => {
       "{not json",
       JSON.stringify(nativeOf(sample, "P2")),
     ].join("\n");
-    const records = readKoraPairs(text);
+    const records = readKoraConversations(text);
     expect(records.map((r) => [r.line, r.ok])).toEqual([
       [1, true],
       [3, false],
@@ -47,9 +47,9 @@ describe("readKoraPairs", () => {
 
   it("reads a JSON array, whole or split one element per line", () => {
     const pairs = [nativeOf(sample, "P1"), nativeOf(sample, "P2")];
-    expect(readKoraPairs(JSON.stringify(pairs)).map((r) => r.line)).toEqual([
-      1, 2,
-    ]);
+    expect(
+      readKoraConversations(JSON.stringify(pairs)).map((r) => r.line),
+    ).toEqual([1, 2]);
     const split = [
       "[",
       ...pairs.map(
@@ -57,7 +57,7 @@ describe("readKoraPairs", () => {
       ),
       "]",
     ].join("\n");
-    expect(readKoraPairs(split).filter((r) => r.ok).length).toBe(2);
+    expect(readKoraConversations(split).filter((r) => r.ok).length).toBe(2);
   });
 
   it("reads a YAML list, numbering each pair by the line it starts on", () => {
@@ -69,7 +69,7 @@ describe("readKoraPairs", () => {
       "- pair_id: P2",
       "  risk_id: cybersecurity",
     ].join("\n");
-    expect(readKoraPairs(yaml)).toEqual([
+    expect(readKoraConversations(yaml)).toEqual([
       {
         line: 2,
         ok: true,
@@ -84,28 +84,35 @@ describe("readKoraPairs", () => {
   });
 
   it("reports a YAML syntax error at its line, and refuses YAML that isn't a list", () => {
-    expect(readKoraPairs("- pair_id: P1\n- pair_id: [P2\n")).toMatchObject([
-      { line: 3, ok: false },
+    expect(
+      readKoraConversations("- pair_id: P1\n- pair_id: [P2\n"),
+    ).toMatchObject([{ line: 3, ok: false }]);
+    expect(readKoraConversations("pair_id: P1")).toEqual([
+      {
+        line: 1,
+        ok: false,
+        error: "a YAML file must be a list of transcripts",
+      },
     ]);
-    expect(readKoraPairs("pair_id: P1")).toEqual([
-      { line: 1, ok: false, error: "a YAML file must be a list of pairs" },
-    ]);
-    expect(readKoraPairs("# nothing yet\n")).toEqual([]);
+    expect(readKoraConversations("# nothing yet\n")).toEqual([]);
   });
 });
 
-describe("fromKoraPair", () => {
+describe("fromKoraConversation", () => {
   it("converts a KORA pair into a transcript that validates, dropping fields the schema doesn't name", () => {
-    const converted = fromKoraPair(nativeOf(sample));
+    const converted = fromKoraConversation(nativeOf(sample));
     expect(validTranscript(converted)).toBe(true);
     expect(converted).toEqual(sample);
   });
 
   it("produces a transcript that fails validation from a record that isn't a pair", () => {
-    expect(validTranscript(fromKoraPair("text"))).toBe(false);
+    expect(validTranscript(fromKoraConversation("text"))).toBe(false);
     expect(
       validTranscript(
-        fromKoraPair({ ...nativeOf(sample), risk_id: "not_a_category" }),
+        fromKoraConversation({
+          ...nativeOf(sample),
+          risk_id: "not_a_category",
+        }),
       ),
     ).toBe(false);
   });
@@ -117,20 +124,20 @@ describe("fromKoraPair", () => {
     const pair = nativeOf(sample);
     expect(
       validTranscript(
-        fromKoraPair({
+        fromKoraConversation({
           ...pair,
-          conversation_b: [...pair.conversation_b, turn],
+          conversation: [...pair.conversation, turn],
         }),
       ),
     ).toBe(false);
   });
 
-  it.each(["pair_id", "scenario_title"])(
+  it.each(["conversation_id", "scenario_title"])(
     "produces a transcript that fails validation from a pair with no %s",
     (field) => {
       const pair: Record<string, unknown> = { ...nativeOf(sample) };
       delete pair[field];
-      expect(validTranscript(fromKoraPair(pair))).toBe(false);
+      expect(validTranscript(fromKoraConversation(pair))).toBe(false);
     },
   );
 });

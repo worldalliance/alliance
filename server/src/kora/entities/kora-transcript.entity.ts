@@ -10,7 +10,7 @@ import {
 } from "typeorm";
 import { KoraBatch } from "./kora-batch.entity";
 
-/** One pair of conversations to review, keyed by KORA's transcriptId. */
+/** One conversation to review, keyed by KORA's conversation_id. */
 @Entity()
 @Index(["batchId", "position"], { unique: true })
 export class KoraTranscript {

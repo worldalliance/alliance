@@ -39,17 +39,17 @@ describe("mountKoraReview: pairs given one at a time", () => {
     await tick(10);
     expect(el.querySelector(".fine")?.textContent).toBe("1 of 3.");
 
-    button("Skip this pair").click();
+    button(/^Skip all conversations of /).click();
     await tick(50);
     expect(next).toHaveBeenCalledTimes(1);
     const saveOrder = (opts.save as ReturnType<typeof vi.fn>).mock
       .invocationCallOrder[0]!;
     expect(saveOrder).toBeLessThan(next.mock.invocationCallOrder[0]!);
     expect(saves[0]!.results.map((r) => r.optedOut)).toEqual([true]);
-    expect(heading()).toContain("Fear and distress");
+    expect(heading()).toContain("fear and distress");
     expect(el.querySelector(".fine")?.textContent).toBe("2 of 3.");
 
-    button("Skip this pair").click();
+    button(/^Skip all conversations of /).click();
     await tick(50);
     expect(next).toHaveBeenCalledTimes(2);
     expect(heading()).toBe("2 of 2 reviewed.");
@@ -71,9 +71,9 @@ describe("mountKoraReview: pairs given one at a time", () => {
       .mockResolvedValueOnce(given("SAMPLE-05"));
     mount({ assignment: { ...assignment(["SAMPLE-03"]), size: 2 }, next });
     await tick(10);
-    button("Skip this pair").click();
+    button(/^Skip all conversations of /).click();
     await tick(50);
-    expect(heading()).toBe("Couldn't load the next pair");
+    expect(heading()).toBe("Couldn't load the next conversation");
 
     button("Try again").click();
     await tick(50);

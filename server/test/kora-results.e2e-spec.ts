@@ -1,5 +1,9 @@
 import { KoraProjectStatus } from "@alliance/common/kora";
 import { R } from "@alliance/common/result";
+import addFormats from "ajv-formats";
+import Ajv2020 from "ajv/dist/2020";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
 import { KoraBatchService } from "src/kora/kora-batch.service";
@@ -8,7 +12,13 @@ import { MailService } from "src/mail/mail.service";
 import { PushService } from "src/push/push.service";
 import request from "supertest";
 import type TestAgent from "supertest/lib/agent";
+import { parse } from "yaml";
 import { closeTestApp } from "./e2e-test-utils";
+import {
+  koraConversation,
+  koraConversationsFile,
+  koraExport,
+} from "./kora-conversations";
 import {
   koraAdminActor,
   koraClosesAt,
@@ -17,7 +27,6 @@ import {
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 import { forgetRateEvents, uniqueEmail } from "./otp-fixtures";
 
 type State = {
@@ -46,8 +55,8 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
   const upload = async () => {
     batchNumber++;
     const uploaded = await h.ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(
-        ...[1, 2, 3, 4].map((n) => koraPair(`M${batchNumber}-${n}`)),
+      transcriptsText: koraConversationsFile(
+        ...[1, 2, 3, 4].map((n) => koraConversation(`M${batchNumber}-${n}`)),
       ),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 3,
@@ -194,6 +203,26 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
     for (const e of exports) {
       expect(Object.keys(e.reviewer)).toEqual(["id"]);
     }
+
+    // KORA's own export of the same reviews matches its schema, which ajv's strict mode can't compile.
+    const koraExport = (
+      await admin("get", "/kora/admin/results/kora-export?kind=final").expect(
+        200,
+      )
+    ).body;
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    const valid = ajv.compile(
+      parse(
+        readFileSync(
+          join(__dirname, "../../docs/kora/kora_export.schema.yaml"),
+          "utf8",
+        ),
+      ),
+    );
+    expect(valid(koraExport) ? null : valid.errors).toBeNull();
+    expect(koraExport.export.kind).toBe("final");
+    expect(koraExport.ratings.length).toBeGreaterThan(0);
 
     const answers = (
       await admin("get", "/kora/admin/results/answers").expect(200)

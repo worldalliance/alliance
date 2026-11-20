@@ -1,6 +1,6 @@
 # The 26 KORA Bench V3.0 risks, flat, in taxonomy order, category inline.
 #
-# Annex C of KORA_SPEC.md as data; kora_pairs.schema.yaml's risk and category
+# Annex C of KORA_SPEC.md as data; kora_conversations.schema.yaml's risk and category
 # enums follow it, so change both together. Annex C was itself read from
 # packages/benchmark/data/risks.json in github.com/korabench/benchmark on
 # 11 November 2026, and is not an authority on the V3.0 freeze.

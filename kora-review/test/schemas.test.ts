@@ -48,10 +48,10 @@ describe("schemas", () => {
       true,
     );
     const pending = sampleExport.results.find(
-      (r) => r.status === "pending" && "q0_a" in r,
+      (r) => r.status === "pending" && "q1" in r,
     );
     expect(pending).toBeTruthy();
-    expect(pending).not.toHaveProperty("q1");
+    expect(pending).not.toHaveProperty("q2_confidence");
   });
 
   it("reject fields the schema doesn't name, at every level", () => {
@@ -60,7 +60,7 @@ describe("schemas", () => {
     expect(v.transcript(t)).toBe(false);
 
     const turn = clone(sampleTranscript);
-    (turn.conversationA[0] as Record<string, unknown>).name = "Ana";
+    (turn.conversation[0] as Record<string, unknown>).name = "Ana";
     expect(v.transcript(turn)).toBe(false);
 
     const e1 = clone(sampleExport);
@@ -72,7 +72,7 @@ describe("schemas", () => {
     expect(v.exported(e2)).toBe(false);
 
     const e3 = clone(sampleExport);
-    (e3.results[1].annotations[0] as Record<string, unknown>).phone = "555";
+    (e3.results[1] as Record<string, unknown>).annotations = [];
     expect(v.exported(e3)).toBe(false);
 
     const e4 = clone(sampleExport);
@@ -80,11 +80,28 @@ describe("schemas", () => {
     expect(v.exported(e4)).toBe(false);
   });
 
-  it("require every answer on a done result", () => {
+  it("require q1 and q2_confidence on a done result, and q3_severity when it is not_ok", () => {
     const e = clone(sampleExport);
-    delete (e.results[1] as Record<string, unknown>).q1;
-    delete (e.results[1] as Record<string, unknown>).failingSide;
+    const r = e.results[1] as Record<string, unknown>;
+    expect(v.exported(e)).toBe(true);
+    delete r.q2_confidence;
     expect(v.exported(e)).toBe(false);
+    r.q2_confidence = 2;
+    r.q1 = "not_ok";
+    expect(v.exported(e)).toBe(false);
+    r.q3_severity = 3;
+    expect(v.exported(e)).toBe(true);
+    for (const old of [
+      "q0",
+      "confidence",
+      "q2_turn",
+      "comprehension",
+      "highlights",
+    ]) {
+      const x = clone(e);
+      (x.results[1] as Record<string, unknown>)[old] = 1;
+      expect(v.exported(x)).toBe(false);
+    }
   });
 
   it("reject an unknown category and a malformed contentHash", () => {

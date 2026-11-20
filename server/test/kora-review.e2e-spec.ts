@@ -12,7 +12,7 @@ import {
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import { koraExport } from "./kora-pairs";
+import { koraExport } from "./kora-conversations";
 import {
   koraReviewClient,
   type ReviewTranscript,
@@ -269,7 +269,7 @@ describe("Kora reviews (e2e)", () => {
       s.assignment?.id ?? "",
       exportOf(s, {
         done: [ids(s.assignment)[0]],
-        note: "mail me at someone@example.org",
+        worry: "mail me at someone@example.org",
       }),
     ).expect(200);
     const stored = await h.ctx.dataSource
