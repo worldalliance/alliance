@@ -5,13 +5,18 @@ import type { ReactNode } from "react";
 const Disclosure = ({
   summary,
   summaryClassName,
+  onToggle,
   children,
 }: {
   summary: ReactNode;
   summaryClassName?: string;
+  onToggle?: (open: boolean) => void;
   children: ReactNode;
 }) => (
-  <details className="group/disclosure">
+  <details
+    className="group/disclosure"
+    onToggle={(event) => onToggle?.(event.currentTarget.open)}
+  >
     <summary
       className={cn(
         "flex cursor-pointer list-none items-center gap-1 rounded px-1 py-1.5 hover:bg-zinc-100 [&::-webkit-details-marker]:hidden",
