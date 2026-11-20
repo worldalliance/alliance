@@ -66,7 +66,7 @@ describe("ActionCompletionCurveChart", () => {
 
     fireEvent.click(screen.getByText("Daily"));
     expect(select.value).toBe("2");
-    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.getByText("Loading…")).toBeTruthy();
     expect(
       screen.queryByText("No action completion curves available."),
     ).toBeNull();

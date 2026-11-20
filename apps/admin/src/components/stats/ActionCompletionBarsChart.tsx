@@ -3,6 +3,8 @@ import { cn } from "@alliance/shared/styles/util";
 import { max, scaleLinear } from "d3";
 import React, { useMemo, useState } from "react";
 import type { useActionStats } from "../../lib/useActionStats";
+import { secondaryButtonClass } from "../ui/controlStyles";
+import Section from "../ui/Section";
 
 type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
   usersWithdrawn?: number;
@@ -120,22 +122,22 @@ const ActionCompletionBarsChart: React.FC<{
   }, [hoveredActionBar, actionBarsGeometry]);
 
   return (
-    <div className="relative overflow-visible rounded-xl border border-gray-200 bg-white">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Action Completion Stats
-        </h3>
+    <Section
+      title="Action completion stats"
+      actions={
         <button
+          type="button"
           onClick={() => recalculateActionStats.mutate()}
           disabled={actionStatsLoading}
-          className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-2 disabled:opacity-50"
+          className={secondaryButtonClass}
         >
-          {actionStatsLoading ? "Calculating..." : "Recalculate"}
+          {actionStatsLoading ? "Calculating…" : "Recalculate"}
         </button>
-      </div>
-      <div className="relative p-4">
+      }
+    >
+      <div className="relative">
         {actionStatsLoading && actionStats.length === 0 && (
-          <p className="text-sm text-gray-600">Loading action stats...</p>
+          <p className="text-sm text-zinc-600">Loading action stats…</p>
         )}
         {actionStatsLoadFailed && (
           <p className="text-sm text-red-600">Unable to load action stats.</p>
@@ -420,7 +422,7 @@ const ActionCompletionBarsChart: React.FC<{
           <span className="text-sm text-gray-600">In progress</span>
         </div>
       </div>
-    </div>
+    </Section>
   );
 };
 

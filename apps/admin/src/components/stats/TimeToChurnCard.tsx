@@ -2,6 +2,7 @@ import { bin, max, range, scaleLinear } from "d3";
 import React, { useMemo } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useTimeToChurnSamplesAdmin } from "../../lib/useTimeToChurnSamplesAdmin";
+import Section from "../ui/Section";
 
 const TimeToChurnCard: React.FC = () => {
   const {
@@ -78,23 +79,16 @@ const TimeToChurnCard: React.FC = () => {
   }, [churnDurationsWeeks]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-gray-200">
-        <div className="flex flex-col">
-          <h3 className="text-lg font-semibold text-gray-900">Time to churn</h3>
-          <span className="text-xs text-gray-500">
-            From signing to last completed action
-          </span>
-        </div>
-        {!timeToChurnError && (
-          <div className="text-xs text-gray-500">
-            {timeToChurnSamples.length > 0
-              ? `${timeToChurnSamples.length} churned members`
-              : "No churned members yet"}
-          </div>
-        )}
-      </div>
-      <div className="relative p-4 pb-2">
+    <Section
+      title="Time to churn"
+      description="From signing to last completed action."
+      meta={
+        !timeToChurnError && timeToChurnSamples.length > 0
+          ? `${timeToChurnSamples.length} churned members`
+          : undefined
+      }
+    >
+      <div className="relative">
         {timeToChurnError ? (
           <p className="text-sm text-gray-600">
             {adminRefusalMessage(
@@ -103,7 +97,7 @@ const TimeToChurnCard: React.FC = () => {
             )}
           </p>
         ) : timeToChurnLoading ? (
-          <p className="text-sm text-gray-600">Loading time to churn...</p>
+          <p className="text-sm text-zinc-600">Loading time to churn…</p>
         ) : (
           churnDurationsWeeks.length === 0 && (
             <p className="text-sm text-gray-600">No churned members yet.</p>
@@ -217,7 +211,7 @@ const TimeToChurnCard: React.FC = () => {
           </svg>
         )}
       </div>
-    </div>
+    </Section>
   );
 };
 

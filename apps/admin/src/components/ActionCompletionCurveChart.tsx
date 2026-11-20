@@ -10,6 +10,7 @@ import {
   useActionCompletionCurvesAdmin,
 } from "../lib/useActionCompletionCurvesAdmin";
 import { TimeSeriesChart } from "./TimeSeriesChart";
+import SegmentedControl from "./ui/SegmentedControl";
 
 type ActionCompletionCurveChartProps = {
   title?: string;
@@ -18,6 +19,11 @@ type ActionCompletionCurveChartProps = {
 };
 
 const noCurves: ActionCompletionCurveDto[] = [];
+
+const GRANULARITY_OPTIONS: { value: GranularityMode; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "hourly", label: "Hourly CDF" },
+];
 
 const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
   title = "Completions throughout week",
@@ -167,29 +173,13 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       yAxisFormat={(v) => `${Math.round(v * 100)}%`}
       height={360}
       headerContent={
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 md:ml-auto">
-          <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden">
-            <button
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                granularity === "daily"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setGranularity("daily")}
-            >
-              Daily
-            </button>
-            <button
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                granularity === "hourly"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setGranularity("hourly")}
-            >
-              Hourly CDF
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600">
+          <SegmentedControl
+            label="Granularity"
+            options={GRANULARITY_OPTIONS}
+            value={granularity}
+            onChange={setGranularity}
+          />
           {showDropdown && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-gray-600">

@@ -126,11 +126,8 @@ describe("StatsPage reminder click rates", () => {
   });
 });
 
-const dateInput = (label: string) => {
-  const input = screen.getByText(label).closest("div")?.querySelector("input");
-  if (!input) throw new Error(`no input labelled ${label}`);
-  return input;
-};
+const dailyStats = () => screen.getByRole("region", { name: /^Daily stats/ });
+const dateInput = (label: string) => within(dailyStats()).getByLabelText(label);
 
 describe("StatsPage daily stats", () => {
   it("says the load failed instead of reporting none", async () => {
@@ -148,13 +145,15 @@ describe("StatsPage daily stats", () => {
     renderPage();
     await screen.findByText("No daily stats for this range.");
 
-    fireEvent.change(dateInput("Start date"), {
+    fireEvent.change(dateInput("From"), {
       target: { value: "2026-02-10" },
     });
-    fireEvent.change(dateInput("End date"), {
+    fireEvent.change(dateInput("To"), {
       target: { value: "2026-02-01" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(
+      within(dailyStats()).getByRole("button", { name: "Apply" }),
+    );
 
     await screen.findByText("Start date must be before the end date.");
     expect(
@@ -168,11 +167,15 @@ describe("StatsPage daily stats", () => {
     renderPage();
     await screen.findByText("No daily stats for this range.");
 
-    fireEvent.change(dateInput("Start date"), { target: { value: "" } });
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.change(dateInput("From"), { target: { value: "" } });
+    fireEvent.click(
+      within(dailyStats()).getByRole("button", { name: "Apply" }),
+    );
     await screen.findByText("Please provide valid start and end dates.");
 
-    fireEvent.click(screen.getByRole("button", { name: "Last 30 days" }));
+    fireEvent.click(
+      within(dailyStats()).getByRole("button", { name: "Last 30 days" }),
+    );
 
     expect(
       screen.queryByText("Please provide valid start and end dates."),
@@ -183,13 +186,15 @@ describe("StatsPage daily stats", () => {
     renderPage();
     await screen.findByText("No daily stats for this range.");
 
-    fireEvent.change(dateInput("Start date"), {
+    fireEvent.change(dateInput("From"), {
       target: { value: "2026-02-01" },
     });
-    fireEvent.change(dateInput("End date"), {
+    fireEvent.change(dateInput("To"), {
       target: { value: "2026-02-10" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(
+      within(dailyStats()).getByRole("button", { name: "Apply" }),
+    );
 
     await waitFor(() =>
       expect(
@@ -204,7 +209,7 @@ describe("StatsPage invite funnel", () => {
     renderPage();
 
     await screen.findByText("Finished Onboarding");
-    expect(screen.queryByText("Loading invite funnel...")).toBeNull();
+    expect(screen.queryByText("Loading invite funnel…")).toBeNull();
   });
 
   it("says the load failed instead of charting nothing", async () => {
@@ -213,7 +218,7 @@ describe("StatsPage invite funnel", () => {
     renderPage();
 
     await screen.findByText("Unable to load the invite funnel.");
-    expect(screen.queryByText("Loading invite funnel...")).toBeNull();
+    expect(screen.queryByText("Loading invite funnel…")).toBeNull();
   });
 });
 
@@ -241,15 +246,13 @@ describe("StatsPage members over time", () => {
     const next: Pending<Response>[] = [];
     respondToContractStatusHistory = () => pending(next);
 
-    const section = screen
-      .getByText("Members over time")
-      .closest<HTMLElement>("div.relative");
-    const from = section?.querySelector('input[type="date"]');
-    if (!section || !from) throw new Error("no members over time range input");
-    fireEvent.change(from, { target: { value: "2025-01-01" } });
+    const section = screen.getByRole("region", { name: "Members over time" });
+    fireEvent.change(within(section).getByLabelText("From"), {
+      target: { value: "2025-01-01" },
+    });
     await waitFor(() => expect(next).toHaveLength(1));
 
-    expect(within(section).getByText("Loading...")).toBeTruthy();
+    expect(within(section).getByText("Loading…")).toBeTruthy();
     expect(
       screen.queryByText("No contract status data in this date range."),
     ).toBeNull();
@@ -335,7 +338,7 @@ describe("StatsPage platform tenure cohort", () => {
     viewCohort("4");
     await waitFor(() => expect(next).toHaveLength(1));
 
-    await screen.findByText("Loading cohort...");
+    await screen.findByText("Loading cohort…");
     expect(
       screen.queryByText(
         "Unable to load this cohort right now. Please try again soon.",

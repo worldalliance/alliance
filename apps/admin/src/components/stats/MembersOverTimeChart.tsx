@@ -1,9 +1,9 @@
 import { area, curveMonotoneX, extent, max, scaleLinear, scaleTime } from "d3";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import DateRangeInputs, { type DateRange } from "../ui/DateRangeInputs";
+import Section from "../ui/Section";
 import type { ParsedContractStatusPoint } from "./contractStatusHistory";
-
-type DateRange = { start: string; end: string };
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -121,43 +121,18 @@ const MembersOverTimeChart: React.FC<{
   );
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 p-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">Members over time</h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">From</label>
-            <input
-              type="date"
-              value={contractStatusRange.start}
-              onChange={(e) =>
-                setContractStatusRange((prev) => ({
-                  ...prev,
-                  start: e.target.value,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">To</label>
-            <input
-              type="date"
-              value={contractStatusRange.end}
-              onChange={(e) =>
-                setContractStatusRange((prev) => ({
-                  ...prev,
-                  end: e.target.value,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="relative p-4 pb-0">
+    <Section
+      title="Members over time"
+      actions={
+        <DateRangeInputs
+          value={contractStatusRange}
+          onChange={setContractStatusRange}
+        />
+      }
+    >
+      <div className="relative">
         {contractStatusLoading && parsedContractStatusHistory.length === 0 && (
-          <p className="text-sm text-gray-600">Loading...</p>
+          <p className="text-sm text-zinc-600">Loading…</p>
         )}
         {contractStatusError && (
           <p className="text-sm text-red-600">
@@ -332,7 +307,7 @@ const MembersOverTimeChart: React.FC<{
           <span className="text-sm text-gray-600">Churned Members</span>
         </div>
       </div>
-    </div>
+    </Section>
   );
 };
 

@@ -50,8 +50,8 @@ describe("CompletionRateCharts", () => {
       <CompletionRateCharts actionStats={stats} actionStatsLoading={false} />,
     );
     const weekly = screen
-      .getByText("Non-Cumulative Completion Rate (Weekly)")
-      .closest(".relative")
+      .getByText("Non-cumulative completion rate (weekly)")
+      .closest("section")
       ?.querySelector("svg[viewBox]");
     if (!weekly) throw new Error("no weekly chart");
     weekly.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 350);
@@ -71,8 +71,8 @@ describe("CompletionRateCharts", () => {
       <CompletionRateCharts actionStats={stats} actionStatsLoading={false} />,
     );
     const cumulative = screen
-      .getByText("Cumulative Completion Rate")
-      .closest(".relative")
+      .getByText("Cumulative completion rate")
+      .closest("section")
       ?.querySelector("svg[viewBox]");
     if (!cumulative) throw new Error("no cumulative chart");
     cumulative.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 350);

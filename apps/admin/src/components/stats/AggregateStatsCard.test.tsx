@@ -37,6 +37,28 @@ describe("AggregateStatsCard", () => {
     expect(screen.getByText(/25\.0/)).toBeTruthy();
   });
 
+  it("shows a dash, not 0, for figures with no data behind them", async () => {
+    render(
+      <AggregateStatsCard
+        actionStats={[]}
+        parsedContractStatusHistory={[
+          {
+            date: "2026-02-01",
+            activeCount: 0,
+            churnedCount: 0,
+            totalEverSigned: 0,
+            parsedDate: new Date("2026-02-01T00:00:00Z"),
+          },
+        ]}
+      />,
+      queryWrapper(),
+    );
+
+    await screen.findByText("40");
+    expect(screen.getAllByText("No data")).toHaveLength(3);
+    expect(screen.queryByText(/^0(\.0+)?%$/)).toBeNull();
+  });
+
   it("says so when the stats fail to load", async () => {
     api.alsoServing({
       "GET /analytics/aggregate-stats": () =>

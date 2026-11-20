@@ -103,7 +103,7 @@ const CompletionRateCharts: React.FC<{
   return (
     <>
       <TimeSeriesChart
-        title="Cumulative Completion Rate"
+        title="Cumulative completion rate"
         data={cumulativeCompletionData}
         series={cumulativeCompletionSeries}
         loading={actionStatsLoading}
@@ -136,7 +136,7 @@ const CompletionRateCharts: React.FC<{
       />
 
       <TimeSeriesChart
-        title="Non-Cumulative Completion Rate (Weekly)"
+        title="Non-cumulative completion rate (weekly)"
         data={weeklyCompletionData}
         series={completionRateSeries}
         loading={actionStatsLoading}

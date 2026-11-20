@@ -1,4 +1,5 @@
 import type React from "react";
+import type { DateRange } from "../ui/DateRangeInputs";
 
 export type ChartSeries = {
   key: string;
@@ -18,11 +19,6 @@ export type DataPoint = {
   date?: Date;
   x?: number;
   [key: string]: unknown;
-};
-
-type DateRange = {
-  start: string;
-  end: string;
 };
 
 type NumericRange = {

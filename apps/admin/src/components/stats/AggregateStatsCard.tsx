@@ -1,12 +1,35 @@
 import { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
+import { cn } from "@alliance/shared/styles/util";
 import { minutesInHour } from "date-fns/constants";
 import React, { useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useAggregateStatsAdmin } from "../../lib/useAggregateStatsAdmin";
+import { inputClass } from "../ui/controlStyles";
+import Section from "../ui/Section";
+import StatTile from "../ui/StatTile";
 import {
   monthlyChurnRate as computeMonthlyChurnRate,
   type ParsedContractStatusPoint,
 } from "./contractStatusHistory";
+
+const EXPECTED_MINUTES_PER_MEMBER_WEEK = 15;
+
+const percent = (ratio: number | null, digits: number) =>
+  ratio === null ? null : `${(ratio * 100).toFixed(digits)}%`;
+
+const completionReliability = (actionStats: ActionStatsWithOnboardingDto[]) => {
+  const counted = actionStats.filter((a) => !a.onboarding && !a.optional);
+  const completed = counted.reduce((sum, a) => sum + a.usersCompleted, 0);
+  const assigned = counted.reduce((sum, a) => sum + a.usersJoined, 0);
+  return assigned > 0 ? completed / assigned : null;
+};
+
+const allTimeChurn = (history: ParsedContractStatusPoint[]) => {
+  const latest = history.at(-1);
+  return latest && latest.totalEverSigned > 0
+    ? latest.churnedCount / latest.totalEverSigned
+    : null;
+};
 
 const AggregateStatsCard: React.FC<{
   actionStats: ActionStatsWithOnboardingDto[];
@@ -24,111 +47,72 @@ const AggregateStatsCard: React.FC<{
     [parsedContractStatusHistory],
   );
 
-  return aggregateStatsLoading ? (
-    <div className="text-sm text-gray-600">Loading aggregate stats…</div>
-  ) : aggregateStatsError ? (
-    <div className="text-sm text-red-600">
-      {adminRefusalMessage(
-        aggregateStatsError,
-        "Unable to load aggregate stats.",
-      )}
-    </div>
-  ) : aggregateStats ? (
-    <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-row gap-6">
-          <div className="flex flex-col">
-            <div className="text-sm text-gray-600">Total members</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {aggregateStats.signedUsers}
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="text-sm text-gray-600">Completion reliability</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {(() => {
-                const filtered = actionStats.filter(
-                  (a) => !a.onboarding && !a.optional,
-                );
-                const totalCompleted = filtered.reduce(
-                  (sum, a) => sum + a.usersCompleted,
-                  0,
-                );
-                const totalAssigned = filtered.reduce(
-                  (sum, a) => sum + a.usersJoined,
-                  0,
-                );
-                return totalAssigned > 0
-                  ? ((totalCompleted / totalAssigned) * 100).toFixed(2)
-                  : "[No data]";
-              })()}
-              %
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="text-sm text-gray-600">All-time churn</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {parsedContractStatusHistory.length > 0
-                ? (() => {
-                    const latest =
-                      parsedContractStatusHistory[
-                        parsedContractStatusHistory.length - 1
-                      ];
-                    return latest.totalEverSigned > 0
-                      ? (
-                          (latest.churnedCount / latest.totalEverSigned) *
-                          100
-                        ).toFixed(1)
-                      : "0";
-                  })()
-                : "[No data]"}
-              %
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="text-sm text-gray-600">Last month churn</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {monthlyChurnRate !== null
-                ? monthlyChurnRate.toFixed(1)
-                : "[No data]"}
-              %
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-row gap-6 items-end">
-          <div className="flex flex-col gap-y-1">
-            <div className="text-sm text-gray-600">
-              Total expected weekly member time
-            </div>
-            <div className="text-base font-semibold text-gray-900">
-              {((aggregateStats.signedUsers * 15) / minutesInHour).toFixed(2)}{" "}
-              hours / week
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="text-sm text-gray-600">
-              Annual expected value of member time (assuming{" "}
-              <input
-                type="number"
-                value={assumedHourlyRate}
-                onChange={(e) => setAssumedHourlyRate(Number(e.target.value))}
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm bg-white w-16"
-              />{" "}
-              / hour)
-            </div>
-            <div className="text-base font-semibold text-gray-900">
-              $
-              {(
-                ((aggregateStats.signedUsers * 15) / minutesInHour) *
-                assumedHourlyRate *
-                52
-              ).toFixed(2)}
-            </div>
-          </div>
-        </div>
+  if (aggregateStatsLoading) {
+    return <p className="text-sm text-zinc-600">Loading headline stats…</p>;
+  }
+  if (aggregateStatsError || !aggregateStats) {
+    return (
+      <p role="alert" className="text-sm text-red-600">
+        {adminRefusalMessage(
+          aggregateStatsError,
+          "Unable to load aggregate stats.",
+        )}
+      </p>
+    );
+  }
+  const weeklyHours =
+    (aggregateStats.signedUsers * EXPECTED_MINUTES_PER_MEMBER_WEEK) /
+    minutesInHour;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile label="Total members" value={aggregateStats.signedUsers} />
+        <StatTile
+          label="Completion reliability"
+          value={percent(completionReliability(actionStats), 2)}
+          hint="Excludes onboarding and optional actions"
+        />
+        <StatTile
+          label="All-time churn"
+          value={percent(allTimeChurn(parsedContractStatusHistory), 1)}
+        />
+        <StatTile
+          label="Last month churn"
+          value={
+            monthlyChurnRate === null ? null : `${monthlyChurnRate.toFixed(1)}%`
+          }
+        />
       </div>
+      <Section
+        title="Member time"
+        description={`Assumes ${EXPECTED_MINUTES_PER_MEMBER_WEEK} minutes per member per week.`}
+        actions={
+          <label className="flex items-center gap-2 text-sm text-zinc-600">
+            Hourly rate ($)
+            <input
+              type="number"
+              value={assumedHourlyRate}
+              onChange={(e) => setAssumedHourlyRate(Number(e.target.value))}
+              className={cn(inputClass, "w-20")}
+            />
+          </label>
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <StatTile
+            label="Total expected weekly member time"
+            value={`${weeklyHours.toFixed(2)} hours / week`}
+          />
+          <StatTile
+            label="Annual expected value of member time"
+            value={`$${(weeklyHours * assumedHourlyRate * 52).toFixed(2)}`}
+            hint={`At $${assumedHourlyRate} / hour`}
+          />
+        </div>
+      </Section>
     </div>
-  ) : null;
+  );
 };
 
 export default AggregateStatsCard;

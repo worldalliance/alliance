@@ -1,9 +1,8 @@
 import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { fromDateInputRange } from "../../lib/dateInput";
+import type { DateRange } from "../ui/DateRangeInputs";
 import { parseIsoDate } from "./parseIsoDate";
-
-type DateRange = { start: string; end: string };
 
 const getWeekStartDate = (value: Date): Date => {
   const date = new Date(value);
