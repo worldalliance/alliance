@@ -1,6 +1,7 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { fireEvent, screen, within } from "@testing-library/react";
+import * as revealing from "../lib/revealInScroller";
 import {
   canvas,
   canvasGroups,
@@ -138,12 +139,13 @@ describe("FormBuilder range selection", () => {
     const onCanvas = (label: string) =>
       canvas().getByRole("button", { name: `Select Text Field: ${label}` });
     const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const reveal = jest.spyOn(revealing, "revealInScroller");
 
     selectElement("Label a");
     scroll.mockClear();
     fireEvent.click(checkbox("Label d"));
     expect(scroll.mock.contexts).toContain(onCanvas("Label d"));
-    expect(scroll.mock.contexts).toContain(
+    expect(reveal.mock.calls.map(([element]) => element)).toContain(
       outline().getByRole("button", { name: "Text Field: Label d" }),
     );
     expect(scroll.mock.contexts).not.toContain(onCanvas("Label a"));
