@@ -18,7 +18,7 @@ import {
 } from "../mms-media.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "../mms-thread-event.entity";
 import {
-  type MmsThread,
+  type MmsThreadView,
   type NeedsReplyMember,
   ReplyState,
   THREAD_PAGE_SIZE,
@@ -148,7 +148,7 @@ export class MmsThreadDto {
   @ApiProperty({ description: "Older texts can be loaded with `before`" })
   hasOlder: boolean;
 
-  constructor(input: MmsThread) {
+  constructor(input: MmsThreadView) {
     this.phoneNumber = input.phoneNumber;
     this.textable = input.textable;
     this.optedOut = input.optedOut;

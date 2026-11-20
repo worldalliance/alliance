@@ -5,21 +5,63 @@
 -- holds the original values it joins on.
 -- ============================================================================
 
-UPDATE "mms" m
-SET "to" = '+1555' || lpad(u.id::text, 7, '0')
-FROM "user" u
-WHERE m."to" = u."phoneNumber";
+-- One synthetic number per number a user holds or mms records: a member's from
+-- the lowest id holding it, and each other number its own, counting down from
+-- the top of the range, so staging keeps non-member threads apart and
+-- mms_thread's numbers stay unique. Thread rows for any other number are
+-- dropped, and member-less opt-outs for one get the shared placeholder. Users
+-- and their opt-outs map by user id, so a number two members share splits on
+-- staging.
+CREATE TEMP TABLE anon_number (
+  original  TEXT PRIMARY KEY,
+  synthetic TEXT NOT NULL UNIQUE
+) ON COMMIT DROP;
+
+INSERT INTO anon_number
+SELECT "phoneNumber", '+1555' || lpad(min(id)::text, 7, '0')
+FROM "user"
+WHERE "phoneNumber" IS NOT NULL
+GROUP BY "phoneNumber";
+
+INSERT INTO anon_number
+SELECT original,
+       '+1555' || lpad((9999999 - row_number() OVER (ORDER BY original))::text, 7, '0')
+FROM (SELECT DISTINCT "memberPhoneNumber" AS original FROM "mms") seen
+WHERE original NOT IN (SELECT original FROM anon_number);
 
 UPDATE "mms" m
-SET "from" = '+1555' || lpad(u.id::text, 7, '0')
-FROM "user" u
-WHERE m."from" = u."phoneNumber";
+SET "to" = a.synthetic
+FROM anon_number a
+WHERE m."to" = a.original;
 
--- Our own Twilio number, and any row whose member no longer exists.
+UPDATE "mms" m
+SET "from" = a.synthetic
+FROM anon_number a
+WHERE m."from" = a.original;
+
+-- Our own Twilio number.
 UPDATE "mms" SET "to"   = '+15550000000' WHERE "to"   NOT LIKE '+1555%';
 UPDATE "mms" SET "from" = '+15550000000' WHERE "from" NOT LIKE '+1555%';
 
+-- A snapshot from before prod gained the table has none.
+DO $$
+BEGIN
+  IF to_regclass('mms_thread') IS NOT NULL THEN
+    UPDATE "mms_thread" t
+    SET "phoneNumber" = a.synthetic
+    FROM anon_number a
+    WHERE t."phoneNumber" = a.original;
+
+    DELETE FROM "mms_thread" WHERE "phoneNumber" NOT LIKE '+1555%';
+  END IF;
+END $$;
+
 -- Opt-out records keep both the number and the text the member replied with.
+UPDATE "mms_optout" o
+SET "phoneNumber" = a.synthetic
+FROM anon_number a
+WHERE o."userId" IS NULL AND o."phoneNumber" = a.original;
+
 UPDATE "mms_optout" o
 SET "phoneNumber" = '+1555' || lpad(u.id::text, 7, '0')
 FROM "user" u

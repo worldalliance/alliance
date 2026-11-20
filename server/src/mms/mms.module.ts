@@ -9,6 +9,7 @@ import { MmsMediaService } from "./mms-media.service";
 import { MmsOptout } from "./mms-optout.entity";
 import { MmsThreadEvent } from "./mms-thread-event.entity";
 import { MmsThreadController } from "./mms-thread.controller";
+import { MmsThread } from "./mms-thread.entity";
 import { MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { MmsController } from "./mms.controller";
@@ -18,7 +19,14 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Mms, MmsMedia, MmsOptout, MmsThreadEvent, User]),
+    TypeOrmModule.forFeature([
+      Mms,
+      MmsMedia,
+      MmsOptout,
+      MmsThread,
+      MmsThreadEvent,
+      User,
+    ]),
     forwardRef(() => EventLogModule),
     LinkTrackingModule,
     S3Module,

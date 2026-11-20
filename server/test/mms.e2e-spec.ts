@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
+import { MmsThread } from "src/mms/mms-thread.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
 import { MmsModule } from "src/mms/mms.module";
 import { ReferralSource, User } from "src/user/entities/user.entity";
@@ -353,7 +354,28 @@ describe("Inbound MMS keywords (e2e)", () => {
     const res = await inbound("+14155559999", "STOP");
 
     expect(res.status).toBe(201);
-    expect(await optoutRepo.countBy({ phoneNumber: "+14155559999" })).toBe(0);
+    expect(
+      await optoutRepo.find({
+        where: { phoneNumber: "+14155559999" },
+        relations: { user: true },
+      }),
+    ).toEqual([expect.objectContaining({ user: null, rawBody: "STOP" })]);
+    expect(
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .findOneBy({ phoneNumber: "+14155559999" }),
+    ).toEqual(expect.objectContaining({ optedOut: true }));
+  });
+
+  it("records START on the state of a number nobody has on file", async () => {
+    await inbound("+14155559998", "STOP");
+    await inbound("+14155559998", "START");
+
+    expect(
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .findOneBy({ phoneNumber: "+14155559998" }),
+    ).toEqual(expect.objectContaining({ optedOut: false }));
   });
 
   it("ignores a message that is not a keyword", async () => {

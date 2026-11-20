@@ -8,6 +8,7 @@ import { User } from "src/user/entities/user.entity";
 import { lockPhoneNumber } from "src/user/user.utils";
 import type { EntityManager, Repository } from "typeorm";
 import { z } from "zod";
+import { setNumberOptedOut } from "./mms-number.service";
 import { MmsOptout } from "./mms-optout.entity";
 import { OptOutSource } from "./opt-out-source";
 
@@ -92,18 +93,15 @@ export class MmsUnsubService {
           phoneNumber,
           unsubscribed: true,
         });
-
-        if (matchingUsers.length === 0) {
-          return matchingUsers;
-        }
-
+        await setNumberOptedOut(manager, { phoneNumber, optedOut: true });
+        const holders = matchingUsers.length > 0 ? matchingUsers : [null];
         await mmsOptoutRepository.save(
-          matchingUsers.map((user) =>
+          holders.map((user) =>
             mmsOptoutRepository.create({
               phoneNumber,
               reason,
               rawBody,
-              user: { id: user.id },
+              user: user && { id: user.id },
             }),
           ),
         );
@@ -139,7 +137,12 @@ export class MmsUnsubService {
     const users = await this.userRepository.manager.transaction(
       async (manager) => {
         await lockPhoneNumber(manager, phoneNumber);
-        return setUnsubscribed(manager, { phoneNumber, unsubscribed: false });
+        const matchingUsers = await setUnsubscribed(manager, {
+          phoneNumber,
+          unsubscribed: false,
+        });
+        await setNumberOptedOut(manager, { phoneNumber, optedOut: false });
+        return matchingUsers;
       },
     );
 

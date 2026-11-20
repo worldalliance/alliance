@@ -37,7 +37,7 @@ export enum ReplyState {
   Answered = "answered",
 }
 
-export type MmsThread = {
+export type MmsThreadView = {
   phoneNumber: string | null;
   textable: boolean;
   optedOut: boolean;
@@ -207,7 +207,7 @@ export class MmsThreadService {
   async getThread(params: {
     userId: number;
     before?: number;
-  }): Promise<Result<MmsThread, ThreadRefusal>> {
+  }): Promise<Result<MmsThreadView, ThreadRefusal>> {
     const user = await this.findMember(params.userId);
     if (!user.ok) return user;
     const { phoneNumber } = user.value;
@@ -262,7 +262,7 @@ export class MmsThreadService {
     before: number | undefined,
   ): Promise<
     Result<
-      Pick<MmsThread, "messages" | "hasOlder">,
+      Pick<MmsThreadView, "messages" | "hasOlder">,
       ThreadRefusal.TextNotInThread
     >
   > {

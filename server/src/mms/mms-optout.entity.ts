@@ -44,10 +44,11 @@ export class MmsOptout {
   @ApiProperty()
   rawBody: string;
 
-  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
+  /** Null when no live member held the number as it opted out. */
+  @ManyToOne(() => User, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  @ApiPropertyOptional({ type: () => User })
-  user?: Relation<User>;
+  @ApiPropertyOptional({ type: () => User, nullable: true })
+  user?: Relation<User> | null;
 
   @DeleteDateColumnTz()
   deletedAt: Date | null;
