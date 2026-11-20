@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventType } from "src/eventlog/event-log.entity";
 import type { EventPayloads } from "src/eventlog/event-messages";
@@ -10,6 +11,7 @@ import type { EntityManager, Repository } from "typeorm";
 import { z } from "zod";
 import { numberOptedOut, setNumberOptedOut } from "./mms-number.service";
 import { MmsOptout } from "./mms-optout.entity";
+import { emitThreadChanged } from "./mms.events";
 import { OptOutSource } from "./opt-out-source";
 
 export type OptOutRequest =
@@ -66,6 +68,7 @@ export class MmsUnsubService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly eventLogService: EventLogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /** Opts the number out of texts and audits all members sharing it. */
@@ -109,6 +112,10 @@ export class MmsUnsubService {
       },
     );
 
+    emitThreadChanged(this.eventEmitter, {
+      phoneNumber,
+      needsReplyChanged: true,
+    });
     if (users.length === 0) {
       this.eventLogService.sendMessage({
         type: EventType.SmsUnsubscribe,
@@ -146,6 +153,10 @@ export class MmsUnsubService {
       },
     );
 
+    emitThreadChanged(this.eventEmitter, {
+      phoneNumber,
+      needsReplyChanged: true,
+    });
     if (users.length === 0) {
       this.eventLogService.sendMessage({
         type: EventType.SmsResubscribe,

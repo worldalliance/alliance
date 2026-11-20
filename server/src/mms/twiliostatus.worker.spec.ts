@@ -1,3 +1,4 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { EventLogService } from "src/eventlog/eventlog.service";
 import type { Repository } from "src/utils/Repository";
 import { Mms } from "./mms.entity";
@@ -20,6 +21,7 @@ describe("TwilioStatusWorker", () => {
       {} as MmsService,
       mmsRepository,
       {} as EventLogService,
+      new EventEmitter2(),
     );
     refreshMmsData = jest
       .spyOn(worker, "refreshMmsData")

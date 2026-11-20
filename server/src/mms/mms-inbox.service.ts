@@ -1,5 +1,6 @@
 import { phoneSearchTerm } from "@alliance/common/phone";
 import { Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "src/utils/Repository";
@@ -14,6 +15,7 @@ import { z } from "zod";
 import { MmsNumberService, optedOutSql } from "./mms-number.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "./mms-thread-event.entity";
 import { Mms, MmsDirection } from "./mms.entity";
+import { emitThreadChanged } from "./mms.events";
 
 export enum ReplyState {
   NeedsReply = "needs_reply",
@@ -50,7 +52,7 @@ export type NumberMark = {
   adminId: number;
 };
 
-const ANSWERS_MEMBER: Record<MessageStatus, boolean> = {
+export const ANSWERS_MEMBER: Record<MessageStatus, boolean> = {
   queued: true,
   sending: true,
   sent: true,
@@ -125,6 +127,7 @@ export class MmsInboxService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly mmsNumberService: MmsNumberService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async replyState(phoneNumber: string): Promise<ReplyState> {
@@ -192,10 +195,10 @@ export class MmsInboxService {
   }
 
   /** `apply` calls `record` only when it changes texts, so a mark that changes
-   * nothing leaves no history. `apply` locks the texts it reads in id order, so
-   * a concurrent mark of the same kind on the same number, from any member
-   * sharing it, waits and then finds them changed. A mark of the opposite kind
-   * reads the other texts and doesn't wait. */
+   * nothing leaves no history and announces nothing. `apply` locks the texts it
+   * reads in id order, so a concurrent mark of the same kind on the same number,
+   * from any member sharing it, waits and then finds them changed. A mark of the
+   * opposite kind reads the other texts and doesn't wait. */
   private async mark(
     params: NumberMark,
     apply: (input: {
@@ -204,8 +207,10 @@ export class MmsInboxService {
       record: (kind: MmsThreadEventKind) => Promise<number>;
     }) => Promise<void>,
   ): Promise<void> {
+    let changed = false;
     await this.mmsRepository.manager.transaction(async (manager) => {
       const record = async (kind: MmsThreadEventKind) => {
+        changed = true;
         const event = await manager.save(
           manager.create(MmsThreadEvent, {
             kind,
@@ -217,6 +222,12 @@ export class MmsInboxService {
       };
       await apply({ manager, phoneNumber: params.phoneNumber, record });
     });
+    if (changed) {
+      emitThreadChanged(this.eventEmitter, {
+        phoneNumber: params.phoneNumber,
+        needsReplyChanged: true,
+      });
+    }
   }
 
   /** Longest-waiting first, timed from each number's oldest unanswered text.

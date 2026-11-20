@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { MmsMedia } from "src/mms/mms-media.entity";
 import {
   MAX_COPY_ATTEMPTS,
@@ -11,6 +12,7 @@ import {
   MmsMediaService,
   MmsMediaStatus,
 } from "src/mms/mms-media.service";
+import { MmsEvents } from "src/mms/mms.events";
 import { MmsModule } from "src/mms/mms.module";
 import { IsNull, type Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
@@ -76,9 +78,10 @@ describe("Inbound media copy (e2e)", () => {
     jest.restoreAllMocks();
   });
 
-  it("copies to S3, then deletes the Twilio copy", async () => {
+  it("copies to S3, tells admins, then deletes the Twilio copy", async () => {
     const media = await saveMedia({ from: "+14155558301" });
     twilioAnswers(200);
+    const emit = jest.spyOn(ctx.app.get(EventEmitter2), "emit");
 
     await mediaService.copyToS3([media]);
 
@@ -96,6 +99,10 @@ describe("Inbound media copy (e2e)", () => {
       [`${MEDIA_URL}.json`, "DELETE"],
     ]);
     expect(mediaStatus(await reload(media.id))).toBe(MmsMediaStatus.Ready);
+    expect(emit).toHaveBeenCalledWith(MmsEvents.ThreadChanged, {
+      phoneNumber: "+14155558301",
+      needsReplyChanged: false,
+    });
   });
 
   it("retries deleting the Twilio copy when Twilio refused it", async () => {
@@ -344,15 +351,40 @@ describe("Inbound media copy (e2e)", () => {
     ]);
   });
 
-  it("gives up on media Twilio no longer has", async () => {
+  it("gives up on media Twilio no longer has and tells admins", async () => {
     const media = await saveMedia({ from: "+14155558304" });
     twilioAnswers(404);
+    const emit = jest.spyOn(ctx.app.get(EventEmitter2), "emit");
 
     await mediaService.copyToS3([media]);
 
     const reloaded = await reload(media.id);
     expect(reloaded.copyAttempts).toBe(MAX_COPY_ATTEMPTS);
     expect(mediaStatus(reloaded)).toBe(MmsMediaStatus.Unavailable);
+    expect(emit).toHaveBeenCalledWith(MmsEvents.ThreadChanged, {
+      phoneNumber: "+14155558304",
+      needsReplyChanged: false,
+    });
+  });
+
+  it("tells admins only when a failed copy is the last attempt", async () => {
+    const media = await saveMedia({ from: "+14155558317" });
+    twilioAnswers(500);
+    const emit = jest.spyOn(ctx.app.get(EventEmitter2), "emit");
+
+    await mediaService.copyToS3([media]);
+    expect(emit).not.toHaveBeenCalled();
+
+    await mediaRepo.update(media.id, { copyAttempts: MAX_COPY_ATTEMPTS - 1 });
+    await mediaService.copyToS3([await reload(media.id)]);
+
+    expect(mediaStatus(await reload(media.id))).toBe(
+      MmsMediaStatus.Unavailable,
+    );
+    expect(emit).toHaveBeenCalledWith(MmsEvents.ThreadChanged, {
+      phoneNumber: "+14155558317",
+      needsReplyChanged: false,
+    });
   });
 
   it("logs nothing when another copy finished the row and deleted Twilio's file", async () => {

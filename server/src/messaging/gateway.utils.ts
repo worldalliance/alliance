@@ -142,8 +142,6 @@ export async function disconnectUserSockets(params: {
       }
     }
   } catch (error) {
-    logger.warn(
-      `Failed to disconnect deleted user ${userId}: ${thrownMessage(error)}`,
-    );
+    logger.warn(`Failed to disconnect user ${userId}: ${thrownMessage(error)}`);
   }
 }

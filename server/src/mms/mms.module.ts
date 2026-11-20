@@ -12,6 +12,7 @@ import { MmsOptout } from "./mms-optout.entity";
 import { MmsThreadEvent } from "./mms-thread-event.entity";
 import { MmsThreadController } from "./mms-thread.controller";
 import { MmsThread } from "./mms-thread.entity";
+import { MmsThreadGateway } from "./mms-thread.gateway";
 import { MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { MmsController } from "./mms.controller";
@@ -41,6 +42,7 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
     MmsMediaService,
     MmsNumberService,
     MmsInboxService,
+    MmsThreadGateway,
   ],
   controllers: [MmsController, MmsThreadController],
   exports: [MmsService, MmsNumberService],

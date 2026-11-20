@@ -1,5 +1,6 @@
 import { setEnv } from "@alliance/common/set-env";
 import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { EventLogService } from "src/eventlog/eventlog.service";
 import type { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import type { Repository } from "src/utils/Repository";
@@ -24,6 +25,7 @@ describe("MmsService constructor", () => {
       {} as EventLogService,
       {} as MessageTrackingService,
       {} as MmsNumberService,
+      new EventEmitter2(),
     );
 
   beforeEach(() => {

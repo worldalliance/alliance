@@ -1,5 +1,6 @@
 import { setEnv } from "@alliance/common/set-env";
 import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { EventType } from "src/eventlog/event-log.entity";
 import { renderEvent } from "src/eventlog/event-messages";
 import type {
@@ -59,6 +60,7 @@ describe("MmsService sendStaffText", () => {
       eventLog,
       {} as MessageTrackingService,
       {} as MmsNumberService,
+      new EventEmitter2(),
     );
     service["twilioPhoneNumber"] = "+15555550100";
     previousNodeEnv = process.env.NODE_ENV;

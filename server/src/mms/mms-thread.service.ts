@@ -3,6 +3,7 @@ import { isCanonicalE164 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
 import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
 import { Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { env } from "src/config/env";
@@ -22,6 +23,7 @@ import { MmsNumberService } from "./mms-number.service";
 import { MmsThread } from "./mms-thread.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
+import { emitThreadChanged } from "./mms.events";
 import { MmsService, type StaffSendFailure } from "./mms.service";
 
 export type InboundText = {
@@ -127,10 +129,22 @@ export class MmsThreadService {
     private readonly mmsUnsubService: MmsUnsubService,
     private readonly mmsNumberService: MmsNumberService,
     private readonly mmsInboxService: MmsInboxService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
   async recordInbound(text: InboundText): Promise<MmsMedia[]> {
+    const media = await this.insertInbound(text);
+    if (media === null) return [];
+    emitThreadChanged(this.eventEmitter, {
+      phoneNumber: text.from,
+      needsReplyChanged: true,
+    });
+    return media;
+  }
+
+  /** Null when the SID was already recorded. */
+  private insertInbound(text: InboundText): Promise<MmsMedia[] | null> {
     return this.mmsRepository.manager.transaction(async (manager) => {
       await this.mmsNumberService.ensureThread(text.from, manager);
       const inserted = await manager
@@ -154,7 +168,7 @@ export class MmsThreadService {
         .returning(["id"])
         .execute();
       const row: unknown = inserted.raw[0];
-      if (row === undefined) return [];
+      if (row === undefined) return null;
       const { id: mmsId } = z.object({ id: z.coerce.number() }).parse(row);
       const mediaRepository = manager.getRepository(MmsMedia);
       return mediaRepository.save(

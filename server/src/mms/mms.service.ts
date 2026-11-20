@@ -8,6 +8,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -31,6 +32,7 @@ import type {
 import { env } from "../config/env";
 import { MmsNumberService } from "./mms-number.service";
 import { Mms, MmsDirection } from "./mms.entity";
+import { emitThreadChanged } from "./mms.events";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
 const UK_SENDER_ID = "The Alliance";
@@ -90,6 +92,7 @@ export class MmsService {
     private readonly eventLogService: EventLogService,
     private readonly messageTracking: MessageTrackingService,
     private readonly mmsNumberService: MmsNumberService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     if (env("NODE_ENV") === NodeEnv.Test) {
       return;
@@ -397,6 +400,15 @@ export class MmsService {
     return to.startsWith("+44") ? UK_SENDER_ID : this.twilioPhoneNumber;
   }
 
+  private async saveOutbound(mms: Mms): Promise<Mms> {
+    const saved = await this.mmsRepository.save(mms);
+    emitThreadChanged(this.eventEmitter, {
+      phoneNumber: saved.to,
+      needsReplyChanged: saved.sentById !== null,
+    });
+    return saved;
+  }
+
   private saveSent(params: {
     message: SentMessage;
     to: string;
@@ -406,7 +418,7 @@ export class MmsService {
     createdAt?: Date;
   }): Promise<Mms> {
     const { message, to, body, cid, sentById, createdAt } = params;
-    return this.mmsRepository.save(
+    return this.saveOutbound(
       this.mmsRepository.create({
         to,
         from: this.senderFor(to),
@@ -431,7 +443,7 @@ export class MmsService {
     sentById: number | null;
   }): Promise<Mms> {
     const { to, body, cid, sentById } = params;
-    return this.mmsRepository.save(
+    return this.saveOutbound(
       this.mmsRepository.create({
         to,
         from: "+15555550100",
