@@ -9,6 +9,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { format, isThisYear, isToday } from "date-fns";
 import { useId } from "react";
 import { Form, href, Link, useSearchParams } from "react-router";
+import ComposingNotice from "../components/texts/ComposingNotice";
 import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { textPreview, threadContactName } from "../lib/memberTexts";
@@ -130,23 +131,30 @@ function ThreadRow({ thread }: { thread: ThreadSummaryDto }) {
       to={href("/texts/:threadId", { threadId: thread.threadId })}
       className="flex flex-col gap-0.5 px-3 py-2 hover:bg-zinc-50"
     >
-      <span className="flex justify-between gap-2 text-sm">
-        <span className="font-medium">
-          {threadContactName(thread)}
-          {thread.members.length > 0 && (
-            <span className="font-normal text-zinc-600">
-              {" · "}
-              {formatPhoneNumberForDisplay(thread.phoneNumber)}
-            </span>
-          )}
-        </span>
+      <div className="flex justify-between gap-2 text-sm">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="font-medium">
+            {threadContactName(thread)}
+            {thread.members.length > 0 && (
+              <span className="font-normal text-zinc-600">
+                {" · "}
+                {formatPhoneNumberForDisplay(thread.phoneNumber)}
+              </span>
+            )}
+          </span>
+          <ComposingNotice
+            phoneNumber={thread.phoneNumber}
+            announce={false}
+            className="truncate"
+          />
+        </div>
         <span className="text-zinc-600 shrink-0">
           {format(
             at,
             isToday(at) ? "h:mm a" : isThisYear(at) ? "MMM d" : "MMM d, yyyy",
           )}
         </span>
-      </span>
+      </div>
       <span className="truncate text-sm text-zinc-600">
         {PREVIEW_PREFIX[thread.lastMessageDirection]}
         {textPreview(thread.lastMessageBody)}

@@ -117,6 +117,7 @@ function Composer({
   return (
     <TextComposer
       recipientName={contactName}
+      phoneNumber={thread.phoneNumber}
       timeZone={otherZones.length === 0 ? (timeZone ?? null) : null}
       send={send}
     />

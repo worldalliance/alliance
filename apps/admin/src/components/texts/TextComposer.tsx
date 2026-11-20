@@ -14,13 +14,18 @@ import {
   memberLocalTime,
   QUIET_HOURS_LABEL,
 } from "../../lib/memberTexts";
+import { useReportComposing } from "../../lib/useReportComposing";
+import ComposingNotice from "./ComposingNotice";
 
 export default function TextComposer({
   recipientName,
+  phoneNumber,
   timeZone,
   send,
 }: {
   recipientName: string;
+  /** The thread's number, as its query matches texts by. */
+  phoneNumber: string;
   timeZone: string | null;
   send: (body: string) => Promise<unknown>;
 }) {
@@ -36,6 +41,7 @@ export default function TextComposer({
   const sendAnyway = useRef<HTMLButtonElement>(null);
   const warning = quietWarning !== null;
   const now = minuteStart(useClockMinute());
+  useReportComposing(phoneNumber, body);
 
   useEffect(() => {
     if (warning) sendAnyway.current?.focus();
@@ -103,9 +109,12 @@ export default function TextComposer({
         void submit({ confirmedQuietHours: false });
       }}
     >
-      <label htmlFor={inputId} className="block text-xs text-zinc-600">
-        Text {recipientName}
-      </label>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={inputId} className="block text-xs text-zinc-600">
+          Text {recipientName}
+        </label>
+        <ComposingNotice phoneNumber={phoneNumber} />
+      </div>
       <TextareaAutosize
         ref={textarea}
         id={inputId}

@@ -1,4 +1,7 @@
 import {
+  type Composer,
+  composersSchema,
+  type ComposingMessage,
   MmsThreadsEvent,
   threadChangedSchema,
 } from "@alliance/common/mmsThreads";
@@ -27,15 +30,25 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { Socket } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 import { getWebSocketUrl } from "./config";
 
 type MmsThreadsLive = {
   /** While false, pushes may be missed, so queries poll at their usual rate. */
   connected: boolean;
+  /** Other admins composing a text, one entry per admin and number. */
+  composers: Composer[];
+  reportComposing: (phoneNumber: string) => void;
+  stopComposing: (phoneNumber: string) => void;
 };
 
-export const OFFLINE: MmsThreadsLive = { connected: false };
+export const OFFLINE: MmsThreadsLive = {
+  connected: false,
+  composers: [],
+  reportComposing: () => {},
+  stopComposing: () => {},
+};
 
 export const MmsThreadsLiveContext = createContext<MmsThreadsLive>(OFFLINE);
 
@@ -111,9 +124,12 @@ type PushSource = {
 export function listenToMmsThreads(params: {
   socket: PushSource;
   queryClient: QueryClient;
+  /** The signed-in admin, left out of the composers. */
+  ownId: number;
   setConnected: (connected: boolean) => void;
+  setComposers: (composers: Composer[]) => void;
 }): void {
-  const { socket, queryClient, setConnected } = params;
+  const { socket, queryClient, ownId, setConnected, setComposers } = params;
   const throttledRefetch = (queryKey: readonly unknown[]) =>
     throttle(() => refetchFresh(queryClient, { queryKey }), LIST_REFETCH_MS);
   const refetchNeedsReply = throttledRefetch(queryKeys.needsReplyAdmin());
@@ -128,7 +144,15 @@ export function listenToMmsThreads(params: {
       refetchFresh(queryClient, { queryKey });
     }
   });
-  socket.on("disconnect", () => setConnected(false));
+  socket.on("disconnect", () => {
+    setConnected(false);
+    setComposers([]);
+  });
+  socket.on(MmsThreadsEvent.Composing, (data) =>
+    setComposers(
+      composersSchema.parse(data).filter((c) => c.adminId !== ownId),
+    ),
+  );
   socket.on(MmsThreadsEvent.ThreadChanged, (data) => {
     const { phoneNumber, needsReplyChanged } = threadChangedSchema.parse(data);
     if (needsReplyChanged) refetchNeedsReply();
@@ -141,27 +165,63 @@ export function listenToMmsThreads(params: {
 export function MmsThreadsLiveProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
   // Waits for sign-in, whose bootstrap refreshes a lapsed access cookie.
-  const signedIn = useAuth().user !== undefined;
+  const ownId = useAuth().user?.id;
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [composers, setComposers] = useState<Composer[]>([]);
 
   useEffect(() => {
-    if (!signedIn) return;
-    const { socket, close } = connectMessagingSocket("/mms-threads", {
+    if (ownId === undefined) return;
+    const { socket: next, close } = connectMessagingSocket("/mms-threads", {
       getWebSocketUrl,
       onRefreshToken: refreshSession,
     });
-    listenToMmsThreads({ socket, queryClient, setConnected });
+    listenToMmsThreads({
+      socket: next,
+      queryClient,
+      ownId,
+      setConnected,
+      setComposers,
+    });
+    setSocket(next);
     return () => {
       close();
+      setSocket(null);
       setConnected(false);
+      setComposers([]);
     };
-  }, [queryClient, signedIn]);
+  }, [queryClient, ownId]);
 
-  const value = useMemo((): MmsThreadsLive => ({ connected }), [connected]);
+  // Stable while the socket is, so a composer's cleanup doesn't run whenever
+  // someone else starts composing.
+  const actions = useMemo(
+    (): Pick<MmsThreadsLive, "reportComposing" | "stopComposing"> => ({
+      reportComposing: (phoneNumber) =>
+        socket?.volatile.emit(MmsThreadsEvent.Composing, {
+          phoneNumber,
+        } satisfies ComposingMessage),
+      stopComposing: (phoneNumber) =>
+        socket?.emit(MmsThreadsEvent.StoppedComposing, {
+          phoneNumber,
+        } satisfies ComposingMessage),
+    }),
+    [socket],
+  );
+  const value = useMemo(
+    (): MmsThreadsLive => ({ connected, composers, ...actions }),
+    [connected, composers, actions],
+  );
 
   return (
     <MmsThreadsLiveContext.Provider value={value}>
       {children}
     </MmsThreadsLiveContext.Provider>
   );
+}
+
+export function useComposerNames(phoneNumber: string): string[] {
+  const { composers } = useMmsThreadsLive();
+  return composers
+    .filter((c) => c.phoneNumber === phoneNumber)
+    .map((c) => c.adminName);
 }

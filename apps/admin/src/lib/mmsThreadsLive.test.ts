@@ -1,3 +1,4 @@
+import type { Composer } from "@alliance/common/mmsThreads";
 import type { MmsThreadDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
@@ -180,15 +181,27 @@ const listening = () => {
   const { client, invalidated } = setup();
   const listeners = new Map<string, (data: unknown) => void>();
   const states: boolean[] = [];
+  let composers: Composer[] = [];
   listenToMmsThreads({
     socket: { on: (event, listener) => listeners.set(event, listener) },
     queryClient: client,
+    ownId: 7,
     setConnected: (connected) => states.push(connected),
+    setComposers: (next) => {
+      composers = next;
+    },
   });
   const push = (event: string, data?: unknown) => listeners.get(event)?.(data);
   const changed = (needsReplyChanged: boolean) =>
     push("thread-changed", { phoneNumber: "+14155550002", needsReplyChanged });
-  return { client, invalidated, states, push, changed };
+  return {
+    client,
+    invalidated,
+    states,
+    push,
+    changed,
+    composers: () => composers,
+  };
 };
 
 it("refetches every thread, Needs reply and the Texts list on each connect", () => {
@@ -289,4 +302,22 @@ it("refetches the Texts list on any change, at most once per interval", () => {
 it("throws on a malformed push", () => {
   const { push } = listening();
   expect(() => push("thread-changed", { phoneNumber: 1 })).toThrow();
+});
+
+const priya = { phoneNumber: "+14155550001", adminId: 8, adminName: "Priya" };
+
+it("lists other admins composing, leaving out the signed-in admin", () => {
+  const { push, composers } = listening();
+  push("composing", [
+    { phoneNumber: "+14155550001", adminId: 7, adminName: "Sam" },
+    priya,
+  ]);
+  expect(composers()).toEqual([priya]);
+});
+
+it("clears composers on disconnect", () => {
+  const { push, composers } = listening();
+  push("composing", [priya]);
+  push("disconnect");
+  expect(composers()).toEqual([]);
 });

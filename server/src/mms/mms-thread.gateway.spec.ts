@@ -5,7 +5,7 @@ import type { SessionService } from "src/auth/session.service";
 import { UserEvents } from "src/user/user.events";
 import { MmsThreadGateway } from "./mms-thread.gateway";
 
-// handleConnection reads only data and handshake.issued, and calls only
+// handleConnection reads only data and handshake.issued, and calls emit and
 // disconnect; the revoke scan calls only fetchSockets.
 const setup = () => {
   const eventEmitter = new EventEmitter2();
@@ -23,6 +23,7 @@ const setup = () => {
       Object.assign({} as Socket, {
         data: { userId: 3, name: "Sam" },
         handshake: { issued },
+        emit: jest.fn(),
         disconnect,
       }),
     );

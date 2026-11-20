@@ -41,6 +41,7 @@ export default function MemberTextsSection({
           <TextComposer
             key={member.id}
             recipientName={member.name}
+            phoneNumber={data.phoneNumber}
             timeZone={member.timeZone}
             send={send}
           />

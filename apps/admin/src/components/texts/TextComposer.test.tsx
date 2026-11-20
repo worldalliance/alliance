@@ -9,6 +9,7 @@ import {
   within,
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
+import { MmsThreadsLiveContext, OFFLINE } from "../../lib/mmsThreadsLive";
 import TextComposer from "./TextComposer";
 
 afterEach(resetClock);
@@ -28,16 +29,20 @@ const composer = () => {
 const renderComposer = (params: {
   send: (body: string) => Promise<unknown>;
   now: Date;
+  live?: typeof OFFLINE;
 }) => {
   setNow(params.now);
   render(
-    <ToastProvider>
-      <TextComposer
-        recipientName="Sam"
-        timeZone="America/Los_Angeles"
-        send={params.send}
-      />
-    </ToastProvider>,
+    <MmsThreadsLiveContext.Provider value={params.live ?? OFFLINE}>
+      <ToastProvider>
+        <TextComposer
+          recipientName="Sam"
+          phoneNumber="+14155550109"
+          timeZone="America/Los_Angeles"
+          send={params.send}
+        />
+      </ToastProvider>
+    </MmsThreadsLiveContext.Provider>,
   );
   fireEvent.change(screen.getByLabelText("Text Sam"), {
     target: { value: "See you Tuesday" },
@@ -52,6 +57,21 @@ it("sends during the day and clears the box", async () => {
 
   await waitFor(() => expect(sent).toEqual(["See you Tuesday"]));
   expect(screen.getByLabelText<HTMLTextAreaElement>("Text Sam").value).toBe("");
+});
+
+it("reports composing to its number", () => {
+  const reported: string[] = [];
+  renderComposer({
+    send: async () => {},
+    now: NOON_IN_LA,
+    live: {
+      ...OFFLINE,
+      connected: true,
+      reportComposing: (phoneNumber) => reported.push(phoneNumber),
+    },
+  });
+
+  expect(reported).toEqual(["+14155550109"]);
 });
 
 it("keeps what the admin typed while a send was in flight", async () => {
@@ -269,6 +289,7 @@ it("keeps a failure that lands after the composer closed until dismissed, with t
       {open && (
         <TextComposer
           recipientName="Sam"
+          phoneNumber="+14155550101"
           timeZone="America/Los_Angeles"
           send={send}
         />

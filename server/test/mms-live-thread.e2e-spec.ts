@@ -1,6 +1,7 @@
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { randomUUID } from "crypto";
 import { io, type Socket } from "socket.io-client";
+import { MmsThreadGateway } from "src/mms/mms-thread.gateway";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
 import { ReferralSource } from "src/user/entities/user.entity";
 import { UserEvents } from "src/user/user.events";
@@ -237,5 +238,65 @@ describe("Live SMS threads socket (e2e)", () => {
     await after;
 
     expect(numbers.filter((n) => n === "+14155558214")).toHaveLength(1);
+  });
+
+  it("shows other admins who is composing until they stop or leave", async () => {
+    const other = await saveAdmin("Priya");
+    const watcher = connect(ctx().adminAccessToken);
+    await next(watcher, "composing");
+    const composer = connect(signAccessToken(ctx().jwtService, other));
+    await next(composer, "connect");
+    type Composers = { adminName: string }[];
+    const hasPriya = (list: Composers) =>
+      list.some((c) => c.adminName === "Priya");
+
+    const shown = nextMatching(watcher, "composing", hasPriya);
+    composer.emit("composing", { phoneNumber: "+14155558242" });
+    expect(await shown).toEqual([
+      { phoneNumber: "+14155558242", adminId: other.id, adminName: "Priya" },
+    ]);
+
+    const stopped = nextMatching<Composers>(
+      watcher,
+      "composing",
+      (l) => !hasPriya(l),
+    );
+    composer.emit("stopped-composing", { phoneNumber: "+14155558242" });
+    await stopped;
+
+    const shownAgain = nextMatching(watcher, "composing", hasPriya);
+    composer.emit("composing", { phoneNumber: "+14155558242" });
+    await shownAgain;
+    const left = nextMatching<Composers>(
+      watcher,
+      "composing",
+      (l) => !hasPriya(l),
+    );
+    composer.disconnect();
+    await left;
+  });
+
+  it("logs a composing report it can't read", async () => {
+    const warn = jest
+      .spyOn(ctx().app.get(MmsThreadGateway)["logger"], "warn")
+      .mockImplementation(() => {});
+    const client = connect(ctx().adminAccessToken);
+    await next(client, "connect");
+
+    client.emit("composing", { phoneNumber: 42 });
+    client.emit("stopped-composing", {});
+    const handled = nextMatching<{ phoneNumber: string }[]>(
+      client,
+      "composing",
+      (list) => list.some((c) => c.phoneNumber === "+14155558243"),
+    );
+    client.emit("composing", { phoneNumber: "+14155558243" });
+    await handled;
+
+    expect(warn.mock.calls.map(([line]) => String(line))).toEqual([
+      expect.stringContaining("malformed composing"),
+      expect.stringContaining("malformed stopped-composing"),
+    ]);
+    warn.mockRestore();
   });
 });

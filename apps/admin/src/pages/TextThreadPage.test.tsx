@@ -8,6 +8,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
 import TextThreadPage from "./TextThreadPage";
 
 const THREAD_ID = "00000000-0000-4000-8000-000000000001";
@@ -104,22 +105,43 @@ beforeEach(() => {
   };
 });
 
-const renderPage = () => {
+const renderPage = (live = OFFLINE) => {
   const { wrapper: Wrapper, client } = queryWrapper();
   client.setQueryData(queryKeys.needsReplyAdmin(), []);
   render(
-    <Wrapper>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/texts/${THREAD_ID}`]}>
-          <Routes>
-            <Route path="/texts/:threadId" element={<TextThreadPage />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-    </Wrapper>,
+    <MmsThreadsLiveContext.Provider value={live}>
+      <Wrapper>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/texts/${THREAD_ID}`]}>
+            <Routes>
+              <Route path="/texts/:threadId" element={<TextThreadPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </Wrapper>
+    </MmsThreadsLiveContext.Provider>,
   );
   return client;
 };
+
+it("reports a draft under the number, and shows who else is replying to it", async () => {
+  const reported: string[] = [];
+  renderPage({
+    ...OFFLINE,
+    connected: true,
+    composers: [
+      { phoneNumber: "+14155550101", adminId: 2, adminName: "Priya" },
+    ],
+    reportComposing: (phoneNumber) => reported.push(phoneNumber),
+  });
+
+  fireEvent.change(await screen.findByLabelText("Text (415) 555-0101"), {
+    target: { value: "Happy to help" },
+  });
+
+  expect(reported).toEqual(["+14155550101"]);
+  expect(screen.getByText("Priya is replying…")).toBeTruthy();
+});
 
 it("names a number with no member by the number, and sends in its thread", async () => {
   renderPage();

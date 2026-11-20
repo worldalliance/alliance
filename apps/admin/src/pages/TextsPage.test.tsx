@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
 import TextsPage from "./TextsPage";
 
 const summary = (n: number, overrides: Partial<ThreadSummaryDto> = {}) => ({
@@ -65,19 +66,36 @@ beforeEach(() => {
   failPage = null;
 });
 
-const renderPage = (path = "/texts") => {
+const renderPage = (path = "/texts", live = OFFLINE) => {
   const { wrapper: Wrapper } = queryWrapper();
   const router = createMemoryRouter(
     [{ path: "/texts", element: <TextsPage /> }],
     { initialEntries: [path] },
   );
   render(
-    <Wrapper>
-      <RouterProvider router={router} />
-    </Wrapper>,
+    <MmsThreadsLiveContext.Provider value={live}>
+      <Wrapper>
+        <RouterProvider router={router} />
+      </Wrapper>
+    </MmsThreadsLiveContext.Provider>,
   );
   return router;
 };
+
+it("names an admin replying on that number's row", async () => {
+  renderPage("/texts", {
+    ...OFFLINE,
+    composers: [
+      { phoneNumber: summary(2).phoneNumber, adminId: 2, adminName: "Priya" },
+    ],
+  });
+
+  const row = await screen.findByRole("link", { name: /\(415\) 555-0102/ });
+  expect(row.textContent).toContain("Priya is replying…");
+  expect(screen.getByRole("link", { name: /Sam/ }).textContent).not.toContain(
+    "replying",
+  );
+});
 
 it("lists threads by member name or number, linking to each", async () => {
   renderPage();
