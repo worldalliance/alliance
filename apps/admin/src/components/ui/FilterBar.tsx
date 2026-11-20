@@ -250,7 +250,7 @@ const FilterBar = ({ search, filters, ref }: FilterBarProps) => {
             align="start"
             sideOffset={4}
           >
-            <Popover.Popup className="flex min-w-56 flex-col gap-2 rounded-md border border-zinc-200 bg-white p-2 shadow-lg outline-hidden">
+            <Popover.Popup className="flex max-h-[var(--available-height)] min-w-56 flex-col gap-2 overflow-y-auto rounded-md border border-zinc-200 bg-white p-2 shadow-lg outline-hidden">
               <Popover.Title className="sr-only">Filters</Popover.Title>
               {filters.map((filter) => (
                 <FilterControl key={filter.key} filter={filter} />
