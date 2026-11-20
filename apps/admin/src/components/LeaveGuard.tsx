@@ -1,6 +1,13 @@
-import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { type BlockerFunction, useBlocker } from "react-router";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { type BlockerFunction, useBlocker, useNavigation } from "react-router";
 import { LeaveGuardContext } from "../lib/useLeaveGuard";
+import { dropPendingSearchParams } from "../lib/useSearchParam";
 
 /** The one navigation blocker behind every `useLeaveGuard` inside it. */
 const LeaveGuard = ({ children }: { children: ReactNode }) => {
@@ -11,6 +18,12 @@ const LeaveGuard = ({ children }: { children: ReactNode }) => {
       [guards],
     ),
   );
+  // A ref, so a navigation settling while blocked doesn't ask again.
+  const navigation = useNavigation();
+  const inFlight = useRef(navigation.location);
+  useEffect(() => {
+    inFlight.current = navigation.location;
+  });
 
   useEffect(() => {
     if (blocker.state !== "blocked") return;
@@ -21,6 +34,7 @@ const LeaveGuard = ({ children }: { children: ReactNode }) => {
     ) {
       blocker.proceed();
     } else {
+      dropPendingSearchParams(inFlight.current);
       blocker.reset();
     }
   }, [blocker]);
