@@ -37,6 +37,16 @@ const api: AgentApi = {
   onEvent: (listener) => listen(IpcChannel.Event, listener),
   onConversationRemoved: (listener) =>
     listen(IpcChannel.ConversationRemoved, listener),
+  repositoryState: () => invoke(IpcChannel.RepositoryState),
+  onRepositoryChanged: (listener) =>
+    listen(IpcChannel.RepositoryChanged, listener),
+  cloneRepository: () => invoke(IpcChannel.RepositoryClone),
+  changeCloneFolder: () => invoke(IpcChannel.RepositoryChangeCloneFolder),
+  cancelClone: () => ipcRenderer.send(IpcChannel.RepositoryCancelClone),
+  cancelUpdate: () => ipcRenderer.send(IpcChannel.RepositoryCancelUpdate),
+  useExistingRepository: () => invoke(IpcChannel.RepositoryUseExisting),
+  updateRepository: () => invoke(IpcChannel.RepositoryUpdate),
+  checkRepositoryAgain: () => invoke(IpcChannel.RepositoryCheckAgain),
 };
 
 contextBridge.exposeInMainWorld("agent", api);

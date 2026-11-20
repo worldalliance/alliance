@@ -1,6 +1,12 @@
 import { expect, onTestFinished, test } from "bun:test";
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../common/src/result";
@@ -90,6 +96,31 @@ test("returns once the CLI exits while a process it started holds its output ope
   expect(result).toEqual(
     R.success({ code: 0, signal: null, stdout, stderr: "" }),
   );
+});
+
+test("reports stderr as it arrives, before the CLI exits", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "cli-process-test-"));
+  const heard = path.join(dir, "heard");
+  const chunks: string[] = [];
+  try {
+    // The CLI waits for the first chunk to be heard before it writes the second and exits.
+    const result = await runCli(bun, {
+      args: [
+        "-e",
+        `const fs = require("fs"); process.stderr.write("a"); while (!fs.existsSync(${JSON.stringify(heard)})) Bun.sleepSync(10); process.stderr.write("b")`,
+      ],
+      onStderr: (chunk) => {
+        if (!chunks.length) writeFileSync(heard, "");
+        chunks.push(chunk);
+      },
+    });
+    expect(result).toEqual(
+      R.success({ code: 0, signal: null, stdout: "", stderr: "ab" }),
+    );
+    expect(chunks.join("")).toBe("ab");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("reports a run aborted after the CLI exited as finished", async () => {

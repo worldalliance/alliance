@@ -1,9 +1,9 @@
-import { accessSync, constants, statSync } from "node:fs";
 import path from "node:path";
 import { R, type Result } from "../../../../common/src/result";
 import { AgentKind, agentWords } from "../shared/agent-kind";
 import { CLAUDE_CODE_VERSION } from "./agent/claude/protocol";
 import { CODEX_VERSION } from "./agent/codex/version";
+import { findOnPath } from "./path-search";
 
 const cli = {
   [AgentKind.Claude]: {
@@ -41,17 +41,7 @@ export function findExecutable(params: {
   const named = params.env[variable];
   // Sessions spawn the CLI in the user's folder, so a relative path would resolve differently there.
   if (named) return R.success(path.resolve(named));
-  const found = (params.env.PATH ?? "")
-    .split(path.delimiter)
-    .filter(Boolean)
-    .map((dir) => path.resolve(dir, command))
-    .find((file) => {
-      const isFile = R.fromThrowable(() => {
-        accessSync(file, constants.X_OK);
-        return statSync(file).isFile();
-      });
-      return R.isSuccess(isFile) && isFile.value;
-    });
+  const found = findOnPath(command, params.env);
   return R.fromNullable(
     found,
     new Error(

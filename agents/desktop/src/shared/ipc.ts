@@ -2,6 +2,7 @@ import type { Result } from "../../../../common/src/result";
 import type { AgentEvent } from "./agent-event";
 import type { AgentKind } from "./agent-kind";
 import type { Conversation } from "./conversation";
+import type { Problem, RepositoryState } from "./repository";
 
 export type { Conversation } from "./conversation";
 
@@ -17,9 +18,21 @@ export enum IpcChannel {
   Interrupt = "session:interrupt",
   Event = "session:event",
   ConversationRemoved = "conversation:removed",
+  RepositoryState = "repository:state",
+  RepositoryChanged = "repository:changed",
+  RepositoryClone = "repository:clone",
+  RepositoryChangeCloneFolder = "repository:change-clone-folder",
+  RepositoryCancelClone = "repository:cancel-clone",
+  RepositoryCancelUpdate = "repository:cancel-update",
+  RepositoryUseExisting = "repository:use-existing",
+  RepositoryUpdate = "repository:update",
+  RepositoryCheckAgain = "repository:check-again",
 }
 
 export type IpcResult<T> = Result<T, string>;
+
+/** Succeeds with the problem that stopped a repository action, or undefined once it is done or the user cancelled its folder picker. */
+export type RepositoryReply = IpcResult<Problem | undefined>;
 
 export type SessionEvent = { sessionId: string; event: AgentEvent };
 
@@ -28,6 +41,7 @@ export type RendererEvents = {
   [IpcChannel.Event]: SessionEvent;
   /** The id of a new conversation removed because its CLI exited before reading its first message. */
   [IpcChannel.ConversationRemoved]: string;
+  [IpcChannel.RepositoryChanged]: RepositoryState;
 };
 
 /** What each invoked channel's main-process handler returns. */
@@ -42,6 +56,12 @@ export type IpcReplies = {
     turnRunning: boolean;
   }>;
   [IpcChannel.Send]: IpcResult<void>;
+  [IpcChannel.RepositoryState]: IpcResult<RepositoryState>;
+  [IpcChannel.RepositoryClone]: RepositoryReply;
+  [IpcChannel.RepositoryChangeCloneFolder]: RepositoryReply;
+  [IpcChannel.RepositoryUseExisting]: RepositoryReply;
+  [IpcChannel.RepositoryUpdate]: RepositoryReply;
+  [IpcChannel.RepositoryCheckAgain]: RepositoryReply;
 };
 
 type Reply<C extends keyof IpcReplies> = Promise<IpcReplies[C]>;
@@ -68,4 +88,18 @@ export type AgentApi = {
   onEvent(listener: (event: SessionEvent) => void): () => void;
   /** Hears the id of a new conversation removed because its CLI exited before reading its first message. */
   onConversationRemoved(listener: (id: string) => void): () => void;
+  repositoryState(): Reply<IpcChannel.RepositoryState>;
+  onRepositoryChanged(listener: (state: RepositoryState) => void): () => void;
+  /** Clones into the folder a not-set-up state names. */
+  cloneRepository(): Reply<IpcChannel.RepositoryClone>;
+  /** Picks the folder to clone into, restarting a clone in progress there. */
+  changeCloneFolder(): Reply<IpcChannel.RepositoryChangeCloneFolder>;
+  cancelClone(): void;
+  /** Stops an update's download; once git is fast-forwarding, the update finishes. */
+  cancelUpdate(): void;
+  /** Picks an existing copy of the repository and saves it as the user's choice. */
+  useExistingRepository(): Reply<IpcChannel.RepositoryUseExisting>;
+  /** Fast-forwards an outdated copy to the latest main, resolving once done. */
+  updateRepository(): Reply<IpcChannel.RepositoryUpdate>;
+  checkRepositoryAgain(): Reply<IpcChannel.RepositoryCheckAgain>;
 };

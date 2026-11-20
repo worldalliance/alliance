@@ -3,6 +3,7 @@ import { z } from "zod";
 import { R } from "../../../../../common/src/result";
 import { AgentKind, agentWords, defaultAgent } from "../../shared/agent-kind";
 import type { Conversation, IpcResult } from "../../shared/ipc";
+import { repositoryFolder } from "../../shared/repository";
 import { agent } from "./agent";
 import { useAgentAccess } from "./agent-access";
 import {
@@ -19,9 +20,11 @@ import {
 } from "./chat-state";
 import { ChatView } from "./components/ChatView";
 import type { Draft } from "./components/Composer";
+import { RepositoryView } from "./components/RepositoryView";
 import { type Listed, Sidebar } from "./components/Sidebar";
 import { type NewConversation, StartView } from "./components/StartView";
 import { focusIfLost } from "./focus";
+import { useRepository } from "./repository";
 
 enum Opened {
   Opening = "opening",
@@ -33,7 +36,7 @@ type OpenState = Opened | { problem: string };
 const newConversationDraft = "new";
 
 const draftsKey = "drafts";
-const chosenFolderKey = "chosen-folder";
+const chosenFolderKey = "new-conversation-folder";
 const storedDrafts = z.record(z.string(), z.string());
 
 // A read can finish after a start this window made, or miss one the window's previous load made, so it adds to the list rather than replacing it.
@@ -71,6 +74,8 @@ export function App() {
     new Set(),
   );
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  const repository = useRepository();
+  const [repositoryShown, setRepositoryShown] = useState(false);
 
   useEffect(
     () => localStorage.setItem(draftsKey, JSON.stringify(drafts)),
@@ -78,8 +83,9 @@ export function App() {
   );
 
   useEffect(() => {
-    if (newConversation.chosen !== undefined)
-      localStorage.setItem(chosenFolderKey, newConversation.chosen);
+    if (newConversation.chosen === undefined)
+      localStorage.removeItem(chosenFolderKey);
+    else localStorage.setItem(chosenFolderKey, newConversation.chosen);
   }, [newConversation.chosen]);
 
   const updateChat = useCallback(
@@ -122,8 +128,9 @@ export function App() {
     selected === undefined
       ? undefined
       : conversations?.all.find((c) => c.id === selected);
-  const title =
-    selected === undefined
+  const title = repositoryShown
+    ? "Alliance repository"
+    : selected === undefined
       ? "New conversation"
       : selectedConversation?.title || "Conversation";
   const selectedAgent =
@@ -297,12 +304,16 @@ export function App() {
   };
 
   const main = () => {
+    if (repositoryShown) return <RepositoryView shown={repository} />;
     if (selected === undefined)
       return (
         conversations !== undefined && (
           <StartView
             key="new"
-            defaultFolder={conversations.all[0]?.folder}
+            defaultFolder={
+              (repository.state && repositoryFolder(repository.state)) ??
+              conversations.all[0]?.folder
+            }
             draft={draft(newConversationDraft)}
             state={newConversation}
             signInPanel={access.signInPanel(newConversation.agent)}
@@ -346,10 +357,19 @@ export function App() {
   return (
     <div className="app">
       <Sidebar
+        repository={repository}
+        repositoryShown={repositoryShown}
+        onShowRepository={() => setRepositoryShown(true)}
         conversations={conversations}
         selected={selected}
-        onSelect={setSelected}
-        onNew={() => setSelected(undefined)}
+        onSelect={(id) => {
+          setRepositoryShown(false);
+          setSelected(id);
+        }}
+        onNew={() => {
+          setRepositoryShown(false);
+          setSelected(undefined);
+        }}
         onRetry={list}
       />
       <main className="main">{main()}</main>

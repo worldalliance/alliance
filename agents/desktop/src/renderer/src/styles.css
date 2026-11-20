@@ -142,13 +142,18 @@ pre {
 }
 
 .sidebar li button,
-.sidebar .new {
+.sidebar .new,
+.sidebar .repository-entry {
   display: block;
   width: 100%;
   text-align: start;
   border-color: transparent;
   background: transparent;
   padding: var(--space-2);
+}
+
+.sidebar .repository-entry {
+  margin-bottom: var(--space-4);
 }
 
 .sidebar .new {
@@ -218,6 +223,18 @@ pre {
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-3) 0;
+}
+
+.repository progress {
+  width: 100%;
+  max-width: 40ch;
 }
 
 .folder-label {
