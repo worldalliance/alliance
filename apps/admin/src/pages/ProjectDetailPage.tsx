@@ -1,174 +1,67 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import type { AdminProjectDto } from "@alliance/shared/client";
 import { optionSections } from "@alliance/shared/forms/optionSections";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import React, { useId, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import { ActionCategoryPicker } from "../components/ActionCategoryIcons";
+import { useNavigate, useParams } from "react-router";
 import ConfirmDialog from "../components/ConfirmDialog";
 import NewProjectActionDialog from "../components/NewProjectActionDialog";
 import ProjectCardBody, {
   ProjectCounts,
-  startedText,
+  projectSummary,
 } from "../components/ProjectCardBody";
-import { ProjectNameInput } from "../components/ProjectNameInput";
+import ProjectDetails from "../components/ProjectDetails";
+import ProjectWarnings from "../components/ProjectWarnings";
+import { primaryButtonClass } from "../components/ui/controlStyles";
+import PageShell from "../components/ui/PageShell";
+import Section from "../components/ui/Section";
 import { buildProjectCard, isProjectStep } from "../lib/projectCards";
 import {
   useAssignActionProjectAdmin,
   useDeleteProjectAdmin,
   useStartStaffTestingAdmin,
-  useUpdateProjectAdmin,
 } from "../lib/useProjectsAdmin";
 import { ProjectsLoad, useProjectsPageData } from "../lib/useProjectsPageData";
 
-enum EditField {
-  None = "none",
-  Name = "name",
-  Slug = "slug",
-}
+const back = { to: "/projects", label: "Projects" };
 
-const iconButtonClassName =
-  "rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900";
-
-const ProjectHeader = ({
-  project,
-  stepCount,
-}: {
-  project: AdminProjectDto;
-  stepCount: number;
-}) => {
+const ProjectDetailPage: React.FC = () => {
+  const projectId = Number(useParams().projectId);
   const toast = useToast();
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(EditField.None);
+  const addLabelId = useId();
+  const data = useProjectsPageData();
+  const [creating, setCreating] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const onError = (fallback: string) => (error: Error) =>
     toast.error(errorMessage({ error, fallback }));
-  const update = useUpdateProjectAdmin({
-    onSuccess: () => setEditing(EditField.None),
-    onError: onError("Could not update the project"),
+  const startStaffTesting = useStartStaffTestingAdmin({
+    onError: onError("Could not start staff testing"),
+  });
+  const assign = useAssignActionProjectAdmin({
+    onError: onError("Could not change the action's project"),
   });
   const remove = useDeleteProjectAdmin({
     onSuccess: () => navigate("/projects"),
     onError: onError("Could not delete the project"),
   });
 
-  const field = (params: {
-    field: EditField.Name | EditField.Slug;
-    value: string;
-    label: string;
-    display: React.ReactNode;
-  }) =>
-    editing === params.field ? (
-      <ProjectNameInput
-        initialName={params.value}
-        placeholder={params.label}
-        saving={update.isPending}
-        onSave={(value) =>
-          update.mutate({
-            id: project.id,
-            body:
-              params.field === EditField.Name
-                ? { name: value }
-                : { slug: value },
-          })
-        }
-        onCancel={() => setEditing(EditField.None)}
-      />
-    ) : (
-      <div className="flex items-center gap-x-1">
-        {params.display}
-        <button
-          type="button"
-          aria-label={`Edit ${params.label.toLowerCase()}`}
-          title={`Edit ${params.label.toLowerCase()}`}
-          className={iconButtonClassName}
-          onClick={() => setEditing(params.field)}
-        >
-          <Pencil size={14} />
-        </button>
-      </div>
-    );
-
-  return (
-    <div className="flex items-start justify-between gap-x-4">
-      <div className="flex flex-col gap-y-1">
-        <div className="flex items-center gap-x-3">
-          {field({
-            field: EditField.Name,
-            value: project.name,
-            label: "Project name",
-            display: <h1 className="text-xl font-bold">{project.name}</h1>,
-          })}
-          <ActionCategoryPicker
-            value={project.category}
-            onChange={(category) =>
-              update.mutate({ id: project.id, body: { category } })
-            }
-            disabled={update.isPending}
-          />
-        </div>
-        {field({
-          field: EditField.Slug,
-          value: project.slug,
-          label: "Project slug",
-          display: (
-            <span className="font-mono text-xs text-zinc-500">
-              {project.slug}
-            </span>
-          ),
-        })}
-      </div>
-      <Button
-        color={ButtonColor.Red}
-        onClick={() => setConfirmingDelete(true)}
-        className="!px-2 !py-1 !text-xs gap-x-1"
-      >
-        <Trash2 size={12} />
-        Delete project
-      </Button>
-      <ConfirmDialog
-        isOpen={confirmingDelete}
-        title={`Delete project '${project.name}'?`}
-        message={`Its ${stepCount} actions stay and become standalone.`}
-        confirmLabel="Delete project"
-        onConfirm={() => remove.mutate(project.id)}
-        onCancel={() => setConfirmingDelete(false)}
-        isLoading={remove.isPending}
-      />
-    </div>
-  );
-};
-
-const ProjectDetailPage: React.FC = () => {
-  const projectId = Number(useParams().projectId);
-  const toast = useToast();
-  const addLabelId = useId();
-  const data = useProjectsPageData();
-  const [creating, setCreating] = useState(false);
-  const startStaffTesting = useStartStaffTestingAdmin({
-    onError: (error) =>
-      toast.error(
-        errorMessage({ error, fallback: "Could not start staff testing" }),
-      ),
-  });
-  const assign = useAssignActionProjectAdmin({
-    onError: (error) =>
-      toast.error(
-        errorMessage({
-          error,
-          fallback: "Could not change the action's project",
-        }),
-      ),
-  });
-
   switch (data.load) {
     case ProjectsLoad.Failed:
-      return <p className="p-5 text-red-500">{data.error}</p>;
+      return (
+        <PageShell title="Project" back={back}>
+          <p role="alert" className="text-sm text-red-600">
+            {data.error}
+          </p>
+        </PageShell>
+      );
     case ProjectsLoad.Pending:
-      return <p className="p-5">Loading project...</p>;
+      return (
+        <PageShell title="Project" back={back}>
+          <p className="text-sm text-zinc-600">Loading project…</p>
+        </PageShell>
+      );
     case ProjectsLoad.Ready:
       break;
     default:
@@ -178,12 +71,9 @@ const ProjectDetailPage: React.FC = () => {
   const project = projects.find((p) => p.id === projectId);
   if (!project) {
     return (
-      <div className="flex flex-col gap-y-2 p-5">
-        <p className="text-red-500">Project not found.</p>
-        <Link to="/projects" className="text-blue-600 hover:underline">
-          Back to projects
-        </Link>
-      </div>
+      <PageShell title="Project not found" back={back}>
+        <p className="text-sm text-zinc-600">It may have been deleted.</p>
+      </PageShell>
     );
   }
 
@@ -193,68 +83,88 @@ const ProjectDetailPage: React.FC = () => {
   );
 
   return (
-    <div className="flex max-w-6xl flex-col gap-y-5 p-5">
-      <title>{`${project.name} - Admin`}</title>
-      <Link
-        to="/projects"
-        className="flex w-fit items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-900"
-      >
-        <ArrowLeft size={14} />
-        Projects
-      </Link>
-      <ProjectHeader project={project} stepCount={card.steps.length} />
-      <div className="flex items-center gap-x-3 text-sm text-zinc-500">
-        <span>{startedText(card.startedAt)}</span>
-        <ProjectCounts card={card} />
-      </div>
-      <div className="rounded-lg border border-zinc-200 bg-white p-5">
-        <ProjectCardBody
-          card={card}
-          participantsById={participantsById}
-          detailed
-          onRemoveStep={(step) =>
-            assign.mutate({ actionId: step.id, projectId: null })
+    <PageShell
+      title={project.name}
+      back={back}
+      meta={<ProjectCounts card={card} />}
+      description={projectSummary(card)}
+      menu={[
+        {
+          label: "Delete project",
+          onSelect: () => setConfirmingDelete(true),
+          destructive: true,
+        },
+      ]}
+    >
+      <div className="flex flex-col gap-6">
+        <ProjectWarnings flags={card.flags} defaultOpen />
+        <Section
+          title="Actions"
+          meta={card.steps.length}
+          actions={
+            <>
+              <span id={addLabelId} className="text-sm text-zinc-600">
+                Add existing action
+              </span>
+              <div className="w-72">
+                <SearchableSelect
+                  labelId={addLabelId}
+                  sections={optionSections({
+                    options: addable.map((action) => ({
+                      value: String(action.id),
+                      label: action.project
+                        ? `${action.name} (in ${action.project.name})`
+                        : action.name,
+                    })),
+                  })}
+                  onChange={(value) =>
+                    assign.mutate({
+                      actionId: Number(value),
+                      projectId: project.id,
+                    })
+                  }
+                  disabled={assign.isPending}
+                  className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                className={primaryButtonClass}
+                onClick={() => setCreating(true)}
+              >
+                <Plus size={14} aria-hidden />
+                New action
+              </button>
+            </>
           }
-          onStartStaffTesting={(step) => startStaffTesting.mutate(step.id)}
-        />
-      </div>
-      <div className="flex items-center gap-x-2">
-        <Button
-          color={ButtonColor.Black}
-          onClick={() => setCreating(true)}
-          className="!px-3 !py-1.5 !text-sm gap-x-1"
         >
-          <Plus size={14} />
-          New action
-        </Button>
-        <NewProjectActionDialog
-          projectId={project.id}
-          open={creating}
-          onClose={() => setCreating(false)}
-        />
-        <span id={addLabelId} className="text-sm text-zinc-600">
-          Add action
-        </span>
-        <div className="w-96">
-          <SearchableSelect
-            labelId={addLabelId}
-            sections={optionSections({
-              options: addable.map((action) => ({
-                value: String(action.id),
-                label: action.project
-                  ? `${action.name} (in ${action.project.name})`
-                  : action.name,
-              })),
-            })}
-            onChange={(value) =>
-              assign.mutate({ actionId: Number(value), projectId: project.id })
+          <ProjectCardBody
+            card={card}
+            participantsById={participantsById}
+            detailed
+            onRemoveStep={(step) =>
+              assign.mutate({ actionId: step.id, projectId: null })
             }
-            disabled={assign.isPending}
-            className="border border-gray-2 rounded bg-white px-3 py-1.5 text-sm"
+            onStartStaffTesting={(step) => startStaffTesting.mutate(step.id)}
           />
-        </div>
+        </Section>
+        <ProjectDetails project={project} />
       </div>
-    </div>
+      <NewProjectActionDialog
+        projectId={project.id}
+        open={creating}
+        onClose={() => setCreating(false)}
+      />
+      <ConfirmDialog
+        isOpen={confirmingDelete}
+        title={`Delete project '${project.name}'?`}
+        message={`Its ${card.steps.length} actions stay and become standalone.`}
+        confirmLabel="Delete project"
+        onConfirm={() => remove.mutate(project.id)}
+        onCancel={() => setConfirmingDelete(false)}
+        isLoading={remove.isPending}
+      />
+    </PageShell>
   );
 };
 

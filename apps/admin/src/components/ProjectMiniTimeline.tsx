@@ -1,4 +1,3 @@
-import { cn } from "@alliance/shared/styles/util";
 import { format } from "date-fns";
 import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
 import { buildTimelineData } from "../lib/actionTimelineData";
@@ -10,11 +9,9 @@ const NEUTRAL_BAR = "#ddd";
 const ProjectMiniTimeline = ({
   steps,
   colorSeed,
-  laneClassName,
 }: {
   steps: ProjectStep[];
   colorSeed: string;
-  laneClassName: string;
 }) => {
   const eventTimes = steps.flatMap((step) =>
     step.events.map((event) => new Date(event.date).getTime()),
@@ -42,7 +39,7 @@ const ProjectMiniTimeline = ({
     <div className="flex flex-col gap-1">
       <div className="relative flex flex-col gap-0.5">
         {steps.map((step) => (
-          <div key={step.id} className={cn("relative", laneClassName)}>
+          <div key={step.id} className="relative h-4">
             {(phasesById.get(step.id) ?? [])
               .filter((phase) => phase.status !== "completed")
               .map((phase, index) => {

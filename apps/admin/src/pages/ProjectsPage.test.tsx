@@ -30,32 +30,40 @@ const memberEvent = (date: string): ActionEventDto => ({
 });
 
 let projectsStatus = 200;
+let empty = false;
 let created: string[] = [];
 
 serveApi(
   routes({
     "GET /actions/all": () =>
-      Response.json([
-        adminActionListItem(1, "Measure the air", {
-          project: live,
-          status: "member_action",
-          memberActionStart: daysFromNow(-1),
-          memberActionDeadline: daysFromNow(2),
-          events: [
-            memberEvent(daysFromNow(-1)),
-            { ...memberEvent(daysFromNow(2)), newStatus: "office_action" },
-          ],
-        }),
-        adminActionListItem(2, "Past petition", {
-          project: finished,
-          status: "completed",
-        }),
-        adminActionListItem(3, "Lone survey", { status: "planned" }),
-        adminActionListItem(4, "Archived thing", { archived: true }),
-      ]),
+      Response.json(
+        empty
+          ? []
+          : [
+              adminActionListItem(1, "Measure the air", {
+                project: live,
+                status: "member_action",
+                memberActionStart: daysFromNow(-1),
+                memberActionDeadline: daysFromNow(2),
+                events: [
+                  memberEvent(daysFromNow(-1)),
+                  {
+                    ...memberEvent(daysFromNow(2)),
+                    newStatus: "office_action",
+                  },
+                ],
+              }),
+              adminActionListItem(2, "Past petition", {
+                project: finished,
+                status: "completed",
+              }),
+              adminActionListItem(3, "Lone survey", { status: "planned" }),
+              adminActionListItem(4, "Archived thing", { archived: true }),
+            ],
+      ),
     "GET /projects": () =>
       projectsStatus === 200
-        ? Response.json([live, finished])
+        ? Response.json(empty ? [] : [live, finished])
         : Response.json({}, { status: projectsStatus }),
     "POST /projects": async ({ request }) => {
       const { name }: { name: string } = await request.json();
@@ -74,6 +82,7 @@ serveApi(
 
 beforeEach(() => {
   projectsStatus = 200;
+  empty = false;
   created = [];
 });
 
@@ -94,30 +103,28 @@ it("groups projects and standalone actions into lifecycle sections", async () =>
   renderPage();
 
   expect(await screen.findByRole("link", { name: "Clean air" })).toBeTruthy();
-  expect(screen.getByText("Live")).toBeTruthy();
-  expect(screen.getByText("Upcoming")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Live 1" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Upcoming 1" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Lone survey" })).toBeTruthy();
   expect(screen.getByText("Standalone action")).toBeTruthy();
   expect(screen.queryByText("Archived thing")).toBeNull();
+  expect(screen.queryByTitle(/^Measure the air: Member action/)).toBeNull();
 });
 
-it("flags a deadline within three days and draws the project's timeline", async () => {
+it("flags a deadline within three days and sums up the project in one line", async () => {
   renderPage();
 
+  fireEvent.click(await screen.findByRole("button", { name: /warnings$/ }));
+  expect(screen.getByText('"Measure the air" closes in 2 days')).toBeTruthy();
   expect(
-    await screen.findByText('"Measure the air" closes in 2 days'),
+    screen.getByText(/^Started .* · 0 completions · 0 won't · 0 dismissed$/),
   ).toBeTruthy();
-  expect(screen.getByTitle(/^Measure the air: Member action/)).toBeTruthy();
 });
 
 it("makes a project from a standalone action, prefilled with its name", async () => {
   renderPage();
 
-  fireEvent.click(
-    await screen.findByRole("button", {
-      name: "Make a project from this action",
-    }),
-  );
+  fireEvent.click(await screen.findByRole("button", { name: "Make project" }));
   const input = screen.getByPlaceholderText("Project name");
   expect(input).toHaveProperty("value", "Lone survey");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -129,7 +136,7 @@ it("makes a project from a standalone action, prefilled with its name", async ()
 it("keeps the Done section collapsed until opened", async () => {
   renderPage();
 
-  const toggle = await screen.findByRole("button", { name: /Done/ });
+  const toggle = await screen.findByRole("button", { name: "Done 1" });
   expect(toggle.getAttribute("aria-expanded")).toBe("false");
   expect(screen.queryByRole("link", { name: "Old campaign" })).toBeNull();
 
@@ -151,6 +158,18 @@ it("creates a project from the name input", async () => {
     await screen.findByRole("button", { name: "New project" }),
   ).toBeTruthy();
   expect(created).toEqual(["Clean soil"]);
+});
+
+it("says when there are no projects or actions yet", async () => {
+  empty = true;
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "No projects or actions yet. Create a project to group actions.",
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
 });
 
 it("says the projects failed to load", async () => {

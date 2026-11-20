@@ -16,10 +16,11 @@ URL updates replace the history entry rather than push, as the Actions page did 
 
 ## Projects
 
+- The page is full width (`PageWidth.Full`), so 3–4 cards still fit per row on a wide screen, as `01a1796c-4ae8-7000-b6b3-16f29ae23ec8-admin-projects-page` requires.
 - "New project" is a labelled primary button (from the brief).
 - Phase groups are Sections with counts; Done stays collapsed by default, as before.
 - Cards show the name, category icons, status pills (step counts and "Standalone action"), one summary line ("Started … · N completions · N won't · N dismissed", the totals that used to sit in a footer) and the step list (from the brief). The thin mini-timeline moved off the cards and stays on the project page (requirement 5), since the brief's card contents leave it out and it was the busiest part of each card.
-- Warnings are one amber line with an icon (from the brief). With exactly one warning the line is the warning itself; a "1 warning" toggle would hide the only thing it says behind a click. With two or more it reads "N warnings" and expands to the list.
+- Warnings are one amber line with an icon (from the brief). With exactly one warning the line is the warning itself; a "1 warning" toggle would hide the only thing it says behind a click. With two or more it reads "N warnings" and expands to the list. The project page, which has room for them, starts with the list open.
 - The standalone card's icon-only "Make a project from this action" button now reads "Make project", per `ux-guidelines` (icons stand alone only for close, search, send, delete and settings).
 
 ## Project page
