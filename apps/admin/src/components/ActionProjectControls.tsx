@@ -7,7 +7,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   useAssignActionProjectAdmin,
@@ -29,6 +29,12 @@ enum EditMode {
   Create = "create",
 }
 
+enum LoadAlert {
+  Hidden = "hidden",
+  Shown = "shown",
+  HandingOff = "handing-off",
+}
+
 const iconButtonClassName =
   "rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50";
 
@@ -43,8 +49,14 @@ export function ActionProjectControls({
   const labelId = useId();
   const [mode, setMode] = useState(EditMode.None);
 
-  const { data: projects = [], isPending: projectsLoading } =
-    useProjectsAdmin();
+  const {
+    data: projects = [],
+    isPending: projectsLoading,
+    isLoadingError: projectsFailed,
+    isSuccess: projectsLoaded,
+    isFetching: projectsFetching,
+    refetch: refetchProjects,
+  } = useProjectsAdmin();
 
   const onError = (fallback: string) => (error: unknown) =>
     toast.error(errorMessage({ error, fallback }));
@@ -62,6 +74,37 @@ export function ActionProjectControls({
     onSuccess: () => setMode(EditMode.None),
     onError: onError("Could not rename the project"),
   });
+
+  // An errored query with no data goes back to pending on any refetch, the
+  // window-focus one included, so the alert holding Try again stays up from
+  // the first failure until the projects load, then hands focus to the select
+  // it unlocked if Try again still has it. The select drops its disabled
+  // attribute a render after its prop clears, so the focus waits a task.
+  const [loadAlert, setLoadAlert] = useState(LoadAlert.Hidden);
+  if (loadAlert === LoadAlert.Hidden && projectsFailed)
+    setLoadAlert(LoadAlert.Shown);
+  if (loadAlert === LoadAlert.Shown && projectsLoaded)
+    setLoadAlert(LoadAlert.HandingOff);
+  const selectRef = useRef<HTMLDivElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (loadAlert !== LoadAlert.HandingOff) return;
+    const timer = setTimeout(() => {
+      if (document.activeElement === retryRef.current) {
+        selectRef.current
+          ?.querySelector<HTMLElement>("[role=combobox]")
+          ?.focus();
+      }
+      setLoadAlert(LoadAlert.Hidden);
+    });
+    return () => clearTimeout(timer);
+  }, [loadAlert]);
+  const loadingAgain = projectsFetching || loadAlert === LoadAlert.HandingOff;
+
+  const listed =
+    project && !projects.some(({ id }) => id === project.id)
+      ? [project, ...projects]
+      : projects;
 
   switch (mode) {
     case EditMode.Rename:
@@ -96,13 +139,13 @@ export function ActionProjectControls({
       <span id={labelId} className="sr-only">
         Project
       </span>
-      <div className="w-64">
+      <div ref={selectRef} className="w-64">
         <SearchableSelect
           labelId={labelId}
           sections={optionSections({
             options: [
               { value: NO_PROJECT, label: "No project" },
-              ...projects.map((p) => ({ value: String(p.id), label: p.name })),
+              ...listed.map((p) => ({ value: String(p.id), label: p.name })),
             ],
           })}
           value={project ? String(project.id) : NO_PROJECT}
@@ -112,7 +155,7 @@ export function ActionProjectControls({
               projectId: value === NO_PROJECT ? null : Number(value),
             })
           }
-          disabled={projectsLoading || assign.isPending}
+          disabled={projectsLoading || projectsFailed || assign.isPending}
           className={cn(
             "border border-gray-2 rounded bg-white px-3 py-1.5 text-sm",
             !project && "text-zinc-500",
@@ -139,6 +182,30 @@ export function ActionProjectControls({
       >
         <Plus size={14} />
       </button>
+      {loadAlert !== LoadAlert.Hidden && (
+        <p
+          role="alert"
+          className={cn(
+            "text-sm",
+            loadingAgain ? "text-zinc-600" : "text-red-600",
+          )}
+        >
+          {loadingAgain
+            ? "Loading the projects…"
+            : "Could not load the projects, so neither a project nor No project can be chosen."}{" "}
+          <button
+            ref={retryRef}
+            type="button"
+            aria-disabled={loadingAgain}
+            className="underline hover:text-red-800 aria-disabled:opacity-50"
+            onClick={() => {
+              if (!loadingAgain) void refetchProjects();
+            }}
+          >
+            Try again
+          </button>
+        </p>
+      )}
     </div>
   );
 }
