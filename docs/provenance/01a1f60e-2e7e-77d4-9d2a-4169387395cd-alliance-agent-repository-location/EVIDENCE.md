@@ -1,0 +1,22 @@
+# Evidence
+
+## How desktop apps find, add or clone a repository
+
+Question: how do desktop apps that work on a local repository find an existing clone, let the user point at one, or clone one, and where does that step sit in onboarding? Checked 2026-11-19 by a research subagent, from the sources below.
+
+- GitHub Desktop's clone dialog takes a "Local Path" with "Choose…", defaulting to `~/Documents/GitHub` and then to the last clone's parent folder; it accepts a missing or empty folder and refuses a non-empty one ("This folder contains files. Git can only clone to empty folders."). It doesn't recognise a folder that already holds the same repository; "Add local repository" is a separate action. **Common practice**, read from its source: [docs](https://docs.github.com/en/desktop/adding-and-cloning-repositories/cloning-and-forking-repositories-from-github-desktop), [`default-dir.ts`](https://raw.githubusercontent.com/desktop/desktop/development/app/src/ui/lib/default-dir.ts), [`clone-repository.tsx`](https://raw.githubusercontent.com/desktop/desktop/development/app/src/ui/clone-repository/clone-repository.tsx).
+- Conductor's first onboarding step is adding a repository: "Open project" (existing local repository) or "Open GitHub project". Its worktrees go in `~/conductor/workspaces/<repo>/<workspace>` and its app state in `~/Library/Application Support/com.conductor.app`. **Vendor documentation**: [first workspace](https://www.conductor.build/docs/first-workspace), [workspaces](https://conductor.build/docs/concepts/workspaces-and-branches).
+- The Codex app and Claude Code desktop add a project by picking an existing folder; neither documents a clone flow. **Vendor documentation**: [Codex worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees), [Claude Code desktop](https://code.claude.com/docs/en/desktop).
+- VS Code's "Git: Clone" and JetBrains' "Get from VCS" ask for a destination folder; opening an existing project is a separate command. Neither page documents searching for an existing clone. **Vendor documentation**: [VS Code](https://code.visualstudio.com/docs/sourcecontrol/repos-remotes), [JetBrains](https://www.jetbrains.com/help/idea/set-up-a-git-repository.html).
+- No product checked searches the disk for an existing clone; each offers opening an existing copy beside cloning. **Common practice**, from the products above.
+- Apple's onboarding guidance: "Postpone nonessential setup flows… Provide reasonable default settings so most people can immediately start interacting", and "Don't let large downloads hinder onboarding." **Vendor recommendation**: [Apple HIG, Onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding).
+- Electron's `userData` is for configuration files; Electron warns against large files there because some environments back it up to cloud storage. **Vendor documentation**: [`app.getPath`](https://www.electronjs.org/docs/latest/api/app).
+- `git clone` into an existing directory is allowed only when it is empty, and `--progress` forces progress on stderr when stderr isn't a terminal. **Vendor documentation** (git): [git-clone](https://git-scm.com/docs/git-clone).
+- A blobless clone (`--filter=blob:none`) suits developers, but later reads of old contents, such as `git blame`, fetch on demand and need the network; treeless and shallow clones are discouraged for daily work. **Vendor documentation** (git, GitHub): [partial clone](https://git-scm.com/docs/partial-clone), [GitHub blog](https://github.blog/open-source/git/get-up-to-speed-with-partial-clone-and-shallow-clone/).
+- No documented practice was found for a default folder holding something other than the repository, beyond refusing it, or for recovering from a half-finished clone.
+
+## Measurements
+
+- Repository size (2026-11-19, the main checkout at `ec1b50a893`): `git count-objects -vH` reported 225 MiB of packs; GitHub's API reported `size` 169334 KB. The repository has one root commit, `08337694b991b30e3290e685ba656656c4ef5633` (`git rev-list --max-parents=0 HEAD`).
+- `.github/workflows/desktop.yaml` checks out with `actions/checkout@v4` and no `fetch-depth`, which fetches one commit, so the root commit is absent from the checkout the app's CI tests run in (read from the workflow, 2026-11-19).
+- `scripts/new-worktree.sh` runs from the files of the checkout it is invoked from (`repo_root` is its own parent folder) and creates worktrees in the main checkout's parent folder (`scripts/lib/worktree-paths.sh`), read at `ec1b50a893`.

@@ -20,6 +20,15 @@ import { ConversationStore } from "./conversations";
 import { describeError } from "./describe-error";
 import { devClaudeConfigDir, devCodexHome } from "./dev-app-data";
 import { type Agent, registerIpc } from "./ipc";
+import { findGit } from "./repository/git";
+import { registerRepositoryIpc } from "./repository/ipc";
+import { SavedRepository } from "./repository/saved";
+import { RepositoryService } from "./repository/service";
+import {
+  allianceSource,
+  testSource,
+  testSourceVariable,
+} from "./repository/source";
 
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
@@ -37,6 +46,13 @@ const openingWaitMs = z.coerce
 const rendererUrl =
   (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) ||
   "app://renderer/index.html";
+
+const testSourceJson = app.isPackaged
+  ? undefined
+  : process.env[testSourceVariable];
+const repositorySource = testSourceJson
+  ? testSource.parse(JSON.parse(testSourceJson))
+  : allianceSource(app.getPath("home"));
 
 // Under file:// the CSP's 'self' admits every file on disk; app:// limits it to rendererDir.
 protocol.registerSchemesAsPrivileged([
@@ -222,7 +238,16 @@ void app.whenReady().then(() => {
       };
     },
   };
-  closeSessions = registerIpc({
+  const repository = new RepositoryService({
+    source: repositorySource,
+    saved: new SavedRepository(path.join(userData, "repository.json")),
+    ownCheckout:
+      app.isPackaged || testSourceJson ? undefined : app.getAppPath(),
+    findGit: () => findGit({ env: process.env, platform: process.platform }),
+  });
+  registerRepositoryIpc({ repository, rendererUrl });
+  void repository.locate({ autoClone: true });
+  const closeAgents = registerIpc({
     findAgent: (agent) =>
       R.map(
         findExecutable({ agent, env: process.env, packaged: app.isPackaged }),
@@ -234,6 +259,8 @@ void app.whenReady().then(() => {
     rendererUrl,
     openingWaitMs,
   });
+  closeSessions = () =>
+    Promise.all([closeAgents(), repository.close()]).then(() => undefined);
   nativeTheme.on("updated", () => {
     for (const window of BrowserWindow.getAllWindows())
       window.setBackgroundColor(windowBackground());

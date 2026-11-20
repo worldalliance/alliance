@@ -3,16 +3,23 @@ import { agentWords } from "../../../shared/agent-kind";
 import type { Conversation } from "../../../shared/ipc";
 import { focusIfLost } from "../focus";
 import { folderName } from "../format";
+import { type ShownRepository, statusWords } from "../repository";
 
 export type Listed = { all: Conversation[]; problem?: string };
 
 export function Sidebar({
+  repository,
+  repositoryShown,
+  onShowRepository,
   conversations,
   selected,
   onSelect,
   onNew,
   onRetry,
 }: {
+  repository: ShownRepository;
+  repositoryShown: boolean;
+  onShowRepository: () => void;
   /** Undefined while the list loads, a local read too short for a loading message. */
   conversations: Listed | undefined;
   selected: string | undefined;
@@ -31,13 +38,24 @@ export function Sidebar({
     focusIfLost(startButton.current);
   }, [problem]);
   return (
-    <nav className="sidebar" aria-labelledby="conversations-heading">
-      <h2 id="conversations-heading">Conversations</h2>
+    <nav className="sidebar" aria-label="Alliance agent">
+      <button
+        type="button"
+        className="repository-entry"
+        aria-current={repositoryShown ? "page" : undefined}
+        onClick={onShowRepository}
+      >
+        <span className="title">Alliance repository</span>
+        <span className="meta">{statusWords(repository)}</span>
+      </button>
+      <h2>Conversations</h2>
       <button
         type="button"
         ref={startButton}
         className="new"
-        aria-current={selected === undefined ? "page" : undefined}
+        aria-current={
+          !repositoryShown && selected === undefined ? "page" : undefined
+        }
         onClick={onNew}
       >
         Start a conversation
@@ -77,7 +95,11 @@ export function Sidebar({
             <li key={conversation.id}>
               <button
                 type="button"
-                aria-current={selected === conversation.id ? "page" : undefined}
+                aria-current={
+                  !repositoryShown && selected === conversation.id
+                    ? "page"
+                    : undefined
+                }
                 onClick={() => onSelect(conversation.id)}
               >
                 <span className="title">{conversation.title}</span>

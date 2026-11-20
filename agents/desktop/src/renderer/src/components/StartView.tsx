@@ -70,7 +70,7 @@ export function StartView({
     const started = await onStart({ folder, text });
     onChange((all) => ({
       ...all,
-      ...(started.ok && { agent: defaultAgent }),
+      ...(started.ok && { agent: defaultAgent, chosen: undefined }),
       starting: false,
       problem: started.ok
         ? undefined
