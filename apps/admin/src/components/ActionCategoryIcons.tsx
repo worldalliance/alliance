@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@alliance/sharedweb/ui/Tooltip";
 import {
+  Check,
   Cpu,
   HandCoins,
   Landmark,
@@ -63,16 +64,55 @@ export function ActionCategoryPicker({
   value,
   onChange,
   disabled,
+  showLabels = false,
 }: {
   value: readonly ActionCategory[];
   onChange: (categories: ActionCategory[]) => void;
   disabled?: boolean;
+  /** Names each category beside its icon rather than in a tooltip. */
+  showLabels?: boolean;
 }) {
   return (
-    <div role="group" aria-label="Categories" className="flex flex-row gap-1">
+    <div
+      role="group"
+      aria-label="Categories"
+      className="flex flex-row flex-wrap gap-1"
+    >
       {ACTION_CATEGORIES.map((category) => {
         const { label, Icon } = ACTION_CATEGORY_DISPLAY[category];
         const selected = value.includes(category);
+        const toggle = () =>
+          onChange(
+            selected
+              ? value.filter((c) => c !== category)
+              : sortCategories([...value, category]),
+          );
+        const className = cn(
+          "rounded-md border p-1.5 disabled:opacity-50",
+          selected
+            ? "border-zinc-400 bg-zinc-100 text-zinc-900"
+            : "border-zinc-300 bg-white text-zinc-300 hover:text-zinc-500",
+        );
+        if (showLabels) {
+          return (
+            <button
+              key={category}
+              type="button"
+              aria-pressed={selected}
+              disabled={disabled}
+              onClick={toggle}
+              className={cn(
+                className,
+                "flex items-center gap-1.5 px-2 text-sm",
+                !selected && "text-zinc-600 hover:text-zinc-900",
+              )}
+            >
+              <Icon size={14} aria-hidden />
+              {label}
+              {selected && <Check size={14} aria-hidden />}
+            </button>
+          );
+        }
         return (
           <Tooltip key={category}>
             <TooltipTrigger
@@ -82,21 +122,10 @@ export function ActionCategoryPicker({
                   aria-label={label}
                   aria-pressed={selected}
                   disabled={disabled}
-                  onClick={() =>
-                    onChange(
-                      selected
-                        ? value.filter((c) => c !== category)
-                        : sortCategories([...value, category]),
-                    )
-                  }
+                  onClick={toggle}
                 />
               }
-              className={cn(
-                "rounded border p-1.5 disabled:opacity-50",
-                selected
-                  ? "border-zinc-400 bg-zinc-100 text-zinc-900"
-                  : "border-gray-2 bg-white text-zinc-300 hover:text-zinc-500",
-              )}
+              className={className}
             >
               <Icon size={14} />
             </TooltipTrigger>
