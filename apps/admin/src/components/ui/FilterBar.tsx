@@ -13,6 +13,7 @@ import { inputClass, secondaryButtonClass } from "./controlStyles";
 
 export enum FilterKind {
   Options = "options",
+  AnyOf = "any-of",
   Toggle = "toggle",
 }
 
@@ -23,9 +24,8 @@ type FilterOption = {
   count?: number;
 };
 
-/** Narrows to the checked options; with every option checked it filters nothing. */
-type OptionsFilter = {
-  kind: FilterKind.Options;
+type SetFilter<K extends FilterKind> = {
+  kind: K;
   key: string;
   label: string;
   options: readonly FilterOption[];
@@ -33,6 +33,12 @@ type OptionsFilter = {
   defaultSelected: ReadonlySet<string>;
   onChange: (selected: Set<string>) => void;
 };
+
+/** Narrows to the checked options; with every option checked it filters nothing. */
+type OptionsFilter = SetFilter<FilterKind.Options>;
+
+/** Narrows to items matching any checked option; with none checked it filters nothing. */
+type AnyOfFilter = SetFilter<FilterKind.AnyOf>;
 
 type ToggleFilter = {
   kind: FilterKind.Toggle;
@@ -43,23 +49,38 @@ type ToggleFilter = {
   onChange: (checked: boolean) => void;
 };
 
-export type FilterDefinition = OptionsFilter | ToggleFilter;
+export type FilterDefinition = OptionsFilter | AnyOfFilter | ToggleFilter;
 
 type Chip = { key: string; text: string; clear: () => void };
 
+const chosenLabels = (filter: OptionsFilter | AnyOfFilter) =>
+  filter.options
+    .filter((option) => filter.selected.has(option.value))
+    .map((option) => option.label)
+    .join(", ");
+
 const chipFor = (filter: FilterDefinition): Chip | null => {
   switch (filter.kind) {
-    case FilterKind.Options: {
+    case FilterKind.Options:
       if (filter.options.every(({ value }) => filter.selected.has(value)))
         return null;
-      const chosen = filter.options
-        .filter((option) => filter.selected.has(option.value))
-        .map((option) => option.label);
       return {
         key: filter.key,
-        text: `${filter.label}: ${chosen.join(", ") || "none"}`,
+        text: `${filter.label}: ${chosenLabels(filter) || "none"}`,
         clear: () =>
           filter.onChange(new Set(filter.options.map(({ value }) => value))),
+      };
+    case FilterKind.AnyOf: {
+      if (filter.selected.size === 0) return null;
+      const missing = [...filter.selected].filter(
+        (value) => !filter.options.some((option) => option.value === value),
+      );
+      if (missing.length > 0)
+        throw new Error(`${filter.key}: no option for ${missing.join(", ")}`);
+      return {
+        key: filter.key,
+        text: `${filter.label}: ${chosenLabels(filter)}`,
+        clear: () => filter.onChange(new Set()),
       };
     }
     case FilterKind.Toggle:
@@ -78,6 +99,7 @@ const chipFor = (filter: FilterDefinition): Chip | null => {
 const isDefault = (filter: FilterDefinition): boolean => {
   switch (filter.kind) {
     case FilterKind.Options:
+    case FilterKind.AnyOf:
       return (
         filter.selected.size === filter.defaultSelected.size &&
         [...filter.selected].every((value) => filter.defaultSelected.has(value))
@@ -92,6 +114,7 @@ const isDefault = (filter: FilterDefinition): boolean => {
 const resetToDefault = (filter: FilterDefinition) => {
   switch (filter.kind) {
     case FilterKind.Options:
+    case FilterKind.AnyOf:
       return filter.onChange(new Set(filter.defaultSelected));
     case FilterKind.Toggle:
       return filter.onChange(filter.defaultChecked);
@@ -103,38 +126,41 @@ const resetToDefault = (filter: FilterDefinition) => {
 const checkboxRow =
   "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm text-zinc-800 hover:bg-zinc-50";
 
+const SetControl = ({ filter }: { filter: OptionsFilter | AnyOfFilter }) => (
+  <fieldset className="flex flex-col">
+    <legend className="px-2 pb-1 text-xs font-medium text-zinc-500">
+      {filter.label}
+    </legend>
+    {filter.options.map((option) => (
+      <label key={option.value} className={checkboxRow}>
+        <input
+          type="checkbox"
+          checked={filter.selected.has(option.value)}
+          onChange={(event) => {
+            const next = new Set(filter.selected);
+            if (event.target.checked) next.add(option.value);
+            else next.delete(option.value);
+            filter.onChange(next);
+          }}
+        />
+        <span className="flex-1">{option.label}</span>
+        {option.count !== undefined && (
+          <span className="tabular-nums text-xs text-zinc-500">
+            <span className="sr-only">, </span>
+            {option.count}
+            <span className="sr-only"> matching</span>
+          </span>
+        )}
+      </label>
+    ))}
+  </fieldset>
+);
+
 const FilterControl = ({ filter }: { filter: FilterDefinition }) => {
   switch (filter.kind) {
     case FilterKind.Options:
-      return (
-        <fieldset className="flex flex-col">
-          <legend className="px-2 pb-1 text-xs font-medium text-zinc-500">
-            {filter.label}
-          </legend>
-          {filter.options.map((option) => (
-            <label key={option.value} className={checkboxRow}>
-              <input
-                type="checkbox"
-                checked={filter.selected.has(option.value)}
-                onChange={(event) => {
-                  const next = new Set(filter.selected);
-                  if (event.target.checked) next.add(option.value);
-                  else next.delete(option.value);
-                  filter.onChange(next);
-                }}
-              />
-              <span className="flex-1">{option.label}</span>
-              {option.count !== undefined && (
-                <span className="tabular-nums text-xs text-zinc-500">
-                  <span className="sr-only">, </span>
-                  {option.count}
-                  <span className="sr-only"> matching</span>
-                </span>
-              )}
-            </label>
-          ))}
-        </fieldset>
-      );
+    case FilterKind.AnyOf:
+      return <SetControl filter={filter} />;
     case FilterKind.Toggle:
       return (
         <label className={checkboxRow}>
