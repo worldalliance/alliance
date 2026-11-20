@@ -4,6 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { updateLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { moveNumberOptOut } from "src/mms/mms-number.service";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import {
   OtpService,
@@ -73,6 +74,12 @@ export class PhoneVerificationService {
       const others = holders.filter(
         (holder) => holder.id !== userId && holder.deletedAt === null,
       );
+      const verifiedBy = rows.find((row) => row.id === userId);
+      if (!verifiedBy) throw new Error(`User ${userId} not found`);
+      const optedOut = await moveNumberOptOut(manager, {
+        from: verifiedBy,
+        to: phoneNumber,
+      });
       await manager.update(
         User,
         { id: In(others.map((holder) => holder.id)), phoneNumber },
@@ -89,14 +96,10 @@ export class PhoneVerificationService {
           phoneNumber,
           phoneNumberVerifiedAt: new Date(),
           // A STOP belongs to the number, whichever account holds it.
-          phoneNumberUnsubscribed: holders.some(
-            (holder) => holder.phoneNumberUnsubscribed,
-          ),
+          phoneNumberUnsubscribed: optedOut,
         },
         notFound: `User ${userId} not found`,
       });
-      const verifiedBy = rows.find((row) => row.id === userId);
-      if (!verifiedBy) throw new Error(`User ${userId} not found`);
       // The event is the only record of the number the holder had.
       const announcements: Array<() => Promise<void>> = [];
       for (const holder of others) {

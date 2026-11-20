@@ -88,6 +88,8 @@ export const PHONE_NUMBER_INDEX = "UQ_user_phone_number_live";
 )
 @Index(["referredByShareUrl"])
 @Index(["id"], { where: '"deletedAt" IS NOT NULL' })
+// BACKCOMPAT(number-opt-out): serves optedOutSql's flag check.
+@Index(["phoneNumber"], { where: '"phoneNumberUnsubscribed"' })
 @Entity()
 export class User extends UserRetiredColumns {
   // Fields

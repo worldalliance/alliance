@@ -16,7 +16,8 @@ export class MmsThread {
   })
   phoneNumber: string;
 
-  /** Null until a STOP, START or staff opt-out sets it. */
+  /** Null until a STOP, START or staff opt-out sets it. Readers also count
+   * the user flag: see optedOutSql. */
   @Column({ type: "boolean", nullable: true })
   optedOut: boolean | null;
 
