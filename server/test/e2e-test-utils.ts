@@ -254,9 +254,6 @@ export async function createTestApp(
 
   const dataSource = moduleFixture.get(DataSource);
 
-  // Initialize database
-  await dataSource.synchronize(true);
-
   const userRepo = dataSource.getRepository(User);
   const tagRepo = dataSource.getRepository(Tag);
   const jwtService = moduleFixture.get<JwtService>(JwtService);

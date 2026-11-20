@@ -21,3 +21,5 @@ Shutdown hooks also make the existing listener drains (task badges, cohort decis
 ## 4. Every e2e test app loads `LeaseModule`
 
 A decorated method called on an instance `LocksModule` doesn't know throws, and many specs call cron entry points. `createTestApp` imports `LeaseModule`, so those calls take real leases on the test database.
+
+`createTestApp` builds the schema once, when the DataSource connects with `testConnectionOptions`' `dropSchema` and `synchronize`, and no longer drops and rebuilds it after `app.listen()`: an app importing `ScheduleModule` starts its crons at listen, and they failed against the half-built schema. Test apps now keep the triggers `LegacyDeletedFlagService` installs on `post` and `comment` at bootstrap, which the second drop removed with their tables, as production does.
