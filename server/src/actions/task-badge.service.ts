@@ -1,5 +1,5 @@
 import { countTaskBadge } from "@alliance/common/taskBadge";
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -43,7 +43,7 @@ const claimedDeviceSchema = z.object({
  * edits, deadlines, new tasks) is caught by the per-minute sweep.
  */
 @Injectable()
-export class TaskBadgeService implements OnModuleDestroy {
+export class TaskBadgeService implements OnApplicationShutdown {
   private readonly logger = new Logger(TaskBadgeService.name);
   private readonly detachedWork = new DetachedWorkTracker();
 
@@ -70,7 +70,7 @@ export class TaskBadgeService implements OnModuleDestroy {
     );
   }
 
-  async onModuleDestroy() {
+  async onApplicationShutdown() {
     this.eventEmitter.off("action.activity", this.onActivity);
     this.eventEmitter.off(
       UserEvents.AwayRangesChanged,
