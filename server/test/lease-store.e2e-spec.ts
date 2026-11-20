@@ -1,6 +1,9 @@
 import { type LockAcquireResult, LocksStorage } from "@nestjs/locks";
 import { lockStoreContract } from "@nestjs/locks/testing";
+import { Test } from "@nestjs/testing";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import type { Subprocess } from "bun";
+import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { LeaseModule } from "src/leases/lease.module";
 import { PgLockStore } from "src/leases/pg-lock-store";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
@@ -18,6 +21,28 @@ describe("PgLockStore (e2e)", () => {
 
   it("is the store LocksModule uses", () => {
     expect(ctx.app.get(LocksStorage).source).toBe(ctx.app.get(PgLockStore));
+  });
+
+  it("fails startup when another store replaces it", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        TypeOrmModule.forRoot({
+          ...testConnectionOptions(),
+          synchronize: false,
+          dropSchema: false,
+        }),
+        LeaseModule,
+      ],
+    })
+      .overrideProvider(PgLockStore)
+      .useValue({})
+      .compile();
+    const app = moduleRef.createNestApplication();
+    try {
+      await expect(app.init()).rejects.toThrow("not on PgLockStore");
+    } finally {
+      await closeTestApp(app);
+    }
   });
 
   describe("store contract", () => {
