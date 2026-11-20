@@ -7,12 +7,12 @@ import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
 import { REDACTED } from "src/kora/kora-redact";
 import request from "supertest";
 import { closeTestApp } from "./e2e-test-utils";
+import { koraExport } from "./kora-conversations";
 import {
   koraHarness,
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import { koraExport } from "./kora-conversations";
 import {
   koraReviewClient,
   type ReviewTranscript,

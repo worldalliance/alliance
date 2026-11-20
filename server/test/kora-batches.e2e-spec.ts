@@ -11,8 +11,8 @@ import {
   createTestApp,
   type TestContext,
 } from "./e2e-test-utils";
-import { koraClosesAt, setKoraProjectStatus } from "./kora-fixtures";
 import { koraConversation, koraConversationsFile } from "./kora-conversations";
+import { koraClosesAt, setKoraProjectStatus } from "./kora-fixtures";
 
 describe("Kora transcript batches (e2e)", () => {
   let ctx: TestContext;
@@ -162,7 +162,9 @@ describe("Kora transcript batches (e2e)", () => {
   });
 
   it("refuses a file in a field it doesn't take", async () => {
-    await upload({ transcripts: koraConversationsFile(koraConversation(`${prefix}-1`)) })
+    await upload({
+      transcripts: koraConversationsFile(koraConversation(`${prefix}-1`)),
+    })
       .attach("exportSchema", Buffer.from("{}"), "export.schema.json")
       .expect(400);
   });
