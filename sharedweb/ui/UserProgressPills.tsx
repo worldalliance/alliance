@@ -129,24 +129,29 @@ function EmptyPill() {
 }
 function Pill({
   action,
-  additionalSubtitleText,
+  reason,
   pillStatusData,
   pillHeight,
 }: {
   action: UserActionSummaryDto;
-  additionalSubtitleText?: ReactNode;
+  reason?: string;
   pillStatusData: PillStatusData & { pillStyle: string };
   pillHeight: string;
 }) {
-  const { pillLabel, pillStyle, pillSubtitleText, pillTextStyle } =
-    pillStatusData;
+  const { pillStyle, pillSubtitleText, pillTextStyle } = pillStatusData;
+  const status = reason ? `${pillSubtitleText}: ${reason}` : pillSubtitleText;
+  const deadline =
+    action.memberActionDeadline === null
+      ? "No deadline"
+      : `Due ${formatDateTime(new Date(action.memberActionDeadline))}`;
   return (
     <Tooltip key={action.id}>
       <TooltipTrigger
         render={
           <div
+            role="img"
             className={cn("relative flex-1", MIN_MAX_WIDTH)}
-            aria-label={`${action.name} - ${pillLabel}`}
+            aria-label={`${action.name} - ${status}. ${deadline}`}
           >
             <div
               className={cn(
@@ -162,15 +167,8 @@ function Pill({
       <TooltipContent side="top" sideOffset={4}>
         <div className="flex flex-col items-center justify-center text-center">
           <p>{action.name}</p>
-          <p className="text-zinc-500">
-            {action.memberActionDeadline === null
-              ? "No deadline"
-              : `Due ${formatDateTime(new Date(action.memberActionDeadline))}`}
-          </p>
-          <p className={pillTextStyle}>
-            {pillSubtitleText}
-            {additionalSubtitleText}
-          </p>
+          <p className="text-zinc-500">{deadline}</p>
+          <p className={pillTextStyle}>{status}</p>
         </div>
       </TooltipContent>
     </Tooltip>
@@ -225,10 +223,10 @@ const UserProgressPills = ({
         return (
           <Pill
             action={action}
-            additionalSubtitleText={
+            reason={
               relation.status === "wont_complete"
-                ? `: ${WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(relation)]}`
-                : null
+                ? WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(relation)]
+                : undefined
             }
             pillStatusData={pillStatusData}
             pillHeight={pillHeight}
