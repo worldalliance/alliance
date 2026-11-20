@@ -12,7 +12,7 @@ describe("PgLockStore (e2e)", () => {
   let ctx: TestContext;
 
   beforeAll(async () => {
-    ctx = await createTestApp([LeaseModule]);
+    ctx = await createTestApp([]);
   }, 50000);
 
   afterAll(async () => {

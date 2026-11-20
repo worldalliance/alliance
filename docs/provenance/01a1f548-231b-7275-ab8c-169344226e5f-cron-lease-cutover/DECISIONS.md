@@ -13,3 +13,11 @@ Shutdown hooks also make the existing listener drains (task badges, cohort decis
 ## 2. The startup check runs in every environment
 
 `LeaseModule.onModuleInit` throws unless `LocksStorage.source` is `PgLockStore`. REQUIREMENTS.md 9 names staging; checking everywhere covers staging and also fails a local or test boot that lost the store, which would otherwise run on the in-memory store silently.
+
+## 3. The module ttl is 60 s
+
+`LocksModule.forRoot({ ttl: "60s" })` sets every lease to REQUIREMENTS.md 6's starting point, renewed every 20 s by the package. No renewal-latency measurement exists yet to tune it from.
+
+## 4. Every e2e test app loads `LeaseModule`
+
+A decorated method called on an instance `LocksModule` doesn't know throws, and many specs call cron entry points. `createTestApp` imports `LeaseModule`, so those calls take real leases on the test database.

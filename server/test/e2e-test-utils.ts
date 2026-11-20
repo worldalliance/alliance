@@ -14,6 +14,7 @@ import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
+import { LeaseModule } from "src/leases/lease.module";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import {
   NotificationPreference,
@@ -223,6 +224,7 @@ export async function createTestApp(
       EventEmitterModule.forRoot(),
       ThrottlerModule.forRoot(ALL_THROTTLERS),
       TypeOrmModule.forRoot(testConnectionOptions()),
+      LeaseModule,
       PosthogModule,
       AuthModule,
       ForumModule,

@@ -5,7 +5,11 @@ import { Lease } from "./lease.entity";
 import { PgLockStore } from "./pg-lock-store";
 
 @Module({
-  imports: [LocksModule.forRoot(), TypeOrmModule.forFeature([Lease])],
+  imports: [
+    // Renewed every ttl / 3: a 60-second lease every 20 seconds.
+    LocksModule.forRoot({ ttl: "60s" }),
+    TypeOrmModule.forFeature([Lease]),
+  ],
   providers: [PgLockStore],
 })
 export class LeaseModule implements OnModuleInit {
