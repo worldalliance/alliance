@@ -20,12 +20,16 @@ import {
   type TestContext,
 } from "./e2e-test-utils";
 import {
+  koraConversation,
+  koraConversationsFile,
+  koraExport,
+} from "./kora-conversations";
+import {
   koraAdminActor,
   koraClosesAt,
   ORIGIN,
   setKoraProjectStatus,
 } from "./kora-fixtures";
-import { koraExport, koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora review actions (e2e)", () => {
   let ctx: TestContext;
@@ -72,7 +76,10 @@ describe("Kora review actions (e2e)", () => {
 
   const uploadTwo = async () => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
-      transcriptsText: koraPairsFile(koraPair("A1"), koraPair("A2")),
+      transcriptsText: koraConversationsFile(
+        koraConversation("A1"),
+        koraConversation("A2"),
+      ),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
       closesAt: koraClosesAt(),

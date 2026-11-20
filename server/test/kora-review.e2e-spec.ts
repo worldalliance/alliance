@@ -7,12 +7,12 @@ import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
 import { REDACTED } from "src/kora/kora-redact";
 import request from "supertest";
 import { closeTestApp } from "./e2e-test-utils";
+import { koraExport } from "./kora-conversations";
 import {
   koraHarness,
   setKoraProjectStatus,
   type KoraHarness,
 } from "./kora-fixtures";
-import { koraExport } from "./kora-pairs";
 import {
   koraReviewClient,
   type ReviewTranscript,
@@ -269,7 +269,7 @@ describe("Kora reviews (e2e)", () => {
       s.assignment?.id ?? "",
       exportOf(s, {
         done: [ids(s.assignment)[0]],
-        note: "mail me at someone@example.org",
+        worry: "mail me at someone@example.org",
       }),
     ).expect(200);
     const stored = await h.ctx.dataSource

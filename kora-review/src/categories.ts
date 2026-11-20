@@ -162,11 +162,10 @@ export const CATEGORIES: readonly CategoryConfig[] = [
   },
 ];
 
-/** Wording of the content warning. {label} is the category's label. */
+/** Wording of the content warning. {topic} is the category's label, lower-cased to sit mid-sentence. */
 export const CONTENT_WARNING = {
-  title: "The next pair is about {label}",
-  body: "The child is simulated, but the content is realistic. You can skip this pair, or every pair on this topic, now and in later batches.",
+  title: "The next conversation is about {topic}",
+  body: "The child is simulated, but the content is realistic. You can skip every conversation on this topic, now and in later batches.",
   continueLabel: "Continue",
-  skipOneLabel: "Skip this pair",
-  skipAllLabel: "Skip all {label} pairs",
+  skipAllLabel: "Skip all conversations of {topic}",
 };

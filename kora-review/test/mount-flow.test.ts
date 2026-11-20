@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "bun:test";
+import { KoraCategory } from "../src/index.js";
 import {
   assignment,
   button,
@@ -17,21 +18,11 @@ import {
 
 useMountHarness();
 
-// Both chatbots: Safe. Then which was safer, then why.
 async function rankAndSave() {
-  for (const b of [...rank().querySelectorAll("button")].filter(
-    (x) => x.textContent === "Safe",
-  )) {
-    b.click();
-    await tick(0);
-  }
-  const safer = rank().querySelector<HTMLInputElement>('input[type="range"]')!;
-  safer.value = "0";
-  safer.dispatchEvent(new Event("change"));
+  button("Safe", rank()).click();
   await tick(0);
-  const reason = rank().querySelector("textarea") as HTMLTextAreaElement;
-  reason.value = "Chatbot B writes the whole essay for the child";
-  reason.dispatchEvent(new Event("input"));
+  button("4", rank()).click();
+  await tick(0);
   const save = button("Save and continue", rank()) as HTMLButtonElement;
   expect(save.disabled).toBe(false);
   save.click();
@@ -56,6 +47,7 @@ describe("mountKoraReview: moving through the pairs", () => {
     await tick(0);
     await tick(0);
     expect(opts.onComplete).toHaveBeenCalledTimes(1);
+    expect(el.querySelector(".mini-stamp")?.textContent).toBe("Safe");
     const last = saves.at(-1)!;
     expect(last.isDone).toBe(true);
     expect(last.exitSurvey).not.toBeNull();
@@ -106,7 +98,7 @@ describe("mountKoraReview: moving through the pairs", () => {
     expect(buttons().some((b) => b.textContent === "Start reviewing")).toBe(
       false,
     );
-    const pair = el.querySelector<HTMLElement>(".pair")!;
+    const pair = el.querySelector<HTMLElement>(".side")!;
     const show = el.querySelector<HTMLElement>(".show-replies")!;
     const words = el.querySelectorAll(".opener .tw");
     expect(words.length).toBeGreaterThan(1);
@@ -123,8 +115,12 @@ describe("mountKoraReview: moving through the pairs", () => {
     expect(typed).toBeGreaterThan(0);
     expect(el.querySelector(".opener .typing-dots")).toBeNull();
     expect(typed).toBeLessThan(words.length);
-    await tick(3000);
-    expect(el.querySelectorAll(".opener .tw.on")).toHaveLength(words.length);
+    while (el.querySelectorAll(".opener .tw.on").length < words.length)
+      await tick(10);
+    expect(show.hidden).toBe(true);
+    await tick(730);
+    expect(show.hidden).toBe(true);
+    await tick(120);
     expect(show.hidden).toBe(false);
     expect(document.activeElement === show).toBe(true);
     show.click();
@@ -135,17 +131,23 @@ describe("mountKoraReview: moving through the pairs", () => {
     ).toBe(true);
   });
 
-  it("warns before a sensitive pair, and records skipping it or its whole category", async () => {
+  it("warns before a sensitive conversation, offering only to skip its whole category", async () => {
     mount({ assignment: assignment(["SAMPLE-03", "SAMPLE-04", "SAMPLE-05"]) });
     await tick(10);
-    expect(el.querySelector("h1")?.textContent).toContain(
-      "Violence and physical harm",
+    expect(el.querySelector("h1")?.textContent).toBe(
+      "The next conversation is about violence and physical harm",
     );
-    button("Skip this pair").click();
+    expect(
+      [...el.querySelectorAll(".oo-acts button")].map((b) => b.textContent),
+    ).toEqual([
+      "Continue",
+      "Skip all conversations of violence and physical harm",
+    ]);
+    button("Skip all conversations of violence and physical harm").click();
     await tick(50);
-    expect(el.querySelector("h1")?.textContent).toContain("Fear and distress");
+    expect(el.querySelector("h1")?.textContent).toContain("fear and distress");
     expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
-      "Skipped this pair. 2 of 3.",
+      "Skipping all conversations of violence and physical harm. 2 of 3.",
     );
     button("Continue").click();
     await tick(10);
@@ -155,10 +157,10 @@ describe("mountKoraReview: moving through the pairs", () => {
     await handle!.flush();
     const e = saves.at(-1)!;
     expectValid(e);
-    expect(
-      e.results.find((r) => r.transcriptId === "SAMPLE-03")!.optedOut,
-    ).toBe(true);
-    expect(e.optOutCategories).toEqual([]);
+    const skipped = e.results.find((r) => r.transcriptId === "SAMPLE-03")!;
+    expect(skipped.optedOut).toBe(true);
+    expect(skipped.optedOutAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+    expect(e.optOutCategories).toEqual([KoraCategory.Violence]);
   });
 
   it("asks the profile first, with prefer-not-to-say only on the optional questions", async () => {

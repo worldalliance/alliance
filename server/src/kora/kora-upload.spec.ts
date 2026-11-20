@@ -1,4 +1,7 @@
-import { koraPair, koraPairsFile } from "../../test/kora-pairs";
+import {
+  koraConversation,
+  koraConversationsFile,
+} from "../../test/kora-conversations";
 import { checkTranscripts, contentHash } from "./kora-upload";
 
 const check = (text: string, existing: string[] = [], retired: string[] = []) =>
@@ -9,8 +12,10 @@ const check = (text: string, existing: string[] = [], retired: string[] = []) =>
   });
 
 describe("checkTranscripts", () => {
-  it("converts every pair, keeping only the schema's fields, with a hash of what is stored", () => {
-    const result = check(koraPairsFile(koraPair("P1"), koraPair("P2")));
+  it("converts every conversation, keeping only the schema's fields, with a hash of what is stored", () => {
+    const result = check(
+      koraConversationsFile(koraConversation("P1"), koraConversation("P2")),
+    );
     if (!result.ok) throw new Error(JSON.stringify(result.error));
     expect(result.value.map((t) => t.id)).toEqual(["P1", "P2"]);
     const [first] = result.value;
@@ -20,9 +25,9 @@ describe("checkTranscripts", () => {
     expect(first.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 
-  it("reads the same pairs from a YAML list", () => {
-    const yaml = [koraPair("P1"), koraPair("P2")]
-      .map((pair) => `- ${JSON.stringify(pair)}`)
+  it("reads the same conversations from a YAML list", () => {
+    const yaml = [koraConversation("P1"), koraConversation("P2")]
+      .map((c) => `- ${JSON.stringify(c)}`)
       .join("\n");
     const result = check(yaml);
     if (!result.ok) throw new Error(JSON.stringify(result.error));
@@ -31,10 +36,10 @@ describe("checkTranscripts", () => {
 
   it("reports every bad line by number, not only the first", () => {
     const text = [
-      JSON.stringify(koraPair("P1")),
+      JSON.stringify(koraConversation("P1")),
       "{not json",
-      JSON.stringify(koraPair("P3", { risk_id: "not_a_category" })),
-      JSON.stringify(koraPair("P1")),
+      JSON.stringify(koraConversation("P3", { risk_id: "not_a_category" })),
+      JSON.stringify(koraConversation("P1")),
     ].join("\n");
     const result = check(text);
     if (result.ok) throw new Error("expected rejection");
@@ -46,7 +51,9 @@ describe("checkTranscripts", () => {
   });
 
   it("rejects a transcript id from an earlier batch", () => {
-    const result = check(koraPairsFile(koraPair("OLD")), ["OLD"]);
+    const result = check(koraConversationsFile(koraConversation("OLD")), [
+      "OLD",
+    ]);
     if (result.ok) throw new Error("expected rejection");
     expect(result.error).toEqual([
       {
@@ -57,16 +64,20 @@ describe("checkTranscripts", () => {
   });
 
   it("points a transcript id from a retired batch to Reactivate", () => {
-    const result = check(koraPairsFile(koraPair("OLD")), [], ["OLD"]);
+    const result = check(
+      koraConversationsFile(koraConversation("OLD")),
+      [],
+      ["OLD"],
+    );
     if (result.ok) throw new Error("expected rejection");
     expect(result.error[0].problems).toEqual([
       "transcript OLD belongs to a retired batch, so reactivate that batch instead",
     ]);
   });
 
-  it("rejects pairs with no pair_id without reporting them as repeats", () => {
-    const { pair_id: _, ...noId } = koraPair("P1");
-    const result = check(koraPairsFile(noId, noId));
+  it("rejects conversations with no conversation_id without reporting them as repeats", () => {
+    const { conversation_id: _, ...noId } = koraConversation("P1");
+    const result = check(koraConversationsFile(noId, noId));
     if (result.ok) throw new Error("expected rejection");
     expect(result.error.map((r) => r.line)).toEqual([1, 2]);
     for (const { problems } of result.error) {

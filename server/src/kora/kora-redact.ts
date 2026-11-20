@@ -41,8 +41,7 @@ function maxLength(def: string, property: string): number {
 }
 
 const FREE_TEXT: Record<string, string[]> = {
-  result: ["q3_text"],
-  annotation: ["note"],
+  result: ["q4_text"],
   profile: ["country", "gender"],
   exitSurvey: ["exit_q6"],
 };
@@ -73,18 +72,7 @@ export function redactExport(
   root: Record<string, unknown>,
 ): Record<string, unknown> {
   const results = Array.isArray(root.results)
-    ? root.results.map((r: unknown) => {
-        const result = redactFields(r, "result");
-        const object = fields(result);
-        return object && Array.isArray(object.annotations)
-          ? {
-              ...object,
-              annotations: object.annotations.map((a: unknown) =>
-                redactFields(a, "annotation"),
-              ),
-            }
-          : result;
-      })
+    ? root.results.map((r: unknown) => redactFields(r, "result"))
     : root.results;
   return {
     ...root,

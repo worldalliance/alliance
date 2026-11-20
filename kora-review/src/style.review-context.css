@@ -73,6 +73,102 @@
   padding: 2px 9px;
   white-space: nowrap;
 }
+/* The age chip opens a menu of the child's story and the scenario */
+.kora-review .story-wrap {
+  position: relative;
+}
+.kora-review .cage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  cursor: pointer;
+}
+.kora-review .cage-btn .ic {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.15s ease;
+}
+.kora-review .cage-btn[aria-expanded="true"] .ic {
+  transform: rotate(180deg);
+}
+.kora-review .cage-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.kora-review .story-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  animation: kora-fade-in 0.15s ease-out;
+}
+.kora-review .story-item {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  text-align: left;
+  font-size: 15px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.kora-review .story-item:hover,
+.kora-review .story-item:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.kora-review .story-dlg {
+  margin: auto;
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(80vh, 720px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.kora-review .story-dlg::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+.kora-review .story-top {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 8px 0;
+  background: var(--card);
+}
+.kora-review .story-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 0 24px 28px;
+}
+.kora-review .story h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 10px;
+  scroll-margin-top: 56px;
+}
+.kora-review .story h2:focus {
+  outline: none;
+}
+.kora-review .story p {
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
 /* Full-screen category intro, shown when the category changes */
 .kora-review .intro-in {
   margin: auto;

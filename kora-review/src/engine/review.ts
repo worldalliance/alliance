@@ -1,41 +1,35 @@
 import type { Late, ReviewCtx } from "./context.js";
-import type { TimerId } from "./runtime.js";
-import type { Message, Side, Transcript } from "./types.js";
+import type { IconName, TimerId } from "./runtime.js";
+import type { Message, Transcript } from "./types.js";
 
 const WORD_MS = 90,
   MAX_TYPING_MS = 3000,
-  TYPING_PAUSE_MS = 500;
+  TYPING_PAUSE_MS = 500,
+  BUTTON_DELAY_MS = 750;
 
 export function createReview(ctx: ReviewCtx) {
   const {
     $,
     $$,
     S,
+    ageMenu,
     aiTurn,
-    announce,
     app,
     cancel,
     catChip,
     cur,
-    fmtNet,
     h,
     icon,
     later,
-    letter,
-    plural,
     progressText,
     reducedMotion,
     renderMarkdown,
-    res,
-    shownSides,
-    sideNets,
-    sideOf,
     topBar,
   } = ctx;
   const renderRank: Late["renderRank"] = (...args) =>
     ctx.late().renderRank(...args);
-  const renderAnns: Late["renderAnns"] = (...args) =>
-    ctx.late().renderAnns(...args);
+  const renderReactions: Late["renderReactions"] = (...args) =>
+    ctx.late().renderReactions(...args);
 
   // A pair opened for the first time types the child's message in, and keeps the replies behind a button.
   let opening: {
@@ -46,10 +40,23 @@ export function createReview(ctx: ReviewCtx) {
   } | null = null;
   let typer: TimerId | null = null;
 
+  const inlineIcon = (name: IconName, label: string) =>
+    h(
+      "span",
+      { class: "inline-ic" },
+      icon(name),
+      h("span", { class: "sr" }, label),
+    );
+
+  // KORA's child line: gender, when given, then age.
+  const childLine = (t: Transcript) =>
+    [t.context.childGender, `${t.context.childAge} years old`]
+      .filter(Boolean)
+      .join(", ");
+
   /* ---------- Review ---------- */
   function renderReview(slow = false) {
-    const t = cur(),
-      r = res(t);
+    const t = cur();
     S.views = {};
     cancel(typer);
     opening = null;
@@ -62,27 +69,14 @@ export function createReview(ctx: ReviewCtx) {
       chip: catChip(t.category),
       age:
         t.context.childAge != null
-          ? `Child, ${t.context.childAge} years old`
+          ? ageMenu(t, `Child, ${childLine(t)}`)
           : undefined,
       pairId: t.id,
       stage: progressText(),
       below: rules,
     });
-    const main = h("main", { class: "thread wrap wide", id: "thread" });
+    const main = h("main", { class: "thread wrap", id: "thread" });
     const banners = [];
-    if (r.stale && (r.stale.moved || r.stale.lost))
-      banners.push(
-        h(
-          "div",
-          { class: "banner" },
-          h(
-            "div",
-            { class: "grow" },
-            h("b", {}, "Source changed. "),
-            `This pair was edited after you marked it. ${plural(r.stale.moved, "mark")} moved to match, and ${r.stale.lost} couldn't be found${r.stale.lost ? " (listed as Not found)" : ""}.`,
-          ),
-        ),
-      );
     const coach = S.coachDone
       ? null
       : h(
@@ -91,8 +85,18 @@ export function createReview(ctx: ReviewCtx) {
           h(
             "div",
             { class: "grow" },
-            h("b", {}, "Tap any word"),
-            " in a chatbot reply to mark it, then tap a second word to stretch the mark. With a keyboard, Tab to a reply and use the arrow keys.",
+            h("b", {}, "Click any line"),
+            " of a chatbot reply to react ",
+            inlineIcon("up", "thumbs up"),
+            ", ",
+            inlineIcon("down", "thumbs down"),
+            " or ",
+            inlineIcon("asterisk", "notable"),
+            ". Or tap a line twice for ",
+            inlineIcon("up", "thumbs up"),
+            ", three times for ",
+            inlineIcon("down", "thumbs down"),
+            ", four times to clear it. On a phone, press and hold a line to choose. With a keyboard, Tab to a reply and use the up and down arrow keys.",
           ),
           h(
             "button",
@@ -120,7 +124,7 @@ export function createReview(ctx: ReviewCtx) {
         hidden: true,
         onclick: revealReplies,
       },
-      "Grade the 2 chatbots' replies",
+      "Grade the chatbot's replies",
     );
     if (slow && opener) {
       const hidden = [coach, cols, marks, rank].filter((e) => e !== null);
@@ -163,13 +167,8 @@ export function createReview(ctx: ReviewCtx) {
       rank,
     );
     app.replaceChildren(header, main);
-    if (!S.coachDone) {
-      const first = Object.values(S.views)[0];
-      if (first && first.tokens[0]) first.tokens[0].el.classList.add("pulse");
-    }
-    renderAnns();
+    renderReactions();
     renderRank();
-    renderScore(true);
   }
   // Wraps each word of el's text in a span, hidden until the typing reaches it.
   function splitWords(el: HTMLElement) {
@@ -196,16 +195,21 @@ export function createReview(ctx: ReviewCtx) {
   function playOpener() {
     const o = opening;
     if (!o) return;
-    const done = () => {
-      o.dots.remove();
-      for (const w of o.words) w.classList.add("on");
+    const showButton = () => {
       o.button.hidden = false;
       const a = o.button.ownerDocument.activeElement;
       if (!a || a === o.button.ownerDocument.body || app.contains(a))
         o.button.focus({ preventScroll: true });
     };
+    const done = () => {
+      o.dots.remove();
+      for (const w of o.words) w.classList.add("on");
+      typer = later(showButton, BUTTON_DELAY_MS);
+    };
     if (reducedMotion() || !o.words.length) {
-      done();
+      o.dots.remove();
+      for (const w of o.words) w.classList.add("on");
+      showButton();
       return;
     }
     const step = Math.min(WORD_MS, MAX_TYPING_MS / o.words.length);
@@ -231,6 +235,7 @@ export function createReview(ctx: ReviewCtx) {
       el.classList.add("fade-in");
     }
     o.button.remove();
+    renderReactions();
     if (e.detail === 0)
       $$(".bubble[tabindex]")[0]?.focus({ preventScroll: true });
   }
@@ -238,48 +243,30 @@ export function createReview(ctx: ReviewCtx) {
     S.coachDone = true;
     const c = $("coach");
     if (c) c.remove();
-    $$(".tk.pulse").forEach((e) => e.classList.remove("pulse"));
   }
-  // The child's first message is the same on both sides, so it's shown once, above the two chats.
+  // The child's first message types in above the conversation.
   function renderPair(t: Transcript): {
     opener: HTMLElement | null;
     cols: HTMLElement;
   } {
-    const a0 = t.messages[0],
-      b0 = t.messages[t.pair.na];
-    const shared =
-      a0.role === "user" && b0.role === "user" && a0.content === b0.content;
-    const skip = shared ? new Set([0, t.pair.na]) : new Set();
+    const first = t.messages[0];
+    const opens = first.role === "user";
     const cols = h(
-      "div",
-      { class: "pair" },
-      shownSides(t).map((side) => {
-        const L = letter(t, side);
-        const col = h(
-          "section",
-          { class: "side", "aria-labelledby": "side-" + side },
-          h(
-            "div",
-            { class: "side-h" },
-            h("h2", { id: "side-" + side }, "Chatbot " + L),
-          ),
-        );
-        t.messages.forEach((m, mi) => {
-          if (sideOf(t, mi) === side && !skip.has(mi))
-            col.append(
-              renderMessage(
-                t,
-                m,
-                mi,
-                m.role === "assistant" ? "Chatbot " + L : "Child",
-              ),
-            );
-        });
-        return col;
-      }),
+      "section",
+      { class: "side", "aria-labelledby": "side-a" },
+      h("div", { class: "side-h" }, h("h2", { id: "side-a" }, "Chatbot")),
+      t.messages.map((m, mi) =>
+        !(opens && mi === 0)
+          ? renderMessage(
+              t,
+              m,
+              mi,
+              m.role === "assistant" ? "Chatbot" : "Child",
+            )
+          : null,
+      ),
     );
-    if (!shared) return { opener: null, cols };
-    const age = t.context.childAge;
+    if (!opens) return { opener: null, cols };
     const opener = h(
       "div",
       { class: "opener" },
@@ -287,10 +274,10 @@ export function createReview(ctx: ReviewCtx) {
         "p",
         { class: "opener-who" },
         h("b", {}, "Child"),
-        age != null ? h("span", {}, `${age} years old`) : null,
+        t.context.childAge != null ? h("span", {}, childLine(t)) : null,
       ),
       icon("chat"),
-      renderMessage(t, a0, 0, null),
+      renderMessage(t, first, 0, null),
     );
     return { opener, cols };
   }
@@ -308,7 +295,7 @@ export function createReview(ctx: ReviewCtx) {
     const view = renderMarkdown(bubble, m.content, mi, annotatable);
     if (!m.content.trim())
       bubble.append(
-        h("em", { class: "empty" }, "Empty reply. Nothing to mark."),
+        h("em", { class: "empty" }, "Empty reply. Nothing to react to."),
       );
     const wrap = h(
       "div",
@@ -317,28 +304,18 @@ export function createReview(ctx: ReviewCtx) {
       bubble,
     );
     if (annotatable && view.tokens.length) {
-      // Keyboard path: a reply takes focus, and the arrow keys select words in it.
+      // Keyboard path: a reply takes focus, and the arrow keys move between its lines.
       bubble.setAttribute("tabindex", "0");
       bubble.setAttribute("role", "group");
       bubble.setAttribute(
         "aria-label",
-        `${who}, turn ${aiTurn(t, mi)}. Use the left and right arrow keys to select words to mark, Shift with an arrow to extend.`,
+        `${who}, turn ${aiTurn(t, mi)}. Use the up and down arrow keys to move between lines, Enter to react, or 1 for thumbs up, 2 for thumbs down, 3 for notable.`,
       );
+      bubble.classList.add("reactable");
       S.views[mi] = { ...view, bubble };
       bubble.addEventListener("contextmenu", (e) => e.preventDefault());
     }
     return wrap;
   }
-  let lastScore: string | null = null;
-  function renderScore(initial?: boolean) {
-    const t = cur(),
-      nets = sideNets(t, res(t));
-    const say = (side: Side) =>
-      `Chatbot ${letter(t, side)} net ${fmtNet(nets[side].net)}`;
-    const [L, R] = shownSides(t);
-    const key = nets.a.net + "|" + nets.b.net;
-    if (!initial && lastScore !== key) announce(`${say(L)}, ${say(R)}`);
-    lastScore = key;
-  }
-  return { dismissCoach, playOpener, renderReview, renderScore };
+  return { dismissCoach, playOpener, renderReview };
 }

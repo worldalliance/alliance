@@ -1,5 +1,12 @@
 import { KoraReviewStatus } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
+import { slicePoints } from "@alliance/kora-review/highlights";
+import type {
+  KoraExport,
+  KoraReaction,
+  KoraResult,
+  KoraTurn,
+} from "@alliance/kora-review/types";
 import type { ValidateFunction } from "ajv/dist/2020";
 import { ajvProblems } from "./kora-upload";
 
@@ -14,7 +21,7 @@ const fields = (value: unknown): Record<string, unknown> =>
     ? Object.fromEntries(Object.entries(value))
     : {};
 
-function statusOf(result: Record<string, unknown>): KoraReviewStatus {
+function statusOf(result: KoraResult): KoraReviewStatus {
   if (result.optedOut === true) return KoraReviewStatus.OptedOut;
   if (result.status === "done") return KoraReviewStatus.Done;
   return KoraReviewStatus.Pending;
@@ -43,13 +50,29 @@ export function withoutResultsFor(
   };
 }
 
+/** Why a reaction isn't a span of one of the chatbot's turns, as the conversation has it, or null when it is. */
+function reactionProblem(
+  reaction: KoraReaction,
+  conversation: KoraTurn[],
+): string | null {
+  const { turnIndex, charStart, charEnd } = reaction;
+  const turn = conversation[turnIndex];
+  if (turn?.role !== "ai")
+    return `reacts to turn ${turnIndex}, which isn't the chatbot's`;
+  if (charEnd <= charStart || charEnd > [...turn.text].length)
+    return `reacts outside turn ${turnIndex}'s text`;
+  if (slicePoints(turn.text, charStart, charEnd) !== reaction.text)
+    return `quotes text turn ${turnIndex} doesn't have at its reaction's offsets`;
+  return null;
+}
+
 /** Checks a saved export belongs to this reviewer and assignment, and reviewed the content it was given. */
 export function checkExport(params: {
   exported: Record<string, unknown>;
-  validate: ValidateFunction;
+  validate: ValidateFunction<KoraExport>;
   reviewerId: string;
   assignmentId: string;
-  transcripts: { id: string; contentHash: string }[];
+  transcripts: { id: string; contentHash: string; conversation: KoraTurn[] }[];
 }): Result<CheckedExport, string> {
   const { exported, validate } = params;
   if (!validate(exported)) {
@@ -63,21 +86,22 @@ export function checkExport(params: {
   if (exported.batchId !== params.assignmentId) {
     return R.failure("names a different assignment");
   }
-  const results = resultsOf(exported);
-  const expected = new Map(
-    params.transcripts.map((t) => [t.id, t.contentHash]),
-  );
+  const expected = new Map(params.transcripts.map((t) => [t.id, t]));
   const statuses = new Map<string, KoraReviewStatus>();
-  for (const result of results) {
-    const id = String(result.transcriptId);
-    const hash = expected.get(id);
-    if (hash === undefined) {
+  for (const result of exported.results) {
+    const id = result.transcriptId;
+    const transcript = expected.get(id);
+    if (transcript === undefined) {
       return R.failure(
         `has a result for transcript ${id}, which isn't assigned`,
       );
     }
-    if (result.contentHash !== hash) {
+    if (result.contentHash !== transcript.contentHash) {
       return R.failure(`reviewed different content for transcript ${id}`);
+    }
+    for (const reaction of result.reactions) {
+      const problem = reactionProblem(reaction, transcript.conversation);
+      if (problem) return R.failure(`${problem} in transcript ${id}`);
     }
     statuses.set(id, statusOf(result));
   }

@@ -11,8 +11,8 @@ import {
   createTestApp,
   type TestContext,
 } from "./e2e-test-utils";
+import { koraConversation, koraConversationsFile } from "./kora-conversations";
 import { koraClosesAt, setKoraProjectStatus } from "./kora-fixtures";
-import { koraPair, koraPairsFile } from "./kora-pairs";
 
 describe("Kora transcript batches (e2e)", () => {
   let ctx: TestContext;
@@ -64,9 +64,9 @@ describe("Kora transcript batches (e2e)", () => {
 
   it("stores a valid upload, lists it, and lets the project become active", async () => {
     const res = await upload({
-      transcripts: koraPairsFile(
-        koraPair(`${prefix}-1`),
-        koraPair(`${prefix}-2`),
+      transcripts: koraConversationsFile(
+        koraConversation(`${prefix}-1`),
+        koraConversation(`${prefix}-2`),
       ),
     }).expect(201);
 
@@ -102,8 +102,8 @@ describe("Kora transcript batches (e2e)", () => {
     const before = await batchCount();
     const res = await upload({
       transcripts: [
-        JSON.stringify(koraPair(`${prefix}-ok`)),
-        JSON.stringify(koraPair(`${prefix}-bad`, { risk_id: "nope" })),
+        JSON.stringify(koraConversation(`${prefix}-ok`)),
+        JSON.stringify(koraConversation(`${prefix}-bad`, { risk_id: "nope" })),
         "{oops",
       ].join("\n"),
     }).expect(400);
@@ -119,11 +119,11 @@ describe("Kora transcript batches (e2e)", () => {
 
   it("rejects a transcript id uploaded in an earlier batch", async () => {
     await upload({
-      transcripts: koraPairsFile(koraPair(`${prefix}-once`)),
+      transcripts: koraConversationsFile(koraConversation(`${prefix}-once`)),
     }).expect(201);
 
     const res = await upload({
-      transcripts: koraPairsFile(koraPair(`${prefix}-once`)),
+      transcripts: koraConversationsFile(koraConversation(`${prefix}-once`)),
     }).expect(400);
 
     expect(res.body.rejected[0].problems).toEqual([
@@ -132,7 +132,7 @@ describe("Kora transcript batches (e2e)", () => {
   });
 
   it("requires a closing date in the future, and lets an admin move it", async () => {
-    const transcripts = koraPairsFile(koraPair(`${prefix}-1`));
+    const transcripts = koraConversationsFile(koraConversation(`${prefix}-1`));
     await upload({ transcripts, closesAt: null }).expect(400);
     await upload({
       transcripts,
@@ -162,14 +162,16 @@ describe("Kora transcript batches (e2e)", () => {
   });
 
   it("refuses a file in a field it doesn't take", async () => {
-    await upload({ transcripts: koraPairsFile(koraPair(`${prefix}-1`)) })
+    await upload({
+      transcripts: koraConversationsFile(koraConversation(`${prefix}-1`)),
+    })
       .attach("exportSchema", Buffer.from("{}"), "export.schema.json")
       .expect(400);
   });
 
   it("keeps uploads and previews from non-admins, and 404s an unknown batch", async () => {
     await upload({
-      transcripts: koraPairsFile(koraPair(`${prefix}-1`)),
+      transcripts: koraConversationsFile(koraConversation(`${prefix}-1`)),
       token: ctx.accessToken,
     }).expect(401);
     await asAdmin(

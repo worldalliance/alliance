@@ -1,7 +1,7 @@
 import type { PresentationCtx } from "./context.js";
 
 export function createPresentation(ctx: PresentationCtx) {
-  const { catLabel, fmt, h, hueOf, icon, vcls } = ctx;
+  const { catLabel, h, hueOf } = ctx;
 
   function catChip(c: string) {
     return h(
@@ -13,7 +13,7 @@ export function createPresentation(ctx: PresentationCtx) {
   }
   function topBar(params: {
     chip?: Node;
-    age?: string;
+    age?: Node;
     pairId?: string;
     stage: string;
     below?: Node;
@@ -23,12 +23,12 @@ export function createPresentation(ctx: PresentationCtx) {
       { class: "rhead" },
       h(
         "div",
-        { class: "wrap wide" },
+        { class: "wrap" },
         h(
           "div",
           { class: "rrow" },
           params.chip,
-          params.age ? h("span", { class: "cage" }, params.age) : null,
+          params.age,
           params.pairId ? pairIdToggle(params.pairId) : null,
           h("span", { class: "grow" }),
           h("span", { class: "prog" }, params.stage),
@@ -44,7 +44,7 @@ export function createPresentation(ctx: PresentationCtx) {
       {
         type: "button",
         class: "pair-id-hash",
-        "aria-label": "Pair ID",
+        "aria-label": "Conversation ID",
         "aria-expanded": "false",
         onclick: () => {
           id.hidden = !id.hidden;
@@ -64,22 +64,5 @@ export function createPresentation(ctx: PresentationCtx) {
     );
   }
 
-  // A mark is +1, −1, or 0: a neutral note, shown with a pencil and counted towards neither side.
-  const markCls = (v: number) => (v > 0 ? "pos" : v < 0 ? "neg" : "note");
-  const markBadge = (v: number, cls: string) =>
-    v
-      ? h(
-          "span",
-          { class: cls + " " + vcls(v) },
-          h("span", { "aria-hidden": "true" }, fmt(v)),
-          h("span", { class: "sr" }, v > 0 ? "Plus one:" : "Minus one:"),
-        )
-      : h(
-          "span",
-          { class: cls + " v-note" },
-          icon("note"),
-          h("span", { class: "sr" }, "Note:"),
-        );
-
-  return { brandMark, catChip, markBadge, markCls, topBar };
+  return { brandMark, catChip, topBar };
 }

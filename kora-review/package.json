@@ -12,7 +12,9 @@
     "./parse": "./src/parse.ts",
     "./sample-export": "./src/sample-export.ts",
     "./example-pair": "./src/example-pair.ts",
-    "./style.css": "./src/style.css"
+    "./style.css": "./src/style.css",
+    "./highlights": "./src/highlights.ts",
+    "./types": "./src/types.gen.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && eslint .",

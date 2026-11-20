@@ -1,16 +1,15 @@
 import { isNode, isSeq, LineCounter, parseDocument } from "yaml";
 
-// Reads KORA's pair export (pair_id, risk_id, conversation_a/b with child and ai turns) and converts each
-// pair into a transcript line for transcriptSchema. Fields the schema doesn't name (model names,
-// comprehension_options, feedback_text, note, risk_category_id, ...) are dropped. The converter checks
-// nothing and passes required values through unchanged, so validating its output against transcriptSchema
-// catches a missing or malformed one.
+// Reads KORA's conversation file (docs/kora/kora_conversations.schema.yaml) and converts each record into a
+// transcript line for transcriptSchema. Fields the schema doesn't name (risk_category_id, note) are dropped. The
+// converter checks nothing and passes required values through unchanged, so validating its output against
+// transcriptSchema catches a missing or malformed one.
 
-export type KoraPairRecord =
+export type KoraRecord =
   | { line: number; ok: true; record: unknown }
   | { line: number; ok: false; error: string };
 
-function readYaml(text: string): KoraPairRecord[] {
+function readYaml(text: string): KoraRecord[] {
   const lineCounter = new LineCounter();
   const doc = parseDocument(text, { lineCounter });
   if (doc.errors.length > 0) {
@@ -23,7 +22,11 @@ function readYaml(text: string): KoraPairRecord[] {
   if (doc.contents === null) return [];
   if (!isSeq(doc.contents)) {
     return [
-      { line: 1, ok: false, error: "a YAML file must be a list of pairs" },
+      {
+        line: 1,
+        ok: false,
+        error: "a YAML file must be a list of transcripts",
+      },
     ];
   }
   return doc.contents.items.map((item) => ({
@@ -36,10 +39,10 @@ function readYaml(text: string): KoraPairRecord[] {
 
 /**
  * Splits KORA's file into records: JSON Lines numbered by line, a JSON array numbered by element, or a YAML
- * list numbered by the line each pair starts on. The first character that isn't whitespace or a YAML comment
+ * list numbered by the line each record starts on. The first character that isn't whitespace or a YAML comment
  * picks the format.
  */
-export function readKoraPairs(text: string): KoraPairRecord[] {
+export function readKoraConversations(text: string): KoraRecord[] {
   const trimmed = text.trim();
   const first = trimmed.replace(/^(#.*(\n|$)|\s+)*/, "")[0];
   if (first !== "[" && first !== "{") return first ? readYaml(text) : [];
@@ -53,7 +56,7 @@ export function readKoraPairs(text: string): KoraPairRecord[] {
       // An array split one element per line isn't valid JSON as a whole; read it line by line.
     }
   }
-  return text.split("\n").flatMap((raw, i): KoraPairRecord[] => {
+  return text.split("\n").flatMap((raw, i): KoraRecord[] => {
     const line = raw
       .trim()
       .replace(/^\[|\]$/g, "")
@@ -84,13 +87,20 @@ const turns = (list: unknown) =>
     return { role: m.role, text: m.text };
   });
 
-/** Maps one KORA pair onto transcriptSchema's field names. */
-export function fromKoraPair(record: unknown): Record<string, unknown> {
+/** Maps one KORA record onto transcriptSchema's field names. */
+export function fromKoraConversation(record: unknown): Record<string, unknown> {
   const p = fields(record);
   return {
-    transcriptId: p.pair_id,
+    transcriptId: p.conversation_id,
     category: p.risk_id,
-    ...(p.pair_type ? { pairType: String(p.pair_type) } : {}),
+    itemType: p.item_type,
+    ...(p.child_gender != null ? { childGender: p.child_gender } : {}),
+    ...(p.reference_verdict !== undefined
+      ? { referenceVerdict: p.reference_verdict }
+      : {}),
+    ...(p.reference_reason !== undefined
+      ? { referenceReason: p.reference_reason }
+      : {}),
     scenarioTitle: p.scenario_title,
     childAge: p.child_age,
     ...(p.age_band ? { ageBand: String(p.age_band) } : {}),
@@ -98,7 +108,8 @@ export function fromKoraPair(record: unknown): Record<string, unknown> {
       ? { childBackground: String(p.child_background) }
       : {}),
     ...(p.scenario ? { scenario: String(p.scenario) } : {}),
-    conversationA: turns(p.conversation_a),
-    conversationB: turns(p.conversation_b),
+    nTurns: p.n_turns,
+    ...(p.extended !== undefined ? { extended: p.extended } : {}),
+    conversation: turns(p.conversation),
   };
 }

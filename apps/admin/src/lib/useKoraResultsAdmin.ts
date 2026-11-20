@@ -1,6 +1,7 @@
 import {
   koraResultsAnswers,
   koraResultsExports,
+  koraResultsKoraExport,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -26,6 +27,21 @@ export function useDownloadKoraExports(params: {
     mutationFn: () =>
       koraResultsExports({ throwOnError: true }).then((r) =>
         exportsJsonl(r.data.exports),
+      ),
+    onSuccess: params.onReady,
+    onError: params.onError,
+  });
+}
+
+/** KORA's own export (docs/kora/kora_export.schema.yaml), as one JSON document. */
+export function useDownloadKoraSpecExport(params: {
+  onReady: (json: string) => void;
+  onError: (err: Error) => void;
+}) {
+  return useMutation({
+    mutationFn: (kind: "rolling" | "final") =>
+      koraResultsKoraExport({ query: { kind }, throwOnError: true }).then(
+        (r) => JSON.stringify(r.data, null, 2) + "\n",
       ),
     onSuccess: params.onReady,
     onError: params.onError,

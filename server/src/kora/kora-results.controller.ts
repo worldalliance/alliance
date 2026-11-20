@@ -1,20 +1,29 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Query,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse } from "@nestjs/swagger";
+import { ApiOkResponse, ApiQuery } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
   KoraAnswerCountsDto,
   KoraAssignmentExportDto,
   KoraExportsDto,
+  KoraSpecExportDto,
 } from "./dto/kora-results.dto";
 import { countAnswers } from "./kora-answers";
 import { KoraResultsService } from "./kora-results.service";
+import { buildKoraSpecExport } from "./kora-spec-export";
+
+enum KoraExportKind {
+  Rolling = "rolling",
+  Final = "final",
+}
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -37,6 +46,26 @@ export class KoraResultsController {
         return record ? [{ ...record, koraBatches: batches }] : [];
       }),
     });
+  }
+
+  /** KORA's own five-table export, built from every stored review. */
+  @Get("kora-export")
+  @ApiQuery({ name: "kind", enum: KoraExportKind, required: false })
+  @ApiOkResponse({ type: KoraSpecExportDto })
+  async koraExport(
+    // A string, not the enum: Bun emits an enum parameter's design type, which the global ValidationPipe then rejects.
+    @Query("kind") kindParam?: string,
+  ): Promise<KoraSpecExportDto> {
+    const kind = Object.values(KoraExportKind).find((k) => k === kindParam);
+    if (kindParam !== undefined && !kind)
+      throw new BadRequestException('kind must be "rolling" or "final"');
+    return new KoraSpecExportDto(
+      buildKoraSpecExport({
+        ...(await this.resultsService.specExportInput()),
+        generatedAt: new Date(),
+        kind: kind ?? KoraExportKind.Rolling,
+      }),
+    );
   }
 
   @Get("answers")

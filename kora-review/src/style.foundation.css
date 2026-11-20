@@ -76,8 +76,6 @@
     Consolas,
     monospace
   );
-  --kb: 0px;
-  --sheet-h: 0px;
 }
 .kora-review,
 [data-kora-theme="light"] .kora-review {

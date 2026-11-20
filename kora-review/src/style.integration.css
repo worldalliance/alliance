@@ -6,7 +6,6 @@
     transition: none !important;
   }
 }
-
 /* ---------- Added for the packaged tool ---------- */
 .kora-review [hidden] {
   display: none !important;
@@ -25,15 +24,6 @@
   letter-spacing: normal;
   text-transform: none;
 }
-
-.kora-review .note-btn {
-  gap: 6px;
-  font-size: 16px;
-}
-.kora-review .big.note-btn {
-  flex: 0 0 auto;
-  padding: 0 14px;
-}
 @media (max-width: 480px) {
   .kora-review .rrow {
     flex-direction: column;
@@ -48,13 +38,11 @@
     border-radius: var(--r);
   }
 }
-
 /* Reply bubbles take keyboard focus to start a selection */
 .kora-review .bubble.layer[tabindex]:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
-
 /* Content warning, profile and exit survey */
 .kora-review .oo-acts {
   display: flex;
@@ -90,7 +78,6 @@
   flex: none;
   width: 100%;
 }
-
 /* Full-screen category intro, shown when the category changes */
 .kora-review .kr-intro {
   position: fixed;
@@ -105,17 +92,11 @@
   opacity: 0;
   pointer-events: none;
 }
-
 /* Touch devices: every target at least 44 × 44 */
 @media (pointer: coarse) {
   .kora-review .link,
-  .kora-review .ann-q,
   .kora-review .seg button {
     min-height: 44px;
-  }
-  .kora-review .sh-x {
-    width: 44px;
-    height: 44px;
   }
   .kora-review .opt span {
     min-height: 48px;

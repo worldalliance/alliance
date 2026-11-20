@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
 import { exportSchema } from "@alliance/kora-review/schemas";
+import type { KoraExport } from "@alliance/kora-review/types";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
@@ -52,7 +53,7 @@ import {
 } from "./kora-pool";
 import { KoraProjectService } from "./kora-project.service";
 import { redactExport } from "./kora-redact";
-import { koraAjv } from "./kora-upload";
+import { koraAjv, storedTranscript } from "./kora-upload";
 
 export type KoraIdentity = { userId: number } | { participantId: string };
 
@@ -67,7 +68,7 @@ export type KoraSaveRefusal =
   | { error: KoraSaveError.NotFound }
   | { error: KoraSaveError.Invalid; reason: string };
 
-const validExport = koraAjv().compile(exportSchema);
+const validExport = koraAjv().compile<KoraExport>(exportSchema);
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -157,10 +158,14 @@ export class KoraReviewService {
         validate: validExport,
         reviewerId: reviewer.id,
         assignmentId: assignment.id,
-        transcripts: held.map((row) => ({
-          id: row.transcriptId,
-          contentHash: loadedTranscript(row).contentHash,
-        })),
+        transcripts: held.map((row) => {
+          const transcript = loadedTranscript(row);
+          return {
+            id: row.transcriptId,
+            contentHash: transcript.contentHash,
+            conversation: storedTranscript(transcript).conversation,
+          };
+        }),
       });
       if (!checked.ok) {
         this.logger.warn(

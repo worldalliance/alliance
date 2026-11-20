@@ -42,7 +42,7 @@ function HeroSection({
       </DisplayHeading>
       {totalRanked > 0 && (
         <p className="text-lg text-zinc-700">
-          {HOME_COPY.rankedSoFar(totalRanked)}
+          {HOME_COPY.reviewedSoFar(totalRanked)}
         </p>
       )}
       {hero.note && (

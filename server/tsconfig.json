@@ -20,6 +20,8 @@
       "@nestjs/locks/testing": [
         "../node_modules/@nestjs/locks/dist/testing/index.d.ts"
       ],
+      "@alliance/kora-review/types": ["../kora-review/src/types.gen.ts"],
+      "@alliance/kora-review/highlights": ["../kora-review/src/highlights.ts"],
       "@alliance/kora-review/sample-export": [
         "../kora-review/src/sample-export.ts"
       ]

@@ -19,8 +19,8 @@ import { type KoraToolOptions, KoraReviewTool } from "./KoraReviewTool";
 
 export function meta() {
   return socialPreviewMeta({
-    title: "Example pair — Safer Chatbots for Children",
-    description: "Practise ranking a made-up pair of chatbot conversations.",
+    title: "Example conversation — Safer Chatbots for Children",
+    description: "Practise reviewing a made-up chatbot conversation.",
     url: KORA_EXAMPLE_PATH,
   });
 }
@@ -78,7 +78,7 @@ export default function KoraExamplePage() {
               color={ButtonColor.Black}
               className="self-start"
             >
-              {HOME_COPY.startRanking}
+              {HOME_COPY.startReviewing}
             </Button>
           </section>
         ) : (

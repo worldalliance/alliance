@@ -2,7 +2,7 @@
 
 KORA's chatbot-transcript review tool, which the Alliance site mounts on its review page. It was copied from `korabench-review` v0.1.0-alpha.0 (github.com/worldalliance/korabench-review) and is maintained here.
 
-A reviewer reads a **pair**: one simulated child talking to two AI chatbots, side by side. They mark words in each AI's replies +1 or −1, then say whether each AI was safe, which was safer, and where the weaker one went wrong.
+A reviewer reads a **conversation**: one simulated child talking to an AI chatbot. They react to lines of the AI's replies with 👍, 👎 or \* (reactions help with the questions and are never saved), then say whether it was safe and how confident they are, and for an unsafe one how serious it would be, at which turn it went wrong, and optionally what worries them.
 
 The host owns everything outside the tool. It gives the tool a reviewer's assigned transcripts and the last export it stored, and it receives the tool's export every time it changes. The tool makes no network requests, stores nothing in the browser (no `localStorage`, `sessionStorage`, cookies or IndexedDB), loads no remote fonts or images, and never navigates the page.
 
@@ -18,7 +18,7 @@ The frontend mounts the tool, and the server imports the schemas and the convert
 - `@alliance/kora-review`: `mountKoraReview` and the types
 - `@alliance/kora-review/style.css`
 - `@alliance/kora-review/schemas`: `transcriptSchema`, `exportSchema`, `SCHEMA_VERSION`
-- `@alliance/kora-review/convert`: `readKoraPairs` and `fromKoraPair`
+- `@alliance/kora-review/convert`: `readKoraConversations` and `fromKoraConversation`
 
 ## Mount it
 
@@ -30,9 +30,9 @@ const handle = mountKoraReview(document.getElementById("review")!, {
   reviewerId: "rv_8f3a2c71", // opaque; never a name, email or phone number
   assignment: {
     batchId: "asg_2026_11_10_001", // echoed as the export's batchId
-    size: 10, // how many pairs the assignment asks for
+    size: 10, // how many conversations the assignment asks for
     transcripts: [
-      { transcript, contentHash: "sha256:…" }, // the pairs given so far, in the order to show them
+      { transcript, contentHash: "sha256:…" }, // the conversations given so far, in the order to show them
     ],
   },
   savedExport: storedExportOrNull, // resume exactly where the reviewer left off
@@ -68,15 +68,15 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 
 ### Behaviour
 
-- **Resume exactly.** With a `savedExport`, the tool reopens the same pair with the same marks and any half-answered ranking questions, with the ranking sheet open if it was.
-- **Saving.** About two seconds after the last change (a mark, an answer, an opt-out, moving between pairs), `save` gets the complete export. Never more than one save is in flight; changes made during a save are saved when it settles. When the page is hidden (tab switch, app backgrounded) a pending save goes out straight away.
+- **Resume exactly.** With a `savedExport`, the tool reopens the same conversation with any half-answered grading questions. Reactions are never saved, so they don't come back.
+- **Saving.** About two seconds after the last change (a mark, an answer, an opt-out, moving between conversations), `save` gets the complete export. Never more than one save is in flight; changes made during a save are saved when it settles. When the page is hidden (tab switch, app backgrounded) a pending save goes out straight away.
 - **Failed saves.** A rejected save loses nothing. The tool calls `onSaveStateChange(Failed)`, retries on the next change or `flush()`, and calls `onSaveStateChange(Saved)` after the next success. It shows no error of its own: that's the host's.
-- **One pair at a time.** The host gives the pairs so far; once they're all ranked or skipped and fewer than `size` have been given, the tool saves, then calls `next` and shows "Loading the next pair…". A rejected `next` shows "Couldn't load the next pair" with Try again. `null` means there are no more, and the assignment finishes with what was given.
-- **Removed pairs.** When `save` resolves with `removed` ids, those pairs leave the tool and its exports without a message; a reviewer on one moves to the next.
-- **Progress** is shown as "N of M reviewed" against `size`, where a pair counts once it's ranked or skipped. There's no time estimate.
-- **Content warnings.** Before each pair in a sensitive category, the reviewer can continue, skip that pair (`optedOut: true`), or skip every pair in the category (added to `optOutCategories`). The host passes earlier opt-outs back as the `optOutCategories` option so later exports keep them.
-- **Completion.** When every pair is ranked or skipped and `size` pairs were given or `next` gave null, the tool asks the exit survey (if `collectExitSurvey`), sets `isDone`, saves, and then calls `onComplete`, once per mount. Mounting with an export that's already `isDone` shows the summary and calls `onComplete` once. The host shows the thank-you and any "review more" choice; to start another assignment, unmount and mount again with the new assignment and `savedExport: null`.
-- **Profile.** With `collectProfile`, the profile questions come before the first pair. The optional questions have a "Prefer not to say" answer; the required ones don't.
+- **One conversation at a time.** The host gives the conversations so far; once they're all reviewed or skipped and fewer than `size` have been given, the tool saves, then calls `next` and shows "Loading the next conversation…". A rejected `next` shows "Couldn't load the next conversation" with Try again. `null` means there are no more, and the assignment finishes with what was given.
+- **Removed conversations.** When `save` resolves with `removed` ids, those conversations leave the tool and its exports without a message; a reviewer on one moves to the next.
+- **Progress** is shown as "N of M reviewed" against `size`, where a conversation counts once it's reviewed or skipped. There's no time estimate.
+- **Content warnings.** Before each conversation in a sensitive category, the reviewer can continue, skip that conversation (`optedOut: true`), or skip every conversation in the category (added to `optOutCategories`). The host passes earlier opt-outs back as the `optOutCategories` option so later exports keep them.
+- **Completion.** When every conversation is reviewed or skipped and `size` conversations were given or `next` gave null, the tool asks the exit survey (if `collectExitSurvey`), sets `isDone`, saves, and then calls `onComplete`, once per mount. Mounting with an export that's already `isDone` shows the summary and calls `onComplete` once. The host shows the thank-you and any "review more" choice; to start another assignment, unmount and mount again with the new assignment and `savedExport: null`.
+- **Profile.** With `collectProfile`, the profile questions come before the first conversation. The optional questions have a "Prefer not to say" answer; the required ones don't.
 
 ## Theming
 
@@ -117,20 +117,22 @@ const validateTranscript = ajv.compile(transcriptSchema);
 const validateExport = ajv.compile(exportSchema);
 ```
 
-**Transcript** (one upload line): `transcriptId` (unique within an upload; the schema can't check that across lines), `category` (one of the 26 risk ids), `scenarioTitle`, `childAge`, and `conversationA` and `conversationB`, each a list of `{ role: "child" | "ai", text }` with at least one `ai` turn. Optional: `pairType`, `ageBand`, `childBackground`, `scenario`. AI text may use a small Markdown subset and LaTeX maths.
+**Transcript** (one upload line): `transcriptId` (unique within an upload; the schema can't check that across lines), `category` (one of the 26 risk ids), `itemType` (`scored`, `practice` or `test`), `scenarioTitle`, `childAge`, `nTurns`, and `conversation`, a list of `{ role: "child" | "ai", text }` with at least one `ai` turn. Optional: `ageBand`, `childGender`, `childBackground`, `scenario`, `extended`, `referenceVerdict` and `referenceReason`. AI text may use a small Markdown subset and LaTeX maths.
 
-**Export**: `schemaVersion`, `batchId`, `reviewer: { id }`, `exportedAt`, `currentTranscriptId`, `results` (one per assigned pair, in assignment order), `profile` and `exitSurvey` (null until answered), `optOutCategories`, `isDone`. A pending result may hold some of `q0_a`, `q0_b`, `q1`, `q2_turn` and `q3_text` and not others; a done result holds all of them. Annotations give `side`, `messageIndex` (into that side's conversation), `turn`, UTF-16 `start`/`end` offsets into the turn's text, the rendered `text`, `value` (−1, 0 for a neutral note, +1) and an optional `note`.
+**Export**: `schemaVersion`, `batchId`, `reviewer: { id }`, `exportedAt`, `currentTranscriptId`, `results` (one per assigned conversation, in assignment order), `profile` and `exitSurvey` (null until answered), `optOutCategories`, `isDone`. A pending result may hold some of `q1`, `q2_confidence`, `q3_severity` and `q4_text` and not others; a done result holds `q1` (`ok` or `not_ok`, shown as Safe or Unsafe) and `q2_confidence`, plus `q3_severity` when `q1` is `not_ok`, and `q4_text` only if the reviewer wrote one. A skipped result has `optedOutAt`. Each result's `reactions` list the reviewer's line reactions: `turnIndex`, `charStart`/`charEnd` (Unicode code points into the turn's text), the verbatim `text` and `kind` (`up`, `down` or `notable`).
+
+**KORA's export** (docs/kora/kora_export.schema.yaml) is built by the host from every stored export: `toKoraHighlights` from `@alliance/kora-review/highlights` turns a result's reactions into KORA's highlights (each 👍 line a like; a run of 👎 lines one dislike; \* left out).
 
 The TypeScript types are generated from the schemas (`bun run gen:types`), and a test fails if they drift. `SCHEMA_VERSION` is bumped whenever either schema changes shape.
 
-Synthetic samples are in `samples/`: [`samples/transcript.json`](samples/transcript.json), [`src/sample-export.ts`](src/sample-export.ts) (with a partly answered pending result, in `src` so the server can import it), [`src/example-pair.ts`](src/example-pair.ts) (the practice pair the site shows before real ones, in a category with no content warning) and [`samples/transcripts.json`](samples/transcripts.json) (five pairs). None of them is real reviewer data or a real child's conversation.
+Synthetic samples are in `samples/`: [`samples/transcript.json`](samples/transcript.json), [`src/sample-export.ts`](src/sample-export.ts) (with a partly answered pending result, in `src` so the server can import it), [`src/example-pair.ts`](src/example-pair.ts) (the practice conversation the site shows before real ones, in a category with no content warning) and [`samples/transcripts.json`](samples/transcripts.json) (five transcripts). None of them is real reviewer data or a real child's conversation.
 
-### Converting KORA's pair files
+### Converting KORA's transcript files
 
-The server converts KORA's native files on upload with `readKoraPairs` and `fromKoraPair` from `@alliance/kora-review/convert`, then validates each result against `transcriptSchema`. They map KORA's Annex B fields (`pair_id`, `risk_id`, `conversation_a`, …) to transcript fields and drop everything else. To check a file by hand:
+The server converts KORA's native files on upload with `readKoraConversations` and `fromKoraConversation` from `@alliance/kora-review/convert`, then validates each result against `transcriptSchema`. They map KORA's conversation file (`conversation_id`, `item_type`, `risk_id`, `conversation`, …; [docs/kora/kora_conversations.schema.yaml](../docs/kora/kora_conversations.schema.yaml)) to transcript fields and drop everything else. To check a file by hand:
 
 ```bash
-bun scripts/kora-to-transcripts.mjs pairs.jsonl > transcripts.jsonl
+bun scripts/kora-to-transcripts.mjs conversations.jsonl > transcripts.jsonl
 ```
 
 ## Accessibility

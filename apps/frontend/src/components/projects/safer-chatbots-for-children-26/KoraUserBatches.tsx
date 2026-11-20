@@ -80,7 +80,7 @@ export function KoraUserBatches({
           <tr>
             <th className="py-2 pr-4 font-normal">{HOME_COPY.released}</th>
             <th className="py-2 pr-4 font-normal">{HOME_COPY.closes}</th>
-            <th className="py-2 pr-4 font-normal">{HOME_COPY.ranked}</th>
+            <th className="py-2 pr-4 font-normal">{HOME_COPY.reviewed}</th>
             <th className="py-2 pr-4 font-normal">{HOME_COPY.status}</th>
             <th className="py-2 font-normal">
               <span className="sr-only">Action</span>
@@ -121,7 +121,7 @@ export function KoraUserBatches({
                 <dd>{c.released}</dd>
                 <dt className="text-zinc-500">{HOME_COPY.closes}</dt>
                 <dd>{c.closes}</dd>
-                <dt className="text-zinc-500">{HOME_COPY.ranked}</dt>
+                <dt className="text-zinc-500">{HOME_COPY.reviewed}</dt>
                 <dd>{c.ranked}</dd>
               </dl>
             </li>
