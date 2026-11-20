@@ -19,7 +19,7 @@ const Disclosure = ({
   >
     <summary
       className={cn(
-        "flex cursor-pointer list-none items-center gap-1 rounded px-1 py-1.5 hover:bg-zinc-100 [&::-webkit-details-marker]:hidden",
+        "flex cursor-pointer list-none items-center gap-1 rounded px-1 py-1.5 outline-hidden hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-blue-600 [&::-webkit-details-marker]:hidden",
         summaryClassName,
       )}
     >
