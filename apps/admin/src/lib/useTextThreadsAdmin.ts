@@ -21,17 +21,28 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
+import { useMmsThreadsLive } from "./mmsThreadsLive";
 import { usePatchAnyQueryData } from "./usePatchQueryData";
+
+// Pushes refetch thread queries while the socket is connected, so polling then
+// only backs them up.
+const LIVE_POLL_MS = milliseconds({ seconds: 60 });
+
+export function usePollInterval(offlineMs: number): number {
+  return useMmsThreadsLive().connected ? LIVE_POLL_MS : offlineMs;
+}
 
 const needsReplyQuery = queryOptions({
   queryKey: queryKeys.needsReplyAdmin(),
   queryFn: () =>
     mmsThreadNeedsReplyThreadsAdmin({ throwOnError: true }).then((r) => r.data),
-  refetchInterval: milliseconds({ seconds: 30 }),
 });
 
 export function useNeedsReplyAdmin() {
-  return useQuery(needsReplyQuery);
+  return useQuery({
+    ...needsReplyQuery,
+    refetchInterval: usePollInterval(milliseconds({ seconds: 30 })),
+  });
 }
 
 /** The Needs reply badge's count: null until the list first loads if that
@@ -164,7 +175,6 @@ const numberThreadQuery = (threadId: string) =>
   queryOptions({
     queryKey: queryKeys.numberTextThreadAdmin(threadId),
     queryFn: () => fetchNumberThread({ threadId }),
-    refetchInterval: milliseconds({ seconds: 10 }),
   });
 
 export const fetchNumberThread = (params: {
@@ -178,7 +188,10 @@ export const fetchNumberThread = (params: {
   }).then((r) => r.data);
 
 export function useNumberThreadAdmin(threadId: string) {
-  const thread = useQuery(numberThreadQuery(threadId));
+  const thread = useQuery({
+    ...numberThreadQuery(threadId),
+    refetchInterval: usePollInterval(milliseconds({ seconds: 10 })),
+  });
   const actions = useThreadActions({
     id: threadId,
     queryKey: (id: string) => numberThreadQuery(id).queryKey,

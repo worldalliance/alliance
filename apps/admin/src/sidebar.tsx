@@ -7,6 +7,7 @@ import AdminSearch from "./components/AdminSearch";
 import MemberZoneLink from "./components/MemberZoneLink";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
+import { MmsThreadsLiveProvider } from "./lib/mmsThreadsLive";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
 import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
 import { useNeedsReplyCount } from "./lib/useTextThreadsAdmin";
@@ -122,4 +123,10 @@ const Sidebar: React.FC = () => {
   );
 };
 
-export default Sidebar;
+const SidebarLayout = () => (
+  <MmsThreadsLiveProvider>
+    <Sidebar />
+  </MmsThreadsLiveProvider>
+);
+
+export default SidebarLayout;
