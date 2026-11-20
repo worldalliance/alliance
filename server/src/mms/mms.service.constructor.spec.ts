@@ -3,6 +3,7 @@ import { Logger } from "@nestjs/common";
 import type { EventLogService } from "src/eventlog/eventlog.service";
 import type { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import type { Repository } from "src/utils/Repository";
+import type { MmsNumberService } from "./mms-number.service";
 import type { Mms } from "./mms.entity";
 import { MmsService } from "./mms.service";
 
@@ -22,6 +23,7 @@ describe("MmsService constructor", () => {
       {} as Repository<Mms>,
       {} as EventLogService,
       {} as MessageTrackingService,
+      {} as MmsNumberService,
     );
 
   beforeEach(() => {

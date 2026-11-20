@@ -26,6 +26,7 @@ import { SendErrorKind, textSendError } from "src/utils/send-error";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { env } from "../config/env";
+import { MmsNumberService } from "./mms-number.service";
 import { Mms, MmsDirection } from "./mms.entity";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
@@ -81,6 +82,7 @@ export class MmsService {
     private readonly mmsRepository: Repository<Mms>,
     private readonly eventLogService: EventLogService,
     private readonly messageTracking: MessageTrackingService,
+    private readonly mmsNumberService: MmsNumberService,
   ) {
     if (env("NODE_ENV") === NodeEnv.Test) {
       return;
@@ -111,8 +113,9 @@ export class MmsService {
 
   /**
    * As {@link sendMms}, with what the failure shows about whether the text went
-   * out. Every failure it returns raises the SMS-failure alert. More than 10
-   * media URLs, or a failed save of an undelivered text, throws.
+   * out. A number that opted out is refused without the SMS-failure alert;
+   * every other failure raises it. More than 10 media URLs, or a failed save
+   * of an undelivered text, throws.
    */
   async sendMmsResult(
     params: SendMmsParams,
@@ -122,6 +125,12 @@ export class MmsService {
       this.reportFailure({ to, userId, error });
       return R.failure(kind);
     };
+    const optedOut = await R.fromPromise(this.mmsNumberService.optedOut(to));
+    if (!optedOut.ok) return fail(optedOut.error, SendErrorKind.NotHandedOver);
+    if (optedOut.value) {
+      this.logger.log(`Not texting user ${userId}: their number opted out`);
+      return R.failure(SendErrorKind.Refused);
+    }
     let cid: string | null = null;
     if (tracking) {
       const tracked = await R.fromPromise(

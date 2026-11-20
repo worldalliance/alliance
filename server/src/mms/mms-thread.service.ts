@@ -17,6 +17,7 @@ import {
 } from "typeorm";
 import { z } from "zod";
 import { MmsMedia } from "./mms-media.entity";
+import { MmsNumberService, optedOutSql } from "./mms-number.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "./mms-thread-event.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
@@ -144,14 +145,6 @@ const memberNumber = (
   return R.success(user.phoneNumber);
 };
 
-const staffTextableNumber = (user: User): Result<string, StaffTextRefusal> => {
-  const number = memberNumber(user);
-  if (number.ok && user.phoneNumberUnsubscribed) {
-    return R.failure(StaffTextRefusal.OptedOut);
-  }
-  return number;
-};
-
 @Injectable()
 export class MmsThreadService {
   constructor(
@@ -161,6 +154,7 @@ export class MmsThreadService {
     private readonly userRepository: Repository<User>,
     private readonly mmsService: MmsService,
     private readonly mmsUnsubService: MmsUnsubService,
+    private readonly mmsNumberService: MmsNumberService,
   ) {}
 
   /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
@@ -211,12 +205,15 @@ export class MmsThreadService {
     const user = await this.findMember(params.userId);
     if (!user.ok) return user;
     const { phoneNumber } = user.value;
-    const page = await this.threadPage(phoneNumber, params.before);
+    const [page, optedOut] = await Promise.all([
+      this.threadPage(phoneNumber, params.before),
+      phoneNumber ? this.mmsNumberService.optedOut(phoneNumber) : false,
+    ]);
     if (!page.ok) return page;
     return R.success({
       phoneNumber,
       textable: memberNumber(user.value).ok,
-      optedOut: user.value.phoneNumberUnsubscribed,
+      optedOut,
       replyState: phoneNumber
         ? await this.replyState(phoneNumber)
         : ReplyState.Answered,
@@ -305,7 +302,7 @@ export class MmsThreadService {
     const { userId, body, adminId } = params;
     const user = await this.findMember(userId);
     if (!user.ok) return user;
-    const to = staffTextableNumber(user.value);
+    const to = await this.staffTextable(memberNumber(user.value));
     if (!to.ok) return to;
     const sent = await this.mmsService.sendStaffText({
       to: to.value,
@@ -327,7 +324,7 @@ export class MmsThreadService {
   }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
     const user = await this.findMember(params.userId);
     if (!user.ok) return user;
-    const to = staffTextableNumber(user.value);
+    const to = await this.staffTextable(memberNumber(user.value));
     if (!to.ok) return to;
     await this.mmsUnsubService.unsubFromMms(to.value, {
       kind: OptOutSource.Staff,
@@ -414,6 +411,15 @@ export class MmsThreadService {
     return R.success(undefined);
   }
 
+  private async staffTextable(
+    number: Result<string, StaffTextRefusal>,
+  ): Promise<Result<string, StaffTextRefusal>> {
+    if (number.ok && (await this.mmsNumberService.optedOut(number.value))) {
+      return R.failure(StaffTextRefusal.OptedOut);
+    }
+    return number;
+  }
+
   /** Longest-waiting first, timed from each number's oldest unanswered text.
    * STOP and START texts, which the webhook acts on and Twilio answers, neither
    * list a member nor hide an earlier text that needs a reply. */
@@ -482,9 +488,12 @@ export class MmsThreadService {
   }
 
   private subscribedMembers() {
-    return this.userRepository
-      .createQueryBuilder("member")
-      .where("member.phoneNumberUnsubscribed = false");
+    return this.userRepository.createQueryBuilder("member").where(
+      `NOT ${optedOutSql({
+        state: `(SELECT "optedOut" FROM mms_thread WHERE "phoneNumber" = member."phoneNumber")`,
+        phoneNumber: 'member."phoneNumber"',
+      })}`,
+    );
   }
 
   private async findMember(

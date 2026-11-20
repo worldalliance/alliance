@@ -13,6 +13,7 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { SmsFailureKind } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ImagesService } from "src/images/images.service";
+import { MmsNumberService } from "src/mms/mms-number.service";
 import { MmsService } from "src/mms/mms.service";
 import { NotificationSettingsService } from "src/notification-settings/notification-settings.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
@@ -125,6 +126,7 @@ export class FormProfileAnswersService {
   constructor(
     private userService: UserService,
     private mmsService: MmsService,
+    private mmsNumberService: MmsNumberService,
     private eventLogService: EventLogService,
     private notificationSettingsService: NotificationSettingsService,
     private imagesService: ImagesService,
@@ -195,7 +197,15 @@ export class FormProfileAnswersService {
         const normalized = parsed.value;
         this.logger.log(`Valid phone number: ${normalized}`);
 
-        if (!user.optInMms && text !== false) {
+        // A failed lookup falls through: sendMms repeats it and reports the failure.
+        if (
+          !user.optInMms &&
+          text !== false &&
+          !R.unwrapOr(
+            await R.fromPromise(this.mmsNumberService.optedOut(normalized)),
+            false,
+          )
+        ) {
           const mms = await this.mmsService.sendMms({
             to: normalized,
             userId: user.id,

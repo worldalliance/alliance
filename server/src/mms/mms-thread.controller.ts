@@ -69,7 +69,7 @@ const refusalException: Record<
   [StaffTextRefusal.InvalidNumber]: () =>
     new BadRequestException("This member's phone number isn't valid."),
   [StaffTextRefusal.OptedOut]: () =>
-    new ConflictException("This member has opted out of texts."),
+    new ConflictException("This number has opted out of texts."),
   [MediaRefusal.NoCopy]: () => new NotFoundException(),
 };
 

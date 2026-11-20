@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import { setEnv } from "@alliance/common/set-env";
 import { Logger } from "@nestjs/common";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -11,6 +12,7 @@ import { DeliveryFailure } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { SendErrorKind } from "src/utils/send-error";
 import type Twilio from "twilio";
+import type { MmsNumberService } from "./mms-number.service";
 import { type Mms, MmsDirection } from "./mms.entity";
 import { MmsService } from "./mms.service";
 
@@ -64,9 +66,11 @@ describe("MmsService sendMms", () => {
   let service: MmsService;
   let messageTracking: MessageTrackingService;
   let logSpies: jest.SpyInstance[];
+  let optedOut: () => Promise<boolean>;
 
   beforeEach(() => {
     saved = [];
+    optedOut = () => Promise.resolve(false);
     const mmsRepository = {
       create: jest.fn((row: Partial<Mms>) => row),
       save: jest.fn((row: Partial<Mms>) => {
@@ -84,7 +88,15 @@ describe("MmsService sendMms", () => {
       {} as Repository<MessageTracking>,
     );
     jest.spyOn(messageTracking, "track").mockResolvedValue("track-1");
-    service = new MmsService(mmsRepository, eventLogService, messageTracking);
+    // Safe: sendMmsResult reads nothing of the number service but optedOut.
+    const mmsNumbers = {} as MmsNumberService;
+    mmsNumbers.optedOut = () => optedOut();
+    service = new MmsService(
+      mmsRepository,
+      eventLogService,
+      messageTracking,
+      mmsNumbers,
+    );
     service["twilioPhoneNumber"] = "+15555550100";
 
     logSpies = (["log", "warn", "error"] as const).map((level) =>
@@ -127,6 +139,43 @@ describe("MmsService sendMms", () => {
       },
     ]);
     expect(eventLogService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("refuses a number that opted out without alerting", async () => {
+    optedOut = () => Promise.resolve(true);
+
+    const result = await asProduction(() =>
+      service.sendMmsResult({
+        to: TO,
+        userId: USER_ID,
+        body: BODY,
+        mediaUrls: [],
+        tracking: TRACKING,
+      }),
+    );
+
+    expect(result).toEqual(R.failure(SendErrorKind.Refused));
+    expect(messageTracking.track).not.toHaveBeenCalled();
+    expect(saved).toEqual([]);
+    expect(eventLogService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed opt-out lookup as not handed over", async () => {
+    optedOut = () => Promise.reject(new Error("connection lost"));
+
+    const result = await asProduction(() =>
+      service.sendMmsResult({
+        to: TO,
+        userId: USER_ID,
+        body: BODY,
+        mediaUrls: [],
+        tracking: TRACKING,
+      }),
+    );
+
+    expect(result).toEqual(R.failure(SendErrorKind.NotHandedOver));
+    expect(messageTracking.track).not.toHaveBeenCalled();
+    expect(eventLogService.sendMessage).toHaveBeenCalledTimes(1);
   });
 
   it("tags app links with the message's own tracking ID", async () => {

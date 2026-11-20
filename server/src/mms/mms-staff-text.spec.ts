@@ -5,6 +5,7 @@ import type { EventLogService } from "src/eventlog/eventlog.service";
 import type { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import type { Repository } from "src/utils/Repository";
 import Twilio from "twilio";
+import type { MmsNumberService } from "./mms-number.service";
 import { type Mms, MmsDirection } from "./mms.entity";
 import {
   MmsService,
@@ -52,6 +53,7 @@ describe("MmsService sendStaffText", () => {
       mmsRepository,
       eventLog,
       {} as MessageTrackingService,
+      {} as MmsNumberService,
     );
     service["twilioPhoneNumber"] = "+15555550100";
     previousNodeEnv = process.env.NODE_ENV;

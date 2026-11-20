@@ -161,8 +161,8 @@ export default function MemberTextsSection({
               </p>
             ) : thread.data.optedOut ? (
               <p className="text-sm text-zinc-500">
-                {member.name} opted out of texts. They can opt back in by
-                texting START.
+                This number opted out of texts. It can opt back in by texting
+                START.
               </p>
             ) : (
               <TextComposer

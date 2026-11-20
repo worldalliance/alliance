@@ -6,6 +6,7 @@ import { S3Module } from "src/s3/s3.module";
 import { User } from "src/user/entities/user.entity";
 import { MmsMedia } from "./mms-media.entity";
 import { MmsMediaService } from "./mms-media.service";
+import { MmsNumberService } from "./mms-number.service";
 import { MmsOptout } from "./mms-optout.entity";
 import { MmsThreadEvent } from "./mms-thread-event.entity";
 import { MmsThreadController } from "./mms-thread.controller";
@@ -37,8 +38,9 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
     MmsUnsubService,
     MmsThreadService,
     MmsMediaService,
+    MmsNumberService,
   ],
   controllers: [MmsController, MmsThreadController],
-  exports: [MmsService],
+  exports: [MmsService, MmsNumberService],
 })
 export class MmsModule {}

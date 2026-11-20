@@ -1,3 +1,6 @@
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Repository } from "src/utils/Repository";
 import type { EntityManager } from "typeorm";
 import { z } from "zod";
 import { MmsThread } from "./mms-thread.entity";
@@ -66,4 +69,16 @@ export async function moveNumberOptOut(
     });
   }
   return to === null ? false : numberOptedOut(manager, to);
+}
+
+@Injectable()
+export class MmsNumberService {
+  constructor(
+    @InjectRepository(MmsThread)
+    private readonly threadRepository: Repository<MmsThread>,
+  ) {}
+
+  async optedOut(phoneNumber: string): Promise<boolean> {
+    return numberOptedOut(this.threadRepository.manager, phoneNumber);
+  }
 }

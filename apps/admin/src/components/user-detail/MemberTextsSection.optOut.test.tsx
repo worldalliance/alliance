@@ -46,7 +46,7 @@ serveApi(
       if (optedOutElsewhere) {
         thread = { ...thread, optedOut: true };
         return Response.json(
-          { message: "This member has opted out of texts." },
+          { message: "This number has opted out of texts." },
           { status: 409 },
         );
       }
