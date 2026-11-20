@@ -2,12 +2,19 @@ import { useUnstableGlobalHref } from "expo-router";
 import * as Updates from "expo-updates";
 import { X } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, AppState, Pressable, View } from "react-native";
+import {
+  AccessibilityInfo,
+  AppState,
+  Pressable,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { startForegroundUpdateChecks } from "../lib/foregroundUpdateChecks";
 import { onAppForegrounded } from "../lib/onAppForegrounded";
 import { downloadUpdateNow, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
 import { restartIntoUpdate } from "../lib/restartIntoUpdate";
+import { useResumeRestarts } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
@@ -18,7 +25,9 @@ const READY_MESSAGE = "A new version of Alliance is ready.";
 /**
  * Offers a restart into a downloaded update, whether expo-updates fetched it at
  * launch or a later check did while the app was running. Without the tap it
- * applies on the next cold start.
+ * applies on the next cold start, or sooner on a return from a long time in
+ * the background unless a screen reader is on, the member touches or presses
+ * something first, is typing, or is on a screen or request that blocks it.
  */
 const OtaUpdateBanner = () => {
   const { isUpdatePending } = Updates.useUpdates();
@@ -36,6 +45,20 @@ const OtaUpdateBanner = () => {
       check: downloadUpdateNow,
     });
   }, []);
+
+  useResumeRestarts({
+    enabled: OTA_UPDATES_ENABLED,
+    appState: AppState,
+    isUpdatePending,
+    route,
+    inputFocused: () => TextInput.State.currentlyFocusedInput() !== null,
+    // expo-updates queues a reload behind a check or download under way,
+    // with the screen still live, so the restart waits for one and decides
+    // again once it ends.
+    settle: () => downloadUpdateNow.current() ?? Promise.resolve(),
+    screenReaderEnabled: () => AccessibilityInfo.isScreenReaderEnabled(),
+    restart: (to) => void restartIntoUpdate(to),
+  });
 
   useEffect(() => onAppForegrounded(AppState, () => setDismissed(false)), []);
 

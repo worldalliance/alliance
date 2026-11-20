@@ -12,6 +12,15 @@ describe("shareInFlight", () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
+  it("exposes the run under way without starting one", async () => {
+    const shared = shareInFlight(async () => 1);
+    expect(shared.current()).toBeNull();
+    const running = shared();
+    expect(shared.current()).toBe(running);
+    await running;
+    expect(shared.current()).toBeNull();
+  });
+
   it("runs again after a rejection", async () => {
     const run = jest.fn(async () => {
       throw new Error("offline");

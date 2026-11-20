@@ -25,7 +25,10 @@ import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
 import { notificationBehavior } from "../lib/notificationBehavior";
 import { checkForUpdateOnPush } from "../lib/otaUpdates";
 import { queryClient, refetchActions } from "../lib/queryClient";
-import { blockResumeRestartDuringWrites } from "../lib/resumeRestarts";
+import {
+  blockResumeRestartDuringWrites,
+  memberActionHandlers,
+} from "../lib/resumeRestarts";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 
@@ -74,7 +77,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{ flex: 1 }} {...memberActionHandlers}>
           <KeyboardProvider>
             <PostHogProvider>
               <AuthProvider>
