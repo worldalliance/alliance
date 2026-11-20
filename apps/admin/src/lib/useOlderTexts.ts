@@ -1,18 +1,16 @@
-import { mmsThreadGetThreadAdmin } from "@alliance/shared/client";
-import type {
-  MmsMessageDto,
-  MmsThreadDto,
-} from "@alliance/shared/client/types.gen";
+import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { compareTexts, mergeTexts } from "./memberTexts";
 
-/** Texts older than the polled newest page's first. */
-type Kept = {
+export type TextPage = {
   phoneNumber: string | null;
   messages: MmsMessageDto[];
   hasOlder: boolean;
 };
+
+/** Texts older than the polled newest page's first. */
+type Kept = TextPage;
 
 /** Where the polled texts begin: the first text a poll showed for this
  * number. */
@@ -21,7 +19,7 @@ type LogStart = {
   first: MmsMessageDto | undefined;
 };
 
-const logStart = (thread: MmsThreadDto): LogStart => ({
+const logStart = (thread: TextPage): LogStart => ({
   phoneNumber: thread.phoneNumber,
   first: thread.messages[0],
 });
@@ -30,7 +28,11 @@ const logStart = (thread: MmsThreadDto): LogStart => ({
  * stay shown, so a reader near the top keeps the text they're on.
  * `history` is what "Show older texts" loaded, `latest` what polls brought,
  * so a text sliding out of the polled page keeps its place and element. */
-export function useOlderMemberTexts(userId: number, newest: MmsThreadDto) {
+export function useOlderTexts(params: {
+  newest: TextPage;
+  fetchOlder: (before: number) => Promise<TextPage>;
+}) {
+  const { newest, fetchOlder } = params;
   const [kept, setKept] = useState<Kept | null>(null);
   const [polled, setPolled] = useState(newest);
   const [start, setStart] = useState(() => logStart(newest));
@@ -51,12 +53,7 @@ export function useOlderMemberTexts(userId: number, newest: MmsThreadDto) {
   });
 
   const load = useMutation({
-    mutationFn: (before: number) =>
-      mmsThreadGetThreadAdmin({
-        path: { userId },
-        query: { before },
-        throwOnError: true,
-      }).then((r) => r.data),
+    mutationFn: fetchOlder,
     onSuccess: (page) =>
       setKept((prev) => ({
         phoneNumber: page.phoneNumber,
@@ -86,8 +83,8 @@ export function useOlderMemberTexts(userId: number, newest: MmsThreadDto) {
 
 const slidOut = (input: {
   kept: Kept | null;
-  polled: MmsThreadDto;
-  newest: MmsThreadDto;
+  polled: TextPage;
+  newest: TextPage;
 }): Kept | null => {
   const { kept, polled, newest } = input;
   const first = newest.messages[0];

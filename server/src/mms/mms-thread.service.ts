@@ -1,23 +1,25 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import { isCanonicalE164 } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
+import { NON_MEMBER_REPLY_WINDOW_DAYS } from "@alliance/common/staffText";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
 import { env } from "src/config/env";
 import { OptOutSource } from "src/mms/opt-out-source";
 import { User } from "src/user/entities/user.entity";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import type { Repository } from "src/utils/Repository";
-import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
-import {
-  type EntityManager,
-  In,
-  IsNull,
-  type SelectQueryBuilder,
-} from "typeorm";
+import { In, MoreThan } from "typeorm";
 import { z } from "zod";
+import {
+  MmsInboxService,
+  type NumberMark,
+  ReplyState,
+} from "./mms-inbox.service";
 import { MmsMedia } from "./mms-media.entity";
-import { MmsThreadEvent, MmsThreadEventKind } from "./mms-thread-event.entity";
+import { MmsNumberService } from "./mms-number.service";
+import { MmsThread } from "./mms-thread.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { Mms, MmsDirection, type MmsKeyword } from "./mms.entity";
 import { MmsService, type StaffSendFailure } from "./mms.service";
@@ -31,16 +33,22 @@ export type InboundText = {
   media: { url: string; contentType: string }[];
 };
 
-export enum ReplyState {
-  NeedsReply = "needs_reply",
-  Handled = "handled",
-  Answered = "answered",
-}
-
-export type MmsThread = {
+export type MmsThreadView = {
+  threadId: string | null;
   phoneNumber: string | null;
   textable: boolean;
   optedOut: boolean;
+  replyState: ReplyState;
+  messages: Mms[];
+  hasOlder: boolean;
+};
+
+export type NumberThread = {
+  thread: MmsThread;
+  members: User[];
+  textable: boolean;
+  optedOut: boolean;
+  replyWindowClosed: boolean;
   replyState: ReplyState;
   messages: Mms[];
   hasOlder: boolean;
@@ -57,65 +65,17 @@ const THREAD_RELATIONS = {
 export enum ThreadRefusal {
   MemberNotFound = "member_not_found",
   TextNotInThread = "text_not_in_thread",
+  ThreadNotFound = "thread_not_found",
 }
 
-export type ThreadMark = {
-  userId: number;
-  throughId: number;
-  adminId: number;
-};
-
-export type NeedsReplyMember = {
-  user: User;
-  lastMessageBody: string;
-  waitingSince: Date;
-};
+export type ThreadMark = { throughId: number; adminId: number };
 
 export enum StaffTextRefusal {
   NoPhoneNumber = "no_phone_number",
   InvalidNumber = "invalid_number",
   OptedOut = "opted_out",
+  ReplyWindowClosed = "reply_window_closed",
 }
-
-const ANSWERS_MEMBER: Record<MessageStatus, boolean> = {
-  queued: true,
-  sending: true,
-  sent: true,
-  delivered: true,
-  accepted: true,
-  scheduled: true,
-  read: true,
-  partially_delivered: true,
-  failed: false,
-  undelivered: false,
-  canceled: false,
-  receiving: false,
-  received: false,
-};
-
-const ANSWERING_STATUSES = Object.entries(ANSWERS_MEMBER)
-  .filter(([, answers]) => answers)
-  .map(([status]) => status);
-
-/** Inbound texts Needs reply counts and no staff reply has followed, handled
- * ones included, from a query aliased `inbound`. */
-const unanswered = (query: SelectQueryBuilder<Mms>) =>
-  query
-    .andWhere("inbound.direction = :inbound", {
-      inbound: MmsDirection.Inbound,
-    })
-    .andWhere("inbound.keyword IS NULL")
-    .andWhere(
-      `NOT EXISTS (
-        SELECT 1 FROM mms reply
-        WHERE reply."memberPhoneNumber" = inbound."memberPhoneNumber"
-          AND reply."deletedAt" IS NULL
-          AND (reply."createdAt", reply.id) > (inbound."createdAt", inbound.id)
-          AND reply."sentById" IS NOT NULL
-          AND reply.status IN (:...answering)
-      )`,
-      { answering: ANSWERING_STATUSES },
-    );
 
 /** Staging's anonymized numbers pass there, so staff texting can be tried on
  * staging; in production they are unassigned 555 numbers no text would reach. */
@@ -131,26 +91,28 @@ const textableNumber = (phoneNumber: string): boolean =>
   (ANONYMIZED_NUMBERS_TEXTABLE[env("NODE_ENV")] &&
     isAnonymizedPhoneNumber(phoneNumber));
 
+declare const textable: unique symbol;
+type TextableNumber = string & { readonly [textable]: true };
+declare const reachable: unique symbol;
+type ReachableNumber = TextableNumber & { readonly [reachable]: true };
+
+const checkTextable = (
+  phoneNumber: string,
+): Result<TextableNumber, StaffTextRefusal.InvalidNumber> =>
+  textableNumber(phoneNumber)
+    ? // Safe: textableNumber just checked it, and only here brands a number.
+      R.success(phoneNumber as TextableNumber)
+    : R.failure(StaffTextRefusal.InvalidNumber);
+
 const memberNumber = (
   user: User,
 ): Result<
-  string,
+  TextableNumber,
   StaffTextRefusal.NoPhoneNumber | StaffTextRefusal.InvalidNumber
-> => {
-  if (!user.phoneNumber) return R.failure(StaffTextRefusal.NoPhoneNumber);
-  if (!textableNumber(user.phoneNumber)) {
-    return R.failure(StaffTextRefusal.InvalidNumber);
-  }
-  return R.success(user.phoneNumber);
-};
-
-const staffTextableNumber = (user: User): Result<string, StaffTextRefusal> => {
-  const number = memberNumber(user);
-  if (number.ok && user.phoneNumberUnsubscribed) {
-    return R.failure(StaffTextRefusal.OptedOut);
-  }
-  return number;
-};
+> =>
+  user.phoneNumber
+    ? checkTextable(user.phoneNumber)
+    : R.failure(StaffTextRefusal.NoPhoneNumber);
 
 @Injectable()
 export class MmsThreadService {
@@ -159,13 +121,18 @@ export class MmsThreadService {
     private readonly mmsRepository: Repository<Mms>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(MmsThread)
+    private readonly threadRepository: Repository<MmsThread>,
     private readonly mmsService: MmsService,
     private readonly mmsUnsubService: MmsUnsubService,
+    private readonly mmsNumberService: MmsNumberService,
+    private readonly mmsInboxService: MmsInboxService,
   ) {}
 
   /** Twilio retries a webhook it timed out on, so a repeat SID records nothing. */
   async recordInbound(text: InboundText): Promise<MmsMedia[]> {
     return this.mmsRepository.manager.transaction(async (manager) => {
+      await this.mmsNumberService.ensureThread(text.from, manager);
       const inserted = await manager
         .createQueryBuilder()
         .insert()
@@ -207,44 +174,26 @@ export class MmsThreadService {
   async getThread(params: {
     userId: number;
     before?: number;
-  }): Promise<Result<MmsThread, ThreadRefusal>> {
+  }): Promise<Result<MmsThreadView, ThreadRefusal>> {
     const user = await this.findMember(params.userId);
     if (!user.ok) return user;
     const { phoneNumber } = user.value;
-    const page = await this.threadPage(phoneNumber, params.before);
+    const [page, thread, optedOut] = await Promise.all([
+      this.threadPage(phoneNumber, params.before),
+      phoneNumber ? this.threadRepository.findOneBy({ phoneNumber }) : null,
+      phoneNumber ? this.mmsNumberService.optedOut(phoneNumber) : false,
+    ]);
     if (!page.ok) return page;
     return R.success({
+      threadId: thread?.id ?? null,
       phoneNumber,
       textable: memberNumber(user.value).ok,
-      optedOut: user.value.phoneNumberUnsubscribed,
+      optedOut,
       replyState: phoneNumber
-        ? await this.replyState(phoneNumber)
+        ? await this.mmsInboxService.replyState(phoneNumber)
         : ReplyState.Answered,
       ...page.value,
     });
-  }
-
-  private async replyState(phoneNumber: string): Promise<ReplyState> {
-    const { handled } = z
-      .object({ handled: z.boolean().nullable() })
-      .parse(
-        await this.unansweredOf(phoneNumber)
-          .select('bool_and(inbound."handledEventId" IS NOT NULL)', "handled")
-          .getRawOne(),
-      );
-    if (handled === null) return ReplyState.Answered;
-    return handled ? ReplyState.Handled : ReplyState.NeedsReply;
-  }
-
-  private unansweredOf(
-    phoneNumber: string,
-    manager: EntityManager = this.mmsRepository.manager,
-  ) {
-    return unanswered(
-      manager
-        .createQueryBuilder(Mms, "inbound")
-        .where("inbound.memberPhoneNumber = :phoneNumber", { phoneNumber }),
-    );
   }
 
   private async inThread(phoneNumber: string | null, id: number) {
@@ -257,12 +206,40 @@ export class MmsThreadService {
     );
   }
 
+  async getNumberThread(params: {
+    threadId: string;
+    before?: number;
+  }): Promise<Result<NumberThread, ThreadRefusal>> {
+    const thread = await this.findThread(params.threadId);
+    if (!thread.ok) return thread;
+    const { phoneNumber } = thread.value;
+    const [page, members, optedOut, replyState] = await Promise.all([
+      this.threadPage(phoneNumber, params.before),
+      this.membersOn(phoneNumber),
+      this.mmsNumberService.optedOut(phoneNumber),
+      this.mmsInboxService.replyState(phoneNumber),
+    ]);
+    if (!page.ok) return page;
+    return R.success({
+      thread: thread.value,
+      members,
+      textable: textableNumber(phoneNumber),
+      optedOut,
+      replyState,
+      replyWindowClosed: await this.replyWindowClosed({
+        phoneNumber,
+        members,
+      }),
+      ...page.value,
+    });
+  }
+
   private async threadPage(
     phoneNumber: string | null,
     before: number | undefined,
   ): Promise<
     Result<
-      Pick<MmsThread, "messages" | "hasOlder">,
+      Pick<MmsThreadView, "messages" | "hasOlder">,
       ThreadRefusal.TextNotInThread
     >
   > {
@@ -302,14 +279,69 @@ export class MmsThreadService {
       ThreadRefusal.MemberNotFound | StaffTextRefusal | StaffSendFailure
     >
   > {
-    const { userId, body, adminId } = params;
+    const { userId, ...rest } = params;
     const user = await this.findMember(userId);
     if (!user.ok) return user;
-    const to = staffTextableNumber(user.value);
+    return this.sendStaffText({
+      ...rest,
+      to: await this.staffTextable(memberNumber(user.value)),
+    });
+  }
+
+  async sendInThread(params: {
+    threadId: string;
+    body: string;
+    adminId: number;
+  }): Promise<
+    Result<
+      Mms,
+      ThreadRefusal.ThreadNotFound | StaffTextRefusal | StaffSendFailure
+    >
+  > {
+    const { threadId, ...rest } = params;
+    const thread = await this.findThread(threadId);
+    if (!thread.ok) return thread;
+    return this.sendStaffText({
+      ...rest,
+      to: await this.replyableNumber(thread.value.phoneNumber),
+    });
+  }
+
+  async markOptedOut(params: {
+    userId: number;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
+    const user = await this.findMember(params.userId);
+    if (!user.ok) return user;
+    return this.markNumberOptedOut({
+      number: memberNumber(user.value),
+      adminId: params.adminId,
+    });
+  }
+
+  async markOptedOutInThread(params: {
+    threadId: string;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.ThreadNotFound | StaffTextRefusal>> {
+    const thread = await this.findThread(params.threadId);
+    if (!thread.ok) return thread;
+    return this.markNumberOptedOut({
+      number: checkTextable(thread.value.phoneNumber),
+      adminId: params.adminId,
+    });
+  }
+
+  private async sendStaffText(params: {
+    to: Result<ReachableNumber, StaffTextRefusal>;
+    body: string;
+    adminId: number;
+  }): Promise<Result<Mms, StaffTextRefusal | StaffSendFailure>> {
+    const { to, body, adminId } = params;
     if (!to.ok) return to;
+    const threadId = await this.mmsNumberService.ensureThread(to.value);
     const sent = await this.mmsService.sendStaffText({
       to: to.value,
-      userId,
+      threadId,
       body,
       sentById: adminId,
     });
@@ -321,13 +353,11 @@ export class MmsThreadService {
     return R.success(mms);
   }
 
-  async markOptedOut(params: {
-    userId: number;
+  private async markNumberOptedOut(params: {
+    number: Result<TextableNumber, StaffTextRefusal>;
     adminId: number;
-  }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
-    const user = await this.findMember(params.userId);
-    if (!user.ok) return user;
-    const to = staffTextableNumber(user.value);
+  }): Promise<Result<void, StaffTextRefusal>> {
+    const to = await this.staffTextable(params.number);
     if (!to.ok) return to;
     await this.mmsUnsubService.unsubFromMms(to.value, {
       kind: OptOutSource.Staff,
@@ -336,155 +366,143 @@ export class MmsThreadService {
     return R.success(undefined);
   }
 
-  /** Marks the member's unanswered texts up to `throughId`, the newest text
-   * staff could see, so one arriving meanwhile still needs a reply. */
-  async markHandled(params: ThreadMark): Promise<Result<void, ThreadRefusal>> {
-    return this.mark(params, async ({ manager, phoneNumber, record }) => {
-      const texts = await this.unansweredOf(phoneNumber, manager)
-        .select("inbound.id")
-        .andWhere('inbound."handledEventId" IS NULL')
-        .andWhere(
-          `(inbound."createdAt", inbound.id) <= (SELECT "createdAt", id FROM mms WHERE id = :throughId)`,
-          { throughId: params.throughId },
-        )
-        .orderBy("inbound.id")
-        .setLock("pessimistic_write")
-        .getMany();
-      if (texts.length === 0) return;
-      await manager.update(
-        Mms,
-        { id: In(texts.map((text) => text.id)), handledEventId: IsNull() },
-        { handledEventId: await record(MmsThreadEventKind.MarkedHandled) },
-      );
-    });
+  async markHandled(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<void, ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.memberMark(params), (mark) =>
+      this.mmsInboxService.markHandled(mark),
+    );
   }
 
   async markNeedsReply(
-    params: ThreadMark,
-  ): Promise<Result<void, ThreadRefusal>> {
-    return this.mark(params, async ({ manager, phoneNumber, record }) => {
-      const texts = await this.unansweredOf(phoneNumber, manager)
-        .select("inbound.id")
-        .andWhere('inbound."handledEventId" IS NOT NULL')
-        .orderBy("inbound.id")
-        .setLock("pessimistic_write")
-        .getMany();
-      if (texts.length === 0) return;
-      await record(MmsThreadEventKind.MarkedNeedsReply);
-      await manager.update(
-        Mms,
-        { id: In(texts.map((text) => text.id)) },
-        { handledEventId: null },
-      );
-    });
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<void, ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.memberMark(params), (mark) =>
+      this.mmsInboxService.markNeedsReply(mark),
+    );
   }
 
-  /** `apply` calls `record` only when it changes texts, so a mark that changes
-   * nothing leaves no history. `apply` locks the texts it reads in id order, so
-   * a concurrent mark of the same kind on the same number, from any member
-   * sharing it, waits and then finds them changed. A mark of the opposite kind
-   * reads the other texts and doesn't wait. */
-  private async mark(
-    params: ThreadMark,
-    apply: (input: {
-      manager: EntityManager;
-      phoneNumber: string;
-      record: (kind: MmsThreadEventKind) => Promise<number>;
-    }) => Promise<void>,
-  ): Promise<Result<void, ThreadRefusal>> {
-    const user = await this.findMember(params.userId);
-    if (!user.ok) return user;
-    const { phoneNumber } = user.value;
-    if (!phoneNumber || !(await this.inThread(phoneNumber, params.throughId))) {
-      return R.failure(ThreadRefusal.TextNotInThread);
-    }
-    await this.mmsRepository.manager.transaction(async (manager) => {
-      const record = async (kind: MmsThreadEventKind) => {
-        const event = await manager.save(
-          manager.create(MmsThreadEvent, {
-            kind,
-            afterMmsId: params.throughId,
-            markedById: params.adminId,
-          }),
-        );
-        return event.id;
-      };
-      await apply({ manager, phoneNumber, record });
-    });
+  async markHandledInThread(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<void, ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.threadMark(params), (mark) =>
+      this.mmsInboxService.markHandled(mark),
+    );
+  }
+
+  async markNeedsReplyInThread(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<void, ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.threadMark(params), (mark) =>
+      this.mmsInboxService.markNeedsReply(mark),
+    );
+  }
+
+  private async mark<E>(
+    mark: Result<NumberMark, E>,
+    apply: (mark: NumberMark) => Promise<void>,
+  ): Promise<Result<void, E>> {
+    if (!mark.ok) return mark;
+    await apply(mark.value);
     return R.success(undefined);
   }
 
-  /** Longest-waiting first, timed from each number's oldest unanswered text.
-   * STOP and START texts, which the webhook acts on and Twilio answers, neither
-   * list a member nor hide an earlier text that needs a reply. */
-  async needsReply(): Promise<NeedsReplyMember[]> {
-    const oldestTexts = await this.unansweredTexts();
-    if (oldestTexts.length === 0) return [];
-    const users = await this.subscribedMembers()
-      .andWhere("member.phoneNumber = ANY(:phoneNumbers)", {
-        phoneNumbers: oldestTexts.map((m) => m.memberPhoneNumber),
-      })
-      .orderBy("member.id")
-      .getMany();
-    const usersByNumber = Map.groupBy(users, (user) => user.phoneNumber);
-    return oldestTexts
-      .toSorted(
-        (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id,
-      )
-      .flatMap((oldest) =>
-        (usersByNumber.get(oldest.memberPhoneNumber) ?? []).map((user) => ({
-          user,
-          lastMessageBody: oldest.lastMessageBody,
-          waitingSince: oldest.createdAt,
-        })),
-      );
+  private async memberMark(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<
+      NumberMark,
+      ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread
+    >
+  > {
+    const { userId, ...mark } = params;
+    const user = await this.findMember(userId);
+    if (!user.ok) return user;
+    return this.markOn(user.value.phoneNumber, mark);
   }
 
-  /** Per subscribed number, its oldest inbound text that no staff reply has
-   * followed and staff haven't marked handled, with the latest such text's
-   * body as `lastMessageBody`. The window runs before `DISTINCT ON` keeps each
-   * number's first row. */
-  private async unansweredTexts() {
-    const rows = await unanswered(
-      this.mmsRepository.createQueryBuilder("inbound"),
-    )
-      .select("inbound.id", "id")
-      .addSelect("inbound.memberPhoneNumber", "memberPhoneNumber")
-      .addSelect("inbound.createdAt", "createdAt")
-      .distinctOn(["inbound.memberPhoneNumber"])
-      .addSelect(
-        `first_value(inbound.body) OVER (
-          PARTITION BY inbound."memberPhoneNumber"
-          ORDER BY inbound."createdAt" DESC, inbound.id DESC
-        )`,
-        "lastMessageBody",
-      )
-      .andWhere('inbound."handledEventId" IS NULL')
-      .andWhere(
-        `inbound."memberPhoneNumber" IN (${this.subscribedMembers()
-          .select("member.phoneNumber")
-          .getQuery()})`,
-      )
-      .orderBy("inbound.memberPhoneNumber")
-      .addOrderBy("inbound.createdAt", "ASC")
-      .addOrderBy("inbound.id", "ASC")
-      .getRawMany();
-    return z
-      .array(
-        z.object({
-          id: z.number(),
-          memberPhoneNumber: z.string(),
-          createdAt: z.date(),
-          lastMessageBody: z.string(),
-        }),
-      )
-      .parse(rows);
+  private async threadMark(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<
+      NumberMark,
+      ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread
+    >
+  > {
+    const { threadId, ...mark } = params;
+    const thread = await this.findThread(threadId);
+    if (!thread.ok) return thread;
+    return this.markOn(thread.value.phoneNumber, mark);
   }
 
-  private subscribedMembers() {
-    return this.userRepository
-      .createQueryBuilder("member")
-      .where("member.phoneNumberUnsubscribed = false");
+  private async markOn(
+    phoneNumber: string | null,
+    mark: ThreadMark,
+  ): Promise<Result<NumberMark, ThreadRefusal.TextNotInThread>> {
+    if (!phoneNumber || !(await this.inThread(phoneNumber, mark.throughId))) {
+      return R.failure(ThreadRefusal.TextNotInThread);
+    }
+    return R.success({ ...mark, phoneNumber });
+  }
+
+  private async staffTextable(
+    number: Result<TextableNumber, StaffTextRefusal>,
+  ): Promise<Result<ReachableNumber, StaffTextRefusal>> {
+    if (!number.ok) return number;
+    if (await this.mmsNumberService.optedOut(number.value)) {
+      return R.failure(StaffTextRefusal.OptedOut);
+    }
+    // Safe: the number just passed the opt-out check, and only here brands one.
+    return R.success(number.value as ReachableNumber);
+  }
+
+  /** A member's number, or a non-member's that texted within the window.
+   * Opt-out is checked first, since staff can't wait it out as they can the
+   * window. */
+  private async replyableNumber(
+    phoneNumber: string,
+  ): Promise<Result<ReachableNumber, StaffTextRefusal>> {
+    const number = await this.staffTextable(checkTextable(phoneNumber));
+    if (!number.ok) return number;
+    const members = await this.membersOn(phoneNumber);
+    if (await this.replyWindowClosed({ phoneNumber, members })) {
+      return R.failure(StaffTextRefusal.ReplyWindowClosed);
+    }
+    return number;
+  }
+
+  private async replyWindowClosed(params: {
+    phoneNumber: string;
+    members: User[];
+  }): Promise<boolean> {
+    const { phoneNumber, members } = params;
+    if (members.length > 0) return false;
+    const since = new Date(
+      Date.now() - milliseconds({ days: NON_MEMBER_REPLY_WINDOW_DAYS }),
+    );
+    return !(await this.mmsRepository.exists({
+      where: {
+        memberPhoneNumber: phoneNumber,
+        direction: MmsDirection.Inbound,
+        createdAt: MoreThan(since),
+      },
+    }));
+  }
+
+  private async membersOn(phoneNumber: string): Promise<User[]> {
+    return (
+      (await this.mmsInboxService.membersByNumber([phoneNumber])).get(
+        phoneNumber,
+      ) ?? []
+    );
   }
 
   private async findMember(
@@ -492,5 +510,12 @@ export class MmsThreadService {
   ): Promise<Result<User, ThreadRefusal.MemberNotFound>> {
     const user = await this.userRepository.findOneBy({ id: userId });
     return user ? R.success(user) : R.failure(ThreadRefusal.MemberNotFound);
+  }
+
+  private async findThread(
+    threadId: string,
+  ): Promise<Result<MmsThread, ThreadRefusal.ThreadNotFound>> {
+    const thread = await this.threadRepository.findOneBy({ id: threadId });
+    return thread ? R.success(thread) : R.failure(ThreadRefusal.ThreadNotFound);
   }
 }

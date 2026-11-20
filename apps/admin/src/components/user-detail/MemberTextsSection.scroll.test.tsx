@@ -30,6 +30,7 @@ const text = (id: number): MmsMessageDto => ({
 });
 
 const page = (ids: number[], hasOlder: boolean): MmsThreadDto => ({
+  threadId: null,
   phoneNumber: "+14155550123",
   textable: true,
   optedOut: false,

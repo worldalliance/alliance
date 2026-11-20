@@ -16,11 +16,11 @@ import {
 } from "../../lib/memberTexts";
 
 export default function TextComposer({
-  memberName,
+  recipientName,
   timeZone,
   send,
 }: {
-  memberName: string;
+  recipientName: string;
   timeZone: string | null;
   send: (body: string) => Promise<unknown>;
 }) {
@@ -86,7 +86,7 @@ export default function TextComposer({
       else
         showToast({
           variant: ToastVariant.Error,
-          title: `Problem sending text to ${memberName}`,
+          title: `Problem sending text to ${recipientName}`,
           message: `${message} Your text: "${sent}"`,
           durationMs: null,
         });
@@ -104,7 +104,7 @@ export default function TextComposer({
       }}
     >
       <label htmlFor={inputId} className="block text-xs text-zinc-600">
-        Text {memberName}
+        Text {recipientName}
       </label>
       <TextareaAutosize
         ref={textarea}
@@ -148,7 +148,7 @@ export default function TextComposer({
           className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
         >
           <p>
-            It&apos;s {quietWarning} for {memberName}. Texts between{" "}
+            It&apos;s {quietWarning} for {recipientName}. Texts between{" "}
             {QUIET_HOURS_LABEL} their time can be unwelcome.
           </p>
           <div className="mt-2 flex gap-2">

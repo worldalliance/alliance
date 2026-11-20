@@ -38,6 +38,11 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
       member: null,
       source: { kind: OptOutSource.Keyword, rawBody: "STOP" },
     },
+    {
+      phoneNumber: "+15555550100",
+      member: null,
+      source: { kind: OptOutSource.Staff, staff: sam },
+    },
   ],
   [EventType.SmsResubscribe]: [
     { phoneNumber: "+15555550100", member: jane, rawBody: "START" },
@@ -59,6 +64,12 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
     {
       phoneNumber: "+15555550100",
       members: [],
+      optedOut: false,
+      body: "Who is this?",
+    },
+    {
+      phoneNumber: "+15555550100",
+      members: [],
       optedOut: true,
       body: "Who is this?",
     },
@@ -68,6 +79,12 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
       kind: SmsFailureKind.SendFailed,
       phoneNumber: "+15555550100",
       userId: jane.id,
+      error: "timed out after 10000ms",
+    },
+    {
+      kind: SmsFailureKind.StaffSendFailed,
+      phoneNumber: "+15555550100",
+      threadId: "0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b",
       error: "timed out after 10000ms",
     },
     {

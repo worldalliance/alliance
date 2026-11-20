@@ -26,6 +26,7 @@ import { SendErrorKind, textSendError } from "src/utils/send-error";
 import Twilio from "twilio";
 import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { env } from "../config/env";
+import { MmsNumberService } from "./mms-number.service";
 import { Mms, MmsDirection } from "./mms.entity";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
@@ -64,6 +65,10 @@ type SendMmsParams = {
   tracking: TrackedMessage | null;
 };
 
+/** Twilio's error text quotes the number it rejected. */
+const redact = (params: { logged: string; to: string }): string =>
+  params.logged.replaceAll(params.to, "[redacted]");
+
 const canText = (to: string): boolean =>
   deliverySends() && !isAnonymizedPhoneNumber(to);
 
@@ -81,6 +86,7 @@ export class MmsService {
     private readonly mmsRepository: Repository<Mms>,
     private readonly eventLogService: EventLogService,
     private readonly messageTracking: MessageTrackingService,
+    private readonly mmsNumberService: MmsNumberService,
   ) {
     if (env("NODE_ENV") === NodeEnv.Test) {
       return;
@@ -111,8 +117,9 @@ export class MmsService {
 
   /**
    * As {@link sendMms}, with what the failure shows about whether the text went
-   * out. Every failure it returns raises the SMS-failure alert. More than 10
-   * media URLs, or a failed save of an undelivered text, throws.
+   * out. A number that opted out is refused without the SMS-failure alert;
+   * every other failure raises it. More than 10 media URLs, or a failed save
+   * of an undelivered text, throws.
    */
   async sendMmsResult(
     params: SendMmsParams,
@@ -122,6 +129,12 @@ export class MmsService {
       this.reportFailure({ to, userId, error });
       return R.failure(kind);
     };
+    const optedOut = await R.fromPromise(this.mmsNumberService.optedOut(to));
+    if (!optedOut.ok) return fail(optedOut.error, SendErrorKind.NotHandedOver);
+    if (optedOut.value) {
+      this.logger.log(`Not texting user ${userId}: their number opted out`);
+      return R.failure(SendErrorKind.Refused);
+    }
     let cid: string | null = null;
     if (tracking) {
       const tracked = await R.fromPromise(
@@ -170,7 +183,7 @@ export class MmsService {
         this.recordLateSend({
           sending,
           to,
-          userId,
+          recipient: `user ${userId}`,
           body,
           cid,
           sentById: null,
@@ -200,18 +213,18 @@ export class MmsService {
   /**
    * A rejection carries Twilio's reason, for the staff member to read; any
    * other failure, such as a Twilio outage or bad credentials, carries none.
-   * Every failure, a timeout included, raises the SMS-failure alert a failed
-   * broadcast raises, since Twilio also rejects sends for problems with our
-   * account and a hung API is an outage. The text is dated from when its send
+   * Every failure, a timeout included, raises an SMS-failure alert naming the
+   * number, since Twilio also rejects sends for problems with our account and
+   * a hung API is an outage. The text is dated from when its send
    * began, so a member's text that arrives while Twilio answers sorts after it.
    */
   async sendStaffText(params: {
     to: string;
-    userId: number;
+    threadId: string;
     body: string;
     sentById: number;
   }): Promise<Result<Mms, StaffSendFailure>> {
-    const { to, userId, body, sentById } = params;
+    const { to, threadId, body, sentById } = params;
     if (!canText(to)) {
       return R.success(
         await this.saveUndelivered({ to, body, cid: null, sentById }),
@@ -223,13 +236,14 @@ export class MmsService {
     if (!sent.ok) {
       this.logError({
         to,
-        text: `Staff text to user ${userId} not sent: ${thrownMessage(sent.error)}`,
+        text: `Staff text in thread ${threadId} not sent: ${thrownMessage(sent.error)}`,
         error: sent.error,
       });
       this.alertFailure({
         to,
-        userId,
-        errorMessage: thrownMessage(sent.error),
+        kind: SmsFailureKind.StaffSendFailed,
+        threadId,
+        error: thrownMessage(sent.error),
       });
       const reason =
         sent.error instanceof Twilio.RestException &&
@@ -237,9 +251,7 @@ export class MmsService {
         sent.error.code !== undefined
           ? sent.error.message
           : undefined;
-      if (!reason) {
-        return R.failure({ kind: StaffSendFailureKind.Failed });
-      }
+      if (!reason) return R.failure({ kind: StaffSendFailureKind.Failed });
       return R.failure({
         kind: StaffSendFailureKind.Rejected,
         reason: reason.replaceAll(to, "this number"),
@@ -247,17 +259,18 @@ export class MmsService {
     }
     if (sent.value === TIMED_OUT) {
       this.logger.warn(
-        `Staff text to user ${userId} timed out after ${this.sendTimeoutMs}ms`,
+        `Staff text in thread ${threadId} timed out after ${this.sendTimeoutMs}ms`,
       );
       this.alertFailure({
         to,
-        userId,
-        errorMessage: `timed out after ${this.sendTimeoutMs}ms`,
+        kind: SmsFailureKind.StaffSendFailed,
+        threadId,
+        error: `timed out after ${this.sendTimeoutMs}ms`,
       });
       this.recordLateSend({
         sending,
         to,
-        userId,
+        recipient: `thread ${threadId}`,
         body,
         cid: null,
         sentById,
@@ -278,7 +291,7 @@ export class MmsService {
     if (!saved.ok) {
       this.logError({
         to,
-        text: `Staff text to user ${userId} was sent (SID ${sent.value.sid}) but not recorded: ${thrownMessage(saved.error)}`,
+        text: `Staff text in thread ${threadId} was sent (SID ${sent.value.sid}) but not recorded: ${thrownMessage(saved.error)}`,
         error: saved.error,
       });
       throw saved.error;
@@ -344,34 +357,37 @@ export class MmsService {
       text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
       error,
     });
-    this.alertFailure({ to, userId, errorMessage });
-  }
-
-  private alertFailure(params: {
-    to: string;
-    userId: number;
-    errorMessage: string;
-  }) {
-    const { to, userId, errorMessage } = params;
-    if (env("NODE_ENV") !== NodeEnv.Production) return;
-    this.eventLogService.sendMessage({
-      type: EventType.SmsFailure,
-      payload: {
-        kind: SmsFailureKind.SendFailed,
-        phoneNumber: to,
-        userId,
-        error: errorMessage,
-      },
-      blob: { errorMessage, to, from: this.senderFor(to) },
+    this.alertFailure({
+      to,
+      kind: SmsFailureKind.SendFailed,
       userId,
+      error: errorMessage,
     });
   }
 
-  /** Twilio's error text quotes the number it rejected. */
+  private alertFailure(
+    params: { to: string; error: string } & (
+      | { kind: SmsFailureKind.SendFailed; userId: number }
+      | { kind: SmsFailureKind.StaffSendFailed; threadId: string }
+    ),
+  ) {
+    const { to, ...failure } = params;
+    if (env("NODE_ENV") !== NodeEnv.Production) return;
+    this.eventLogService.sendMessage({
+      type: EventType.SmsFailure,
+      payload: { ...failure, phoneNumber: to },
+      blob: { errorMessage: failure.error, to, from: this.senderFor(to) },
+      userId:
+        failure.kind === SmsFailureKind.SendFailed ? failure.userId : null,
+    });
+  }
+
   private logError(params: { to: string; text: string; error: unknown }) {
     const { to, text, error } = params;
-    const redact = (logged: string) => logged.replaceAll(to, "[redacted]");
-    this.logger.error(redact(text), redact(thrownStack(error)));
+    this.logger.error(
+      redact({ logged: text, to }),
+      redact({ logged: thrownStack(error), to }),
+    );
   }
 
   private senderFor(to: string): string {
@@ -438,13 +454,13 @@ export class MmsService {
   private recordLateSend(params: {
     sending: Promise<SentMessage>;
     to: string;
-    userId: number;
+    recipient: string;
     body: string;
     cid: string | null;
     sentById: number | null;
     createdAt?: Date;
   }): void {
-    const { sending, to, userId, body, cid, sentById, createdAt } = params;
+    const { sending, to, recipient, body, cid, sentById, createdAt } = params;
     void sending
       .then(
         async (message) => {
@@ -457,7 +473,10 @@ export class MmsService {
             createdAt,
           });
           this.logger.warn(
-            `MMS to user ${userId} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
+            redact({
+              logged: `MMS to ${recipient} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
+              to,
+            }),
           );
         },
         async (error: unknown) => {
@@ -468,7 +487,7 @@ export class MmsService {
       .catch((error: unknown) => {
         this.logError({
           to,
-          text: `MMS to user ${userId} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,
+          text: `MMS to ${recipient} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,
           error,
         });
       });

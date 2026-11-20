@@ -1,4 +1,9 @@
-import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
+import { phoneSearchTerm } from "@alliance/common/phone";
+import {
+  NON_MEMBER_REPLY_WINDOW_DAYS,
+  STAFF_TEXT_MAX_LENGTH,
+  THREAD_SEARCH_MAX_LENGTH,
+} from "@alliance/common/staffText";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -7,9 +12,19 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateBy,
 } from "class-validator";
+import { User } from "src/user/entities/user.entity";
+import { PaginationQueryDto } from "src/utils/pagination.dto";
+import {
+  type NeedsReplyMember,
+  type NeedsReplyThread,
+  ReplyState,
+  type ThreadList,
+  type ThreadSummary,
+} from "../mms-inbox.service";
 import { MmsMedia } from "../mms-media.entity";
 import {
   inlineContentType,
@@ -18,12 +33,11 @@ import {
 } from "../mms-media.service";
 import { MmsThreadEvent, MmsThreadEventKind } from "../mms-thread-event.entity";
 import {
-  type MmsThread,
-  type NeedsReplyMember,
-  ReplyState,
+  type MmsThreadView,
+  type NumberThread,
   THREAD_PAGE_SIZE,
 } from "../mms-thread.service";
-import { Mms } from "../mms.entity";
+import { Mms, MmsDirection } from "../mms.entity";
 
 export class MmsMediaDto {
   @ApiProperty()
@@ -117,7 +131,33 @@ export class MmsMessageDto extends PickType(Mms, [
   }
 }
 
+const ApiPageMessages = () =>
+  ApiProperty({
+    type: () => MmsMessageDto,
+    isArray: true,
+    description: `Up to ${THREAD_PAGE_SIZE} texts, oldest first: the newest, or those sent before \`before\``,
+  });
+
+const ApiReplyState = () =>
+  ApiProperty({
+    enum: ReplyState,
+    enumName: "ReplyState",
+    description:
+      "Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)",
+  });
+
+const ApiPageHasOlder = () =>
+  ApiProperty({ description: "Older texts can be loaded with `before`" });
+
 export class MmsThreadDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "Null when the member has no phone number or it has no thread row yet",
+  })
+  threadId: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   phoneNumber: string | null;
 
@@ -130,25 +170,17 @@ export class MmsThreadDto {
   @ApiProperty()
   optedOut: boolean;
 
-  @ApiProperty({
-    enum: ReplyState,
-    enumName: "ReplyState",
-    description:
-      "Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)",
-  })
+  @ApiReplyState()
   replyState: ReplyState;
 
-  @ApiProperty({
-    type: () => MmsMessageDto,
-    isArray: true,
-    description: `Up to ${THREAD_PAGE_SIZE} texts, oldest first: the newest, or those sent before \`before\``,
-  })
+  @ApiPageMessages()
   messages: MmsMessageDto[];
 
-  @ApiProperty({ description: "Older texts can be loaded with `before`" })
+  @ApiPageHasOlder()
   hasOlder: boolean;
 
-  constructor(input: MmsThread) {
+  constructor(input: MmsThreadView) {
+    this.threadId = input.threadId;
     this.phoneNumber = input.phoneNumber;
     this.textable = input.textable;
     this.optedOut = input.optedOut;
@@ -156,6 +188,168 @@ export class MmsThreadDto {
     this.messages = input.messages.map((message) => new MmsMessageDto(message));
     this.hasOlder = input.hasOlder;
   }
+}
+
+export class ThreadMemberDto extends PickType(User, [
+  "id",
+  "name",
+  "timeZone",
+]) {
+  constructor(input: User) {
+    super();
+    this.id = input.id;
+    this.name = input.name;
+    this.timeZone = input.timeZone;
+  }
+}
+
+export class NumberThreadDto {
+  @ApiProperty()
+  threadId: string;
+
+  @ApiProperty({ description: "May be a short code or sender id" })
+  phoneNumber: string;
+
+  @ApiProperty({
+    type: () => ThreadMemberDto,
+    isArray: true,
+    description: "Non-deleted members with this number",
+  })
+  members: ThreadMemberDto[];
+
+  @ApiProperty({
+    description:
+      "False for a number staff can't text, such as a short code; opt-out and the reply window are reported separately in optedOut and replyWindowClosed",
+  })
+  textable: boolean;
+
+  @ApiProperty()
+  optedOut: boolean;
+
+  @ApiProperty({
+    description: `True for a number with no member that sent no text in the last ${NON_MEMBER_REPLY_WINDOW_DAYS} days`,
+  })
+  replyWindowClosed: boolean;
+
+  @ApiReplyState()
+  replyState: ReplyState;
+
+  @ApiPageMessages()
+  messages: MmsMessageDto[];
+
+  @ApiPageHasOlder()
+  hasOlder: boolean;
+
+  constructor(input: NumberThread) {
+    this.threadId = input.thread.id;
+    this.phoneNumber = input.thread.phoneNumber;
+    this.members = input.members.map((member) => new ThreadMemberDto(member));
+    this.textable = input.textable;
+    this.optedOut = input.optedOut;
+    this.replyWindowClosed = input.replyWindowClosed;
+    this.replyState = input.replyState;
+    this.messages = input.messages.map((message) => new MmsMessageDto(message));
+    this.hasOlder = input.hasOlder;
+  }
+}
+
+export class NeedsReplyThreadDto {
+  @ApiProperty()
+  threadId: string;
+
+  @ApiProperty({ description: "May be a short code or sender id" })
+  phoneNumber: string;
+
+  @ApiProperty({ type: () => ThreadMemberDto, isArray: true })
+  members: ThreadMemberDto[];
+
+  @ApiProperty({
+    description:
+      "The latest text that still needs a reply; STOP and START texts and handled texts are skipped",
+  })
+  lastMessageBody: string;
+
+  @ApiProperty({
+    type: Date,
+    description:
+      "When the oldest text that no staff reply has followed and staff haven't marked handled arrived",
+  })
+  waitingSince: Date;
+
+  constructor(input: NeedsReplyThread) {
+    this.threadId = input.thread.id;
+    this.phoneNumber = input.thread.phoneNumber;
+    this.members = input.members.map((member) => new ThreadMemberDto(member));
+    this.lastMessageBody = input.lastMessageBody;
+    this.waitingSince = input.waitingSince;
+  }
+}
+
+export class ThreadSummaryDto {
+  @ApiProperty()
+  threadId: string;
+
+  @ApiProperty()
+  phoneNumber: string;
+
+  @ApiProperty({ type: () => ThreadMemberDto, isArray: true })
+  members: ThreadMemberDto[];
+
+  @ApiProperty({ description: "The latest inbound or staff text" })
+  lastMessageBody: string;
+
+  @ApiProperty({ enum: MmsDirection, enumName: "MmsDirection" })
+  lastMessageDirection: MmsDirection;
+
+  @ApiProperty({ type: Date })
+  lastMessageAt: Date;
+
+  constructor(input: ThreadSummary) {
+    this.threadId = input.thread.id;
+    this.phoneNumber = input.thread.phoneNumber;
+    this.members = input.members.map((member) => new ThreadMemberDto(member));
+    this.lastMessageBody = input.lastMessageBody;
+    this.lastMessageDirection = input.lastMessageDirection;
+    this.lastMessageAt = input.lastMessageAt;
+  }
+}
+
+export class ThreadListDto {
+  @ApiProperty({
+    type: () => ThreadSummaryDto,
+    isArray: true,
+    description: "Up to `limit` threads, latest text first",
+  })
+  threads: ThreadSummaryDto[];
+
+  /** In place of PaginatedListDto's count, which would sort every text
+   * again. */
+  @ApiProperty()
+  hasMore: boolean;
+
+  constructor(input: ThreadList) {
+    this.threads = input.threads.map((t) => new ThreadSummaryDto(t));
+    this.hasMore = input.hasMore;
+  }
+}
+
+export class ThreadListQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    description: "Matches numbers containing these digits; must contain one",
+    maxLength: THREAD_SEARCH_MAX_LENGTH,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(THREAD_SEARCH_MAX_LENGTH)
+  @ValidateBy({
+    name: "phoneSearch",
+    validator: {
+      validate: (value) =>
+        typeof value === "string" && phoneSearchTerm(value) !== "",
+      defaultMessage: () => "search must contain digits",
+    },
+  })
+  search?: string;
 }
 
 export class MmsThreadQueryDto {
@@ -197,6 +391,8 @@ export class SendStaffTextDto {
   body: string;
 }
 
+/** BACKCOMPAT(mms-thread-ids): remove with GET needs-reply, once no deployed
+ * admin build calls it. */
 export class NeedsReplyMemberDto {
   @ApiProperty()
   userId: number;

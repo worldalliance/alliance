@@ -1,5 +1,6 @@
 import { OtpError } from "@alliance/common/otp";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
+import { MmsThread } from "src/mms/mms-thread.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
 import { OptOutSource } from "src/mms/opt-out-source";
 import { User } from "src/user/entities/user.entity";
@@ -247,13 +248,29 @@ describe("Phone verification (e2e)", () => {
     expect((await reload(member)).phoneNumberUnsubscribed).toBe(true);
   });
 
-  it("drops the STOP of the number the member leaves", async () => {
+  it("leaves the STOP with the number the member leaves", async () => {
+    const oldNumber = uniquePhone();
     const member = await createMember({
-      phoneNumber: uniquePhone(),
+      phoneNumber: oldNumber,
       phoneNumberUnsubscribed: true,
     });
     expect((await verify(member, uniquePhone())).status).toBe(204);
     expect((await reload(member)).phoneNumberUnsubscribed).toBe(false);
+    expect(
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .findOneBy({ phoneNumber: oldNumber }),
+    ).toEqual(expect.objectContaining({ optedOut: true }));
+  });
+
+  it("carries a STOP from the number before any member held it", async () => {
+    const phoneNumber = uniquePhone();
+    await ctx.dataSource
+      .getRepository(MmsThread)
+      .insert({ phoneNumber, optedOut: true });
+    const member = await createMember();
+    expect((await verify(member, phoneNumber)).status).toBe(204);
+    expect((await reload(member)).phoneNumberUnsubscribed).toBe(true);
   });
 
   describe("a profile update without a code", () => {
@@ -282,6 +299,34 @@ describe("Phone verification (e2e)", () => {
       expect(await me(member)).toEqual(
         expect.objectContaining({ phoneNumber, phoneNumberVerified: true }),
       );
+    });
+
+    it.each([
+      ["for another", uniquePhone()],
+      ["for none", null],
+    ])("leaves the STOP with a number left %s", async (_, phoneNumber) => {
+      const oldNumber = uniquePhone();
+      const member = await createMember({
+        phoneNumber: oldNumber,
+        phoneNumberUnsubscribed: true,
+      });
+      await update(member, { phoneNumber }).expect(201);
+      expect((await reload(member)).phoneNumberUnsubscribed).toBe(false);
+      expect(
+        await ctx.dataSource
+          .getRepository(MmsThread)
+          .findOneBy({ phoneNumber: oldNumber }),
+      ).toEqual(expect.objectContaining({ optedOut: true }));
+    });
+
+    it("carries the STOP of the number the member takes", async () => {
+      const phoneNumber = uniquePhone();
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .insert({ phoneNumber, optedOut: true });
+      const member = await createMember();
+      await update(member, { phoneNumber }).expect(201);
+      expect((await reload(member)).phoneNumberUnsubscribed).toBe(true);
     });
   });
 });

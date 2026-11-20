@@ -48,6 +48,11 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_unsubscribe",
   },
   {
+    "message": "Sam Lee marked +15555550100 as opted out of texts. No member has that number.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> marked +15555550100 as opted out of texts. No member has that number.",
+    "type": "sms_unsubscribe",
+  },
+  {
     "message": "Jane Doe opted back in to texts by replying “START”.",
     "slack": "<https://admin.example.org/member/5|Jane Doe> opted back in to texts by replying “START”.",
     "type": "sms_resubscribe",
@@ -63,18 +68,28 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_inbound",
   },
   {
-    "message": "Jane Doe texted: “Who is this?” They have opted out of texts.",
-    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” They have opted out of texts.",
+    "message": "Jane Doe texted: “Who is this?” The number has opted out of texts.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” The number has opted out of texts.",
     "type": "sms_inbound",
   },
   {
-    "message": "+15555550100, which no member has, texted: “Who is this?”",
-    "slack": "+15555550100, which no member has, texted: “Who is this?”",
+    "message": "+15555550100, which no member has, texted: “Who is this?” Reply from Needs reply.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” Reply from <https://admin.example.org/needs-reply|Needs reply>.",
+    "type": "sms_inbound",
+  },
+  {
+    "message": "+15555550100, which no member has, texted: “Who is this?” The number has opted out of texts.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” The number has opted out of texts.",
     "type": "sms_inbound",
   },
   {
     "message": "Couldn't send a text to +15555550100: timed out after 10000ms",
     "slack": "Couldn't send a text to <https://admin.example.org/member/5|+15555550100>: timed out after 10000ms",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Couldn't send a staff text to +15555550100: timed out after 10000ms",
+    "slack": "Couldn't send a staff text to <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|+15555550100>: timed out after 10000ms",
     "type": "sms_failure",
   },
   {

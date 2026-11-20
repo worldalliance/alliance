@@ -1,4 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { setNumberOptedOut } from "src/mms/mms-number.service";
 import { MmsService } from "src/mms/mms.service";
 import { FormProfileAnswersService } from "src/tasks/form-profile-answers.service";
 import { TasksModule } from "src/tasks/tasks.module";
@@ -117,6 +118,21 @@ describe("One live account per phone number (e2e)", () => {
           timeZone: "America/Chicago",
         }),
       );
+      expect(sendMms).not.toHaveBeenCalled();
+    });
+
+    it("sends no welcome text to a number that opted out", async () => {
+      const member = await createMember();
+      const phoneNumber = uniquePhone();
+      await setNumberOptedOut(ctx.dataSource.manager, {
+        phoneNumber,
+        optedOut: true,
+      });
+      const sendMms = jest.spyOn(ctx.app.get(MmsService), "sendMms");
+
+      await answer(member, { "phone-number": phoneNumber });
+
+      expect((await reload(member)).phoneNumber).toBe(phoneNumber);
       expect(sendMms).not.toHaveBeenCalled();
     });
 

@@ -16,6 +16,7 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { City } from "src/geo/city.entity";
 import { ImagesService } from "src/images/images.service";
+import { moveNumberOptOut } from "src/mms/mms-number.service";
 import {
   NotificationPreference,
   PreferenceSource,
@@ -212,6 +213,10 @@ export class UserService {
               data.phoneNumber !== user.phoneNumber
             ) {
               user.phoneNumberVerifiedAt = null;
+              user.phoneNumberUnsubscribed = await moveNumberOptOut(em, {
+                from: user,
+                to: data.phoneNumber,
+              });
             }
             if (city !== undefined) user.city = city;
             Object.assign(user, updateData);

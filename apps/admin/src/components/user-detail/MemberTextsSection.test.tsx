@@ -14,7 +14,8 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { useNeedsReplyAdmin } from "../../lib/useMemberTextsAdmin";
+import { MemoryRouter } from "react-router";
+import { useNeedsReplyAdmin } from "../../lib/useTextThreadsAdmin";
 import MemberTextsSection from "./MemberTextsSection";
 
 const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({
@@ -68,7 +69,7 @@ serveApi(
       await postGate;
       return Response.json(sent);
     },
-    "GET /mms-threads/needs-reply": async () => {
+    "GET /mms-threads/needs-reply-threads": async () => {
       await needsReplyGate;
       return Response.json([]);
     },
@@ -83,6 +84,7 @@ beforeEach(() => {
   postSaved = () => {};
   postGate = Promise.resolve();
   thread = {
+    threadId: null,
     phoneNumber: "+14155550123",
     textable: true,
     optedOut: false,
@@ -103,6 +105,7 @@ beforeEach(() => {
     hasOlder: false,
   };
   kimsThread = {
+    threadId: null,
     phoneNumber: "+14155550188",
     textable: true,
     optedOut: false,
@@ -118,12 +121,43 @@ const renderSection = () => {
   render(
     <Wrapper>
       <ToastProvider>
-        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        <MemoryRouter>
+          <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        </MemoryRouter>
       </ToastProvider>
     </Wrapper>,
   );
   return client;
 };
+
+it("links to the number's thread once it has one", async () => {
+  thread = { ...thread, threadId: "00000000-0000-4000-8000-000000000001" };
+  renderSection();
+
+  expect(
+    (
+      await screen.findByRole("link", { name: "Open this number's thread" })
+    ).getAttribute("href"),
+  ).toBe("/texts/00000000-0000-4000-8000-000000000001");
+});
+
+it("links to the number's thread once the first send creates it", async () => {
+  postSaved = () => {
+    thread = { ...thread, threadId: "00000000-0000-4000-8000-000000000001" };
+  };
+  renderSection();
+  fireEvent.change(await screen.findByLabelText("Text Sam"), {
+    target: { value: "Happy to help" },
+  });
+  expect(
+    screen.queryByRole("link", { name: "Open this number's thread" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(
+    await screen.findByRole("link", { name: "Open this number's thread" }),
+  ).toBeTruthy();
+});
 
 it("shows who sent each text, and why one failed", async () => {
   renderSection();
@@ -151,6 +185,22 @@ it("sends a text, adds it to the thread and refreshes Needs Reply", async () => 
   expect(await screen.findByText("Happy to help")).toBeTruthy();
   expect(sentBodies).toEqual([{ body: "Happy to help" }]);
   await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
+});
+
+it("marks the number's thread page stale after a send here", async () => {
+  const client = renderSection();
+  const pageKey = queryKeys.numberTextThreadAdmin(
+    "00000000-0000-4000-8000-000000000001",
+  );
+  client.setQueryData(pageKey, thread);
+  fireEvent.change(await screen.findByLabelText("Text Sam"), {
+    target: { value: "Happy to help" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  await waitFor(() =>
+    expect(client.getQueryState(pageKey)?.isInvalidated).toBe(true),
+  );
 });
 
 it("frees the composer without waiting for Needs Reply to refresh", async () => {
@@ -301,6 +351,7 @@ it("replaces the composer for an opted-out member", async () => {
 
 it("says in the thread that a member with no phone number can't be texted", async () => {
   thread = {
+    threadId: null,
     phoneNumber: null,
     textable: false,
     optedOut: false,

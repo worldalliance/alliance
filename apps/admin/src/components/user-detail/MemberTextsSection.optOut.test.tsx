@@ -15,6 +15,7 @@ import { milliseconds } from "date-fns";
 import MemberTextsSection from "./MemberTextsSection";
 
 const textable = (phoneNumber: string): MmsThreadDto => ({
+  threadId: null,
   phoneNumber,
   textable: true,
   optedOut: false,
@@ -46,7 +47,7 @@ serveApi(
       if (optedOutElsewhere) {
         thread = { ...thread, optedOut: true };
         return Response.json(
-          { message: "This member has opted out of texts." },
+          { message: "This number has opted out of texts." },
           { status: 409 },
         );
       }
@@ -215,7 +216,7 @@ it("still focuses the next member's badge after an earlier opt-out fails", async
   optOutGate = new Promise((resolve) => (openSamGate = resolve));
   let openKimGate = () => {};
   kimOptOutGate = new Promise((resolve) => (openKimGate = resolve));
-  optOutRefusal = "This member's phone number isn't valid.";
+  optOutRefusal = "This phone number can't receive texts from staff.";
   const { show } = renderSection();
   await confirmMarkOptedOut();
   await waitFor(() => expect(optOuts).toBe(1));
@@ -254,23 +255,31 @@ it("leaves a member subscribed when the confirmation is cancelled", async () => 
 
 it("says why a member wasn't marked opted out, until dismissed", async () => {
   jest.useFakeTimers();
-  optOutRefusal = "This member's phone number isn't valid.";
-  renderSection();
-  await confirmMarkOptedOut();
-  await screen.findByText("This member's phone number isn't valid.");
+  try {
+    optOutRefusal = "This phone number can't receive texts from staff.";
+    renderSection();
+    await confirmMarkOptedOut();
+    await screen.findByText(
+      "This phone number can't receive texts from staff.",
+    );
 
-  act(() => jest.advanceTimersByTime(milliseconds({ minutes: 1 })));
+    act(() => jest.advanceTimersByTime(milliseconds({ minutes: 1 })));
 
-  expect(
-    screen.getByText("This member's phone number isn't valid."),
-  ).toBeTruthy();
-  expect(screen.getByText("Problem marking Sam opted out")).toBeTruthy();
-  expect(screen.queryByText("Opted out")).toBeNull();
-  expect(screen.getByRole("button", { name: "Mark opted out" })).toBeTruthy();
+    expect(
+      screen.getByText("This phone number can't receive texts from staff."),
+    ).toBeTruthy();
+    expect(screen.getByText("Problem marking Sam opted out")).toBeTruthy();
+    expect(screen.queryByText("Opted out")).toBeNull();
+    expect(screen.getByRole("button", { name: "Mark opted out" })).toBeTruthy();
+  } finally {
+    // The preload's afterEach restore comes too late: with fake timers
+    // still on at teardown, the next tests' thread fetch never resolves.
+    jest.useRealTimers();
+  }
 });
 
 it("refreshes the thread after a failed opt-out, so a changed number shows", async () => {
-  optOutRefusal = "This member's phone number isn't valid.";
+  optOutRefusal = "This phone number can't receive texts from staff.";
   renderSection();
   await screen.findByRole("button", { name: "Mark opted out" });
   thread = { ...thread, textable: false };

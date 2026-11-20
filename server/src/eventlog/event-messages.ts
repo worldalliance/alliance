@@ -26,6 +26,7 @@ interface Referred extends Named {
 
 export enum SmsFailureKind {
   SendFailed = "send_failed",
+  StaffSendFailed = "staff_send_failed",
   DeliveryFailed = "delivery_failed",
   OptInFailed = "opt_in_failed",
   SignatureRejected = "signature_rejected",
@@ -52,7 +53,7 @@ export interface EventPayloads {
   [EventType.SmsInbound]: {
     phoneNumber: string;
     members: Named[];
-    /** Every member on the number has opted out, so Needs reply omits them. */
+    /** The number has opted out, so Needs reply omits it. */
     optedOut: boolean;
     body: string;
   };
@@ -61,6 +62,12 @@ export interface EventPayloads {
         kind: SmsFailureKind.SendFailed;
         phoneNumber: string;
         userId: number;
+        error: string;
+      }
+    | {
+        kind: SmsFailureKind.StaffSendFailed;
+        phoneNumber: string;
+        threadId: string;
         error: string;
       }
     | {
@@ -151,6 +158,8 @@ function smsFailure(payload: EventPayloads[EventType.SmsFailure]): EventText {
   switch (payload.kind) {
     case SmsFailureKind.SendFailed:
       return text`Couldn't send a text to ${adminLink(payload.phoneNumber, `/member/${payload.userId}`)}: ${payload.error}`;
+    case SmsFailureKind.StaffSendFailed:
+      return text`Couldn't send a staff text to ${adminLink(payload.phoneNumber, `/texts/${payload.threadId}`)}: ${payload.error}`;
     case SmsFailureKind.DeliveryFailed:
       return text`Twilio reported error ${{ label: String(payload.errorCode), url: `https://www.twilio.com/docs/api/errors/${payload.errorCode}` }} for a text to ${payload.phoneNumber}.`;
     case SmsFailureKind.OptInFailed:
@@ -179,14 +188,15 @@ const FORMATS: {
       ? text`Contract suspended automatically for ${referred(p.member)}: they missed ${String(p.missedSuites)} action suites in a row.`
       : text`${referred(p.member)} suspended their contract.`,
   [EventType.SmsUnsubscribe]: ({ phoneNumber, member: m, source }) => {
-    if (!m) {
-      return text`${phoneNumber} opted out of texts, but no member has that number.`;
-    }
     switch (source.kind) {
       case OptOutSource.Keyword:
-        return text`${member(m)} opted out of texts by replying “${source.rawBody}”.`;
+        return m
+          ? text`${member(m)} opted out of texts by replying “${source.rawBody}”.`
+          : text`${phoneNumber} opted out of texts, but no member has that number.`;
       case OptOutSource.Staff:
-        return text`${member(source.staff)} marked ${member(m)} as opted out of texts.`;
+        return m
+          ? text`${member(source.staff)} marked ${member(m)} as opted out of texts.`
+          : text`${member(source.staff)} marked ${phoneNumber} as opted out of texts. No member has that number.`;
       default:
         throw new Error(`unknown opt-out source: ${source satisfies never}`);
     }
@@ -196,13 +206,14 @@ const FORMATS: {
       ? text`${member(m)} opted back in to texts by replying “${rawBody}”.`
       : text`${phoneNumber} replied “${rawBody}” to opt back in to texts, but no member has that number.`,
   [EventType.SmsInbound]: ({ phoneNumber, members, optedOut, body }) => {
-    if (members.length === 0) {
-      return text`${phoneNumber}, which no member has, texted: “${body}”`;
+    const texted =
+      members.length === 0
+        ? text`${phoneNumber}, which no member has, texted: “${body}”`
+        : text`${join(members.map(member), ", ")} texted: “${body}”`;
+    if (!optedOut) {
+      return text`${texted} Reply from ${adminLink("Needs reply", "/needs-reply")}.`;
     }
-    const texted = text`${join(members.map(member), ", ")} texted: “${body}”`;
-    return optedOut
-      ? text`${texted} They have opted out of texts.`
-      : text`${texted} Reply from ${adminLink("Needs reply", "/needs-reply")}.`;
+    return text`${texted} The number has opted out of texts.`;
   },
   [EventType.SmsFailure]: smsFailure,
   [EventType.ForumActionAutocomplete]: (p) =>

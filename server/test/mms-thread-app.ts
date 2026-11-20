@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { MmsMediaService } from "src/mms/mms-media.service";
+import { MmsThread } from "src/mms/mms-thread.entity";
 import { Mms } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
 import { ReferralSource, User } from "src/user/entities/user.entity";
@@ -62,6 +63,25 @@ export function mmsThreadApp() {
       .set("Authorization", admin())
       .send({ body });
 
+  const byId = (threadId: string, path = "") =>
+    `/mms-threads/by-id/${threadId}${path}`;
+
+  const numberThread = (threadId: string) =>
+    supertest(server()).get(byId(threadId)).set("Authorization", admin());
+
+  const sendInThread = (threadId: string, body: string) =>
+    supertest(server())
+      .post(byId(threadId))
+      .set("Authorization", admin())
+      .send({ body });
+
+  const threadIdFor = async (phoneNumber: string): Promise<string> =>
+    (
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .findOneByOrFail({ phoneNumber })
+    ).id;
+
   const createMember = (phoneNumber: string | null) =>
     userRepo().save(
       userRepo().create({
@@ -94,6 +114,10 @@ export function mmsThreadApp() {
     inbound,
     thread,
     send,
+    byId,
+    numberThread,
+    sendInThread,
+    threadIdFor,
     createMember,
     saveBroadcast,
   };

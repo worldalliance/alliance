@@ -8,8 +8,8 @@ import MemberZoneLink from "./components/MemberZoneLink";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
-import { useNeedsReplyCount } from "./lib/useMemberTextsAdmin";
 import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
+import { useNeedsReplyCount } from "./lib/useTextThreadsAdmin";
 
 const Sidebar: React.FC = () => {
   const { data: partnershipResponses = [] } =

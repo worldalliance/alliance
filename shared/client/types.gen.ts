@@ -1549,6 +1549,32 @@ export type RecordLinkOpeningDto = {
     observedAt: string;
 };
 
+export type ThreadMemberDto = {
+    id: number;
+    name: string;
+    timeZone: string | null;
+};
+
+export type ThreadSummaryDto = {
+    threadId: string;
+    phoneNumber: string;
+    members: Array<ThreadMemberDto>;
+    /**
+     * The latest inbound or staff text
+     */
+    lastMessageBody: string;
+    lastMessageDirection: MmsDirection;
+    lastMessageAt: string;
+};
+
+export type ThreadListDto = {
+    /**
+     * Up to `limit` threads, latest text first
+     */
+    threads: Array<ThreadSummaryDto>;
+    hasMore: boolean;
+};
+
 export type NeedsReplyMemberDto = {
     userId: number;
     name: string;
@@ -1562,8 +1588,25 @@ export type NeedsReplyMemberDto = {
     waitingSince: string;
 };
 
+export type NeedsReplyThreadDto = {
+    threadId: string;
+    /**
+     * May be a short code or sender id
+     */
+    phoneNumber: string;
+    members: Array<ThreadMemberDto>;
+    /**
+     * The latest text that still needs a reply; STOP and START texts and handled texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the oldest text that no staff reply has followed and staff haven't marked handled arrived
+     */
+    waitingSince: string;
+};
+
 /**
- * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+ * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
  */
 export type ReplyState = 'needs_reply' | 'handled' | 'answered';
 
@@ -1611,15 +1654,27 @@ export type MmsMessageDto = {
     media: Array<MmsMediaDto>;
 };
 
-export type MmsThreadDto = {
-    phoneNumber: string | null;
+export type NumberThreadDto = {
+    threadId: string;
     /**
-     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
+     * May be a short code or sender id
+     */
+    phoneNumber: string;
+    /**
+     * Non-deleted members with this number
+     */
+    members: Array<ThreadMemberDto>;
+    /**
+     * False for a number staff can't text, such as a short code; opt-out and the reply window are reported separately in optedOut and replyWindowClosed
      */
     textable: boolean;
     optedOut: boolean;
     /**
-     * Whether the member's latest texts need a reply, were marked handled, or were answered (or there are none)
+     * True for a number with no member that sent no text in the last 30 days
+     */
+    replyWindowClosed: boolean;
+    /**
+     * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
      */
     replyState: ReplyState;
     /**
@@ -1641,6 +1696,31 @@ export type MarkThreadDto = {
      * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
      */
     throughId: number;
+};
+
+export type MmsThreadDto = {
+    /**
+     * Null when the member has no phone number or it has no thread row yet
+     */
+    threadId: string | null;
+    phoneNumber: string | null;
+    /**
+     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
+     */
+    textable: boolean;
+    optedOut: boolean;
+    /**
+     * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
+     */
+    replyState: ReplyState;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
 };
 
 export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached' | 'phone_number_moved';
@@ -8392,6 +8472,32 @@ export type MmsHandleInboundMmsResponses = {
 
 export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
 
+export type MmsThreadListThreadsAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        /**
+         * Matches numbers containing these digits; must contain one
+         */
+        search?: string;
+    };
+    url: '/mms-threads';
+};
+
+export type MmsThreadListThreadsAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadListThreadsAdminError = MmsThreadListThreadsAdminErrors[keyof MmsThreadListThreadsAdminErrors];
+
+export type MmsThreadListThreadsAdminResponses = {
+    200: ThreadListDto;
+};
+
+export type MmsThreadListThreadsAdminResponse = MmsThreadListThreadsAdminResponses[keyof MmsThreadListThreadsAdminResponses];
+
 export type MmsThreadNeedsReplyAdminData = {
     body?: never;
     path?: never;
@@ -8410,6 +8516,141 @@ export type MmsThreadNeedsReplyAdminResponses = {
 };
 
 export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+
+export type MmsThreadNeedsReplyThreadsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply-threads';
+};
+
+export type MmsThreadNeedsReplyThreadsAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyThreadsAdminError = MmsThreadNeedsReplyThreadsAdminErrors[keyof MmsThreadNeedsReplyThreadsAdminErrors];
+
+export type MmsThreadNeedsReplyThreadsAdminResponses = {
+    200: Array<NeedsReplyThreadDto>;
+};
+
+export type MmsThreadNeedsReplyThreadsAdminResponse = MmsThreadNeedsReplyThreadsAdminResponses[keyof MmsThreadNeedsReplyThreadsAdminResponses];
+
+export type MmsThreadGetNumberThreadAdminData = {
+    body?: never;
+    path: {
+        threadId: string;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/by-id/{threadId}';
+};
+
+export type MmsThreadGetNumberThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetNumberThreadAdminError = MmsThreadGetNumberThreadAdminErrors[keyof MmsThreadGetNumberThreadAdminErrors];
+
+export type MmsThreadGetNumberThreadAdminResponses = {
+    200: NumberThreadDto;
+};
+
+export type MmsThreadGetNumberThreadAdminResponse = MmsThreadGetNumberThreadAdminResponses[keyof MmsThreadGetNumberThreadAdminResponses];
+
+export type MmsThreadSendInThreadAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}';
+};
+
+export type MmsThreadSendInThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendInThreadAdminError = MmsThreadSendInThreadAdminErrors[keyof MmsThreadSendInThreadAdminErrors];
+
+export type MmsThreadSendInThreadAdminResponses = {
+    201: MmsMessageDto;
+};
+
+export type MmsThreadSendInThreadAdminResponse = MmsThreadSendInThreadAdminResponses[keyof MmsThreadSendInThreadAdminResponses];
+
+export type MmsThreadMarkThreadOptedOutAdminData = {
+    body?: never;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/opt-out';
+};
+
+export type MmsThreadMarkThreadOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadOptedOutAdminError = MmsThreadMarkThreadOptedOutAdminErrors[keyof MmsThreadMarkThreadOptedOutAdminErrors];
+
+export type MmsThreadMarkThreadOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadOptedOutAdminResponse = MmsThreadMarkThreadOptedOutAdminResponses[keyof MmsThreadMarkThreadOptedOutAdminResponses];
+
+export type MmsThreadMarkThreadHandledAdminData = {
+    body: MarkThreadDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/handled';
+};
+
+export type MmsThreadMarkThreadHandledAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadHandledAdminError = MmsThreadMarkThreadHandledAdminErrors[keyof MmsThreadMarkThreadHandledAdminErrors];
+
+export type MmsThreadMarkThreadHandledAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadHandledAdminResponse = MmsThreadMarkThreadHandledAdminResponses[keyof MmsThreadMarkThreadHandledAdminResponses];
+
+export type MmsThreadMarkThreadNeedsReplyAdminData = {
+    body: MarkThreadDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/needs-reply';
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminError = MmsThreadMarkThreadNeedsReplyAdminErrors[keyof MmsThreadMarkThreadNeedsReplyAdminErrors];
+
+export type MmsThreadMarkThreadNeedsReplyAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminResponse = MmsThreadMarkThreadNeedsReplyAdminResponses[keyof MmsThreadMarkThreadNeedsReplyAdminResponses];
 
 export type MmsThreadMediaAdminData = {
     body?: never;

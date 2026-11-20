@@ -14,6 +14,7 @@ import {
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { MmsNumberService } from "src/mms/mms-number.service";
 import { MmsService } from "src/mms/mms.service";
 import { TasksModule } from "src/tasks/tasks.module";
 import { User } from "src/user/entities/user.entity";
@@ -287,6 +288,19 @@ describe("Form answers saved to the member's account (e2e)", () => {
     expect(saved.phoneNumber).toBe("+14155551234");
     expect(saved.textByDefault).toBe(false);
     expect(ctx.app.get(MmsService).sendMms).not.toHaveBeenCalled();
+  });
+
+  it("saves the other answers when the opt-out lookup fails", async () => {
+    jest
+      .spyOn(ctx.app.get(MmsNumberService), "optedOut")
+      .mockRejectedValue(new Error("lookup failed"));
+    await submit({
+      answers: { city: "Jackson", phone: "+14155551234" },
+      status: 201,
+    });
+
+    expect((await member()).customCityString).toBe("Jackson");
+    expect(ctx.app.get(MmsService).sendMms).toHaveBeenCalled();
   });
 
   it("reads the answered one of two checkboxes for the same setting", async () => {

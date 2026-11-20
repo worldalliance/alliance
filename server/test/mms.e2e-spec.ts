@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
+import { MmsThread } from "src/mms/mms-thread.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
 import { MmsModule } from "src/mms/mms.module";
 import { ReferralSource, User } from "src/user/entities/user.entity";
@@ -353,7 +354,28 @@ describe("Inbound MMS keywords (e2e)", () => {
     const res = await inbound("+14155559999", "STOP");
 
     expect(res.status).toBe(201);
-    expect(await optoutRepo.countBy({ phoneNumber: "+14155559999" })).toBe(0);
+    expect(
+      await optoutRepo.find({
+        where: { phoneNumber: "+14155559999" },
+        relations: { user: true },
+      }),
+    ).toEqual([expect.objectContaining({ user: null, rawBody: "STOP" })]);
+    expect(
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .findOneBy({ phoneNumber: "+14155559999" }),
+    ).toEqual(expect.objectContaining({ optedOut: true }));
+  });
+
+  it("records START on the state of a number nobody has on file", async () => {
+    await inbound("+14155559998", "STOP");
+    await inbound("+14155559998", "START");
+
+    expect(
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .findOneBy({ phoneNumber: "+14155559998" }),
+    ).toEqual(expect.objectContaining({ optedOut: false }));
   });
 
   it("ignores a message that is not a keyword", async () => {
@@ -399,20 +421,31 @@ describe("Inbound MMS keywords (e2e)", () => {
       );
     });
 
-    it("saying the member opted out when they have", async () => {
-      await userRepo.update(
-        { id: memberId },
-        { phoneNumberUnsubscribed: true },
-      );
+    it("saying a member's number opted out when it has", async () => {
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .upsert({ phoneNumber: "+14155559001", optedOut: true }, [
+          "phoneNumber",
+        ]);
 
       expect(await inboundMessage("+14155559001", "opted out hi")).toBe(
-        "Stopper texted: “opted out hi” They have opted out of texts.",
+        "Stopper texted: “opted out hi” The number has opted out of texts.",
       );
     });
 
     it("naming the number when no member has it", async () => {
       expect(await inboundMessage("+14155559998", "stranger hi")).toBe(
-        "+14155559998, which no member has, texted: “stranger hi”",
+        "+14155559998, which no member has, texted: “stranger hi” Reply from Needs reply.",
+      );
+    });
+
+    it("saying a number no member has opted out when it has", async () => {
+      await ctx.dataSource
+        .getRepository(MmsThread)
+        .insert({ phoneNumber: "+14155559997", optedOut: true });
+
+      expect(await inboundMessage("+14155559997", "stranger again")).toBe(
+        "+14155559997, which no member has, texted: “stranger again” The number has opted out of texts.",
       );
     });
 
