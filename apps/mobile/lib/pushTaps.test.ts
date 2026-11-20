@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { memoryAsyncStorage } from "./memoryAsyncStorage";
 import { handledPushTaps, KEPT_PUSH_TAPS, pushTapRunner } from "./pushTaps";
+import { shouldResumeRestart } from "./resumeRestarts";
 
 beforeEach(memoryAsyncStorage);
 afterEach(() => jest.restoreAllMocks());
@@ -20,6 +21,20 @@ describe("handledPushTaps", () => {
     const afterReload = handledPushTaps(jest.fn());
     expect(await afterReload.isNew("a")).toBe(false);
     expect(await afterReload.isNew("b")).toBe(true);
+  });
+
+  it("holds off an automatic restart until a handled tap is saved", async () => {
+    const write = Promise.withResolvers<void>();
+    jest.spyOn(AsyncStorage, "setItem").mockReturnValue(write.promise);
+    const ready = { isUpdatePending: true, inputFocused: false };
+    const marked = handledPushTaps(jest.fn()).markHandled("a");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(AsyncStorage.setItem).toHaveBeenCalled();
+    expect(shouldResumeRestart(ready)).toBe(false);
+    write.resolve();
+    await marked;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(shouldResumeRestart(ready)).toBe(true);
   });
 
   it("passes a tap seen but not handled before a reload", async () => {

@@ -1,6 +1,7 @@
 import { R } from "@alliance/common/result";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { z } from "zod";
+import { blockResumeRestartUntil } from "./resumeRestarts";
 
 const KEY = "handledPushTaps";
 // Far more taps than a member opens in one app process, so every tap Android
@@ -27,8 +28,9 @@ async function readHandled(report: (error: unknown) => void) {
  * tap at launch and again to its listener, and on Android replays taps that
  * arrived before its listener after every reload, so taps whose action ran
  * are kept across restarts. A tap seen but not yet acted on, such as one waiting for
- * sign-in, passes again after a restart. A storage failure is reported and
- * falls back to this session's taps.
+ * sign-in, passes again after a restart. An automatic restart waits for a
+ * tap's handled mark to be saved, so it can't replay the tap. A storage
+ * failure is reported and falls back to this session's taps.
  */
 export function handledPushTaps(report: (error: unknown) => void): {
   isNew: (identifier: string) => Promise<boolean>;
@@ -55,6 +57,7 @@ export function handledPushTaps(report: (error: unknown) => void): {
         );
         if (R.isFailure(saved)) report(saved.error);
       });
+      blockResumeRestartUntil(saving);
       return saving;
     },
   };
