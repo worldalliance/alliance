@@ -1,9 +1,7 @@
 import type { EventLogService } from "src/eventlog/eventlog.service";
-import type { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import type { Repository } from "src/utils/Repository";
-import type { MmsNumberService } from "./mms-number.service";
 import { Mms } from "./mms.entity";
-import { MmsService } from "./mms.service";
+import type { MmsService } from "./mms.service";
 import { TwilioStatusWorker } from "./twiliostatus.worker";
 
 describe("TwilioStatusWorker", () => {
@@ -15,19 +13,17 @@ describe("TwilioStatusWorker", () => {
 
   beforeEach(() => {
     // Safe: the worker only calls find, and the spied refreshMmsData never
-    // reaches the service's own dependencies.
+    // reaches the stubbed services.
     const mmsRepository = {} as Repository<Mms>;
     mmsRepository.find = jest.fn().mockResolvedValue([queued, alsoQueued]);
-    const mmsService = new MmsService(
-      {} as Repository<Mms>,
+    worker = new TwilioStatusWorker(
+      {} as MmsService,
+      mmsRepository,
       {} as EventLogService,
-      {} as MessageTrackingService,
-      {} as MmsNumberService,
     );
     refreshMmsData = jest
-      .spyOn(mmsService, "refreshMmsData")
+      .spyOn(worker, "refreshMmsData")
       .mockResolvedValue(queued);
-    worker = new TwilioStatusWorker(mmsService, mmsRepository);
     process.env.SEND_DEV_NOTIFS = "0";
   });
 

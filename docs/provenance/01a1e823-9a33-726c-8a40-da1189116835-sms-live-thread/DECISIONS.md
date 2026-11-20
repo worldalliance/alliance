@@ -2,6 +2,10 @@
 
 Agent decisions unless marked otherwise. Sources are in `EVIDENCE.md`.
 
+## File layout
+
+- `mms.service.ts` would pass 500 lines once its saves announce thread changes, so Twilio status refresh (`refreshMmsData`) moved to `TwilioStatusWorker`, its only production caller, which fetches through `MmsService.fetchMessage`. The three send paths stay together, since they share dispatch, timeout, late-send recording and alerting. A Claude subagent's split suggestion stood in for Codex's, which was out of usage.
+
 ## Session refresh
 
 - `refreshSession` signs the user out only when the server refuses the refresh with 401, the only refusal its refresh route sends. Any other answer, a 403 from a proxy in between included, or a refresh that couldn't be sent, fails the request instead, since signing out over a server error or a dropped connection discards the page for a session that may be fine.

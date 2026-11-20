@@ -24,7 +24,10 @@ import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import { SendErrorKind, textSendError } from "src/utils/send-error";
 import Twilio from "twilio";
-import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
+import type {
+  MessageInstance,
+  MessageStatus,
+} from "twilio/lib/rest/api/v2010/account/message";
 import { env } from "../config/env";
 import { MmsNumberService } from "./mms-number.service";
 import { Mms, MmsDirection } from "./mms.entity";
@@ -493,27 +496,8 @@ export class MmsService {
       });
   }
 
-  async refreshMmsData(mms: Mms): Promise<Mms> {
-    const message = await this.twilioClient.messages.get(mms.twilioSid).fetch();
-    if (message.errorCode) {
-      this.eventLogService.sendMessage({
-        type: EventType.SmsFailure,
-        payload: {
-          kind: SmsFailureKind.DeliveryFailed,
-          phoneNumber: mms.to,
-          errorCode: message.errorCode,
-        },
-        blob: message.toJSON(),
-        userId: null,
-      });
-    }
-    mms.to = message.to;
-    mms.from = message.from;
-    mms.body = message.body;
-    mms.status = message.status;
-    mms.errorCode = message.errorCode;
-    mms.errorMessage = message.errorMessage;
-    return this.mmsRepository.save(mms);
+  fetchMessage(sid: string): Promise<MessageInstance> {
+    return this.twilioClient.messages.get(sid).fetch();
   }
 
   // doesnt throw to allow fallback to mail - TODO this is kind of unintuitive
