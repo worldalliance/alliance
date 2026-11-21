@@ -1,8 +1,11 @@
 import type { UserActionSummaryDto } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { expect, it } from "bun:test";
-import UserProgressPills from "./UserProgressPills";
+import UserProgressPills, {
+  ActionHistoryLegend,
+  PILL_STATUS_DATA,
+} from "./UserProgressPills";
 
 const action = (id: number, name: string): UserActionSummaryDto => ({
   id,
@@ -87,4 +90,25 @@ it.each([
       name: `March - Won't complete${reason}. No deadline`,
     }),
   ).toBeTruthy();
+});
+
+it("keys each drawn colour by the words its tooltip uses", () => {
+  render(<ActionHistoryLegend />);
+  const key = screen.getByRole("list", { name: "Action history key" });
+  const items = within(key).getAllByRole("listitem");
+  expect(items.map((item) => item.textContent)).toEqual([
+    "Member away",
+    "Completed",
+    "Missed deadline",
+    "Not yet completed",
+    "Won't complete",
+    "Optional",
+  ]);
+  for (const item of items) {
+    const style = Object.values(PILL_STATUS_DATA).find(
+      (data) => data.pillSubtitleText === item.textContent,
+    )?.pillStyle;
+    if (!style) throw new Error(`no colour for ${item.textContent}`);
+    expect(item.querySelector("span")?.className).toContain(style);
+  }
 });

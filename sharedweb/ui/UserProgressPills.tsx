@@ -81,6 +81,25 @@ export const PILL_STATUS_DATA = Object.freeze({
   }) satisfies PillStatusData,
 }) satisfies Record<UserActionRelationPillStatus, PillStatusData>;
 
+const LEGEND_ENTRIES = Object.values(PILL_STATUS_DATA).flatMap((data) =>
+  data.pillStyle ? [data] : [],
+);
+
+export const ActionHistoryLegend = () => (
+  <ul
+    role="list"
+    aria-label="Action history key"
+    className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600"
+  >
+    {LEGEND_ENTRIES.map(({ pillSubtitleText, pillStyle }) => (
+      <li key={pillSubtitleText} className="flex items-center gap-1">
+        <span aria-hidden className={cn("h-3 w-4 rounded", pillStyle)} />
+        {pillSubtitleText}
+      </li>
+    ))}
+  </ul>
+);
+
 export function useMaxActionsPerWeek(params: {
   actionSummaries: UserActionSummaryDto[] | null;
   userActionRelations: Record<number, UserActionRelationDetailDto[]> | null;
