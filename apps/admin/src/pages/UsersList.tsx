@@ -2,43 +2,78 @@ import { withCount } from "@alliance/common/plural";
 import {
   ProfileDto,
   UserActionRelationDetailDto,
+  UserDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
-import { cn } from "@alliance/shared/styles/util";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
+import {
+  ActionHistoryLegend,
+  useMaxActionsPerWeek,
+} from "@alliance/sharedweb/ui/UserProgressPills";
 import { groupBy, mapValues } from "es-toolkit";
-import { LayoutGrid, List, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { href, Link, useSearchParams } from "react-router";
-import MemberFilterDropdown from "../components/MemberFilterDropdown";
+import { href, Link } from "react-router";
+import { secondaryButtonClass } from "../components/ui/controlStyles";
+import FilterBar from "../components/ui/FilterBar";
+import PageShell, { PageWidth } from "../components/ui/PageShell";
+import SegmentedControl from "../components/ui/SegmentedControl";
 import UserCard from "../components/UserCard";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import {
-  matchesSelectedRoles,
-  ROLE_FILTERS,
-  RoleFilter,
-} from "../lib/memberRoleFilter";
-import { memberSearchMatcher } from "../lib/memberSearch";
 import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 import { useMemberContactInfoAdmin } from "../lib/useMemberContactInfoAdmin";
+import { useMemberListFilters } from "../lib/useMemberListFilters";
+import { useSearchParam } from "../lib/useSearchParam";
 import { useTagsAdmin } from "../lib/useTagsAdmin";
 import { useTimeSpentPerUserTotalAdmin } from "../lib/useTimeSpentPerUserTotalAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
-type ViewMode = "cards" | "rows";
+export enum MembersView {
+  List = "list",
+  Grid = "grid",
+}
+
+const VIEW_OPTIONS = [
+  { value: MembersView.List, label: "List" },
+  { value: MembersView.Grid, label: "Grid" },
+] as const;
 
 const MEMBERS_PER_PAGE = 50;
 const NO_TIMES: Record<number, number> = {};
 
+const toProfile = (user: UserDto): ProfileDto => ({
+  id: user.id,
+  admin: user.admin,
+  staff: user.staff,
+  ambassador: user.ambassador,
+  profilePicture: user.profilePicture,
+  profileDescription: user.profileDescription,
+  displayName: user.name,
+  hasActiveContract: user.hasActiveContract,
+  isCommunityLeader: false,
+  lastContractEvent: user.lastContractEvent,
+  anonymous: user.anonymous,
+});
+
 const UsersList: React.FC = () => {
-  const { data: users = [] } = useUsersAdmin();
+  const usersQuery = useUsersAdmin();
+  const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
   const timeSpentTotal = useTimeSpentPerUserTotalAdmin();
   const userToTimeSpentTotal = timeSpentTotal.data ?? NO_TIMES;
-  const { tags, addUserToTag, removeUserFromTag } = useTagsAdmin();
-  const { data: relationsResponse } = useActionRelationsAdmin();
+  const {
+    tags,
+    isLoading: tagsLoading,
+    isLoadingError: tagsFailed,
+    addUserToTag,
+    removeUserFromTag,
+  } = useTagsAdmin();
+  const {
+    data: relationsResponse,
+    isPending: relationsLoading,
+    isLoadingError: relationsFailed,
+  } = useActionRelationsAdmin();
   // latest on the right
   const actionSummaries = useMemo(
     () => (relationsResponse?.actions ?? []).slice().reverse(),
@@ -55,26 +90,37 @@ const UsersList: React.FC = () => {
     actionSummaries,
     userActionRelations,
   });
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedRoles, setSelectedRoles] = useState<RoleFilter[]>([]);
+  const completedAllCurrentActions = useCompletedAllActiveActions({
+    actionSummaries,
+    userActionRelations,
+  });
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
     () => new Set(),
   );
   const [tagMutationError, setTagMutationError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const [params, setParams] = useSearchParams();
-  const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "rows";
+  const [viewParam, setView] = useSearchParam("view");
+  const view =
+    viewParam === MembersView.Grid ? MembersView.Grid : MembersView.List;
 
-  const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
+  const sortedUsers = useMemo(
+    () =>
+      [...users].sort(
+        (a, b) =>
+          (userToTimeSpentTotal[b.id] ?? 0) - (userToTimeSpentTotal[a.id] ?? 0),
+      ),
+    [users, userToTimeSpentTotal],
+  );
 
-  const sortedUsers = useMemo(() => {
-    return [...users].sort((a, b) => {
-      return (
-        (userToTimeSpentTotal[b.id] ?? 0) - (userToTimeSpentTotal[a.id] ?? 0)
-      );
-    });
-  }, [users, userToTimeSpentTotal]);
+  const { search, filters, shown, waiting, filterKey } = useMemberListFilters({
+    users: sortedUsers,
+    tags,
+    tagsLoading,
+    tagsFailed,
+    completedAllCurrentActions,
+    progressLoading: relationsLoading,
+    progressFailed: relationsFailed,
+  });
 
   const userTagsMap = useMemo(() => {
     const userTags = tags.flatMap((tag) =>
@@ -86,100 +132,31 @@ const UsersList: React.FC = () => {
     );
   }, [tags]);
 
-  const filteredByRoles = useMemo(() => {
-    if (!selectedRoles.length) {
-      return sortedUsers;
-    }
-    return sortedUsers.filter((user) =>
-      matchesSelectedRoles({ user, selectedRoles }),
-    );
-  }, [selectedRoles, sortedUsers]);
-
-  const filteredByTags = useMemo(() => {
-    if (!selectedTagIds.length) {
-      return filteredByRoles;
-    }
-    const selected = new Set(selectedTagIds);
-    return filteredByRoles.filter((user) => {
-      const userTags = userTagsMap[user.id] || [];
-      return userTags.some((tag) => selected.has(tag.id));
-    });
-  }, [selectedTagIds, filteredByRoles, userTagsMap]);
-
-  const filteredBySearch = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return filteredByTags;
-    }
-    return filteredByTags.filter(memberSearchMatcher(searchQuery));
-  }, [filteredByTags, searchQuery]);
-
-  const handleShuffle = useCallback(() => {
-    const current = filteredBySearch;
-
+  const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
+  const handleShuffle = () => {
     const seed = Math.random().toString(36).substring(2, 15);
     setShuffledIds(
       shuffleWithSeed(
-        current.map((u) => u.id),
+        shown.map((u) => u.id),
         seed,
       ),
     );
-  }, [filteredBySearch]);
-
+  };
   useEffect(() => {
     setShuffledIds(null);
-  }, [selectedTagIds, selectedRoles, searchQuery]);
-
-  const roleMemberCounts = useMemo(
-    () =>
-      mapValues(ROLE_FILTERS, (filter) => users.filter(filter.matches).length),
-    [users],
-  );
-
-  const resetAllFilters = () => {
-    setSearchQuery("");
-    setSelectedTagIds([]);
-    setSelectedRoles([]);
-  };
-
-  const hasActiveFilters =
-    searchQuery.trim() !== "" ||
-    selectedTagIds.length > 0 ||
-    selectedRoles.length > 0;
-
-  const usersAsProfiles = useMemo((): ProfileDto[] => {
-    return filteredBySearch.map((user) => {
-      return {
-        id: user.id,
-        admin: user.admin,
-        staff: user.staff,
-        ambassador: user.ambassador,
-        profilePicture: user.profilePicture,
-        profileDescription: user.profileDescription,
-        displayName: user.name,
-        hasActiveContract: user.hasActiveContract,
-        isCommunityLeader: false,
-        lastContractEvent: user.lastContractEvent,
-        anonymous: user.anonymous,
-      };
-    });
-  }, [filteredBySearch]);
-
-  const completedAllCurrentActions = useCompletedAllActiveActions({
-    actionSummaries,
-    userActionRelations,
-  });
+  }, [filterKey]);
 
   const displayedUsers = useMemo(() => {
     if (
       shuffledIds != null &&
-      shuffledIds.length === filteredBySearch.length &&
-      filteredBySearch.every((u) => shuffledIds!.includes(u.id))
+      shuffledIds.length === shown.length &&
+      shown.every((u) => shuffledIds.includes(u.id))
     ) {
-      const byId = Object.fromEntries(filteredBySearch.map((u) => [u.id, u]));
+      const byId = Object.fromEntries(shown.map((u) => [u.id, u]));
       return shuffledIds.map((id) => byId[id]).filter(Boolean);
     }
-    return filteredBySearch;
-  }, [filteredBySearch, shuffledIds]);
+    return shown;
+  }, [shown, shuffledIds]);
 
   const [cardPage, setCardPage] = useState(1);
   // New search/filter/shuffle → back to the first page. Keyed on the filter
@@ -187,7 +164,7 @@ const UsersList: React.FC = () => {
   // user fields must not yank the viewer back to the first page.
   useEffect(() => {
     setCardPage(1);
-  }, [searchQuery, selectedTagIds, shuffledIds]);
+  }, [filterKey, shuffledIds]);
 
   const cardTotalPages = Math.max(
     1,
@@ -195,27 +172,15 @@ const UsersList: React.FC = () => {
   );
   const currentCardPage = Math.min(cardPage, cardTotalPages);
 
-  const visibleCardUsers = useMemo(
-    () =>
-      displayedUsers.slice(
-        (currentCardPage - 1) * MEMBERS_PER_PAGE,
-        currentCardPage * MEMBERS_PER_PAGE,
-      ),
-    [displayedUsers, currentCardPage],
+  const visibleCardUsers = displayedUsers.slice(
+    (currentCardPage - 1) * MEMBERS_PER_PAGE,
+    currentCardPage * MEMBERS_PER_PAGE,
   );
 
-  const displayedProfiles = useMemo((): ProfileDto[] => {
-    const list = usersAsProfiles;
-    if (
-      shuffledIds != null &&
-      shuffledIds.length === list.length &&
-      list.every((p) => shuffledIds!.includes(p.id))
-    ) {
-      const byId = Object.fromEntries(list.map((p) => [p.id, p]));
-      return shuffledIds.map((id) => byId[id]).filter(Boolean);
-    }
-    return list;
-  }, [usersAsProfiles, shuffledIds]);
+  const displayedProfiles = useMemo(
+    () => displayedUsers.map(toProfile),
+    [displayedUsers],
+  );
 
   const { data: memberContactInfo } = useMemberContactInfoAdmin();
 
@@ -247,140 +212,71 @@ const UsersList: React.FC = () => {
     [addUserToTag.mutateAsync, removeUserFromTag.mutateAsync],
   );
 
-  return (
-    <div className="h-full p-5 flex flex-col items-center gap-y-3 overflow-x-clip bg-zinc-50">
-      <div className="flex flex-row gap-3 w-full items-center">
-        <input
-          type="text"
-          autoFocus
-          placeholder="Search by name, email, or phone..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
-        />
-        <div className="flex flex-row gap-3 items-center">
-          <MemberFilterDropdown
-            title="Roles"
-            noun="role"
-            options={Object.values(RoleFilter).map((role) => ({
-              value: role,
-              label: ROLE_FILTERS[role].label,
-              memberCount: roleMemberCounts[role],
-            }))}
-            selected={selectedRoles}
-            onChange={setSelectedRoles}
-          />
-          <MemberFilterDropdown
-            title="Tags"
-            noun="tag"
-            options={tags.map((tag) => ({
-              value: tag.id,
-              label: tag.name,
-              memberCount: tag.users.length,
-            }))}
-            selected={selectedTagIds}
-            onChange={setSelectedTagIds}
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetAllFilters}
-              className="text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
-            >
-              Reset filters
-            </button>
-          )}
-          <Link
-            to={href("/members/tags")}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Manage tags
-          </Link>
-        </div>
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={handleShuffle}
-            className="p-2 rounded hover:bg-zinc-100"
-            title="Shuffle view"
-          >
-            <Shuffle size={18} className="text-zinc-600" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setParams({ viewMode: "rows" })}
-            className={cn(
-              "p-2 rounded",
-              viewMode === "rows" ? "bg-zinc-200" : "hover:bg-zinc-100",
-            )}
-            title="Table view"
-          >
-            <List size={18} className="text-zinc-600" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setParams({ viewMode: "cards" })}
-            className={cn(
-              "p-2 rounded",
-              viewMode === "cards" ? "bg-zinc-200" : "hover:bg-zinc-100",
-            )}
-            title="Card view"
-          >
-            <LayoutGrid size={18} className="text-zinc-600" />
-          </button>
-        </div>
-      </div>
-      {timeSpentTotal.isLoadingError && (
-        <p role="alert" className="w-full text-sm text-red-500">
+  const body = () => {
+    if (usersQuery.isPending || waiting) {
+      return (
+        <p role="status" className="text-sm text-zinc-600">
+          Loading members…
+        </p>
+      );
+    }
+    if (usersQuery.isLoadingError) {
+      return (
+        <p role="alert" className="text-sm text-red-600">
           {adminRefusalMessage(
-            timeSpentTotal.error,
-            "Unable to load time spent, so members aren't sorted by it.",
+            usersQuery.error,
+            "Couldn't load members. Reload to try again.",
           )}
         </p>
-      )}
-      {tagMutationError && (
-        <div className="w-full">
-          <p className="text-sm text-red-500">{tagMutationError}</p>
-        </div>
-      )}
-      {viewMode === "cards" ? (
-        <div className="w-full flex flex-col gap-y-4">
-          <div className="grid gap-3 w-full [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
-            {visibleCardUsers.map((user) => (
-              <UserCard
-                key={user.id}
-                user={user}
-                tags={userTagsMap[user.id] || []}
-                allTags={tags}
-                onToggleTag={(tagId, nextChecked) =>
-                  handleUserTagToggle(user.id, tagId, nextChecked)
-                }
-                isTagPending={(tagId) =>
-                  pendingTagOps.has(`${user.id}-${tagId}`)
-                }
-                actions={actionSummaries}
-                maxActionsPerWeek={maxActionsPerWeek}
-                actionRelations={userActionRelations[user.id] || []}
-              />
-            ))}
-          </div>
-          {cardTotalPages > 1 && (
-            <div className="flex flex-row items-center justify-between">
-              <p className="text-sm text-zinc-500">
-                {withCount(displayedUsers.length, "member")}
-              </p>
-              <Pagination
-                page={currentCardPage}
-                totalPages={cardTotalPages}
-                onPageChange={setCardPage}
-              />
+      );
+    }
+    if (users.length === 0) {
+      return <p className="text-sm text-zinc-600">No members yet.</p>;
+    }
+    if (displayedUsers.length === 0) {
+      return (
+        <p className="text-sm text-zinc-600">No members match these filters.</p>
+      );
+    }
+    switch (view) {
+      case MembersView.Grid:
+        return (
+          <div className="flex flex-col gap-y-4">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
+              {visibleCardUsers.map((user) => (
+                <UserCard
+                  key={user.id}
+                  user={user}
+                  tags={userTagsMap[user.id] || []}
+                  allTags={tags}
+                  onToggleTag={(tagId, nextChecked) =>
+                    handleUserTagToggle(user.id, tagId, nextChecked)
+                  }
+                  isTagPending={(tagId) =>
+                    pendingTagOps.has(`${user.id}-${tagId}`)
+                  }
+                  actions={actionSummaries}
+                  maxActionsPerWeek={maxActionsPerWeek}
+                  actionRelations={userActionRelations[user.id] || []}
+                />
+              ))}
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="w-full">
+            {cardTotalPages > 1 && (
+              <div className="flex flex-row items-center justify-between">
+                <p className="text-sm text-zinc-500">
+                  {withCount(displayedUsers.length, "member")}
+                </p>
+                <Pagination
+                  page={currentCardPage}
+                  totalPages={cardTotalPages}
+                  onPageChange={setCardPage}
+                />
+              </div>
+            )}
+          </div>
+        );
+      case MembersView.List:
+        return (
           <CommunityMembersTable
             leaders={[]}
             members={displayedProfiles}
@@ -394,13 +290,88 @@ const UsersList: React.FC = () => {
             maxActionsPerWeek={maxActionsPerWeek}
             completedAllCurrentActions={completedAllCurrentActions}
             showInfoTooltip
-            showContractFilter
+            showMembersHeading={false}
             disableSort={shuffledIds != null}
             pageSize={MEMBERS_PER_PAGE}
           />
+        );
+      default:
+        throw new Error(`unknown view: ${view satisfies never}`);
+    }
+  };
+
+  return (
+    <PageShell
+      title="Members"
+      meta={
+        usersQuery.data &&
+        !waiting && (
+          <span className="text-sm tabular-nums text-zinc-500">
+            {displayedUsers.length === users.length
+              ? users.length.toLocaleString()
+              : `${displayedUsers.length.toLocaleString()} of ${users.length.toLocaleString()}`}
+          </span>
+        )
+      }
+      width={PageWidth.Full}
+      actions={
+        <Link to={href("/members/tags")} className={secondaryButtonClass}>
+          Manage tags
+        </Link>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <FilterBar search={search} filters={filters} />
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleShuffle}
+              className={secondaryButtonClass}
+            >
+              <Shuffle size={14} aria-hidden />
+              Shuffle order
+            </button>
+            <SegmentedControl
+              label="View"
+              options={VIEW_OPTIONS}
+              value={view}
+              onChange={(next) =>
+                setView(next === MembersView.List ? null : next)
+              }
+            />
+          </div>
         </div>
-      )}
-    </div>
+        <ActionHistoryLegend />
+        {timeSpentTotal.isLoadingError && (
+          <p role="alert" className="text-sm text-red-600">
+            {adminRefusalMessage(
+              timeSpentTotal.error,
+              "Unable to load time spent, so members aren't sorted by it.",
+            )}
+          </p>
+        )}
+        {tagsFailed && (
+          <p role="alert" className="text-sm text-red-600">
+            Couldn&apos;t load tags, so members show without them and can&apos;t
+            be filtered by tag. Reload to try again.
+          </p>
+        )}
+        {relationsFailed && (
+          <p role="alert" className="text-sm text-red-600">
+            Couldn&apos;t load action progress, so members show without their
+            action history and can&apos;t be filtered by it. Reload to try
+            again.
+          </p>
+        )}
+        {tagMutationError && (
+          <p role="alert" className="text-sm text-red-600">
+            {tagMutationError}
+          </p>
+        )}
+        {body()}
+      </div>
+    </PageShell>
   );
 };
 
