@@ -17,19 +17,20 @@ const IN_A_FORMULA: Record<SaveProblemKind, boolean> = {
 };
 
 /**
- * Problems refusing a save in formulas not open in the editor, each with a way
- * to fix it in the same save. A formula the saved one reads can be listed
- * without the save having broken it.
+ * Problems refusing a save in formulas the page isn't editing, each with a way
+ * to fix it in the same save. A formula the save reads can be listed without
+ * the save having broken it.
  */
 const OtherFormulaProblems: React.FC<{
   problems: FormulaProblemDto[];
   formulas: FormulaDto[];
   onFix: (formula: FormulaDto, problem: FormulaProblemDto) => void;
-}> = ({ problems, formulas, onFix }) => {
+  heading: string;
+}> = ({ problems, formulas, onFix, heading }) => {
   if (problems.length === 0) return null;
   return (
     <section className="border border-red-300 rounded p-4 space-y-4 max-w-3xl">
-      <h2 className="font-semibold text-red-800">Problems in other formulas</h2>
+      <h2 className="font-semibold text-red-800">{heading}</h2>
       <ul className="space-y-4">
         {problems.map((problem) => {
           const formula = formulas.find((each) => each.id === problem.id);

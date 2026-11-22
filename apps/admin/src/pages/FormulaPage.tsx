@@ -12,9 +12,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useHref, useNavigate, useParams } from "react-router";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormulaFields from "../components/formulas/FormulaFields";
+import FormulaFixes from "../components/formulas/FormulaFixes";
 import FormulaHistory from "../components/formulas/FormulaHistory";
-import OtherFormulaProblems from "../components/formulas/OtherFormulaProblems";
+import SaveRefusal, { type Refusal } from "../components/formulas/SaveRefusal";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import { asDraft } from "../lib/formulaDraft";
 import { refetchFresh } from "../lib/refetchFresh";
 import {
   useForgetFormulaAdmin,
@@ -25,14 +27,6 @@ import {
 import { useUnsavedChangesPrompt } from "../lib/useUnsavedChangesPrompt";
 
 const NEW = "new";
-
-const asDraft = (formula: FormulaDto): FormulaEditDto => ({
-  id: formula.id,
-  baseVersionId: formula.versionId,
-  name: formula.name,
-  text: formula.text,
-  notes: formula.notes,
-});
 
 const FormulaPage: React.FC = () => {
   const { formulaId = NEW } = useParams();
@@ -132,10 +126,7 @@ const FormulaEditor: React.FC<{
   const [fixes, setFixes] = useState<FormulaEditDto[]>([]);
   const [problems, setProblems] = useState<FormulaProblemDto[]>([]);
   const [refusedDelete, setRefusedDelete] = useState(false);
-  const [refusal, setRefusal] = useState<{
-    message: string;
-    outdated: boolean;
-  } | null>(null);
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   /**
    * A save succeeded. The fields stay read-only until the remount, which would
@@ -147,8 +138,6 @@ const FormulaEditor: React.FC<{
   /** Cleared on leaving, so a save's reload doesn't touch the page the admin went to. */
   const mounted = useRef(true);
   const saveButton = useRef<HTMLButtonElement>(null);
-  /** The fix "Fix it in this save" opened, whose heading takes focus from that unmounted button. */
-  const focusFix = useRef<string | null>(null);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -195,8 +184,6 @@ const FormulaEditor: React.FC<{
 
   const problemsFor = (id: string) =>
     problems.filter((problem) => problem.id === id);
-  const editing = new Set([primary.id, ...fixes.map((fix) => fix.id)]);
-  const others = problems.filter((problem) => !editing.has(problem.id));
   const readers = formulas.filter((formula) =>
     formula.reads.includes(primary.id),
   );
@@ -271,19 +258,7 @@ const FormulaEditor: React.FC<{
         </h1>
       </div>
 
-      {refusal !== null && (
-        <div
-          role="alert"
-          className="border border-red-300 bg-red-50 rounded p-3 text-sm text-red-800 max-w-3xl space-y-2"
-        >
-          <p>{refusal.message}</p>
-          {refusal.outdated && (
-            <Button size="small" color={ButtonColor.White} onClick={reload}>
-              Reload
-            </Button>
-          )}
-        </div>
-      )}
+      <SaveRefusal refusal={refusal} onReload={reload} />
       {problems.length > 0 && (
         <p
           role="alert"
@@ -309,63 +284,16 @@ const FormulaEditor: React.FC<{
           readOnly={busy}
         />
 
-        {fixes.map((fix) => (
-          <section
-            key={fix.id}
-            className="border-t border-zinc-200 pt-4 space-y-2"
-          >
-            <div className="flex items-center gap-3">
-              <h2
-                ref={(heading) => {
-                  if (heading === null || focusFix.current !== fix.id) return;
-                  focusFix.current = null;
-                  heading.focus();
-                }}
-                tabIndex={-1}
-                className="font-semibold text-zinc-900"
-              >
-                Fixing{" "}
-                <span className="font-mono">
-                  {original.get(fix.id)?.name ?? fix.name}
-                </span>{" "}
-                in this save
-              </h2>
-              <Button
-                size="small"
-                color={ButtonColor.White}
-                onClick={() => {
-                  setFixes(fixes.filter((other) => other.id !== fix.id));
-                  setProblems(problems.filter(({ id }) => id !== fix.id));
-                  saveButton.current?.focus();
-                }}
-              >
-                Stop fixing it
-              </Button>
-            </div>
-            <FormulaFields
-              draft={fix}
-              problems={problemsFor(fix.id)}
-              onChange={(next) =>
-                setFixes(
-                  fixes.map((other) => (other.id === fix.id ? next : other)),
-                )
-              }
-              readOnly={busy}
-            />
-          </section>
-        ))}
-
-        <OtherFormulaProblems
-          problems={others}
+        <FormulaFixes
+          fixes={fixes}
+          onFixesChange={setFixes}
+          problems={problems.filter((problem) => problem.id !== primary.id)}
           formulas={formulas}
-          onFix={(formula, problem) => {
-            focusFix.current = formula.id;
-            setFixes([
-              ...fixes,
-              // Printed with the names this save gives, which the formula's
-              // stored text may not have.
-              { ...asDraft(formula), text: problem.text ?? formula.text },
-            ]);
+          readOnly={busy}
+          heading="Problems in other formulas"
+          onStopped={(id) => {
+            setProblems(problems.filter((problem) => problem.id !== id));
+            saveButton.current?.focus();
           }}
         />
 
