@@ -12,10 +12,30 @@ type FetchParams = {
   signal: AbortSignal;
 };
 
-/** Fetches the repository's main and returns its commit. */
-export async function fetchMain(
+let fetching: Promise<unknown> = Promise.resolve();
+
+/** Fetches the repository's main and returns its commit, one fetch at a time, since two at once would race on FETCH_HEAD. A caller whose signal aborts stops waiting for its turn; one aborted once its fetch has started resolves after git exits. */
+export function fetchMain(
   params: FetchParams,
 ): Promise<Result<string, Problem>> {
+  const previous = fetching;
+  const turn = Promise.race([previous, whenAborted(params.signal)]).then(() =>
+    params.signal.aborted ? cancelled : fetchNow(params),
+  );
+  // A caller that stops waiting doesn't free the turn: the next fetch still waits for the one before it.
+  fetching = Promise.all([previous, turn]).catch(() => undefined);
+  return turn;
+}
+
+const cancelled = R.failure({ message: "The download was cancelled." });
+
+const whenAborted = (signal: AbortSignal) =>
+  new Promise<typeof cancelled>((resolve) => {
+    if (signal.aborted) resolve(cancelled);
+    signal.addEventListener("abort", () => resolve(cancelled), { once: true });
+  });
+
+async function fetchNow(params: FetchParams): Promise<Result<string, Problem>> {
   const { git, checkout, signal } = params;
   const target = await fetchTarget({ git, folder: checkout, url: params.url });
   if (!target.ok)
@@ -50,5 +70,3 @@ export async function fetchMain(
         details: commit.error.message,
       });
 }
-
-const cancelled = R.failure({ message: "The download was cancelled." });
