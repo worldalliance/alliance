@@ -1,5 +1,4 @@
 import { stat } from "node:fs/promises";
-import path from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { z } from "zod";
 import { R, type Result } from "../../../../common/src/result";
@@ -15,6 +14,14 @@ import type { AgentBackend, AgentSession } from "./agent/session";
 import { type ConversationStore, conversationTitle } from "./conversations";
 import { pickFolder } from "./folder-picker";
 import { isNotFound } from "./fs-error";
+import {
+  agentArg,
+  folderArg,
+  idArg,
+  parseArg,
+  textArg,
+  toIpc,
+} from "./ipc-args";
 import { rendererIpc } from "./renderer-ipc";
 
 export type Agent = {
@@ -23,16 +30,6 @@ export type Agent = {
   /** Runs the CLI's own browser sign-in until it finishes or signal aborts. */
   signIn: (signal: AbortSignal) => Promise<Result<void, Error>>;
 };
-
-const toIpc = <T>(result: Result<T, Error>): IpcResult<T> =>
-  R.mapError(result, (error) => error.message);
-
-const folderArg = z.string().refine(path.isAbsolute, "not an absolute path");
-const idArg = z.string().min(1);
-const agentArg = z.enum(AgentKind);
-const textArg = z
-  .string()
-  .refine((text) => text.trim().length > 0, "an empty message");
 
 // AgentApi's inputs type the renderer's calls: a field missing here fails the build, or, when optional, the call.
 const startArgs = z.strictObject({
@@ -44,15 +41,6 @@ const sendArgs = z.strictObject({
   sessionId: idArg,
   text: textArg,
 }) satisfies z.ZodType<Parameters<AgentApi["send"]>[0]>;
-
-function parseArg<T>(schema: z.ZodType<T>, value: unknown): Result<T, Error> {
-  const parsed = schema.safeParse(value);
-  return parsed.success
-    ? R.success(parsed.data)
-    : R.failure(
-        new Error(`Invalid argument: ${z.prettifyError(parsed.error)}`),
-      );
-}
 
 // Node reports a missing cwd as ENOENT on the executable, which would blame the CLI.
 async function checkFolder(folder: string): Promise<Result<void, Error>> {
