@@ -8,6 +8,7 @@ import {
   type Conversation,
   IpcChannel,
   type IpcResult,
+  type StartInput,
 } from "../shared/ipc";
 import { queryTimeoutMs } from "./agent/cli-process";
 import type { AgentBackend, AgentSession } from "./agent/session";
@@ -36,7 +37,7 @@ const startArgs = z.strictObject({
   folder: folderArg,
   firstMessage: textArg,
   agent: agentArg,
-}) satisfies z.ZodType<Parameters<AgentApi["start"]>[0]>;
+}) satisfies z.ZodType<StartInput>;
 const sendArgs = z.strictObject({
   sessionId: idArg,
   text: textArg,
@@ -58,14 +59,18 @@ async function checkFolder(folder: string): Promise<Result<void, Error>> {
     : R.failure(new Error(`${folder} isn't a folder.`));
 }
 
-/** Registers the renderer's handlers and returns the quit step: once called, it aborts running sign-ins and sign-in checks, Start, Resume, SignIn and SignInStatus fail, and it closes every live session, a new one once its CLI has read its first message or openingWaitMs has passed, and resolves when each of those CLIs, and each a failed start closed, has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions, sign-in CLIs or failed starts' CLIs still close. A new session whose CLI exits without reading its first message, quitting or not, has its saved conversation removed, which the quit waits for. findAgent runs on each call for an agent until it first succeeds for it, so a CLI installed while the app runs is found. */
+/** Registers the renderer's handlers and returns, as close, the quit step: once called, it aborts running sign-ins and sign-in checks, Start, Resume, SignIn and SignInStatus fail, and it closes every live session, a new one once its CLI has read its first message or openingWaitMs has passed, and resolves when each of those CLIs, and each a failed start closed, has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions, sign-in CLIs or failed starts' CLIs still close. A new session whose CLI exits without reading its first message, quitting or not, has its saved conversation removed, which the quit waits for. findAgent runs on each call for an agent until it first succeeds for it, so a CLI installed while the app runs is found. */
 export function registerIpc(params: {
   findAgent: (agent: AgentKind) => Result<Agent, Error>;
   conversations: ConversationStore;
   /** The URL the window loads; only its top-level page may call these handlers or hear session events. */
   rendererUrl: string;
   openingWaitMs: number;
-}): () => Promise<void> {
+}): {
+  close: () => Promise<void>;
+  /** What Start does, its argument checks included, for a conversation the main process starts, such as a new task's first. */
+  startConversation: (input: StartInput) => Promise<IpcResult<Conversation>>;
+} {
   const { findAgent, conversations, rendererUrl, openingWaitMs } = params;
   const live = new Map<string, AgentSession>();
   const opening = new Set<Promise<unknown>>();
@@ -206,9 +211,11 @@ export function registerIpc(params: {
     toIpc(await conversations.list()),
   );
 
-  handle(IpcChannel.Start, (_, input) => {
+  const startConversation = (
+    input: unknown,
+  ): Promise<IpcResult<Conversation>> => {
     const args = parseArg(startArgs, input);
-    if (!args.ok) return toIpc(args);
+    if (!args.ok) return Promise.resolve(toIpc(args));
     const { folder, firstMessage, agent } = args.value;
     return openSession(() =>
       withAgent(
@@ -246,7 +253,9 @@ export function registerIpc(params: {
         },
       ),
     );
-  });
+  };
+
+  handle(IpcChannel.Start, (_, input) => startConversation(input));
 
   handle(IpcChannel.Resume, (_, sessionId) => {
     const parsed = parseArg(idArg, sessionId);
@@ -298,7 +307,7 @@ export function registerIpc(params: {
     live.get(id.value)?.interrupt();
   });
 
-  return async () => {
+  const close = async () => {
     closing = true;
     for (const controller of signIns.values()) controller.abort();
     quitAbort.abort();
@@ -322,4 +331,6 @@ export function registerIpc(params: {
       );
     } while (drained < quitCloses.length);
   };
+
+  return { close, startConversation };
 }

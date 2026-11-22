@@ -247,7 +247,7 @@ void app.whenReady().then(() => {
   });
   registerRepositoryIpc({ repository, rendererUrl });
   void repository.locate({ autoClone: true });
-  const closeAgents = registerIpc({
+  const sessions = registerIpc({
     findAgent: (agent) =>
       R.map(
         findExecutable({ agent, env: process.env, packaged: app.isPackaged }),
@@ -260,7 +260,7 @@ void app.whenReady().then(() => {
     openingWaitMs,
   });
   closeSessions = () =>
-    Promise.all([closeAgents(), repository.close()]).then(() => undefined);
+    Promise.all([sessions.close(), repository.close()]).then(() => undefined);
   nativeTheme.on("updated", () => {
     for (const window of BrowserWindow.getAllWindows())
       window.setBackgroundColor(windowBackground());

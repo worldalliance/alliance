@@ -34,6 +34,12 @@ export type IpcResult<T> = Result<T, string>;
 /** Succeeds with the problem that stopped a repository action, or undefined once it is done or the user cancelled its folder picker. */
 export type RepositoryReply = IpcResult<Problem | undefined>;
 
+export type StartInput = {
+  folder: string;
+  firstMessage: string;
+  agent: AgentKind;
+};
+
 export type SessionEvent = { sessionId: string; event: AgentEvent };
 
 /** What each channel the main process pushes to the window carries. */
@@ -76,11 +82,7 @@ export type AgentApi = {
   chooseFolder(): Reply<IpcChannel.ChooseFolder>;
   listConversations(): Reply<IpcChannel.ListConversations>;
   /** Starts a conversation, saves it titled with its first message, and sends that message, so no conversation is saved without one. That message's events can arrive before this resolves. */
-  start(input: {
-    folder: string;
-    firstMessage: string;
-    agent: AgentKind;
-  }): Reply<IpcChannel.Start>;
+  start(input: StartInput): Reply<IpcChannel.Start>;
   /** turnRunning is true when the session was still live and mid-turn. */
   resume(sessionId: string): Reply<IpcChannel.Resume>;
   send(input: { sessionId: string; text: string }): Reply<IpcChannel.Send>;
