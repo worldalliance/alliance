@@ -13,7 +13,6 @@ import {
 import { queryTimeoutMs } from "./agent/cli-process";
 import type { AgentBackend, AgentSession } from "./agent/session";
 import { type ConversationStore, conversationTitle } from "./conversations";
-import { pickFolder } from "./folder-picker";
 import { isNotFound } from "./fs-error";
 import {
   agentArg,
@@ -202,10 +201,6 @@ export function registerIpc(params: {
     if (!kind.ok) return console.error(`CancelSignIn: ${kind.error.message}`);
     signIns.get(kind.value)?.abort();
   });
-
-  handle(IpcChannel.ChooseFolder, async (event) =>
-    toIpc(await pickFolder(event)),
-  );
 
   handle(IpcChannel.ListConversations, async () =>
     toIpc(await conversations.list()),

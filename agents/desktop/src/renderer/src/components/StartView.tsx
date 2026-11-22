@@ -11,70 +11,56 @@ import {
   defaultAgent,
 } from "../../../shared/agent-kind";
 import type { IpcResult } from "../../../shared/ipc";
-import { agent } from "../agent";
 import { TurnState } from "../chat-state";
 import { Composer, type Draft } from "./Composer";
 
 /** Kept by the caller, so a start still pending when the user comes back shows as pending. */
 export type NewConversation = {
-  chosen?: string;
   agent: AgentKind;
   starting: boolean;
   problem?: string;
 };
 
+export const newConversation = (): NewConversation => ({
+  agent: defaultAgent,
+  starting: false,
+});
+
+/** The agent choice and first message of a new conversation, or of a new task. */
 export function StartView({
-  defaultFolder,
+  heading,
+  hint,
   draft,
   state,
   signInPanel,
   onChange,
   onStart,
 }: {
-  defaultFolder: string | undefined;
+  heading?: ReactNode;
+  /** What happens once the message is sent, given the chosen agent's name. */
+  hint: (agentName: string) => ReactNode;
   draft: Draft;
   state: NewConversation;
   /** The chosen agent's sign-in, shown in place of the message box until it is signed in. */
   signInPanel: ReactNode;
   onChange: Dispatch<SetStateAction<NewConversation>>;
+  /** Fails with the problem in words. */
   onStart: (input: {
-    folder: string;
     text: string;
+    agent: AgentKind;
   }) => Promise<IpcResult<void>>;
 }) {
-  const folder = state.chosen ?? defaultFolder;
   const { name } = agentWords[state.agent];
   const choiceGroup = useId();
 
-  const chooseFolder = async () => {
-    if (state.starting) return;
-    const picked = await agent.chooseFolder();
-    if (!picked.ok)
-      return onChange((all) => ({
-        ...all,
-        problem: `Alliance agent couldn't open the folder picker: ${picked.error}`,
-      }));
-    const chosen = picked.value;
-    if (chosen) onChange((all) => ({ ...all, chosen, problem: undefined }));
-  };
-
   const start = async (text: string): Promise<boolean> => {
-    if (!folder) {
-      onChange((all) => ({
-        ...all,
-        problem: `Choose a folder for ${name} to work in first.`,
-      }));
-      return false;
-    }
     onChange((all) => ({ ...all, starting: true }));
-    const started = await onStart({ folder, text });
+    const started = await onStart({ text, agent: state.agent });
     onChange((all) => ({
       ...all,
-      ...(started.ok && { agent: defaultAgent, chosen: undefined }),
+      ...(started.ok && { agent: defaultAgent }),
       starting: false,
-      problem: started.ok
-        ? undefined
-        : `Alliance agent couldn't start the conversation: ${started.error}`,
+      problem: started.ok ? undefined : started.error,
     }));
     return started.ok;
   };
@@ -82,7 +68,7 @@ export function StartView({
   return (
     <>
       <div className="start">
-        <h1>New conversation</h1>
+        {heading}
         <fieldset className="agent-choice">
           <legend>Agent</legend>
           {agentKinds.map((kind) => (
@@ -106,18 +92,7 @@ export function StartView({
             </label>
           ))}
         </fieldset>
-        <div className="folder">
-          <span className="folder-label">Folder</span>
-          <span className="folder-path">{folder ?? "No folder chosen"}</span>
-          <button
-            type="button"
-            aria-disabled={state.starting || undefined}
-            onClick={() => void chooseFolder()}
-          >
-            {folder ? "Change folder…" : "Choose folder…"}
-          </button>
-        </div>
-        <p className="hint">{name} can read and change files in this folder.</p>
+        <p className="hint">{hint(name)}</p>
         {state.problem && (
           <p className="error" role="alert">
             {state.problem}

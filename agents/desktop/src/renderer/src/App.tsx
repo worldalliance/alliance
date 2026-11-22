@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { z } from "zod";
 import { R } from "../../../../../common/src/result";
-import { AgentKind, agentWords, defaultAgent } from "../../shared/agent-kind";
-import type { Conversation, IpcResult } from "../../shared/ipc";
+import { type AgentKind, agentWords } from "../../shared/agent-kind";
+import type { Conversation, CreatedTask, IpcResult } from "../../shared/ipc";
 import { repositoryFolder } from "../../shared/repository";
+import { isNewTaskKey, newTaskKey, TaskStatus } from "../../shared/task";
 import { agent } from "./agent";
 import { useAgentAccess } from "./agent-access";
 import {
@@ -19,12 +19,15 @@ import {
   stopRequested,
 } from "./chat-state";
 import { ChatView } from "./components/ChatView";
-import type { Draft } from "./components/Composer";
 import { RepositoryView } from "./components/RepositoryView";
 import { type Listed, Sidebar } from "./components/Sidebar";
-import { type NewConversation, StartView } from "./components/StartView";
+import { StartView } from "./components/StartView";
+import { TaskView } from "./components/TaskView";
+import { askDraft, newTaskDraft, taskDraft, useDrafts } from "./drafts";
 import { focusIfLost } from "./focus";
 import { useRepository } from "./repository";
+import { useTasks } from "./tasks";
+import { sameView, type View, ViewKind } from "./view";
 
 enum Opened {
   Opening = "opening",
@@ -32,12 +35,6 @@ enum Opened {
 }
 
 type OpenState = Opened | { problem: string };
-
-const newConversationDraft = "new";
-
-const draftsKey = "drafts";
-const chosenFolderKey = "new-conversation-folder";
-const storedDrafts = z.record(z.string(), z.string());
 
 // A read can finish after a start this window made, or miss one the window's previous load made, so it adds to the list rather than replacing it.
 const withListed = (
@@ -54,39 +51,26 @@ const withListed = (
   };
 };
 
+const noRepository =
+  "Alliance agent needs the Alliance repository to be ready first. See Alliance repository in the sidebar.";
+
+const startProblem = (error: string) =>
+  `Alliance agent couldn't start the conversation: ${error}`;
+
 export function App() {
   const [conversations, setConversations] = useState<Listed>();
   const listedIds = useRef(new Set<string>());
-  const [selected, setSelected] = useState<string>();
+  const [view, setView] = useState<View>({ kind: ViewKind.NewTask });
   const [chats, setChats] = useState<Record<string, Chat>>({});
   const [open, setOpen] = useState<Record<string, OpenState>>({});
-  const [drafts, setDrafts] = useState(() =>
-    storedDrafts.parse(JSON.parse(localStorage.getItem(draftsKey) ?? "{}")),
-  );
-  const [newConversation, setNewConversation] = useState<NewConversation>(
-    () => ({
-      chosen: localStorage.getItem(chosenFolderKey) ?? undefined,
-      agent: defaultAgent,
-      starting: false,
-    }),
-  );
+  const { drafts, draft, addToDraft, takeDraft, start, setStart } = useDrafts();
   const [startedHere, setStartedHere] = useState<ReadonlySet<string>>(
     new Set(),
   );
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
   const repository = useRepository();
-  const [repositoryShown, setRepositoryShown] = useState(false);
-
-  useEffect(
-    () => localStorage.setItem(draftsKey, JSON.stringify(drafts)),
-    [drafts],
-  );
-
-  useEffect(() => {
-    if (newConversation.chosen === undefined)
-      localStorage.removeItem(chosenFolderKey);
-    else localStorage.setItem(chosenFolderKey, newConversation.chosen);
-  }, [newConversation.chosen]);
+  const tasks = useTasks();
+  const checkout = repository.state && repositoryFolder(repository.state);
 
   const updateChat = useCallback(
     (id: string, change: (chat: Chat) => Chat) =>
@@ -124,19 +108,41 @@ export function App() {
     };
   }, [updateChat, list]);
 
+  const selected = view.kind === ViewKind.Conversation ? view.id : undefined;
   const selectedConversation =
     selected === undefined
       ? undefined
       : conversations?.all.find((c) => c.id === selected);
-  const title = repositoryShown
-    ? "Alliance repository"
-    : selected === undefined
-      ? "New conversation"
-      : selectedConversation?.title || "Conversation";
+  const createdAs =
+    view.kind === ViewKind.Task ? tasks.state?.created[view.key] : undefined;
+  // A creation's reply moves the view on; a window that missed it, as after a reload, shows the task the creation became.
+  const shown: View = createdAs
+    ? { kind: ViewKind.Task, key: createdAs }
+    : view;
+  const selectedTask =
+    shown.kind === ViewKind.Task
+      ? tasks.state?.tasks.find((t) => t.key === shown.key)
+      : undefined;
+  const startKey =
+    view.kind === ViewKind.NewTask
+      ? newTaskDraft
+      : view.kind === ViewKind.Ask
+        ? askDraft
+        : shown.kind === ViewKind.Task
+          ? taskDraft(shown.key)
+          : undefined;
+  const titles: Record<ViewKind, string> = {
+    [ViewKind.Repository]: "Alliance repository",
+    [ViewKind.NewTask]: "New task",
+    [ViewKind.Ask]: "Ask without a task",
+    [ViewKind.Task]: selectedTask?.title || "Task",
+    [ViewKind.Conversation]: selectedConversation?.title || "Conversation",
+  };
+  const title = titles[view.kind];
   const selectedAgent =
-    selected === undefined
-      ? newConversation.agent
-      : selectedConversation?.agent;
+    startKey === undefined
+      ? selectedConversation?.agent
+      : start(startKey).agent;
   const access = useAgentAccess(selectedAgent);
   const selectedSignedIn = selectedAgent && access.signedIn(selectedAgent);
 
@@ -144,14 +150,9 @@ export function App() {
     document.title = `${title} – Alliance agent`;
   }, [title]);
 
-  const draft = (key: string): Draft => ({
-    text: drafts[key] ?? "",
-    onChange: (update) =>
-      setDrafts(({ [key]: old = "", ...rest }) => {
-        const text = typeof update === "string" ? update : update(old);
-        return text ? { ...rest, [key]: text } : rest;
-      }),
-  });
+  // Moves to the new conversation only from the view it was started in.
+  const moveFrom = (from: View, to: View) =>
+    setView((current) => (sameView(current, from) ? to : current));
 
   const send = async (input: {
     sessionId: string;
@@ -164,36 +165,84 @@ export function App() {
     return sent.ok;
   };
 
-  const start = async (input: {
-    folder: string;
-    text: string;
-  }): Promise<IpcResult<void>> => {
-    const { folder, text } = input;
-    const started = await agent.start({
-      folder,
-      firstMessage: text,
-      agent: newConversation.agent,
-    });
-    if (!started.ok) return started;
-    const { id } = started.value;
+  const showStarted = (conversation: Conversation, text: string) => {
+    const { id } = conversation;
     setChats((all) => ({ ...all, [id]: firstMessage(all[id], text) }));
     setConversations(
       (shown) =>
         shown && {
           ...shown,
-          all: [started.value, ...shown.all.filter((c) => c.id !== id)],
+          all: [conversation, ...shown.all.filter((c) => c.id !== id)],
         },
     );
     setStartedHere((all) => new Set(all).add(id));
     setOpen((all) => ({ ...all, [id]: Opened.Open }));
-    setSelected((current) => current ?? id);
+  };
+
+  const startIn = async (input: {
+    folder: string | undefined;
+    text: string;
+    agent: AgentKind;
+    from: View;
+  }): Promise<IpcResult<void>> => {
+    if (!input.folder) return R.failure(noRepository);
+    const started = await agent.start({
+      folder: input.folder,
+      firstMessage: input.text,
+      agent: input.agent,
+    });
+    if (!started.ok) return R.failure(startProblem(started.error));
+    showStarted(started.value, input.text);
+    moveFrom(input.from, {
+      kind: ViewKind.Conversation,
+      id: started.value.id,
+    });
     return R.success(undefined);
   };
 
-  const reopen = useCallback(
-    async (id: string) => {
-      setOpen((all) => ({ ...all, [id]: Opened.Opening }));
-      const resumed = await agent.resume(id);
+  const created =
+    (params: { key: string; request: string; agent: AgentKind }) =>
+    async (reply: IpcResult<CreatedTask>) => {
+      const from: View = { kind: ViewKind.Task, key: params.key };
+      if (!reply.ok) {
+        // A creation the main process listed shows its own failure.
+        const now = await agent.tasksState();
+        if (now.ok && now.value.tasks.some((t) => t.key === params.key)) return;
+        addToDraft(newTaskDraft, params.request);
+        setStart(newTaskDraft)((s) => ({
+          ...s,
+          agent: params.agent,
+          problem: reply.error,
+        }));
+        return moveFrom(from, { kind: ViewKind.NewTask });
+      }
+      const { key, conversation } = reply.value;
+      if (conversation.ok) {
+        showStarted(conversation.value, params.request);
+        return moveFrom(from, {
+          kind: ViewKind.Conversation,
+          id: conversation.value.id,
+        });
+      }
+      addToDraft(taskDraft(key), params.request);
+      setStart(taskDraft(key))((s) => ({
+        ...s,
+        problem: startProblem(conversation.error),
+      }));
+      moveFrom(from, { kind: ViewKind.Task, key });
+    };
+
+  const createTask = (input: { text: string; agent: AgentKind }) => {
+    const creationId = crypto.randomUUID();
+    const key = newTaskKey(creationId);
+    setView({ kind: ViewKind.Task, key });
+    void agent
+      .createTask({ creationId, request: input.text, agent: input.agent })
+      .then(created({ key, request: input.text, agent: input.agent }));
+  };
+
+  const opened = useCallback(
+    (id: string, resumed: Awaited<ReturnType<typeof agent.resume>>) => {
       setOpen((all) => ({
         ...all,
         [id]: resumed.ok ? Opened.Open : { problem: resumed.error },
@@ -205,6 +254,14 @@ export function App() {
     [updateChat],
   );
 
+  const reopen = useCallback(
+    async (id: string) => {
+      setOpen((all) => ({ ...all, [id]: Opened.Opening }));
+      opened(id, await agent.resume(id));
+    },
+    [opened],
+  );
+
   // Stable while a reply streams, so the transcript's unchanged items skip re-rendering.
   const reopenSelected = useCallback(() => {
     if (selected !== undefined) void reopen(selected);
@@ -213,10 +270,11 @@ export function App() {
   // A conversation opens once it is selected and its agent is signed in, so a signed-out agent's CLI never starts for it.
   const selectedUnopened =
     selected !== undefined && open[selected] === undefined;
+  // An unset open state shows as opening, so this sets none before the resume answers; a repeated resume returns the same session.
   useEffect(() => {
     if (selectedSignedIn && selectedUnopened && selected !== undefined)
-      void reopen(selected);
-  }, [selectedSignedIn, selectedUnopened, selected, reopen]);
+      void agent.resume(selected).then((resumed) => opened(selected, resumed));
+  }, [selectedSignedIn, selectedUnopened, selected, opened]);
 
   const notOpenPanel = (id: string) => {
     const state = open[id] ?? Opened.Opening;
@@ -259,25 +317,33 @@ export function App() {
       .filter(Boolean)
       .join("\n");
 
-  const moveToNew = (id: string) => {
-    if (newConversation.starting) return;
-    const text = unsentText(id);
-    setDrafts(({ [id]: _moved, [newConversationDraft]: typed, ...rest }) => ({
-      ...rest,
-      [newConversationDraft]: typed ? `${text}\n${typed}` : text,
-    }));
+  const moveTarget = (id: string) => {
     const moved = conversations?.all.find((c) => c.id === id);
-    setNewConversation((state) => ({
-      ...state,
-      chosen: moved?.folder ?? state.chosen,
-      agent: moved?.agent ?? state.agent,
+    const task = tasks.state?.tasks.find(
+      (t) => moved && t.folder === moved.folder,
+    );
+    const target: View = task
+      ? { kind: ViewKind.Task, key: task.key }
+      : { kind: ViewKind.Ask };
+    return { moved, target, key: task ? taskDraft(task.key) : askDraft };
+  };
+
+  const moveToNew = (id: string) => {
+    const { moved, target, key } = moveTarget(id);
+    if (start(key).starting) return;
+    const text = unsentText(id);
+    takeDraft(id);
+    addToDraft(key, text);
+    setStart(key)((s) => ({
+      ...s,
+      agent: moved?.agent ?? s.agent,
       problem: undefined,
     }));
     setConversations(
       (shown) =>
         shown && { ...shown, all: shown.all.filter((c) => c.id !== id) },
     );
-    setSelected(undefined);
+    setView(target);
   };
 
   const removedPanel = (id: string, kind: AgentKind) => {
@@ -294,7 +360,7 @@ export function App() {
         <button
           type="button"
           ref={focusIfLost}
-          aria-disabled={newConversation.starting || undefined}
+          aria-disabled={start(moveTarget(id).key).starting || undefined}
           onClick={() => moveToNew(id)}
         >
           Move your message to a new conversation
@@ -303,31 +369,109 @@ export function App() {
     );
   };
 
+  const startView = (params: {
+    key: string;
+    heading?: string;
+    hint: (agentName: string) => string;
+    onStart: (input: {
+      text: string;
+      agent: AgentKind;
+    }) => Promise<IpcResult<void>>;
+  }) => {
+    const state = start(params.key);
+    return (
+      <StartView
+        key={params.key}
+        heading={params.heading && <h1>{params.heading}</h1>}
+        hint={params.hint}
+        draft={draft(params.key)}
+        state={state}
+        signInPanel={access.signInPanel(state.agent)}
+        onChange={setStart(params.key)}
+        onStart={params.onStart}
+      />
+    );
+  };
+
   const main = () => {
-    if (repositoryShown) return <RepositoryView shown={repository} />;
-    if (selected === undefined)
-      return (
-        conversations !== undefined && (
-          <StartView
-            key="new"
-            defaultFolder={
-              (repository.state && repositoryFolder(repository.state)) ??
-              conversations.all[0]?.folder
-            }
-            draft={draft(newConversationDraft)}
-            state={newConversation}
-            signInPanel={access.signInPanel(newConversation.agent)}
-            onChange={setNewConversation}
-            onStart={start}
+    switch (view.kind) {
+      case ViewKind.Repository:
+        return <RepositoryView shown={repository} />;
+      case ViewKind.NewTask:
+        return startView({
+          key: newTaskDraft,
+          heading: "New task",
+          hint: (name) =>
+            `Alliance agent sets up the task's own copy of the repository, which takes a minute or two, then sends ${name} this message.`,
+          onStart: (input) => {
+            if (!checkout) return Promise.resolve(R.failure(noRepository));
+            createTask(input);
+            return Promise.resolve(R.success(undefined));
+          },
+        });
+      case ViewKind.Ask:
+        return startView({
+          key: askDraft,
+          heading: "Ask without a task",
+          hint: (name) =>
+            `${name} works in the main copy of the repository${checkout ? `, ${checkout}` : ""}. New tasks copy its database and local settings, so start a new task for changes.`,
+          onStart: (input) =>
+            startIn({ ...input, folder: checkout, from: view }),
+        });
+      case ViewKind.Task:
+        return selectedTask ? (
+          <TaskView
+            key={selectedTask.key}
+            task={selectedTask}
+            newConversation={startView({
+              key: taskDraft(selectedTask.key),
+              hint: (name) => `${name} works in this task's folder.`,
+              onStart: (input) =>
+                startIn({ ...input, folder: selectedTask.folder, from: view }),
+            })}
+            onRetry={() => {
+              if (selectedTask.state.status !== TaskStatus.CreateFailed) return;
+              void agent.retryTask(selectedTask.key).then(
+                created({
+                  key: selectedTask.key,
+                  request: selectedTask.state.request,
+                  agent: selectedTask.state.agent,
+                }),
+              );
+            }}
+            onEditRequest={(failed) => {
+              agent.dismissTask(selectedTask.key);
+              addToDraft(newTaskDraft, failed.request);
+              setStart(newTaskDraft)((s) => ({ ...s, agent: failed.agent }));
+              setView({ kind: ViewKind.NewTask });
+            }}
           />
-        )
+        ) : (
+          <p className="panel" role="status" tabIndex={-1} ref={focusIfLost}>
+            {!createdAs && isNewTaskKey(view.key)
+              ? "Setting up the task…"
+              : "This task is no longer listed."}
+          </p>
+        );
+      case ViewKind.Conversation:
+        return conversationView(view.id);
+      default:
+        throw new Error(`unknown view: ${view satisfies never}`);
+    }
+  };
+
+  const conversationView = (id: string) => {
+    const conversationAgent = selectedConversation?.agent;
+    if (!conversationAgent)
+      return (
+        <p className="panel" role="status">
+          This conversation is no longer listed.
+        </p>
       );
-    if (!selectedAgent)
-      throw new Error(`selected conversation ${selected} isn't listed`);
-    const notOpen = removed.has(selected)
-      ? removedPanel(selected, selectedAgent)
-      : (access.signInPanel(selectedAgent) ?? notOpenPanel(selected));
-    const chat = chats[selected] ?? emptyChat;
+    const notOpen = removed.has(id)
+      ? removedPanel(id, conversationAgent)
+      : (access.signInPanel(conversationAgent) ?? notOpenPanel(id));
+    const chat = chats[id] ?? emptyChat;
     if (notOpen && chat.items.length === 0)
       return (
         <>
@@ -337,17 +481,17 @@ export function App() {
       );
     return (
       <ChatView
-        key={selected}
-        agentName={agentWords[selectedAgent].name}
+        key={id}
+        agentName={agentWords[conversationAgent].name}
         title={title}
         chat={chat}
-        resumed={!startedHere.has(selected)}
-        draft={draft(selected)}
+        resumed={!startedHere.has(id)}
+        draft={draft(id)}
         notOpen={notOpen}
-        onSend={(text) => send({ sessionId: selected, text })}
+        onSend={(text) => send({ sessionId: id, text })}
         onStop={() => {
-          updateChat(selected, stopRequested);
-          agent.interrupt(selected);
+          updateChat(id, stopRequested);
+          agent.interrupt(id);
         }}
         onReopen={notOpen ? undefined : reopenSelected}
       />
@@ -358,18 +502,10 @@ export function App() {
     <div className="app">
       <Sidebar
         repository={repository}
-        repositoryShown={repositoryShown}
-        onShowRepository={() => setRepositoryShown(true)}
+        tasks={tasks}
         conversations={conversations}
-        selected={selected}
-        onSelect={(id) => {
-          setRepositoryShown(false);
-          setSelected(id);
-        }}
-        onNew={() => {
-          setRepositoryShown(false);
-          setSelected(undefined);
-        }}
+        view={shown}
+        onSelect={setView}
         onRetry={list}
       />
       <main className="main">{main()}</main>

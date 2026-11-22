@@ -24,11 +24,20 @@ export async function send(page: Page, text: string) {
 
 export const status = (page: Page) => page.getByRole("status");
 
-export async function finishFirstTurn(app: ElectronApplication, page: Page) {
-  const folder = workFolder();
-  await chooseFolder(app, folder);
-  await page.getByRole("button", { name: "Choose folder…" }).click();
-  await expect(page.getByText(folder)).toBeVisible();
+/** Opens Ask without a task once the test's repository is ready in workFolder. */
+export async function askWithoutTask(page: Page) {
+  await expect(
+    page.getByRole("button", { name: /^Alliance repository/ }),
+  ).toContainText("Ready");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Ask without a task" })
+    .click();
+  await expect(page.getByText(workFolder())).toBeVisible();
+}
+
+export async function finishFirstTurn(page: Page) {
+  await askWithoutTask(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(status(page)).toHaveText("Claude finished.");
 }

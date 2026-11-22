@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
+import { testSourceVariable } from "../src/main/repository/source";
 import { IpcChannel } from "../src/shared/ipc";
 import {
-  chooseFolder,
+  askWithoutTask,
   finishFirstTurn,
   heldClaude,
   saveConversation,
@@ -26,10 +27,8 @@ test("a conversation streams replies, shows tool calls, stops, and resumes after
   });
   const { page } = first;
 
-  await expect(
-    page.getByRole("heading", { name: "New conversation" }),
-  ).toBeVisible();
-  await finishFirstTurn(first.app, page);
+  await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
+  await finishFirstTurn(page);
   await expect(page.locator(".user")).toHaveText(
     "Change hello to goodbye in a.txt",
   );
@@ -116,7 +115,7 @@ test("holding Enter on Send or Stop doesn't press the button that replaces it", 
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await page
     .getByLabel("Message Claude")
     .fill("Count to 100, one number per line");
@@ -144,7 +143,7 @@ test("a message sent while a reply stops says to wait for the stop", async () =>
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await send(page, "Count to 100, one number per line");
   await expect(page.locator(".assistant").nth(1)).toContainText("1\n2\n3");
   // Without its listener the stop never reaches the CLI, so the reply stays stopping.
@@ -166,7 +165,7 @@ test("a send the app refuses puts the message back in the box and offers to reop
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await app.evaluate(({ ipcMain }, channel) => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, () => ({ ok: false, error: "refused" }));
@@ -189,7 +188,7 @@ test("holding Enter in the message box sends once, without an alert", async () =
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await page
     .getByLabel("Message Claude")
     .fill("Count to 100, one number per line");
@@ -211,7 +210,7 @@ test("reopening a conversation started in this run after an error keeps its mess
       captured("resume-with-image-session"),
     ],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await send(page, "Count to 100, one number per line");
   await page.getByRole("button", { name: "Stop" }).click();
   await expect(status(page)).toHaveText("Stopped.");
@@ -247,28 +246,23 @@ test("reopening a conversation started in this run after an error keeps its mess
   await app.close();
 });
 
-test("a message sent without a folder says to choose one", async () => {
-  const { app, page } = await launch({ captures: [authStatusCapture(true)] });
-  await send(page, "Hello");
-  await expect(page.getByRole("alert")).toHaveText(
-    "Choose a folder for Claude to work in first.",
-  );
-  await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
-  await app.close();
-});
-
-test("a folder picker that fails says so", async () => {
-  const { app, page } = await launch({ captures: [authStatusCapture(true)] });
-  await app.evaluate(({ dialog }) => {
-    Object.assign(dialog, {
-      showOpenDialog: () => Promise.reject(new Error("no dialog")),
-    });
+test("without the repository, a new task or a conversation without one says the repository must be ready and keeps the message", async () => {
+  const { app, page } = await launch({
+    captures: [authStatusCapture(true)],
+    env: { [testSourceVariable]: process.env[testSourceVariable] ?? "" },
   });
-  await page.getByRole("button", { name: "Choose folder…" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Alliance agent couldn't open the folder picker:",
+  const sidebar = page.getByRole("navigation");
+  await expect(sidebar).toContainText(
+    "Tasks show once the Alliance repository above is ready.",
   );
-  await expect(page.getByRole("alert")).toContainText("no dialog");
+  for (const view of ["New task", "Ask without a task"]) {
+    await sidebar.getByRole("button", { name: view }).click();
+    await send(page, "Hello");
+    await expect(page.getByRole("alert")).toHaveText(
+      "Alliance agent needs the Alliance repository to be ready first. See Alliance repository in the sidebar.",
+    );
+    await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
+  }
   await app.close();
 });
 
@@ -282,11 +276,12 @@ test("saved conversations that can't be read say so in the sidebar", async () =>
 });
 
 test("a start the app refuses says why and keeps the message and focus", async () => {
-  saveConversation(test.info().outputPath("removed"));
   const { app, page } = await launch({ captures: [authStatusCapture(true)] });
+  await askWithoutTask(page);
+  rmSync(workFolder(), { recursive: true });
   await page.getByLabel("Message Claude").fill("Hello");
   await page.getByRole("button", { name: "Send" }).press("Enter");
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     /^Alliance agent couldn't start the conversation: .* doesn't exist/,
   );
   await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
@@ -300,8 +295,7 @@ test("a conversation whose CLI exits before reading its first message isn't offe
     captures: [authStatusCapture(true)],
     claude: unreadingClaude(),
   });
-  await chooseFolder(app, workFolder());
-  await page.getByRole("button", { name: "Choose folder…" }).click();
+  await askWithoutTask(page);
   await send(page, "Hello");
   const move = page.getByRole("button", {
     name: "Move your message to a new conversation",
@@ -314,11 +308,10 @@ test("a conversation whose CLI exits before reading its first message isn't offe
   ).toHaveCount(0);
   await expect(page.getByText("Reopen the conversation")).toHaveCount(0);
 
-  const other = test.info().outputPath("other");
-  mkdirSync(other);
-  await page.getByRole("button", { name: "Start a conversation" }).click();
-  await chooseFolder(app, other);
-  await page.getByRole("button", { name: "Change folder…" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Ask without a task" })
+    .click();
   await page.getByLabel("Message Claude").fill("Typed meanwhile");
   await page.getByRole("navigation").getByText("Hello").click();
   await move.click();
@@ -377,8 +370,7 @@ test("the message box and agent choice are read-only while a conversation starts
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await chooseFolder(app, workFolder());
-  await page.getByRole("button", { name: "Choose folder…" }).click();
+  await askWithoutTask(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await expect(page.getByLabel("Message Claude")).not.toBeEditable();
@@ -397,30 +389,21 @@ test("the message box and agent choice are read-only while a conversation starts
   await app.close();
 });
 
-test("a start the user leaves and comes back to still shows as starting, in the folder it started in", async () => {
+test("a start the user leaves and comes back to still shows as starting", async () => {
   saveConversation(test.info().outputPath("removed"));
   const { claude, release } = heldClaude();
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  const folder = workFolder();
-  await chooseFolder(app, folder);
-  await page.getByRole("button", { name: "Change folder…" }).click();
-  await expect(page.getByText(folder)).toBeVisible();
+  await askWithoutTask(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
-  await chooseFolder(app, test.info().outputPath("other"));
-  await page
-    .getByRole("button", { name: "Change folder…" })
-    .click({ force: true });
-  await expect(page.getByText(folder)).toBeVisible();
   const sidebar = page.getByRole("navigation");
   await sidebar.getByRole("button", { name: /^Saved/ }).click();
-  await sidebar.getByRole("button", { name: "Start a conversation" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await expect(page.getByLabel("Message Claude")).not.toBeEditable();
-  await expect(page.getByText(folder)).toBeVisible();
   release();
   await expect(status(page)).toHaveText("Claude finished.");
   await expect(
@@ -433,14 +416,14 @@ test("a view opened from the sidebar leaves focus there", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   const sidebar = page.getByRole("navigation");
   const newConversation = sidebar.getByRole("button", {
-    name: "Start a conversation",
+    name: "Ask without a task",
   });
   await newConversation.click();
   await expect(
-    page.getByRole("heading", { name: "New conversation" }),
+    page.getByRole("heading", { name: "Ask without a task" }),
   ).toBeVisible();
   await expect(newConversation).toBeFocused();
   const conversation = sidebar.getByRole("button", { name: /Change hello/ });
@@ -454,16 +437,16 @@ test("each conversation keeps its unsent message while the user moves between th
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   const box = page.getByLabel("Message Claude");
   const sidebar = page.getByRole("navigation");
   await box.fill("Half a message to the conversation");
-  await sidebar.getByRole("button", { name: "Start a conversation" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
   await expect(box).toHaveValue("");
   await box.fill("Half a first message");
   await sidebar.getByRole("button", { name: /Change hello/ }).click();
   await expect(box).toHaveValue("Half a message to the conversation");
-  await sidebar.getByRole("button", { name: "Start a conversation" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
   await expect(box).toHaveValue("Half a first message");
   await app.close();
 });
@@ -473,7 +456,7 @@ test("closing the window on macOS keeps its conversations and unsent messages", 
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await page.getByLabel("Message Claude").fill("Half a follow-up");
   // Hiding and showing are stubbed, so the headless window stays off screen.
   const reopened = await app.evaluate(({ app, BrowserWindow }) => {

@@ -28,7 +28,6 @@ const api: AgentApi = {
   signedIn: (agent) => invoke(IpcChannel.SignInStatus, agent),
   signIn: (agent) => invoke(IpcChannel.SignIn, agent),
   cancelSignIn: (agent) => ipcRenderer.send(IpcChannel.CancelSignIn, agent),
-  chooseFolder: () => invoke(IpcChannel.ChooseFolder),
   listConversations: () => invoke(IpcChannel.ListConversations),
   start: (input) => invoke(IpcChannel.Start, input),
   resume: (sessionId) => invoke(IpcChannel.Resume, sessionId),
@@ -47,6 +46,11 @@ const api: AgentApi = {
   useExistingRepository: () => invoke(IpcChannel.RepositoryUseExisting),
   updateRepository: () => invoke(IpcChannel.RepositoryUpdate),
   checkRepositoryAgain: () => invoke(IpcChannel.RepositoryCheckAgain),
+  tasksState: () => invoke(IpcChannel.TasksState),
+  onTasksChanged: (listener) => listen(IpcChannel.TasksChanged, listener),
+  createTask: (input) => invoke(IpcChannel.CreateTask, input),
+  retryTask: (key) => invoke(IpcChannel.RetryTask, key),
+  dismissTask: (key) => ipcRenderer.send(IpcChannel.DismissTask, key),
 };
 
 contextBridge.exposeInMainWorld("agent", api);

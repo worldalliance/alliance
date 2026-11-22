@@ -1,33 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { agentWords } from "../../../shared/agent-kind";
 import type { Conversation } from "../../../shared/ipc";
+import { type Task, TasksStatus } from "../../../shared/task";
 import { focusIfLost } from "../focus";
 import { folderName } from "../format";
 import { type ShownRepository, statusWords } from "../repository";
+import {
+  groupConversations,
+  outsideWords,
+  type ShownTasks,
+  taskStateWords,
+} from "../tasks";
+import { sameView, type View, ViewKind } from "../view";
+import { ProblemText } from "./ProblemText";
 
 export type Listed = { all: Conversation[]; problem?: string };
 
 export function Sidebar({
   repository,
-  repositoryShown,
-  onShowRepository,
+  tasks,
   conversations,
-  selected,
+  view,
   onSelect,
-  onNew,
   onRetry,
 }: {
   repository: ShownRepository;
-  repositoryShown: boolean;
-  onShowRepository: () => void;
+  tasks: ShownTasks;
   /** Undefined while the list loads, a local read too short for a loading message. */
   conversations: Listed | undefined;
-  selected: string | undefined;
-  onSelect: (id: string) => void;
-  onNew: () => void;
+  view: View;
+  onSelect: (view: View) => void;
   onRetry: () => Promise<void>;
 }) {
-  const startButton = useRef<HTMLButtonElement>(null);
+  const askButton = useRef<HTMLButtonElement>(null);
   const retried = useRef(false);
   const [retrying, setRetrying] = useState(false);
   const problem = conversations?.problem;
@@ -35,30 +40,141 @@ export function Sidebar({
   useEffect(() => {
     if (!retried.current || problem !== undefined) return;
     retried.current = false;
-    focusIfLost(startButton.current);
+    focusIfLost(askButton.current);
   }, [problem]);
+
+  const current = (target: View) =>
+    sameView(view, target) ? ("page" as const) : undefined;
+
+  const allTasks = tasks.state?.tasks ?? [];
+  const { byFolder, others } = groupConversations({
+    conversations: conversations?.all ?? [],
+    tasks: allTasks,
+  });
+  const keys = new Set(allTasks.map((task) => task.key));
+  const topLevel = allTasks.filter(
+    (task) => !task.parent || !keys.has(task.parent),
+  );
+
+  const conversationItem = (conversation: Conversation, meta: string) => (
+    <li key={conversation.id}>
+      <button
+        type="button"
+        aria-current={current({
+          kind: ViewKind.Conversation,
+          id: conversation.id,
+        })}
+        onClick={() =>
+          onSelect({ kind: ViewKind.Conversation, id: conversation.id })
+        }
+      >
+        <span className="title">{conversation.title}</span>
+        <span className="meta">{meta}</span>
+      </button>
+    </li>
+  );
+
+  const taskItem = (task: Task) => {
+    const inTask = (task.folder && byFolder.get(task.folder)) || [];
+    const children = allTasks.filter((child) => child.parent === task.key);
+    return (
+      <li key={task.key}>
+        <button
+          type="button"
+          className="task-entry"
+          aria-current={current({ kind: ViewKind.Task, key: task.key })}
+          onClick={() => onSelect({ kind: ViewKind.Task, key: task.key })}
+        >
+          <span className="title">{task.title}</span>
+          <span className="meta">
+            {taskStateWords(task)}
+            {!task.createdByApp && ` · ${outsideWords}`}
+          </span>
+        </button>
+        {inTask.length + children.length > 0 && (
+          <ul className="nested">
+            {inTask.map((conversation) =>
+              conversationItem(
+                conversation,
+                agentWords[conversation.agent].name,
+              ),
+            )}
+            {children.map(taskItem)}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const tasksNote = () => {
+    if (tasks.problem !== undefined)
+      return (
+        <p className="error" role="alert">
+          Alliance agent couldn't list your tasks: {tasks.problem}
+        </p>
+      );
+    const { state } = tasks;
+    if (!state) return null;
+    if (state.problem)
+      return (
+        <ProblemText
+          problem={{
+            ...state.problem,
+            message: `${state.problem.message} It tries again when you come back to this window.`,
+          }}
+        />
+      );
+    switch (state.status) {
+      case TasksStatus.NoRepository:
+        return (
+          <p className="hint">
+            Tasks show once the Alliance repository above is ready.
+          </p>
+        );
+      case TasksStatus.Loading:
+        return <p className="hint">Listing your tasks…</p>;
+      case TasksStatus.Listed:
+        return (
+          state.tasks.length === 0 && <p className="hint">No tasks yet.</p>
+        );
+      default:
+        throw new Error(
+          `unknown tasks status: ${state.status satisfies never}`,
+        );
+    }
+  };
+
   return (
     <nav className="sidebar" aria-label="Alliance agent">
       <button
         type="button"
         className="repository-entry"
-        aria-current={repositoryShown ? "page" : undefined}
-        onClick={onShowRepository}
+        aria-current={current({ kind: ViewKind.Repository })}
+        onClick={() => onSelect({ kind: ViewKind.Repository })}
       >
         <span className="title">Alliance repository</span>
         <span className="meta">{statusWords(repository)}</span>
       </button>
-      <h2>Conversations</h2>
+      <h2>Tasks</h2>
       <button
         type="button"
-        ref={startButton}
         className="new"
-        aria-current={
-          !repositoryShown && selected === undefined ? "page" : undefined
-        }
-        onClick={onNew}
+        aria-current={current({ kind: ViewKind.NewTask })}
+        onClick={() => onSelect({ kind: ViewKind.NewTask })}
       >
-        Start a conversation
+        New task
+      </button>
+      {tasksNote()}
+      {topLevel.length > 0 && <ul>{topLevel.map(taskItem)}</ul>}
+      <h2>Other conversations</h2>
+      <button
+        type="button"
+        ref={askButton}
+        className="ask"
+        aria-current={current({ kind: ViewKind.Ask })}
+        onClick={() => onSelect({ kind: ViewKind.Ask })}
+      >
+        Ask without a task
       </button>
       {problem !== undefined && (
         <>
@@ -85,31 +201,17 @@ export function Sidebar({
           </button>
         </>
       )}
-      {conversations === undefined ? null : conversations.all.length === 0 ? (
-        conversations.problem === undefined && (
-          <p className="hint">No conversations yet.</p>
-        )
-      ) : (
+      {conversations !== undefined &&
+        conversations.all.length === 0 &&
+        problem === undefined && <p className="hint">No conversations yet.</p>}
+      {others.length > 0 && (
         <ul>
-          {conversations.all.map((conversation) => (
-            <li key={conversation.id}>
-              <button
-                type="button"
-                aria-current={
-                  !repositoryShown && selected === conversation.id
-                    ? "page"
-                    : undefined
-                }
-                onClick={() => onSelect(conversation.id)}
-              >
-                <span className="title">{conversation.title}</span>
-                <span className="meta">
-                  {agentWords[conversation.agent].name} ·{" "}
-                  {folderName(conversation.folder)}
-                </span>
-              </button>
-            </li>
-          ))}
+          {others.map((conversation) =>
+            conversationItem(
+              conversation,
+              `${agentWords[conversation.agent].name} · ${folderName(conversation.folder)}`,
+            ),
+          )}
         </ul>
       )}
     </nav>
