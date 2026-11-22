@@ -9,3 +9,5 @@
 - claude:8876f1f7-09c9-4652-bade-d9a259287852 (subagent)
 - claude:9ee13514-7a27-4a55-afad-054d160591af (subagent)
 - claude:f7e1b0e0-f178-4429-919e-1fd8d64da27e (subagent)
+- claude:fbe8bc74-ee70-4baf-9556-ade9ccc9be7e (subagent)
+- claude:a5f92a59-01eb-4f9e-ae71-b3900871f604 (subagent)

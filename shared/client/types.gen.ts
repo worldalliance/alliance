@@ -4360,9 +4360,21 @@ export type FormulaDeletionDto = {
     baseVersionId: number;
 };
 
+export type ListDeletionDto = {
+    id: string;
+    /**
+     * The membership version the admin saw.
+     */
+    baseVersionId: number;
+};
+
 export type SaveFormulasDto = {
     edits: Array<FormulaEditDto>;
     deletions: Array<FormulaDeletionDto>;
+    /**
+     * Member lists to delete; refused, like a formula deletion, while a formula reads one.
+     */
+    deletedLists?: Array<ListDeletionDto>;
 };
 
 export type SaveProblemKind = 'name' | 'named' | 'dependent';
@@ -4398,6 +4410,40 @@ export type SaveFormulasResultDto = {
      * Why the save was refused; empty when it was saved.
      */
     problems: Array<FormulaProblemDto>;
+};
+
+export type MemberListDto = {
+    id: string;
+    name: string;
+    /**
+     * The current membership version's id.
+     */
+    versionId: number;
+    userIds: Array<number>;
+};
+
+export type SaveMemberListDto = {
+    /**
+     * What formulas call it, in quotes.
+     */
+    name: string;
+    userIds: Array<number>;
+};
+
+export type UpdateMemberListDto = {
+    /**
+     * What formulas call it, in quotes.
+     */
+    name: string;
+    userIds: Array<number>;
+    /**
+     * The membership version the admin edited.
+     */
+    baseVersionId: number;
+    /**
+     * The name the admin saw before editing.
+     */
+    baseName: string;
 };
 
 export type HostedDocDto = {
@@ -14762,7 +14808,7 @@ export type FormulasSaveAdminData = {
 
 export type FormulasSaveAdminErrors = {
     /**
-     * A formula changed since the admin opened it.
+     * A formula or list changed since the admin opened it.
      */
     409: HeyApiError;
 };
@@ -14774,6 +14820,78 @@ export type FormulasSaveAdminResponses = {
 };
 
 export type FormulasSaveAdminResponse = FormulasSaveAdminResponses[keyof FormulasSaveAdminResponses];
+
+export type MemberListsListAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/member-lists';
+};
+
+export type MemberListsListAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type MemberListsListAdminError = MemberListsListAdminErrors[keyof MemberListsListAdminErrors];
+
+export type MemberListsListAdminResponses = {
+    200: Array<MemberListDto>;
+};
+
+export type MemberListsListAdminResponse = MemberListsListAdminResponses[keyof MemberListsListAdminResponses];
+
+export type MemberListsCreateAdminData = {
+    body: SaveMemberListDto;
+    path?: never;
+    query?: never;
+    url: '/member-lists';
+};
+
+export type MemberListsCreateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type MemberListsCreateAdminError = MemberListsCreateAdminErrors[keyof MemberListsCreateAdminErrors];
+
+export type MemberListsCreateAdminResponses = {
+    200: MemberListDto;
+};
+
+export type MemberListsCreateAdminResponse = MemberListsCreateAdminResponses[keyof MemberListsCreateAdminResponses];
+
+export type MemberListsUpdateAdminData = {
+    body: UpdateMemberListDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/member-lists/{id}';
+};
+
+export type MemberListsUpdateAdminErrors = {
+    /**
+     * No list has this id.
+     */
+    404: HeyApiError;
+    /**
+     * The list changed since the admin opened it.
+     */
+    409: HeyApiError;
+};
+
+export type MemberListsUpdateAdminError = MemberListsUpdateAdminErrors[keyof MemberListsUpdateAdminErrors];
+
+export type MemberListsUpdateAdminResponses = {
+    200: MemberListDto;
+};
+
+export type MemberListsUpdateAdminResponse = MemberListsUpdateAdminResponses[keyof MemberListsUpdateAdminResponses];
 
 export type HostedDocsFindAllAdminData = {
     body?: never;

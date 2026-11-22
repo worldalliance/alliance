@@ -36,6 +36,7 @@ const PHYSICALLY_DELETED = [
   "KoraParticipantOAuthIdentity",
   "KoraParticipantSession",
   "KoraParticipantSignup",
+  "MemberListMember",
   "NotificationPreference",
   "OtpChallenge",
   "OtpRateEvent",
@@ -55,6 +56,7 @@ const NEVER_DELETED = [
   "KoraProject",
   "KoraTranscript",
   "Lease",
+  "MemberListVersion",
   "MmsThread",
   "MmsThreadEvent",
 ];

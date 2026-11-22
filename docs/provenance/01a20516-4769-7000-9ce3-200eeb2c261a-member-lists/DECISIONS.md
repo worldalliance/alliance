@@ -17,7 +17,8 @@ Agent decisions unless labelled otherwise. The research behind them is in `EVIDE
 - **Versions kept.** Every version is kept: nothing pins one yet. Fill sessions (ALL-2181) and splits (ALL-2177) bind `isOnList` to the versions they pin, and any pruning of unused versions belongs with them.
 - **Deleted accounts.** A member's rows in every version are removed when their account is deleted, as their other join rows are: `softDeleteCascade` deletes `ON DELETE CASCADE` rows of a table without a delete date. A pinned version then lacks that member, who is never evaluated again. Proposed to the user as a plan they didn't object to.
 - **Names** are unique among lists that aren't deleted (a partial unique index), trimmed, 1–100 characters, since formulas name a list by it.
-- **Concurrency.** A membership save names the version it edited and gets a 409 when the list changed since; saves of one list, and its deletion, lock the list row in turn.
+- **Names bind when saved.** A formula save resolves each list name in its text against the lists stored then, as it resolves formula names, so an edit opened before a rename that frees a name, and a new list taking it, reads the new list without a 409. Guarding this means checking every name the editor saw, for formulas and lists alike: ALL-2392.
+- **Concurrency.** A save names the membership version it edited and the name it saw, and gets a 409 when either changed since, so a stale save never reverts a rename; saves of one list, and its deletion, lock the list row in turn.
 
 ## Deleting
 

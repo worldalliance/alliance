@@ -7,6 +7,7 @@ import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsInt,
+  IsOptional,
   IsString,
   IsUUID,
   Matches,
@@ -114,6 +115,13 @@ export class FormulaDeletionDto {
   @ApiProperty() @IsInt() baseVersionId: number;
 }
 
+export class ListDeletionDto {
+  @ApiProperty() @Transform(toLowerCase) @IsUUID() id: string;
+  @ApiProperty({ description: "The membership version the admin saw." })
+  @IsInt()
+  baseVersionId: number;
+}
+
 export class SaveFormulasDto {
   @ApiProperty({ type: () => FormulaEditDto, isArray: true })
   @IsArray()
@@ -126,6 +134,18 @@ export class SaveFormulasDto {
   @ValidateNested({ each: true })
   @Type(() => FormulaDeletionDto)
   deletions: FormulaDeletionDto[];
+
+  @ApiPropertyOptional({
+    type: () => ListDeletionDto,
+    isArray: true,
+    description:
+      "Member lists to delete; refused, like a formula deletion, while a formula reads one.",
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ListDeletionDto)
+  deletedLists?: ListDeletionDto[];
 }
 
 export class FormulaDiagnosticDto {
