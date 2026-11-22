@@ -67,7 +67,9 @@ export function runCli(
   cli: CliCommand,
   run: {
     args: readonly string[];
+    cwd?: string;
     signal?: AbortSignal;
+    onStdout?: (chunk: string) => void;
     /** Hears stderr as it arrives, such as a command's progress. */
     onStderr?: (chunk: string) => void;
   },
@@ -76,11 +78,12 @@ export function runCli(
     const couldNotRun = (error: unknown) =>
       R.failure(
         new Error(
-          `couldn't run ${cli.executable}: ${R.toError(error).message}`,
+          `couldn't run ${cli.executable}${run.cwd ? ` in ${run.cwd}` : ""}: ${R.toError(error).message}`,
         ),
       );
     const spawned = R.fromThrowable(() =>
       spawn(cli.executable, run.args, {
+        cwd: run.cwd,
         env: cli.env,
         stdio: ["ignore", "pipe", "pipe"],
         signal: run.signal,
@@ -116,7 +119,10 @@ export function runCli(
     let stdout = "";
     let stderr = "";
     // Node leaves the pipes unset when spawn fails with EMFILE, which the error handler reports.
-    child.stdout?.setEncoding("utf8").on("data", (chunk) => (stdout += chunk));
+    child.stdout?.setEncoding("utf8").on("data", (chunk: string) => {
+      stdout += chunk;
+      run.onStdout?.(chunk);
+    });
     child.stderr?.setEncoding("utf8").on("data", (chunk: string) => {
       stderr += chunk;
       run.onStderr?.(chunk);

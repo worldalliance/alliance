@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -98,29 +99,58 @@ test("returns once the CLI exits while a process it started holds its output ope
   );
 });
 
-test("reports stderr as it arrives, before the CLI exits", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "cli-process-test-"));
-  const heard = path.join(dir, "heard");
-  const chunks: string[] = [];
+test.each(["stdout", "stderr"] as const)(
+  "reports %s as it arrives, before the CLI exits",
+  async (stream) => {
+    const dir = mkdtempSync(path.join(tmpdir(), "cli-process-test-"));
+    const heard = path.join(dir, "heard");
+    const chunks: string[] = [];
+    const hear = (chunk: string) => {
+      if (!chunks.length) writeFileSync(heard, "");
+      chunks.push(chunk);
+    };
+    try {
+      // The CLI waits for the first chunk to be heard before it writes the second and exits.
+      const result = await runCli(bun, {
+        args: [
+          "-e",
+          `const fs = require("fs"); process.${stream}.write("a"); while (!fs.existsSync(${JSON.stringify(heard)})) Bun.sleepSync(10); process.${stream}.write("b")`,
+        ],
+        ...(stream === "stdout" ? { onStdout: hear } : { onStderr: hear }),
+      });
+      expect(result).toEqual(
+        R.success({
+          code: 0,
+          signal: null,
+          stdout: "",
+          stderr: "",
+          [stream]: "ab",
+        }),
+      );
+      expect(chunks.join("")).toBe("ab");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test("runs the CLI in cwd, and names a cwd it can't run in", async () => {
+  const dir = realpathSync(
+    mkdtempSync(path.join(tmpdir(), "cli-process-test-")),
+  );
   try {
-    // The CLI waits for the first chunk to be heard before it writes the second and exits.
     const result = await runCli(bun, {
-      args: [
-        "-e",
-        `const fs = require("fs"); process.stderr.write("a"); while (!fs.existsSync(${JSON.stringify(heard)})) Bun.sleepSync(10); process.stderr.write("b")`,
-      ],
-      onStderr: (chunk) => {
-        if (!chunks.length) writeFileSync(heard, "");
-        chunks.push(chunk);
-      },
+      args: ["-e", "process.stdout.write(process.cwd())"],
+      cwd: dir,
     });
-    expect(result).toEqual(
-      R.success({ code: 0, signal: null, stdout: "", stderr: "ab" }),
-    );
-    expect(chunks.join("")).toBe("ab");
+    expect(result.ok && result.value.stdout).toBe(dir);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+  const missing = await runCli(bun, { args: [], cwd: dir });
+  expect(missing.ok ? "" : missing.error.message).toStartWith(
+    `couldn't run ${process.execPath} in ${dir}: `,
+  );
 });
 
 test("reports a run aborted after the CLI exited as finished", async () => {
