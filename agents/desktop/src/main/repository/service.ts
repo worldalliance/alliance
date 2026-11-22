@@ -8,10 +8,10 @@ import {
   RepositoryStatus,
 } from "../../shared/repository";
 import { failureOutput } from "../agent/cli-process";
-import { cloneInto, isFreeFolder, stallLimit } from "./clone";
+import { cloneInto, isFreeFolder } from "./clone";
+import { fetchMain } from "./fetch";
 import type { Git } from "./git";
 import {
-  fetchTarget,
   FolderProblemKind,
   type Identified,
   identify,
@@ -322,30 +322,14 @@ export class RepositoryService {
     const done = (async () => {
       const failed = (problem?: Problem) =>
         this.set({ status: RepositoryStatus.UpdateNeeded, folder, problem });
-      const target = await fetchTarget({
+      const fetched = await fetchMain({
         git: git.value,
-        folder,
+        checkout: folder,
         url: this.params.source.url,
-      });
-      if (controller.signal.aborted) return failed();
-      if (!target.ok)
-        return failed({
-          message: `Alliance agent couldn't check ${folder}.`,
-          details: target.error.message,
-        });
-      const fetched = await git.value.run({
-        args: ["-C", folder, ...stallLimit, "fetch", target.value, "main"],
         signal: controller.signal,
       });
       if (controller.signal.aborted) return failed();
-      if (!fetched.ok || fetched.value.code !== 0)
-        return failed({
-          message:
-            "Alliance agent couldn't download the latest main. Check your internet connection, then try again.",
-          details: fetched.ok
-            ? failureOutput("git fetch", fetched.value).message
-            : fetched.error.message,
-        });
+      if (!fetched.ok) return failed(fetched.error);
       const blocker = await updateBlocker(git.value, folder);
       if (!blocker.ok)
         return failed({
@@ -360,7 +344,7 @@ export class RepositoryService {
         });
       // Neither timed out nor cancelled: git stopped partway leaves the files it wrote with main unmoved.
       const merged = await git.value.run({
-        args: ["-C", folder, "merge", "--ff-only", "FETCH_HEAD"],
+        args: ["-C", folder, "merge", "--ff-only", fetched.value],
       });
       if (!merged.ok || merged.value.code !== 0)
         return failed({
