@@ -92,6 +92,11 @@ export const catalog: Catalog = {
       returns: string,
     },
   ],
+  lists: [
+    { id: "list-on", name: "Volunteers" },
+    { id: "list-off", name: "Waitlisted" },
+    { id: "list-broken", name: "Unreadable" },
+  ],
 };
 
 const values: Record<string, Value> = {
@@ -136,6 +141,10 @@ export function run(
         name === "double" ? Number(args[0]) * 2 : `n=${String(args[0])}`,
       );
     },
+    isOnList: (listId) =>
+      listId === "list-broken"
+        ? R.failure({ kind: FailureKind.Error, message: "read failed" })
+        : R.success(listId === "list-on"),
   });
 }
 

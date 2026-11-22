@@ -24,6 +24,7 @@ export const scope: Scope = {
     functions: [
       { name: "lookup", params: [], returns: { kind: TypeKind.String } },
     ],
+    lists: [{ id: "l1", name: "California targets" }],
   },
   named: [
     {

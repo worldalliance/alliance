@@ -28,6 +28,10 @@ const everyKind: { [K in ExprKind]: Extract<Expr, { kind: K }> } = {
     id: "00000000-0000-4000-8000-000000000001",
   },
   [ExprKind.Param]: { kind: ExprKind.Param, name: "x" },
+  [ExprKind.OnList]: {
+    kind: ExprKind.OnList,
+    listId: "00000000-0000-4000-8000-000000000002",
+  },
   [ExprKind.List]: { kind: ExprKind.List, items: [one] },
   [ExprKind.Record]: {
     kind: ExprKind.Record,

@@ -37,6 +37,7 @@ test("a catalog input that doesn't read as a name throws", () => {
         catalog: {
           inputs: [{ id: "first-name", label: "First name", type: string }],
           functions: [],
+          lists: [],
         },
         named: [],
       },
@@ -68,6 +69,7 @@ test("an input with no options can take no value", () => {
           },
         ],
         functions: [],
+        lists: [],
       },
       named: [],
     },
@@ -174,6 +176,7 @@ test("a catalog name starting with __ is the check's own and throws", () => {
         catalog: {
           inputs: [{ id: "__result", label: "Result", type: string }],
           functions: [],
+          lists: [],
         },
         named: [],
       },

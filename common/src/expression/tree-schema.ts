@@ -12,6 +12,7 @@ export const exprSchema: z.ZodType<Expr> = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal(ExprKind.Input), id: z.string() }),
   z.object({ kind: z.literal(ExprKind.Ref), id: z.string() }),
   z.object({ kind: z.literal(ExprKind.Param), name: z.string() }),
+  z.object({ kind: z.literal(ExprKind.OnList), listId: z.string() }),
   z.object({ kind: z.literal(ExprKind.List), items: exprs }),
   z.object({
     kind: z.literal(ExprKind.Record),

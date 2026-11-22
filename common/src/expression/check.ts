@@ -3,6 +3,7 @@ import { compilerMessage } from "../forms/formula-messages";
 import { unionParts } from "../forms/formula-renderable";
 import { R, type Result } from "../result";
 import {
+  IS_ON_LIST,
   TypeKind,
   type Diagnostic,
   type NamedExpression,
@@ -27,6 +28,7 @@ import {
   ExprKind,
   REMOVED_FORMULA,
   REMOVED_INPUT,
+  REMOVED_LIST,
   children,
   type Expr,
 } from "./tree";
@@ -105,9 +107,12 @@ type Placed = {
 export function printNames({
   scope,
   deletedNames,
+  deletedLists,
 }: {
   scope: Scope;
   deletedNames?: ReadonlyMap<string, string>;
+  /** Names of deleted member lists, by id. */
+  deletedLists?: ReadonlyMap<string, string>;
 }): PrintNames {
   // A deleted named expression prints only in text the check rejects, which
   // nothing reads back; a name the name rule rejects here would read as
@@ -125,6 +130,17 @@ export function printNames({
       scope.named.find((named) => named.id === id)?.name ??
       deletedName(id, params) ??
       id,
+    // A deleted list's name a current list took would read as that list; a
+    // quoted id names no list.
+    listName: (id) => {
+      const current = scope.catalog.lists.find((list) => list.id === id);
+      if (current !== undefined) return current.name;
+      const old = deletedLists?.get(id);
+      return old !== undefined &&
+        !scope.catalog.lists.some((list) => list.name === old)
+        ? old
+        : id;
+    },
   };
 }
 
@@ -141,6 +157,7 @@ export function checkExpression({
   rule,
   stored,
   deletedNames,
+  deletedLists,
 }: {
   source: string | Expr;
   scope: Scope;
@@ -156,11 +173,13 @@ export function checkExpression({
    * by its name wherever that name wouldn't read as something else.
    */
   deletedNames?: ReadonlyMap<string, string>;
+  /** Old names of deleted member lists, by id, to print reads of them. */
+  deletedLists?: ReadonlyMap<string, string>;
 }): Result<CheckedExpression, Diagnostic[]> {
   checkScope(scope);
   const nameOf = (id: string) =>
     scope.named.find((named) => named.id === id)?.name;
-  const names = printNames({ scope, deletedNames });
+  const names = printNames({ scope, deletedNames, deletedLists });
   const parsed =
     typeof source === "string"
       ? parseExpression(source, scope)
@@ -180,13 +199,16 @@ export function checkExpression({
   }
   // Printed, a removed input would read whatever now has its name.
   const inputIds = new Set(scope.catalog.inputs.map((input) => input.id));
+  const listIds = new Set(scope.catalog.lists.map((list) => list.id));
   const untypable = (tree: Expr, printed: string): Diagnostic | undefined => {
     const direct = reads(tree, []);
     const message = [...direct.named].some((id) => nameOf(id) === undefined)
       ? REMOVED_FORMULA
       : [...direct.inputs].some((id) => !inputIds.has(id))
         ? REMOVED_INPUT
-        : scopeProblem(tree, nameOf);
+        : [...direct.lists].some((id) => !listIds.has(id))
+          ? REMOVED_LIST
+          : scopeProblem(tree, nameOf);
     return message === undefined
       ? undefined
       : { message, start: 0, end: printed.length };
@@ -413,6 +435,8 @@ function scopeProblem(
           : `This reads \`${expr.name}\` outside the function that has it as a parameter.`;
       case ExprKind.Lambda:
         return visit(expr.body, new Set([...params, ...expr.params]));
+      case ExprKind.OnList:
+        return hidden(IS_ON_LIST, params);
       case ExprKind.Literal:
       case ExprKind.List:
       case ExprKind.Record:

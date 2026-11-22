@@ -7,6 +7,7 @@ export type Reads = {
   inputs: Set<string>;
   functions: Set<string>;
   named: Set<string>;
+  lists: Set<string>;
 };
 
 function walk(expr: Expr, visit: (node: Expr) => void): void {
@@ -27,6 +28,7 @@ export function reads(expr: Expr, named: readonly NamedExpression[]): Reads {
     inputs: new Set(),
     functions: new Set(),
     named: new Set(),
+    lists: new Set(),
   };
   const visit = (node: Expr) => {
     switch (node.kind) {
@@ -45,6 +47,9 @@ export function reads(expr: Expr, named: readonly NamedExpression[]): Reads {
         if (definition !== undefined) walk(definition.tree, visit);
         return;
       }
+      case ExprKind.OnList:
+        found.lists.add(node.listId);
+        return;
       case ExprKind.Literal:
       case ExprKind.Param:
       case ExprKind.List:

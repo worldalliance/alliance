@@ -16,6 +16,7 @@ export enum ExprKind {
   Call = "call",
   Method = "method",
   Lambda = "lambda",
+  OnList = "onList",
 }
 
 export enum UnaryOp {
@@ -45,6 +46,7 @@ export const LAMBDA_ONLY_AS_ARGUMENT =
   "A function can only be the first value passed to a list method.";
 
 export const REMOVED_FORMULA = "This uses a formula that no longer exists.";
+export const REMOVED_LIST = "This uses a list that no longer exists.";
 /** Leaves the input unnamed, since a formula may have taken its id as its name. */
 export const REMOVED_INPUT = "This uses something that no longer exists.";
 
@@ -53,7 +55,8 @@ export type LiteralValue = string | number | boolean | null;
 /**
  * The stored form of every expression. `Input` names an input by its stable
  * id, which is also its name in text; `Ref` names a named expression by id,
- * printed under its current name. `Lambda` appears only as a method argument.
+ * printed under its current name. `OnList` names a member list by id, printed
+ * as `isOnList("<current name>")`. `Lambda` appears only as a method argument.
  */
 export type Expr =
   | { kind: ExprKind.Literal; value: LiteralValue }
@@ -81,7 +84,8 @@ export type Expr =
       args: Expr[];
       optional: boolean;
     }
-  | { kind: ExprKind.Lambda; params: string[]; body: Expr };
+  | { kind: ExprKind.Lambda; params: string[]; body: Expr }
+  | { kind: ExprKind.OnList; listId: string };
 
 export function children(expr: Expr): readonly Expr[] {
   switch (expr.kind) {
@@ -89,6 +93,7 @@ export function children(expr: Expr): readonly Expr[] {
     case ExprKind.Input:
     case ExprKind.Ref:
     case ExprKind.Param:
+    case ExprKind.OnList:
       return [];
     case ExprKind.List:
       return expr.items;

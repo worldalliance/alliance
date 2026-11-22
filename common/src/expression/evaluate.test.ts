@@ -14,6 +14,7 @@ const unreachable = {
   named: [],
   readInput: notCalled,
   callFunction: notCalled,
+  isOnList: notCalled,
 };
 
 describe("three-valued logic", () => {
@@ -337,6 +338,7 @@ describe("named expressions", () => {
           calls.push(name);
           return R.success(2);
         },
+        isOnList: notCalled,
       },
     );
     expect(result).toEqual(R.success(8));
@@ -374,4 +376,13 @@ describe("named expressions", () => {
       R.failure({ kind: FailureKind.Error, message: LAMBDA_ONLY_AS_ARGUMENT }),
     );
   });
+});
+
+test("a list read the host can't answer fails the whole expression", () => {
+  expect(run('isOnList("Unreadable") || isOnList("Volunteers")')).toEqual(
+    R.failure({ kind: FailureKind.Error, message: "read failed" }),
+  );
+  expect(valueOf('isOnList("Volunteers") && !isOnList("Waitlisted")')).toBe(
+    true,
+  );
 });

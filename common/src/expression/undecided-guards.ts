@@ -142,6 +142,7 @@ export function guards({ text }: { text: (expr: Expr) => string }) {
       case ExprKind.Index:
       case ExprKind.Call:
       case ExprKind.Method:
+      case ExprKind.OnList:
         return children(expr).flatMap(freeNames);
       default:
         throw new Error(`unknown kind: ${expr satisfies never}`);

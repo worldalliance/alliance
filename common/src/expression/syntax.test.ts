@@ -11,6 +11,8 @@ const NESTED_ORDERING =
 
 const names = {
   refName: (id: string) => scope.named.find((named) => named.id === id)?.name,
+  listName: (id: string) =>
+    scope.catalog.lists.find((list) => list.id === id)?.name,
 };
 
 const roundTrip = (text: string) =>
@@ -59,6 +61,7 @@ describe("printing parsed text", () => {
     "lookup((count < 1), count > `x`)",
     "(count < 1) === (count >= 1)",
     "items.reduce((total, x) => (total < count), count > (count ?? 0))",
+    '!isOnList("California targets") && count > 1',
   ])("%s", (text) => {
     const printed = roundTrip(text);
     expect(R.unwrap(parseExpression(printed, scope))).toEqual(
@@ -79,6 +82,7 @@ describe("printing parsed text", () => {
       "items[0]?.café",
       "[(count < 1), count > (count ?? 0)]",
       "items.some(x => x.name < state)",
+      '!isOnList("California targets") && count > 1',
     ]) {
       expect(roundTrip(text)).toBe(text);
     }

@@ -2,6 +2,7 @@ import { R, type Result } from "../result";
 import {
   type Catalog,
   type Diagnostic,
+  type MemberListName,
   type NamedExpression,
   type Scope,
 } from "./catalog";
@@ -76,7 +77,8 @@ const NAMED_RULE: ResultRule = { undecided: Undecided.Allowed };
  * Checks saving `save` and deleting `deleted` against the stored `named`
  * expressions: each saved expression on its own, then every fixed dependent,
  * and every named expression and stored dependent that reads one saved
- * or deleted, directly or through others. A problem is reported once, at the
+ * or deleted, or a member list in `deletedLists`, directly or through others.
+ * `catalog.lists` holds the lists that remain. A problem is reported once, at the
  * expression it is in, so a dependent that fails only through a named
  * expression it reads isn't listed, and a broken named expression a checked
  * one reads is listed whether or not the save broke it. On success, returns
@@ -88,6 +90,7 @@ export function checkNamedSave(params: {
   dependents?: readonly Dependent[];
   save: readonly NamedSave[];
   deleted?: readonly string[];
+  deletedLists?: readonly MemberListName[];
 }): Result<
   { named: NamedExpression[]; dependents: FixedDependent[] },
   SaveProblem[]
@@ -122,6 +125,7 @@ function checkChange({
   dependents = [],
   save,
   deleted = [],
+  deletedLists = [],
   everything,
 }: {
   catalog: Catalog;
@@ -129,6 +133,7 @@ function checkChange({
   dependents?: readonly Dependent[];
   save: readonly NamedSave[];
   deleted?: readonly string[];
+  deletedLists?: readonly MemberListName[];
   /** Checks every stored expression, not only those reading a change. */
   everything: boolean;
 }): Result<
@@ -147,6 +152,11 @@ function checkChange({
   const storedIds = new Set(named.map((each) => each.id));
   if (deleted.some((id) => !storedIds.has(id))) {
     throw new Error("A deleted id names no stored named expression.");
+  }
+  if (
+    deletedLists.some(({ id }) => catalog.lists.some((list) => list.id === id))
+  ) {
+    throw new Error("A list in `deletedLists` is still in `catalog.lists`.");
   }
   const kept = named.filter((each) => !changed.has(each.id));
 
@@ -192,7 +202,14 @@ function checkChange({
       .filter((each) => deleted.includes(each.id))
       .map((each) => [each.id, each.name]),
   );
-  const names = printNames({ scope, deletedNames });
+  const deletedListNames = new Map(
+    deletedLists.map((list) => [list.id, list.name]),
+  );
+  const names = printNames({
+    scope,
+    deletedNames,
+    deletedLists: deletedListNames,
+  });
   const print = (tree: Expr) => printExpression(tree, names);
   const check = (params: CheckParams & { cut?: ReadonlySet<string> }) => {
     const result = checkExpression({
@@ -211,6 +228,7 @@ function checkChange({
       rule: params.rule,
       stored: { root: params.stored ?? false, named: keptIds },
       deletedNames,
+      deletedLists: deletedListNames,
     });
     if (result.ok) return;
     for (const { namedExpression, ...diagnostic } of result.error) {
@@ -298,8 +316,14 @@ function checkChange({
   );
   if (!problems.empty) return R.failure(problems.list());
 
-  const readsChanged = (tree: Expr) =>
-    everything || [...readsOf(tree)].some((id) => changed.has(id));
+  const readsChanged = (tree: Expr) => {
+    if (everything) return true;
+    const read = reads(tree, scope.named);
+    return (
+      [...read.named].some((id) => changed.has(id)) ||
+      [...read.lists].some((id) => deletedListNames.has(id))
+    );
+  };
   for (const each of kept) {
     if (!readsChanged(each.tree)) continue;
     checkRoot({

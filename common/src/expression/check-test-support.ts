@@ -155,6 +155,7 @@ export const catalog: Catalog = {
       returns: number,
     },
   ],
+  lists: [],
 };
 
 export const condition: ResultRule = {
