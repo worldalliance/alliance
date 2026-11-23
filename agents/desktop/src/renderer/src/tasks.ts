@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Conversation } from "../../shared/conversation";
+import type { IpcResult } from "../../shared/ipc";
 import {
   CreationStage,
   type Task,
@@ -63,7 +64,7 @@ export function taskStateWords(task: Task): string {
 
 export const outsideWords = "Made outside Alliance agent";
 
-/** The conversations in each task's folder, and those in no task's folder. */
+/** The conversations in each task's folder, and those in no task's folder, archived tasks included. */
 export function groupConversations(params: {
   conversations: Conversation[];
   tasks: Task[];
@@ -82,4 +83,45 @@ export function groupConversations(params: {
     ]);
   }
   return { byFolder, others };
+}
+
+/** A task the app is creating, or failed to create, which has no worktree to archive yet. */
+export const isCreation = (task: Task): boolean => creation[task.state.status];
+
+const creation: Record<TaskStatus, boolean> = {
+  [TaskStatus.Creating]: true,
+  [TaskStatus.CreateFailed]: true,
+  [TaskStatus.Ready]: false,
+  [TaskStatus.NotFinished]: false,
+  [TaskStatus.Removing]: false,
+  [TaskStatus.Broken]: false,
+};
+
+export type TaskAction = {
+  /** What the action in progress does, in words that follow "couldn't". */
+  pending?: string;
+  problem?: string;
+  act: (params: { run: () => Promise<IpcResult<void>>; words: string }) => void;
+};
+
+/** Each task's Archive or Restore in progress and its last problem, kept while the task isn't shown, since an archive can outlast the visit. */
+export function useTaskActions(): (key: string) => TaskAction {
+  const [actions, setActions] = useState<
+    Record<string, Omit<TaskAction, "act">>
+  >({});
+  return (key) => ({
+    ...actions[key],
+    act: ({ run, words }) => {
+      if (actions[key]?.pending) return;
+      setActions((all) => ({ ...all, [key]: { pending: words } }));
+      void run().then((done) =>
+        setActions((all) => ({
+          ...all,
+          [key]: done.ok
+            ? {}
+            : { problem: `Alliance agent couldn't ${words}: ${done.error}` },
+        })),
+      );
+    },
+  });
 }

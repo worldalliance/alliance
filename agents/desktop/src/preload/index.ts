@@ -51,6 +51,8 @@ const api: AgentApi = {
   createTask: (input) => invoke(IpcChannel.CreateTask, input),
   retryTask: (key) => invoke(IpcChannel.RetryTask, key),
   dismissTask: (key) => ipcRenderer.send(IpcChannel.DismissTask, key),
+  archiveTask: (key) => invoke(IpcChannel.ArchiveTask, key),
+  restoreTask: (key) => invoke(IpcChannel.RestoreTask, key),
 };
 
 contextBridge.exposeInMainWorld("agent", api);

@@ -17,11 +17,18 @@ export let dir: string;
 export let source: string;
 export let checkout: string;
 export let started: StartInput[];
+export let closedIn: string[];
+let onClose: (() => void | Promise<void>) | undefined;
+
+/** Runs run each time the service closes a folder's sessions, in this test. */
+export const setOnClose = (run: () => void | Promise<void>): void => {
+  onClose = run;
+};
 
 const bunExecutable = findOnPath("bun", process.env);
 if (!bunExecutable) throw new Error("the tests need bun on PATH");
 
-/** A TaskService on this test's checkout, whose conversations start in name only, recorded in started. */
+/** A TaskService on this test's checkout, whose conversations start in name only, recorded in started, and whose closes are recorded in closedIn. */
 export function service(params: { checkout?: () => string | undefined } = {}) {
   const tasks = new TaskService({
     checkout: params.checkout ?? (() => checkout),
@@ -41,6 +48,10 @@ export function service(params: { checkout?: () => string | undefined } = {}) {
         agent: input.agent,
       } satisfies Conversation);
     },
+    closeSessionsIn: async (folder) => {
+      closedIn.push(folder);
+      await onClose?.();
+    },
   });
   const states: TasksState[] = [];
   tasks.subscribe((state) => states.push(state));
@@ -56,6 +67,8 @@ export function setUp(): void {
   checkout = path.join(dir, "workspaces", "alliance");
   git(dir, "clone", "-q", source, checkout);
   started = [];
+  closedIn = [];
+  onClose = undefined;
 }
 
 export const tearDown = (): void =>

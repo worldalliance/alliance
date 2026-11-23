@@ -3,7 +3,12 @@ import { R } from "../../../../../common/src/result";
 import { type AgentKind, agentWords } from "../../shared/agent-kind";
 import type { Conversation, CreatedTask, IpcResult } from "../../shared/ipc";
 import { repositoryFolder } from "../../shared/repository";
-import { isNewTaskKey, newTaskKey, TaskStatus } from "../../shared/task";
+import {
+  isNewTaskKey,
+  newTaskKey,
+  type Task,
+  TaskStatus,
+} from "../../shared/task";
 import { agent } from "./agent";
 import { useAgentAccess } from "./agent-access";
 import {
@@ -27,7 +32,7 @@ import { askDraft, newTaskDraft, taskDraft, useDrafts } from "./drafts";
 import { focusIfLost } from "./focus";
 import { notOpenPanel, Opened, type OpenState } from "./open-state";
 import { useRepository } from "./repository";
-import { useTasks } from "./tasks";
+import { useTaskActions, useTasks } from "./tasks";
 import { sameView, type View, ViewKind } from "./view";
 
 // A read can finish after a start this window made, or miss one the window's previous load made, so it adds to the list rather than replacing it.
@@ -64,6 +69,7 @@ export function App() {
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
   const repository = useRepository();
   const tasks = useTasks();
+  const taskActions = useTaskActions();
   const checkout = repository.state && repositoryFolder(repository.state);
 
   const updateChat = useCallback(
@@ -270,6 +276,26 @@ export function App() {
       void agent.resume(selected).then((resumed) => opened(selected, resumed));
   }, [selectedSignedIn, selectedUnopened, selected, opened]);
 
+  const archive = async (task: Task): Promise<IpcResult<void>> => {
+    const archived = await agent.archiveTask(task.key);
+    if (!archived.ok) return archived;
+    // Archiving closed its sessions, so each reopens when next selected; one still shown would reopen at once, so the view leaves it.
+    const closed = new Set(
+      (conversations?.all ?? [])
+        .filter((c) => c.folder === task.folder)
+        .map((c) => c.id),
+    );
+    setOpen((all) =>
+      Object.fromEntries(Object.entries(all).filter(([id]) => !closed.has(id))),
+    );
+    setView((v) =>
+      v.kind === ViewKind.Conversation && closed.has(v.id)
+        ? { kind: ViewKind.Task, key: task.key }
+        : v,
+    );
+    return archived;
+  };
+
   const unsentText = (id: string) =>
     [
       ...(chats[id]?.items ?? []).flatMap((item) =>
@@ -392,6 +418,10 @@ export function App() {
               onStart: (input) =>
                 startIn({ ...input, folder: selectedTask.folder, from: view }),
             })}
+            starting={start(taskDraft(selectedTask.key)).starting}
+            action={taskActions(selectedTask.key)}
+            onArchive={() => archive(selectedTask)}
+            onRestore={() => agent.restoreTask(selectedTask.key)}
             onRetry={() => {
               if (selectedTask.state.status !== TaskStatus.CreateFailed) return;
               void agent.retryTask(selectedTask.key).then(

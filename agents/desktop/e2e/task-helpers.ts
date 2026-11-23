@@ -11,6 +11,15 @@ export async function repositoryReady(page: Page) {
   ).toContainText("Ready");
 }
 
+export const conversationsFile = () =>
+  test.info().outputPath("user-data", "conversations.json");
+
+export const tasksFile = () =>
+  test.info().outputPath("user-data", "tasks.json");
+
+export const archived = (page: Page) =>
+  page.getByRole("navigation").getByText("Archived (1)");
+
 // Creating a task, then its first turn, outlasts the default timeout on a loaded machine.
 export const firstTurnDone = (page: Page) =>
   expect(status(page)).toHaveText("Claude finished.", { timeout: 15_000 });

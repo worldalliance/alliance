@@ -173,6 +173,16 @@ pre {
   border-left: 1px solid var(--border);
 }
 
+.sidebar .archived {
+  margin-top: var(--space-3);
+}
+
+.sidebar .archived summary {
+  color: var(--text-muted);
+  padding: var(--space-1) var(--space-2);
+  min-height: var(--control-height);
+}
+
 .sidebar button[aria-current="page"] {
   background: var(--background);
   border-color: var(--border);
@@ -249,6 +259,10 @@ pre {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-2) var(--space-3);
+}
+
+.actions.archive {
+  align-items: center;
 }
 
 .actions {

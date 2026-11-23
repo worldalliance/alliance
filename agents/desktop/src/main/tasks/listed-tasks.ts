@@ -3,10 +3,11 @@ import { type Task, TaskStatus } from "../../shared/task";
 import type { SavedTask } from "./store";
 import { type Worktree, WorktreeState } from "./worktrees";
 
-/** The tasks the worktrees list, leaving out the main checkout and the worktrees of creations in progress, named in creating. */
+/** The tasks the worktrees list, leaving out the main checkout and the worktrees of creations in progress, named in creating. A task still archiving shows unarchived until its agents stop. */
 export function listedTasks(params: {
   worktrees: Worktree[];
   saved: SavedTask[];
+  archiving: Set<string>;
   creating: Set<string>;
 }): Task[] {
   const saved = new Map(params.saved.map((task) => [task.worktree, task]));
@@ -46,6 +47,7 @@ export function listedTasks(params: {
         branch: worktree.branch ?? undefined,
         parent,
         createdByApp: own?.title !== undefined,
+        archived: !!own?.archived && !params.archiving.has(key),
         state: looped
           ? {
               status: TaskStatus.Broken,

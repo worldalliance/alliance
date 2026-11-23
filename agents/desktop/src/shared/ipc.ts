@@ -32,6 +32,8 @@ export enum IpcChannel {
   CreateTask = "task:create",
   RetryTask = "task:retry",
   DismissTask = "task:dismiss",
+  ArchiveTask = "task:archive",
+  RestoreTask = "task:restore",
 }
 
 export type IpcResult<T> = Result<T, string>;
@@ -83,6 +85,8 @@ export type IpcReplies = {
   [IpcChannel.TasksState]: IpcResult<TasksState>;
   [IpcChannel.CreateTask]: IpcResult<CreatedTask>;
   [IpcChannel.RetryTask]: IpcResult<CreatedTask>;
+  [IpcChannel.ArchiveTask]: IpcResult<void>;
+  [IpcChannel.RestoreTask]: IpcResult<void>;
 };
 
 type Reply<C extends keyof IpcReplies> = Promise<IpcReplies[C]>;
@@ -127,4 +131,7 @@ export type AgentApi = {
   }): Reply<IpcChannel.CreateTask>;
   retryTask(key: string): Reply<IpcChannel.RetryTask>;
   dismissTask(key: string): void;
+  /** Stops the task's agents, then hides it. */
+  archiveTask(key: string): Reply<IpcChannel.ArchiveTask>;
+  restoreTask(key: string): Reply<IpcChannel.RestoreTask>;
 };

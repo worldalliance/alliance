@@ -46,4 +46,12 @@ export function registerTaskIpc(params: {
       return console.error(`DismissTask: ${parsed.error.message}`);
     tasks.dismiss(parsed.value);
   });
+  handle(IpcChannel.ArchiveTask, async (_, key) => {
+    const parsed = parseArg(idArg, key);
+    return toIpc(parsed.ok ? await tasks.archive(parsed.value) : parsed);
+  });
+  handle(IpcChannel.RestoreTask, async (_, key) => {
+    const parsed = parseArg(idArg, key);
+    return toIpc(parsed.ok ? await tasks.restore(parsed.value) : parsed);
+  });
 }

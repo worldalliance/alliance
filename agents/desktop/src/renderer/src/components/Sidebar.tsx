@@ -51,9 +51,20 @@ export function Sidebar({
     conversations: conversations?.all ?? [],
     tasks: allTasks,
   });
-  const keys = new Set(allTasks.map((task) => task.key));
-  const topLevel = allTasks.filter(
-    (task) => !task.parent || !keys.has(task.parent),
+  const shown = allTasks.filter((task) => !task.archived);
+  const archived = allTasks.filter((task) => task.archived);
+  const archivedGroup = useRef<HTMLDetailsElement>(null);
+  const archivedShown = archived.some((task) =>
+    sameView(view, { kind: ViewKind.Task, key: task.key }),
+  );
+  // Opens the group when it takes the shown task, and leaves closing it to the user.
+  useEffect(() => {
+    if (archivedShown && archivedGroup.current)
+      archivedGroup.current.open = true;
+  }, [archivedShown]);
+  const shownKeys = new Set(shown.map((task) => task.key));
+  const topLevel = shown.filter(
+    (task) => !task.parent || !shownKeys.has(task.parent),
   );
 
   const conversationItem = (conversation: Conversation, meta: string) => (
@@ -74,23 +85,27 @@ export function Sidebar({
     </li>
   );
 
+  const taskButton = (task: Task) => (
+    <button
+      type="button"
+      className="task-entry"
+      aria-current={current({ kind: ViewKind.Task, key: task.key })}
+      onClick={() => onSelect({ kind: ViewKind.Task, key: task.key })}
+    >
+      <span className="title">{task.title}</span>
+      <span className="meta">
+        {taskStateWords(task)}
+        {!task.createdByApp && ` · ${outsideWords}`}
+      </span>
+    </button>
+  );
+
   const taskItem = (task: Task) => {
     const inTask = (task.folder && byFolder.get(task.folder)) || [];
-    const children = allTasks.filter((child) => child.parent === task.key);
+    const children = shown.filter((child) => child.parent === task.key);
     return (
       <li key={task.key}>
-        <button
-          type="button"
-          className="task-entry"
-          aria-current={current({ kind: ViewKind.Task, key: task.key })}
-          onClick={() => onSelect({ kind: ViewKind.Task, key: task.key })}
-        >
-          <span className="title">{task.title}</span>
-          <span className="meta">
-            {taskStateWords(task)}
-            {!task.createdByApp && ` · ${outsideWords}`}
-          </span>
-        </button>
+        {taskButton(task)}
         {inTask.length + children.length > 0 && (
           <ul className="nested">
             {inTask.map((conversation) =>
@@ -166,6 +181,16 @@ export function Sidebar({
       </button>
       {tasksNote()}
       {topLevel.length > 0 && <ul>{topLevel.map(taskItem)}</ul>}
+      {archived.length > 0 && (
+        <details className="archived" ref={archivedGroup}>
+          <summary>Archived ({archived.length})</summary>
+          <ul>
+            {archived.map((task) => (
+              <li key={task.key}>{taskButton(task)}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       <h2>Other conversations</h2>
       <button
         type="button"

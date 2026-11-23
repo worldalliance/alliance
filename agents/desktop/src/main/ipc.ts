@@ -74,6 +74,8 @@ export function registerIpc(params: {
   /** The URL the window loads; only its top-level page may call these handlers or hear session events. */
   rendererUrl: string;
   openingWaitMs: number;
+  /** Whether folder is an archived task's worktree, where Resume refuses to open a conversation. */
+  isArchived: (folder: string) => Promise<boolean>;
 }): {
   close: () => Promise<void>;
   /** What Start does, its argument checks included, for a conversation the main process starts, such as a new task's first. */
@@ -81,7 +83,8 @@ export function registerIpc(params: {
   /** Closes the live sessions in folder, those that attach there before it returns, and the ones already starting there as they start, a new one once its CLI has read its first message or openingWaitMs has passed, resolving once the CLIs of the sessions this call closes have exited and waiting at most openingWaitMs for sessions still starting; every Start and Resume in folder that hasn't reached its agent's CLI yet fails until it returns, and a Start already past that reports success for the session it closes. */
   closeSessionsIn: (folder: string) => Promise<void>;
 } {
-  const { findAgent, conversations, rendererUrl, openingWaitMs } = params;
+  const { findAgent, conversations, rendererUrl, openingWaitMs, isArchived } =
+    params;
   const live = new Map<string, { session: AgentSession; folder: string }>();
   // The backend hands a Resume the same session until its close begins, which closeOnceRead can hold back.
   const closingIn = new WeakSet<AgentSession>();
@@ -304,6 +307,11 @@ export function registerIpc(params: {
       new Error("This conversation is closing. Try again in a moment."),
     );
 
+  const archivedFailure = () =>
+    R.failure(
+      new Error("This task is archived. Restore it to open this conversation."),
+    );
+
   handle(IpcChannel.Resume, (_, sessionId) => {
     const parsed = parseArg(idArg, sessionId);
     if (!parsed.ok) return toIpc(parsed);
@@ -322,6 +330,7 @@ export function registerIpc(params: {
         if (closing) return R.failure(quittingError());
         // The backend holds a Resume until the session's closing CLI exits and then reopens it, after closeSessionsIn has stopped closing what opens.
         if (closerRunningIn(conversation.folder)) return closingFailure();
+        if (await isArchived(conversation.folder)) return archivedFailure();
         const resumed = await backend.resume({
           cwd: conversation.folder,
           sessionId: id,
@@ -334,6 +343,7 @@ export function registerIpc(params: {
           order,
         };
         if (closing) return refuse(opened);
+        // An Archive begun since the check above closes this session as it attaches, since this Resume began before it.
         attach(opened);
         if (closingIn.has(resumed.value)) return closingFailure();
         return R.success({

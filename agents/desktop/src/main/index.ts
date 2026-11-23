@@ -264,6 +264,7 @@ void app.whenReady().then(() => {
     ),
     rendererUrl,
     openingWaitMs,
+    isArchived: (folder) => tasks.isArchived(folder),
   });
   const tasks = new TaskService({
     checkout: () => repositoryFolder(repository.current()),
@@ -281,6 +282,7 @@ void app.whenReady().then(() => {
     },
     store: new TaskStore(path.join(userData, "tasks.json")),
     startConversation: sessions.startConversation,
+    closeSessionsIn: sessions.closeSessionsIn,
   });
   registerTaskIpc({ tasks, rendererUrl });
   let listedFolder: string | undefined;

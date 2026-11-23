@@ -50,6 +50,7 @@ export type Task = {
   parent?: string;
   /** False for a worktree made with a terminal or by an agent. */
   createdByApp: boolean;
+  archived: boolean;
   state: TaskState;
 };
 

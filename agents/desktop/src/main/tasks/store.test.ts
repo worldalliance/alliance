@@ -22,17 +22,17 @@ test("lists nothing before the first task", async () => {
   });
 });
 
-test("updates each worktree's task in place, starting untitled", async () => {
+test("updates each worktree's task in place, starting unarchived and untitled", async () => {
   const store = new TaskStore(storeFile());
   await Promise.all([
     store.update("a", (task) => ({ ...task, title: "Fix it" })),
-    store.update("b", (task) => task),
-    store.update("a", (task) => ({ ...task, title: `${task.title} now` })),
+    store.update("b", (task) => ({ ...task, archived: true })),
+    store.update("a", (task) => ({ ...task, archived: true })),
   ]);
   const listed = await store.list();
   expect(listed.ok && listed.value).toEqual([
-    { worktree: "b" },
-    { worktree: "a", title: "Fix it now" },
+    { worktree: "b", archived: true },
+    { worktree: "a", title: "Fix it", archived: true },
   ]);
 });
 

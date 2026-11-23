@@ -34,7 +34,7 @@ type Creation = {
   controller: AbortController;
 };
 
-/** Lists the repository's worktrees as tasks, and creates them. Each task's conversations are the ones whose folder is its worktree. */
+/** Lists the repository's worktrees as tasks, and creates, archives and restores them. Each task's conversations are the ones whose folder is its worktree. */
 export class TaskService {
   private state: TasksState = {
     status: TasksStatus.NoRepository,
@@ -48,6 +48,9 @@ export class TaskService {
   private running = new Set<Promise<unknown>>();
   private listing: Promise<void> | undefined;
   private listAgain = false;
+  // Counts the saved changes shown before a listing read them back, so a listing that began before one doesn't hide it.
+  private savedChanges = 0;
+  private readonly archiving = new Set<string>();
   private closed = false;
 
   constructor(
@@ -62,6 +65,8 @@ export class TaskService {
       startConversation: (
         input: StartInput,
       ) => Promise<IpcResult<Conversation>>;
+      /** Closes the app's sessions in folder, resolving once their CLIs have exited. */
+      closeSessionsIn: (folder: string) => Promise<void>;
     },
   ) {}
 
@@ -100,11 +105,13 @@ export class TaskService {
     }
     if (this.state.status === TasksStatus.NoRepository)
       this.publish({ status: TasksStatus.Loading });
+    const changes = this.savedChanges;
     const [listed, saved] = await Promise.all([
       this.list(checkout),
       this.params.store.list(),
     ]);
-    if (saved.ok) this.saved = saved.value;
+    if (saved.ok && changes === this.savedChanges) this.saved = saved.value;
+    else if (saved.ok) this.listAgain = true;
     if (listed.ok) this.worktrees = listed.value;
     const problem = !listed.ok
       ? {
@@ -372,6 +379,64 @@ export class TaskService {
     });
   }
 
+  /** Saves the task as archived, then stops its agents and hides it; a failed save stops nothing. */
+  async archive(key: string): Promise<Result<void, Error>> {
+    const task = this.state.tasks.find((t) => t.key === key);
+    if (!task || this.creations.has(key))
+      return R.failure(new Error("Only a listed task can be archived."));
+    if (this.archiving.has(key)) return stillArchiving();
+    const change = (saved: SavedTask): SavedTask => ({
+      ...saved,
+      archived: true,
+      folder: task.folder,
+    });
+    this.archiving.add(key);
+    const saved = await this.params.store.update(key, change);
+    if (!saved.ok) {
+      this.archiving.delete(key);
+      return saved;
+    }
+    if (task.folder) await this.params.closeSessionsIn(task.folder);
+    this.archiving.delete(key);
+    this.showSaved(key, change);
+    return saved;
+  }
+
+  /** Whether folder is the worktree of a task that is archived or being archived. The listing decides for a folder it lists; for any other, such as one before the worktrees are listed or in a checkout the app no longer points at, the folders saved on archiving decide. */
+  async isArchived(folder: string): Promise<boolean> {
+    const task =
+      this.state.status === TasksStatus.Listed
+        ? this.state.tasks.find((t) => t.folder === folder)
+        : undefined;
+    if (task) return task.archived || this.archiving.has(task.key);
+    const saved = await this.params.store.list();
+    return (
+      saved.ok && saved.value.some((t) => t.archived && t.folder === folder)
+    );
+  }
+
+  async restore(key: string): Promise<Result<void, Error>> {
+    if (this.archiving.has(key)) return stillArchiving();
+    const change = (saved: SavedTask): SavedTask => ({
+      ...saved,
+      archived: false,
+    });
+    const saved = await this.params.store.update(key, change);
+    if (saved.ok) this.showSaved(key, change);
+    return saved;
+  }
+
+  /** Publishes a change already saved to the store, without waiting for a listing to read it back. */
+  private showSaved(key: string, change: (task: SavedTask) => SavedTask): void {
+    const old = this.saved.find((task) => task.worktree === key);
+    this.saved = [
+      ...this.saved.filter((task) => task !== old),
+      change(old ?? { worktree: key }),
+    ];
+    this.savedChanges++;
+    this.publish({});
+  }
+
   /** Aborts creations in progress and waits for their scripts to exit; a step a script was running can outlive it (ALL-2391). */
   async close(): Promise<void> {
     this.closed = true;
@@ -389,6 +454,7 @@ export class TaskService {
         ...listedTasks({
           worktrees: this.worktrees,
           saved: this.saved,
+          archiving: this.archiving,
           creating: new Set(
             [...this.creations.values()].flatMap(({ name }) =>
               name ? [name] : [],
@@ -404,6 +470,11 @@ export class TaskService {
 const madeLeftover = (name: string | undefined) =>
   `${name} was created. Try again uses it rather than creating another.`;
 
+const stillArchiving = () =>
+  R.failure(
+    new Error("This task is still being archived. Try again in a moment."),
+  );
+
 const creatingTask = (params: {
   key: string;
   title: string;
@@ -412,5 +483,6 @@ const creatingTask = (params: {
   key: params.key,
   title: params.title,
   createdByApp: true,
+  archived: false,
   state: { status: TaskStatus.Creating, stage: params.stage },
 });

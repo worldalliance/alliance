@@ -1,23 +1,40 @@
 import type { ReactNode } from "react";
 import type { AgentKind } from "../../../shared/agent-kind";
+import type { IpcResult } from "../../../shared/ipc";
 import { type Task, TaskStatus } from "../../../shared/task";
 import { focusIfLost } from "../focus";
-import { outsideWords, taskStateWords } from "../tasks";
+import {
+  isCreation,
+  outsideWords,
+  type TaskAction,
+  taskStateWords,
+} from "../tasks";
 import { Folder } from "./Folder";
 import { ProblemText } from "./ProblemText";
 
-/** A task's state and actions, with newConversation, the form that starts another conversation in it, once it is ready. */
+const archiving = "archive this task";
+
+/** A task's state and actions, with newConversation, the form that starts another conversation in it, once it is ready, and starting while that form starts one. */
 export function TaskView({
   task,
   newConversation,
+  starting,
+  action,
+  onArchive,
+  onRestore,
   onRetry,
   onEditRequest,
 }: {
   task: Task;
   newConversation: ReactNode;
+  starting: boolean;
+  action: TaskAction;
+  onArchive: () => Promise<IpcResult<void>>;
+  onRestore: () => Promise<IpcResult<void>>;
   onRetry: () => void;
   onEditRequest: (failed: { request: string; agent: AgentKind }) => void;
 }) {
+  const { pending, problem, act } = action;
   const { state } = task;
 
   const body = () => {
@@ -92,7 +109,56 @@ export function TaskView({
     }
   };
 
-  const ready = state.status === TaskStatus.Ready;
+  const archiveControls = () => {
+    if (isCreation(task)) return null;
+    if (task.archived)
+      return (
+        <>
+          <p role="status">
+            Archived. Its folder, branch, databases and conversations are kept,
+            and it still uses disk space.
+          </p>
+          <div className="actions">
+            <button
+              type="button"
+              ref={focusIfLost}
+              aria-disabled={pending !== undefined || undefined}
+              onClick={() =>
+                act({ run: onRestore, words: "restore this task" })
+              }
+            >
+              Restore
+            </button>
+          </div>
+        </>
+      );
+    return (
+      <div className="actions archive">
+        <button
+          type="button"
+          // A ready task's message box takes the focus instead.
+          ref={ready ? undefined : focusIfLost}
+          aria-disabled={pending !== undefined || starting || undefined}
+          onClick={() => {
+            // The window moves to a conversation once it has started, which Archive would hide.
+            if (!starting) act({ run: onArchive, words: archiving });
+          }}
+        >
+          {pending === archiving ? "Archiving…" : "Archive"}
+        </button>
+        <span className="hint">
+          {starting
+            ? "You can archive this task once the new conversation has started."
+            : "Stops this task's agents and hides it. Its folder, branch, databases and conversations stay, so Restore brings it back."}
+        </span>
+      </div>
+    );
+  };
+
+  const ready =
+    state.status === TaskStatus.Ready &&
+    !task.archived &&
+    pending !== archiving;
   return (
     <>
       <div className="panel task">
@@ -101,6 +167,12 @@ export function TaskView({
         {task.folder && <Folder label="Folder" folder={task.folder} />}
         {task.branch && <Folder label="Branch" folder={task.branch} />}
         {body()}
+        {archiveControls()}
+        {problem && (
+          <p className="error" role="alert">
+            {problem}
+          </p>
+        )}
         {ready && <h2>New conversation in this task</h2>}
       </div>
       {ready && newConversation}

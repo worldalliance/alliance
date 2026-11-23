@@ -12,6 +12,7 @@ import {
   workFolder,
 } from "./launch";
 import {
+  archived,
   firstTurnDone,
   repositoryReady,
   request,
@@ -77,7 +78,7 @@ test("a window reloaded while a task is set up shows the task once it is", async
   await app.close();
 });
 
-test("a task that couldn't be created keeps its request, says what it left, and can be tried again or edited", async () => {
+test("a task that couldn't be created keeps its request, says what it left, and can be tried again or edited, and Restore on its leftover focuses Archive", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     codexCaptures: [codexLoginStatusCapture(true)],
@@ -112,22 +113,55 @@ test("a task that couldn't be created keeps its request, says what it left, and 
   await page.getByLabel("Message Claude").press("Enter");
   await firstTurnDone(page);
   expect(existsSync(`${taskFolder()}-2`)).toBe(true);
+
+  await page
+    .getByRole("navigation")
+    .getByRole("button")
+    .filter({ hasText: "Not finished being created" })
+    .click();
+  await page.getByRole("button", { name: "Archive" }).click();
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(page.getByRole("button", { name: "Archive" })).toBeFocused();
   await app.close();
 });
 
-test("a worktree made outside the app shows marked", async () => {
-  const { app, page } = await launch({ captures: [authStatusCapture(true)] });
+test("archiving a task hides it with its conversations until restored, which focuses its message box, and a worktree made outside the app shows marked", async () => {
+  const { app, page } = await launch({
+    captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
+  });
   await repositoryReady(page);
+  await send(page, request);
+  await firstTurnDone(page);
   const outside = test.info().outputPath("by-hand");
   git(workFolder(), "worktree", "add", "-q", "-b", "by-hand", outside);
   await app.evaluate(({ app }) => app.emit("browser-window-focus"));
   await expect(taskEntry(page, "by-hand")).toContainText(
     "Ready · Made outside Alliance agent",
   );
+
+  await taskEntry(page).click();
+  await page.getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Archived. Its folder, branch, databases and conversations are kept, and it still uses disk space.",
+  );
+  const sidebar = page.getByRole("navigation");
+  await expect(sidebar.locator("ul.nested")).toHaveCount(0);
+  await expect(sidebar.getByText("Archived (1)")).toBeVisible();
+  await expect(taskEntry(page)).toContainText("Ready");
+  await expect(sidebar.getByText("Other conversations")).toBeVisible();
+  await expect(sidebar.getByText(/^Change hello.*Claude ·/)).toHaveCount(0);
+  expect(existsSync(taskFolder())).toBe(true);
+
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
+  await expect(page.getByLabel("Message Claude")).toBeFocused();
+  await expect(sidebar.locator("ul.nested button")).toHaveCount(1);
+  await sidebar.locator("ul.nested button").click();
+  await expect(page.locator(".user")).toHaveText(request);
   await app.close();
 });
 
-test("a worktree made from inside a task nests under it", async () => {
+test("a worktree made from inside a task nests under it until the task is archived", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
@@ -150,5 +184,11 @@ test("a worktree made from inside a task nests under it", async () => {
   await expect(
     sidebar.locator("ul.nested").getByRole("button", { name: /^inner/ }),
   ).toBeVisible();
+
+  await taskEntry(page).click();
+  await page.getByRole("button", { name: "Archive" }).click();
+  await expect(archived(page)).toBeVisible();
+  await expect(sidebar.locator("ul.nested")).toHaveCount(0);
+  await expect(taskEntry(page, "inner")).toContainText("Ready");
   await app.close();
 });

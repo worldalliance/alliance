@@ -293,6 +293,7 @@ test("retrying a name the script refused before creating anything tries another"
         key: "new:c1",
         title: "Fix it",
         createdByApp: true,
+        archived: false,
         state: {
           status: TaskStatus.Creating,
           stage: CreationStage.Downloading,

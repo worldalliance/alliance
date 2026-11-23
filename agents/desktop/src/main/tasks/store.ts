@@ -11,6 +11,9 @@ const savedTaskSchema = z.object({
   worktree: z.string().min(1),
   /** Set for a task the app created, from its first message. */
   title: z.string().optional(),
+  archived: z.boolean().optional(),
+  /** The worktree's folder, saved on archiving so Resume can refuse it before the worktrees are listed. */
+  folder: z.string().optional(),
 });
 
 export type SavedTask = z.infer<typeof savedTaskSchema>;
@@ -20,7 +23,7 @@ const stored = z.object({
   tasks: z.array(savedTaskSchema),
 });
 
-/** What the app knows about worktrees that the worktree scripts don't record: which it created, and under what title. */
+/** What the app knows about worktrees that the worktree scripts don't record: which it created, under what title, and which are archived. */
 export class TaskStore {
   private writes: Promise<unknown> = Promise.resolve();
 
@@ -41,7 +44,7 @@ export class TaskStore {
     );
   }
 
-  /** Changes the saved task for worktree, starting from one with no title. */
+  /** Changes the saved task for worktree, starting from an unarchived one with no title. */
   update(
     worktree: string,
     change: (task: SavedTask) => SavedTask,
