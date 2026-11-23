@@ -251,5 +251,40 @@ function conjuncts(expr: Expr, scope: Scope): Expr[] {
     : [resolved];
 }
 
+/**
+ * Re-checks stored groups at go-live: a formula or list they read can have
+ * changed since the split was saved. Spared the needless-fallback check, as
+ * stored formulas are.
+ */
+export function checkStoredGroups(params: {
+  groups: readonly SplitGroup[];
+  scope: Scope;
+}): SplitProblem[] {
+  const { groups, scope } = params;
+  const named = new Set(scope.named.map((each) => each.id));
+  return groups.flatMap((group): SplitProblem[] => {
+    if (group.condition === null) return [];
+    const checked = checkExpression({
+      source: group.condition,
+      scope,
+      rule: groupRule(group.fallback),
+      stored: { root: true, named },
+    });
+    if (!checked.ok) {
+      return [
+        {
+          groupId: group.id,
+          text: printGroup(group.condition, scope),
+          diagnostics: checked.error,
+        },
+      ];
+    }
+    const outside = outsideReads(group.condition, scope.named);
+    return outside === undefined
+      ? []
+      : [{ groupId: group.id, message: outside }];
+  });
+}
+
 export const printGroup = (condition: Expr, scope: Scope) =>
   printExpression(condition, printNames({ scope }));

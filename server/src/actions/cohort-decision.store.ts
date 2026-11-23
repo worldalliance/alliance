@@ -12,7 +12,7 @@ const INSERT_CHUNK_SIZE = 1000;
 
 export type DecisionRow = Pick<
   ActionCohortDecision,
-  "actionId" | "userId" | "included" | "reason" | "resolvedAt"
+  "actionId" | "userId" | "included" | "optional" | "reason" | "resolvedAt"
 >;
 
 /** Reads and writes of the saved cohort decisions the resolver makes. */

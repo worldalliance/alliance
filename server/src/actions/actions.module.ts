@@ -25,6 +25,7 @@ import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
+import { SplitPlacementModule } from "src/suite-splits/split-placement.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -74,6 +75,7 @@ import { CohortResolverService } from "./cohort-resolver.service";
 import { ContractReinstatedListener } from "./contract-reinstated.listener";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
+import { DecidingCohortService } from "./deciding-cohort.service";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
@@ -156,6 +158,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     FacepileModule,
     EventLogModule,
     FormSnapshotModule,
+    SplitPlacementModule,
     forwardRef(() => ShareUrlsModule),
   ],
   controllers: [
@@ -198,6 +201,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     CohortDecisionListener,
     CohortDecisionService,
     CohortDecisionStore,
+    DecidingCohortService,
     CohortDecisionStaffService,
     CohortDecisionWorker,
     TaskBadgeService,

@@ -42,6 +42,7 @@ const PHYSICALLY_DELETED = [
   "OtpRateEvent",
   "RecentSearch",
   "SpentToken",
+  "SuiteSplitPlacement",
   "WaitlistBrowser",
   "WaitlistEntryTag",
   "WebHandoff",

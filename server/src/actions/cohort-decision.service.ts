@@ -26,6 +26,8 @@ import { CohortDecisionStore, type DecisionRow } from "./cohort-decision.store";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
+import { ruleCohort, type DecidingCohort } from "./deciding-cohort";
+import { DecidingCohortService } from "./deciding-cohort.service";
 import {
   Action,
   parseAction,
@@ -47,6 +49,7 @@ export class CohortDecisionService {
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly decidingCohort: DecidingCohortService,
   ) {}
 
   /**
@@ -228,6 +231,37 @@ export class CohortDecisionService {
     );
   }
 
+  /**
+   * Members admissible at `at` and ready, with the cohort deciding them;
+   * `undefined` when none is pending or the cohort decides nobody.
+   */
+  private async pendingCohort(params: {
+    action: ParsedAction;
+    users: User[];
+    at: Date;
+    session: CohortResolutionSession;
+    now: Date;
+  }): Promise<{ pending: User[]; cohort: DecidingCohort } | undefined> {
+    const { action, users, at, session, now } = params;
+    const admissible = users.filter((user) =>
+      isCohortAdmissible({ action, user, at }),
+    );
+    if (admissible.length === 0) return undefined;
+    const pending = await this.prerequisiteProgressService.filterReady({
+      action,
+      users: admissible,
+      session,
+      now,
+    });
+    if (pending.length === 0) return undefined;
+    const cohort = await this.decidingCohort.cohortFor({
+      action,
+      users: pending,
+      session,
+    });
+    return cohort && { pending, cohort };
+  }
+
   private async resolveAction(params: {
     action: ParsedAction;
     enrollment: CohortEnrollment;
@@ -238,65 +272,56 @@ export class CohortDecisionService {
     const { action, enrollment, users, session, now } = params;
     switch (enrollment.state) {
       case CohortEnrollmentState.Open: {
-        const admissible = users.filter((user) =>
-          isCohortAdmissible({ action, user, at: now }),
-        );
-        if (admissible.length === 0) return [];
-        const pending = await this.prerequisiteProgressService.filterReady({
+        const found = await this.pendingCohort({
           action,
-          users: admissible,
+          users,
+          at: now,
           session,
           now,
         });
-        if (pending.length === 0) return [];
-        const cohort = await this.cohortResolverService.resolveCohortMemberIds(
-          action.cohortExpression,
-          session,
-        );
+        if (found === undefined) return [];
+        const { pending, cohort } = found;
         return this.decide({
           action,
-          users: pending,
-          included: (user) => cohort.has(user.id),
+          users: pending.filter(cohort.decides),
+          cohort,
           reason: (user) =>
             admissionReason({ action, user, start: enrollment.start }),
           now,
         });
       }
       case CohortEnrollmentState.Closed: {
-        const admissible = users.filter((user) =>
-          isCohortAdmissible({ action, user, at: enrollment.deadline }),
-        );
-        if (admissible.length === 0) return [];
-        const pending = await this.prerequisiteProgressService.filterReady({
+        const found = await this.pendingCohort({
           action,
-          users: admissible,
+          users,
+          at: enrollment.deadline,
           session,
           now,
         });
-        // Only a member held to the whole window of a non-optional action
+        if (found === undefined) return [];
+        const { pending, cohort } = found;
+        const deciding = pending.filter(cohort.decides);
+        // Only a member held to the whole window of work required of them
         // could miss it. Anyone else was only ever optional, so deciding them
         // late creates no missed obligation.
         const obligated = (user: User) =>
-          !action.optional &&
+          cohort.required(user) &&
           user.hasActiveContractInFullRange({
             startDate: enrollment.start,
             endDate: enrollment.deadline,
           });
         await this.warnAboutLateDecisions({
           action,
-          users: pending.filter(obligated),
+          users: deciding.filter(obligated),
           deadline: enrollment.deadline,
         });
-        const cohort = pending.some((user) => !obligated(user))
-          ? await this.cohortResolverService.resolveCohortMemberIds(
-              action.cohortExpression,
-              session,
-            )
-          : new Set<number>();
         return this.decide({
           action,
-          users: pending,
-          included: (user) => !obligated(user) && cohort.has(user.id),
+          users: deciding,
+          cohort: {
+            ...cohort,
+            included: (user) => !obligated(user) && cohort.included(user),
+          },
           reason: (user) =>
             obligated(user)
               ? CohortDecisionReason.ResolvedAfterDeadline
@@ -372,7 +397,7 @@ export class CohortDecisionService {
     const rows = this.decide({
       action,
       users: pending,
-      included: (user) => cohort.has(user.id),
+      cohort: ruleCohort({ memberIds: cohort, optional: action.optional }),
       reason: () => CohortDecisionReason.Backfill,
       now,
     });
@@ -596,15 +621,16 @@ export class CohortDecisionService {
   private decide(params: {
     action: ParsedAction;
     users: User[];
-    included: (user: User) => boolean;
+    cohort: Pick<DecidingCohort, "included" | "optional">;
     reason: (user: User) => CohortDecisionReason;
     now: Date;
   }): DecisionRow[] {
-    const { action, users, included, reason, now } = params;
+    const { action, users, cohort, reason, now } = params;
     const rows = users.map((user) => ({
       actionId: action.id,
       userId: user.id,
-      included: included(user),
+      included: cohort.included(user),
+      optional: cohort.optional(user),
       reason: reason(user),
       resolvedAt: now,
     }));
