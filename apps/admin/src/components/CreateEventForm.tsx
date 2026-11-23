@@ -259,10 +259,14 @@ const CreateEventForm = (props: CreateEventFormProps) => {
 
   return (
     <form onSubmit={handleAddEvent} className="space-y-4 mt-4">
-      {error && <p className="text-red-500">{error}</p>}
+      {error && (
+        <p role="alert" className="text-red-500">
+          {error}
+        </p>
+      )}
       <div className="mb-4 flex flex-row items-center">
         <label htmlFor="newStatus" className="block text-black min-w-25">
-          New Status
+          Status this event sets
         </label>
         <select
           id="newStatus"
@@ -311,7 +315,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           <>
             <div>
               <label htmlFor="eventTitle" className="block text-black mb-1">
-                Event Title *
+                Event title
               </label>
               <input
                 type="text"
@@ -320,7 +324,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 value={eventForm.title}
                 onChange={handleEventInputChange}
                 required={useCustomName}
-                placeholder="e.g., Launch Event, Office Action"
+                placeholder="e.g., Launch event, Office taking action"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -330,7 +334,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 htmlFor="eventDescription"
                 className="block text-black mb-1"
               >
-                Description
+                Description (optional)
               </label>
               <textarea
                 id="eventDescription"
@@ -420,7 +424,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                   ):
                 </label>
                 <DateTimePicker
-                  id="eventDate"
+                  id="deadlineEventDateInput"
                   name="date"
                   value={deadlineEventDate}
                   onChange={handleDeadlineDateChange}
@@ -492,7 +496,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            Adding Event...
+            Adding event...
           </span>
         ) : eventCreatedSuccess ? (
           <span className="flex items-center justify-center">
@@ -507,10 +511,10 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 clipRule="evenodd"
               />
             </svg>
-            Event Added!
+            Event added
           </span>
         ) : (
-          "Add Event"
+          "Add event"
         )}
       </button>
     </form>

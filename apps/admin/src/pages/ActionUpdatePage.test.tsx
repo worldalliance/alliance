@@ -87,7 +87,7 @@ const renderPage = (
 const renderDetails = async () => {
   renderPage();
   fireEvent.click(
-    await screen.findByRole("button", { name: "Update Details" }),
+    await screen.findByRole("button", { name: "Update details" }),
   );
 };
 
@@ -140,11 +140,11 @@ describe("ActionUpdatePage", () => {
     await waitFor(() => expect(reloading).toBe(true));
 
     expect(screen.getByText("Loading update...")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update details" })).toBeNull();
 
     release();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Update Details" }),
+      await screen.findByRole("button", { name: "Update details" }),
     );
     expect(screen.getAllByRole("textbox")[0]).toHaveProperty("value", "Fresh");
   });
@@ -158,7 +158,7 @@ describe("ActionUpdatePage", () => {
     renderPage({ cached: update() });
 
     expect(await screen.findByText("Failed to load update")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update details" })).toBeNull();
   });
 
   it("offers the action's events to link the update to", async () => {
@@ -249,12 +249,26 @@ describe("ActionUpdatePage", () => {
     expect(sends).toBe(0);
   });
 
+  it("announces a refused save as an alert", async () => {
+    api.alsoServing({
+      "PATCH /actions/updateUpdate/:id": () =>
+        Response.json({ message: "Nope" }, { status: 500 }),
+    });
+    await renderDetails();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(
+      (await screen.findByText("Failed to save update")).getAttribute("role"),
+    ).toBe("alert");
+  });
+
   it("shows no recognition copy for a legacy update", async () => {
     served = update({ notificationMode: "legacy" });
 
     await renderDetails();
 
-    expect(screen.queryByText("Preview Update")).toBeNull();
+    expect(screen.queryByText("Preview update")).toBeNull();
     expect(
       screen.queryByRole("textbox", {
         name: /^Notif text for people who didn't complete/,
@@ -291,14 +305,14 @@ describe("ActionUpdatePage", () => {
         name: "Notif text for people who completed",
       }),
     ).toBeTruthy();
-    expect(screen.queryByText("Preview Update")).toBeNull();
+    expect(screen.queryByText("Preview update")).toBeNull();
     expect(countedAudiences).toEqual([]);
   });
 
   it("previews every variation as the notif texts are typed", async () => {
     await renderDetails();
     const preview = () =>
-      screen.getByText("Preview Update").closest("div.border") as HTMLElement;
+      screen.getByText("Preview update").closest("div.border") as HTMLElement;
 
     fireEvent.change(
       screen.getByRole("textbox", {
@@ -355,7 +369,7 @@ describe("ActionUpdatePage", () => {
     const title = await screen.findByDisplayValue("Hearing");
     const saveAs = async (value: string, choice: string) => {
       fireEvent.change(title, { target: { value } });
-      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
       fireEvent.click(await screen.findByRole("button", { name: choice }));
     };
 
@@ -494,7 +508,7 @@ describe("while an update's notifications are on hold", () => {
     fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
       target: { value: "a vote" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText(SENDABLE);
     releasePoll();
     await Bun.sleep(30);
@@ -529,7 +543,7 @@ describe("while an update's notifications are on hold", () => {
     fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
       target: { value: "a vote" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(saveWaiting).toBe(true));
     releaseSave();
     releasePoll();

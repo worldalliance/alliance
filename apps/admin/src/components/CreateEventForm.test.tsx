@@ -45,7 +45,7 @@ const renderActionForm = (params: {
   );
 
 const addEvent = async () => {
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
   fireEvent.change(await screen.findByPlaceholderText(LAUNCH_CONFIRM_TEXT), {
     target: { value: LAUNCH_CONFIRM_TEXT },
   });
@@ -107,6 +107,17 @@ it("adds an action's deadline event after its launch", async () => {
   expect(addToAction.mock.calls[1][0]).toMatchObject({
     body: { newStatus: "office_action" },
   });
+});
+
+it("labels the deadline time picker apart from the launch picker", () => {
+  renderActionForm({ addToAction: jest.fn() });
+
+  fireEvent.click(screen.getByLabelText("Launch now"));
+  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+
+  expect(screen.getByLabelText(/Deadline event time/)).not.toBe(
+    screen.getByLabelText(/Launch time/),
+  );
 });
 
 const renderSuiteForm = (
@@ -172,7 +183,7 @@ it("sends nothing when staff cancel the launch confirmation", async () => {
   const addToAction = jest.fn();
   renderActionForm({ addToAction });
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
   fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
   await waitFor(() =>
@@ -185,7 +196,7 @@ it("holds the add pending while the launch confirmation is open", async () => {
   const setCreatingEvent = jest.fn();
   renderActionForm({ addToAction: jest.fn(), setCreatingEvent });
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
   await screen.findByText("Launch to members now?");
   expect(setCreatingEvent).toHaveBeenLastCalledWith(true);
 
@@ -199,10 +210,10 @@ it("adds an event that doesn't open the action to members without asking", async
     .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
   renderActionForm({ addToAction });
 
-  fireEvent.change(screen.getByLabelText("New Status"), {
+  fireEvent.change(screen.getByLabelText("Status this event sets"), {
     target: { value: "office_action" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
 
   await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(1));
 });
@@ -213,7 +224,7 @@ it("dates a launch-now event from the confirmation, not from opening it", async 
     .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
   renderActionForm({ addToAction });
 
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
   const phrase = await screen.findByPlaceholderText(LAUNCH_CONFIRM_TEXT);
   await new Promise((resolve) => setTimeout(resolve, 30));
   const confirmedAt = Date.now();
@@ -230,7 +241,7 @@ const scheduleAt = (date: Date) => {
   fireEvent.change(document.getElementById("eventDate")!, {
     target: { value: formatLocalDateTime(date, "minute") },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
 };
 
 it("asks to launch now when the scheduled launch time has already passed", async () => {
@@ -254,17 +265,17 @@ it("refuses a deadline already before the launch without asking", async () => {
   const addToAction = jest.fn();
   renderActionForm({ addToAction });
   fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
-  // Launching now hides the launch picker, whose id the deadline picker shares.
-  fireEvent.change(document.getElementById("eventDate")!, {
+  fireEvent.change(document.getElementById("deadlineEventDateInput")!, {
     target: {
       value: formatLocalDateTime(new Date(Date.now() - 60_000), "minute"),
     },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
 
   expect(
     await screen.findByText(
       "The deadline must come after the launch. Pick a later one.",
+      { selector: "[role=alert]" },
     ),
   ).toBeTruthy();
   expect(screen.queryByText("Launch to members now?")).toBeNull();
@@ -306,11 +317,10 @@ describe("when time passes while the launch confirmation is open", () => {
     fireEvent.click(
       screen.getByLabelText("Automatically create deadline event"),
     );
-    // Launching now hides the launch picker, whose id the deadline picker shares.
-    fireEvent.change(document.getElementById("eventDate")!, {
+    fireEvent.change(document.getElementById("deadlineEventDateInput")!, {
       target: { value: formatLocalDateTime(later(5), "minute") },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add event" }));
     expect(await screen.findByText("Launch to members now?")).toBeTruthy();
 
     setSystemTime(later(10));

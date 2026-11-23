@@ -325,7 +325,7 @@ const ActionUpdatePage: React.FC = () => {
 
       {recognition && !update.recognitionPreparedAt && (
         <FormSection
-          title="Preview Update"
+          title="Preview update"
           description={UPDATE_PREVIEW_DESCRIPTION}
         >
           <AudienceUpdatePreview updateId={update.id} form={form} />
@@ -338,7 +338,7 @@ const ActionUpdatePage: React.FC = () => {
           className="px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium"
           disabled={saving}
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : "Save changes"}
         </button>
       </div>
     </form>
@@ -378,14 +378,17 @@ const ActionUpdatePage: React.FC = () => {
           onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
         >
-          ← Back to Updates
+          ← Back to updates
         </button>
       </div>
 
       <HiddenFromMembersBanner update={update} />
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">
+        <div
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4"
+        >
           {error}
         </div>
       )}
@@ -396,7 +399,7 @@ const ActionUpdatePage: React.FC = () => {
             {(
               [
                 ["content", "Content"],
-                ["details", "Update Details"],
+                ["details", "Update details"],
               ] as const
             ).map(([tab, label]) => (
               <button
