@@ -77,3 +77,25 @@ export const newWorktreeKey = (creationId: string) =>
 
 export const isNewWorktreeKey = (key: string) =>
   key.startsWith(newWorktreePrefix);
+
+// A worktree's test database is alliance_<name>_test, which Postgres cuts off past 63 bytes.
+const maxNameLength = 40;
+
+/** The worktree name typed text gives before numbering past taken names: its words in letters from a to z, accents dropped, and digits, joined by dashes as scripts/new-worktree.sh requires, cut at a whole word, or within a first word too long to fit, to leave room for a number. Letters such as ø, ß or Cyrillic ones are dropped, so it is empty when no letter from a to z or digit is left. */
+export function nameBase(typed: string): string {
+  const words = typed
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  let base = "";
+  for (const word of words) {
+    const next = base ? `${base}-${word}` : word;
+    if (next.length > maxNameLength - 3) break;
+    base = next;
+  }
+  return base || (words[0]?.slice(0, maxNameLength - 3) ?? "");
+}
