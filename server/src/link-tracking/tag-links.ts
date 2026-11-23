@@ -67,14 +67,18 @@ export function tagTextLinks(params: {
   return tagged + text.slice(end);
 }
 
-/** Tags link targets and the bare URLs in text, which mail clients link. */
+/**
+ * Tags link targets and the bare URLs in text, which mail clients link.
+ * Anchors marked `data-untracked` keep their href, so opening them doesn't
+ * mark the message clicked.
+ */
 export function tagHtmlLinks(params: {
   html: string;
   trackingId: string;
 }): string {
   const { html, trackingId } = params;
   const $ = cheerio.load(html);
-  $("a[href]").each((_, element) => {
+  $("a[href]:not([data-untracked])").each((_, element) => {
     const href = $(element).attr("href");
     if (href) $(element).attr("href", tagUrl({ url: href, trackingId }));
   });

@@ -58,4 +58,13 @@ describe("tag links", () => {
     expect(html).toContain('href="https://youtube.com/x"');
     expect(html).toContain("&amp; <a");
   });
+
+  it("leaves links marked data-untracked alone", () => {
+    const html = tagHtmlLinks({
+      html: '<p><a href="https://app.example.org/tasks">Tasks</a> <a data-untracked href="https://app.example.org/people">People</a></p>',
+      trackingId,
+    });
+    expect(html).toContain('href="https://app.example.org/tasks?cid=track-1"');
+    expect(html).toContain('href="https://app.example.org/people"');
+  });
 });
