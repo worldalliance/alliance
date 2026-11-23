@@ -15,12 +15,20 @@ const shown = (value: string) =>
 describe("timeWheelColumns", () => {
   it.each([
     ["00:00", ["12", "00", "AM"]],
-    ["09:05", ["9", "05", "AM"]],
+    ["09:15", ["9", "15", "AM"]],
     ["12:30", ["12", "30", "PM"]],
-    ["23:59", ["11", "59", "PM"]],
     ["18:45:00", ["6", "45", "PM"]],
+    ["09:05", ["9", "00", "AM"]],
+    ["23:59", ["11", "45", "PM"]],
   ])("shows %s as %j", (value, expected) => {
     expect(shown(value)).toEqual(expected);
+  });
+
+  it("offers minutes in quarter hours", () => {
+    const minute = timeWheelColumns(0).find(
+      (column) => column.key === TimeWheelColumnKey.Minute,
+    );
+    expect(minute?.options).toEqual(["00", "15", "30", "45"]);
   });
 
   it("shows the default for a missing or unreadable answer", () => {
@@ -46,12 +54,13 @@ describe("turnTimeWheel", () => {
   };
 
   it.each([
-    ["09:05", TimeWheelColumnKey.Hour, "12", "00:05"],
-    ["09:05", TimeWheelColumnKey.Hour, "11", "11:05"],
-    ["09:05", TimeWheelColumnKey.Minute, "59", "09:59"],
-    ["09:05", TimeWheelColumnKey.Meridiem, "PM", "21:05"],
+    ["09:15", TimeWheelColumnKey.Hour, "12", "00:15"],
+    ["09:15", TimeWheelColumnKey.Hour, "11", "11:15"],
+    ["09:15", TimeWheelColumnKey.Minute, "45", "09:45"],
+    ["09:15", TimeWheelColumnKey.Meridiem, "PM", "21:15"],
     ["12:30", TimeWheelColumnKey.Meridiem, "AM", "00:30"],
     ["21:15", TimeWheelColumnKey.Hour, "12", "12:15"],
+    ["08:10", TimeWheelColumnKey.Hour, "9", "09:00"],
   ])("turns %s's %s wheel to %s for %s", (value, column, option, expected) => {
     expect(turn(value, column, option)).toBe(expected);
   });

@@ -16,8 +16,9 @@ export type TimeWheelColumn = {
 };
 
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
-const MINUTES = Array.from({ length: minutesInHour }, (_, i) =>
-  String(i).padStart(2, "0"),
+const MINUTE_STEP = 15;
+const MINUTES = Array.from({ length: minutesInHour / MINUTE_STEP }, (_, i) =>
+  String(i * MINUTE_STEP).padStart(2, "0"),
 );
 const MERIDIEMS = ["AM", "PM"];
 const MINUTES_IN_HALF_DAY = 12 * minutesInHour;
@@ -82,7 +83,7 @@ export function timeWheelColumns(totalMinutes: number): TimeWheelColumn[] {
       key: TimeWheelColumnKey.Minute,
       label: "Minute",
       options: MINUTES,
-      index: totalMinutes % minutesInHour,
+      index: Math.floor((totalMinutes % minutesInHour) / MINUTE_STEP),
     },
     {
       key: TimeWheelColumnKey.Meridiem,
@@ -105,7 +106,9 @@ export function turnTimeWheel(params: {
   );
   const hour12 = (hour + 1) % 12;
   return formatMinutesAs24h(
-    meridiem * MINUTES_IN_HALF_DAY + hour12 * minutesInHour + minute,
+    meridiem * MINUTES_IN_HALF_DAY +
+      hour12 * minutesInHour +
+      minute * MINUTE_STEP,
   );
 }
 

@@ -151,16 +151,16 @@ describe("time picker field", () => {
     );
 
   it("shows the answer on hour, minute and AM or PM wheels", () => {
-    render(<Field field={wheel} initial="21:05" />);
+    render(<Field field={wheel} initial="21:15" />);
 
     expect(screen.getByRole("group", { name: "Reminder time" })).toBeTruthy();
-    expect(shown()).toEqual(["9", "05", "PM"]);
+    expect(shown()).toEqual(["9", "15", "PM"]);
   });
 
   it("turns a wheel from the keyboard", () => {
     let answer: FormValue | undefined;
     render(
-      <Field field={wheel} initial="21:05" onValue={(v) => (answer = v)} />,
+      <Field field={wheel} initial="21:15" onValue={(v) => (answer = v)} />,
     );
 
     fireEvent.keyDown(screen.getByRole("spinbutton", { name: "Hour" }), {
@@ -170,8 +170,8 @@ describe("time picker field", () => {
       key: "End",
     });
 
-    expect(shown()).toEqual(["10", "59", "PM"]);
-    expect(answer).toBe("22:59");
+    expect(shown()).toEqual(["10", "45", "PM"]);
+    expect(answer).toBe("22:45");
   });
 
   it("selects the row a scroll settles on", () => {
@@ -234,7 +234,7 @@ describe("time picker field", () => {
     hour.scrollTop = 36 * 3;
     fireEvent.scroll(hour);
     act(() => jest.advanceTimersByTime(50));
-    minute.scrollTop = 36 * 30;
+    minute.scrollTop = 36 * 2;
     fireEvent.scroll(minute);
     act(() => jest.advanceTimersByTime(200));
     jest.useRealTimers();
