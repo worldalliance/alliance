@@ -11,6 +11,7 @@ import type { EntityManager, Repository } from "typeorm";
 import { z } from "zod";
 import { numberOptedOut, setNumberOptedOut } from "./mms-number.service";
 import { MmsOptout } from "./mms-optout.entity";
+import { MmsThread } from "./mms-thread.entity";
 import { emitThreadChanged } from "./mms.events";
 import { OptOutSource } from "./opt-out-source";
 
@@ -188,6 +189,9 @@ export class MmsUnsubService {
           select: { id: true, name: true },
         }),
         numberOptedOut(this.userRepository.manager, from),
+        this.userRepository.manager.findOneByOrFail(MmsThread, {
+          phoneNumber: from,
+        }),
       ]),
     );
     if (!found.ok) {
@@ -197,12 +201,18 @@ export class MmsUnsubService {
       );
       return;
     }
-    const [members, optedOut] = found.value;
+    const [members, optedOut, thread] = found.value;
     this.eventLogService.sendMessage({
       type: EventType.SmsInbound,
-      payload: { phoneNumber: from, members, optedOut, body },
+      payload: {
+        phoneNumber: from,
+        threadId: thread.id,
+        members,
+        optedOut,
+        body,
+      },
       blob: { from, to, body },
-      userId: null,
+      userId: members.length === 1 ? members[0].id : null,
     });
   }
 }

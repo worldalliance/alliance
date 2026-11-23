@@ -63,8 +63,8 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_resubscribe",
   },
   {
-    "message": "Jane Doe texted: “Who is this?” Reply from Needs reply.",
-    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” Reply from <https://admin.example.org/needs-reply|Needs reply>.",
+    "message": "Jane Doe texted: “Who is this?” Reply in the thread on Texts.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” Reply in <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|the thread on Texts>.",
     "type": "sms_inbound",
   },
   {
@@ -73,8 +73,8 @@ exports[`renderEvent renders every event type 1`] = `
     "type": "sms_inbound",
   },
   {
-    "message": "+15555550100, which no member has, texted: “Who is this?” Reply from Needs reply.",
-    "slack": "+15555550100, which no member has, texted: “Who is this?” Reply from <https://admin.example.org/needs-reply|Needs reply>.",
+    "message": "+15555550100, which no member has, texted: “Who is this?” Reply in the thread on Texts.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” Reply in <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|the thread on Texts>.",
     "type": "sms_inbound",
   },
   {

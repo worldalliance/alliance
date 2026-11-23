@@ -52,6 +52,7 @@ export interface EventPayloads {
   };
   [EventType.SmsInbound]: {
     phoneNumber: string;
+    threadId: string;
     members: Named[];
     /** The number has opted out, so Needs reply omits it. */
     optedOut: boolean;
@@ -205,13 +206,19 @@ const FORMATS: {
     m
       ? text`${member(m)} opted back in to texts by replying “${rawBody}”.`
       : text`${phoneNumber} replied “${rawBody}” to opt back in to texts, but no member has that number.`,
-  [EventType.SmsInbound]: ({ phoneNumber, members, optedOut, body }) => {
+  [EventType.SmsInbound]: ({
+    phoneNumber,
+    threadId,
+    members,
+    optedOut,
+    body,
+  }) => {
     const texted =
       members.length === 0
         ? text`${phoneNumber}, which no member has, texted: “${body}”`
         : text`${join(members.map(member), ", ")} texted: “${body}”`;
     if (!optedOut) {
-      return text`${texted} Reply from ${adminLink("Needs reply", "/needs-reply")}.`;
+      return text`${texted} Reply in ${adminLink("the thread on Texts", `/texts/${threadId}`)}.`;
     }
     return text`${texted} The number has opted out of texts.`;
   },

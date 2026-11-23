@@ -4,50 +4,15 @@ import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
 import { MmsThread } from "src/mms/mms-thread.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
-import { MmsModule } from "src/mms/mms.module";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import { lockPhoneNumber } from "src/user/user.utils";
 import supertest from "supertest";
 import type { Repository } from "typeorm";
-import {
-  closeTestApp,
-  createTestApp,
-  eventually,
-  TestContext,
-  waitForLockWait,
-} from "./e2e-test-utils";
+import { eventually, waitForLockWait } from "./e2e-test-utils";
 import { TWILIO_NUMBER } from "./mms-fixtures";
+import { mmsInboundApp } from "./mms-inbound-app";
 
-let ctx: TestContext;
-const pendingEventLogs = new Set<ReturnType<EventLogService["sendMessage"]>>();
-
-const drainEventLogs = async (): Promise<void> => {
-  await Promise.allSettled([...pendingEventLogs]);
-};
-
-beforeAll(async () => {
-  ctx = await createTestApp([MmsModule]);
-  const eventLogService = ctx.app.get(EventLogService);
-  const sendMessage = eventLogService.sendMessage.bind(eventLogService);
-  jest.spyOn(eventLogService, "sendMessage").mockImplementation((data) => {
-    const pending = sendMessage(data);
-    pendingEventLogs.add(pending);
-    void pending.then(
-      () => pendingEventLogs.delete(pending),
-      () => pendingEventLogs.delete(pending),
-    );
-    return pending;
-  });
-});
-
-afterEach(async () => {
-  await drainEventLogs();
-});
-
-afterAll(async () => {
-  await drainEventLogs();
-  await closeTestApp(ctx.app);
-});
+const { ctx, drainEventLogs } = mmsInboundApp();
 
 describe("Inbound MMS keywords (e2e)", () => {
   let userRepo: Repository<User>;
@@ -56,7 +21,7 @@ describe("Inbound MMS keywords (e2e)", () => {
   let memberId: number;
 
   const inbound = (from: string, body: string, to = TWILIO_NUMBER) =>
-    supertest(ctx.app.getHttpServer())
+    supertest(ctx().app.getHttpServer())
       .post("/mms/inbound")
       .type("form")
       .send({ From: from, To: to, Body: body, MessageSid: randomUUID() });
@@ -72,9 +37,9 @@ describe("Inbound MMS keywords (e2e)", () => {
     });
 
   beforeAll(async () => {
-    userRepo = ctx.dataSource.getRepository(User);
-    optoutRepo = ctx.dataSource.getRepository(MmsOptout);
-    eventLogRepo = ctx.dataSource.getRepository(EventLog);
+    userRepo = ctx().dataSource.getRepository(User);
+    optoutRepo = ctx().dataSource.getRepository(MmsOptout);
+    eventLogRepo = ctx().dataSource.getRepository(EventLog);
 
     const member = await userRepo.save(
       userRepo.create({
@@ -119,7 +84,7 @@ describe("Inbound MMS keywords (e2e)", () => {
   });
 
   it("rolls back the opt-out audit if unsubscribing the member fails", async () => {
-    await ctx.dataSource.query(`
+    await ctx().dataSource.query(`
       CREATE FUNCTION fail_test_stop_update() RETURNS trigger AS $$
       BEGIN
         IF NEW."phoneNumber" = '+14155559001'
@@ -130,7 +95,7 @@ describe("Inbound MMS keywords (e2e)", () => {
       END;
       $$ LANGUAGE plpgsql
     `);
-    await ctx.dataSource.query(`
+    await ctx().dataSource.query(`
       CREATE TRIGGER fail_test_stop_update
       BEFORE UPDATE OF "phoneNumberUnsubscribed" ON "user"
       FOR EACH ROW EXECUTE FUNCTION fail_test_stop_update()
@@ -149,10 +114,10 @@ describe("Inbound MMS keywords (e2e)", () => {
         auditCountBefore,
       );
     } finally {
-      await ctx.dataSource.query(
+      await ctx().dataSource.query(
         `DROP TRIGGER IF EXISTS fail_test_stop_update ON "user"`,
       );
-      await ctx.dataSource.query(
+      await ctx().dataSource.query(
         `DROP FUNCTION IF EXISTS fail_test_stop_update()`,
       );
     }
@@ -190,7 +155,7 @@ describe("Inbound MMS keywords (e2e)", () => {
     await drainEventLogs();
     await eventLogRepo.delete({ event: EventType.SmsResubscribe });
 
-    await ctx.dataSource.query(`
+    await ctx().dataSource.query(`
       CREATE FUNCTION fail_test_start_update() RETURNS trigger AS $$
       BEGIN
         IF NEW."phoneNumber" = '+14155559001'
@@ -201,7 +166,7 @@ describe("Inbound MMS keywords (e2e)", () => {
       END;
       $$ LANGUAGE plpgsql
     `);
-    await ctx.dataSource.query(`
+    await ctx().dataSource.query(`
       CREATE TRIGGER fail_test_start_update
       BEFORE UPDATE OF "phoneNumberUnsubscribed" ON "user"
       FOR EACH ROW EXECUTE FUNCTION fail_test_start_update()
@@ -215,10 +180,10 @@ describe("Inbound MMS keywords (e2e)", () => {
       await drainEventLogs();
       expect(await resubscribeLog()).toEqual([]);
     } finally {
-      await ctx.dataSource.query(
+      await ctx().dataSource.query(
         `DROP TRIGGER IF EXISTS fail_test_start_update ON "user"`,
       );
-      await ctx.dataSource.query(
+      await ctx().dataSource.query(
         `DROP FUNCTION IF EXISTS fail_test_start_update()`,
       );
     }
@@ -279,14 +244,14 @@ describe("Inbound MMS keywords (e2e)", () => {
           phoneNumberUnsubscribed: flag,
         }),
       );
-      const runner = ctx.dataSource.createQueryRunner();
+      const runner = ctx().dataSource.createQueryRunner();
       await runner.startTransaction();
       try {
         await runner.manager.update(User, leaving.id, {
           phoneNumber: "+14155559004",
         });
         const sent = inbound("+14155559003", keyword).then((res) => res.status);
-        await waitForLockWait(ctx.dataSource);
+        await waitForLockWait(ctx().dataSource);
         await runner.commitTransaction();
         expect(await sent).toBe(201);
       } finally {
@@ -332,12 +297,12 @@ describe("Inbound MMS keywords (e2e)", () => {
         { id: memberId },
         { phoneNumberUnsubscribed: before },
       );
-      const runner = ctx.dataSource.createQueryRunner();
+      const runner = ctx().dataSource.createQueryRunner();
       await runner.startTransaction();
       try {
         await lockPhoneNumber(runner.manager, "+14155559001");
         const sent = inbound("+14155559001", keyword).then((res) => res.status);
-        await waitForLockWait(ctx.dataSource);
+        await waitForLockWait(ctx().dataSource);
         expect(await unsubscribed()).toBe(before);
         await runner.commitTransaction();
         expect(await sent).toBe(201);
@@ -361,8 +326,8 @@ describe("Inbound MMS keywords (e2e)", () => {
       }),
     ).toEqual([expect.objectContaining({ user: null, rawBody: "STOP" })]);
     expect(
-      await ctx.dataSource
-        .getRepository(MmsThread)
+      await ctx()
+        .dataSource.getRepository(MmsThread)
         .findOneBy({ phoneNumber: "+14155559999" }),
     ).toEqual(expect.objectContaining({ optedOut: true }));
   });
@@ -372,8 +337,8 @@ describe("Inbound MMS keywords (e2e)", () => {
     await inbound("+14155559998", "START");
 
     expect(
-      await ctx.dataSource
-        .getRepository(MmsThread)
+      await ctx()
+        .dataSource.getRepository(MmsThread)
         .findOneBy({ phoneNumber: "+14155559998" }),
     ).toEqual(expect.objectContaining({ optedOut: false }));
   });
@@ -412,159 +377,73 @@ describe("Inbound MMS keywords (e2e)", () => {
         () => eventLogRepo.findBy({ event: EventType.SmsInbound }),
         (rows) => rows.some((row) => row.blob?.body === body),
       );
-      return logs.find((row) => row.blob?.body === body)!.message;
+      return logs.find((row) => row.blob?.body === body)!;
     };
 
-    it("pointing staff to Needs reply when the member is subscribed", async () => {
-      expect(await inboundMessage("+14155559001", "subscribed hi")).toBe(
-        "Stopper texted: “subscribed hi” Reply from Needs reply.",
+    it("against the member, pointing staff to the number's thread", async () => {
+      const logged = await inboundMessage("+14155559001", "subscribed hi");
+
+      expect(logged.message).toBe(
+        "Stopper texted: “subscribed hi” Reply in the thread on Texts.",
+      );
+      expect(logged.userId).toBe(memberId);
+      const thread = await ctx()
+        .dataSource.getRepository(MmsThread)
+        .findOneByOrFail({ phoneNumber: "+14155559001" });
+      expect(ctx().app.get(EventLogService).sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: EventType.SmsInbound,
+          payload: expect.objectContaining({
+            threadId: thread.id,
+            body: "subscribed hi",
+          }),
+        }),
       );
     });
 
     it("saying a member's number opted out when it has", async () => {
-      await ctx.dataSource
-        .getRepository(MmsThread)
+      await ctx()
+        .dataSource.getRepository(MmsThread)
         .upsert({ phoneNumber: "+14155559001", optedOut: true }, [
           "phoneNumber",
         ]);
 
-      expect(await inboundMessage("+14155559001", "opted out hi")).toBe(
+      expect(
+        (await inboundMessage("+14155559001", "opted out hi")).message,
+      ).toBe(
         "Stopper texted: “opted out hi” The number has opted out of texts.",
       );
     });
 
     it("naming the number when no member has it", async () => {
-      expect(await inboundMessage("+14155559998", "stranger hi")).toBe(
-        "+14155559998, which no member has, texted: “stranger hi” Reply from Needs reply.",
+      const logged = await inboundMessage("+14155559998", "stranger hi");
+
+      expect(logged.message).toBe(
+        "+14155559998, which no member has, texted: “stranger hi” Reply in the thread on Texts.",
       );
+      expect(logged.userId).toBeNull();
     });
 
     it("saying a number no member has opted out when it has", async () => {
-      await ctx.dataSource
-        .getRepository(MmsThread)
+      await ctx()
+        .dataSource.getRepository(MmsThread)
         .insert({ phoneNumber: "+14155559997", optedOut: true });
 
-      expect(await inboundMessage("+14155559997", "stranger again")).toBe(
+      expect(
+        (await inboundMessage("+14155559997", "stranger again")).message,
+      ).toBe(
         "+14155559997, which no member has, texted: “stranger again” The number has opted out of texts.",
       );
     });
 
     it("answering Twilio when the member lookup fails", async () => {
       const find = jest
-        .spyOn(ctx.app.get(MmsUnsubService)["userRepository"], "find")
+        .spyOn(ctx().app.get(MmsUnsubService)["userRepository"], "find")
         .mockRejectedValueOnce(new Error("connection lost"));
 
       await inbound("+14155559001", "lookup fails").expect(201);
       expect(find).toHaveBeenCalledTimes(1);
       find.mockRestore();
     });
-  });
-});
-
-describe("Inbound MMS keywords for a shared number (e2e)", () => {
-  let userRepo: Repository<User>;
-  let optoutRepo: Repository<MmsOptout>;
-  let eventLogRepo: Repository<EventLog>;
-  let memberIds: number[];
-
-  const SHARED = "+14155559002";
-
-  const inbound = (from: string, body: string) =>
-    supertest(ctx.app.getHttpServer()).post("/mms/inbound").type("form").send({
-      From: from,
-      To: TWILIO_NUMBER,
-      Body: body,
-      MessageSid: randomUUID(),
-    });
-
-  const unsubscribedFlags = async () =>
-    Promise.all(
-      memberIds.map(
-        async (id) =>
-          (await userRepo.findOneByOrFail({ id })).phoneNumberUnsubscribed,
-      ),
-    );
-
-  beforeAll(async () => {
-    userRepo = ctx.dataSource.getRepository(User);
-    optoutRepo = ctx.dataSource.getRepository(MmsOptout);
-    eventLogRepo = ctx.dataSource.getRepository(EventLog);
-
-    const members = await Promise.all(
-      [
-        ["sharer-a@example.com", "Sharer A", "(415) 555-9002"],
-        ["sharer-b@example.com", "Sharer B", "415.555.9002"],
-      ].map(([email, name, phoneNumber]) =>
-        userRepo.save(
-          userRepo.create({
-            email,
-            password: "pass",
-            name,
-            referralSource: ReferralSource.None,
-            phoneNumber,
-          }),
-        ),
-      ),
-    );
-    memberIds = members.map((member) => member.id);
-
-    expect(await userRepo.countBy({ phoneNumber: SHARED })).toBe(2);
-  });
-
-  beforeEach(async () => {
-    await userRepo.update(
-      { phoneNumber: SHARED },
-      { phoneNumberUnsubscribed: false },
-    );
-    await optoutRepo.delete({ phoneNumber: SHARED });
-    await eventLogRepo.delete({ event: EventType.SmsResubscribe });
-  });
-
-  const byId = (a: number, b: number) => a - b;
-
-  it("unsubscribes every member on the number", async () => {
-    const res = await inbound(SHARED, "STOP");
-
-    expect(res.status).toBe(201);
-    expect(await unsubscribedFlags()).toEqual([true, true]);
-  });
-
-  it("logs the opt-out against each member, not just one", async () => {
-    await inbound(SHARED, "STOP");
-
-    const logged = await optoutRepo.find({
-      where: { phoneNumber: SHARED },
-      relations: { user: true },
-    });
-    expect(logged.map((row) => row.user?.id).sort(byId)).toEqual(
-      [...memberIds].sort(byId),
-    );
-  });
-
-  it("resubscribes every member on the number", async () => {
-    await inbound(SHARED, "STOP");
-    expect(await unsubscribedFlags()).toEqual([true, true]);
-
-    await inbound(SHARED, "START");
-
-    expect(await unsubscribedFlags()).toEqual([false, false]);
-  });
-
-  it("logs the resubscribe against each member, not just one", async () => {
-    await inbound(SHARED, "START");
-
-    const logged = await eventually(
-      () =>
-        eventLogRepo.find({
-          where: { event: EventType.SmsResubscribe },
-          relations: { user: true },
-        }),
-      (rows) => rows.length >= memberIds.length,
-    );
-    const attributed = logged
-      .map((row) => row.user?.id)
-      .filter((id): id is number => id !== undefined)
-      .sort(byId);
-    expect(attributed).toEqual([...memberIds].sort(byId));
   });
 });
