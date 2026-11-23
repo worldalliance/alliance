@@ -1,11 +1,15 @@
 import { R } from "@alliance/common/result";
 import { randomUUID } from "node:crypto";
 import { checkStoredFormulas } from "../scripts/lib/stored-formula-problems";
+import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { FormulaVersion } from "../src/formulas/entities/formula-version.entity";
 import { Formula } from "../src/formulas/entities/formula.entity";
 import { FormulasModule } from "../src/formulas/formulas.module";
 import { MemberListVersion } from "../src/member-lists/entities/member-list-version.entity";
 import { MemberList } from "../src/member-lists/entities/member-list.entity";
+import { SuiteSplitVersion } from "../src/suite-splits/entities/suite-split-version.entity";
+import { SuiteSplit } from "../src/suite-splits/entities/suite-split.entity";
+import { EVERYONE_ELSE } from "../src/suite-splits/split-groups";
 import {
   closeTestApp,
   createTestApp,
@@ -40,6 +44,8 @@ describe("Stored formula re-check (e2e)", () => {
     ctx = await createTestApp([FormulasModule]);
   }, 50000);
   beforeEach(async () => {
+    await ctx.dataSource.getRepository(SuiteSplitVersion).deleteAll();
+    await ctx.dataSource.getRepository(SuiteSplit).deleteAll();
     await ctx.dataSource.getRepository(FormulaVersion).deleteAll();
     await ctx.dataSource.getRepository(Formula).deleteAll();
     await ctx.dataSource.getRepository(MemberListVersion).deleteAll();
@@ -56,7 +62,7 @@ describe("Stored formula re-check (e2e)", () => {
       tree: { kind: "input", id: "missing" },
       deleted: true,
     });
-    expect(await check()).toEqual(R.success(1));
+    expect(await check()).toEqual(R.success({ formulas: 1, groups: 0 }));
   });
 
   it("checks formulas against the member lists stored now", async () => {
@@ -67,7 +73,7 @@ describe("Stored formula re-check (e2e)", () => {
       .getRepository(MemberListVersion)
       .insert({ listId: list.id, savedById: null });
     await store({ name: "onList", tree: { kind: "onList", listId: list.id } });
-    expect(await check()).toEqual(R.success(1));
+    expect(await check()).toEqual(R.success({ formulas: 1, groups: 0 }));
     await ctx.dataSource.getRepository(MemberList).softDelete(list.id);
     const result = await check();
     expect(result.ok).toBe(false);
@@ -119,5 +125,67 @@ describe("Stored formula re-check (e2e)", () => {
         `Formula \`__internal\` (${id}): A name can't start with \`__\`.`,
       );
     }
+  });
+
+  it("names a draft split's group that reads a list deleted since", async () => {
+    const list = await ctx.dataSource
+      .getRepository(MemberList)
+      .save({ name: "Volunteers" });
+    await ctx.dataSource
+      .getRepository(MemberListVersion)
+      .insert({ listId: list.id, savedById: null });
+    const suite = await ctx.dataSource
+      .getRepository(ActionSuite)
+      .save({ name: "Climate" });
+    await ctx.dataSource
+      .getRepository(SuiteSplit)
+      .insert({ suiteId: suite.id, createdById: null });
+    const group = (
+      name: string,
+      condition: Record<string, unknown> | null,
+    ) => ({
+      id: randomUUID(),
+      name,
+      condition,
+      fallback: null,
+      noRequiredWorkTick: null,
+      cells: [],
+    });
+    await ctx.dataSource.getRepository(SuiteSplitVersion).insert({
+      suiteId: suite.id,
+      groups: [
+        group("On it", { kind: "onList", listId: list.id }),
+        group(EVERYONE_ELSE, null),
+      ],
+      savedById: null,
+    });
+    expect(await check()).toEqual(R.success({ formulas: 0, groups: 1 }));
+    await ctx.dataSource.getRepository(MemberList).softDelete(list.id);
+    const result = await check();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain(
+        `Group "On it" of suite "Climate" (${suite.id})`,
+      );
+    }
+  });
+
+  it("stops on a draft split version the release can't parse", async () => {
+    const suite = await ctx.dataSource
+      .getRepository(ActionSuite)
+      .save({ name: "Climate" });
+    await ctx.dataSource
+      .getRepository(SuiteSplit)
+      .insert({ suiteId: suite.id, createdById: null });
+    const { identifiers } = await ctx.dataSource
+      .getRepository(SuiteSplitVersion)
+      .insert({
+        suiteId: suite.id,
+        groups: [{ unknown: true }],
+        savedById: null,
+      });
+    await expect(check()).rejects.toThrow(
+      `split version ${identifiers[0].id} doesn't parse`,
+    );
   });
 });

@@ -165,7 +165,7 @@ export class SuiteSplitsService {
   }): Promise<SplitSaveResult> {
     const { suiteId, baseVersionId, drafts, savedById } = params;
     const saved = await this.dataSource.transaction(async (manager) => {
-      // This check reads formulas, so it holds the lock formula saves take.
+      // Formula saves check splits, and this check reads formulas.
       await lockUntilCommit(manager, FORMULAS_LOCK);
       const actions = await suiteActions(manager, suiteId, { lock: true });
       const current = await currentSplitVersion(manager, suiteId);

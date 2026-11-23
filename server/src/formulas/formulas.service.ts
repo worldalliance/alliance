@@ -21,6 +21,15 @@ import {
   currentLists,
   deletedListNames,
 } from "src/member-lists/member-list-store";
+import {
+  draftSplits,
+  labelOf,
+  outsideReadProblems,
+  splitDependents,
+  writeGroupFixes,
+  type GroupFix,
+  type SplitDependentLabel,
+} from "src/suite-splits/split-dependents";
 import { DataSource, In, type EntityManager } from "typeorm";
 import type { FormulaDtoArgs, FormulaVersionDtoArgs } from "./dto/formula.dto";
 import {
@@ -46,6 +55,9 @@ export type FormulaEdit = {
 };
 
 export type FormulaDeletion = { id: string; baseVersionId: number };
+
+/** A refusal, naming the split group when it is in one. */
+export type FormulaSaveProblem = SaveProblem & { split?: SplitDependentLabel };
 
 /** A member list to delete; `baseVersionId` is the membership the admin saw. */
 export type ListDeletion = { id: string; baseVersionId: number };
@@ -100,22 +112,26 @@ export class FormulasService {
   }
 
   /**
-   * Saves `edits` and deletes `deletions` and `deletedLists` together, or
-   * returns why the check refused them and writes nothing. Throws
-   * `ConflictException` when a formula or list changed since the admin opened
-   * the version they edited.
+   * Saves `edits` and deletes `deletions` and `deletedLists` together, with
+   * `groupFixes`, or returns why the check refused them and writes nothing.
+   * Throws `ConflictException` when a formula, list or split changed since the
+   * admin opened it or the split's suite has gone live, and
+   * `BadRequestException` for a fix of a group without a condition or a second
+   * fix of one group.
    */
   async save({
     edits,
     deletions,
     deletedLists,
+    groupFixes,
     savedById,
   }: {
     edits: FormulaEdit[];
     deletions: FormulaDeletion[];
     deletedLists: ListDeletion[];
+    groupFixes: GroupFix[];
     savedById: number;
-  }): Promise<SaveProblem[]> {
+  }): Promise<FormulaSaveProblem[]> {
     const ids = [...edits, ...deletions].map((each) => each.id);
     if (new Set(ids).size < ids.length) {
       throw new BadRequestException(
@@ -142,16 +158,33 @@ export class FormulasService {
       }
       const lists = await currentLists(manager);
       assertListBases(lists, deletedLists);
+      const splits = await draftSplits(manager);
+      const catalog = catalogWith(
+        lists.filter((list) => !listIds.includes(list.id)),
+      );
+      const deletedIds = deletions.map((deletion) => deletion.id);
       const checked = checkNamedSave({
-        catalog: catalogWith(
-          lists.filter((list) => !listIds.includes(list.id)),
-        ),
+        catalog,
         named: current.map(asNamed),
+        dependents: splitDependents(splits, groupFixes),
         save: edits.map(({ id, name, text }) => ({ id, name, source: text })),
-        deleted: deletions.map((deletion) => deletion.id),
+        deleted: deletedIds,
         deletedLists: lists.filter((list) => listIds.includes(list.id)),
       });
-      if (!checked.ok) return checked.error;
+      const label = (problem: SaveProblem): FormulaSaveProblem => ({
+        ...problem,
+        split: labelOf(splits, problem.id),
+      });
+      if (!checked.ok) return checked.error.map(label);
+      const { after } = checked.value;
+      const names = printNames({ scope: { catalog, named: after } });
+      const outside = outsideReadProblems({
+        splits,
+        named: after,
+        fixed: checked.value.dependents,
+        print: (tree) => printExpression(tree, names),
+      });
+      if (outside.length > 0) return outside.map(label);
 
       const byId = new Map(current.map((each) => [each.formula.id, each]));
       const changed = edits.flatMap((edit, i) => {
@@ -165,6 +198,13 @@ export class FormulasService {
           : [{ ...edit, tree }];
       });
       await write({ manager, changed, deletions, savedById });
+      await writeGroupFixes({
+        manager,
+        splits,
+        fixes: groupFixes,
+        fixed: checked.value.dependents,
+        savedById,
+      });
       if (listIds.length > 0) {
         await manager.softDelete(MemberList, { id: In(listIds) });
       }
