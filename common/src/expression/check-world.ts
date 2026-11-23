@@ -2,7 +2,13 @@ import { escapeRegExp } from "es-toolkit";
 import ts from "typescript";
 import { FORMULA_LIB } from "../forms/formula-lib";
 import { FORMULA_TARGET } from "../forms/formula-renderable";
-import { IS_MISSING, TypeKind, type Catalog, type ValueType } from "./catalog";
+import {
+  IS_MISSING,
+  IS_ON_LIST,
+  TypeKind,
+  type Catalog,
+  type ValueType,
+} from "./catalog";
 import { BARE_KEY } from "./print";
 
 const LIB_FILE = "/lib.expression.d.ts";
@@ -128,6 +134,7 @@ const LIB_SNAPSHOT = ts.ScriptSnapshot.fromString(FORMULA_LIB);
 function declarations(catalog: Catalog): string {
   return [
     `declare function ${IS_MISSING}(value: unknown): value is null | undefined;`,
+    `declare function ${IS_ON_LIST}(list: ${listNames(catalog)}): boolean;`,
     `declare const ${LIST_BRAND}: unique symbol;`,
     `interface Array<T> {`,
     `  readonly [${LIST_BRAND}]: true;`,
@@ -152,6 +159,12 @@ function declarations(catalog: Catalog): string {
       return `declare function ${fn.name}(${params.join(", ")}): ${typeScriptType(fn.returns)};`;
     }),
   ].join("\n");
+}
+
+function listNames({ lists }: Catalog): string {
+  return lists.length === 0
+    ? "never"
+    : lists.map((list) => JSON.stringify(list.name)).join(" | ");
 }
 
 /** Script files sharing one global scope, checked by one language service. */

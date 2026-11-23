@@ -49,7 +49,7 @@ export class FormulasController {
   @ApiOkResponse({ type: SaveFormulasResultDto })
   @ApiResponse({
     status: 409,
-    description: "A formula changed since the admin opened it.",
+    description: "A formula or list changed since the admin opened it.",
   })
   async saveAdmin(
     @Body() body: SaveFormulasDto,
@@ -59,6 +59,7 @@ export class FormulasController {
       problems: await this.formulasService.save({
         edits: body.edits,
         deletions: body.deletions,
+        deletedLists: body.deletedLists ?? [],
         savedById: user.sub,
       }),
     });

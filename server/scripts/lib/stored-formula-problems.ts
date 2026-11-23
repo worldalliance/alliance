@@ -7,7 +7,7 @@ import { R, type Result } from "@alliance/common/result";
 import type { EntityManager } from "typeorm";
 import { z } from "zod";
 import { readFormulaVersion } from "../../src/formulas/entities/formula-version.entity";
-import { FORMULA_CATALOG } from "../../src/formulas/formula-catalog";
+import { formulaCatalog } from "../../src/formulas/formula-catalog";
 import {
   asNamed,
   currentVersions,
@@ -43,7 +43,7 @@ export async function checkStoredFormulas(
     version.ok ? [{ formula, version: version.value }] : [],
   );
   const checked = checkStored({
-    catalog: FORMULA_CATALOG,
+    catalog: await formulaCatalog(manager),
     named: current.map(asNamed),
   });
   return checked.ok

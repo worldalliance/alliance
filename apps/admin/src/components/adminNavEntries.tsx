@@ -29,6 +29,7 @@ import {
   SquareActivity,
   SquareMousePointer,
   UserPlus,
+  UserRoundCheck,
   Users,
   Waypoints,
 } from "lucide-react";
@@ -80,6 +81,11 @@ export const navEntries = (counts: {
       },
       { to: "/contracts", label: "Contracts", icon: <FileText size={16} /> },
       { to: "/formulas", label: "Formulas", icon: <Sigma size={16} /> },
+      {
+        to: "/member-lists",
+        label: "Member lists",
+        icon: <UserRoundCheck size={16} />,
+      },
     ],
   },
   {

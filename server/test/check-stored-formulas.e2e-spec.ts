@@ -4,6 +4,8 @@ import { checkStoredFormulas } from "../scripts/lib/stored-formula-problems";
 import { FormulaVersion } from "../src/formulas/entities/formula-version.entity";
 import { Formula } from "../src/formulas/entities/formula.entity";
 import { FormulasModule } from "../src/formulas/formulas.module";
+import { MemberListVersion } from "../src/member-lists/entities/member-list-version.entity";
+import { MemberList } from "../src/member-lists/entities/member-list.entity";
 import {
   closeTestApp,
   createTestApp,
@@ -40,6 +42,8 @@ describe("Stored formula re-check (e2e)", () => {
   beforeEach(async () => {
     await ctx.dataSource.getRepository(FormulaVersion).deleteAll();
     await ctx.dataSource.getRepository(Formula).deleteAll();
+    await ctx.dataSource.getRepository(MemberListVersion).deleteAll();
+    await ctx.dataSource.getRepository(MemberList).deleteAll();
   });
   afterAll(async () => {
     await closeTestApp(ctx.app);
@@ -53,6 +57,23 @@ describe("Stored formula re-check (e2e)", () => {
       deleted: true,
     });
     expect(await check()).toEqual(R.success(1));
+  });
+
+  it("checks formulas against the member lists stored now", async () => {
+    const list = await ctx.dataSource
+      .getRepository(MemberList)
+      .save({ name: "Volunteers" });
+    await ctx.dataSource
+      .getRepository(MemberListVersion)
+      .insert({ listId: list.id, savedById: null });
+    await store({ name: "onList", tree: { kind: "onList", listId: list.id } });
+    expect(await check()).toEqual(R.success(1));
+    await ctx.dataSource.getRepository(MemberList).softDelete(list.id);
+    const result = await check();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("This uses a list that no longer exists.");
+    }
   });
 
   it("names each formula the release breaks, and none that pass", async () => {

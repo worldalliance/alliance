@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { MATH_OBJECT_NAME } from "../forms/formula-allowlist";
-import { IS_MISSING, type Scope } from "./catalog";
+import { IS_MISSING, IS_ON_LIST, type Scope } from "./catalog";
 import { INTERNAL_PREFIX } from "./check-world";
 
 // The parser reads text as a sloppy-mode script, where these are names, but
@@ -31,6 +31,7 @@ const UNDECLARABLE: ReadonlySet<string> = new Set([
 const LANGUAGE_NAMES: ReadonlySet<string> = new Set([
   MATH_OBJECT_NAME,
   IS_MISSING,
+  IS_ON_LIST,
   "undefined",
 ]);
 
@@ -102,6 +103,10 @@ export function checkScope(scope: Scope): void {
       throw new Error(`\`${name}\` ${SCOPE_MESSAGES[broken]}.`);
     }
     taken.add(name);
+  }
+  const lists = new Set(scope.catalog.lists.map((list) => list.name));
+  if (lists.size < scope.catalog.lists.length) {
+    throw new Error("Two lists in `catalog.lists` share a name.");
   }
 }
 

@@ -97,6 +97,7 @@ const recordCatalog = {
       returns: string,
     },
   ],
+  lists: [],
 } satisfies Catalog;
 
 test.each([
@@ -216,6 +217,7 @@ test("a record with a numeric field name passes for a record", () => {
       functions: [
         { name: "first", params: [{ name: "r", type: pair }], returns: string },
       ],
+      lists: [],
     },
     named: [],
   };
@@ -285,6 +287,7 @@ describe("a record read by a key input", () => {
         },
       ],
       functions: [],
+      lists: [],
     },
     named: [],
   } satisfies Scope;
@@ -342,7 +345,7 @@ test("a record too wide for tsc to print whole loses the brand too", () => {
 test("a record type's message names its fields as written", () => {
   const checked = checkExpression({
     source: "[1]",
-    scope: { catalog: { inputs: [], functions: [] }, named: [] },
+    scope: { catalog: { inputs: [], functions: [], lists: [] }, named: [] },
     rule: {
       ...variable,
       type: { kind: TypeKind.Record, fields: { name: string } },
@@ -371,6 +374,7 @@ test("a message keeps the spacing inside text values", () => {
           },
         ],
         functions: [],
+        lists: [],
       },
       named: [],
     },
@@ -410,6 +414,7 @@ test("a fallback after a read by key is needless only when every value its key t
         { id: "keyBC", label: "Key BC", type: choice(["b", "c"]) },
       ],
       functions: [],
+      lists: [],
     },
     named: [],
   } satisfies Scope;

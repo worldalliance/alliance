@@ -35,6 +35,7 @@ import {
   LAMBDA_ONLY_AS_ARGUMENT,
   REMOVED_FORMULA,
   REMOVED_INPUT,
+  REMOVED_LIST,
   mathFunctionName,
   type Expr,
 } from "./tree";
@@ -45,6 +46,8 @@ export type Bindings = Scope & {
     name: string,
     args: readonly Value[],
   ) => Result<Value, EvalFailure>;
+  /** Whether the member is on the list, at the membership the host pins. */
+  isOnList: (listId: string) => Result<boolean, EvalFailure>;
 };
 
 type Params = ReadonlyMap<string, Value>;
@@ -164,6 +167,10 @@ class Evaluator {
       }
       case ExprKind.Lambda:
         throw evalError(LAMBDA_ONLY_AS_ARGUMENT);
+      case ExprKind.OnList:
+        if (!this.bindings.catalog.lists.some(({ id }) => id === expr.listId))
+          throw evalError(REMOVED_LIST);
+        return settle(this.bindings.isOnList(expr.listId));
       default:
         throw new Error(`unknown kind: ${expr satisfies never}`);
     }

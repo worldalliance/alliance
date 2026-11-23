@@ -9,6 +9,7 @@ import { R, type Result } from "../result";
 import {
   IS_MISSING,
   IS_MISSING_HINT,
+  IS_ON_LIST,
   type Diagnostic,
   type Scope,
 } from "./catalog";
@@ -49,6 +50,7 @@ class Converter {
   private readonly functions: ReadonlySet<string>;
   private readonly inputs: ReadonlySet<string>;
   private readonly namedIds: ReadonlyMap<string, string>;
+  private readonly listIds: ReadonlyMap<string, string>;
 
   constructor(
     private readonly file: ts.SourceFile,
@@ -57,6 +59,9 @@ class Converter {
     this.functions = new Set(scope.catalog.functions.map((fn) => fn.name));
     this.inputs = new Set(scope.catalog.inputs.map((input) => input.id));
     this.namedIds = new Map(scope.named.map((named) => [named.name, named.id]));
+    this.listIds = new Map(
+      scope.catalog.lists.map((list) => [list.name, list.id]),
+    );
   }
 
   private fail(node: ts.Node, message: string): Expr {
@@ -222,10 +227,33 @@ class Converter {
     if (this.inputs.has(name)) return { kind: ExprKind.Input, id: name };
     const named = this.namedIds.get(name);
     if (named !== undefined) return { kind: ExprKind.Ref, id: named };
-    if (this.functions.has(name) || name === IS_MISSING) {
+    if (
+      this.functions.has(name) ||
+      name === IS_MISSING ||
+      name === IS_ON_LIST
+    ) {
       return this.fail(node, `\`${name}\` is a function; call it with (…).`);
     }
     return this.fail(node, `Nothing here is called \`${name}\`.`);
+  }
+
+  private onList(node: ts.CallExpression): Expr {
+    const [arg, ...rest] = node.arguments.map(unparenthesized);
+    if (arg === undefined || rest.length > 0 || !ts.isStringLiteralLike(arg)) {
+      return this.fail(
+        node,
+        `Name one list in quotes, like \`${IS_ON_LIST}("List name")\`.`,
+      );
+    }
+    const listId = this.listIds.get(arg.text);
+    if (listId !== undefined) return { kind: ExprKind.OnList, listId };
+    const names = [...this.listIds.keys()].map((name) => JSON.stringify(name));
+    return this.fail(
+      arg,
+      names.length === 0
+        ? "There are no member lists yet."
+        : `There's no list called ${JSON.stringify(arg.text)}. Lists: ${names.join(", ")}.`,
+    );
   }
 
   private record(node: ts.ObjectLiteralExpression): Expr {
@@ -370,6 +398,7 @@ class Converter {
       if (this.isParam(name)) {
         return this.fail(callee, `\`${name}\` is a parameter, not a function.`);
       }
+      if (name === IS_ON_LIST) return this.onList(node);
       if (name !== IS_MISSING && !this.functions.has(name)) {
         return this.fail(callee, `There's no function called \`${name}\`.`);
       }

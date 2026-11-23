@@ -4,6 +4,7 @@ import type {
   SaveProblemKind,
 } from "@alliance/shared/client";
 import React, { useId } from "react";
+import { Link } from "react-router";
 import FormulaDiagnostics from "./FormulaDiagnostics";
 
 const AT_NAME: Record<SaveProblemKind, boolean> = {
@@ -49,7 +50,12 @@ const FormulaFields: React.FC<{
         Formula
         <span className="block text-xs text-zinc-500">
           A TypeScript expression. Use <code>isMissing(x)</code> to test whether
-          a value is missing.
+          a value is missing, and <code>isOnList(&quot;List name&quot;)</code>{" "}
+          to check whether the member is on a{" "}
+          <Link to="/member-lists" className="underline">
+            member list
+          </Link>
+          .
         </span>
         <textarea
           className={`${FIELD_CLASS} font-mono min-h-32`}

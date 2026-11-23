@@ -119,6 +119,7 @@ export function parseExpression(
   // parentheses the printer doesn't keep, so the printed text is tried too.
   const printed = printExpression(tree, {
     refName: (id) => scope.named.find((named) => named.id === id)?.name,
+    listName: (id) => scope.catalog.lists.find((list) => list.id === id)?.name,
   });
   const reparsed = ts.createSourceFile(
     PARSE_FILE,

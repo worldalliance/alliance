@@ -15,6 +15,12 @@ import {
 import { InjectDataSource } from "@nestjs/typeorm";
 import { isEqual } from "es-toolkit";
 import { lockUntilCommit } from "src/datasources/advisory-lock";
+import { MemberList } from "src/member-lists/entities/member-list.entity";
+import {
+  LIST_CHANGED,
+  currentLists,
+  deletedListNames,
+} from "src/member-lists/member-list-store";
 import { DataSource, In, type EntityManager } from "typeorm";
 import type { FormulaDtoArgs, FormulaVersionDtoArgs } from "./dto/formula.dto";
 import {
@@ -22,7 +28,7 @@ import {
   parseFormulaVersion,
 } from "./entities/formula-version.entity";
 import { Formula } from "./entities/formula.entity";
-import { FORMULA_CATALOG } from "./formula-catalog";
+import { catalogWith, formulaCatalog } from "./formula-catalog";
 import {
   FORMULAS_LOCK,
   asNamed,
@@ -41,14 +47,19 @@ export type FormulaEdit = {
 
 export type FormulaDeletion = { id: string; baseVersionId: number };
 
+/** A member list to delete; `baseVersionId` is the membership the admin saw. */
+export type ListDeletion = { id: string; baseVersionId: number };
+
 @Injectable()
 export class FormulasService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async list(): Promise<FormulaDtoArgs[]> {
-    const current = await currentFormulas(this.dataSource.manager);
+    const manager = this.dataSource.manager;
+    const current = await currentFormulas(manager);
+    const catalog = await formulaCatalog(manager);
     const names = printNames({
-      scope: { catalog: FORMULA_CATALOG, named: current.map(asNamed) },
+      scope: { catalog, named: current.map(asNamed) },
     });
     return current.map((each) => ({
       ...each,
@@ -74,8 +85,12 @@ export class FormulasService {
       .where('formula."deletedAt" IS NOT NULL')
       .getMany();
     const names = printNames({
-      scope: { catalog: FORMULA_CATALOG, named: current.map(asNamed) },
+      scope: {
+        catalog: await formulaCatalog(manager),
+        named: current.map(asNamed),
+      },
       deletedNames: new Map(deleted.map(({ id, name }) => [id, name])),
+      deletedLists: await deletedListNames(manager),
     });
     return versions.map((version) => ({
       version,
@@ -85,17 +100,20 @@ export class FormulasService {
   }
 
   /**
-   * Saves `edits` and deletes `deletions` together, or returns why the
-   * check refused them and writes nothing. Throws `ConflictException` when a
-   * formula changed since the admin opened the version they edited.
+   * Saves `edits` and deletes `deletions` and `deletedLists` together, or
+   * returns why the check refused them and writes nothing. Throws
+   * `ConflictException` when a formula or list changed since the admin opened
+   * the version they edited.
    */
   async save({
     edits,
     deletions,
+    deletedLists,
     savedById,
   }: {
     edits: FormulaEdit[];
     deletions: FormulaDeletion[];
+    deletedLists: ListDeletion[];
     savedById: number;
   }): Promise<SaveProblem[]> {
     const ids = [...edits, ...deletions].map((each) => each.id);
@@ -114,11 +132,24 @@ export class FormulasService {
       });
 
       assertBases({ current, existing, edits, deletions });
+      const listIds = deletedLists.map((each) => each.id);
+      if (listIds.length > 0) {
+        // Holds off a membership save, so the base check below stays true.
+        await manager.find(MemberList, {
+          where: { id: In(listIds) },
+          lock: { mode: "pessimistic_write" },
+        });
+      }
+      const lists = await currentLists(manager);
+      assertListBases(lists, deletedLists);
       const checked = checkNamedSave({
-        catalog: FORMULA_CATALOG,
+        catalog: catalogWith(
+          lists.filter((list) => !listIds.includes(list.id)),
+        ),
         named: current.map(asNamed),
         save: edits.map(({ id, name, text }) => ({ id, name, source: text })),
         deleted: deletions.map((deletion) => deletion.id),
+        deletedLists: lists.filter((list) => listIds.includes(list.id)),
       });
       if (!checked.ok) return checked.error;
 
@@ -134,6 +165,9 @@ export class FormulasService {
           : [{ ...edit, tree }];
       });
       await write({ manager, changed, deletions, savedById });
+      if (listIds.length > 0) {
+        await manager.softDelete(MemberList, { id: In(listIds) });
+      }
       return [];
     });
   }
@@ -172,6 +206,28 @@ function assertBases({
       throw new ConflictException(
         `${label} was changed since you opened it. Reload to see the latest version.`,
       );
+    }
+  }
+}
+
+function assertListBases(
+  lists: readonly { id: string; versionId: number }[],
+  deletedLists: readonly ListDeletion[],
+): void {
+  if (new Set(deletedLists.map(({ id }) => id)).size < deletedLists.length) {
+    throw new BadRequestException(
+      "A list appears more than once in this save.",
+    );
+  }
+  for (const { id, baseVersionId } of deletedLists) {
+    const versionId = lists.find((list) => list.id === id)?.versionId;
+    if (versionId === undefined) {
+      throw new ConflictException(
+        "This list was deleted since you opened it. Reload to see the lists as they are now.",
+      );
+    }
+    if (versionId !== baseVersionId) {
+      throw new ConflictException(LIST_CHANGED);
     }
   }
 }

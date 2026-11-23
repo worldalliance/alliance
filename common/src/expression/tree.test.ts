@@ -9,6 +9,7 @@ const cases: Record<ExprKind, [Expr, Expr[]]> = {
   [ExprKind.Input]: [a, []],
   [ExprKind.Ref]: [{ kind: ExprKind.Ref, id: "r" }, []],
   [ExprKind.Param]: [{ kind: ExprKind.Param, name: "x" }, []],
+  [ExprKind.OnList]: [{ kind: ExprKind.OnList, listId: "l" }, []],
   [ExprKind.List]: [{ kind: ExprKind.List, items: [a, b] }, [a, b]],
   [ExprKind.Record]: [
     {

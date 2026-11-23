@@ -52,9 +52,17 @@ export type FunctionDefinition = {
   returns: ValueType;
 };
 
+/** A member list admins keep, read as `isOnList("<name>")`. */
+export type MemberListName = { id: string; name: string };
+
+/**
+ * What expressions can read: the inputs and functions engineers define, and
+ * the member lists that exist when the check or evaluation runs.
+ */
 export type Catalog = {
   inputs: readonly InputDefinition[];
   functions: readonly FunctionDefinition[];
+  lists: readonly MemberListName[];
 };
 
 export type NamedExpression = {
@@ -90,6 +98,8 @@ export type Diagnostic = {
 };
 
 export const IS_MISSING = "isMissing";
+
+export const IS_ON_LIST = "isOnList";
 
 export const IS_MISSING_HINT = "Use isMissing(…) to test for a missing value.";
 

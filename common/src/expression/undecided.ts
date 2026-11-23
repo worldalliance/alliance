@@ -540,6 +540,8 @@ export function analyze({
     switch (expr.kind) {
       case ExprKind.Literal:
         return expr.value === null ? "" : undefined;
+      case ExprKind.OnList:
+        return undefined;
       case ExprKind.Input:
       case ExprKind.Ref:
       case ExprKind.Param:

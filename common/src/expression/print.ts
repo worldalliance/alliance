@@ -1,3 +1,4 @@
+import { IS_ON_LIST } from "./catalog";
 import {
   BinaryOp,
   ExprKind,
@@ -168,6 +169,7 @@ function precedence(expr: Expr): number {
     case ExprKind.Index:
     case ExprKind.Call:
     case ExprKind.Method:
+    case ExprKind.OnList:
       return POSTFIX;
     default:
       throw new Error(`unknown kind: ${expr satisfies never}`);
@@ -213,6 +215,8 @@ export type PrintNames = {
    * print a read of the parameter, so callers rule that out.
    */
   refName: (id: string, params: ReadonlySet<string>) => string | undefined;
+  /** A member list's current name; the printer throws for an id with none. */
+  listName: (id: string) => string | undefined;
 };
 
 /** Prints a tree in its canonical layout, which is what admins see as text. */
@@ -290,6 +294,13 @@ function toDoc(
     }
     case ExprKind.Param:
       return expr.name;
+    case ExprKind.OnList: {
+      const name = names.listName(expr.listId);
+      if (name === undefined) {
+        throw new Error(`no name for member list ${expr.listId}`);
+      }
+      return [IS_ON_LIST, "(", literal(name), ")"];
+    }
     case ExprKind.List:
       return list({ open: "[", items: items(expr.items), close: "]" });
     case ExprKind.Record:
@@ -400,6 +411,7 @@ function startsWithRecord(expr: Expr): boolean {
     case ExprKind.Unary:
     case ExprKind.Call:
     case ExprKind.Lambda:
+    case ExprKind.OnList:
       return false;
     default:
       throw new Error(`unknown kind: ${expr satisfies never}`);
@@ -427,6 +439,7 @@ function endsInLessThan(expr: Expr): boolean {
     case ExprKind.Index:
     case ExprKind.Call:
     case ExprKind.Method:
+    case ExprKind.OnList:
       return false;
     default:
       throw new Error(`unknown kind: ${expr satisfies never}`);

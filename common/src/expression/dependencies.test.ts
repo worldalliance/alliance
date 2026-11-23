@@ -16,6 +16,7 @@ const catalog: Catalog = {
       returns: { kind: TypeKind.Number },
     },
   ],
+  lists: [],
 };
 
 const define = ({
@@ -51,6 +52,7 @@ test("reads follow named expressions to inputs and functions", () => {
     inputs: new Set(["state", "count"]),
     functions: new Set(["lookup"]),
     named: new Set(["2", "1"]),
+    lists: new Set(),
   });
 });
 

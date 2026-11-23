@@ -1,0 +1,13 @@
+- claude:2dd38fd5-5c68-439d-bdda-afae9702fca3
+- claude:7abf4b69-25db-436e-a5fb-73ced49ab1f8 (subagent)
+- claude:1a0327cf-53a8-4450-8834-4ae56f37ec01 (subagent)
+- claude:f3d36bfb-9eee-4ade-abc7-2ba146ca4f46 (subagent)
+- claude:fff364cd-bab8-4b78-aa16-6f4bb44f9178 (subagent)
+- claude:0adcf98b-6dd8-4948-a348-31db2ab2e7bc (subagent)
+- claude:4efc192a-34cf-4165-9f0a-e41a3ab97467 (subagent)
+- claude:94769dd1-fa17-4768-bf71-9e8146dbfe9e (subagent)
+- claude:8876f1f7-09c9-4652-bade-d9a259287852 (subagent)
+- claude:9ee13514-7a27-4a55-afad-054d160591af (subagent)
+- claude:f7e1b0e0-f178-4429-919e-1fd8d64da27e (subagent)
+- claude:fbe8bc74-ee70-4baf-9556-ade9ccc9be7e (subagent)
+- claude:a5f92a59-01eb-4f9e-ae71-b3900871f604 (subagent)

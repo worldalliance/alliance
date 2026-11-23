@@ -22,6 +22,10 @@ const scope: Scope = {
         returns: { kind: TypeKind.Number },
       },
     ],
+    lists: [
+      { id: "l1", name: "Volunteers" },
+      { id: "l2", name: 'a "quoted" \\ café' },
+    ],
   },
   named: [
     { id: "r1", name: "sum", tree: { kind: ExprKind.Literal, value: 1 } },
@@ -29,6 +33,8 @@ const scope: Scope = {
 };
 const names = {
   refName: (id: string) => scope.named.find((named) => named.id === id)?.name,
+  listName: (id: string) =>
+    scope.catalog.lists.find((list) => list.id === id)?.name,
 };
 
 function randomTrees({ misread }: { misread: boolean }) {
@@ -54,6 +60,8 @@ function randomTrees({ misread }: { misread: boolean }) {
     { kind: ExprKind.Literal, value: true },
     { kind: ExprKind.Literal, value: false },
     { kind: ExprKind.Literal, value: null },
+    { kind: ExprKind.OnList, listId: "l1" },
+    { kind: ExprKind.OnList, listId: "l2" },
   ];
   const properties = ["name", "type", "class", "of", "new", "café"];
   const keys = ["a", "b c", "class", "1", "", "café", "😀"];
@@ -260,6 +268,7 @@ test("the name lookup gets the parameters of every function around a reference",
       seen.set(id, [...params]);
       return id;
     },
+    listName: () => undefined,
   });
   expect(Object.fromEntries(seen)).toEqual({
     outside: [],
