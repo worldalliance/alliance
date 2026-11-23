@@ -4,8 +4,9 @@ import { MmsService } from "src/mms/mms.service";
 import { FormProfileAnswersService } from "src/tasks/form-profile-answers.service";
 import { TasksModule } from "src/tasks/tasks.module";
 import { PHONE_NUMBER_INDEX, User } from "src/user/entities/user.entity";
+import { isUniqueViolation } from "src/utils/db-errors";
 import request from "supertest";
-import { EntityManager, QueryFailedError, type Repository } from "typeorm";
+import type { Repository } from "typeorm";
 import {
   closeTestApp,
   createTestApp,
@@ -43,15 +44,6 @@ const phoneForm: FormSchema = {
   aggregateViews: [],
 };
 
-// Stands in for a violation of the index, which this schema lacks.
-const takenAtIndex = () =>
-  jest.spyOn(EntityManager.prototype, "save").mockRejectedValueOnce(
-    Object.assign(new QueryFailedError("UPDATE", [], new Error("duplicate")), {
-      code: "23505",
-      constraint: PHONE_NUMBER_INDEX,
-    }),
-  );
-
 describe("One live account per phone number (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
@@ -86,12 +78,37 @@ describe("One live account per phone number (e2e)", () => {
     await closeTestApp(ctx.app);
   });
 
-  it("refuses a profile update the index refuses", async () => {
+  it("refuses a second live account with the same number", async () => {
     const phoneNumber = uniquePhone();
+    await createMember({ phoneNumber });
+    const error: unknown = await createMember({ phoneNumber }).catch(
+      (err: unknown) => err,
+    );
+    expect(isUniqueViolation(error, PHONE_NUMBER_INDEX)).toBe(true);
+  });
+
+  it("gives a number only a deleted account holds to a live one", async () => {
+    const phoneNumber = uniquePhone();
+    const deleted = await createMember({ phoneNumber });
+    await userRepo.softDelete(deleted.id);
     const member = await createMember();
-    takenAtIndex();
-    const res = await update(member, { phoneNumber }).expect(409);
+
+    await update(member, { phoneNumber }).expect(201);
+    expect((await reload(member)).phoneNumber).toBe(phoneNumber);
+  });
+
+  it("refuses a profile update to a number another live account holds", async () => {
+    const phoneNumber = uniquePhone();
+    await createMember({ phoneNumber });
+    const member = await createMember();
+
+    const res = await update(member, { phoneNumber, name: "Renamed" }).expect(
+      409,
+    );
     expect(res.body.message).toBe(TAKEN);
+    expect(await reload(member)).toEqual(
+      expect.objectContaining({ phoneNumber: null, name: member.name }),
+    );
   });
 
   describe("a form's phone answer", () => {
@@ -102,13 +119,14 @@ describe("One live account per phone number (e2e)", () => {
         answers,
       });
 
-    it("skips a number the index refuses, sending no welcome text", async () => {
+    it("skips a number another live account holds, sending no welcome text", async () => {
+      const phoneNumber = uniquePhone();
+      await createMember({ phoneNumber });
       const member = await createMember();
       const sendMms = jest.spyOn(ctx.app.get(MmsService), "sendMms");
-      takenAtIndex();
 
       await answer(member, {
-        "phone-number": uniquePhone(),
+        "phone-number": phoneNumber,
         "time-zone": "America/Chicago",
       });
 

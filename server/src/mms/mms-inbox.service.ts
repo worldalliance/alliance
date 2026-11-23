@@ -196,9 +196,9 @@ export class MmsInboxService {
 
   /** `apply` calls `record` only when it changes texts, so a mark that changes
    * nothing leaves no history and announces nothing. `apply` locks the texts it
-   * reads in id order, so a concurrent mark of the same kind on the same number,
-   * from any member sharing it, waits and then finds them changed. A mark of the
-   * opposite kind reads the other texts and doesn't wait. */
+   * reads in id order, so a concurrent mark of the same kind on the same number
+   * waits and then finds them changed. A mark of the opposite kind reads the
+   * other texts and doesn't wait. */
   private async mark(
     params: NumberMark,
     apply: (input: {

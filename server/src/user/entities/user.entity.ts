@@ -71,8 +71,6 @@ export enum ReferralSource {
   None = "none",
 }
 
-// TODO(ALL-2259): pass to @Index on phoneNumber once a migration creates the
-// index; until then no write raises it.
 export const PHONE_NUMBER_INDEX = "UQ_user_phone_number_live";
 
 @Check(
@@ -114,6 +112,7 @@ export class User extends UserRetiredColumns {
   @Column({ type: "int", default: 0 })
   sessionGeneration: number;
 
+  @Index(PHONE_NUMBER_INDEX, { unique: true, where: '"deletedAt" IS NULL' })
   @Column({
     type: "varchar",
     nullable: true,

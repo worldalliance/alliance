@@ -33,14 +33,11 @@ export class PhoneVerificationService {
     webOtpHost: string | null;
   }): Promise<Result<StartedOtp, OtpStartRefusal>> {
     const { userId, phoneNumber, ip, webOtpHost } = params;
-    // Several accounts can save one number without a code until ALL-2259,
-    // so only a sole holder skips the per-number limit.
-    const holders = await this.dataSource.getRepository(User).find({
+    const holder = await this.dataSource.getRepository(User).findOne({
       where: { phoneNumber },
       select: { id: true },
-      take: 2,
     });
-    const holdsContact = holders.length === 1 && holders[0].id === userId;
+    const holdsContact = holder?.id === userId;
     return this.otpService.start({
       purpose: PHONE_PURPOSE,
       contact: { channel: OtpChannel.Sms, destination: phoneNumber },
