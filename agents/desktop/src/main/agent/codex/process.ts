@@ -1,5 +1,6 @@
-import { mkdir } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
 import { R, type Result } from "../../../../../../common/src/result";
+import { agentEnvironment, type AgentFolders } from "../agent-environment";
 import {
   checkCliVersion,
   type CliCommand,
@@ -11,29 +12,8 @@ import { CODEX_VERSION } from "./version";
 
 export type CodexCli = {
   executable: string;
-  /** The app-private CODEX_HOME, holding the CLI's config, sign-in and session history. */
-  home: string;
+  folders: AgentFolders;
 };
-
-// The CLI reads its credentials, endpoints, home and a parent session's markers from these two namespaces, so none of them pass through but its custom root certificate, which a TLS-intercepting proxy needs.
-// Claude's namespaces, Anthropic's and every CLAUDE* variable, stay out too, so no Claude credential or setting reaches a Codex session.
-const inherited = (name: string) =>
-  (name === "CODEX_CA_CERTIFICATE" ||
-    (!name.startsWith("CODEX") && !name.startsWith("OPENAI_"))) &&
-  !name.startsWith("ANTHROPIC_") &&
-  !name.startsWith("CLAUDE");
-
-export function codexEnvironment(
-  home: string,
-  base: NodeJS.ProcessEnv = process.env,
-): NodeJS.ProcessEnv {
-  return {
-    ...Object.fromEntries(
-      Object.entries(base).filter(([name]) => inherited(name)),
-    ),
-    CODEX_HOME: home,
-  };
-}
 
 /** Every Codex command but the version check takes these, ahead of its own arguments, so no run sends analytics or feedback or checks for updates, which the app's releases manage. */
 export const codexConfigArgs = [
@@ -47,17 +27,19 @@ export const codexConfigArgs = [
 
 const codexCommand = (cli: CodexCli): CliCommand => ({
   executable: cli.executable,
-  env: codexEnvironment(cli.home),
+  env: agentEnvironment(cli.folders),
   name: "codex",
 });
 
 // Codex refuses every command but --version when CODEX_HOME is missing, as on a fresh install.
-export const createCodexHome = (cli: CodexCli): Promise<Result<void, Error>> =>
-  R.fromPromise(
-    mkdir(cli.home, { recursive: true, mode: 0o700 }).then(() => undefined),
+export const createCodexHome = (folders: AgentFolders): Result<void, Error> =>
+  R.fromThrowable(
+    () => {
+      mkdirSync(folders.codexHome, { recursive: true, mode: 0o700 });
+    },
     (error) =>
       new Error(
-        `Alliance agent couldn't create Codex's folder ${cli.home}: ${R.toError(error).message}`,
+        `Alliance agent couldn't create Codex's folder ${folders.codexHome}: ${R.toError(error).message}`,
       ),
   );
 
@@ -65,7 +47,7 @@ export async function runCodex(
   cli: CodexCli,
   run: { args: readonly string[]; signal?: AbortSignal },
 ): Promise<Result<Exited, Error>> {
-  const home = await createCodexHome(cli);
+  const home = createCodexHome(cli.folders);
   if (!home.ok) return home;
   return runCli(codexCommand(cli), {
     ...run,

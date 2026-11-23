@@ -12,12 +12,12 @@ export const codexHomeLockPath = (home: string) =>
 
 const takeLock = (cli: CodexCli) =>
   R.fromPromise(
-    lock(cli.home, {
-      lockfilePath: codexHomeLockPath(cli.home),
+    lock(cli.folders.codexHome, {
+      lockfilePath: codexHomeLockPath(cli.folders.codexHome),
       // The default throws from a timer, which would crash the app; a setup already running can only finish unguarded.
       onCompromised: (error) =>
         console.error(
-          `Alliance agent lost its lock on Codex's folder ${cli.home} during setup: ${error.message}`,
+          `Alliance agent lost its lock on Codex's folder ${cli.folders.codexHome} during setup: ${error.message}`,
         ),
     }),
   );
@@ -38,22 +38,22 @@ async function takeLockWithin(cli: CodexCli, waitMs: number) {
 }
 
 /**
- * Runs `fn` holding a lock that every process setting up Codex in `cli.home` takes, the development apps of every checkout and the capture run included, since they share one home.
+ * Runs `fn` holding a lock that every process setting up Codex in `cli.folders.codexHome` takes, the development apps of every checkout and the capture run included, since they share one home.
  * Waits up to `waitMs` in total, however many holders come before it, so one app running setups back to back can outlast the wait; a holder that dies leaves a lock that goes stale after proper-lockfile's 10 seconds.
  */
 export async function withCodexHomeLock<T>(
   { cli, waitMs = 60_000 }: { cli: CodexCli; waitMs?: number },
   fn: () => Promise<Result<T, Error>>,
 ): Promise<Result<T, Error>> {
-  const home = await createCodexHome(cli);
+  const home = createCodexHome(cli.folders);
   if (!home.ok) return home;
   const release = R.mapError(
     await takeLockWithin(cli, waitMs),
     (error) =>
       new Error(
         hasCode(error, "ELOCKED")
-          ? `Alliance agent couldn't lock Codex's folder ${cli.home} for setup within ${waitMs / 1000} seconds, so another Alliance agent may be setting Codex up there.`
-          : `Alliance agent couldn't create its lock in Codex's folder ${cli.home}: ${error.message}`,
+          ? `Alliance agent couldn't lock Codex's folder ${cli.folders.codexHome} for setup within ${waitMs / 1000} seconds, so another Alliance agent may be setting Codex up there.`
+          : `Alliance agent couldn't create its lock in Codex's folder ${cli.folders.codexHome}: ${error.message}`,
       ),
   );
   if (!release.ok) return release;
@@ -64,7 +64,7 @@ export async function withCodexHomeLock<T>(
       // ERELEASED follows a compromise, which onCompromised already logged.
       if (hasCode(error, "ERELEASED")) return;
       console.error(
-        `Alliance agent couldn't release its lock on Codex's folder ${cli.home}: ${R.toError(error).message}`,
+        `Alliance agent couldn't release its lock on Codex's folder ${cli.folders.codexHome}: ${R.toError(error).message}`,
       );
     });
   }

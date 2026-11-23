@@ -6,6 +6,8 @@ import { R } from "../../../../../../common/src/result";
 import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
 import type { AgentKind } from "../../../shared/agent-kind";
 import { findExecutable } from "../../cli-executable";
+import { devClaudeConfigDir, devCodexHome } from "../../dev-app-data";
+import type { AgentFolders } from "../agent-environment";
 import { type AgentBackend, ImageMediaType } from "../session";
 import type { Machine } from "./redact-lines";
 import { kinds, onFifthDelta, text, turn } from "./turn";
@@ -15,12 +17,18 @@ export const repo = execFileSync("git", ["rev-parse", "--show-toplevel"], {
 }).trim();
 
 /** Electron's appData, which takes any non-empty XDG_CONFIG_HOME, a relative one included. */
-export const appData =
+const appData =
   process.platform === "darwin"
     ? path.join(homedir(), "Library/Application Support")
     : process.env.XDG_CONFIG_HOME
       ? path.resolve(process.env.XDG_CONFIG_HOME)
       : path.join(homedir(), ".config");
+
+/** The development app's CLI folders. */
+export const devFolders = (): AgentFolders => ({
+  claudeConfigDir: devClaudeConfigDir(appData),
+  codexHome: devCodexHome(appData),
+});
 
 /** The CLI a development build bundles, or the one its variable names. */
 export const devExecutable = (agent: AgentKind): string =>

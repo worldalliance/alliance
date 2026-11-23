@@ -14,7 +14,10 @@ export const { replay, stopReplay, writeCapture } = stub;
 export const stubCli: CodexCli = {
   executable: fileURLToPath(new URL("./stub-codex.ts", import.meta.url)),
   // In the scratch folder stopReplay removes, so the home each run creates doesn't outlive the test.
-  get home() {
-    return stub.scratchPath("home");
+  get folders() {
+    return {
+      claudeConfigDir: "/nonexistent/claude",
+      codexHome: stub.scratchPath("home"),
+    };
   },
 };

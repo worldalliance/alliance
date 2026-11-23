@@ -16,6 +16,7 @@ import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
 import { createClaudeBackend } from "./agent/claude/backend";
 import { isSignedInToCodex, signInToCodex } from "./agent/codex/auth";
 import { createCodexBackend } from "./agent/codex/backend";
+import { createCodexHome } from "./agent/codex/process";
 import { findExecutable } from "./cli-executable";
 import { ConversationStore } from "./conversations";
 import { describeError } from "./describe-error";
@@ -218,6 +219,12 @@ void app.whenReady().then(() => {
   protocol.handle("app", serveRenderer);
   const userData = app.getPath("userData");
   const appData = app.getPath("appData");
+  const folders = {
+    claudeConfigDir: devData
+      ? devClaudeConfigDir(appData)
+      : path.join(userData, "claude"),
+    codexHome: devData ? devCodexHome(appData) : path.join(userData, "codex"),
+  };
   const find = (agent: AgentKind) =>
     findExecutable({
       agent,
@@ -229,12 +236,7 @@ void app.whenReady().then(() => {
     });
   const agents: Record<AgentKind, (executable: string) => Agent> = {
     [AgentKind.Claude]: (executable) => {
-      const cli = {
-        executable,
-        configDir: devData
-          ? devClaudeConfigDir(appData)
-          : path.join(userData, "claude"),
-      };
+      const cli = { executable, folders };
       return {
         backend: createClaudeBackend(cli),
         isSignedIn: (signal) => isSignedInToClaude(cli, signal),
@@ -242,10 +244,7 @@ void app.whenReady().then(() => {
       };
     },
     [AgentKind.Codex]: (executable) => {
-      const cli = {
-        executable,
-        home: devData ? devCodexHome(appData) : path.join(userData, "codex"),
-      };
+      const cli = { executable, folders };
       return {
         backend: createCodexBackend(cli),
         isSignedIn: (signal) => isSignedInToCodex(cli, signal),
@@ -263,7 +262,11 @@ void app.whenReady().then(() => {
   registerRepositoryIpc({ repository, rendererUrl });
   void repository.locate({ autoClone: true });
   const sessions = registerIpc({
-    findAgent: (agent) => R.map(find(agent), agents[agent]),
+    // A codex that a Claude session starts refuses every command but --version without CODEX_HOME.
+    findAgent: (agent) =>
+      R.flatMap(createCodexHome(folders), () =>
+        R.map(find(agent), agents[agent]),
+      ),
     conversations: new ConversationStore(
       path.join(userData, "conversations.json"),
     ),

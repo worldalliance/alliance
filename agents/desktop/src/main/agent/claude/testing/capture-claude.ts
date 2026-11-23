@@ -7,13 +7,12 @@ import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
 import { AgentEventKind } from "../../../../shared/agent-event";
 import { AgentKind } from "../../../../shared/agent-kind";
-import { devClaudeConfigDir } from "../../../dev-app-data";
 import {
-  appData,
   captureScratch,
   check,
   checkTranscriptUploaded,
   devExecutable,
+  devFolders,
   machine,
   repo,
   runScriptedTask,
@@ -29,23 +28,25 @@ import { redactCapture } from "./redact";
 
 const { scratch, recordDir } = captureScratch("claude-capture");
 const workFile = path.join(scratch, "a.txt");
-const configDir = devClaudeConfigDir(appData);
+const folders = devFolders();
 writeFileSync(workFile, "hello\n");
 
 const realClaude = devExecutable(AgentKind.Claude);
-const real: ClaudeCli = { executable: realClaude, configDir };
+const real: ClaudeCli = { executable: realClaude, folders };
 const recorded: ClaudeCli = {
   executable: fileURLToPath(
     new URL("../../testing/record-cli.ts", import.meta.url),
   ),
-  configDir,
+  folders,
 };
 process.env.ALLIANCE_AGENT_RECORD_REAL = realClaude;
 process.env.ALLIANCE_AGENT_RECORD_DIR = recordDir;
 
 R.unwrap(await checkClaudeVersion(real));
 if (!R.unwrap(await isSignedInToClaude(real))) {
-  console.log(`Signing in to Claude in ${configDir}; finish in the browser.`);
+  console.log(
+    `Signing in to Claude in ${folders.claudeConfigDir}; finish in the browser.`,
+  );
   R.unwrap(await signInToClaude(real));
   check(
     R.unwrap(await isSignedInToClaude(real)),

@@ -10,6 +10,10 @@ A development build runs the CLIs from `node_modules`, so a developer's own auto
 
 `CLAUDE_CODE_VERSION` and `CODEX_VERSION` are read from `package.json`, which a zod check holds to exact versions, so a bump changes one place.
 
+## One environment for both CLIs
+
+Each CLI's environment used to drop the other vendor's namespaces and set only its own private folder, so a `claude -p` that a Codex session starts ran with the user's own `~/.claude`, and a `codex` that a Claude session starts with the user's `~/.codex`. So every CLI the app runs gets one environment, `agentEnvironment` in `src/main/agent/agent-environment.ts`: it drops both vendors' namespaces (`CLAUDE*`, `ANTHROPIC_*`, `CODEX*` but `CODEX_CA_CERTIFICATE`, `OPENAI_*`) and sets `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and Claude's three traffic variables (agent decision). Claude processes therefore now drop Codex's non-credential settings too, such as `CODEX_REFRESH_TOKEN_URL_OVERRIDE`, which a Codex they start would read. Every check for a CLI creates `CODEX_HOME`, since a `codex` that a Claude session starts refuses every command but `--version` without it.
+
 ## Linux libc
 
 Claude's Linux binaries come in glibc and musl builds; the app runs the glibc one, and Codex's Linux build is statically linked against musl. On a musl distribution Claude fails to start, with the error the spawn reports; the app doesn't detect musl (agent decision, YAGNI while Linux targets Debian-based distributions).

@@ -6,14 +6,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
 import { AgentKind } from "../../../../shared/agent-kind";
-import { devCodexHome } from "../../../dev-app-data";
 import { readCapture } from "../../testing/capture-record";
 import {
-  appData,
   captureScratch,
   check,
   checkTranscriptUploaded,
   devExecutable,
+  devFolders,
   machine,
   repo,
   runScriptedTask,
@@ -29,11 +28,12 @@ import { redactCapture } from "./redact";
 
 const { scratch, recordDir } = captureScratch("codex-capture");
 const workFile = path.join(scratch, "a.txt");
-const home = devCodexHome(appData);
+const folders = devFolders();
+const home = folders.codexHome;
 writeFileSync(workFile, "hello\n");
 
 const realCodex = devExecutable(AgentKind.Codex);
-const real: CodexCli = { executable: realCodex, home };
+const real: CodexCli = { executable: realCodex, folders };
 // The private config holds only the trust the adapter writes, so removing it makes the run trust the repository from scratch, keeping the sign-in.
 R.unwrap(
   await withCodexHomeLock({ cli: real }, async () =>
@@ -44,7 +44,7 @@ const recorded: CodexCli = {
   executable: fileURLToPath(
     new URL("../../testing/record-cli.ts", import.meta.url),
   ),
-  home,
+  folders,
 };
 process.env.ALLIANCE_AGENT_RECORD_REAL = realCodex;
 process.env.ALLIANCE_AGENT_RECORD_DIR = recordDir;
