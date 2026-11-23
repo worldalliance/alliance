@@ -25,16 +25,10 @@ import { StartView } from "./components/StartView";
 import { TaskView } from "./components/TaskView";
 import { askDraft, newTaskDraft, taskDraft, useDrafts } from "./drafts";
 import { focusIfLost } from "./focus";
+import { notOpenPanel, Opened, type OpenState } from "./open-state";
 import { useRepository } from "./repository";
 import { useTasks } from "./tasks";
 import { sameView, type View, ViewKind } from "./view";
-
-enum Opened {
-  Opening = "opening",
-  Open = "open",
-}
-
-type OpenState = Opened | { problem: string };
 
 // A read can finish after a start this window made, or miss one the window's previous load made, so it adds to the list rather than replacing it.
 const withListed = (
@@ -276,37 +270,6 @@ export function App() {
       void agent.resume(selected).then((resumed) => opened(selected, resumed));
   }, [selectedSignedIn, selectedUnopened, selected, opened]);
 
-  const notOpenPanel = (id: string) => {
-    const state = open[id] ?? Opened.Opening;
-    if (typeof state === "object")
-      return (
-        <div className="panel">
-          <p className="error" role="alert">
-            Alliance agent couldn't open this conversation: {state.problem}
-          </p>
-          <button
-            type="button"
-            ref={focusIfLost}
-            onClick={() => void reopen(id)}
-          >
-            Try again
-          </button>
-        </div>
-      );
-    switch (state) {
-      case Opened.Opening:
-        return (
-          <p className="panel" role="status" tabIndex={-1} ref={focusIfLost}>
-            Opening the conversation…
-          </p>
-        );
-      case Opened.Open:
-        return undefined;
-      default:
-        throw new Error(`unknown open state: ${state satisfies never}`);
-    }
-  };
-
   const unsentText = (id: string) =>
     [
       ...(chats[id]?.items ?? []).flatMap((item) =>
@@ -470,7 +433,11 @@ export function App() {
       );
     const notOpen = removed.has(id)
       ? removedPanel(id, conversationAgent)
-      : (access.signInPanel(conversationAgent) ?? notOpenPanel(id));
+      : (access.signInPanel(conversationAgent) ??
+        notOpenPanel({
+          state: open[id] ?? Opened.Opening,
+          onRetry: () => void reopen(id),
+        }));
     const chat = chats[id] ?? emptyChat;
     if (notOpen && chat.items.length === 0)
       return (
