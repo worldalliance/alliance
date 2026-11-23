@@ -29,6 +29,7 @@ export function ElementSettings({
   onFocused,
   onMoveUp,
   onMoveDown,
+  moveToPage,
   onEditJson,
   onDuplicate,
   onDelete,
@@ -44,6 +45,7 @@ export function ElementSettings({
   /** Null where the element can't move that way. */
   onMoveUp: (() => void) | null;
   onMoveDown: (() => void) | null;
+  moveToPage: ReactNode;
   onEditJson: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -54,7 +56,10 @@ export function ElementSettings({
     <SettingsSidebar
       heading={describeHeading(element)}
       headingActions={
-        <SettingsMoveActions onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
+        <>
+          {moveToPage}
+          <SettingsMoveActions onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
+        </>
       }
       sections={displayOnly ? UNCONDITIONAL_SECTIONS : ALL_SECTIONS}
       section={section}

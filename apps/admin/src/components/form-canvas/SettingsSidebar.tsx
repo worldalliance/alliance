@@ -60,12 +60,12 @@ export function SettingsSidebar({
           <span className="truncate">{parent.label}</span>
         </button>
       )}
-      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-        <h2 className="min-w-0 truncate text-sm font-semibold text-gray-900">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-gray-200 px-4 py-3">
+        <h2 className="max-w-full truncate text-sm font-semibold text-gray-900">
           {heading}
         </h2>
         {headingActions && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             {headingActions}
           </div>
         )}
