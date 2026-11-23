@@ -1,6 +1,6 @@
 import type { ReactionListCtx } from "./context.js";
 import { ICON, LABEL } from "./reactions.js";
-import { ReactionKind, type Passage, type View } from "./types.js";
+import { ReactionKind, type Line, type Passage, type View } from "./types.js";
 
 // "Your reactions": each reacted paragraph once, line for line as in the reply, its reacted lines picked out with
 // their reaction beside them. Neighbouring reacted paragraphs share an entry, so a later entry in the same turn
@@ -25,28 +25,27 @@ export function createReactionList(ctx: ReactionListCtx) {
 
   type Row = { line: number; kind: ReactionKind | null; inPassage: boolean };
 
-  function rowsOf(v: View): Row[] {
+  function rowsOf(v: View, ps: Passage[]): Row[] {
     const ls = lines(v);
     const passage = new Map<number, number>();
-    passages()
-      .filter((p) => p.mi === v.mi)
-      .forEach((p, n) => {
-        const from = ls.findIndex((l) => l.first === p.first.first),
-          to = ls.findIndex((l) => l.first === p.last.first);
-        for (let i = from; i <= to; i++) passage.set(i, n);
-      });
+    ps.filter((p) => p.mi === v.mi).forEach((p, n) => {
+      const from = ls.findIndex((l) => l.first === p.first.first),
+        to = ls.findIndex((l) => l.first === p.last.first);
+      for (let i = from; i <= to; i++) passage.set(i, n);
+    });
     return ls.map((l, i) => ({
       line: i,
       kind: kindOn(v.mi, l),
       inPassage: passage.has(i),
     }));
   }
-  const blockOf = (v: View, line: number) =>
-    v.tokens[lines(v)[line]!.first]!.blk;
-  function groups(v: View): Row[][] {
+  // Takes measured lines, since measuring reads every word's layout and a long reply would freeze if each lookup did it.
+  const blockOf = (v: View, ls: Line[]) => (line: number) =>
+    v.tokens[ls[line]!.first]!.blk;
+  function groups(v: View, ps: Passage[]): Row[][] {
     const ls = lines(v);
-    const blk = (i: number) => blockOf(v, i);
-    const rows = rowsOf(v);
+    const blk = blockOf(v, ls);
+    const rows = rowsOf(v, ps);
     const out: Row[][] = [];
     let group: Row[] | null = null;
     let groupBlk = -1;
@@ -68,9 +67,10 @@ export function createReactionList(ctx: ReactionListCtx) {
 
   function renderReactionList() {
     // The grading card quotes the first passage line for line, so a reflow that rewraps the reply rewraps it too.
-    const quote = $("q3-quote"),
-      first = passages()[0];
-    if (quote && first) quote.replaceChildren(passageContext(first));
+    const ps = passages(),
+      quote = $("q3-quote"),
+      first = ps[0];
+    if (quote && first) quote.replaceChildren(passageContext(first, ps));
     const box = $("marks");
     if (!box) return;
     const heading = h(
@@ -79,7 +79,7 @@ export function createReactionList(ctx: ReactionListCtx) {
       "Your reactions",
     );
     const items = views().flatMap((v) =>
-      groups(v).map((rows, n) => entry(v, rows, n === 0)),
+      groups(v, ps).map((rows, n) => entry(v, rows, n === 0)),
     );
     if (!items.length) {
       box.replaceChildren(
@@ -104,22 +104,15 @@ export function createReactionList(ctx: ReactionListCtx) {
     );
   }
   /** The paragraphs a 👎 passage spans, line for line, for the grading card. */
-  function passageContext(p: Passage): HTMLElement {
+  function passageContext(p: Passage, ps = passages()): HTMLElement {
     const v = S.views[p.mi]!;
-    const from = blockOf(
-        v,
-        lines(v).findIndex((l) => l.first === p.first.first),
-      ),
-      to = blockOf(
-        v,
-        lines(v).findIndex((l) => l.first === p.last.first),
-      );
+    const ls = lines(v);
+    const blk = blockOf(v, ls);
+    const from = blk(ls.findIndex((l) => l.first === p.first.first)),
+      to = blk(ls.findIndex((l) => l.first === p.last.first));
     return paragraphs(
       v,
-      rowsOf(v).filter((r) => {
-        const b = blockOf(v, r.line);
-        return b >= from && b <= to;
-      }),
+      rowsOf(v, ps).filter((r) => blk(r.line) >= from && blk(r.line) <= to),
     );
   }
   function paragraphs(v: View, rows: Row[]): HTMLElement {

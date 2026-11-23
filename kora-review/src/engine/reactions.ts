@@ -130,10 +130,12 @@ export function createReactions(ctx: ReactionsCtx) {
       end: r.end,
       down: r.kind === ReactionKind.Down,
     }));
+    const measured = new Map<View, Line[]>();
     return thumbsDownPassages(spans).flatMap((p) => {
       const v = S.views[p.turn];
       if (!v) return [];
-      const ls = lines(v);
+      const ls = measured.get(v) ?? lines(v);
+      measured.set(v, ls);
       const at = (offset: number) =>
         ls.find(
           (l) =>

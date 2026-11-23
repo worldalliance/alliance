@@ -19,6 +19,20 @@ const press = (key: string, target: Element = reply()) =>
   target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
 const marks = (kind: string) =>
   el.querySelectorAll(`.react-mark.r-${kind}`).length;
+function countReads(act: () => void): number {
+  const measure = Element.prototype.getBoundingClientRect;
+  let reads = 0;
+  Element.prototype.getBoundingClientRect = function () {
+    reads++;
+    return measure.call(this);
+  };
+  try {
+    act();
+  } finally {
+    Element.prototype.getBoundingClientRect = measure;
+  }
+  return reads;
+}
 // Opens the first conversation with its replies shown.
 async function openReplies() {
   mount();
@@ -69,6 +83,34 @@ describe("mountKoraReview: reacting and grading", () => {
       },
     ]);
     expectValid(saved);
+  });
+
+  it("measures each reply's words a bounded number of times per reaction, however many paragraphs it has", async () => {
+    await openReplies();
+    const words = reply().querySelectorAll(".tk").length;
+    const paragraphs = new Set(
+      [...reply().querySelectorAll(".tk")].map((t) => t.parentElement),
+    ).size;
+    reply().focus();
+    const reads = countReads(() => {
+      press("ArrowDown");
+      press("2");
+    });
+    expect(paragraphs).toBeGreaterThan(3);
+    expect(reads).toBeLessThan(words * 25);
+  });
+
+  it("measures no more per reaction once a reply has a second 👎 passage", async () => {
+    await openReplies();
+    reply().focus();
+    press("ArrowDown");
+    const onePassage = countReads(() => press("2"));
+    press("ArrowDown");
+    press("1");
+    press("ArrowDown");
+    const twoPassages = countReads(() => press("2"));
+    expect(marks("down")).toBe(2);
+    expect(twoPassages).toBeLessThanOrEqual(onePassage);
   });
 
   it("opens the picker on a click, and gives a thumbs up, a thumbs down or nothing for 2, 3 or 4 clicks", async () => {
