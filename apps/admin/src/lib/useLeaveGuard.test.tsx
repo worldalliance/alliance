@@ -13,8 +13,13 @@ const Clean = () => {
   return null;
 };
 
+const Strict = () => {
+  useLeaveGuard(true);
+  return null;
+};
+
 const Page = ({ dirty, nested }: { dirty: boolean; nested?: boolean }) => {
-  useLeaveGuard(dirty);
+  useLeaveGuard(dirty, { allowSamePath: true });
   return nested ? <Clean /> : null;
 };
 
@@ -74,6 +79,20 @@ it("leaves a clean page without asking", async () => {
   expect(router.state.location.pathname).toBe("/b");
 });
 
+it("lets a change of search params through where the guard allows the same path", async () => {
+  const router = routerWith(<Page dirty />);
+
+  expect(await leave({ router, to: "/a?tab=events", answer: false })).toBe(0);
+  expect(router.state.location.search).toBe("?tab=events");
+});
+
+it("asks before a change of search params by default", async () => {
+  const router = routerWith(<Strict />);
+
+  expect(await leave({ router, to: "/a?tab=events", answer: false })).toBe(1);
+  expect(router.state.location.search).toBe("");
+});
+
 it("still asks for a clean page whose nested guard is dirty", async () => {
   const Dirty = () => {
     useLeaveGuard(true);
@@ -95,11 +114,6 @@ it("still asks for a dirty page whose nested guard is clean", async () => {
   expect(await leave({ router, to: "/b", answer: false })).toBe(1);
   expect(router.state.location.pathname).toBe("/a");
 });
-
-const Strict = () => {
-  useLeaveGuard(true);
-  return null;
-};
 
 let navigateUnprompted: (navigate: () => void) => void = () => {};
 const Bypassing = () => {

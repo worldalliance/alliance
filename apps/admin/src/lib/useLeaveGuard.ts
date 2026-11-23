@@ -22,11 +22,18 @@ export const LeaveGuardContext = createContext<Set<BlockerFunction> | null>(
  * guards still ask. Its `navigate` must start a push or replace before it
  * returns; a later or history navigation is still asked.
  */
-export function useLeaveGuard(dirty: boolean) {
+export function useLeaveGuard(
+  dirty: boolean,
+  options: {
+    /** For state that survives a change of search params on the same path. */
+    allowSamePath?: boolean;
+  } = {},
+) {
   const guards = useContext(LeaveGuardContext);
   if (!guards) {
     throw new Error("useLeaveGuard needs a LeaveGuard above it");
   }
+  const { allowSamePath = false } = options;
   const bypassed = useRef(false);
   useBeforeUnload(
     useCallback(
@@ -40,12 +47,15 @@ export function useLeaveGuard(dirty: boolean) {
   );
 
   useEffect(() => {
-    const guard: BlockerFunction = () => dirty && !bypassed.current;
+    const guard: BlockerFunction = ({ currentLocation, nextLocation }) =>
+      dirty &&
+      !bypassed.current &&
+      !(allowSamePath && currentLocation.pathname === nextLocation.pathname);
     guards.add(guard);
     return () => {
       guards.delete(guard);
     };
-  }, [guards, dirty]);
+  }, [guards, dirty, allowSamePath]);
 
   return useCallback((navigate: () => void) => {
     bypassed.current = true;
