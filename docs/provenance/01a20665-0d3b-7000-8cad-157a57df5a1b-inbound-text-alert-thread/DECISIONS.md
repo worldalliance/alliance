@@ -1,0 +1,3 @@
+# Decisions
+
+- **The shared-number tests move to `server/test/mms-shared-number.e2e-spec.ts`**, with the app and event-log setup both files need in `server/test/mms-inbound-app.ts`, because this task's tests took `server/test/mms.e2e-spec.ts` past the repo's 500-line limit. A read-only subagent proposed three splits; this is its smallest, and ALL-2259, which forbids two live accounts on one number, then deletes one file instead of a block. Its recommended three-way split, which would also move the alert tests into their own file, was left for when the keyword file grows again. (agent decision)
