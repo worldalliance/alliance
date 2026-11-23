@@ -92,6 +92,7 @@ export function useCanvasSelection({
   const focused = useCallback(() => setFocusPending(false), []);
   const [revealPending, setRevealPending] = useState(false);
   const revealed = useCallback(() => setRevealPending(false), []);
+  const reveal = () => setRevealPending(true);
 
   const currentPage = pages[selectedPageIndex] ??
     pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
@@ -130,7 +131,7 @@ export function useCanvasSelection({
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
     setSection(nextSection);
-    setRevealPending(true);
+    reveal();
     if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
 
@@ -160,7 +161,7 @@ export function useCanvasSelection({
     if (page && target) {
       setSelectedPageIndex(pages.indexOf(page));
       setSelection({ pageId: page.id, target });
-      setRevealPending(true);
+      reveal();
     }
   }
 
@@ -192,6 +193,7 @@ export function useCanvasSelection({
     focused,
     revealPending,
     revealed,
+    reveal,
     select,
     showPage,
     selectFromOutline,
