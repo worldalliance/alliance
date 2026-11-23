@@ -70,6 +70,8 @@ type Closer = {
 /** Registers the renderer's handlers and returns, as close, the quit step: once called, it aborts running sign-ins and sign-in checks, Start, Resume, SignIn and SignInStatus fail, and it closes every live session, a new one once its CLI has read its first message or openingWaitMs has passed, and resolves when each of those CLIs, each one closeSessionsIn is closing, and each a failed start closed, has exited, waiting at most openingWaitMs for sessions still starting; one that finishes starting after that is waited for only while other sessions, sign-in CLIs or failed starts' CLIs still close. A new session whose CLI exits without reading its first message, quitting or not, has its saved conversation removed, which the quit waits for. findAgent runs on each call for an agent until it first succeeds for it, so a CLI installed while the app runs is found. */
 export function registerIpc(params: {
   findAgent: (agent: AgentKind) => Result<Agent, Error>;
+  /** Resolves once the environment the CLIs inherit is final, which no agent's CLI starts before. */
+  environmentLoaded: Promise<void>;
   conversations: ConversationStore;
   /** The URL the window loads; only its top-level page may call these handlers or hear session events. */
   rendererUrl: string;
@@ -81,8 +83,14 @@ export function registerIpc(params: {
   /** Closes the live sessions in folder, those that attach there before it returns, and the ones already starting there as they start, a new one once its CLI has read its first message or openingWaitMs has passed, resolving once the CLIs of the sessions this call closes have exited and waiting at most openingWaitMs for sessions still starting; every Start and Resume in folder that hasn't reached its agent's CLI yet fails until it returns, and a Start already past that reports success for the session it closes. */
   closeSessionsIn: (folder: string) => Promise<void>;
 } {
-  const { findAgent, conversations, rendererUrl, openingWaitMs, isArchived } =
-    params;
+  const {
+    findAgent,
+    environmentLoaded,
+    conversations,
+    rendererUrl,
+    openingWaitMs,
+    isArchived,
+  } = params;
   const live = new Map<string, { session: AgentSession; folder: string }>();
   // The backend hands a Resume the same session until its close begins, which closeOnceRead can hold back.
   const closingIn = new WeakSet<AgentSession>();
@@ -112,6 +120,8 @@ export function registerIpc(params: {
     kind: AgentKind,
     run: (agent: Agent) => Promise<Result<T, Error>>,
   ): Promise<IpcResult<T>> => {
+    await environmentLoaded;
+    if (closing) return quitting();
     const cached = found.get(kind);
     if (cached) return toIpc(await run(cached));
     const agent = findAgent(kind);

@@ -7,6 +7,8 @@ import { testSourceVariable } from "./src/main/repository/source";
 import { AgentKind } from "./src/shared/agent-kind";
 
 process.env.ALLIANCE_AGENT_HEADLESS = "1";
+// So no test waits on the developer's shell profile, which the app loads at launch.
+process.env.SHELL = path.join(import.meta.dirname, "e2e", "profile-free-shell");
 // So no test can reach the real CLIs.
 process.env[executableVariable(AgentKind.Claude)] = claudeStub.executable;
 process.env[executableVariable(AgentKind.Codex)] = codexStub.executable;

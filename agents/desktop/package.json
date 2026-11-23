@@ -7,7 +7,7 @@
   "packageManager": "bun@1.4.4",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "ALLIANCE_AGENT_DEV_SCRIPT=1 electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json && tsc -p tsconfig.test.json && eslint .",
     "test": "bun test && electron-vite build && playwright test"
