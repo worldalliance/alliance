@@ -42,9 +42,10 @@ export class UserPhoneController {
   @ApiOkResponse({ type: PendingPhoneCodeDto })
   async sendCode(
     @Body() dto: StartPhoneCodeDto,
-    @Req() req: Request,
+    @Req() req: JwtRequest,
   ): Promise<PendingPhoneCodeDto> {
     const started = await this.phoneVerificationService.start({
+      userId: req.user.sub,
       phoneNumber: dto.phoneNumber,
       ip: clientIp(req),
       webOtpHost: webOtpHost(req),
