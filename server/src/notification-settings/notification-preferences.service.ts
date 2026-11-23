@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { User } from "src/user/entities/user.entity";
-import { DataSource, In, Raw, type EntityManager } from "typeorm";
+import { Any, DataSource, In, type EntityManager } from "typeorm";
 import { externalChannels, type ExternalRecipient } from "./external-channels";
 import { KIND_POLICY, NotificationKind } from "./notification-kind";
 import { NotificationPreference } from "./notification-preference.entity";
@@ -87,9 +87,7 @@ export class NotificationPreferencesService {
     const { userIds, kinds } = params;
     const em = params.em ?? this.dataSource.manager;
     if (!userIds.length) return new Preferences(new Map(), new Map());
-    const ids = Raw((column) => `${column} = ANY(:ids)`, {
-      ids: [...new Set(userIds)],
-    });
+    const ids = Any([...new Set(userIds)]);
     const users = await em.find(User, {
       where: { id: ids },
       select: {
