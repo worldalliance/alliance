@@ -10,6 +10,7 @@ import {
   Undecided,
   checkExpression,
   printNames,
+  type CheckedExpression,
   type ResultRule,
 } from "./check";
 import { INTERNAL_PREFIX } from "./check-world";
@@ -34,7 +35,8 @@ export type Dependent = { id: string; rule: ResultRule } & (
   | { fixed: string | Expr }
 );
 
-export type FixedDependent = { id: string; tree: Expr };
+/** A dependent fixed in the save; `mayBeUnknown` as `CheckedExpression`'s. */
+export type FixedDependent = { id: string; tree: Expr; mayBeUnknown: boolean };
 
 /**
  * A new named expression, or a new version of a stored one; `source` is the
@@ -211,7 +213,9 @@ function checkChange({
     deletedLists: deletedListNames,
   });
   const print = (tree: Expr) => printExpression(tree, names);
-  const check = (params: CheckParams & { cut?: ReadonlySet<string> }) => {
+  const check = (
+    params: CheckParams & { cut?: ReadonlySet<string> },
+  ): CheckedExpression | undefined => {
     const result = checkExpression({
       source: params.source,
       scope:
@@ -230,7 +234,7 @@ function checkChange({
       deletedNames,
       deletedLists: deletedListNames,
     });
-    if (result.ok) return;
+    if (result.ok) return result.value;
     for (const { namedExpression, ...diagnostic } of result.error) {
       const owner =
         namedExpression === undefined ? undefined : byName.get(namedExpression);
@@ -271,7 +275,9 @@ function checkChange({
       (other) => eachReads.has(other.id) && readsOf(other.tree).has(each.id),
     );
   };
-  const checkRoot = (params: CheckParams & { tree: Expr }) => {
+  const checkRoot = (
+    params: CheckParams & { tree: Expr },
+  ): CheckedExpression | undefined => {
     const rootReads = readsOf(params.tree);
     const onOwnLoop =
       params.kind === SaveProblemKind.Named && onLoop.has(params.id);
@@ -285,8 +291,12 @@ function checkChange({
         )
         .map(({ id }) => id),
     );
-    if (loops.size === 0) check(params);
-    else if (onOwnLoop) check({ ...params, cut: loops });
+    const checked =
+      loops.size === 0
+        ? check(params)
+        : onOwnLoop
+          ? check({ ...params, cut: loops })
+          : undefined;
     for (const each of kept) {
       if (!loops.has(each.id) || onSavedLoop(each)) continue;
       checkRoot({
@@ -299,6 +309,7 @@ function checkChange({
         stored: true,
       });
     }
+    return checked;
   };
 
   // A saved expression's own check locates its problems in the admin's text,
@@ -356,14 +367,16 @@ function checkChange({
       problems.add({ kind: SaveProblemKind.Dependent, id, ...tree.error });
       continue;
     }
-    fixed.push({ id, tree: tree.value });
-    checkRoot({
+    const checked = checkRoot({
       kind: SaveProblemKind.Dependent,
       id,
       source: each.fixed,
       tree: tree.value,
       rule,
     });
+    if (checked !== undefined) {
+      fixed.push({ id, tree: tree.value, mayBeUnknown: checked.mayBeUnknown });
+    }
   }
   return problems.empty
     ? R.success({ named: saved, dependents: fixed })

@@ -222,6 +222,7 @@ test("a dependent fixed as text reads names the save introduces", () => {
           named: [{ ...amount, name: "base" }, doubled],
         }),
       ),
+      mayBeUnknown: false,
     },
   ]);
   expect(
@@ -270,7 +271,7 @@ test("a dependent fixed as a tree is checked and returned", () => {
   const tree = parse("(count ?? 0) === 1");
   expect(
     R.unwrap(save([rename], { dependents: [fixed(tree)] })).dependents,
-  ).toEqual([{ id: "group", tree }]);
+  ).toEqual([{ id: "group", tree, mayBeUnknown: false }]);
 });
 
 test("a stored dependent that reads nothing changed isn't checked", () => {
