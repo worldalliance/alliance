@@ -12,6 +12,10 @@ import {
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import {
+  assertNoSplitLaunch,
+  followSplitGrid,
+} from "src/suite-splits/split-guards";
 import { Form } from "src/tasks/entities/form.entity";
 import { User } from "src/user/entities/user.entity";
 import type {
@@ -155,6 +159,11 @@ export class ActionsService {
       write: async (em) => {
         const inserted = await em.save(Action, action);
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        await followSplitGrid(em, { actionIds: [inserted.id], entering: true });
+        // A split suite's grid may have set the optional flag.
+        inserted.optional = (
+          await em.findOneByOrFail(Action, { id: inserted.id })
+        ).optional;
         if (rest.taskFormId != null) {
           await slugFormForAction(em, {
             formId: rest.taskFormId,
@@ -378,9 +387,7 @@ export class ActionsService {
       await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
 
-    action.suite = {
-      id: suiteId ?? undefined,
-    };
+    action.suite = { id: suiteId ?? undefined };
 
     if (authorIds !== undefined) {
       action.authors = authorIds.length
@@ -392,11 +399,14 @@ export class ActionsService {
     const newName = rest.name === action.name ? undefined : rest.name;
     Object.assign(action, rest);
 
-    // Replacing reviewers soft-deletes the dropped ones before the save;
-    // without one transaction a failed save still drops them.
+    const suiteAfter = suiteId === undefined ? oldSuiteId : suiteId;
+    // One transaction keeps a failed save from dropping replaced reviewers.
+    // The suite is locked before the action, the order a split save takes.
     await writeUnderLive(this.actionRepository.manager, {
       parents: [
-        ...(suiteId == null ? [] : [{ target: ActionSuite, id: suiteId }]),
+        ...(suiteAfter == null
+          ? []
+          : [{ target: ActionSuite, id: suiteAfter }]),
         ...(action.authors ?? []).flatMap((author) =>
           author.id === undefined ? [] : [{ target: User, id: author.id }],
         ),
@@ -419,6 +429,11 @@ export class ActionsService {
           });
         }
         await em.save(Action, action);
+        await followSplitGrid(em, {
+          actionIds: [id],
+          entering: suiteId != null && suiteId !== oldSuiteId,
+        });
+        await assertNoSplitLaunch(em, [id]);
         if (newName !== undefined && suiteId != null) {
           await renameSoleActionSuite(em, {
             suiteId,

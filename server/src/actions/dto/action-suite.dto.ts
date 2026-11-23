@@ -34,6 +34,13 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
   @Allow()
   generalUpdates: GeneralUpdateDto[];
 
+  @ApiProperty({
+    description:
+      "Whether the suite's groups decide its actions' participants and optional work.",
+  })
+  @Allow()
+  usesGroups: boolean;
+
   constructor(suite: ActionSuite, actions: ParsedAction[]) {
     super();
     this.id = suite.id;
@@ -51,5 +58,9 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
       suite.reminderGroups?.map((group) => new ReminderGroupDto(group)) ?? [];
     this.generalUpdates =
       suite.generalUpdates?.map((update) => new GeneralUpdateDto(update)) ?? [];
+    if (suite.split === undefined) {
+      throw new Error(`split of action suite ${suite.id} not loaded`);
+    }
+    this.usesGroups = suite.split !== null;
   }
 }

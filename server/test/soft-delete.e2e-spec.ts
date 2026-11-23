@@ -59,6 +59,9 @@ const NEVER_DELETED = [
   "MemberListVersion",
   "MmsThread",
   "MmsThreadEvent",
+  "SuiteSplit",
+  "SuiteSplitPin",
+  "SuiteSplitVersion",
 ];
 
 describe("softDeleteCascade (e2e)", () => {
