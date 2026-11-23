@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { R } from "../../../../common/src/result";
 import { AgentKind } from "../shared/agent-kind";
+import { repositoryFolder } from "../shared/repository";
 import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
 import { createClaudeBackend } from "./agent/claude/backend";
 import { isSignedInToCodex, signInToCodex } from "./agent/codex/auth";
@@ -19,7 +20,9 @@ import { findExecutable } from "./cli-executable";
 import { ConversationStore } from "./conversations";
 import { describeError } from "./describe-error";
 import { devClaudeConfigDir, devCodexHome } from "./dev-app-data";
+import { gitEnvironment } from "./git-environment";
 import { type Agent, registerIpc } from "./ipc";
+import { findOnPath } from "./path-search";
 import { findGit } from "./repository/git";
 import { registerRepositoryIpc } from "./repository/ipc";
 import { SavedRepository } from "./repository/saved";
@@ -29,6 +32,9 @@ import {
   testSource,
   testSourceVariable,
 } from "./repository/source";
+import { registerTaskIpc } from "./tasks/ipc";
+import { TaskService } from "./tasks/service";
+import { TaskStore } from "./tasks/store";
 
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
@@ -247,7 +253,7 @@ void app.whenReady().then(() => {
   });
   registerRepositoryIpc({ repository, rendererUrl });
   void repository.locate({ autoClone: true });
-  const closeAgents = registerIpc({
+  const sessions = registerIpc({
     findAgent: (agent) =>
       R.map(
         findExecutable({ agent, env: process.env, packaged: app.isPackaged }),
@@ -258,9 +264,42 @@ void app.whenReady().then(() => {
     ),
     rendererUrl,
     openingWaitMs,
+    isArchived: (folder) => tasks.isArchived(folder),
   });
+  const tasks = new TaskService({
+    checkout: () => repositoryFolder(repository.current()),
+    repositoryUrl: repositorySource.url,
+    findGit: () => findGit({ env: process.env, platform: process.platform }),
+    findBun: () => {
+      const executable = findOnPath("bun", process.env);
+      return executable
+        ? R.success({ executable, env: gitEnvironment() })
+        : R.failure(
+            new Error(
+              "Alliance agent needs Bun to list and create tasks. Install it, then try again.",
+            ),
+          );
+    },
+    store: new TaskStore(path.join(userData, "tasks.json")),
+    startConversation: sessions.startConversation,
+    closeSessionsIn: sessions.closeSessionsIn,
+  });
+  registerTaskIpc({ tasks, rendererUrl });
+  let listedFolder: string | undefined;
+  const listIfMoved = () => {
+    const folder = repositoryFolder(repository.current());
+    if (folder === listedFolder) return;
+    listedFolder = folder;
+    void tasks.refresh();
+  };
+  repository.subscribe(listIfMoved);
+  listIfMoved();
+  // Worktrees made in a terminal show up when the user comes back to the app.
+  app.on("browser-window-focus", () => void tasks.refresh());
   closeSessions = () =>
-    Promise.all([closeAgents(), repository.close()]).then(() => undefined);
+    Promise.all([tasks.close(), sessions.close(), repository.close()]).then(
+      () => undefined,
+    );
   nativeTheme.on("updated", () => {
     for (const window of BrowserWindow.getAllWindows())
       window.setBackgroundColor(windowBackground());

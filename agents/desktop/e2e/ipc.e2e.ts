@@ -185,34 +185,6 @@ test("a conversation that can't be saved closes its CLI and fails to start", asy
   await app.close();
 });
 
-test("a folder picker that fails to open comes back as an error", async () => {
-  const { app, page } = await launch({ captures: [] });
-  await app.evaluate(({ dialog }) => {
-    Object.assign(dialog, {
-      showOpenDialog: () => Promise.reject(new Error("No display")),
-    });
-  });
-  expect(await page.evaluate(() => window.agent.chooseFolder())).toEqual({
-    ok: false,
-    error: "No display",
-  });
-  await app.close();
-});
-
-test("a canceled folder picker comes back as no folder", async () => {
-  const { app, page } = await launch({ captures: [] });
-  await app.evaluate(({ dialog }) => {
-    Object.assign(dialog, {
-      showOpenDialog: () => Promise.resolve({ canceled: true, filePaths: [] }),
-    });
-  });
-  expect(await page.evaluate(() => window.agent.chooseFolder())).toEqual({
-    ok: true,
-    value: undefined,
-  });
-  await app.close();
-});
-
 test("a new conversation whose CLI exits before reading its first message is removed, and the window told", async () => {
   const { app, page } = await launch({
     captures: [],

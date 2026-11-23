@@ -27,7 +27,7 @@ test("the transcript follows the end only while the reader is there", async () =
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0]?.setContentSize(900, 360),
   );
@@ -57,7 +57,7 @@ test("Jump to latest moves focus to Try again while the conversation can't reope
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   const listed = await page.evaluate(() => window.agent.listConversations());
   if (!listed.ok) throw new Error(listed.error);
   const sessionId = listed.value[0]?.id;

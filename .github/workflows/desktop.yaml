@@ -6,6 +6,13 @@ on:
     paths:
       - agents/desktop/**
       - common/src/result.ts
+      - common/src/dev-ports.ts
+      - common/src/dev-ports-base.ts
+      - common/src/node-env.ts
+      - scripts/new-worktree.sh
+      - scripts/list-worktrees.ts
+      - scripts/lib/worktree-paths.sh
+      - scripts/lib/worktree-registry.sh
       - eslint/**
       - package.json
       - bun.lock

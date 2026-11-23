@@ -1,20 +1,19 @@
 import { expect, test } from "@playwright/test";
-import { mkdirSync } from "node:fs";
 import { IpcChannel } from "../src/shared/ipc";
 import {
-  chooseFolder,
+  askWithoutTask,
   finishFirstTurn,
   heldClaude,
   send,
   status,
 } from "./chat-helpers";
-import { authStatusCapture, captured, launch, workFolder } from "./launch";
+import { authStatusCapture, captured, launch } from "./launch";
 
 test("a reply still running when the window reloads shows as working and stops", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await send(page, "Count to 100, one number per line");
   await expect(page.locator(".assistant").nth(1)).toContainText("1\n2\n3");
   await page.reload();
@@ -28,26 +27,22 @@ test("a reply still running when the window reloads shows as working and stops",
   await app.close();
 });
 
-test("each conversation keeps its unsent message, and the new one its folder, when the window reloads or the app relaunches", async () => {
+test("each conversation keeps its unsent message when the window reloads or the app relaunches", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await expect
     .poll(() => page.evaluate("localStorage.getItem('drafts')"))
     .toBe("{}");
   const box = page.getByLabel("Message Claude");
   const sidebar = page.getByRole("navigation");
   await box.fill("Half a message to the conversation");
-  await sidebar.getByRole("button", { name: "Start a conversation" }).click();
-  const other = test.info().outputPath("other");
-  mkdirSync(other);
-  await chooseFolder(app, other);
-  await page.getByRole("button", { name: "Change folder…" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
   await box.fill("Half a first message");
   await page.reload();
+  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
   await expect(box).toHaveValue("Half a first message");
-  await expect(page.locator(".folder-path")).toHaveText(other);
   await sidebar.getByRole("button", { name: /Change hello/ }).click();
   await expect(box).toHaveValue("Half a message to the conversation");
   await box.fill("Half a message, typed right before quitting");
@@ -57,8 +52,11 @@ test("each conversation keeps its unsent message, and the new one its folder, wh
     captures: [authStatusCapture(true), captured("resume-with-image-session")],
   });
   const relaunchedBox = relaunched.page.getByLabel("Message Claude");
+  await relaunched.page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Ask without a task" })
+    .click();
   await expect(relaunchedBox).toHaveValue("Half a first message");
-  await expect(relaunched.page.locator(".folder-path")).toHaveText(other);
   await relaunched.page
     .getByRole("navigation")
     .getByRole("button", { name: /Change hello/ })
@@ -75,8 +73,7 @@ test("a conversation still starting when the window reloads shows in the sidebar
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await chooseFolder(app, workFolder());
-  await page.getByRole("button", { name: "Choose folder…" }).click();
+  await askWithoutTask(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await page.reload();
@@ -98,8 +95,7 @@ test("a failed read for a conversation still starting at the reload says so in t
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await chooseFolder(app, workFolder());
-  await page.getByRole("button", { name: "Choose folder…" }).click();
+  await askWithoutTask(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await page.reload();
@@ -139,7 +135,7 @@ test("a failed read for a conversation still starting at the reload says so in t
   ).toBeVisible();
   await expect(sidebar.getByRole("alert")).toHaveCount(0);
   await expect(
-    sidebar.getByRole("button", { name: "Start a conversation" }),
+    sidebar.getByRole("button", { name: "Ask without a task" }),
   ).toBeFocused();
   await app.close();
 });

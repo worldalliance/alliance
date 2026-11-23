@@ -1,14 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-import { execFileSync } from "node:child_process";
 import { once } from "node:events";
 import {
   closeSync,
-  constants,
   existsSync,
   mkdirSync,
-  openSync,
   readFileSync,
-  rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -16,7 +12,7 @@ import path from "node:path";
 import { AgentEventKind } from "../src/shared/agent-event";
 import { AgentKind } from "../src/shared/agent-kind";
 import type { AgentApi } from "../src/shared/ipc";
-import { firstMessage, start } from "./ipc-helpers";
+import { firstMessage, holdNextListRead, start } from "./ipc-helpers";
 import {
   captured,
   claudeExecutableVariable,
@@ -25,6 +21,7 @@ import {
   outlivedApp,
   runningCount,
   sessionClaude,
+  slowBootClaude,
   trackedClaude,
   workFolder,
   writeClaude,
@@ -56,33 +53,6 @@ const savedConversations = (): { id: string }[] =>
       "utf8",
     ),
   ).conversations;
-
-/** Replaces the saved conversation list with a FIFO once any read already under way has finished, so the next read waits until the test writes the list. */
-async function holdNextListRead(page: Page): Promise<() => Promise<number>> {
-  await expect(page.locator("#root main")).toBeAttached();
-  await page.evaluate(() => window.agent.listConversations());
-  const list = test.info().outputPath("user-data", "conversations.json");
-  rmSync(list, { force: true });
-  execFileSync("mkfifo", [list]);
-  // Opening the FIFO without blocking fails until a read has it open.
-  const openFifo = () => {
-    try {
-      return openSync(list, constants.O_WRONLY | constants.O_NONBLOCK);
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "ENXIO")
-        return undefined;
-      throw error;
-    }
-  };
-  return async () => {
-    let fifo = openFifo();
-    while (fifo === undefined) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      fifo = openFifo();
-    }
-    return fifo;
-  };
-}
 
 /** Resolves when any turn ends; call it before the call that starts the turn. */
 function nextTurnEnd(page: Page): Promise<void> {
@@ -195,7 +165,7 @@ test("quitting waits only so long for a new conversation's CLI to read its messa
   expect(Date.now() - quitAt).toBeLessThan(10_000);
   expect(runningCount(claude)).toBe(0);
   expect(stderr()).toContain(
-    "its CLI didn't read the first message within 0.5 s of the quit beginning",
+    "its CLI didn't read the first message within 0.5 s of the quit beginning.",
   );
   expect(savedConversations()).toEqual([]);
 });
@@ -371,22 +341,6 @@ exit $status
     resumable.id,
   ]);
 });
-
-/** A CLI that boots slowly, noting when it is stopped before it has read its first message and when it outlives the app. */
-function slowBootClaude(): { claude: string; cutBeforeBoot: string } {
-  const stub = process.env[claudeExecutableVariable];
-  const cutBeforeBoot = test.info().outputPath("cut-before-boot");
-  const claude = sessionClaude(`trap 'touch "${cutBeforeBoot}"; exit 143' TERM
-sleep 3 & wait $!
-trap - TERM
-"${stub}" "$@"
-status=$?
-sleep 1
-${noteOutlivedApp}
-exit $status
-`);
-  return { claude, cutBeforeBoot };
-}
 
 test("a conversation started just before the quit closes once its CLI has read its first message", async () => {
   const { claude, cutBeforeBoot } = slowBootClaude();

@@ -8,29 +8,8 @@ import {
   clonePhaseWords,
   type ShownRepository,
 } from "../repository";
-
-function ProblemText({ problem }: { problem: Problem }) {
-  return (
-    <div className="error" role="alert">
-      <p>{problem.message}</p>
-      {problem.details && (
-        <details>
-          <summary>Details</summary>
-          <pre>{problem.details}</pre>
-        </details>
-      )}
-    </div>
-  );
-}
-
-function Folder({ label, folder }: { label: string; folder: string }) {
-  return (
-    <p className="folder">
-      <span className="folder-label">{label}</span>
-      <span className="folder-path">{folder}</span>
-    </p>
-  );
-}
+import { Folder } from "./Folder";
+import { ProblemText } from "./ProblemText";
 
 export function RepositoryView({ shown }: { shown: ShownRepository }) {
   const [pending, setPending] = useState(false);

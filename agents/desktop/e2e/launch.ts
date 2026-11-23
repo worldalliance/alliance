@@ -1,11 +1,18 @@
 import {
   _electron as electron,
   type ElectronApplication,
+  expect,
   type Page,
   test,
 } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import {
   authStatusArgs,
@@ -20,8 +27,19 @@ import { codexConfigArgs } from "../src/main/agent/codex/process";
 import { captured as codexCaptured } from "../src/main/agent/codex/testing/capture";
 import { stubCapturesVariable as codexCapturesVariable } from "../src/main/agent/codex/testing/stub";
 import { executableVariable } from "../src/main/cli-executable";
+import {
+  type RepositorySource,
+  testSource,
+  testSourceVariable,
+} from "../src/main/repository/source";
+import { git, makeSource } from "../src/main/repository/testing/fixture";
+import { commitWorktreeScripts } from "../src/main/tasks/testing/fixture";
 import { AgentKind } from "../src/shared/agent-kind";
+import type { AgentApi } from "../src/shared/ipc";
+import { RepositoryStatus } from "../src/shared/repository";
 import { appArgs } from "./app-args";
+
+declare const window: { agent: AgentApi };
 
 export { captured };
 
@@ -84,6 +102,7 @@ export async function launch(
       }
   ),
 ): Promise<{ app: ElectronApplication; page: Page }> {
+  const ownRepository = !params.env?.[testSourceVariable];
   const env = {
     ...process.env,
     [stubCapturesVariable]: [captured("version"), ...params.captures].join(
@@ -95,11 +114,52 @@ export async function launch(
     ].join(path.delimiter),
     ...(params.claude && { [claudeExecutableVariable]: params.claude }),
     ...(params.path !== undefined && { PATH: params.path }),
+    ...(ownRepository && {
+      [testSourceVariable]: JSON.stringify(testRepository()),
+    }),
     ...params.env,
   };
   if (params.path !== undefined) delete env[claudeExecutableVariable];
   const app = await electron.launch({ args: appArgs(), env });
-  return { app, page: await app.firstWindow() };
+  const page = await app.firstWindow();
+  // The first launch clones into workFolder by replacing it, which would pull it from under a conversation a test starts there at once.
+  if (ownRepository)
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async (busy) => {
+            const state = await window.agent.repositoryState();
+            return state.ok && !busy.includes(state.value.status);
+          },
+          [RepositoryStatus.Checking, RepositoryStatus.Cloning],
+        ),
+      )
+      .toBe(true);
+  return { app, page };
+}
+
+/** This test's stand-in for the Alliance repository, with fake worktree scripts and, from the first call, files by relative path, which the app clones into workFolder at its first launch, so conversations without a task run there. */
+export function testRepository(
+  files: Record<string, string> = {},
+): RepositorySource {
+  const saved = test.info().outputPath("source.json");
+  if (existsSync(saved))
+    return testSource.parse(JSON.parse(readFileSync(saved, "utf8")));
+  const source = makeSource({
+    folder: test.info().outputPath("source"),
+    defaultFolder: test.info().outputPath("work"),
+  });
+  commitWorktreeScripts(source.url);
+  for (const [file, text] of Object.entries(files)) {
+    const target = path.join(source.url, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, text);
+    git(source.url, "add", file);
+  }
+  if (Object.keys(files).length > 0)
+    git(source.url, "commit", "-q", "-m", "Test files");
+  writeFileSync(saved, JSON.stringify(source));
+  return source;
 }
 
 export function workFolder(): string {
@@ -163,6 +223,21 @@ export const processLines = (columns: string): string[] =>
     // A busy machine's full process list can outgrow execFileSync's 1 MB default buffer.
     maxBuffer: 256 * 1024 * 1024,
   }).split("\n");
+
+/** A CLI that boots slowly, noting when it is stopped before it has read its first message and when it outlives the app. */
+export function slowBootClaude(): { claude: string; cutBeforeBoot: string } {
+  const cutBeforeBoot = test.info().outputPath("cut-before-boot");
+  const claude = sessionClaude(`trap 'touch "${cutBeforeBoot}"; exit 143' TERM
+sleep 3 & wait $!
+trap - TERM
+"${process.env[claudeExecutableVariable]}" "$@"
+status=$?
+sleep 1
+${noteOutlivedApp}
+exit $status
+`);
+  return { claude, cutBeforeBoot };
+}
 
 export const runningCount = (claude: string): number =>
   processLines("command=").filter((command) => command.includes(claude)).length;

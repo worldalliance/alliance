@@ -7,12 +7,7 @@ import {
 import path from "node:path";
 import { AgentEventKind } from "../src/shared/agent-event";
 import { type AgentApi, IpcChannel } from "../src/shared/ipc";
-import {
-  chooseFolder,
-  finishFirstTurn,
-  saveConversation,
-  send,
-} from "./chat-helpers";
+import { finishFirstTurn, saveConversation } from "./chat-helpers";
 import { authStatusCapture, captured, launch, workFolder } from "./launch";
 
 declare const window: { agent: AgentApi };
@@ -34,7 +29,7 @@ test("a short window at 200% zoom keeps room to read the transcript", async () =
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   await app.evaluate(({ BrowserWindow }) => {
     const [window] = BrowserWindow.getAllWindows();
     window?.setContentSize(640, 600);
@@ -53,7 +48,7 @@ test("a long tool name wraps in a 320 px wide window, keeping its status in view
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
-  await finishFirstTurn(app, page);
+  await finishFirstTurn(page);
   const listed = await page.evaluate(() => window.agent.listConversations());
   if (!listed.ok) throw new Error(listed.error);
   const name = "mcp__example__lookup_repository_information";
@@ -114,16 +109,6 @@ async function narrow(app: ElectronApplication, page: Page) {
 }
 
 const longMissingFolder = () => path.join(workFolder(), "a".repeat(120));
-
-test("a missing folder's long path wraps in a 320 px wide window", async () => {
-  const { app, page } = await launch({ captures: [authStatusCapture(true)] });
-  await chooseFolder(app, longMissingFolder());
-  await narrow(app, page);
-  await page.getByRole("button", { name: "Choose folder…" }).click();
-  await send(page, "Change hello to goodbye in a.txt");
-  await expectAlertFits(page, "doesn't exist");
-  await app.close();
-});
 
 test("reopening a conversation whose long folder is gone wraps in a 320 px wide window", async () => {
   saveConversation(longMissingFolder());

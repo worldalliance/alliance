@@ -143,6 +143,7 @@ pre {
 
 .sidebar li button,
 .sidebar .new,
+.sidebar .ask,
 .sidebar .repository-entry {
   display: block;
   width: 100%;
@@ -156,9 +157,30 @@ pre {
   margin-bottom: var(--space-4);
 }
 
-.sidebar .new {
+.sidebar .new,
+.sidebar .ask {
   border-color: var(--border);
   background: var(--background);
+}
+
+.sidebar h2:not(:first-of-type) {
+  margin-top: var(--space-6);
+}
+
+.sidebar ul.nested {
+  margin: 0 0 0 var(--space-3);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
+}
+
+.sidebar .archived {
+  margin-top: var(--space-3);
+}
+
+.sidebar .archived summary {
+  color: var(--text-muted);
+  padding: var(--space-1) var(--space-2);
+  min-height: var(--control-height);
 }
 
 .sidebar button[aria-current="page"] {
@@ -223,6 +245,24 @@ pre {
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+.task progress {
+  width: 100%;
+  max-width: 40ch;
+}
+
+.request {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+}
+
+.actions.archive {
+  align-items: center;
 }
 
 .actions {

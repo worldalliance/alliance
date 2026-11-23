@@ -3,6 +3,7 @@ import type { AgentEvent } from "./agent-event";
 import type { AgentKind } from "./agent-kind";
 import type { Conversation } from "./conversation";
 import type { Problem, RepositoryState } from "./repository";
+import type { TasksState } from "./task";
 
 export type { Conversation } from "./conversation";
 
@@ -10,7 +11,6 @@ export enum IpcChannel {
   SignInStatus = "agent:status",
   SignIn = "agent:sign-in",
   CancelSignIn = "agent:cancel-sign-in",
-  ChooseFolder = "folder:choose",
   ListConversations = "conversations:list",
   Start = "session:start",
   Resume = "session:resume",
@@ -27,12 +27,32 @@ export enum IpcChannel {
   RepositoryUseExisting = "repository:use-existing",
   RepositoryUpdate = "repository:update",
   RepositoryCheckAgain = "repository:check-again",
+  TasksState = "tasks:state",
+  TasksChanged = "tasks:changed",
+  CreateTask = "task:create",
+  RetryTask = "task:retry",
+  DismissTask = "task:dismiss",
+  ArchiveTask = "task:archive",
+  RestoreTask = "task:restore",
 }
 
 export type IpcResult<T> = Result<T, string>;
 
 /** Succeeds with the problem that stopped a repository action, or undefined once it is done or the user cancelled its folder picker. */
 export type RepositoryReply = IpcResult<Problem | undefined>;
+
+export type StartInput = {
+  folder: string;
+  firstMessage: string;
+  agent: AgentKind;
+};
+
+/** A created task's key and folder, and its first conversation, which fails when the worktree is ready but the conversation couldn't start. */
+export type CreatedTask = {
+  key: string;
+  folder: string;
+  conversation: IpcResult<Conversation>;
+};
 
 export type SessionEvent = { sessionId: string; event: AgentEvent };
 
@@ -42,13 +62,13 @@ export type RendererEvents = {
   /** The id of a new conversation removed because its CLI exited before reading its first message. */
   [IpcChannel.ConversationRemoved]: string;
   [IpcChannel.RepositoryChanged]: RepositoryState;
+  [IpcChannel.TasksChanged]: TasksState;
 };
 
 /** What each invoked channel's main-process handler returns. */
 export type IpcReplies = {
   [IpcChannel.SignInStatus]: IpcResult<boolean>;
   [IpcChannel.SignIn]: IpcResult<void>;
-  [IpcChannel.ChooseFolder]: IpcResult<string | undefined>;
   [IpcChannel.ListConversations]: IpcResult<Conversation[]>;
   [IpcChannel.Start]: IpcResult<Conversation>;
   [IpcChannel.Resume]: IpcResult<{
@@ -62,6 +82,11 @@ export type IpcReplies = {
   [IpcChannel.RepositoryUseExisting]: RepositoryReply;
   [IpcChannel.RepositoryUpdate]: RepositoryReply;
   [IpcChannel.RepositoryCheckAgain]: RepositoryReply;
+  [IpcChannel.TasksState]: IpcResult<TasksState>;
+  [IpcChannel.CreateTask]: IpcResult<CreatedTask>;
+  [IpcChannel.RetryTask]: IpcResult<CreatedTask>;
+  [IpcChannel.ArchiveTask]: IpcResult<void>;
+  [IpcChannel.RestoreTask]: IpcResult<void>;
 };
 
 type Reply<C extends keyof IpcReplies> = Promise<IpcReplies[C]>;
@@ -72,15 +97,9 @@ export type AgentApi = {
   /** Resolves once the browser sign-in finishes, fails or is cancelled. */
   signIn(agent: AgentKind): Reply<IpcChannel.SignIn>;
   cancelSignIn(agent: AgentKind): void;
-  /** Succeeds with undefined when the user cancels. */
-  chooseFolder(): Reply<IpcChannel.ChooseFolder>;
   listConversations(): Reply<IpcChannel.ListConversations>;
   /** Starts a conversation, saves it titled with its first message, and sends that message, so no conversation is saved without one. That message's events can arrive before this resolves. */
-  start(input: {
-    folder: string;
-    firstMessage: string;
-    agent: AgentKind;
-  }): Reply<IpcChannel.Start>;
+  start(input: StartInput): Reply<IpcChannel.Start>;
   /** turnRunning is true when the session was still live and mid-turn. */
   resume(sessionId: string): Reply<IpcChannel.Resume>;
   send(input: { sessionId: string; text: string }): Reply<IpcChannel.Send>;
@@ -102,4 +121,17 @@ export type AgentApi = {
   /** Fast-forwards an outdated copy to the latest main, resolving once done. */
   updateRepository(): Reply<IpcChannel.RepositoryUpdate>;
   checkRepositoryAgain(): Reply<IpcChannel.RepositoryCheckAgain>;
+  tasksState(): Reply<IpcChannel.TasksState>;
+  onTasksChanged(listener: (state: TasksState) => void): () => void;
+  /** Creates a task's worktree, then starts its first conversation with request; the task is listed as new:<creationId> meanwhile, and stays listed with its problem if creation fails. */
+  createTask(input: {
+    creationId: string;
+    request: string;
+    agent: AgentKind;
+  }): Reply<IpcChannel.CreateTask>;
+  retryTask(key: string): Reply<IpcChannel.RetryTask>;
+  dismissTask(key: string): void;
+  /** Stops the task's agents, then hides it. */
+  archiveTask(key: string): Reply<IpcChannel.ArchiveTask>;
+  restoreTask(key: string): Reply<IpcChannel.RestoreTask>;
 };
