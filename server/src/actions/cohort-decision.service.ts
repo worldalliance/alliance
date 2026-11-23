@@ -1,9 +1,8 @@
-/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
-import { lockLiveIds } from "src/datasources/soft-delete";
 import { assertLeaseHeld } from "src/leases/cron-lease";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
@@ -23,11 +22,10 @@ import {
   readsDecisionsOf,
   type CohortEnrollment,
 } from "./cohort-decision";
+import { CohortDecisionStore, type DecisionRow } from "./cohort-decision.store";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
-import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
-import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import {
   Action,
   parseAction,
@@ -37,13 +35,6 @@ import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
 
-const INSERT_CHUNK_SIZE = 1000;
-
-type DecisionRow = Pick<
-  ActionCohortDecision,
-  "actionId" | "userId" | "included" | "reason" | "resolvedAt"
->;
-
 @Injectable()
 export class CohortDecisionService {
   private readonly logger = new Logger(CohortDecisionService.name);
@@ -51,10 +42,7 @@ export class CohortDecisionService {
   constructor(
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
-    @InjectRepository(ActionCohortDecision)
-    private readonly decisionRepository: Repository<ActionCohortDecision>,
-    @InjectRepository(ActionCohortDecisionCorrection)
-    private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
+    private readonly store: CohortDecisionStore,
     private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
@@ -95,7 +83,7 @@ export class CohortDecisionService {
     );
     if (backfill.length === 0 && catchUp.length === 0) return;
 
-    const decidedByAction = await this.findDecidedUserIds(
+    const decidedByAction = await this.store.findDecidedUserIds(
       catchUp.map(({ action }) => action.id),
     );
     const session = new CohortResolutionSession();
@@ -160,7 +148,7 @@ export class CohortDecisionService {
   ): Promise<boolean> {
     assertLeaseHeld();
     const result = await R.fromPromiseFn(async () =>
-      this.insert(await resolve()),
+      this.store.insert(await resolve()),
     );
     if (R.isFailure(result)) {
       this.logger.error(
@@ -226,8 +214,10 @@ export class CohortDecisionService {
     T extends { action: ParsedAction; enrollment: { start: Date } },
   >(closed: T[]): Promise<[T[], T[]]> {
     const [withDecisions, cutover] = await Promise.all([
-      this.findActionIdsWithDecisions(closed.map(({ action }) => action.id)),
-      this.findCutover(),
+      this.store.findActionIdsWithDecisions(
+        closed.map(({ action }) => action.id),
+      ),
+      this.store.findCutover(),
     ]);
     return partition(closed, ({ action, enrollment }) =>
       belongsToBackfill({
@@ -398,36 +388,6 @@ export class CohortDecisionService {
   }
 
   /**
-   * When the resolver first ran: its earliest ordinary decision, counting one
-   * staff have since corrected.
-   */
-  private async findCutover(): Promise<Date | null> {
-    const ordinary = In([
-      CohortDecisionReason.Launch,
-      CohortDecisionReason.Signing,
-      CohortDecisionReason.PrerequisitesResolved,
-    ]);
-    const [decision, correction] = await Promise.all([
-      this.decisionRepository.findOne({
-        where: { reason: ordinary },
-        order: { resolvedAt: "ASC" },
-        select: { resolvedAt: true },
-      }),
-      this.correctionRepository.findOne({
-        where: { previousReason: ordinary },
-        order: { previousResolvedAt: "ASC" },
-        select: { previousResolvedAt: true },
-      }),
-    ]);
-    const times = [decision?.resolvedAt, correction?.previousResolvedAt].filter(
-      (time) => time !== undefined,
-    );
-    return times.length === 0
-      ? null
-      : new Date(Math.min(...times.map((time) => time.getTime())));
-  }
-
-  /**
    * The pass's catch-up for one open action, for a one-shot reader that
    * cannot wait for the next pass. Unlike the pass it throws on failure, so
    * the reader fails rather than read an undecided cohort as empty.
@@ -442,7 +402,7 @@ export class CohortDecisionService {
       this.cohortResolverService.primeActiveUsers(session, () =>
         this.userService.findActiveUsersForRoster(),
       ),
-      this.findDecidedUserIds([action.id]),
+      this.store.findDecidedUserIds([action.id]),
     ]);
     const decided = decidedByAction.get(action.id) ?? new Set<number>();
     const settled = users.filter((user) => isSettled(user, now));
@@ -456,7 +416,7 @@ export class CohortDecisionService {
         `Failed to decide the closed actions action ${action.id} reads`,
       );
     }
-    await this.insert(
+    await this.store.insert(
       await this.resolveAction({
         action,
         enrollment,
@@ -500,7 +460,7 @@ export class CohortDecisionService {
       ),
     );
     if (admissible.length === 0) return new Set();
-    const decidedByAction = await this.findDecidedUserIds(
+    const decidedByAction = await this.store.findDecidedUserIds(
       admissible.map(({ action }) => action.id),
       users.length === 1 ? users[0].id : undefined,
     );
@@ -569,27 +529,12 @@ export class CohortDecisionService {
       return this.decideForUser({ user, actions: decidable, now });
     }
     const open = openEnrollments(decidable, now);
-    const decided = await this.loadDecidedActionIds(user.id, open);
+    const decided = await this.store.loadDecidedActionIds(user.id, open);
     return new Set(
       open
         .map(({ action }) => action.id)
         .filter((actionId) => !decided.has(actionId)),
     );
-  }
-
-  private async loadDecidedActionIds(
-    userId: number,
-    open: Array<{ action: ParsedAction }>,
-  ): Promise<Set<number>> {
-    if (open.length === 0) return new Set();
-    const rows = await this.decisionRepository.find({
-      where: {
-        userId,
-        actionId: In(open.map(({ action }) => action.id)),
-      },
-      select: { actionId: true },
-    });
-    return new Set(rows.map((row) => row.actionId));
   }
 
   /**
@@ -605,7 +550,7 @@ export class CohortDecisionService {
     const { user, actions, now } = params;
     const open = openEnrollments(actions, now);
     if (open.length === 0) return new Set();
-    const decided = await this.loadDecidedActionIds(user.id, open);
+    const decided = await this.store.loadDecidedActionIds(user.id, open);
     const undecided = open.filter(({ action }) => !decided.has(action.id));
     if (undecided.length === 0) return new Set();
     const admissible = undecided.filter(({ action }) =>
@@ -644,7 +589,7 @@ export class CohortDecisionService {
       }
       rows.push(...result.value);
     }
-    await this.insert(rows);
+    await this.store.insert(rows);
     return failed;
   }
 
@@ -692,71 +637,5 @@ export class CohortDecisionService {
     return (await this.findResolvableActions(now)).filter(({ enrollment }) =>
       isInCatchUp(enrollment, now),
     );
-  }
-
-  private async findActionIdsWithDecisions(
-    actionIds: number[],
-  ): Promise<Set<number>> {
-    if (actionIds.length === 0) return new Set();
-    const rows = await this.decisionRepository
-      .createQueryBuilder("decision")
-      .select('DISTINCT decision."actionId"', "actionId")
-      .where('decision."actionId" IN (:...actionIds)', { actionIds })
-      .getRawMany<{ actionId: number }>();
-    return new Set(rows.map((row) => row.actionId));
-  }
-
-  private async findDecidedUserIds(
-    actionIds: number[],
-    onlyUserId?: number,
-  ): Promise<Map<number, Set<number>>> {
-    const rows = await this.decisionRepository.find({
-      where: {
-        actionId: In(actionIds),
-        ...(onlyUserId === undefined ? {} : { userId: onlyUserId }),
-      },
-      select: { actionId: true, userId: true },
-    });
-    const byAction = new Map<number, Set<number>>();
-    for (const { actionId, userId } of rows) {
-      let userIds = byAction.get(actionId);
-      if (!userIds) {
-        userIds = new Set();
-        byAction.set(actionId, userIds);
-      }
-      userIds.add(userId);
-    }
-    return byAction;
-  }
-
-  /**
-   * All or nothing, so a later pass never skips a half-backfilled action. A
-   * concurrent writer's row wins; decisions are final once written. Rows for
-   * an action or account deleted since the pass loaded them are dropped.
-   */
-  private async insert(rows: DecisionRow[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.decisionRepository.manager.transaction(async (manager) => {
-      const liveActionIds = await lockLiveIds(manager, {
-        target: Action,
-        ids: [...new Set(rows.map((row) => row.actionId))],
-      });
-      const liveUserIds = await lockLiveIds(manager, {
-        target: User,
-        ids: [...new Set(rows.map((row) => row.userId))],
-      });
-      const live = rows.filter(
-        (row) => liveActionIds.has(row.actionId) && liveUserIds.has(row.userId),
-      );
-      for (let i = 0; i < live.length; i += INSERT_CHUNK_SIZE) {
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(ActionCohortDecision)
-          .values(live.slice(i, i + INSERT_CHUNK_SIZE))
-          .orIgnore()
-          .execute();
-      }
-    });
   }
 }

@@ -66,6 +66,7 @@ import { ActivityOutputService } from "./activity-output.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortDecisionStore } from "./cohort-decision.store";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
 import { CohortDecisionsController } from "./cohort-decisions.controller";
 import { CohortDivergenceService } from "./cohort-divergence.service";
@@ -196,6 +197,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionStatsService,
     CohortDecisionListener,
     CohortDecisionService,
+    CohortDecisionStore,
     CohortDecisionStaffService,
     CohortDecisionWorker,
     TaskBadgeService,
