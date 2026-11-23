@@ -64,10 +64,13 @@ const firstId = await runScriptedTask({
 
 console.log("resume a thread that doesn't exist");
 process.env.ALLIANCE_AGENT_RECORD_NAME = "missing-thread";
-const missing = await createCodexBackend(recorded).resume({
+const missingBackend = createCodexBackend(recorded);
+const missing = await missingBackend.resume({
   cwd: repo,
   sessionId: "019a0000-0000-7000-8000-000000000000",
 });
+// Its capture ends with the exit record only once that CLI has exited.
+await missingBackend.settled();
 check(
   !missing.ok && /no rollout found/.test(missing.error.message),
   "resuming a missing thread fails",
