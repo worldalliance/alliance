@@ -3,27 +3,27 @@ import type { Conversation } from "../../shared/conversation";
 import type { IpcResult } from "../../shared/ipc";
 import {
   CreationStage,
-  type Task,
-  type TasksState,
-  TaskStatus,
-} from "../../shared/task";
+  type Worktree,
+  type WorktreesState,
+  WorktreeStatus,
+} from "../../shared/worktree";
 import { agent } from "./agent";
 
-export type ShownTasks = {
+export type ShownWorktrees = {
   /** Undefined until the main process answers. */
-  state?: TasksState;
+  state?: WorktreesState;
   problem?: string;
 };
 
-export function useTasks(): ShownTasks {
-  const [shown, setShown] = useState<ShownTasks>({});
+export function useWorktrees(): ShownWorktrees {
+  const [shown, setShown] = useState<ShownWorktrees>({});
   useEffect(() => {
     let changed = false;
-    const unsubscribe = agent.onTasksChanged((state) => {
+    const unsubscribe = agent.onWorktreesChanged((state) => {
       changed = true;
       setShown({ state });
     });
-    void agent.tasksState().then((read) => {
+    void agent.worktreesState().then((read) => {
       if (changed) return;
       setShown(read.ok ? { state: read.value } : { problem: read.error });
     });
@@ -41,35 +41,35 @@ const stageWords: Record<CreationStage, string> = {
   [CreationStage.StartingAgent]: "Starting the agent…",
 };
 
-/** The task's state in a few words, for the sidebar. */
-export function taskStateWords(task: Task): string {
-  const { state } = task;
+/** The worktree's state in a few words, for the sidebar. */
+export function worktreeStateWords(worktree: Worktree): string {
+  const { state } = worktree;
   switch (state.status) {
-    case TaskStatus.Creating:
+    case WorktreeStatus.Creating:
       return stageWords[state.stage];
-    case TaskStatus.CreateFailed:
+    case WorktreeStatus.CreateFailed:
       return "Couldn't be created";
-    case TaskStatus.Ready:
+    case WorktreeStatus.Ready:
       return state.problem ? "Needs attention" : "Ready";
-    case TaskStatus.NotFinished:
+    case WorktreeStatus.NotFinished:
       return "Not finished being created";
-    case TaskStatus.Removing:
+    case WorktreeStatus.Removing:
       return "Not finished being removed";
-    case TaskStatus.Broken:
+    case WorktreeStatus.Broken:
       return "Needs attention";
     default:
-      throw new Error(`unknown task status: ${state satisfies never}`);
+      throw new Error(`unknown worktree status: ${state satisfies never}`);
   }
 }
 
 export const outsideWords = "Made outside Alliance agent";
 
-/** The conversations in each task's folder, and those in no task's folder, archived tasks included. */
+/** The conversations in each worktree's folder, and those in no worktree's folder, archived worktrees included. */
 export function groupConversations(params: {
   conversations: Conversation[];
-  tasks: Task[];
+  worktrees: Worktree[];
 }): { byFolder: Map<string, Conversation[]>; others: Conversation[] } {
-  const folders = new Set(params.tasks.flatMap((t) => t.folder ?? []));
+  const folders = new Set(params.worktrees.flatMap((t) => t.folder ?? []));
   const byFolder = new Map<string, Conversation[]>();
   const others: Conversation[] = [];
   for (const conversation of params.conversations) {
@@ -85,29 +85,30 @@ export function groupConversations(params: {
   return { byFolder, others };
 }
 
-/** A task the app is creating, or failed to create, which has no worktree to archive yet. */
-export const isCreation = (task: Task): boolean => creation[task.state.status];
+/** A worktree the app is creating, or failed to create, which has nothing to archive yet. */
+export const isCreation = (worktree: Worktree): boolean =>
+  creation[worktree.state.status];
 
-const creation: Record<TaskStatus, boolean> = {
-  [TaskStatus.Creating]: true,
-  [TaskStatus.CreateFailed]: true,
-  [TaskStatus.Ready]: false,
-  [TaskStatus.NotFinished]: false,
-  [TaskStatus.Removing]: false,
-  [TaskStatus.Broken]: false,
+const creation: Record<WorktreeStatus, boolean> = {
+  [WorktreeStatus.Creating]: true,
+  [WorktreeStatus.CreateFailed]: true,
+  [WorktreeStatus.Ready]: false,
+  [WorktreeStatus.NotFinished]: false,
+  [WorktreeStatus.Removing]: false,
+  [WorktreeStatus.Broken]: false,
 };
 
-export type TaskAction = {
+export type WorktreeAction = {
   /** What the action in progress does, in words that follow "couldn't". */
   pending?: string;
   problem?: string;
   act: (params: { run: () => Promise<IpcResult<void>>; words: string }) => void;
 };
 
-/** Each task's Archive or Restore in progress and its last problem, kept while the task isn't shown, since an archive can outlast the visit. */
-export function useTaskActions(): (key: string) => TaskAction {
+/** Each worktree's Archive or Restore in progress and its last problem, kept while the worktree isn't shown, since an archive can outlast the visit. */
+export function useWorktreeActions(): (key: string) => WorktreeAction {
   const [actions, setActions] = useState<
-    Record<string, Omit<TaskAction, "act">>
+    Record<string, Omit<WorktreeAction, "act">>
   >({});
   return (key) => ({
     ...actions[key],

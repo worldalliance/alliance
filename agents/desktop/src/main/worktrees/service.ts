@@ -1,49 +1,49 @@
 import { R, type Result } from "../../../../../common/src/result";
 import type { AgentKind } from "../../shared/agent-kind";
 import type { Conversation } from "../../shared/conversation";
-import type { CreatedTask, IpcResult, StartInput } from "../../shared/ipc";
+import type { CreatedWorktree, IpcResult, StartInput } from "../../shared/ipc";
 import type { Problem } from "../../shared/repository";
 import {
   CreationStage,
-  newTaskKey,
-  type Task,
-  type TasksState,
-  TasksStatus,
-  TaskStatus,
-} from "../../shared/task";
+  newWorktreeKey,
+  type Worktree,
+  type WorktreesState,
+  WorktreesStatus,
+  WorktreeStatus,
+} from "../../shared/worktree";
 import { conversationTitle } from "../conversations";
 import { fetchMain } from "../repository/fetch";
 import type { Git } from "../repository/git";
-import { localBranches, runNewWorktree, taskName } from "./create";
-import { listedTasks } from "./listed-tasks";
-import type { SavedTask, TaskStore } from "./store";
-import { type Bun, listWorktrees, type Worktree } from "./worktrees";
+import { localBranches, runNewWorktree, worktreeName } from "./create";
+import { type Bun, type ListedWorktree, listWorktrees } from "./list";
+import { listedWorktrees } from "./listed-worktrees";
+import type { SavedWorktree, WorktreeStore } from "./store";
 
 type Creation = {
   key: string;
   title: string;
   request: string;
   agent: AgentKind;
-  /** Set once chosen, so a listing shows the worktree as this creation rather than as a task of its own. */
+  /** Set once chosen, so a listing shows the worktree as this creation rather than as a worktree of its own. */
   name?: string;
   /** Names earlier attempts used. The script can refuse a name before leaving anything that marks it taken, such as when its folder exists. */
   tried: string[];
   /** Set once scripts/new-worktree.sh has created the worktree, so Try again looks for it rather than creating another. */
   made?: boolean;
-  task: Task;
+  worktree: Worktree;
   controller: AbortController;
 };
 
-/** Lists the repository's worktrees as tasks, and creates, archives and restores them. Each task's conversations are the ones whose folder is its worktree. */
-export class TaskService {
-  private state: TasksState = {
-    status: TasksStatus.NoRepository,
-    tasks: [],
+/** Lists the repository's worktrees, and creates, archives and restores them. Each worktree's conversations are the ones whose folder is its folder. */
+export class WorktreeService {
+  private state: WorktreesState = {
+    status: WorktreesStatus.NoRepository,
+    worktrees: [],
     created: {},
   };
-  private readonly listeners = new Set<(state: TasksState) => void>();
-  private worktrees: Worktree[] = [];
-  private saved: SavedTask[] = [];
+  private readonly listeners = new Set<(state: WorktreesState) => void>();
+  private listed: ListedWorktree[] = [];
+  private saved: SavedWorktree[] = [];
   private readonly creations = new Map<string, Creation>();
   private running = new Set<Promise<unknown>>();
   private listing: Promise<void> | undefined;
@@ -60,7 +60,7 @@ export class TaskService {
       repositoryUrl: string;
       findGit: () => Promise<Result<Git, string>>;
       findBun: () => Result<Bun, Error>;
-      store: TaskStore;
+      store: WorktreeStore;
       /** Starts a conversation in folder and sends it firstMessage. */
       startConversation: (
         input: StartInput,
@@ -70,11 +70,11 @@ export class TaskService {
     },
   ) {}
 
-  current(): TasksState {
+  current(): WorktreesState {
     return this.state;
   }
 
-  subscribe(listener: (state: TasksState) => void): () => void {
+  subscribe(listener: (state: WorktreesState) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -97,14 +97,14 @@ export class TaskService {
   private async listNow(): Promise<void> {
     const checkout = this.params.checkout();
     if (!checkout) {
-      this.worktrees = [];
+      this.listed = [];
       return this.publish({
-        status: TasksStatus.NoRepository,
+        status: WorktreesStatus.NoRepository,
         problem: undefined,
       });
     }
-    if (this.state.status === TasksStatus.NoRepository)
-      this.publish({ status: TasksStatus.Loading });
+    if (this.state.status === WorktreesStatus.NoRepository)
+      this.publish({ status: WorktreesStatus.Loading });
     const changes = this.savedChanges;
     const [listed, saved] = await Promise.all([
       this.list(checkout),
@@ -112,44 +112,44 @@ export class TaskService {
     ]);
     if (saved.ok && changes === this.savedChanges) this.saved = saved.value;
     else if (saved.ok) this.listAgain = true;
-    if (listed.ok) this.worktrees = listed.value;
+    if (listed.ok) this.listed = listed.value;
     const problem = !listed.ok
       ? {
-          message: "Alliance agent couldn't list your tasks.",
+          message: "Alliance agent couldn't list your worktrees.",
           details: listed.error.message,
         }
       : !saved.ok
         ? {
-            message: "Alliance agent couldn't read which tasks it created.",
+            message: "Alliance agent couldn't read which worktrees it created.",
             details: saved.error.message,
           }
         : undefined;
     this.publish({
       status:
-        listed.ok || this.state.status === TasksStatus.Listed
-          ? TasksStatus.Listed
-          : TasksStatus.Loading,
+        listed.ok || this.state.status === WorktreesStatus.Listed
+          ? WorktreesStatus.Listed
+          : WorktreesStatus.Loading,
       problem,
     });
   }
 
-  private list(checkout: string): Promise<Result<Worktree[], Error>> {
+  private list(checkout: string): Promise<Result<ListedWorktree[], Error>> {
     const bun = this.params.findBun();
     return bun.ok
       ? listWorktrees({ bun: bun.value, checkout })
       : Promise.resolve(bun);
   }
 
-  /** Creates a worktree for request, then starts its first conversation there with request as the first message. Fails when the worktree couldn't be created, leaving the task in the list with what went wrong until it is retried or dismissed. */
+  /** Creates a worktree for request, then starts its first conversation there with request as the first message. Fails when the worktree couldn't be created, leaving the worktree in the list with what went wrong until it is retried or dismissed. */
   create(input: {
     creationId: string;
     request: string;
     agent: AgentKind;
-  }): Promise<Result<CreatedTask, Problem>> {
-    const key = newTaskKey(input.creationId);
+  }): Promise<Result<CreatedWorktree, Problem>> {
+    const key = newWorktreeKey(input.creationId);
     if (this.creations.has(key))
       return Promise.resolve(
-        R.failure({ message: "This task is already being created." }),
+        R.failure({ message: "This worktree is already being created." }),
       );
     const title = conversationTitle(input.request);
     return this.run({
@@ -159,16 +159,22 @@ export class TaskService {
       agent: input.agent,
       tried: [],
       controller: new AbortController(),
-      task: creatingTask({ key, title, stage: CreationStage.Downloading }),
+      worktree: creatingWorktree({
+        key,
+        title,
+        stage: CreationStage.Downloading,
+      }),
     });
   }
 
-  /** Creates a failed task's worktree again, under a new name. */
-  retry(key: string): Promise<Result<CreatedTask, Problem>> {
+  /** Creates a failed creation's worktree again, under a new name. */
+  retry(key: string): Promise<Result<CreatedWorktree, Problem>> {
     const failed = this.creations.get(key);
-    if (failed?.task.state.status !== TaskStatus.CreateFailed)
+    if (failed?.worktree.state.status !== WorktreeStatus.CreateFailed)
       return Promise.resolve(
-        R.failure({ message: "This task isn't waiting to be tried again." }),
+        R.failure({
+          message: "This worktree isn't waiting to be tried again.",
+        }),
       );
     return this.run({
       ...failed,
@@ -177,7 +183,7 @@ export class TaskService {
         tried: failed.name ? [...failed.tried, failed.name] : failed.tried,
       }),
       controller: new AbortController(),
-      task: creatingTask({
+      worktree: creatingWorktree({
         ...failed,
         stage: failed.made
           ? CreationStage.StartingAgent
@@ -189,13 +195,16 @@ export class TaskService {
   /** Forgets a failed creation that made no worktree; what it left behind stays listed. */
   dismiss(key: string): void {
     const failed = this.creations.get(key);
-    if (failed?.task.state.status !== TaskStatus.CreateFailed || failed.made)
+    if (
+      failed?.worktree.state.status !== WorktreeStatus.CreateFailed ||
+      failed.made
+    )
       return;
     this.creations.delete(key);
     this.publish({});
   }
 
-  private run(creation: Creation): Promise<Result<CreatedTask, Problem>> {
+  private run(creation: Creation): Promise<Result<CreatedWorktree, Problem>> {
     if (this.closed)
       return Promise.resolve(
         R.failure({ message: "Alliance agent is quitting." }),
@@ -210,7 +219,7 @@ export class TaskService {
         });
       } else
         this.setCreation(creation, {
-          status: TaskStatus.CreateFailed,
+          status: WorktreeStatus.CreateFailed,
           problem: result.error.problem,
           leftover: result.error.leftover,
           made: !!creation.made,
@@ -224,8 +233,8 @@ export class TaskService {
     return done;
   }
 
-  private setCreation(creation: Creation, state: Task["state"]): void {
-    creation.task = { ...creation.task, state };
+  private setCreation(creation: Creation, state: Worktree["state"]): void {
+    creation.worktree = { ...creation.worktree, state };
     this.publish({});
   }
 
@@ -251,7 +260,8 @@ export class TaskService {
     if (!listed.ok || !branches.ok)
       return R.failure({
         problem: {
-          message: "Alliance agent couldn't check which task names are taken.",
+          message:
+            "Alliance agent couldn't check which worktree names are taken.",
           details: [listed, branches]
             .flatMap((read) => (read.ok ? [] : [read.error.message]))
             .join("\n"),
@@ -266,10 +276,10 @@ export class TaskService {
       ),
     ]);
     // No await may separate reading the other creations' names from recording this one, so two creations can't choose the same name.
-    const name = taskName(creation.request, taken);
+    const name = worktreeName(creation.request, taken);
     creation.name = name;
     this.setCreation(creation, {
-      status: TaskStatus.Creating,
+      status: WorktreeStatus.Creating,
       stage: CreationStage.CopyingDatabase,
     });
     const made = await runNewWorktree({
@@ -278,7 +288,7 @@ export class TaskService {
       from: from.value,
       signal,
       onStage: (stage) =>
-        this.setCreation(creation, { status: TaskStatus.Creating, stage }),
+        this.setCreation(creation, { status: WorktreeStatus.Creating, stage }),
     });
     if (made.ok) return R.success(undefined);
     const relisted = await this.list(checkout);
@@ -288,8 +298,8 @@ export class TaskService {
     const key = worktree && (worktree.id ?? worktree.path);
     // The leftover is the app's, so it lists under the request's title once this creation goes.
     const saved = key
-      ? await this.params.store.update(key, (task) => ({
-          ...task,
+      ? await this.params.store.update(key, (old) => ({
+          ...old,
           title: creation.title,
         }))
       : R.success(undefined);
@@ -301,7 +311,7 @@ export class TaskService {
             ...made.error,
             details: [
               made.error.details,
-              `Alliance agent couldn't save what was created as a task it created: ${saved.error.message}`,
+              `Alliance agent couldn't save what was created as a worktree it created: ${saved.error.message}`,
             ]
               .filter(Boolean)
               .join("\n"),
@@ -316,13 +326,13 @@ export class TaskService {
 
   private async createNow(
     creation: Creation,
-  ): Promise<Result<CreatedTask, { problem: Problem; leftover?: string }>> {
+  ): Promise<Result<CreatedWorktree, { problem: Problem; leftover?: string }>> {
     const checkout = this.params.checkout();
     if (!checkout)
       return R.failure({
         problem: {
           message:
-            "Alliance agent needs the Alliance repository to be ready to create a task. Try again once it is.",
+            "Alliance agent needs the Alliance repository to be ready to create a worktree. Try again once it is.",
         },
         leftover: creation.made ? madeLeftover(creation.name) : undefined,
       });
@@ -350,21 +360,21 @@ export class TaskService {
         leftover: gone ? undefined : leftover,
       });
     }
-    const saved = await this.params.store.update(worktree.id, (task) => ({
-      ...task,
+    const saved = await this.params.store.update(worktree.id, (old) => ({
+      ...old,
       title: creation.title,
     }));
     if (!saved.ok)
       return R.failure({
         problem: {
-          message: `Alliance agent created ${name}, but couldn't save it as a task it created.`,
+          message: `Alliance agent created ${name}, but couldn't save it as a worktree it created.`,
           details: saved.error.message,
         },
         leftover,
       });
     await this.refresh();
     this.setCreation(creation, {
-      status: TaskStatus.Creating,
+      status: WorktreeStatus.Creating,
       stage: CreationStage.StartingAgent,
     });
     const conversation = await this.params.startConversation({
@@ -379,16 +389,16 @@ export class TaskService {
     });
   }
 
-  /** Saves the task as archived, then stops its agents and hides it; a failed save stops nothing. */
+  /** Saves the worktree as archived, then stops its agents and hides it; a failed save stops nothing. */
   async archive(key: string): Promise<Result<void, Error>> {
-    const task = this.state.tasks.find((t) => t.key === key);
-    if (!task || this.creations.has(key))
-      return R.failure(new Error("Only a listed task can be archived."));
+    const worktree = this.state.worktrees.find((t) => t.key === key);
+    if (!worktree || this.creations.has(key))
+      return R.failure(new Error("Only a listed worktree can be archived."));
     if (this.archiving.has(key)) return stillArchiving();
-    const change = (saved: SavedTask): SavedTask => ({
+    const change = (saved: SavedWorktree): SavedWorktree => ({
       ...saved,
       archived: true,
-      folder: task.folder,
+      folder: worktree.folder,
     });
     this.archiving.add(key);
     const saved = await this.params.store.update(key, change);
@@ -396,19 +406,19 @@ export class TaskService {
       this.archiving.delete(key);
       return saved;
     }
-    if (task.folder) await this.params.closeSessionsIn(task.folder);
+    if (worktree.folder) await this.params.closeSessionsIn(worktree.folder);
     this.archiving.delete(key);
     this.showSaved(key, change);
     return saved;
   }
 
-  /** Whether folder is the worktree of a task that is archived or being archived. The listing decides for a folder it lists; for any other, such as one before the worktrees are listed or in a checkout the app no longer points at, the folders saved on archiving decide. */
+  /** Whether folder is that of a worktree that is archived or being archived. The listing decides for a folder it lists; for any other, such as one before the worktrees are listed or in a checkout the app no longer points at, the folders saved on archiving decide. */
   async isArchived(folder: string): Promise<boolean> {
-    const task =
-      this.state.status === TasksStatus.Listed
-        ? this.state.tasks.find((t) => t.folder === folder)
+    const worktree =
+      this.state.status === WorktreesStatus.Listed
+        ? this.state.worktrees.find((t) => t.folder === folder)
         : undefined;
-    if (task) return task.archived || this.archiving.has(task.key);
+    if (worktree) return worktree.archived || this.archiving.has(worktree.key);
     const saved = await this.params.store.list();
     return (
       saved.ok && saved.value.some((t) => t.archived && t.folder === folder)
@@ -417,7 +427,7 @@ export class TaskService {
 
   async restore(key: string): Promise<Result<void, Error>> {
     if (this.archiving.has(key)) return stillArchiving();
-    const change = (saved: SavedTask): SavedTask => ({
+    const change = (saved: SavedWorktree): SavedWorktree => ({
       ...saved,
       archived: false,
     });
@@ -427,11 +437,14 @@ export class TaskService {
   }
 
   /** Publishes a change already saved to the store, without waiting for a listing to read it back. */
-  private showSaved(key: string, change: (task: SavedTask) => SavedTask): void {
-    const old = this.saved.find((task) => task.worktree === key);
+  private showSaved(
+    key: string,
+    change: (worktree: SavedWorktree) => SavedWorktree,
+  ): void {
+    const old = this.saved.find((saved) => saved.key === key);
     this.saved = [
-      ...this.saved.filter((task) => task !== old),
-      change(old ?? { worktree: key }),
+      ...this.saved.filter((saved) => saved !== old),
+      change(old ?? { key }),
     ];
     this.savedChanges++;
     this.publish({});
@@ -445,14 +458,14 @@ export class TaskService {
     await this.listing;
   }
 
-  private publish(change: Partial<TasksState>): void {
+  private publish(change: Partial<WorktreesState>): void {
     const next = { ...this.state, ...change };
     this.state = {
       ...next,
-      tasks: [
-        ...[...this.creations.values()].map(({ task }) => task),
-        ...listedTasks({
-          worktrees: this.worktrees,
+      worktrees: [
+        ...[...this.creations.values()].map(({ worktree }) => worktree),
+        ...listedWorktrees({
+          listed: this.listed,
           saved: this.saved,
           archiving: this.archiving,
           creating: new Set(
@@ -472,17 +485,17 @@ const madeLeftover = (name: string | undefined) =>
 
 const stillArchiving = () =>
   R.failure(
-    new Error("This task is still being archived. Try again in a moment."),
+    new Error("This worktree is still being archived. Try again in a moment."),
   );
 
-const creatingTask = (params: {
+const creatingWorktree = (params: {
   key: string;
   title: string;
   stage: CreationStage;
-}): Task => ({
+}): Worktree => ({
   key: params.key,
   title: params.title,
   createdByApp: true,
   archived: false,
-  state: { status: TaskStatus.Creating, stage: params.stage },
+  state: { status: WorktreeStatus.Creating, stage: params.stage },
 });

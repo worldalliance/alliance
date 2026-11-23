@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { IpcChannel } from "../src/shared/ipc";
 import {
-  askWithoutTask,
+  askWithoutWorktree,
   finishFirstTurn,
   heldClaude,
   send,
@@ -38,10 +38,10 @@ test("each conversation keeps its unsent message when the window reloads or the 
   const box = page.getByLabel("Message Claude");
   const sidebar = page.getByRole("navigation");
   await box.fill("Half a message to the conversation");
-  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
   await box.fill("Half a first message");
   await page.reload();
-  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
   await expect(box).toHaveValue("Half a first message");
   await sidebar.getByRole("button", { name: /Change hello/ }).click();
   await expect(box).toHaveValue("Half a message to the conversation");
@@ -54,7 +54,7 @@ test("each conversation keeps its unsent message when the window reloads or the 
   const relaunchedBox = relaunched.page.getByLabel("Message Claude");
   await relaunched.page
     .getByRole("navigation")
-    .getByRole("button", { name: "Ask without a task" })
+    .getByRole("button", { name: "Ask without a worktree" })
     .click();
   await expect(relaunchedBox).toHaveValue("Half a first message");
   await relaunched.page
@@ -73,7 +73,7 @@ test("a conversation still starting when the window reloads shows in the sidebar
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await page.reload();
@@ -95,7 +95,7 @@ test("a failed read for a conversation still starting at the reload says so in t
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await page.reload();
@@ -135,7 +135,7 @@ test("a failed read for a conversation still starting at the reload says so in t
   ).toBeVisible();
   await expect(sidebar.getByRole("alert")).toHaveCount(0);
   await expect(
-    sidebar.getByRole("button", { name: "Ask without a task" }),
+    sidebar.getByRole("button", { name: "Ask without a worktree" }),
   ).toBeFocused();
   await app.close();
 });

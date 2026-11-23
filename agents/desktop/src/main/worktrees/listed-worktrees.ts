@@ -1,22 +1,22 @@
 import path from "node:path";
-import { type Task, TaskStatus } from "../../shared/task";
-import type { SavedTask } from "./store";
-import { type Worktree, WorktreeState } from "./worktrees";
+import { type Worktree, WorktreeStatus } from "../../shared/worktree";
+import { type ListedWorktree, ListedWorktreeState } from "./list";
+import type { SavedWorktree } from "./store";
 
-/** The tasks the worktrees list, leaving out the main checkout and the worktrees of creations in progress, named in creating. A task still archiving shows unarchived until its agents stop. */
-export function listedTasks(params: {
-  worktrees: Worktree[];
-  saved: SavedTask[];
+/** The worktrees the script lists, leaving out the main checkout and the worktrees of creations in progress, named in creating. A worktree still archiving shows unarchived until its agents stop. */
+export function listedWorktrees(params: {
+  listed: ListedWorktree[];
+  saved: SavedWorktree[];
   archiving: Set<string>;
   creating: Set<string>;
-}): Task[] {
-  const saved = new Map(params.saved.map((task) => [task.worktree, task]));
+}): Worktree[] {
+  const saved = new Map(params.saved.map((own) => [own.key, own]));
   const parents = new Map(
-    params.worktrees.flatMap(({ id, parent }) =>
+    params.listed.flatMap(({ id, parent }) =>
       id && parent ? [[id, parent]] : [],
     ),
   );
-  // A task nests under its parent, so one whose parents loop would show nowhere.
+  // A worktree nests under its parent, so one whose parents loop would show nowhere.
   const inLoop = (key: string) => {
     const seen = new Set<string>();
     for (let at = parents.get(key); at; at = parents.get(at)) {
@@ -25,8 +25,8 @@ export function listedTasks(params: {
     }
     return false;
   };
-  return params.worktrees.flatMap((worktree): Task[] => {
-    if (worktree.state === WorktreeState.Main) return [];
+  return params.listed.flatMap((worktree): Worktree[] => {
+    if (worktree.state === ListedWorktreeState.Main) return [];
     if (worktree.name && params.creating.has(worktree.name)) return [];
     const key = worktree.id ?? worktree.path;
     if (!key) return [];
@@ -50,7 +50,7 @@ export function listedTasks(params: {
         archived: !!own?.archived && !params.archiving.has(key),
         state: looped
           ? {
-              status: TaskStatus.Broken,
+              status: WorktreeStatus.Broken,
               problem:
                 "The worktree records above it form a parent loop. Fix or remove those records.",
             }
@@ -60,28 +60,28 @@ export function listedTasks(params: {
   });
 }
 
-function listedState(worktree: Worktree): Task["state"] {
+function listedState(worktree: ListedWorktree): Worktree["state"] {
   if (worktree.prunable)
     return {
-      status: TaskStatus.Broken,
+      status: WorktreeStatus.Broken,
       problem:
         "Its folder is gone. git worktree prune, run in Terminal from the repository, removes it from the list.",
     };
   switch (worktree.state) {
-    case WorktreeState.Main:
-    case WorktreeState.Recorded:
-    case WorktreeState.Unrecorded:
+    case ListedWorktreeState.Main:
+    case ListedWorktreeState.Recorded:
+    case ListedWorktreeState.Unrecorded:
       return {
-        status: TaskStatus.Ready,
+        status: WorktreeStatus.Ready,
         problem: worktree.problem ?? undefined,
       };
-    case WorktreeState.HalfCreated:
-      return { status: TaskStatus.NotFinished };
-    case WorktreeState.HalfRemoved:
-      return { status: TaskStatus.Removing };
-    case WorktreeState.Invalid:
+    case ListedWorktreeState.HalfCreated:
+      return { status: WorktreeStatus.NotFinished };
+    case ListedWorktreeState.HalfRemoved:
+      return { status: WorktreeStatus.Removing };
+    case ListedWorktreeState.Invalid:
       return {
-        status: TaskStatus.Broken,
+        status: WorktreeStatus.Broken,
         problem: worktree.problem
           ? `Its records don't add up: ${worktree.problem}.`
           : "Its records don't add up.",

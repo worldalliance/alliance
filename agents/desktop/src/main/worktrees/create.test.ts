@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { CreationStage } from "../../shared/task";
-import { stageOf, taskName } from "./create";
+import { CreationStage } from "../../shared/worktree";
+import { stageOf, worktreeName } from "./create";
 
-describe("taskName", () => {
+describe("worktreeName", () => {
   test("joins the request's first words with dashes, in lowercase", () => {
-    expect(taskName("Fix the Signup page's copy!", new Set())).toBe(
+    expect(worktreeName("Fix the Signup page's copy!", new Set())).toBe(
       "fix-the-signup-page-s-copy",
     );
   });
 
   test("stops at a whole word before 37 characters", () => {
-    const name = taskName(
+    const name = worktreeName(
       "Make the admin panel's member list sortable by every single column",
       new Set(),
     );
@@ -20,18 +20,18 @@ describe("taskName", () => {
   });
 
   test("cuts a first word longer than the limit", () => {
-    expect(taskName("a".repeat(60), new Set())).toBe("a".repeat(37));
+    expect(worktreeName("a".repeat(60), new Set())).toBe("a".repeat(37));
   });
 
-  test("drops accents and falls back to task for a request with no letters or digits", () => {
-    expect(taskName("Café menu", new Set())).toBe("cafe-menu");
-    expect(taskName("Résumé parser", new Set())).toBe("resume-parser");
-    expect(taskName("¿¡…!?", new Set())).toBe("task");
+  test("drops accents and falls back to worktree for a request with no letters or digits", () => {
+    expect(worktreeName("Café menu", new Set())).toBe("cafe-menu");
+    expect(worktreeName("Résumé parser", new Set())).toBe("resume-parser");
+    expect(worktreeName("¿¡…!?", new Set())).toBe("worktree");
   });
 
   test("adds the first free number when the name is taken", () => {
     expect(
-      taskName("Fix it", new Set(["fix-it", "fix-it-2", "fix-it-4"])),
+      worktreeName("Fix it", new Set(["fix-it", "fix-it-2", "fix-it-4"])),
     ).toBe("fix-it-3");
   });
 });

@@ -32,9 +32,9 @@ import {
   testSource,
   testSourceVariable,
 } from "./repository/source";
-import { registerTaskIpc } from "./tasks/ipc";
-import { TaskService } from "./tasks/service";
-import { TaskStore } from "./tasks/store";
+import { registerWorktreeIpc } from "./worktrees/ipc";
+import { WorktreeService } from "./worktrees/service";
+import { WorktreeStore } from "./worktrees/store";
 
 const rendererDir = path.join(import.meta.dirname, "../renderer");
 // Set by the e2e tests, so each test's app opens no window or dock icon on screen.
@@ -264,9 +264,9 @@ void app.whenReady().then(() => {
     ),
     rendererUrl,
     openingWaitMs,
-    isArchived: (folder) => tasks.isArchived(folder),
+    isArchived: (folder) => worktrees.isArchived(folder),
   });
-  const tasks = new TaskService({
+  const worktrees = new WorktreeService({
     checkout: () => repositoryFolder(repository.current()),
     repositoryUrl: repositorySource.url,
     findGit: () => findGit({ env: process.env, platform: process.platform }),
@@ -276,28 +276,28 @@ void app.whenReady().then(() => {
         ? R.success({ executable, env: gitEnvironment() })
         : R.failure(
             new Error(
-              "Alliance agent needs Bun to list and create tasks. Install it, then try again.",
+              "Alliance agent needs Bun to list and create worktrees. Install it, then try again.",
             ),
           );
     },
-    store: new TaskStore(path.join(userData, "tasks.json")),
+    store: new WorktreeStore(path.join(userData, "worktrees.json")),
     startConversation: sessions.startConversation,
     closeSessionsIn: sessions.closeSessionsIn,
   });
-  registerTaskIpc({ tasks, rendererUrl });
+  registerWorktreeIpc({ worktrees, rendererUrl });
   let listedFolder: string | undefined;
   const listIfMoved = () => {
     const folder = repositoryFolder(repository.current());
     if (folder === listedFolder) return;
     listedFolder = folder;
-    void tasks.refresh();
+    void worktrees.refresh();
   };
   repository.subscribe(listIfMoved);
   listIfMoved();
   // Worktrees made in a terminal show up when the user comes back to the app.
-  app.on("browser-window-focus", () => void tasks.refresh());
+  app.on("browser-window-focus", () => void worktrees.refresh());
   closeSessions = () =>
-    Promise.all([tasks.close(), sessions.close(), repository.close()]).then(
+    Promise.all([worktrees.close(), sessions.close(), repository.close()]).then(
       () => undefined,
     );
   nativeTheme.on("updated", () => {

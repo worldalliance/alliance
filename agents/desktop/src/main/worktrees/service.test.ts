@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Result } from "../../../../../common/src/result";
 import { AgentKind } from "../../shared/agent-kind";
-import { TasksStatus, TaskStatus } from "../../shared/task";
+import { WorktreesStatus, WorktreeStatus } from "../../shared/worktree";
 import { git } from "../repository/testing/fixture";
 import { steeringFile } from "./testing/fixture";
 import {
@@ -19,12 +19,12 @@ import {
 beforeEach(setUp);
 afterEach(tearDown);
 
-test("has no tasks without a repository", async () => {
-  const { tasks } = service({ checkout: () => undefined });
-  await tasks.refresh();
-  expect(tasks.current()).toEqual({
-    status: TasksStatus.NoRepository,
-    tasks: [],
+test("has no worktrees without a repository", async () => {
+  const { worktrees } = service({ checkout: () => undefined });
+  await worktrees.refresh();
+  expect(worktrees.current()).toEqual({
+    status: WorktreesStatus.NoRepository,
+    worktrees: [],
     created: {},
   });
 });
@@ -32,14 +32,14 @@ test("has no tasks without a repository", async () => {
 test("a listing's problem goes once the repository does", async () => {
   writeFileSync(steeringFile(checkout, "fake-list-fails"), "");
   let found: string | undefined = checkout;
-  const { tasks } = service({ checkout: () => found });
-  await tasks.refresh();
-  expect(tasks.current().problem).toBeDefined();
+  const { worktrees } = service({ checkout: () => found });
+  await worktrees.refresh();
+  expect(worktrees.current().problem).toBeDefined();
   found = undefined;
-  await tasks.refresh();
-  expect(tasks.current()).toEqual({
-    status: TasksStatus.NoRepository,
-    tasks: [],
+  await worktrees.refresh();
+  expect(worktrees.current()).toEqual({
+    status: WorktreesStatus.NoRepository,
+    worktrees: [],
     created: {},
     problem: undefined,
   });
@@ -51,13 +51,13 @@ test("lists worktrees other than the main checkout, each made outside the app un
   const gone = path.join(dir, "workspaces", "gone");
   git(checkout, "worktree", "add", "-q", "-b", "gone", gone);
   rmSync(gone, { recursive: true });
-  const { tasks } = service();
-  await tasks.refresh();
-  expect(tasks.current()).toEqual({
-    status: TasksStatus.Listed,
+  const { worktrees } = service();
+  await worktrees.refresh();
+  expect(worktrees.current()).toEqual({
+    status: WorktreesStatus.Listed,
     problem: undefined,
     created: {},
-    tasks: [
+    worktrees: [
       {
         key: outside,
         title: "by-hand",
@@ -66,12 +66,12 @@ test("lists worktrees other than the main checkout, each made outside the app un
         parent: undefined,
         createdByApp: false,
         archived: false,
-        state: { status: TaskStatus.Ready, problem: undefined },
+        state: { status: WorktreeStatus.Ready, problem: undefined },
       },
       expect.objectContaining({
         key: gone,
         state: {
-          status: TaskStatus.Broken,
+          status: WorktreeStatus.Broken,
           problem: expect.stringContaining("Its folder is gone."),
         },
       }),
@@ -79,7 +79,7 @@ test("lists worktrees other than the main checkout, each made outside the app un
   });
 });
 
-test("a worktree recorded as made from inside another task names that task as its parent, unless its parents loop", async () => {
+test("a worktree recorded as made from inside another worktree names that worktree as its parent, unless its parents loop", async () => {
   const records = steeringFile(checkout, "fake-records");
   mkdirSync(records);
   for (const { name, parent } of [
@@ -103,11 +103,11 @@ test("a worktree recorded as made from inside another task names that task as it
       JSON.stringify({ id: `id-${name}`, name, state: "recorded", parent }),
     );
   }
-  const { tasks } = service();
-  await tasks.refresh();
+  const { worktrees } = service();
+  await worktrees.refresh();
   expect(
     Object.fromEntries(
-      tasks.current().tasks.map(({ key, parent }) => [key, parent]),
+      worktrees.current().worktrees.map(({ key, parent }) => [key, parent]),
     ),
   ).toEqual({
     "id-inner": "id-outer",
@@ -117,17 +117,17 @@ test("a worktree recorded as made from inside another task names that task as it
     "id-below-loop": undefined,
   });
   expect(
-    tasks
+    worktrees
       .current()
-      .tasks.filter(({ state }) => state.status === TaskStatus.Broken)
+      .worktrees.filter(({ state }) => state.status === WorktreeStatus.Broken)
       .map(({ key }) => key)
       .sort(),
   ).toEqual(["id-below-loop", "id-loop-a", "id-loop-b"]);
 });
 
-test("archiving closes the task's sessions and hides it until restored, counting it archived from its save on, even before a relaunch lists it", async () => {
-  const { tasks } = service();
-  const created = await tasks.create({
+test("archiving closes the worktree's sessions and hides it until restored, counting it archived from its save on, even before a relaunch lists it", async () => {
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -136,49 +136,52 @@ test("archiving closes the task's sessions and hides it until restored, counting
   const { key, folder } = created.value;
   const whileClosing: Promise<boolean>[] = [];
   setOnClose(() => {
-    whileClosing.push(tasks.isArchived(folder));
+    whileClosing.push(worktrees.isArchived(folder));
   });
-  expect(await tasks.isArchived(folder)).toBe(false);
-  expect(await tasks.archive(key)).toEqual({ ok: true, value: undefined });
+  expect(await worktrees.isArchived(folder)).toBe(false);
+  expect(await worktrees.archive(key)).toEqual({ ok: true, value: undefined });
   expect(closedIn).toEqual([folder]);
   expect(await Promise.all(whileClosing)).toEqual([true]);
-  expect(await tasks.isArchived(folder)).toBe(true);
-  expect(tasks.current().tasks[0]).toMatchObject({ key, archived: true });
+  expect(await worktrees.isArchived(folder)).toBe(true);
+  expect(worktrees.current().worktrees[0]).toMatchObject({
+    key,
+    archived: true,
+  });
   expect(existsSync(folder)).toBe(true);
 
-  const relaunched = service().tasks;
+  const relaunched = service().worktrees;
   expect(await relaunched.isArchived(folder)).toBe(true);
   await relaunched.refresh();
-  expect(relaunched.current().tasks[0]).toMatchObject({
+  expect(relaunched.current().worktrees[0]).toMatchObject({
     key,
     title: "Fix it",
     archived: true,
   });
   await relaunched.restore(key);
-  expect(relaunched.current().tasks[0]).toMatchObject({ archived: false });
+  expect(relaunched.current().worktrees[0]).toMatchObject({ archived: false });
   expect(await relaunched.isArchived(folder)).toBe(false);
 });
 
-test("a task stays archived once the app points at another checkout", async () => {
+test("a worktree stays archived once the app points at another checkout", async () => {
   let current = checkout;
-  const { tasks } = service({ checkout: () => current });
-  const created = await tasks.create({
+  const { worktrees } = service({ checkout: () => current });
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
   if (!created.ok) throw new Error(created.error.message);
-  await tasks.archive(created.value.key);
+  await worktrees.archive(created.value.key);
   current = path.join(dir, "workspaces", "other");
   git(dir, "clone", "-q", checkout, current);
-  await tasks.refresh();
-  expect(tasks.current().tasks).toEqual([]);
-  expect(await tasks.isArchived(created.value.folder)).toBe(true);
+  await worktrees.refresh();
+  expect(worktrees.current().worktrees).toEqual([]);
+  expect(await worktrees.isArchived(created.value.folder)).toBe(true);
 });
 
-test("archiving hides the task once its agents stop, not before, and without waiting for another listing", async () => {
-  const { tasks } = service();
-  const created = await tasks.create({
+test("archiving hides the worktree once its agents stop, not before, and without waiting for another listing", async () => {
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -186,21 +189,21 @@ test("archiving hides the task once its agents stop, not before, and without wai
   if (!created.ok) throw new Error(created.error.message);
   let shownArchived: boolean | undefined;
   setOnClose(async () => {
-    await tasks.refresh();
-    shownArchived = tasks.current().tasks[0]?.archived;
+    await worktrees.refresh();
+    shownArchived = worktrees.current().worktrees[0]?.archived;
     writeFileSync(steeringFile(checkout, "fake-list-fails"), "");
   });
-  expect((await tasks.archive(created.value.key)).ok).toBe(true);
+  expect((await worktrees.archive(created.value.key)).ok).toBe(true);
   expect(shownArchived).toBe(false);
-  expect(tasks.current()).toMatchObject({
+  expect(worktrees.current()).toMatchObject({
     problem: undefined,
-    tasks: [{ key: created.value.key, archived: true }],
+    worktrees: [{ key: created.value.key, archived: true }],
   });
 });
 
-test("a restore or another archive asked for while an archive saves or stops the task's agents is refused", async () => {
-  const { tasks } = service();
-  const created = await tasks.create({
+test("a restore or another archive asked for while an archive saves or stops the worktree's agents is refused", async () => {
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -209,43 +212,43 @@ test("a restore or another archive asked for while an archive saves or stops the
   const key = created.value.key;
   let during: Promise<Result<void, Error>>[] = [];
   setOnClose(() => {
-    during.push(tasks.restore(key), tasks.archive(key));
+    during.push(worktrees.restore(key), worktrees.archive(key));
   });
-  const archiving = tasks.archive(key);
-  during = [tasks.restore(key), tasks.archive(key)];
+  const archiving = worktrees.archive(key);
+  during = [worktrees.restore(key), worktrees.archive(key)];
   expect((await archiving).ok).toBe(true);
   expect(during).toHaveLength(4);
   for (const result of await Promise.all(during))
     expect(result).toMatchObject({ ok: false });
-  expect(tasks.current().tasks[0]).toMatchObject({ archived: true });
-  expect(await tasks.isArchived(created.value.folder)).toBe(true);
+  expect(worktrees.current().worktrees[0]).toMatchObject({ archived: true });
+  expect(await worktrees.isArchived(created.value.folder)).toBe(true);
 });
 
-test("a listing begun before an archive doesn't show the task unarchived", async () => {
-  const { tasks } = service();
-  const created = await tasks.create({
+test("a listing begun before an archive doesn't show the worktree unarchived", async () => {
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
   if (!created.ok) throw new Error(created.error.message);
-  const listing = tasks.refresh();
-  await tasks.archive(created.value.key);
+  const listing = worktrees.refresh();
+  await worktrees.archive(created.value.key);
   await listing;
-  expect(tasks.current().tasks[0]).toMatchObject({ archived: true });
+  expect(worktrees.current().worktrees[0]).toMatchObject({ archived: true });
 });
 
 test("an archive that can't be saved stops no agents", async () => {
-  const { tasks } = service();
-  const created = await tasks.create({
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
   if (!created.ok) throw new Error(created.error.message);
-  writeFileSync(path.join(dir, "user-data", "tasks.json"), "not json");
-  expect((await tasks.archive(created.value.key)).ok).toBe(false);
+  writeFileSync(path.join(dir, "user-data", "worktrees.json"), "not json");
+  expect((await worktrees.archive(created.value.key)).ok).toBe(false);
   expect(closedIn).toEqual([]);
-  expect(tasks.current().tasks[0]).toMatchObject({ archived: false });
-  expect(await tasks.isArchived(created.value.folder)).toBe(false);
+  expect(worktrees.current().worktrees[0]).toMatchObject({ archived: false });
+  expect(await worktrees.isArchived(created.value.folder)).toBe(false);
 });

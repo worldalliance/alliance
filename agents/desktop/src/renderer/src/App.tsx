@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { R } from "../../../../../common/src/result";
 import { type AgentKind, agentWords } from "../../shared/agent-kind";
-import type { Conversation, CreatedTask, IpcResult } from "../../shared/ipc";
+import type {
+  Conversation,
+  CreatedWorktree,
+  IpcResult,
+} from "../../shared/ipc";
 import { repositoryFolder } from "../../shared/repository";
 import {
-  isNewTaskKey,
-  newTaskKey,
-  type Task,
-  TaskStatus,
-} from "../../shared/task";
+  isNewWorktreeKey,
+  newWorktreeKey,
+  type Worktree,
+  WorktreeStatus,
+} from "../../shared/worktree";
 import { agent } from "./agent";
 import { useAgentAccess } from "./agent-access";
 import {
@@ -27,13 +31,13 @@ import { ChatView } from "./components/ChatView";
 import { RepositoryView } from "./components/RepositoryView";
 import { type Listed, Sidebar } from "./components/Sidebar";
 import { StartView } from "./components/StartView";
-import { TaskView } from "./components/TaskView";
-import { askDraft, newTaskDraft, taskDraft, useDrafts } from "./drafts";
+import { WorktreeView } from "./components/WorktreeView";
+import { askDraft, newWorktreeDraft, useDrafts, worktreeDraft } from "./drafts";
 import { focusIfLost } from "./focus";
 import { notOpenPanel, Opened, type OpenState } from "./open-state";
 import { useRepository } from "./repository";
-import { useTaskActions, useTasks } from "./tasks";
 import { sameView, type View, ViewKind } from "./view";
+import { useWorktreeActions, useWorktrees } from "./worktrees";
 
 // A read can finish after a start this window made, or miss one the window's previous load made, so it adds to the list rather than replacing it.
 const withListed = (
@@ -59,7 +63,7 @@ const startProblem = (error: string) =>
 export function App() {
   const [conversations, setConversations] = useState<Listed>();
   const listedIds = useRef(new Set<string>());
-  const [view, setView] = useState<View>({ kind: ViewKind.NewTask });
+  const [view, setView] = useState<View>({ kind: ViewKind.NewWorktree });
   const [chats, setChats] = useState<Record<string, Chat>>({});
   const [open, setOpen] = useState<Record<string, OpenState>>({});
   const { drafts, draft, addToDraft, takeDraft, start, setStart } = useDrafts();
@@ -68,8 +72,8 @@ export function App() {
   );
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
   const repository = useRepository();
-  const tasks = useTasks();
-  const taskActions = useTaskActions();
+  const worktrees = useWorktrees();
+  const worktreeActions = useWorktreeActions();
   const checkout = repository.state && repositoryFolder(repository.state);
 
   const updateChat = useCallback(
@@ -114,28 +118,30 @@ export function App() {
       ? undefined
       : conversations?.all.find((c) => c.id === selected);
   const createdAs =
-    view.kind === ViewKind.Task ? tasks.state?.created[view.key] : undefined;
-  // A creation's reply moves the view on; a window that missed it, as after a reload, shows the task the creation became.
+    view.kind === ViewKind.Worktree
+      ? worktrees.state?.created[view.key]
+      : undefined;
+  // A creation's reply moves the view on; a window that missed it, as after a reload, shows the worktree the creation became.
   const shown: View = createdAs
-    ? { kind: ViewKind.Task, key: createdAs }
+    ? { kind: ViewKind.Worktree, key: createdAs }
     : view;
-  const selectedTask =
-    shown.kind === ViewKind.Task
-      ? tasks.state?.tasks.find((t) => t.key === shown.key)
+  const selectedWorktree =
+    shown.kind === ViewKind.Worktree
+      ? worktrees.state?.worktrees.find((t) => t.key === shown.key)
       : undefined;
   const startKey =
-    view.kind === ViewKind.NewTask
-      ? newTaskDraft
+    view.kind === ViewKind.NewWorktree
+      ? newWorktreeDraft
       : view.kind === ViewKind.Ask
         ? askDraft
-        : shown.kind === ViewKind.Task
-          ? taskDraft(shown.key)
+        : shown.kind === ViewKind.Worktree
+          ? worktreeDraft(shown.key)
           : undefined;
   const titles: Record<ViewKind, string> = {
     [ViewKind.Repository]: "Alliance repository",
-    [ViewKind.NewTask]: "New task",
-    [ViewKind.Ask]: "Ask without a task",
-    [ViewKind.Task]: selectedTask?.title || "Task",
+    [ViewKind.NewWorktree]: "New worktree",
+    [ViewKind.Ask]: "Ask without a worktree",
+    [ViewKind.Worktree]: selectedWorktree?.title || "Worktree",
     [ViewKind.Conversation]: selectedConversation?.title || "Conversation",
   };
   const title = titles[view.kind];
@@ -202,19 +208,20 @@ export function App() {
 
   const created =
     (params: { key: string; request: string; agent: AgentKind }) =>
-    async (reply: IpcResult<CreatedTask>) => {
-      const from: View = { kind: ViewKind.Task, key: params.key };
+    async (reply: IpcResult<CreatedWorktree>) => {
+      const from: View = { kind: ViewKind.Worktree, key: params.key };
       if (!reply.ok) {
         // A creation the main process listed shows its own failure.
-        const now = await agent.tasksState();
-        if (now.ok && now.value.tasks.some((t) => t.key === params.key)) return;
-        addToDraft(newTaskDraft, params.request);
-        setStart(newTaskDraft)((s) => ({
+        const now = await agent.worktreesState();
+        if (now.ok && now.value.worktrees.some((t) => t.key === params.key))
+          return;
+        addToDraft(newWorktreeDraft, params.request);
+        setStart(newWorktreeDraft)((s) => ({
           ...s,
           agent: params.agent,
           problem: reply.error,
         }));
-        return moveFrom(from, { kind: ViewKind.NewTask });
+        return moveFrom(from, { kind: ViewKind.NewWorktree });
       }
       const { key, conversation } = reply.value;
       if (conversation.ok) {
@@ -224,20 +231,20 @@ export function App() {
           id: conversation.value.id,
         });
       }
-      addToDraft(taskDraft(key), params.request);
-      setStart(taskDraft(key))((s) => ({
+      addToDraft(worktreeDraft(key), params.request);
+      setStart(worktreeDraft(key))((s) => ({
         ...s,
         problem: startProblem(conversation.error),
       }));
-      moveFrom(from, { kind: ViewKind.Task, key });
+      moveFrom(from, { kind: ViewKind.Worktree, key });
     };
 
-  const createTask = (input: { text: string; agent: AgentKind }) => {
+  const createWorktree = (input: { text: string; agent: AgentKind }) => {
     const creationId = crypto.randomUUID();
-    const key = newTaskKey(creationId);
-    setView({ kind: ViewKind.Task, key });
+    const key = newWorktreeKey(creationId);
+    setView({ kind: ViewKind.Worktree, key });
     void agent
-      .createTask({ creationId, request: input.text, agent: input.agent })
+      .createWorktree({ creationId, request: input.text, agent: input.agent })
       .then(created({ key, request: input.text, agent: input.agent }));
   };
 
@@ -276,13 +283,13 @@ export function App() {
       void agent.resume(selected).then((resumed) => opened(selected, resumed));
   }, [selectedSignedIn, selectedUnopened, selected, opened]);
 
-  const archive = async (task: Task): Promise<IpcResult<void>> => {
-    const archived = await agent.archiveTask(task.key);
+  const archive = async (worktree: Worktree): Promise<IpcResult<void>> => {
+    const archived = await agent.archiveWorktree(worktree.key);
     if (!archived.ok) return archived;
     // Archiving closed its sessions, so each reopens when next selected; one still shown would reopen at once, so the view leaves it.
     const closed = new Set(
       (conversations?.all ?? [])
-        .filter((c) => c.folder === task.folder)
+        .filter((c) => c.folder === worktree.folder)
         .map((c) => c.id),
     );
     setOpen((all) =>
@@ -290,7 +297,7 @@ export function App() {
     );
     setView((v) =>
       v.kind === ViewKind.Conversation && closed.has(v.id)
-        ? { kind: ViewKind.Task, key: task.key }
+        ? { kind: ViewKind.Worktree, key: worktree.key }
         : v,
     );
     return archived;
@@ -308,13 +315,13 @@ export function App() {
 
   const moveTarget = (id: string) => {
     const moved = conversations?.all.find((c) => c.id === id);
-    const task = tasks.state?.tasks.find(
+    const found = worktrees.state?.worktrees.find(
       (t) => moved && t.folder === moved.folder,
     );
-    const target: View = task
-      ? { kind: ViewKind.Task, key: task.key }
+    const target: View = found
+      ? { kind: ViewKind.Worktree, key: found.key }
       : { kind: ViewKind.Ask };
-    return { moved, target, key: task ? taskDraft(task.key) : askDraft };
+    return { moved, target, key: found ? worktreeDraft(found.key) : askDraft };
   };
 
   const moveToNew = (id: string) => {
@@ -386,64 +393,72 @@ export function App() {
     switch (view.kind) {
       case ViewKind.Repository:
         return <RepositoryView shown={repository} />;
-      case ViewKind.NewTask:
+      case ViewKind.NewWorktree:
         return startView({
-          key: newTaskDraft,
-          heading: "New task",
+          key: newWorktreeDraft,
+          heading: "New worktree",
           hint: (name) =>
-            `Alliance agent sets up the task's own copy of the repository, which takes a minute or two, then sends ${name} this message.`,
+            `Alliance agent sets up the worktree's own copy of the repository, which takes a minute or two, then sends ${name} this message.`,
           onStart: (input) => {
             if (!checkout) return Promise.resolve(R.failure(noRepository));
-            createTask(input);
+            createWorktree(input);
             return Promise.resolve(R.success(undefined));
           },
         });
       case ViewKind.Ask:
         return startView({
           key: askDraft,
-          heading: "Ask without a task",
+          heading: "Ask without a worktree",
           hint: (name) =>
-            `${name} works in the main copy of the repository${checkout ? `, ${checkout}` : ""}. New tasks copy its database and local settings, so start a new task for changes.`,
+            `${name} works in the main copy of the repository${checkout ? `, ${checkout}` : ""}. New worktrees copy its database and local settings, so start a new worktree for changes.`,
           onStart: (input) =>
             startIn({ ...input, folder: checkout, from: view }),
         });
-      case ViewKind.Task:
-        return selectedTask ? (
-          <TaskView
-            key={selectedTask.key}
-            task={selectedTask}
+      case ViewKind.Worktree:
+        return selectedWorktree ? (
+          <WorktreeView
+            key={selectedWorktree.key}
+            worktree={selectedWorktree}
             newConversation={startView({
-              key: taskDraft(selectedTask.key),
-              hint: (name) => `${name} works in this task's folder.`,
+              key: worktreeDraft(selectedWorktree.key),
+              hint: (name) => `${name} works in this worktree's folder.`,
               onStart: (input) =>
-                startIn({ ...input, folder: selectedTask.folder, from: view }),
+                startIn({
+                  ...input,
+                  folder: selectedWorktree.folder,
+                  from: view,
+                }),
             })}
-            starting={start(taskDraft(selectedTask.key)).starting}
-            action={taskActions(selectedTask.key)}
-            onArchive={() => archive(selectedTask)}
-            onRestore={() => agent.restoreTask(selectedTask.key)}
+            starting={start(worktreeDraft(selectedWorktree.key)).starting}
+            action={worktreeActions(selectedWorktree.key)}
+            onArchive={() => archive(selectedWorktree)}
+            onRestore={() => agent.restoreWorktree(selectedWorktree.key)}
             onRetry={() => {
-              if (selectedTask.state.status !== TaskStatus.CreateFailed) return;
-              void agent.retryTask(selectedTask.key).then(
+              if (selectedWorktree.state.status !== WorktreeStatus.CreateFailed)
+                return;
+              void agent.retryWorktree(selectedWorktree.key).then(
                 created({
-                  key: selectedTask.key,
-                  request: selectedTask.state.request,
-                  agent: selectedTask.state.agent,
+                  key: selectedWorktree.key,
+                  request: selectedWorktree.state.request,
+                  agent: selectedWorktree.state.agent,
                 }),
               );
             }}
             onEditRequest={(failed) => {
-              agent.dismissTask(selectedTask.key);
-              addToDraft(newTaskDraft, failed.request);
-              setStart(newTaskDraft)((s) => ({ ...s, agent: failed.agent }));
-              setView({ kind: ViewKind.NewTask });
+              agent.dismissWorktree(selectedWorktree.key);
+              addToDraft(newWorktreeDraft, failed.request);
+              setStart(newWorktreeDraft)((s) => ({
+                ...s,
+                agent: failed.agent,
+              }));
+              setView({ kind: ViewKind.NewWorktree });
             }}
           />
         ) : (
           <p className="panel" role="status" tabIndex={-1} ref={focusIfLost}>
-            {!createdAs && isNewTaskKey(view.key)
-              ? "Setting up the task…"
-              : "This task is no longer listed."}
+            {!createdAs && isNewWorktreeKey(view.key)
+              ? "Setting up the worktree…"
+              : "This worktree is no longer listed."}
           </p>
         );
       case ViewKind.Conversation:
@@ -499,7 +514,7 @@ export function App() {
     <div className="app">
       <Sidebar
         repository={repository}
-        tasks={tasks}
+        worktrees={worktrees}
         conversations={conversations}
         view={shown}
         onSelect={setView}

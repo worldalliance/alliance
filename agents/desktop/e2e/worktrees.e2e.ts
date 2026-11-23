@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { git } from "../src/main/repository/testing/fixture";
-import { steeringFile } from "../src/main/tasks/testing/fixture";
+import { steeringFile } from "../src/main/worktrees/testing/fixture";
 import { send, status } from "./chat-helpers";
 import {
   authStatusCapture,
@@ -16,47 +16,49 @@ import {
   firstTurnDone,
   repositoryReady,
   request,
-  taskEntry,
-  taskFolder,
-} from "./task-helpers";
+  worktreeEntry,
+  worktreeFolder,
+} from "./worktree-helpers";
 
-test("a new task shows its setup, then its first conversation running in its own worktree", async () => {
+test("a new worktree shows its setup, then its first conversation running in its folder", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
   await repositoryReady(page);
-  await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "New worktree" }),
+  ).toBeVisible();
   const hold = steeringFile(workFolder(), "fake-hold");
   writeFileSync(hold, "");
   await send(page, request);
   await expect(page.getByRole("heading", { name: request })).toBeVisible();
   await expect(status(page)).toHaveText("Setting up: Copying the database…");
   await expect(status(page)).toBeFocused();
-  await expect(taskEntry(page)).toContainText("Copying the database…");
+  await expect(worktreeEntry(page)).toContainText("Copying the database…");
   await expect(page.getByText(request)).toHaveCount(2);
 
   rmSync(hold);
   await firstTurnDone(page);
   await expect(page.locator(".user")).toHaveText(request);
-  await expect(taskEntry(page)).toContainText("Ready");
+  await expect(worktreeEntry(page)).toContainText("Ready");
   const nested = page.getByRole("navigation").locator("ul.nested button");
   await expect(nested).toHaveText(/Change hello.*Claude/);
-  expect(git(taskFolder(), "branch", "--show-current")).toBe(
+  expect(git(worktreeFolder(), "branch", "--show-current")).toBe(
     "change-hello-to-goodbye-in-a-txt",
   );
 
-  await taskEntry(page).click();
-  await expect(page.getByText(taskFolder())).toBeVisible();
+  await worktreeEntry(page).click();
+  await expect(page.getByText(worktreeFolder())).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "New conversation in this task" }),
+    page.getByRole("heading", { name: "New conversation in this worktree" }),
   ).toBeVisible();
   await expect(
-    page.getByText("Claude works in this task's folder."),
+    page.getByText("Claude works in this worktree's folder."),
   ).toBeVisible();
   await app.close();
 });
 
-test("a window reloaded while a task is set up shows the task once it is", async () => {
+test("a window reloaded while a worktree is set up shows the worktree once it is", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
@@ -66,19 +68,19 @@ test("a window reloaded while a task is set up shows the task once it is", async
   await send(page, request);
   await expect(status(page)).toHaveText("Setting up: Copying the database…");
   await page.reload();
-  await taskEntry(page).click();
+  await worktreeEntry(page).click();
   await expect(status(page)).toHaveText("Setting up: Copying the database…");
 
   rmSync(hold);
   await expect(
-    page.getByRole("heading", { name: "New conversation in this task" }),
+    page.getByRole("heading", { name: "New conversation in this worktree" }),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(taskFolder())).toBeVisible();
-  await expect(taskEntry(page)).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText(worktreeFolder())).toBeVisible();
+  await expect(worktreeEntry(page)).toHaveAttribute("aria-current", "page");
   await app.close();
 });
 
-test("a task that couldn't be created keeps its request, says what it left, and can be tried again or edited, and Restore on its leftover focuses Archive", async () => {
+test("a worktree that couldn't be created keeps its request, says what it left, and can be tried again or edited, and Restore on its leftover focuses Archive", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     codexCaptures: [codexLoginStatusCapture(true)],
@@ -90,21 +92,23 @@ test("a task that couldn't be created keeps its request, says what it left, and 
   await page.getByLabel("Message Codex").fill(request);
   await page.getByLabel("Message Codex").press("Enter");
   await expect(page.getByRole("alert")).toContainText(
-    "Alliance agent couldn't set up the task's own copy.",
+    "Alliance agent couldn't create the worktree.",
   );
   await expect(
-    page.getByText(`Part of it was created: ${taskFolder()}.`, {
+    page.getByText(`Part of it was created: ${worktreeFolder()}.`, {
       exact: false,
     }),
   ).toBeVisible();
   await expect(page.locator(".request")).toHaveText(request);
-  await expect(taskEntry(page)).toContainText("Couldn't be created");
+  await expect(worktreeEntry(page)).toContainText("Couldn't be created");
   await expect(page.getByRole("button", { name: "Try again" })).toBeFocused();
 
   await page.getByRole("button", { name: "Edit request" }).click();
-  await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "New worktree" }),
+  ).toBeVisible();
   await expect(page.getByLabel("Message Codex")).toHaveValue(request);
-  await expect(taskEntry(page)).toHaveText(
+  await expect(worktreeEntry(page)).toHaveText(
     `${request}Not finished being created`,
   );
 
@@ -112,7 +116,7 @@ test("a task that couldn't be created keeps its request, says what it left, and 
   await page.getByRole("radio", { name: "Claude" }).check();
   await page.getByLabel("Message Claude").press("Enter");
   await firstTurnDone(page);
-  expect(existsSync(`${taskFolder()}-2`)).toBe(true);
+  expect(existsSync(`${worktreeFolder()}-2`)).toBe(true);
 
   await page
     .getByRole("navigation")
@@ -125,7 +129,7 @@ test("a task that couldn't be created keeps its request, says what it left, and 
   await app.close();
 });
 
-test("archiving a task hides it with its conversations until restored, which focuses its message box, and a worktree made outside the app shows marked", async () => {
+test("archiving a worktree hides it with its conversations until restored, which focuses its message box, and a worktree made outside the app shows marked", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
@@ -135,11 +139,11 @@ test("archiving a task hides it with its conversations until restored, which foc
   const outside = test.info().outputPath("by-hand");
   git(workFolder(), "worktree", "add", "-q", "-b", "by-hand", outside);
   await app.evaluate(({ app }) => app.emit("browser-window-focus"));
-  await expect(taskEntry(page, "by-hand")).toContainText(
+  await expect(worktreeEntry(page, "by-hand")).toContainText(
     "Ready · Made outside Alliance agent",
   );
 
-  await taskEntry(page).click();
+  await worktreeEntry(page).click();
   await page.getByRole("button", { name: "Archive" }).click();
   await expect(page.getByRole("status")).toHaveText(
     "Archived. Its folder, branch, databases and conversations are kept, and it still uses disk space.",
@@ -147,10 +151,10 @@ test("archiving a task hides it with its conversations until restored, which foc
   const sidebar = page.getByRole("navigation");
   await expect(sidebar.locator("ul.nested")).toHaveCount(0);
   await expect(sidebar.getByText("Archived (1)")).toBeVisible();
-  await expect(taskEntry(page)).toContainText("Ready");
+  await expect(worktreeEntry(page)).toContainText("Ready");
   await expect(sidebar.getByText("Other conversations")).toBeVisible();
   await expect(sidebar.getByText(/^Change hello.*Claude ·/)).toHaveCount(0);
-  expect(existsSync(taskFolder())).toBe(true);
+  expect(existsSync(worktreeFolder())).toBe(true);
 
   await page.getByRole("button", { name: "Restore" }).click();
   await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
@@ -161,7 +165,7 @@ test("archiving a task hides it with its conversations until restored, which foc
   await app.close();
 });
 
-test("a worktree made from inside a task nests under it until the task is archived", async () => {
+test("a worktree made from inside another nests under it until that one is archived", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
   });
@@ -185,10 +189,10 @@ test("a worktree made from inside a task nests under it until the task is archiv
     sidebar.locator("ul.nested").getByRole("button", { name: /^inner/ }),
   ).toBeVisible();
 
-  await taskEntry(page).click();
+  await worktreeEntry(page).click();
   await page.getByRole("button", { name: "Archive" }).click();
   await expect(archived(page)).toBeVisible();
   await expect(sidebar.locator("ul.nested")).toHaveCount(0);
-  await expect(taskEntry(page, "inner")).toContainText("Ready");
+  await expect(worktreeEntry(page, "inner")).toContainText("Ready");
   await app.close();
 });

@@ -3,9 +3,9 @@ import { z } from "zod";
 import type { Draft } from "./components/Composer";
 import { type NewConversation, newConversation } from "./components/StartView";
 
-export const newTaskDraft = "new";
+export const newWorktreeDraft = "new";
 export const askDraft = "ask";
-export const taskDraft = (key: string) => `task:${key}`;
+export const worktreeDraft = (key: string) => `worktree:${key}`;
 
 const draftsKey = "drafts";
 const storedDrafts = z.record(z.string(), z.string());

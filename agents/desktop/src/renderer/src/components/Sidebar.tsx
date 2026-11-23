@@ -1,31 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { agentWords } from "../../../shared/agent-kind";
 import type { Conversation } from "../../../shared/ipc";
-import { type Task, TasksStatus } from "../../../shared/task";
+import { type Worktree, WorktreesStatus } from "../../../shared/worktree";
 import { focusIfLost } from "../focus";
 import { folderName } from "../format";
 import { type ShownRepository, statusWords } from "../repository";
+import { sameView, type View, ViewKind } from "../view";
 import {
   groupConversations,
   outsideWords,
-  type ShownTasks,
-  taskStateWords,
-} from "../tasks";
-import { sameView, type View, ViewKind } from "../view";
+  type ShownWorktrees,
+  worktreeStateWords,
+} from "../worktrees";
 import { ProblemText } from "./ProblemText";
 
 export type Listed = { all: Conversation[]; problem?: string };
 
 export function Sidebar({
   repository,
-  tasks,
+  worktrees,
   conversations,
   view,
   onSelect,
   onRetry,
 }: {
   repository: ShownRepository;
-  tasks: ShownTasks;
+  worktrees: ShownWorktrees;
   /** Undefined while the list loads, a local read too short for a loading message. */
   conversations: Listed | undefined;
   view: View;
@@ -46,25 +46,25 @@ export function Sidebar({
   const current = (target: View) =>
     sameView(view, target) ? ("page" as const) : undefined;
 
-  const allTasks = tasks.state?.tasks ?? [];
+  const allWorktrees = worktrees.state?.worktrees ?? [];
   const { byFolder, others } = groupConversations({
     conversations: conversations?.all ?? [],
-    tasks: allTasks,
+    worktrees: allWorktrees,
   });
-  const shown = allTasks.filter((task) => !task.archived);
-  const archived = allTasks.filter((task) => task.archived);
+  const shown = allWorktrees.filter((worktree) => !worktree.archived);
+  const archived = allWorktrees.filter((worktree) => worktree.archived);
   const archivedGroup = useRef<HTMLDetailsElement>(null);
-  const archivedShown = archived.some((task) =>
-    sameView(view, { kind: ViewKind.Task, key: task.key }),
+  const archivedShown = archived.some((worktree) =>
+    sameView(view, { kind: ViewKind.Worktree, key: worktree.key }),
   );
-  // Opens the group when it takes the shown task, and leaves closing it to the user.
+  // Opens the group when it takes the shown worktree, and leaves closing it to the user.
   useEffect(() => {
     if (archivedShown && archivedGroup.current)
       archivedGroup.current.open = true;
   }, [archivedShown]);
-  const shownKeys = new Set(shown.map((task) => task.key));
+  const shownKeys = new Set(shown.map((worktree) => worktree.key));
   const topLevel = shown.filter(
-    (task) => !task.parent || !shownKeys.has(task.parent),
+    (worktree) => !worktree.parent || !shownKeys.has(worktree.parent),
   );
 
   const conversationItem = (conversation: Conversation, meta: string) => (
@@ -85,50 +85,50 @@ export function Sidebar({
     </li>
   );
 
-  const taskButton = (task: Task) => (
+  const worktreeButton = (worktree: Worktree) => (
     <button
       type="button"
-      className="task-entry"
-      aria-current={current({ kind: ViewKind.Task, key: task.key })}
-      onClick={() => onSelect({ kind: ViewKind.Task, key: task.key })}
+      className="worktree-entry"
+      aria-current={current({ kind: ViewKind.Worktree, key: worktree.key })}
+      onClick={() => onSelect({ kind: ViewKind.Worktree, key: worktree.key })}
     >
-      <span className="title">{task.title}</span>
+      <span className="title">{worktree.title}</span>
       <span className="meta">
-        {taskStateWords(task)}
-        {!task.createdByApp && ` · ${outsideWords}`}
+        {worktreeStateWords(worktree)}
+        {!worktree.createdByApp && ` · ${outsideWords}`}
       </span>
     </button>
   );
 
-  const taskItem = (task: Task) => {
-    const inTask = (task.folder && byFolder.get(task.folder)) || [];
-    const children = shown.filter((child) => child.parent === task.key);
+  const worktreeItem = (worktree: Worktree) => {
+    const inWorktree = (worktree.folder && byFolder.get(worktree.folder)) || [];
+    const children = shown.filter((child) => child.parent === worktree.key);
     return (
-      <li key={task.key}>
-        {taskButton(task)}
-        {inTask.length + children.length > 0 && (
+      <li key={worktree.key}>
+        {worktreeButton(worktree)}
+        {inWorktree.length + children.length > 0 && (
           <ul className="nested">
-            {inTask.map((conversation) =>
+            {inWorktree.map((conversation) =>
               conversationItem(
                 conversation,
                 agentWords[conversation.agent].name,
               ),
             )}
-            {children.map(taskItem)}
+            {children.map(worktreeItem)}
           </ul>
         )}
       </li>
     );
   };
 
-  const tasksNote = () => {
-    if (tasks.problem !== undefined)
+  const worktreesNote = () => {
+    if (worktrees.problem !== undefined)
       return (
         <p className="error" role="alert">
-          Alliance agent couldn't list your tasks: {tasks.problem}
+          Alliance agent couldn't list your worktrees: {worktrees.problem}
         </p>
       );
-    const { state } = tasks;
+    const { state } = worktrees;
     if (!state) return null;
     if (state.problem)
       return (
@@ -140,21 +140,23 @@ export function Sidebar({
         />
       );
     switch (state.status) {
-      case TasksStatus.NoRepository:
+      case WorktreesStatus.NoRepository:
         return (
           <p className="hint">
-            Tasks show once the Alliance repository above is ready.
+            Worktrees show once the Alliance repository above is ready.
           </p>
         );
-      case TasksStatus.Loading:
-        return <p className="hint">Listing your tasks…</p>;
-      case TasksStatus.Listed:
+      case WorktreesStatus.Loading:
+        return <p className="hint">Listing your worktrees…</p>;
+      case WorktreesStatus.Listed:
         return (
-          state.tasks.length === 0 && <p className="hint">No tasks yet.</p>
+          state.worktrees.length === 0 && (
+            <p className="hint">No worktrees yet.</p>
+          )
         );
       default:
         throw new Error(
-          `unknown tasks status: ${state.status satisfies never}`,
+          `unknown worktrees status: ${state.status satisfies never}`,
         );
     }
   };
@@ -170,23 +172,23 @@ export function Sidebar({
         <span className="title">Alliance repository</span>
         <span className="meta">{statusWords(repository)}</span>
       </button>
-      <h2>Tasks</h2>
+      <h2>Worktrees</h2>
       <button
         type="button"
         className="new"
-        aria-current={current({ kind: ViewKind.NewTask })}
-        onClick={() => onSelect({ kind: ViewKind.NewTask })}
+        aria-current={current({ kind: ViewKind.NewWorktree })}
+        onClick={() => onSelect({ kind: ViewKind.NewWorktree })}
       >
-        New task
+        New worktree
       </button>
-      {tasksNote()}
-      {topLevel.length > 0 && <ul>{topLevel.map(taskItem)}</ul>}
+      {worktreesNote()}
+      {topLevel.length > 0 && <ul>{topLevel.map(worktreeItem)}</ul>}
       {archived.length > 0 && (
         <details className="archived" ref={archivedGroup}>
           <summary>Archived ({archived.length})</summary>
           <ul>
-            {archived.map((task) => (
-              <li key={task.key}>{taskButton(task)}</li>
+            {archived.map((worktree) => (
+              <li key={worktree.key}>{worktreeButton(worktree)}</li>
             ))}
           </ul>
         </details>
@@ -199,7 +201,7 @@ export function Sidebar({
         aria-current={current({ kind: ViewKind.Ask })}
         onClick={() => onSelect({ kind: ViewKind.Ask })}
       >
-        Ask without a task
+        Ask without a worktree
       </button>
       {problem !== undefined && (
         <>

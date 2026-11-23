@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { AgentKind } from "../../shared/agent-kind";
-import { CreationStage, TaskStatus } from "../../shared/task";
+import { CreationStage, WorktreeStatus } from "../../shared/worktree";
 import { commitFile, git } from "../repository/testing/fixture";
 import { steeringFile } from "./testing/fixture";
 import {
@@ -24,14 +24,14 @@ import {
 beforeEach(setUp);
 afterEach(tearDown);
 
-test("creates a task's worktree from the latest main, reports each stage, then starts its first conversation, recording which task its creation became", async () => {
+test("creates a worktree from the latest main, reports each stage, then starts its first conversation, recording which worktree its creation became", async () => {
   const latest = commitFile({
     folder: source,
     file: "later.txt",
     message: "Later",
   });
-  const { tasks, states } = service();
-  const created = await tasks.create({
+  const { worktrees, states } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix the signup copy",
     agent: AgentKind.Codex,
@@ -49,9 +49,9 @@ test("creates a task's worktree from the latest main, reports each stage, then s
   expect(started).toEqual([
     { folder, firstMessage: "Fix the signup copy", agent: AgentKind.Codex },
   ]);
-  const stages = states.flatMap(({ tasks }) =>
-    tasks.flatMap(({ key, state }) =>
-      key === "new:c1" && state.status === TaskStatus.Creating
+  const stages = states.flatMap(({ worktrees }) =>
+    worktrees.flatMap(({ key, state }) =>
+      key === "new:c1" && state.status === WorktreeStatus.Creating
         ? [state.stage]
         : [],
     ),
@@ -63,25 +63,25 @@ test("creates a task's worktree from the latest main, reports each stage, then s
     CreationStage.InstallingDependencies,
     CreationStage.StartingAgent,
   ]);
-  expect(tasks.current().tasks).toEqual([
+  expect(worktrees.current().worktrees).toEqual([
     expect.objectContaining({
       key: "id-fix-the-signup-copy",
       title: "Fix the signup copy",
       createdByApp: true,
     }),
   ]);
-  expect(tasks.current().created).toEqual({
+  expect(worktrees.current().created).toEqual({
     "new:c1": "id-fix-the-signup-copy",
   });
 });
 
-test("names a task so it reuses no branch, even one a tag shares a name with, or branch folder, since the script would check an existing one out and git can't create the other", async () => {
+test("names a worktree so it reuses no branch, even one a tag shares a name with, or branch folder, since the script would check an existing one out and git can't create the other", async () => {
   git(checkout, "branch", "fix-it");
   git(checkout, "branch", "fix-it-2/login");
   git(checkout, "branch", "fix-it-3");
   git(checkout, "tag", "fix-it-3");
-  const { tasks } = service();
-  const created = await tasks.create({
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -92,8 +92,8 @@ test("names a task so it reuses no branch, even one a tag shares a name with, or
 test("a failed creation stays listed with its request and leftover until retried under a new name", async () => {
   const fail = steeringFile(checkout, "fake-fail");
   writeFileSync(fail, "");
-  const { tasks } = service();
-  const created = await tasks.create({
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -101,12 +101,12 @@ test("a failed creation stays listed with its request and leftover until retried
   expect(!created.ok && created.error.details).toContain(
     "copying settings failed on purpose",
   );
-  const [failed, ...others] = tasks.current().tasks;
+  const [failed, ...others] = worktrees.current().worktrees;
   expect(others).toEqual([]);
   expect(failed).toMatchObject({
     key: "new:c1",
     state: {
-      status: TaskStatus.CreateFailed,
+      status: WorktreeStatus.CreateFailed,
       request: "Fix it",
       leftover: expect.stringContaining(
         `Part of it was created: ${path.join(dir, "workspaces", "alliance-fix-it")}.`,
@@ -115,13 +115,15 @@ test("a failed creation stays listed with its request and leftover until retried
   });
 
   rmSync(fail);
-  const retried = await tasks.retry("new:c1");
+  const retried = await worktrees.retry("new:c1");
   expect(retried.ok && retried.value.folder).toEndWith("alliance-fix-it-2");
   expect(
-    tasks.current().tasks.map((t) => [t.title, t.state.status, t.createdByApp]),
+    worktrees
+      .current()
+      .worktrees.map((t) => [t.title, t.state.status, t.createdByApp]),
   ).toEqual([
-    ["Fix it", TaskStatus.NotFinished, true],
-    ["Fix it", TaskStatus.Ready, true],
+    ["Fix it", WorktreeStatus.NotFinished, true],
+    ["Fix it", WorktreeStatus.Ready, true],
   ]);
 });
 
@@ -129,8 +131,8 @@ test("a failed creation whose leftover couldn't be listed says so rather than th
   writeFileSync(steeringFile(checkout, "fake-fail"), "");
   const hold = steeringFile(checkout, "fake-hold");
   writeFileSync(hold, "");
-  const { tasks } = service();
-  const created = tasks.create({
+  const { worktrees } = service();
+  const created = worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -140,8 +142,8 @@ test("a failed creation whose leftover couldn't be listed says so rather than th
   writeFileSync(steeringFile(checkout, "fake-list-fails"), "");
   rmSync(hold);
   expect((await created).ok).toBe(false);
-  expect(tasks.current().tasks[0]?.state).toMatchObject({
-    status: TaskStatus.CreateFailed,
+  expect(worktrees.current().worktrees[0]?.state).toMatchObject({
+    status: WorktreeStatus.CreateFailed,
     leftover: expect.stringContaining("listing failed on purpose"),
   });
 });
@@ -150,8 +152,8 @@ test("a creation whose worktree was made but couldn't be listed finds it on retr
   const hold = steeringFile(checkout, "fake-hold");
   const listFails = steeringFile(checkout, "fake-list-fails");
   writeFileSync(hold, "");
-  const { tasks } = service();
-  const created = tasks.create({
+  const { worktrees } = service();
+  const created = worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -161,34 +163,36 @@ test("a creation whose worktree was made but couldn't be listed finds it on retr
   writeFileSync(listFails, "");
   rmSync(hold);
   expect((await created).ok).toBe(false);
-  expect(tasks.current().tasks).toMatchObject([
+  expect(worktrees.current().worktrees).toMatchObject([
     {
       key: "new:c1",
       state: {
-        status: TaskStatus.CreateFailed,
+        status: WorktreeStatus.CreateFailed,
         leftover: expect.stringContaining("fix-it was created."),
         made: true,
       },
     },
   ]);
-  tasks.dismiss("new:c1");
-  expect(tasks.current().tasks.map((t) => t.key)).toEqual(["new:c1"]);
+  worktrees.dismiss("new:c1");
+  expect(worktrees.current().worktrees.map((t) => t.key)).toEqual(["new:c1"]);
 
   rmSync(listFails);
-  const retried = await tasks.retry("new:c1");
+  const retried = await worktrees.retry("new:c1");
   expect(retried.ok && retried.value.folder).toEndWith("alliance-fix-it");
   expect(readFileSync(args, "utf8").trim().split("\n")).toHaveLength(1);
-  expect(tasks.current().tasks.map((t) => [t.title, t.state.status])).toEqual([
-    ["Fix it", TaskStatus.Ready],
-  ]);
+  expect(
+    worktrees.current().worktrees.map((t) => [t.title, t.state.status]),
+  ).toEqual([["Fix it", WorktreeStatus.Ready]]);
 });
 
 test("a creation finishes in its own checkout while the repository is checked again", async () => {
   const hold = steeringFile(checkout, "fake-hold");
   writeFileSync(hold, "");
   let ready = true;
-  const { tasks } = service({ checkout: () => (ready ? checkout : undefined) });
-  const created = tasks.create({
+  const { worktrees } = service({
+    checkout: () => (ready ? checkout : undefined),
+  });
+  const created = worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -203,58 +207,60 @@ test("a creation finishes in its own checkout while the repository is checked ag
 });
 
 test("a creation whose title can't be saved fails, keeps saying what it made while the repository isn't ready, and Try again saves it without making another worktree", async () => {
-  const saved = path.join(dir, "user-data", "tasks.json");
+  const saved = path.join(dir, "user-data", "worktrees.json");
   mkdirSync(path.dirname(saved), { recursive: true });
   writeFileSync(saved, "not json");
   let ready = true;
-  const { tasks } = service({ checkout: () => (ready ? checkout : undefined) });
-  const created = await tasks.create({
+  const { worktrees } = service({
+    checkout: () => (ready ? checkout : undefined),
+  });
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
   expect(!created.ok && created.error.message).toBe(
-    "Alliance agent created fix-it, but couldn't save it as a task it created.",
+    "Alliance agent created fix-it, but couldn't save it as a worktree it created.",
   );
   expect(started).toEqual([]);
-  expect(tasks.current().tasks).toContainEqual(
+  expect(worktrees.current().worktrees).toContainEqual(
     expect.objectContaining({
       key: "new:c1",
       state: expect.objectContaining({
-        status: TaskStatus.CreateFailed,
+        status: WorktreeStatus.CreateFailed,
         leftover: expect.stringContaining("fix-it was created."),
       }),
     }),
   );
 
   ready = false;
-  expect((await tasks.retry("new:c1")).ok).toBe(false);
-  expect(tasks.current().tasks[0]?.state).toMatchObject({
+  expect((await worktrees.retry("new:c1")).ok).toBe(false);
+  expect(worktrees.current().worktrees[0]?.state).toMatchObject({
     leftover: expect.stringContaining("fix-it was created."),
   });
 
   ready = true;
   rmSync(saved);
-  const retrying = tasks.retry("new:c1");
-  expect(tasks.current().tasks[0]?.state).toEqual({
-    status: TaskStatus.Creating,
+  const retrying = worktrees.retry("new:c1");
+  expect(worktrees.current().worktrees[0]?.state).toEqual({
+    status: WorktreeStatus.Creating,
     stage: CreationStage.StartingAgent,
   });
   const retried = await retrying;
   expect(retried.ok && retried.value.folder).toEndWith("alliance-fix-it");
   const args = steeringFile(checkout, "fake-new-worktree-args");
   expect(readFileSync(args, "utf8").trim().split("\n")).toHaveLength(1);
-  expect(tasks.current().tasks.map((t) => [t.title, t.createdByApp])).toEqual([
-    ["Fix it", true],
-  ]);
+  expect(
+    worktrees.current().worktrees.map((t) => [t.title, t.createdByApp]),
+  ).toEqual([["Fix it", true]]);
 });
 
 test("a made creation whose worktree is gone by Try again makes another rather than staying stuck", async () => {
-  const saved = path.join(dir, "user-data", "tasks.json");
+  const saved = path.join(dir, "user-data", "worktrees.json");
   mkdirSync(path.dirname(saved), { recursive: true });
   writeFileSync(saved, "not json");
-  const { tasks } = service();
-  const created = await tasks.create({
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -264,38 +270,38 @@ test("a made creation whose worktree is gone by Try again makes another rather t
   const folder = path.join(dir, "workspaces", "alliance-fix-it");
   git(checkout, "worktree", "remove", "--force", folder);
 
-  expect((await tasks.retry("new:c1")).ok).toBe(false);
-  expect(tasks.current().tasks[0]?.state).toMatchObject({
-    status: TaskStatus.CreateFailed,
+  expect((await worktrees.retry("new:c1")).ok).toBe(false);
+  expect(worktrees.current().worktrees[0]?.state).toMatchObject({
+    status: WorktreeStatus.CreateFailed,
     made: false,
     leftover: undefined,
   });
-  const retried = await tasks.retry("new:c1");
+  const retried = await worktrees.retry("new:c1");
   expect(retried.ok && retried.value.folder).toEndWith("alliance-fix-it-2");
 });
 
 test("retrying a name the script refused before creating anything tries another", async () => {
   const blocking = path.join(dir, "workspaces", "alliance-fix-it");
   mkdirSync(blocking, { recursive: true });
-  const { tasks } = service();
-  const created = await tasks.create({
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
   expect(!created.ok && created.error.details).toContain("already exists");
-  const { tasks: _, ...beforeRetry } = tasks.current();
-  const retrying = tasks.retry("new:c1");
-  expect(tasks.current()).toEqual({
+  const { worktrees: _, ...beforeRetry } = worktrees.current();
+  const retrying = worktrees.retry("new:c1");
+  expect(worktrees.current()).toEqual({
     ...beforeRetry,
-    tasks: [
+    worktrees: [
       {
         key: "new:c1",
         title: "Fix it",
         createdByApp: true,
         archived: false,
         state: {
-          status: TaskStatus.Creating,
+          status: WorktreeStatus.Creating,
           stage: CreationStage.Downloading,
         },
       },
@@ -306,10 +312,14 @@ test("retrying a name the script refused before creating anything tries another"
 });
 
 test("two creations of the same request at once get different names", async () => {
-  const { tasks } = service();
+  const { worktrees } = service();
   const created = await Promise.all(
     ["c1", "c2"].map((creationId) =>
-      tasks.create({ creationId, request: "Fix it", agent: AgentKind.Claude }),
+      worktrees.create({
+        creationId,
+        request: "Fix it",
+        agent: AgentKind.Claude,
+      }),
     ),
   );
   expect(
@@ -317,29 +327,29 @@ test("two creations of the same request at once get different names", async () =
   ).toEqual(["alliance-fix-it", "alliance-fix-it-2"]);
 });
 
-test("dismissing a failed creation shows what it left behind as a task of its own", async () => {
+test("dismissing a failed creation shows what it left behind as a worktree of its own", async () => {
   writeFileSync(steeringFile(checkout, "fake-fail"), "");
-  const { tasks } = service();
-  await tasks.create({
+  const { worktrees } = service();
+  await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
-  tasks.dismiss("new:c1");
-  expect(tasks.current().tasks).toEqual([
+  worktrees.dismiss("new:c1");
+  expect(worktrees.current().worktrees).toEqual([
     expect.objectContaining({
       key: "id-fix-it",
       title: "Fix it",
       createdByApp: true,
-      state: { status: TaskStatus.NotFinished },
+      state: { status: WorktreeStatus.NotFinished },
     }),
   ]);
 });
 
 test("a failed download creates nothing", async () => {
   rmSync(source, { recursive: true, force: true });
-  const { tasks } = service();
-  const created = await tasks.create({
+  const { worktrees } = service();
+  const created = await worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
@@ -350,23 +360,23 @@ test("a failed download creates nothing", async () => {
   expect(existsSync(steeringFile(checkout, "fake-new-worktree-args"))).toBe(
     false,
   );
-  expect(tasks.current().tasks[0]?.state).toMatchObject({
-    status: TaskStatus.CreateFailed,
+  expect(worktrees.current().worktrees[0]?.state).toMatchObject({
+    status: WorktreeStatus.CreateFailed,
     leftover: undefined,
   });
 });
 
 test("closing stops a creation in progress and waits for it", async () => {
   writeFileSync(steeringFile(checkout, "fake-hold"), "");
-  const { tasks } = service();
-  const created = tasks.create({
+  const { worktrees } = service();
+  const created = worktrees.create({
     creationId: "c1",
     request: "Fix it",
     agent: AgentKind.Claude,
   });
   const args = steeringFile(checkout, "fake-new-worktree-args");
   while (!existsSync(args)) await Bun.sleep(10);
-  await tasks.close();
+  await worktrees.close();
   expect((await created).ok).toBe(false);
   expect(started).toEqual([]);
   expect(readFileSync(args, "utf8")).toStartWith("fix-it --from ");

@@ -26,7 +26,7 @@ export const newConversation = (): NewConversation => ({
   starting: false,
 });
 
-/** The agent choice and first message of a new conversation, or of a new task. */
+/** The agent choice and first message of a new conversation, or of a new worktree. */
 export function StartView({
   heading,
   hint,

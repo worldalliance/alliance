@@ -3,7 +3,7 @@ import { R, type Result } from "../../../../../common/src/result";
 import { failureOutput, queryTimeoutMs, runCli } from "../agent/cli-process";
 import { describeError } from "../describe-error";
 
-export enum WorktreeState {
+export enum ListedWorktreeState {
   Main = "main",
   Recorded = "recorded",
   Unrecorded = "unrecorded",
@@ -15,7 +15,7 @@ export enum WorktreeState {
 // The fields of scripts/list-worktrees.ts's version 1 the app reads; a new field leaves the version alone, so unknown keys pass.
 const worktreeSchema = z.object({
   path: z.string().nullable(),
-  state: z.enum(WorktreeState),
+  state: z.enum(ListedWorktreeState),
   problem: z.string().nullable(),
   id: z.string().nullable(),
   name: z.string().nullable(),
@@ -24,7 +24,7 @@ const worktreeSchema = z.object({
   prunable: z.boolean(),
 });
 
-export type Worktree = z.infer<typeof worktreeSchema>;
+export type ListedWorktree = z.infer<typeof worktreeSchema>;
 
 export const listVersion = 1;
 
@@ -39,7 +39,7 @@ export type Bun = { executable: string; env: NodeJS.ProcessEnv };
 export async function listWorktrees(params: {
   bun: Bun;
   checkout: string;
-}): Promise<Result<Worktree[], Error>> {
+}): Promise<Result<ListedWorktree[], Error>> {
   const { bun, checkout } = params;
   const exited = await runCli(
     { ...bun, name: "bun" },
@@ -57,7 +57,9 @@ export async function listWorktrees(params: {
   return parseWorktreeList(exited.value.stdout);
 }
 
-export function parseWorktreeList(stdout: string): Result<Worktree[], Error> {
+export function parseWorktreeList(
+  stdout: string,
+): Result<ListedWorktree[], Error> {
   const json: Result<unknown, Error> = R.fromThrowable(() =>
     JSON.parse(stdout),
   );

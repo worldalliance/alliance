@@ -27,7 +27,7 @@ const wrapClaude = (script: string): string =>
     `${script}\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
 
-// New task shows while signed out too, so only the message box shows the sign-in finished.
+// New worktree shows while signed out too, so only the message box shows the sign-in finished.
 const expectSignedIn = async (page: Page) => {
   await expect(page.getByLabel("Message Claude")).toBeEditable();
   await expect(
@@ -211,7 +211,7 @@ test("a signed-out user is asked to sign in, in place of the message box, before
   await expect(page.getByLabel("Message Claude")).toHaveCount(0);
   await expect(page.getByRole("radio", { name: "Codex" })).toBeVisible();
   await expect(page.getByRole("navigation")).toBeVisible();
-  await expect(page).toHaveTitle("New task – Alliance agent");
+  await expect(page).toHaveTitle("New worktree – Alliance agent");
   await app.close();
 });
 
@@ -345,7 +345,7 @@ test("Check again, but not a held Enter's repeats, finds Claude Code installed w
   await expect(
     page.getByRole("heading", { name: "Claude isn't available" }),
   ).toBeVisible();
-  // The narrowed PATH has no bun, so the task list shows an alert of its own.
+  // The narrowed PATH has no bun, so the worktree list shows an alert of its own.
   const signIn = page
     .getByRole("alert")
     .filter({ hasText: "check your Claude sign-in" });

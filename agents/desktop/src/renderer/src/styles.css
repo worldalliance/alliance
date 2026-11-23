@@ -247,7 +247,7 @@ pre {
   flex-wrap: wrap;
 }
 
-.task progress {
+.worktree progress {
   width: 100%;
   max-width: 40ch;
 }
