@@ -55,11 +55,6 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.kora-review .err {
-  color: var(--minus);
-  font-size: 14px;
-  font-weight: 600;
-}
 .kora-review .fine {
   font-size: 14px;
   color: var(--muted);

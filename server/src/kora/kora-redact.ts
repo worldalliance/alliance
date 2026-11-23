@@ -42,7 +42,6 @@ function maxLength(def: string, property: string): number {
 
 const FREE_TEXT: Record<string, string[]> = {
   result: ["q4_text"],
-  profile: ["country", "gender"],
   exitSurvey: ["exit_q6"],
 };
 
@@ -77,9 +76,6 @@ export function redactExport(
   return {
     ...root,
     results,
-    ...("profile" in root
-      ? { profile: redactFields(root.profile, "profile") }
-      : {}),
     ...("exitSurvey" in root
       ? { exitSurvey: redactFields(root.exitSurvey, "exitSurvey") }
       : {}),

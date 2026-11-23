@@ -53,27 +53,6 @@
   flex: none;
   width: 100%;
 }
-.kora-review .chk {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-}
-.kora-review .chk input {
-  width: 22px;
-  height: 22px;
-  margin: 0;
-  accent-color: var(--accent);
-}
-.kora-review .field input:disabled {
-  opacity: 0.5;
-}
-.kora-review .err:empty {
-  display: none;
-}
 .kora-review .finish .form .big {
   flex: none;
   width: 100%;
