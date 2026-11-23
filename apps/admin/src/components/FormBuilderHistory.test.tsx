@@ -113,8 +113,7 @@ const save = () =>
   });
 
 it("starts with nothing to undo, then steps back through edits on every tab", async () => {
-  // Switching tabs with unsaved changes asks before leaving.
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(true);
   renderFormBuilder(twoPages, 1);
   expect(button("Undo").disabled).toBe(true);
   expect(button("Redo").disabled).toBe(true);
@@ -122,6 +121,7 @@ it("starts with nothing to undo, then steps back through edits on every tab", as
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await nextTask();
   fireEvent.click(screen.getByText("Shareable Text"));
+  await waitFor(() => expect(leaveAsked).toHaveBeenCalledTimes(1));
   const placeholder = "Example: Join me in taking this action.";
   const template = () =>
     screen.getByPlaceholderText<HTMLTextAreaElement>(placeholder);

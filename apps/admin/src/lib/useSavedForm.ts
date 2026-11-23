@@ -7,7 +7,7 @@ import { adminRefusalMessage } from "./adminRefusal";
 import { ensurePages } from "./ensureFormSchema";
 import { placeForSelect } from "./formDependencies";
 import { useSelectOnLoad } from "./formEditorLink";
-import { useUnsavedChangesPrompt } from "./useUnsavedChangesPrompt";
+import { useLeaveGuard } from "./useLeaveGuard";
 
 type FormConflict = {
   base: FormSchema;
@@ -135,7 +135,7 @@ export function useSavedForm({
     setHasUnsavedChanges(currentSchemaJSON !== lastSavedSchemaJSON);
   }, [schema, lastSavedSchemaJSON]);
 
-  const navigateUnprompted = useUnsavedChangesPrompt({ hasUnsavedChanges });
+  const navigateUnprompted = useLeaveGuard(hasUnsavedChanges);
 
   /** Runs `navigate` to the form a save created or updated, without reloading it. */
   const navigateToSaved = useCallback(

@@ -27,12 +27,12 @@ import {
   useInvalidateFormulasAdmin,
   useSaveFormulasAdmin,
 } from "../lib/useFormulasAdmin";
+import { useLeaveGuard } from "../lib/useLeaveGuard";
 import {
   useForgetMemberListAdmin,
   useMemberListsAdmin,
   useSaveMemberListAdmin,
 } from "../lib/useMemberListsAdmin";
-import { useUnsavedChangesPrompt } from "../lib/useUnsavedChangesPrompt";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const NEW = "new";
@@ -133,7 +133,7 @@ const ListEditor: React.FC<{
     pasted.trim() !== "" ||
     fixes.some(fixChanged) ||
     partFixes.some(partFixChanged);
-  const navigateUnprompted = useUnsavedChangesPrompt({ hasUnsavedChanges });
+  const navigateUnprompted = useLeaveGuard(hasUnsavedChanges);
 
   const refuse = (error: unknown, fallback: string) =>
     setRefusal({

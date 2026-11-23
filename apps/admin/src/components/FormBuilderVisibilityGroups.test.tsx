@@ -26,6 +26,7 @@ import {
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { FormBuilder } from "./FormBuilder";
+import LeaveGuard from "./LeaveGuard";
 
 const shownWhen = (when: string): VisibleIfFormula => ({
   conditions: { c1: { kind: "hasValue", when, hasValue: true } },
@@ -283,7 +284,11 @@ const renderStatefulFormBuilder = (initialFormId?: number) =>
             router={createMemoryRouter([
               {
                 path: "/",
-                element: <StatefulFormBuilder initialFormId={initialFormId} />,
+                element: (
+                  <LeaveGuard>
+                    <StatefulFormBuilder initialFormId={initialFormId} />
+                  </LeaveGuard>
+                ),
               },
             ])}
           />
