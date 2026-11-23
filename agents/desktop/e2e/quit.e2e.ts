@@ -195,7 +195,7 @@ test("quitting waits only so long for a new conversation's CLI to read its messa
   expect(Date.now() - quitAt).toBeLessThan(10_000);
   expect(runningCount(claude)).toBe(0);
   expect(stderr()).toContain(
-    "its CLI didn't read the first message within 0.5 s of the quit beginning",
+    "its CLI didn't read the first message within 0.5 s of the quit beginning.",
   );
   expect(savedConversations()).toEqual([]);
 });
