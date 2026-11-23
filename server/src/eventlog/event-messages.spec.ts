@@ -51,24 +51,28 @@ const SAMPLES: { [T in EventType]: EventPayloads[T][] } = {
   [EventType.SmsInbound]: [
     {
       phoneNumber: "+15555550100",
+      threadId: "0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b",
       members: [jane],
       optedOut: false,
       body: "Who is this?",
     },
     {
       phoneNumber: "+15555550100",
+      threadId: "0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b",
       members: [jane],
       optedOut: true,
       body: "Who is this?",
     },
     {
       phoneNumber: "+15555550100",
+      threadId: "0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b",
       members: [],
       optedOut: false,
       body: "Who is this?",
     },
     {
       phoneNumber: "+15555550100",
+      threadId: "0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b",
       members: [],
       optedOut: true,
       body: "Who is this?",

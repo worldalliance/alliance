@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
 import { MmsOptout } from "src/mms/mms-optout.entity";
 import { MmsThread } from "src/mms/mms-thread.entity";
 import { MmsUnsubService } from "src/mms/mms-unsub.service";
@@ -376,12 +377,26 @@ describe("Inbound MMS keywords (e2e)", () => {
         () => eventLogRepo.findBy({ event: EventType.SmsInbound }),
         (rows) => rows.some((row) => row.blob?.body === body),
       );
-      return logs.find((row) => row.blob?.body === body)!.message;
+      return logs.find((row) => row.blob?.body === body)!;
     };
 
-    it("pointing staff to Needs reply when the member is subscribed", async () => {
-      expect(await inboundMessage("+14155559001", "subscribed hi")).toBe(
-        "Stopper texted: “subscribed hi” Reply from Needs reply.",
+    it("pointing staff to the number's thread", async () => {
+      const logged = await inboundMessage("+14155559001", "subscribed hi");
+
+      expect(logged.message).toBe(
+        "Stopper texted: “subscribed hi” Reply in the thread on Texts.",
+      );
+      const thread = await ctx()
+        .dataSource.getRepository(MmsThread)
+        .findOneByOrFail({ phoneNumber: "+14155559001" });
+      expect(ctx().app.get(EventLogService).sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: EventType.SmsInbound,
+          payload: expect.objectContaining({
+            threadId: thread.id,
+            body: "subscribed hi",
+          }),
+        }),
       );
     });
 
@@ -392,14 +407,18 @@ describe("Inbound MMS keywords (e2e)", () => {
           "phoneNumber",
         ]);
 
-      expect(await inboundMessage("+14155559001", "opted out hi")).toBe(
+      expect(
+        (await inboundMessage("+14155559001", "opted out hi")).message,
+      ).toBe(
         "Stopper texted: “opted out hi” The number has opted out of texts.",
       );
     });
 
     it("naming the number when no member has it", async () => {
-      expect(await inboundMessage("+14155559998", "stranger hi")).toBe(
-        "+14155559998, which no member has, texted: “stranger hi” Reply from Needs reply.",
+      const logged = await inboundMessage("+14155559998", "stranger hi");
+
+      expect(logged.message).toBe(
+        "+14155559998, which no member has, texted: “stranger hi” Reply in the thread on Texts.",
       );
     });
 
@@ -408,7 +427,9 @@ describe("Inbound MMS keywords (e2e)", () => {
         .dataSource.getRepository(MmsThread)
         .insert({ phoneNumber: "+14155559997", optedOut: true });
 
-      expect(await inboundMessage("+14155559997", "stranger again")).toBe(
+      expect(
+        (await inboundMessage("+14155559997", "stranger again")).message,
+      ).toBe(
         "+14155559997, which no member has, texted: “stranger again” The number has opted out of texts.",
       );
     });
