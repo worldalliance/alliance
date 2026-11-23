@@ -35,3 +35,17 @@ it("moves only navigations off the legacy domain", () => {
     `map "$http_sec_fetch_mode:$http_accept" $moved_host {\n    default            "";\n    "~^navigate:"      $new_host;\n    "~^:.*text/html"   $new_host;\n}`,
   );
 });
+
+it("retires the API, analytics and socket on the legacy domain, except image reads", () => {
+  expect(conf).toContain(
+    `map "$request_method $new_host$uri" $legacy_backend {\n    default                                         "";\n    "~^(GET|HEAD) [^/]+/api/images/"                moved;\n    "~^[A-Z]+ [^/]+/(api|events|socket\\.io)(/|$)"   gone;\n}`,
+  );
+  const https = conf.slice(0, conf.indexOf("listen 80 default_server"));
+  const beforeLocations = https.slice(
+    https.indexOf("server {"),
+    https.indexOf("    location "),
+  );
+  expect(beforeLocations).toContain(
+    "    if ($legacy_backend = gone) {\n        return 410;\n    }\n    if ($legacy_backend = moved) {\n        return 301 https://$new_host$request_uri;\n    }",
+  );
+});
