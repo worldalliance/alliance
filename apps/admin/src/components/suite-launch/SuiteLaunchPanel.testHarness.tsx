@@ -245,6 +245,7 @@ const suiteWith = (events: ActionEventDto[]): ActionSuiteDto => ({
   events,
   reminderGroups: [],
   generalUpdates: [],
+  usesGroups: false,
 });
 
 export const onClose = mock(() => {});

@@ -374,6 +374,7 @@ describe("ActionForm", () => {
             events: [],
             reminderGroups: [],
             generalUpdates: [],
+            usesGroups: false,
           },
         ],
       },

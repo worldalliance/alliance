@@ -17,6 +17,7 @@ const loadSuite = () =>
     events: [makeEvent({ id: 1, title: "Launch" })],
     reminderGroups: [],
     generalUpdates: [],
+    usesGroups: false,
   } satisfies ActionSuiteDto);
 const unlaunchedSuite = (events: ActionSuiteDto["events"]) => () =>
   Response.json({
@@ -26,6 +27,7 @@ const unlaunchedSuite = (events: ActionSuiteDto["events"]) => () =>
     events,
     reminderGroups: [],
     generalUpdates: [],
+    usesGroups: false,
   } satisfies ActionSuiteDto);
 let suiteLoad = loadSuite;
 let eventDelete = failure;

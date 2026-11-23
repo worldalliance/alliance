@@ -1,3 +1,4 @@
+import type { ActionSuiteDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -18,7 +19,8 @@ serveApi(
             events: [],
             reminderGroups: [],
             generalUpdates: [],
-          })
+            usesGroups: false,
+          } satisfies ActionSuiteDto)
         : Response.json(
             { message: "name must be shorter than or equal to 255 characters" },
             { status: createStatus },
