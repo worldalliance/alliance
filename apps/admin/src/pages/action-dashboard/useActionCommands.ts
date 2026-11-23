@@ -54,6 +54,7 @@ export function useActionCommands(params: {
   const { createForm } = useCreateFormAdmin();
   const { fetchLatest } = useAdminTaskFormActions();
   const handleActionCreated = useNavigateToCreatedAction();
+  const { confirm, success } = useToast();
 
   const handleDuplicate = useCallback(async () => {
     if (imageUploading) {
@@ -97,6 +98,9 @@ export function useActionCommands(params: {
       setError(result.error);
       return;
     }
+    // Edits made while the copy was created hold the navigation at the leave
+    // prompt, so the copy is announced on its own.
+    success("Action duplicated");
     handleActionCreated(result.value);
   }, [
     form,
@@ -107,14 +111,13 @@ export function useActionCommands(params: {
     createForm,
     fetchLatest,
     handleActionCreated,
+    success,
     setError,
   ]);
 
   const handleActionDeleted = useCallback(() => {
     navigate("/actions");
   }, [navigate]);
-
-  const { confirm } = useToast();
 
   const handleArchive = useCallback(async () => {
     const confirmed =

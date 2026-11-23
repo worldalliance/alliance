@@ -3,7 +3,7 @@ import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { renderHook } from "@testing-library/react";
+import { renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { testActions } from "../../lib/testData";
@@ -93,6 +93,7 @@ test("duplicating an action points the copy at a clone of its task form", async 
     name: `${testActions[0].name} (Copy)`,
     taskFormId: 9,
   });
+  expect(await screen.findByText("Action duplicated")).toBeTruthy();
 });
 
 test("duplicating a Kora review action keeps its task kind", async () => {

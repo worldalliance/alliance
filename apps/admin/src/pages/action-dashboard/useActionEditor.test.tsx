@@ -1,4 +1,4 @@
-import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
+import { makeProfile } from "@alliance/shared/lib/testFixtures";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import {
   act,
@@ -8,50 +8,49 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type React from "react";
-import { MemoryRouter } from "react-router";
+import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
+import { makeParsedAction } from "../../lib/testing/parsedAction";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
-const action: ParsedActionDto = {
-  ...makeAction({ id: 7, shortDescription: "Short", body: "Body" }),
-  slug: "seven",
-  followUpForms: [],
-  staffPreview: false,
-  prerequisiteActionIds: [],
-  memberActionStart: null,
-  memberActionDeadline: null,
-  storedImage: null,
-  storedSquareThumbnailImage: null,
-  cohortExpression: null,
-};
+const action = makeParsedAction({ shortDescription: "Short", body: "Body" });
+
+const noSearchParams = new URLSearchParams();
+const setError = jest.fn();
 
 const renderEditor = (
   overrides: Partial<ParsedActionDto> = {},
-  suites: { id: number; isPartitioned: boolean }[] | null = [],
+  {
+    isNew = false,
+    suites = [],
+  }: {
+    isNew?: boolean;
+    suites?: { id: number; isPartitioned: boolean }[] | null;
+  } = {},
 ) => {
   const updateAction = jest.fn(async () => action);
   let editor!: ActionEditorState;
   const Harness = () => {
     editor = useActionEditor({
       admin: {
-        action: { ...action, ...overrides },
+        action: isNew ? null : { ...action, ...overrides },
         isFetching: false,
         createAction: jest.fn(),
         updateAction,
       },
-      actionId: action.id,
-      isNew: false,
+      actionId: isNew ? null : action.id,
+      isNew,
       cohortParseFailed: false,
       lookups: {
         availableSuites: suites ?? undefined,
         suitesLoading: suites === null,
         suitesError: false,
       },
-      searchParams: new URLSearchParams(),
-      setError: jest.fn(),
+      searchParams: noSearchParams,
+      setError,
     });
     return editor.contentDialog;
   };
-  render(<Harness />, { wrapper: MemoryRouter });
+  render(<Harness />, { wrapper: LeaveGuardRouter });
   return {
     result: {
       get current() {
@@ -63,6 +62,54 @@ const renderEditor = (
 };
 
 const allMembers = { type: "AllMembers" } as const;
+
+const otherAction = makeParsedAction({ id: 8, name: "Other" });
+
+/** The editor on action 7, then on the action `rerenderFor` names, shown once loaded. */
+const renderSwitchingEditor = (
+  updateAction: () => Promise<ParsedActionDto> = async () => action,
+) => {
+  let editor!: ActionEditorState;
+  const Harness = ({
+    actionId,
+    shown,
+  }: {
+    actionId: number;
+    shown: ParsedActionDto | null;
+  }) => {
+    editor = useActionEditor({
+      admin: {
+        action: shown,
+        isFetching: shown === null,
+        createAction: jest.fn(),
+        updateAction,
+      },
+      actionId,
+      isNew: false,
+      cohortParseFailed: false,
+      lookups: {
+        availableSuites: [],
+        suitesLoading: false,
+        suitesError: false,
+      },
+      searchParams: noSearchParams,
+      setError,
+    });
+    return editor.contentDialog;
+  };
+  const { rerender } = render(<Harness actionId={action.id} shown={action} />, {
+    wrapper: LeaveGuardRouter,
+  });
+  return {
+    result: {
+      get current() {
+        return editor;
+      },
+    },
+    rerenderFor: (actionId: number, shown: ParsedActionDto | null = null) =>
+      rerender(<Harness actionId={actionId} shown={shown} />),
+  };
+};
 
 // handleSubmit only calls preventDefault on the event.
 const submitEvent = { preventDefault: () => {} } as React.FormEvent;
@@ -92,6 +139,15 @@ describe("useActionEditor", () => {
     expect(result.current.dirty).toBe(false);
   });
 
+  it("is dirty once a new action has an edit", async () => {
+    const { result } = renderEditor({}, { isNew: true });
+    await waitFor(() => expect(result.current.dirty).toBe(false));
+
+    act(() => result.current.handleCohortExpressionChange(allMembers));
+
+    expect(result.current.dirty).toBe(true);
+  });
+
   it("keeps staff preview on when the details form saves afterwards", async () => {
     const { result, updateAction } = renderEditor();
     await waitFor(() => expect(result.current.draftSeeded).toBe(true));
@@ -116,7 +172,7 @@ describe("useActionEditor", () => {
   ])(
     "leaves the optional flag, which the grid sets, out of %s",
     async (_, suites) => {
-      const { result, updateAction } = renderEditor({}, suites);
+      const { result, updateAction } = renderEditor({}, { suites });
       await waitFor(() => expect(result.current.draftSeeded).toBe(true));
 
       moveTo(result.current, "3");
@@ -128,10 +184,15 @@ describe("useActionEditor", () => {
   );
 
   it("keeps the optional flag the grid stored, so a move out of the suite sends it", async () => {
-    const { result, updateAction } = renderEditor({ optional: false }, [
-      { id: 3, isPartitioned: true },
-      { id: 4, isPartitioned: false },
-    ]);
+    const { result, updateAction } = renderEditor(
+      { optional: false },
+      {
+        suites: [
+          { id: 3, isPartitioned: true },
+          { id: 4, isPartitioned: false },
+        ],
+      },
+    );
     await waitFor(() => expect(result.current.draftSeeded).toBe(true));
 
     moveTo(result.current, "3");
@@ -242,5 +303,124 @@ describe("useActionEditor", () => {
 
     expect(screen.queryByRole("button", { name: "Save anyway" })).toBeNull();
     expect(updateAction).toHaveBeenCalled();
+  });
+
+  it("is clean once the page moves to another action, until that one is seeded", async () => {
+    const { result, rerenderFor } = renderSwitchingEditor();
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    act(() => result.current.handleCohortExpressionChange(allMembers));
+    expect(result.current.dirty).toBe(true);
+
+    rerenderFor(8);
+
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("leaves the next action's draft clean when the previous action's save resolves late", async () => {
+    let finishSave!: (saved: ParsedActionDto) => void;
+    const { result, rerenderFor } = renderSwitchingEditor(
+      () => new Promise((resolve) => (finishSave = resolve)),
+    );
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    act(() => result.current.handleCohortExpressionChange(allMembers));
+    let saved!: Promise<void>;
+    act(() => {
+      saved = result.current.handleSubmit(submitEvent);
+    });
+    await waitFor(() => expect(finishSave).toBeDefined());
+
+    rerenderFor(8, otherAction);
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    await act(async () => {
+      finishSave(action);
+      await saved;
+    });
+
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it.each([
+    ["form", (editor: ActionEditorState) => editor.setTaskFormId(99)],
+    [
+      "staff preview",
+      (editor: ActionEditorState) => editor.setStaffPreview(true),
+    ],
+  ])(
+    "leaves the next action alone when the previous action's %s saves late",
+    async (_, save) => {
+      let finishSave!: (saved: ParsedActionDto) => void;
+      const { result, rerenderFor } = renderSwitchingEditor(
+        () => new Promise((resolve) => (finishSave = resolve)),
+      );
+      await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+      let saved!: Promise<void>;
+      act(() => {
+        saved = save(result.current);
+      });
+      await waitFor(() => expect(finishSave).toBeDefined());
+
+      rerenderFor(8, otherAction);
+      await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+      await act(async () => {
+        finishSave(action);
+        await saved;
+      });
+
+      expect(result.current.dirty).toBe(false);
+      expect(result.current.form.staffPreview).toBe(false);
+    },
+  );
+
+  it("is clean after a new action's only prerequisite is added and removed", async () => {
+    const { result } = renderEditor({}, { isNew: true });
+    await waitFor(() => expect(result.current.dirty).toBe(false));
+
+    act(() => result.current.handlePrerequisitesChange([3]));
+    act(() => result.current.handlePrerequisitesChange([]));
+
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("is clean once an action with no form saves its first one", async () => {
+    const { result } = renderEditor({ taskFormId: null });
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    await act(() => result.current.setTaskFormId(42));
+
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("is clean once an action with no suite is set back to no suite", async () => {
+    const { result } = renderEditor();
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    const setSuite = (value: string) =>
+      act(() =>
+        result.current.handleInputChange({
+          target: { name: "suiteId", value, type: "select-one" },
+        } as React.ChangeEvent<HTMLSelectElement>),
+      );
+
+    setSuite("3");
+    expect(result.current.dirty).toBe(true);
+    setSuite("");
+
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("is clean once a new action's square thumbnail is cleared", async () => {
+    const { result } = renderEditor({}, { isNew: true });
+    await waitFor(() => expect(result.current.dirty).toBe(false));
+    const setThumbnail = (value: string) =>
+      act(() =>
+        result.current.handleInputChange({
+          target: { name: "squareThumbnailImage", value, type: "text" },
+        } as React.ChangeEvent<HTMLInputElement>),
+      );
+
+    setThumbnail("https://example.com/a.png");
+    expect(result.current.dirty).toBe(true);
+    setThumbnail("");
+
+    expect(result.current.dirty).toBe(false);
   });
 });

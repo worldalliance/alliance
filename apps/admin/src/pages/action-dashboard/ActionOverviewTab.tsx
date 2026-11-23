@@ -26,6 +26,7 @@ type ActionOverviewTabProps = {
   reporting: ActionReporting;
   actionExport: ActionExport;
   imageUploading: boolean;
+  unsaved: boolean;
   onDuplicate: () => Promise<void>;
   onArchive: () => Promise<void>;
   onTabChange: (tab: "events" | "responses") => void;
@@ -39,6 +40,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
   reporting,
   actionExport,
   imageUploading,
+  unsaved,
   onDuplicate,
   onArchive,
   onTabChange,
@@ -56,6 +58,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         action={action}
         actionExport={actionExport}
         imageUploading={imageUploading}
+        unsaved={unsaved}
         onDuplicate={onDuplicate}
         onArchive={onArchive}
       />

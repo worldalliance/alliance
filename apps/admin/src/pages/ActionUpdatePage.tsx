@@ -30,6 +30,7 @@ import {
 } from "../lib/actionUpdateDetails";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
+import { useLeaveGuard } from "../lib/useLeaveGuard";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
@@ -90,6 +91,11 @@ const ActionUpdatePage: React.FC = () => {
   ) {
     fillForm(update);
   }
+
+  // A draft of another update was already discarded at the prompt that left it.
+  useLeaveGuard(formEdited && formSource.id === updateId, {
+    allowSamePath: true,
+  });
 
   const savedForm = useMemo(() => update && formOf(update), [update]);
 

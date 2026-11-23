@@ -69,6 +69,7 @@ const renderPage = (
           </LeaveGuard>
         ),
       },
+      { path: "/actions/:actionId", element: <p>Action page</p> },
     ],
     { initialEntries: [params.path ?? "/actions/2/updates/1"] },
   );
@@ -79,6 +80,7 @@ const renderPage = (
       </ToastProvider>
     </QueryClientProvider>,
   );
+  return router;
 };
 
 const renderDetails = async () => {
@@ -315,6 +317,50 @@ describe("ActionUpdatePage", () => {
     await saveAs("See worldalliance.org/b", "Save anyway");
     await waitFor(() => expect(titleSaved).toBe("See worldalliance.org/b"));
     expect(writes).toBe(1);
+  });
+
+  it("asks before leaving unsaved details, but not for a tab change", async () => {
+    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(false);
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^update details$/i }),
+    );
+    fireEvent.change(await screen.findByDisplayValue("Hearing"), {
+      target: { value: "Hearing moved" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Content" }));
+    expect(leaveAsked).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /back to updates/i }));
+    await waitFor(() => expect(leaveAsked).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("heading", { name: "Hearing" })).toBeTruthy();
+  });
+
+  it("stops guarding discarded edits once staff leave for an update that fails to load", async () => {
+    api.alsoServing({
+      "GET /actions/updates/admin/:id": ({ params }) =>
+        params.id === "1"
+          ? Response.json(served)
+          : Response.json({ statusCode: 404 }, { status: 404 }),
+    });
+    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(true);
+    const router = renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^update details$/i }),
+    );
+    fireEvent.change(await screen.findByDisplayValue("Hearing"), {
+      target: { value: "Hearing moved" },
+    });
+
+    await router.navigate("/actions/2/updates/2");
+    expect(await screen.findByText("Update not found")).toBeTruthy();
+    expect(leaveAsked).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /back/i }));
+    expect(await screen.findByText("Action page")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/actions/2");
+    expect(leaveAsked).toHaveBeenCalledTimes(1);
   });
 });
 
