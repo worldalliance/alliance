@@ -54,14 +54,13 @@ import {
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
-import { GeneralUpdate } from "./entities/general-update.entity";
 import { FormSlugSequence, slugFormForAction } from "./form-slug";
 import { GeneralUpdatesService } from "./general-updates.service";
 import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
-import { shiftPrioritiesAfterInsertion } from "./priority-order";
+import { setPriorities, shiftPrioritiesAfterInsertion } from "./priority-order";
 import { renameSoleActionSuite } from "./sole-action-suite";
 
 const ACTION_PARENT_GONE = "That suite, author or form is gone";
@@ -77,8 +76,6 @@ export class ActionsService {
     private readonly actionReviewerRepository: Repository<ActionReviewer>,
     @InjectRepository(EditableContent)
     private readonly editableContentRepository: TypedRepository<EditableContent>,
-    @InjectRepository(GeneralUpdate)
-    private readonly generalUpdateRepository: Repository<GeneralUpdate>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
@@ -334,19 +331,8 @@ export class ActionsService {
     return action;
   }
 
-  async setPriorityOrder(dto: SetPriorityDto): Promise<void> {
-    await Promise.all([
-      ...dto.actionPriorities.map((actionPriority) =>
-        this.actionRepository.update(actionPriority.id, {
-          priority: actionPriority.priority,
-        }),
-      ),
-      ...dto.generalUpdatePriorities.map((generalUpdatePriority) =>
-        this.generalUpdateRepository.update(generalUpdatePriority.id, {
-          priority: generalUpdatePriority.priority,
-        }),
-      ),
-    ]);
+  setPriorityOrder(dto: SetPriorityDto): Promise<void> {
+    return setPriorities(this.actionRepository.manager, dto);
   }
 
   async update(
