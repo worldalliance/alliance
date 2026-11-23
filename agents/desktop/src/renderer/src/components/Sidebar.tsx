@@ -8,7 +8,6 @@ import { type ShownRepository, statusWords } from "../repository";
 import { sameView, type View, ViewKind } from "../view";
 import {
   groupConversations,
-  outsideWords,
   type ShownWorktrees,
   worktreeStateWords,
 } from "../worktrees";
@@ -92,11 +91,8 @@ export function Sidebar({
       aria-current={current({ kind: ViewKind.Worktree, key: worktree.key })}
       onClick={() => onSelect({ kind: ViewKind.Worktree, key: worktree.key })}
     >
-      <span className="title">{worktree.title}</span>
-      <span className="meta">
-        {worktreeStateWords(worktree)}
-        {!worktree.createdByApp && ` · ${outsideWords}`}
-      </span>
+      <span className="title">{worktree.name}</span>
+      <span className="meta">{worktreeStateWords(worktree)}</span>
     </button>
   );
 

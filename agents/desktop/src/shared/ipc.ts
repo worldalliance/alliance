@@ -47,12 +47,7 @@ export type StartInput = {
   agent: AgentKind;
 };
 
-/** A created worktree's key and folder, and its first conversation, which fails when the worktree is ready but the conversation couldn't start. */
-export type CreatedWorktree = {
-  key: string;
-  folder: string;
-  conversation: IpcResult<Conversation>;
-};
+export type CreatedWorktree = { key: string; folder: string };
 
 export type SessionEvent = { sessionId: string; event: AgentEvent };
 
@@ -123,11 +118,10 @@ export type AgentApi = {
   checkRepositoryAgain(): Reply<IpcChannel.RepositoryCheckAgain>;
   worktreesState(): Reply<IpcChannel.WorktreesState>;
   onWorktreesChanged(listener: (state: WorktreesState) => void): () => void;
-  /** Creates a worktree, then starts its first conversation with request; the worktree is listed as new:<creationId> meanwhile, and stays listed with its problem if creation fails. */
+  /** Creates a worktree named after name; it is listed as new:<creationId> meanwhile, and stays listed with its problem if creation fails. */
   createWorktree(input: {
     creationId: string;
-    request: string;
-    agent: AgentKind;
+    name: string;
   }): Reply<IpcChannel.CreateWorktree>;
   retryWorktree(key: string): Reply<IpcChannel.RetryWorktree>;
   dismissWorktree(key: string): void;

@@ -1,17 +1,15 @@
 import { R, type Result } from "../../../../../common/src/result";
-import type { AgentKind } from "../../shared/agent-kind";
-import type { Conversation } from "../../shared/conversation";
-import type { CreatedWorktree, IpcResult, StartInput } from "../../shared/ipc";
+import type { CreatedWorktree } from "../../shared/ipc";
 import type { Problem } from "../../shared/repository";
 import {
   CreationStage,
+  nameBase,
   newWorktreeKey,
   type Worktree,
   type WorktreesState,
   WorktreesStatus,
   WorktreeStatus,
 } from "../../shared/worktree";
-import { conversationTitle } from "../conversations";
 import { fetchMain } from "../repository/fetch";
 import type { Git } from "../repository/git";
 import { localBranches, runNewWorktree, worktreeName } from "./create";
@@ -21,9 +19,9 @@ import type { SavedWorktree, WorktreeStore } from "./store";
 
 type Creation = {
   key: string;
-  title: string;
-  request: string;
-  agent: AgentKind;
+  typed: string;
+  /** The name before numbering past taken ones. */
+  base: string;
   /** Set once chosen, so a listing shows the worktree as this creation rather than as a worktree of its own. */
   name?: string;
   /** Names earlier attempts used. The script can refuse a name before leaving anything that marks it taken, such as when its folder exists. */
@@ -61,10 +59,6 @@ export class WorktreeService {
       findGit: () => Promise<Result<Git, string>>;
       findBun: () => Result<Bun, Error>;
       store: WorktreeStore;
-      /** Starts a conversation in folder and sends it firstMessage. */
-      startConversation: (
-        input: StartInput,
-      ) => Promise<IpcResult<Conversation>>;
       /** Closes the app's sessions in folder, resolving once their CLIs have exited. */
       closeSessionsIn: (folder: string) => Promise<void>;
     },
@@ -120,7 +114,8 @@ export class WorktreeService {
         }
       : !saved.ok
         ? {
-            message: "Alliance agent couldn't read which worktrees it created.",
+            message:
+              "Alliance agent couldn't read which worktrees are archived.",
             details: saved.error.message,
           }
         : undefined;
@@ -140,28 +135,32 @@ export class WorktreeService {
       : Promise.resolve(bun);
   }
 
-  /** Creates a worktree for request, then starts its first conversation there with request as the first message. Fails when the worktree couldn't be created, leaving the worktree in the list with what went wrong until it is retried or dismissed. */
+  /** Creates a worktree named after input.name. Fails when that has no letter from a to z or digit, or when the worktree couldn't be created, leaving the creation in the list with what went wrong until it is retried or dismissed. */
   create(input: {
     creationId: string;
-    request: string;
-    agent: AgentKind;
+    name: string;
   }): Promise<Result<CreatedWorktree, Problem>> {
     const key = newWorktreeKey(input.creationId);
     if (this.creations.has(key))
       return Promise.resolve(
         R.failure({ message: "This worktree is already being created." }),
       );
-    const title = conversationTitle(input.request);
+    const base = nameBase(input.name);
+    if (!base)
+      return Promise.resolve(
+        R.failure({
+          message: "A worktree name needs a letter from a to z or a digit.",
+        }),
+      );
     return this.run({
       key,
-      title,
-      request: input.request,
-      agent: input.agent,
+      typed: input.name,
+      base,
       tried: [],
       controller: new AbortController(),
       worktree: creatingWorktree({
         key,
-        title,
+        name: base,
         stage: CreationStage.Downloading,
       }),
     });
@@ -184,10 +183,9 @@ export class WorktreeService {
       }),
       controller: new AbortController(),
       worktree: creatingWorktree({
-        ...failed,
-        stage: failed.made
-          ? CreationStage.StartingAgent
-          : CreationStage.Downloading,
+        key: failed.key,
+        name: failed.made && failed.name ? failed.name : failed.base,
+        stage: failed.made ? CreationStage.Finding : CreationStage.Downloading,
       }),
     });
   }
@@ -223,8 +221,7 @@ export class WorktreeService {
           problem: result.error.problem,
           leftover: result.error.leftover,
           made: !!creation.made,
-          request: creation.request,
-          agent: creation.agent,
+          typed: creation.typed,
         });
       return R.mapError(result, ({ problem }) => problem);
     });
@@ -276,8 +273,9 @@ export class WorktreeService {
       ),
     ]);
     // No await may separate reading the other creations' names from recording this one, so two creations can't choose the same name.
-    const name = worktreeName(creation.request, taken);
+    const name = worktreeName(creation.base, taken);
     creation.name = name;
+    creation.worktree = { ...creation.worktree, name };
     this.setCreation(creation, {
       status: WorktreeStatus.Creating,
       stage: CreationStage.CopyingDatabase,
@@ -295,27 +293,9 @@ export class WorktreeService {
     const worktree = relisted.ok
       ? relisted.value.find((w) => w.name === name)
       : undefined;
-    const key = worktree && (worktree.id ?? worktree.path);
-    // The leftover is the app's, so it lists under the request's title once this creation goes.
-    const saved = key
-      ? await this.params.store.update(key, (old) => ({
-          ...old,
-          title: creation.title,
-        }))
-      : R.success(undefined);
     if (relisted.ok) await this.refresh();
     return R.failure({
-      problem: saved.ok
-        ? made.error
-        : {
-            ...made.error,
-            details: [
-              made.error.details,
-              `Alliance agent couldn't save what was created as a worktree it created: ${saved.error.message}`,
-            ]
-              .filter(Boolean)
-              .join("\n"),
-          },
+      problem: made.error,
       leftover: !relisted.ok
         ? `Alliance agent couldn't check whether part of it was created: ${relisted.error.message}. scripts/list-worktrees.ts, run in Terminal from ${checkout}, shows it.`
         : worktree
@@ -360,33 +340,8 @@ export class WorktreeService {
         leftover: gone ? undefined : leftover,
       });
     }
-    const saved = await this.params.store.update(worktree.id, (old) => ({
-      ...old,
-      title: creation.title,
-    }));
-    if (!saved.ok)
-      return R.failure({
-        problem: {
-          message: `Alliance agent created ${name}, but couldn't save it as a worktree it created.`,
-          details: saved.error.message,
-        },
-        leftover,
-      });
     await this.refresh();
-    this.setCreation(creation, {
-      status: WorktreeStatus.Creating,
-      stage: CreationStage.StartingAgent,
-    });
-    const conversation = await this.params.startConversation({
-      folder: worktree.path,
-      firstMessage: creation.request,
-      agent: creation.agent,
-    });
-    return R.success({
-      key: worktree.id,
-      folder: worktree.path,
-      conversation,
-    });
+    return R.success({ key: worktree.id, folder: worktree.path });
   }
 
   /** Saves the worktree as archived, then stops its agents and hides it; a failed save stops nothing. */
@@ -490,12 +445,11 @@ const stillArchiving = () =>
 
 const creatingWorktree = (params: {
   key: string;
-  title: string;
+  name: string;
   stage: CreationStage;
 }): Worktree => ({
   key: params.key,
-  title: params.title,
-  createdByApp: true,
+  name: params.name,
   archived: false,
   state: { status: WorktreeStatus.Creating, stage: params.stage },
 });

@@ -248,7 +248,7 @@ test("reopening a conversation started in this run after an error keeps its mess
   await app.close();
 });
 
-test("without the repository, a new worktree or a conversation without one says the repository must be ready and keeps the message", async () => {
+test("without the repository, a new worktree or a conversation without one says the repository must be ready and keeps what was typed", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true)],
     env: { [testSourceVariable]: process.env[testSourceVariable] ?? "" },
@@ -257,14 +257,16 @@ test("without the repository, a new worktree or a conversation without one says 
   await expect(sidebar).toContainText(
     "Worktrees show once the Alliance repository above is ready.",
   );
-  for (const view of ["New worktree", "Ask without a worktree"]) {
-    await sidebar.getByRole("button", { name: view }).click();
-    await send(page, "Hello");
-    await expect(page.getByRole("alert")).toHaveText(
-      "Alliance agent needs the Alliance repository to be ready first. See Alliance repository in the sidebar.",
-    );
-    await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
-  }
+  const needsRepository =
+    "Alliance agent needs the Alliance repository to be ready first. See Alliance repository in the sidebar.";
+  await page.getByLabel("Name").fill("Hello");
+  await page.getByRole("button", { name: "Create worktree" }).click();
+  await expect(page.getByRole("alert")).toHaveText(needsRepository);
+  await expect(page.getByLabel("Name")).toHaveValue("Hello");
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
+  await send(page, "Hello");
+  await expect(page.getByRole("alert")).toHaveText(needsRepository);
+  await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
   await app.close();
 });
 

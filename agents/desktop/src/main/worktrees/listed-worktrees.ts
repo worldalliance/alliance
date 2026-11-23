@@ -39,14 +39,11 @@ export function listedWorktrees(params: {
     return [
       {
         key,
-        title:
-          own?.title ??
-          worktree.name ??
-          (worktree.path ? path.basename(worktree.path) : key),
+        name:
+          worktree.name ?? (worktree.path ? path.basename(worktree.path) : key),
         folder: worktree.path ?? undefined,
         branch: worktree.branch ?? undefined,
         parent,
-        createdByApp: own?.title !== undefined,
         archived: !!own?.archived && !params.archiving.has(key),
         state: looped
           ? {

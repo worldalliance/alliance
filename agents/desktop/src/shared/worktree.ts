@@ -1,4 +1,3 @@
-import type { AgentKind } from "./agent-kind";
 import type { Problem } from "./repository";
 
 export enum WorktreeStatus {
@@ -19,7 +18,8 @@ export enum CreationStage {
   CreatingFolder = "creating-folder",
   CopyingSettings = "copying-settings",
   InstallingDependencies = "installing-dependencies",
-  StartingAgent = "starting-agent",
+  /** Looking for a worktree the script made, when an earlier attempt couldn't find it. */
+  Finding = "finding",
 }
 
 export type WorktreeState =
@@ -29,10 +29,10 @@ export type WorktreeState =
       problem: Problem;
       /** What the failed creation left behind, in words, or undefined when it left nothing. */
       leftover?: string;
-      /** Whether the script made the worktree, which only Try again saves as the app's, so the creation can't be dismissed. */
+      /** Whether the script made the worktree, so only Try again, which finds it rather than making another, is offered. */
       made: boolean;
-      request: string;
-      agent: AgentKind;
+      /** The name as the user typed it. */
+      typed: string;
     }
   | { status: WorktreeStatus.Ready; problem?: string }
   | { status: WorktreeStatus.NotFinished }
@@ -42,14 +42,13 @@ export type WorktreeState =
 export type Worktree = {
   /** Stable while the app runs: the worktree record's id, the folder of a worktree without one, or new:<id> while the app creates it. */
   key: string;
-  title: string;
+  /** The worktree's name, or while the app creates it, the name it chose or will start from. */
+  name: string;
   /** Undefined until the worktree exists. */
   folder?: string;
   branch?: string;
   /** The key of the worktree this one was created from, such as by an agent working in it. */
   parent?: string;
-  /** False for a worktree made with a terminal or by an agent. */
-  createdByApp: boolean;
   archived: boolean;
   state: WorktreeState;
 };

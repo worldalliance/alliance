@@ -28,6 +28,7 @@ import {
   stopRequested,
 } from "./chat-state";
 import { ChatView } from "./components/ChatView";
+import { NewWorktreeView } from "./components/NewWorktreeView";
 import { RepositoryView } from "./components/RepositoryView";
 import { type Listed, Sidebar } from "./components/Sidebar";
 import { StartView } from "./components/StartView";
@@ -130,18 +131,16 @@ export function App() {
       ? worktrees.state?.worktrees.find((t) => t.key === shown.key)
       : undefined;
   const startKey =
-    view.kind === ViewKind.NewWorktree
-      ? newWorktreeDraft
-      : view.kind === ViewKind.Ask
-        ? askDraft
-        : shown.kind === ViewKind.Worktree
-          ? worktreeDraft(shown.key)
-          : undefined;
+    view.kind === ViewKind.Ask
+      ? askDraft
+      : shown.kind === ViewKind.Worktree
+        ? worktreeDraft(shown.key)
+        : undefined;
   const titles: Record<ViewKind, string> = {
     [ViewKind.Repository]: "Alliance repository",
     [ViewKind.NewWorktree]: "New worktree",
     [ViewKind.Ask]: "Ask without a worktree",
-    [ViewKind.Worktree]: selectedWorktree?.title || "Worktree",
+    [ViewKind.Worktree]: selectedWorktree?.name || "Worktree",
     [ViewKind.Conversation]: selectedConversation?.title || "Conversation",
   };
   const title = titles[view.kind];
@@ -206,46 +205,39 @@ export function App() {
     return R.success(undefined);
   };
 
+  const [newWorktreeProblem, setNewWorktreeProblem] = useState<string>();
+
+  const putBackName = (name: string) =>
+    draft(newWorktreeDraft).onChange((typed) => (typed.trim() ? typed : name));
+
   const created =
-    (params: { key: string; request: string; agent: AgentKind }) =>
+    (params: { key: string; name: string }) =>
     async (reply: IpcResult<CreatedWorktree>) => {
       const from: View = { kind: ViewKind.Worktree, key: params.key };
-      if (!reply.ok) {
-        // A creation the main process listed shows its own failure.
-        const now = await agent.worktreesState();
-        if (now.ok && now.value.worktrees.some((t) => t.key === params.key))
-          return;
-        addToDraft(newWorktreeDraft, params.request);
-        setStart(newWorktreeDraft)((s) => ({
-          ...s,
-          agent: params.agent,
-          problem: reply.error,
-        }));
-        return moveFrom(from, { kind: ViewKind.NewWorktree });
-      }
-      const { key, conversation } = reply.value;
-      if (conversation.ok) {
-        showStarted(conversation.value, params.request);
+      if (reply.ok)
         return moveFrom(from, {
-          kind: ViewKind.Conversation,
-          id: conversation.value.id,
+          kind: ViewKind.Worktree,
+          key: reply.value.key,
         });
-      }
-      addToDraft(worktreeDraft(key), params.request);
-      setStart(worktreeDraft(key))((s) => ({
-        ...s,
-        problem: startProblem(conversation.error),
-      }));
-      moveFrom(from, { kind: ViewKind.Worktree, key });
+      // A creation the main process listed shows its own failure.
+      const now = await agent.worktreesState();
+      if (now.ok && now.value.worktrees.some((t) => t.key === params.key))
+        return;
+      putBackName(params.name);
+      setNewWorktreeProblem(reply.error);
+      moveFrom(from, { kind: ViewKind.NewWorktree });
     };
 
-  const createWorktree = (input: { text: string; agent: AgentKind }) => {
+  const createWorktree = (name: string) => {
+    if (!checkout) return setNewWorktreeProblem(noRepository);
     const creationId = crypto.randomUUID();
     const key = newWorktreeKey(creationId);
+    takeDraft(newWorktreeDraft);
+    setNewWorktreeProblem(undefined);
     setView({ kind: ViewKind.Worktree, key });
     void agent
-      .createWorktree({ creationId, request: input.text, agent: input.agent })
-      .then(created({ key, request: input.text, agent: input.agent }));
+      .createWorktree({ creationId, name })
+      .then(created({ key, name }));
   };
 
   const opened = useCallback(
@@ -394,17 +386,13 @@ export function App() {
       case ViewKind.Repository:
         return <RepositoryView shown={repository} />;
       case ViewKind.NewWorktree:
-        return startView({
-          key: newWorktreeDraft,
-          heading: "New worktree",
-          hint: (name) =>
-            `Alliance agent sets up the worktree's own copy of the repository, which takes a minute or two, then sends ${name} this message.`,
-          onStart: (input) => {
-            if (!checkout) return Promise.resolve(R.failure(noRepository));
-            createWorktree(input);
-            return Promise.resolve(R.success(undefined));
-          },
-        });
+        return (
+          <NewWorktreeView
+            draft={draft(newWorktreeDraft)}
+            problem={newWorktreeProblem}
+            onCreate={createWorktree}
+          />
+        );
       case ViewKind.Ask:
         return startView({
           key: askDraft,
@@ -439,18 +427,16 @@ export function App() {
               void agent.retryWorktree(selectedWorktree.key).then(
                 created({
                   key: selectedWorktree.key,
-                  request: selectedWorktree.state.request,
-                  agent: selectedWorktree.state.agent,
+                  name: selectedWorktree.state.typed,
                 }),
               );
             }}
-            onEditRequest={(failed) => {
-              agent.dismissWorktree(selectedWorktree.key);
-              addToDraft(newWorktreeDraft, failed.request);
-              setStart(newWorktreeDraft)((s) => ({
-                ...s,
-                agent: failed.agent,
-              }));
+            onEditName={(typed) => {
+              // A name already typed in New worktree stays, and so does the failed creation, so neither name is lost.
+              if (!draft(newWorktreeDraft).text.trim()) {
+                agent.dismissWorktree(selectedWorktree.key);
+                putBackName(typed);
+              }
               setView({ kind: ViewKind.NewWorktree });
             }}
           />

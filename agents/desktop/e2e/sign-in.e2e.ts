@@ -12,11 +12,11 @@ import path from "node:path";
 import { CaptureRecordKind } from "../src/main/agent/claude/testing/capture";
 import { AgentKind } from "../src/shared/agent-kind";
 import { IpcChannel } from "../src/shared/ipc";
-import { writeConversations } from "./chat-helpers";
+import { showAsk, writeConversations } from "./chat-helpers";
 import {
   authStatusCapture,
   claudeExecutableVariable,
-  launch,
+  launch as launchApp,
   writeClaude,
   writeTestCapture,
 } from "./launch";
@@ -27,7 +27,14 @@ const wrapClaude = (script: string): string =>
     `${script}\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
 
-// New worktree shows while signed out too, so only the message box shows the sign-in finished.
+// These tests sign in from Ask without a worktree's agent choice and message box.
+const launch = async (options: Parameters<typeof launchApp>[0]) => {
+  const launched = await launchApp(options);
+  await showAsk(launched.page);
+  return launched;
+};
+
+// Ask without a worktree shows while signed out too, so only the message box shows the sign-in finished.
 const expectSignedIn = async (page: Page) => {
   await expect(page.getByLabel("Message Claude")).toBeEditable();
   await expect(
@@ -211,7 +218,7 @@ test("a signed-out user is asked to sign in, in place of the message box, before
   await expect(page.getByLabel("Message Claude")).toHaveCount(0);
   await expect(page.getByRole("radio", { name: "Codex" })).toBeVisible();
   await expect(page.getByRole("navigation")).toBeVisible();
-  await expect(page).toHaveTitle("New worktree – Alliance agent");
+  await expect(page).toHaveTitle("Ask without a worktree – Alliance agent");
   await app.close();
 });
 
@@ -328,7 +335,7 @@ test("a failed sign-in whose check then fails keeps both errors under Details", 
   await expect(
     page.getByRole("heading", { name: "Claude isn't available" }),
   ).toBeVisible();
-  await page.getByText("Details").click();
+  await page.getByText("Details", { exact: true }).click();
   const detail = page.getByRole("alert").locator("pre");
   await expect(detail).toContainText("Login timed out");
   await expect(detail).toContainText("not json");
@@ -451,6 +458,7 @@ test("each agent checks, signs in and cancels on its own, and a saved conversati
       .click();
   const cancel = page.getByRole("button", { name: "Cancel sign-in" });
   await page.reload();
+  await showAsk(page);
   await page.getByRole("button", { name: "Sign in to Claude" }).click();
   await expect(cancel).toBeVisible();
   expect(await calls()).toEqual({ checks: [AgentKind.Claude], resumes: [] });

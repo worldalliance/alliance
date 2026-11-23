@@ -9,8 +9,6 @@ import { isNotFound } from "../fs-error";
 const savedWorktreeSchema = z.object({
   /** The worktree record's id, or the folder of a worktree without one. */
   key: z.string().min(1),
-  /** Set for a worktree the app created, from its first message. */
-  title: z.string().optional(),
   archived: z.boolean().optional(),
   /** The worktree's folder, saved on archiving so Resume can refuse it before the worktrees are listed. */
   folder: z.string().optional(),
@@ -23,7 +21,7 @@ const stored = z.object({
   worktrees: z.array(savedWorktreeSchema),
 });
 
-/** What the app knows about worktrees that the worktree scripts don't record: which it created, under what title, and which are archived. */
+/** What the app knows about worktrees that the worktree scripts don't record: which are archived. */
 export class WorktreeStore {
   private writes: Promise<unknown> = Promise.resolve();
 
@@ -46,7 +44,7 @@ export class WorktreeStore {
     );
   }
 
-  /** Changes the saved worktree at key, starting from an unarchived one with no title. */
+  /** Changes the saved worktree at key, starting from an unarchived one. */
   update(
     key: string,
     change: (saved: SavedWorktree) => SavedWorktree,

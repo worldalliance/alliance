@@ -247,18 +247,37 @@ pre {
   flex-wrap: wrap;
 }
 
+.new-worktree label {
+  display: block;
+  font-size: var(--dense);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.new-worktree input {
+  display: block;
+  width: 100%;
+  max-width: 40ch;
+  height: var(--control-height);
+  font: inherit;
+  color: var(--text);
+  background: var(--background);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  padding: 0 var(--space-3);
+}
+
+.new-worktree input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.new-worktree code {
+  overflow-wrap: anywhere;
+}
+
 .worktree progress {
   width: 100%;
   max-width: 40ch;
-}
-
-.request {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-3);
 }
 
 .actions.archive {

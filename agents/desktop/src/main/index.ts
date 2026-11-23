@@ -281,7 +281,6 @@ void app.whenReady().then(() => {
           );
     },
     store: new WorktreeStore(path.join(userData, "worktrees.json")),
-    startConversation: sessions.startConversation,
     closeSessionsIn: sessions.closeSessionsIn,
   });
   registerWorktreeIpc({ worktrees, rendererUrl });

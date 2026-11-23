@@ -2,7 +2,6 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Result } from "../../../../../common/src/result";
-import { AgentKind } from "../../shared/agent-kind";
 import { WorktreesStatus, WorktreeStatus } from "../../shared/worktree";
 import { git } from "../repository/testing/fixture";
 import { steeringFile } from "./testing/fixture";
@@ -45,7 +44,7 @@ test("a listing's problem goes once the repository does", async () => {
   });
 });
 
-test("lists worktrees other than the main checkout, each made outside the app until it creates one, and one whose folder is gone as broken", async () => {
+test("lists worktrees other than the main checkout, and one whose folder is gone as broken", async () => {
   const outside = path.join(dir, "workspaces", "by-hand");
   git(checkout, "worktree", "add", "-q", "-b", "by-hand", outside);
   const gone = path.join(dir, "workspaces", "gone");
@@ -60,11 +59,10 @@ test("lists worktrees other than the main checkout, each made outside the app un
     worktrees: [
       {
         key: outside,
-        title: "by-hand",
+        name: "by-hand",
         folder: outside,
         branch: "by-hand",
         parent: undefined,
-        createdByApp: false,
         archived: false,
         state: { status: WorktreeStatus.Ready, problem: undefined },
       },
@@ -129,8 +127,7 @@ test("archiving closes the worktree's sessions and hides it until restored, coun
   const { worktrees } = service();
   const created = await worktrees.create({
     creationId: "c1",
-    request: "Fix it",
-    agent: AgentKind.Claude,
+    name: "Fix it",
   });
   if (!created.ok) throw new Error(created.error.message);
   const { key, folder } = created.value;
@@ -154,7 +151,7 @@ test("archiving closes the worktree's sessions and hides it until restored, coun
   await relaunched.refresh();
   expect(relaunched.current().worktrees[0]).toMatchObject({
     key,
-    title: "Fix it",
+    name: "fix-it",
     archived: true,
   });
   await relaunched.restore(key);
@@ -167,8 +164,7 @@ test("a worktree stays archived once the app points at another checkout", async 
   const { worktrees } = service({ checkout: () => current });
   const created = await worktrees.create({
     creationId: "c1",
-    request: "Fix it",
-    agent: AgentKind.Claude,
+    name: "Fix it",
   });
   if (!created.ok) throw new Error(created.error.message);
   await worktrees.archive(created.value.key);
@@ -183,8 +179,7 @@ test("archiving hides the worktree once its agents stop, not before, and without
   const { worktrees } = service();
   const created = await worktrees.create({
     creationId: "c1",
-    request: "Fix it",
-    agent: AgentKind.Claude,
+    name: "Fix it",
   });
   if (!created.ok) throw new Error(created.error.message);
   let shownArchived: boolean | undefined;
@@ -205,8 +200,7 @@ test("a restore or another archive asked for while an archive saves or stops the
   const { worktrees } = service();
   const created = await worktrees.create({
     creationId: "c1",
-    request: "Fix it",
-    agent: AgentKind.Claude,
+    name: "Fix it",
   });
   if (!created.ok) throw new Error(created.error.message);
   const key = created.value.key;
@@ -228,8 +222,7 @@ test("a listing begun before an archive doesn't show the worktree unarchived", a
   const { worktrees } = service();
   const created = await worktrees.create({
     creationId: "c1",
-    request: "Fix it",
-    agent: AgentKind.Claude,
+    name: "Fix it",
   });
   if (!created.ok) throw new Error(created.error.message);
   const listing = worktrees.refresh();
@@ -242,10 +235,10 @@ test("an archive that can't be saved stops no agents", async () => {
   const { worktrees } = service();
   const created = await worktrees.create({
     creationId: "c1",
-    request: "Fix it",
-    agent: AgentKind.Claude,
+    name: "Fix it",
   });
   if (!created.ok) throw new Error(created.error.message);
+  mkdirSync(path.join(dir, "user-data"), { recursive: true });
   writeFileSync(path.join(dir, "user-data", "worktrees.json"), "not json");
   expect((await worktrees.archive(created.value.key)).ok).toBe(false);
   expect(closedIn).toEqual([]);

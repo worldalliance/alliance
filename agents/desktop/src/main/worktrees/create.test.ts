@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { CreationStage } from "../../shared/worktree";
 import { stageOf, worktreeName } from "./create";
 
-test("worktreeName falls back to worktree and adds the first free number when the name is taken", () => {
-  expect(worktreeName("¿¡…!?", new Set())).toBe("worktree");
+test("worktreeName adds the first free number when the name is taken", () => {
   expect(
-    worktreeName("Fix it", new Set(["fix-it", "fix-it-2", "fix-it-4"])),
+    worktreeName("fix-it", new Set(["fix-it", "fix-it-2", "fix-it-4"])),
   ).toBe("fix-it-3");
+  expect(worktreeName("fix-it", new Set(["fix"]))).toBe("fix-it");
 });
 
 test("stageOf reads scripts/new-worktree.sh's stage lines and ignores the rest", () => {

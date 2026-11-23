@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Draft } from "./components/Composer";
 import { type NewConversation, newConversation } from "./components/StartView";
 
-export const newWorktreeDraft = "new";
+export const newWorktreeDraft = "new-worktree";
 export const askDraft = "ask";
 export const worktreeDraft = (key: string) => `worktree:${key}`;
 

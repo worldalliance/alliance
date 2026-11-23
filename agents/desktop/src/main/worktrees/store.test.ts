@@ -22,17 +22,17 @@ test("lists nothing before the first worktree", async () => {
   });
 });
 
-test("updates each saved worktree in place, starting unarchived and untitled", async () => {
+test("updates each saved worktree in place, starting unarchived", async () => {
   const store = new WorktreeStore(storeFile());
   await Promise.all([
-    store.update("a", (saved) => ({ ...saved, title: "Fix it" })),
+    store.update("a", (saved) => ({ ...saved, folder: "/w/a" })),
     store.update("b", (saved) => ({ ...saved, archived: true })),
     store.update("a", (saved) => ({ ...saved, archived: true })),
   ]);
   const listed = await store.list();
   expect(listed.ok && listed.value).toEqual([
     { key: "b", archived: true },
-    { key: "a", title: "Fix it", archived: true },
+    { key: "a", folder: "/w/a", archived: true },
   ]);
 });
 

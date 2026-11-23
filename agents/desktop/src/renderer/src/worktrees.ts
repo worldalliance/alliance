@@ -38,7 +38,7 @@ const stageWords: Record<CreationStage, string> = {
   [CreationStage.CreatingFolder]: "Creating its folder…",
   [CreationStage.CopyingSettings]: "Copying settings…",
   [CreationStage.InstallingDependencies]: "Installing dependencies…",
-  [CreationStage.StartingAgent]: "Starting the agent…",
+  [CreationStage.Finding]: "Finding the new worktree…",
 };
 
 /** The worktree's state in a few words, for the sidebar. */
@@ -61,8 +61,6 @@ export function worktreeStateWords(worktree: Worktree): string {
       throw new Error(`unknown worktree status: ${state satisfies never}`);
   }
 }
-
-export const outsideWords = "Made outside Alliance agent";
 
 /** The conversations in each worktree's folder, and those in no worktree's folder, archived worktrees included. */
 export function groupConversations(params: {

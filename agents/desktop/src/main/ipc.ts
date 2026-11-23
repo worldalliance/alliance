@@ -78,8 +78,6 @@ export function registerIpc(params: {
   isArchived: (folder: string) => Promise<boolean>;
 }): {
   close: () => Promise<void>;
-  /** What Start does, its argument checks included, for a conversation the main process starts, such as a new worktree's first. */
-  startConversation: (input: StartInput) => Promise<IpcResult<Conversation>>;
   /** Closes the live sessions in folder, those that attach there before it returns, and the ones already starting there as they start, a new one once its CLI has read its first message or openingWaitMs has passed, resolving once the CLIs of the sessions this call closes have exited and waiting at most openingWaitMs for sessions still starting; every Start and Resume in folder that hasn't reached its agent's CLI yet fails until it returns, and a Start already past that reports success for the session it closes. */
   closeSessionsIn: (folder: string) => Promise<void>;
 } {
@@ -439,5 +437,5 @@ export function registerIpc(params: {
     } while (drained < quitCloses.length);
   };
 
-  return { close, startConversation, closeSessionsIn };
+  return { close, closeSessionsIn };
 }

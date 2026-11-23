@@ -7,14 +7,13 @@ import {
   type IpcResult,
 } from "../../shared/ipc";
 import type { Problem } from "../../shared/repository";
-import { agentArg, idArg, parseArg, textArg, toIpc } from "../ipc-args";
+import { idArg, parseArg, textArg, toIpc } from "../ipc-args";
 import { rendererIpc } from "../renderer-ipc";
 import type { WorktreeService } from "./service";
 
 const createArgs = z.strictObject({
   creationId: idArg,
-  request: textArg,
-  agent: agentArg,
+  name: textArg,
 }) satisfies z.ZodType<Parameters<AgentApi["createWorktree"]>[0]>;
 
 // The problem's details reach the window through the worktree's state.

@@ -27,9 +27,9 @@ import {
 import {
   archived,
   conversationsFile,
-  firstTurnDone,
   repositoryReady,
   request,
+  startInNewWorktree,
   worktreeEntry,
   worktreeFolder,
   worktreesFile,
@@ -45,8 +45,7 @@ test("Archive waits for a conversation starting in the worktree, then stops it",
     claude,
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   await worktreeEntry(page).click();
   const saved = readFileSync(conversationsFile(), "utf8");
   // Start saves the conversation before the session joins the live ones, and the save reads the list first.
@@ -78,8 +77,7 @@ test("archiving a worktree stops a conversation still starting in it", async () 
     claude,
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   await worktreeEntry(page).click();
   const saved = readFileSync(conversationsFile(), "utf8");
   const listRead = await holdNextListRead(page);
@@ -108,8 +106,7 @@ test("a conversation that began starting in a worktree before Archive and starts
     env: { ALLIANCE_AGENT_OPENING_WAIT_MS: "500" },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   await worktreeEntry(page).click();
   const saved = readFileSync(conversationsFile(), "utf8");
   const listRead = await holdNextListRead(page);
@@ -135,8 +132,7 @@ test("archiving a worktree waits at most the opening wait for a conversation sta
     env: { ALLIANCE_AGENT_OPENING_WAIT_MS: "500" },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   await askWithoutWorktree(page);
   const saved = readFileSync(conversationsFile(), "utf8");
   const listRead = await holdNextListRead(page);
@@ -157,8 +153,7 @@ test("an archive still running when the user comes back to its worktree still sh
     env: { ALLIANCE_AGENT_OPENING_WAIT_MS: "30000" },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   await askWithoutWorktree(page);
   const saved = readFileSync(conversationsFile(), "utf8");
   const listRead = await holdNextListRead(page);
@@ -211,8 +206,7 @@ test("a conversation started in an archived worktree after Archive finished keep
     },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   const stalled = stallCodexStart(page);
   await worktreeEntry(page).click();
   await page.getByRole("button", { name: "Archive" }).click();
@@ -246,8 +240,7 @@ test("a resume or start in a worktree while Archive stops its agents is refused"
     },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   const [{ id }]: { id: string }[] = JSON.parse(
     readFileSync(conversationsFile(), "utf8"),
   ).conversations;
@@ -292,8 +285,7 @@ test("a resume that reaches the main process after Archive finished is refused",
     },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   const saved = readFileSync(conversationsFile(), "utf8");
   const [{ id }]: { id: string }[] = JSON.parse(saved).conversations;
   const stalled = stallCodexStart(page);
@@ -302,7 +294,9 @@ test("a resume that reaches the main process after Archive finished is refused",
   await expect(page.getByRole("button", { name: "Archiving…" })).toBeVisible();
   // Archive begins closing once its save lands; a Resume begun before that is one of the openings it waits for.
   await expect
-    .poll(() => readFileSync(worktreesFile(), "utf8"))
+    .poll(() =>
+      existsSync(worktreesFile()) ? readFileSync(worktreesFile(), "utf8") : "",
+    )
     .toContain('"archived": true');
   // Resume reads the saved conversations first, so holding that read lets Archive finish before Resume checks anything.
   const listRead = await holdNextListRead(page);
@@ -339,8 +333,7 @@ test("a conversation of the worktree opened while Archive runs gives way to the 
     },
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   const stalled = stallCodexStart(page);
   await worktreeEntry(page).click();
   await page.getByRole("button", { name: "Archive" }).click();
@@ -363,8 +356,7 @@ test("archiving a worktree keeps a conversation whose CLI hasn't read its first 
     claude,
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   await worktreeEntry(page).click();
   await send(page, "Say hello");
   await expect(page.locator(".user")).toHaveText("Say hello");
@@ -407,8 +399,7 @@ fi
 exit $status`),
   });
   await repositoryReady(page);
-  await send(page, request);
-  await firstTurnDone(page);
+  await startInNewWorktree(page);
   const listed = await page.evaluate(() => window.agent.listConversations());
   const id = listed.ok ? listed.value[0]?.id : undefined;
   if (!id) throw new Error("the conversation isn't listed");

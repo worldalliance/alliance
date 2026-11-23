@@ -1,7 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { status } from "./chat-helpers";
+import { send, status } from "./chat-helpers";
 
 export const request = "Change hello to goodbye in a.txt";
+export const worktreeName = "change-hello-to-goodbye-in-a-txt";
 export const worktreeFolder = () =>
   test.info().outputPath("alliance-change-hello-to-goodbye-in-a-txt");
 
@@ -20,9 +21,33 @@ export const worktreesFile = () =>
 export const archived = (page: Page) =>
   page.getByRole("navigation").getByText("Archived (1)");
 
-// Creating a worktree, then its first turn, outlasts the default timeout on a loaded machine.
 export const firstTurnDone = (page: Page) =>
-  expect(status(page)).toHaveText("Claude finished.", { timeout: 15_000 });
+  expect(status(page)).toHaveText("Claude finished.");
 
-export const worktreeEntry = (page: Page, title = request) =>
-  page.getByRole("navigation").getByRole("button", { name: title }).first();
+export const worktreeEntry = (page: Page, name = worktreeName) =>
+  page.getByRole("navigation").getByRole("button", { name }).first();
+
+/** Fills in New worktree with name and creates it, leaving the window on the creation. */
+export async function createWorktree(page: Page, name = request) {
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "New worktree" })
+    .click();
+  await page.getByLabel("Name").fill(name);
+  await page.getByRole("button", { name: "Create worktree" }).click();
+}
+
+export const newConversationHeading = (page: Page) =>
+  page.getByRole("heading", { name: "New conversation in this worktree" });
+
+// Creating a worktree outlasts the default timeout on a loaded machine.
+export const worktreeReady = (page: Page) =>
+  expect(newConversationHeading(page)).toBeVisible({ timeout: 15_000 });
+
+/** Creates a worktree named after request, then sends request in it and waits for the turn to end. */
+export async function startInNewWorktree(page: Page) {
+  await createWorktree(page);
+  await worktreeReady(page);
+  await send(page, request);
+  await firstTurnDone(page);
+}

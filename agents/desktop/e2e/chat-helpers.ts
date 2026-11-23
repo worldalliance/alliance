@@ -24,6 +24,13 @@ export async function send(page: Page, text: string) {
 
 export const status = (page: Page) => page.getByRole("status");
 
+/** Shows Ask without a worktree the way launch shows its first view: a dispatched click moves no focus, so a panel that takes a lost focus on mount, such as the sign-in panel, takes it as it would there. */
+export const showAsk = (page: Page) =>
+  page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Ask without a worktree" })
+    .dispatchEvent("click");
+
 /** Opens Ask without a worktree once the test's repository is ready in workFolder. */
 export async function askWithoutWorktree(page: Page) {
   await expect(

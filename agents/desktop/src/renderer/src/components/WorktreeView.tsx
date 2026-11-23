@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
-import type { AgentKind } from "../../../shared/agent-kind";
 import type { IpcResult } from "../../../shared/ipc";
 import { type Worktree, WorktreeStatus } from "../../../shared/worktree";
 import { focusIfLost } from "../focus";
 import {
   isCreation,
-  outsideWords,
   type WorktreeAction,
   worktreeStateWords,
 } from "../worktrees";
@@ -23,7 +21,7 @@ export function WorktreeView({
   onArchive,
   onRestore,
   onRetry,
-  onEditRequest,
+  onEditName,
 }: {
   worktree: Worktree;
   newConversation: ReactNode;
@@ -32,7 +30,7 @@ export function WorktreeView({
   onArchive: () => Promise<IpcResult<void>>;
   onRestore: () => Promise<IpcResult<void>>;
   onRetry: () => void;
-  onEditRequest: (failed: { request: string; agent: AgentKind }) => void;
+  onEditName: (typed: string) => void;
 }) {
   const { pending, problem, act } = action;
   const { state } = worktree;
@@ -48,7 +46,7 @@ export function WorktreeView({
             <progress aria-label="Setting up the worktree" />
             <p className="hint">
               Setting up copies the repository and database, which takes a
-              minute or two. Your request goes to the agent once it's ready.
+              minute or two.
             </p>
           </>
         );
@@ -57,8 +55,6 @@ export function WorktreeView({
           <>
             <ProblemText problem={state.problem} />
             <p>{state.leftover ?? "Nothing was created."}</p>
-            <h2>Your request</h2>
-            <p className="request">{state.request}</p>
             <div className="actions">
               <button
                 type="button"
@@ -69,8 +65,8 @@ export function WorktreeView({
                 Try again
               </button>
               {!state.made && (
-                <button type="button" onClick={() => onEditRequest(state)}>
-                  Edit request
+                <button type="button" onClick={() => onEditName(state.typed)}>
+                  Edit name
                 </button>
               )}
             </div>
@@ -162,8 +158,7 @@ export function WorktreeView({
   return (
     <>
       <div className="panel worktree">
-        <h1>{worktree.title}</h1>
-        {!worktree.createdByApp && <p className="hint">{outsideWords}.</p>}
+        <h1>{worktree.name}</h1>
         {worktree.folder && <Folder label="Folder" folder={worktree.folder} />}
         {worktree.branch && <Folder label="Branch" folder={worktree.branch} />}
         {body()}

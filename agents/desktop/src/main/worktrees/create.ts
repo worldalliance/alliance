@@ -1,16 +1,12 @@
 import { R, type Result } from "../../../../../common/src/result";
 import type { Problem } from "../../shared/repository";
-import { CreationStage, nameBase } from "../../shared/worktree";
+import { CreationStage } from "../../shared/worktree";
 import { failureOutput, runCli } from "../agent/cli-process";
 import { gitEnvironment } from "../git-environment";
 import type { Git } from "../repository/git";
 
-/** A worktree name from the request's first words, as nameBase makes it, that no worktree or branch in taken uses. */
-export function worktreeName(
-  request: string,
-  taken: ReadonlySet<string>,
-): string {
-  const base = nameBase(request) || "worktree";
+/** base, numbered (-2, -3) past every name in taken. */
+export function worktreeName(base: string, taken: ReadonlySet<string>): string {
   if (!taken.has(base)) return base;
   for (let suffix = 2; ; suffix++)
     if (!taken.has(`${base}-${suffix}`)) return `${base}-${suffix}`;
