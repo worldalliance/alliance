@@ -2,6 +2,7 @@ import { type FormValue } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto } from "@alliance/shared/client";
 import { type DraftFetchState } from "@alliance/shared/forms/draftFetchState";
 import {
+  answersToStore,
   applyDefaultValues,
   clampPageIndex,
   computeFormStorageKey,
@@ -61,18 +62,24 @@ export function useFormDraftState({
     instanceId: persistKey ?? undefined,
   });
 
+  // Read during the first render, before the persist effect below rewrites
+  // the entry.
+  const [initialLocalDraft] = useState(() => {
+    if (readOnly || typeof window === "undefined" || !persistKey) return null;
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
+    return stored.ok ? stored.value : null;
+  });
+
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(() => {
     if (initialPageIndex !== undefined && !persistKey) {
       return clampPageIndex(initialPageIndex, maxPageIndex);
     }
-    if (readOnly) return 0;
-    if (typeof window === "undefined" || !persistKey) return 0;
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return 0;
-    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-    return stored.ok
-      ? clampPageIndex(stored.value.currentPageIndex ?? 0, maxPageIndex)
-      : 0;
+    return clampPageIndex(
+      initialLocalDraft?.currentPageIndex ?? 0,
+      maxPageIndex,
+    );
   });
   // Precedence: localStorage (active local edits) > draft (guest prefill, may
   // arrive after mount) > empty. Once either localStorage or a draft is applied,
@@ -86,17 +93,13 @@ export function useFormDraftState({
       return filterAnswersByFieldIds(answers, fieldLookup);
     }
 
-    const readLocalStorageAnswers = (): Record<string, FormValue> | null => {
-      if (typeof window === "undefined" || !persistKey) return null;
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return null;
-      const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-      const answers = stored.ok ? stored.value.answers : undefined;
-      return answers && Object.keys(answers).length > 0 ? answers : null;
-    };
-
-    const localAnswers = readLocalStorageAnswers();
-    if (localAnswers) {
+    // A draft holds only answers that differ from their default, so an empty
+    // one wins only once the member has edited it.
+    const localAnswers = initialLocalDraft?.answers;
+    if (
+      localAnswers &&
+      (initialLocalDraft.edited || Object.keys(localAnswers).length > 0)
+    ) {
       draftLockedRef.current = true;
       return applyDefaultValues(localAnswers, defaultValueMap);
     }
@@ -134,19 +137,17 @@ export function useFormDraftState({
     publicAnswerOverrides,
   ]);
 
-  // Seeded during the first render, before the persist effect below rewrites
-  // the entry.
-  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(() => {
-    if (readOnly || typeof window === "undefined" || !persistKey) return null;
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return null;
-    const stored = readStoredFormDraft({ raw, fieldLookup, outputFieldIds });
-    return (stored.ok && stored.value.syncedUpdatedAt) || null;
-  });
+  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState<string | null>(
+    () => initialLocalDraft?.syncedUpdatedAt || null,
+  );
 
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
+  const storedAnswers = useMemo(
+    () => answersToStore(formData, defaultValueMap),
+    [formData, defaultValueMap],
+  );
   const {
     serverDraft,
     settled: serverDraftSettled,
@@ -159,6 +160,10 @@ export function useFormDraftState({
     formId,
     actionId,
     formSnapshotId,
+    // BACKCOMPAT(sparse-synced-draft): every answer, since installed mobile
+    // builds keep their own value for an answer a synced draft leaves out;
+    // leave out answers at their default once every installed build resets
+    // them to it.
     answers: formData,
     publicAnswers,
     currentPageIndex,
@@ -232,20 +237,23 @@ export function useFormDraftState({
     window.localStorage.setItem(
       storageKey,
       serializeStoredFormDraft({
-        formData,
+        formData: storedAnswers,
         publicAnswers: publicAnswerOverrides,
         currentPageIndex,
         syncedUpdatedAt,
+        edited: edited || initialLocalDraft?.edited,
       }),
     );
   }, [
-    formData,
+    storedAnswers,
     publicAnswerOverrides,
     currentPageIndex,
     persistKey,
     storageKey,
     readOnly,
     syncedUpdatedAt,
+    edited,
+    initialLocalDraft,
   ]);
 
   useEffect(() => {

@@ -254,6 +254,7 @@ const storedFormDraftSchema = z.object({
   publicAnswers: z.record(z.string(), z.unknown()).optional().catch(undefined),
   currentPageIndex: z.number().optional().catch(undefined),
   syncedUpdatedAt: z.string().optional().catch(undefined),
+  edited: z.boolean().optional().catch(undefined),
 });
 
 export type StoredFormDraft = {
@@ -261,6 +262,8 @@ export type StoredFormDraft = {
   publicAnswers: Record<string, boolean>;
   currentPageIndex: number | undefined;
   syncedUpdatedAt: string | undefined;
+  /** Set once the member has edited the draft on this device, even back to no answers. */
+  edited: boolean;
 };
 
 /**
@@ -282,8 +285,13 @@ export function readStoredFormDraft({
     (json) => {
       const parsed = storedFormDraftSchema.safeParse(json);
       if (!parsed.success) return R.failure(parsed.error);
-      const { formData, publicAnswers, currentPageIndex, syncedUpdatedAt } =
-        parsed.data;
+      const {
+        formData,
+        publicAnswers,
+        currentPageIndex,
+        syncedUpdatedAt,
+        edited,
+      } = parsed.data;
       return R.success({
         answers: formData
           ? // Safe: the renderer wrote these values from its FormValue state.
@@ -295,6 +303,7 @@ export function readStoredFormDraft({
         publicAnswers: restorablePublicAnswers(publicAnswers, outputFieldIds),
         currentPageIndex,
         syncedUpdatedAt,
+        edited: edited ?? false,
       });
     },
   );
@@ -305,6 +314,7 @@ export function serializeStoredFormDraft(draft: {
   publicAnswers: Partial<Record<string, boolean>>;
   currentPageIndex: number;
   syncedUpdatedAt: string | null;
+  edited?: boolean;
 }): string {
   return JSON.stringify({ ...draft, updatedAt: Date.now() });
 }

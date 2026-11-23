@@ -1,6 +1,7 @@
 import { type FormValue } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto } from "@alliance/shared/client";
 import {
+  answersToStore,
   applyDefaultValues,
   clampPageIndex,
   computeFormStorageKey,
@@ -151,6 +152,10 @@ export function useFormDraftState({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
+  const storedAnswers = useMemo(
+    () => answersToStore(formData, defaultValueMap),
+    [formData, defaultValueMap],
+  );
   const {
     serverDraft,
     settled: serverDraftSettled,
@@ -163,6 +168,10 @@ export function useFormDraftState({
     formId,
     actionId,
     formSnapshotId,
+    // BACKCOMPAT(sparse-synced-draft): every answer, since installed mobile
+    // builds keep their own value for an answer a synced draft leaves out;
+    // leave out answers at their default once every installed build resets
+    // them to it.
     answers: formData,
     publicAnswers,
     currentPageIndex,
@@ -217,7 +226,7 @@ export function useFormDraftState({
       AsyncStorage.setItem(
         storageKey,
         serializeStoredFormDraft({
-          formData,
+          formData: storedAnswers,
           publicAnswers,
           currentPageIndex,
           syncedUpdatedAt,
@@ -229,7 +238,7 @@ export function useFormDraftState({
 
     return () => clearTimeout(timeout);
   }, [
-    formData,
+    storedAnswers,
     publicAnswers,
     currentPageIndex,
     persistKey,

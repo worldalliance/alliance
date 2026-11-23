@@ -81,6 +81,7 @@ describe("readStoredFormDraft", () => {
       publicAnswers: { name: true, gone: false },
       currentPageIndex: 2,
       syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+      edited: true,
     });
     expect(read(raw)).toEqual(
       R.success({
@@ -88,6 +89,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: { name: true },
         currentPageIndex: 2,
         syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+        edited: true,
       }),
     );
   });
@@ -100,6 +102,7 @@ describe("readStoredFormDraft", () => {
           publicAnswers: { name: "yes" },
           currentPageIndex: "1",
           syncedUpdatedAt: null,
+          edited: "yes",
         }),
       ),
     ).toEqual(
@@ -108,6 +111,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: {},
         currentPageIndex: undefined,
         syncedUpdatedAt: undefined,
+        edited: false,
       }),
     );
   });

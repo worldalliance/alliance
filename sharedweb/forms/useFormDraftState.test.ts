@@ -22,6 +22,14 @@ const schema: FormSchema = {
           label: "Story",
           output: { output: true },
         },
+        { id: "zone", type: "input", kind: "timezone", label: "Zone" },
+        {
+          id: "agree",
+          type: "input",
+          kind: "checkbox",
+          label: "Agree",
+          defaultValue: true,
+        },
       ],
     },
     {
@@ -50,6 +58,7 @@ const storeDraft = (
   );
 
 let draftFetched = false;
+let syncedAnswers: unknown[] = [];
 let renders: { settled: boolean; name: unknown }[] = [];
 
 serveApi(
@@ -68,6 +77,11 @@ serveApi(
         },
       });
     },
+    "PUT /tasks/formDraft/:id": async ({ request }) => {
+      const body = await request.json();
+      syncedAnswers.push(body.answers);
+      return Response.json({ ...body, updatedAt: "2026-02-03T00:00:00.000Z" });
+    },
   }),
 );
 
@@ -76,14 +90,20 @@ const renderDraftState = (
     draftFormResponse?: FormResponseDto | null;
     guestDraftFetch?: DraftFetchState;
     syncDraftToServer?: boolean;
+    timeZone?: string;
   } = {},
 ) =>
   renderHook(
-    ({ draftFormResponse, guestDraftFetch, syncDraftToServer }) => {
+    ({
+      draftFormResponse,
+      guestDraftFetch,
+      syncDraftToServer,
+      timeZone = "UTC",
+    }) => {
       const maps = useFormSchemaMaps({
         schema,
         userDefaultPublic: true,
-        timeZone: "UTC",
+        timeZone,
       });
       const state = useFormDraftState({
         ...maps,
@@ -106,6 +126,7 @@ const renderDraftState = (
 beforeEach(() => {
   window.localStorage.clear();
   draftFetched = false;
+  syncedAnswers = [];
   renders = [];
 });
 
@@ -155,6 +176,30 @@ it("ignores a guest draft that arrives after the member starts editing", () => {
   expect(hook.result.current.formData.name).toBe("Typed");
 });
 
+it("applies a guest draft after a visit that left no answers", () => {
+  renderDraftState().unmount();
+
+  const hook = renderDraftState({
+    draftFormResponse: makeFormResponse({ answers: { name: "Guest" } }),
+  });
+
+  expect(hook.result.current.formData.name).toBe("Guest");
+});
+
+it("keeps a guest answer the member set back to its default", () => {
+  const guestDraft = makeFormResponse({ answers: { zone: "Asia/Kolkata" } });
+  const first = renderDraftState({ draftFormResponse: guestDraft });
+  act(() => {
+    first.result.current.markEdited();
+    first.result.current.setFormData((prev) => ({ ...prev, zone: "UTC" }));
+  });
+  first.unmount();
+
+  const hook = renderDraftState({ draftFormResponse: guestDraft });
+
+  expect(hook.result.current.formData.zone).toBe("UTC");
+});
+
 it("saves answers and page to localStorage", () => {
   const hook = renderDraftState();
 
@@ -166,6 +211,22 @@ it("saves answers and page to localStorage", () => {
   const stored = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}");
   expect(stored.formData).toEqual({ name: "Saved" });
   expect(stored.currentPageIndex).toBe(1);
+});
+
+it("restores an answer left at its default from the current default", () => {
+  const first = renderDraftState({ timeZone: "America/New_York" });
+  act(() =>
+    first.result.current.setFormData((prev) => ({ ...prev, name: "Saved" })),
+  );
+  first.unmount();
+
+  const hook = renderDraftState({ timeZone: "Asia/Kolkata" });
+
+  expect(hook.result.current.formData).toEqual({
+    name: "Saved",
+    zone: "Asia/Kolkata",
+    agree: true,
+  });
 });
 
 it("stores a share choice only while it differs from the default", () => {
@@ -190,6 +251,26 @@ it("restores a draft another device saved to the account", async () => {
   await waitFor(() => expect(hook.result.current.formData.name).toBe("Server"));
   expect(hook.result.current.currentPageIndex).toBe(1);
   expect(hook.result.current.publicAnswers.story).toBe(false);
+});
+
+it("syncs every answer, those at their default included", async () => {
+  const hook = renderDraftState({ syncDraftToServer: true });
+  await waitFor(() => expect(hook.result.current.formData.name).toBe("Server"));
+
+  act(() => {
+    hook.result.current.markEdited();
+    hook.result.current.setFormData((prev) => ({ ...prev, name: "Edited" }));
+  });
+
+  await waitFor(
+    () =>
+      expect(syncedAnswers.at(-1)).toEqual({
+        name: "Edited",
+        zone: "UTC",
+        agree: true,
+      }),
+    { timeout: 3000 },
+  );
 });
 
 it("settles the draft in the same render that restores another device's answers", async () => {
