@@ -1,6 +1,7 @@
 import { phoneNumberForEditing } from "@alliance/common/phone";
 import type { UpdateProfileDto } from "../client";
 import {
+  phoneNumberRefusal,
   phoneNumberSettingsError,
   settingsAutosave,
   settingsSavedEditable,
@@ -301,6 +302,29 @@ describe("the selected country", () => {
         { ...onFile, phoneNumber: "07578 497969" },
         onFile,
         "GB",
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("phoneNumberRefusal", () => {
+  const conflict = { statusCode: 409, message: "Taken." };
+
+  it("reads a 409 on a sent number as the number's refusal", () => {
+    expect(
+      phoneNumberRefusal(conflict, { phoneNumber: "+14155550123" }),
+    ).toEqual({ phoneNumber: "+14155550123", message: "Taken." });
+  });
+
+  it("leaves a 409 on a save without a number to the general error", () => {
+    expect(phoneNumberRefusal(conflict, { name: "Ada" })).toBeNull();
+  });
+
+  it("leaves other failures to the general error", () => {
+    expect(
+      phoneNumberRefusal(
+        { statusCode: 400, message: "Bad." },
+        { phoneNumber: "+14155550123" },
       ),
     ).toBeNull();
   });

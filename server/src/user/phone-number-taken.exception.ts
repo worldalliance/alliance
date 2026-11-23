@@ -1,9 +1,8 @@
+import { PHONE_NUMBER_TAKEN_MESSAGE } from "@alliance/common/phone";
 import { ConflictException } from "@nestjs/common";
 
 export class PhoneNumberTakenException extends ConflictException {
   constructor() {
-    super(
-      "This phone number is already linked to an account. Enter a different number.",
-    );
+    super(PHONE_NUMBER_TAKEN_MESSAGE);
   }
 }

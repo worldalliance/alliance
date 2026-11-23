@@ -21,6 +21,9 @@ export function asCountryCode(
   return isSupportedCountry(upper) ? upper : null;
 }
 
+export const PHONE_NUMBER_TAKEN_MESSAGE =
+  "This phone number is already linked to an account. Enter a different number.";
+
 export type PhoneNumberError = "empty" | "invalid";
 
 export function toE164(
