@@ -10,7 +10,9 @@
     "dev": "ALLIANCE_AGENT_DEV_SCRIPT=1 electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json && tsc -p tsconfig.test.json && eslint .",
-    "test": "bun test && electron-vite build && playwright test"
+    "test": "bun test && electron-vite build && playwright test",
+    "package": "rm -rf dist && electron-vite build && electron-builder --dir && bun scripts/check-packaged-clis.ts",
+    "test:packaged": "bun run package && playwright test -c playwright.packaged.config.ts"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "2.1.322",
@@ -24,6 +26,7 @@
     "@types/write-file-atomic": "^4.0.3",
     "@vitejs/plugin-react": "^6.2.1",
     "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -37,5 +40,56 @@
     "proper-lockfile": "^4.1.2",
     "write-file-atomic": "^8.0.0",
     "zod": "^4.3.6"
+  },
+  "build": {
+    "appId": "com.alliance.agent",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "npmRebuild": false,
+    "afterPack": "./scripts/after-pack.mjs",
+    "extraResources": [
+      {
+        "from": "node_modules/@anthropic-ai/claude-code-${platform}-${arch}",
+        "to": "cli/claude-code",
+        "filter": [
+          "claude",
+          "LICENSE.md"
+        ]
+      },
+      {
+        "from": "node_modules/@openai/codex-${platform}-${arch}/vendor",
+        "to": "cli/codex"
+      },
+      {
+        "from": "licenses/codex",
+        "to": "cli/codex"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "alliance-agent"
+    }
   }
 }
