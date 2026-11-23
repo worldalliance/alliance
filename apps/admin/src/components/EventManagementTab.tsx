@@ -1,5 +1,6 @@
 import { AdminActionDto } from "@alliance/shared/client";
 import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -79,17 +80,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
               )}
 
               <div className="text-xs text-gray-500 space-y-1">
-                <div>
-                  Date:{" "}
-                  {new Date(event.date).toLocaleString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZoneName: "short",
-                  })}
-                </div>
+                <div>Date: {formatDateTimeWithZone(new Date(event.date))}</div>
               </div>
             </div>
           ))
