@@ -1,5 +1,4 @@
 import { expect, type Page, test } from "@playwright/test";
-import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AgentEventKind } from "../src/shared/agent-event";
@@ -212,7 +211,7 @@ test("a new conversation whose CLI exits before reading its first message is rem
 test("an invalid argument comes back as an error, even without Claude Code", async () => {
   const { app, page } = await launch({
     captures: [],
-    path: ["/usr/bin", "/bin"].join(path.delimiter),
+    claude: test.info().outputPath("no-claude"),
   });
   await app.evaluate(() => {
     process.on("uncaughtException", (error) =>
@@ -329,26 +328,21 @@ test("a page other than the app's own is refused and hears no session events", a
   await app.close();
 });
 
-test("a Claude Code installed while the app runs is found on the next check", async () => {
-  const bin = test.info().outputPath("bin");
-  mkdirSync(bin);
+test("a Claude Code that appears at its executable path while the app runs is found on the next check", async () => {
+  const claude = test.info().outputPath("claude");
   const { app, page } = await launch({
     captures: [authStatusCapture(true)],
-    path: [bin, "/usr/bin", "/bin"].join(path.delimiter),
+    claude,
   });
   const signedIn = () =>
     page.evaluate((agent) => window.agent.signedIn(agent), AgentKind.Claude);
   const before = await signedIn();
   expect(!before.ok && before.error).toContain("couldn't find Claude Code");
-  // The stub's shebang needs bun, which the narrowed PATH leaves out.
-  const bun = execFileSync("sh", ["-c", "command -v bun"], {
-    encoding: "utf8",
-  }).trim();
   writeFileSync(
-    path.join(bin, "claude"),
-    `#!/bin/sh\nexec "${bun}" "${process.env[claudeExecutableVariable]}" "$@"\n`,
+    claude,
+    `#!/bin/sh\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
-  chmodSync(path.join(bin, "claude"), 0o755);
+  chmodSync(claude, 0o755);
   expect(await signedIn()).toEqual({
     ok: true,
     value: true,

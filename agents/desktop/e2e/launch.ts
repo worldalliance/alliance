@@ -83,25 +83,14 @@ export const codexLoginStatusCapture = (signedIn: boolean): string =>
     ],
   });
 
-export async function launch(
-  params: {
-    captures: string[];
-    /** Codex's captures, after its version check's. */
-    codexCaptures?: string[];
-    env?: Record<string, string>;
-  } & (
-    | {
-        /** Runs in place of the stub that playwright.config.ts names. */
-        claude?: string;
-        path?: never;
-      }
-    | {
-        /** The app looks for claude on this PATH in place of running the stub. */
-        path: string;
-        claude?: never;
-      }
-  ),
-): Promise<{ app: ElectronApplication; page: Page }> {
+export async function launch(params: {
+  captures: string[];
+  /** Codex's captures, after its version check's. */
+  codexCaptures?: string[];
+  env?: Record<string, string>;
+  /** Runs in place of the stub that playwright.config.ts names. */
+  claude?: string;
+}): Promise<{ app: ElectronApplication; page: Page }> {
   const ownRepository = !params.env?.[testSourceVariable];
   const env = {
     ...process.env,
@@ -113,13 +102,11 @@ export async function launch(
       ...(params.codexCaptures ?? []),
     ].join(path.delimiter),
     ...(params.claude && { [claudeExecutableVariable]: params.claude }),
-    ...(params.path !== undefined && { PATH: params.path }),
     ...(ownRepository && {
       [testSourceVariable]: JSON.stringify(testRepository()),
     }),
     ...params.env,
   };
-  if (params.path !== undefined) delete env[claudeExecutableVariable];
   const app = await electron.launch({ args: appArgs(), env });
   const page = await app.firstWindow();
   // The first launch clones into workFolder by replacing it, which would pull it from under a conversation a test starts there at once.

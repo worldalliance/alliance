@@ -218,6 +218,15 @@ void app.whenReady().then(() => {
   protocol.handle("app", serveRenderer);
   const userData = app.getPath("userData");
   const appData = app.getPath("appData");
+  const find = (agent: AgentKind) =>
+    findExecutable({
+      agent,
+      env: process.env,
+      packaged: app.isPackaged,
+      root: app.isPackaged ? process.resourcesPath : app.getAppPath(),
+      platform: process.platform,
+      arch: process.arch,
+    });
   const agents: Record<AgentKind, (executable: string) => Agent> = {
     [AgentKind.Claude]: (executable) => {
       const cli = {
@@ -254,11 +263,7 @@ void app.whenReady().then(() => {
   registerRepositoryIpc({ repository, rendererUrl });
   void repository.locate({ autoClone: true });
   const sessions = registerIpc({
-    findAgent: (agent) =>
-      R.map(
-        findExecutable({ agent, env: process.env, packaged: app.isPackaged }),
-        agents[agent],
-      ),
+    findAgent: (agent) => R.map(find(agent), agents[agent]),
     conversations: new ConversationStore(
       path.join(userData, "conversations.json"),
     ),

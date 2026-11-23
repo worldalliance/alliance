@@ -95,7 +95,7 @@ describe("the version check", () => {
     expect(await checkClaudeVersion(stubCli)).toEqual(
       R.failure(
         new Error(
-          `${stubCli.executable} is Claude Code 9.9.9, but Alliance agent supports only ${CLAUDE_CODE_VERSION}`,
+          `${stubCli.executable} is Claude Code 9.9.9, but Alliance agent supports only ${CLAUDE_CODE_VERSION}. In a development build, run bun install in agents/desktop.`,
         ),
       ),
     );

@@ -1,18 +1,19 @@
 // Runs the thin path against the real, signed-in Claude Code through the adapter, checks it, and saves the redacted traffic as captures.
 // Usage, from agents/desktop: bun src/main/agent/claude/testing/capture-claude.ts
-import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
 import { AgentEventKind } from "../../../../shared/agent-event";
+import { AgentKind } from "../../../../shared/agent-kind";
 import { devClaudeConfigDir } from "../../../dev-app-data";
 import {
   appData,
   captureScratch,
   check,
   checkTranscriptUploaded,
+  devExecutable,
   machine,
   repo,
   runScriptedTask,
@@ -31,9 +32,7 @@ const workFile = path.join(scratch, "a.txt");
 const configDir = devClaudeConfigDir(appData);
 writeFileSync(workFile, "hello\n");
 
-const realClaude = execFileSync("which", ["claude"], {
-  encoding: "utf8",
-}).trim();
+const realClaude = devExecutable(AgentKind.Claude);
 const real: ClaudeCli = { executable: realClaude, configDir };
 const recorded: ClaudeCli = {
   executable: fileURLToPath(

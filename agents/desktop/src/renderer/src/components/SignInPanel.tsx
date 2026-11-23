@@ -55,7 +55,7 @@ export function SignInPanel({
   onCancel: () => void;
   onCheckAgain: () => void;
 }) {
-  const { name, product, subscription } = agentWords[agent];
+  const { name, subscription } = agentWords[agent];
   const headings = heading(agent);
   switch (state.access) {
     case Access.Checking:
@@ -69,7 +69,7 @@ export function SignInPanel({
         <div className="panel">
           <h2>{headings[state.access]}</h2>
           <Problem
-            summary={`Alliance agent couldn't check your ${name} sign-in. Make sure ${product} is installed and runs, then check again.`}
+            summary={`Alliance agent couldn't check whether you're signed in to ${name}.`}
             detail={state.problem}
           />
           <button type="button" ref={focusIfLost} {...pressOnce(onCheckAgain)}>
