@@ -224,5 +224,20 @@ export const processLines = (columns: string): string[] =>
     maxBuffer: 256 * 1024 * 1024,
   }).split("\n");
 
+/** A CLI that boots slowly, noting when it is stopped before it has read its first message and when it outlives the app. */
+export function slowBootClaude(): { claude: string; cutBeforeBoot: string } {
+  const cutBeforeBoot = test.info().outputPath("cut-before-boot");
+  const claude = sessionClaude(`trap 'touch "${cutBeforeBoot}"; exit 143' TERM
+sleep 3 & wait $!
+trap - TERM
+"${process.env[claudeExecutableVariable]}" "$@"
+status=$?
+sleep 1
+${noteOutlivedApp}
+exit $status
+`);
+  return { claude, cutBeforeBoot };
+}
+
 export const runningCount = (claude: string): number =>
   processLines("command=").filter((command) => command.includes(claude)).length;
