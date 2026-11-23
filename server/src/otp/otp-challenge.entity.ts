@@ -1,5 +1,14 @@
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { OtpChannel, OtpPurpose } from "./otp-copy";
 
 /**
@@ -7,7 +16,7 @@ import { OtpChannel, OtpPurpose } from "./otp-copy";
  * linger until the hourly purge, so reads filter on expiry and attempts.
  */
 @Entity()
-@Index(["purpose", "destination"])
+@Index(["purpose", "destination", "userId"])
 export class OtpChallenge {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -17,6 +26,14 @@ export class OtpChallenge {
 
   @Column({ type: "enum", enum: OtpChannel, enumName: "OtpChannel" })
   channel: OtpChannel;
+
+  /** The account that asked, which alone may use the code; null for KORA sign-in. */
+  @Column({ type: "int", nullable: true })
+  userId: number | null;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
+  user?: Relation<User>;
 
   /** A normalized email address or E.164 number. */
   @Column({ type: "citext" })

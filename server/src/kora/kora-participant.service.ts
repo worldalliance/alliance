@@ -156,6 +156,7 @@ export class KoraParticipantService {
     const verified = await this.otpService.verify({
       purpose: OtpPurpose.KoraSignIn,
       browserToken: params.codeToken,
+      userId: null,
       code: params.code,
       ip: params.ip,
     });

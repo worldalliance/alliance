@@ -26,15 +26,25 @@ export class PhoneVerificationService {
     private readonly eventLogService: EventLogService,
   ) {}
 
-  start(params: {
+  async start(params: {
+    userId: number;
     phoneNumber: string;
     ip: string;
     webOtpHost: string | null;
   }): Promise<Result<StartedOtp, OtpStartRefusal>> {
-    const { phoneNumber, ip, webOtpHost } = params;
+    const { userId, phoneNumber, ip, webOtpHost } = params;
+    // Several accounts can save one number without a code until ALL-2259,
+    // so only a sole holder skips the per-number limit.
+    const holders = await this.dataSource.getRepository(User).find({
+      where: { phoneNumber },
+      select: { id: true },
+      take: 2,
+    });
+    const holdsContact = holders.length === 1 && holders[0].id === userId;
     return this.otpService.start({
       purpose: PHONE_PURPOSE,
       contact: { channel: OtpChannel.Sms, destination: phoneNumber },
+      requester: { userId, holdsContact },
       ip,
       webOtpHost,
     });
@@ -54,6 +64,7 @@ export class PhoneVerificationService {
     const verified = await this.otpService.verify({
       purpose: PHONE_PURPOSE,
       browserToken: challengeToken,
+      userId,
       code,
       ip,
     });

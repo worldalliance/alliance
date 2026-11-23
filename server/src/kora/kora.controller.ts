@@ -105,7 +105,11 @@ export class KoraController {
     const [participant, pendingCode, signupPending] = await Promise.all([
       this.sessionService.current(req, res),
       codeToken
-        ? this.otpService.pending({ purpose: PURPOSE, browserToken: codeToken })
+        ? this.otpService.pending({
+            purpose: PURPOSE,
+            browserToken: codeToken,
+            userId: null,
+          })
         : null,
       signupToken ? this.participantService.signupPending(signupToken) : false,
     ]);
@@ -128,6 +132,7 @@ export class KoraController {
     const started = await this.otpService.start({
       purpose: PURPOSE,
       contact: contactOf(dto),
+      requester: null,
       ip: clientIp(req),
       webOtpHost: webOtpHost(req),
     });

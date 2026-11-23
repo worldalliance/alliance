@@ -11,6 +11,11 @@ export const SEND_LIMITS_PER_CONTACT: RateLimit[] = [
   { max: 20, windowMs: milliseconds({ days: 1 }) },
 ];
 
+export const SEND_LIMITS_PER_ACCOUNT: RateLimit[] = [
+  { max: 5, windowMs: milliseconds({ hours: 1 }) },
+  { max: 10, windowMs: milliseconds({ days: 1 }) },
+];
+
 export const SEND_LIMITS_PER_IP: RateLimit[] = [
   { max: 30, windowMs: milliseconds({ minutes: 1 }) },
   { max: 200, windowMs: milliseconds({ hours: 1 }) },
@@ -24,6 +29,7 @@ export const VERIFY_LIMITS_PER_IP: RateLimit[] = [
 export const LONGEST_RATE_WINDOW_MS = Math.max(
   ...[
     ...SEND_LIMITS_PER_CONTACT,
+    ...SEND_LIMITS_PER_ACCOUNT,
     ...SEND_LIMITS_PER_IP,
     ...VERIFY_LIMITS_PER_IP,
   ].map((limit) => limit.windowMs),
