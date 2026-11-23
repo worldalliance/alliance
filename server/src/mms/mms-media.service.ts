@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -19,6 +20,8 @@ import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { IsNull, LessThan, Not, Raw } from "typeorm";
 import { MmsMedia } from "./mms-media.entity";
+import { Mms } from "./mms.entity";
+import { emitThreadChanged } from "./mms.events";
 
 // image/jpg isn't a registered type, but Twilio's accepted MMS types list it.
 const INLINE_CONTENT_TYPES = new Map([
@@ -84,6 +87,9 @@ export class MmsMediaService {
     @InjectRepository(MmsMedia)
     private readonly mediaRepository: Repository<MmsMedia>,
     @Inject("S3_CLIENT") private readonly s3: S3Client,
+    @InjectRepository(Mms)
+    private readonly mmsRepository: Repository<Mms>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -95,7 +101,10 @@ export class MmsMediaService {
       assertLeaseHeld();
       const copied = await this.copyOne(item);
       if (copied.ok) {
-        if (copied.value) await this.deleteFromTwilio([item]);
+        if (copied.value) {
+          await this.announceMediaChanged(item);
+          await this.deleteFromTwilio([item]);
+        }
         continue;
       }
       let copyAttempts: number | (() => string);
@@ -134,6 +143,14 @@ export class MmsMediaService {
         this.logger.error(
           `Could not copy MMS media ${item.id}: Twilio no longer has it`,
         );
+      }
+      const gaveUp =
+        mediaStatus({
+          ...item,
+          copyAttempts: twilioGone ? MAX_COPY_ATTEMPTS : item.copyAttempts + 1,
+        }) === MmsMediaStatus.Unavailable;
+      if (gaveUp && counted.ok && counted.value.affected !== 0) {
+        await this.announceMediaChanged(item);
       }
     }
   }
@@ -183,6 +200,27 @@ export class MmsMediaService {
           thrownStack(recorded.error),
         );
       }
+    }
+  }
+
+  private async announceMediaChanged(media: MmsMedia): Promise<void> {
+    const mms = await R.fromPromise(
+      this.mmsRepository.findOne({
+        select: { id: true, memberPhoneNumber: true },
+        where: { id: media.mmsId },
+      }),
+    );
+    if (!mms.ok) {
+      this.logger.warn(
+        `Could not announce the change to MMS media ${media.id}: ${thrownMessage(mms.error)}`,
+      );
+      return;
+    }
+    if (mms.value) {
+      emitThreadChanged(this.eventEmitter, {
+        phoneNumber: mms.value.memberPhoneNumber,
+        needsReplyChanged: false,
+      });
     }
   }
 

@@ -8,7 +8,7 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
-import { useThreadActions } from "./useTextThreadsAdmin";
+import { usePollInterval, useThreadActions } from "./useTextThreadsAdmin";
 
 export const fetchMemberThread = (params: {
   userId: number;
@@ -24,18 +24,20 @@ const threadQuery = (userId: number) =>
   queryOptions({
     queryKey: queryKeys.memberTextThreadAdmin(userId),
     queryFn: () => fetchMemberThread({ userId }),
-    refetchInterval: milliseconds({ seconds: 10 }),
   });
 
 export function useMemberTextsAdmin(userId: number) {
-  const thread = useQuery(threadQuery(userId));
+  const thread = useQuery({
+    ...threadQuery(userId),
+    refetchInterval: usePollInterval(milliseconds({ seconds: 10 })),
+  });
   const actions = useThreadActions({
     id: userId,
-    queryKey: (id: number) => threadQuery(id).queryKey,
+    query: threadQuery,
     sendText: (input) =>
       mmsThreadSendTextAdmin({
         path: { userId: input.id },
-        body: { body: input.body },
+        body: { body: input.body, afterId: input.afterId },
         throwOnError: true,
       }).then((r) => r.data),
     markOptedOut: (id) =>

@@ -1689,6 +1689,10 @@ export type NumberThreadDto = {
 
 export type SendStaffTextDto = {
     body: string;
+    /**
+     * The newest text the sender saw, or null if they saw none. The send is refused with 409 and error `newer_texts` if the thread has a newer text not sent by the sender. If the thread doesn't contain this text, a member's send is refused with 409 and error `number_changed`, and a send by thread id with 400
+     */
+    afterId?: number | null;
 };
 
 export type MarkThreadDto = {

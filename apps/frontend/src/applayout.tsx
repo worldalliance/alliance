@@ -40,7 +40,7 @@ export default function AppLayout() {
 
   const navigate = useNavigate();
   const navigation = useNavigation();
-  // Each request refused after a failed refresh settles, or refused again on
+  // Each request refused after a refused refresh settles, or refused again on
   // retry, reports the session ended.
   const loggingOut = useRef(false);
 

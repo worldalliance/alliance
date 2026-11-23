@@ -1,7 +1,9 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { R, type Result } from "@alliance/common/result";
+import { StaffTextConflict } from "@alliance/common/staffText";
 import type { MmsMessageDto } from "@alliance/shared/client/types.gen";
 import { format } from "date-fns";
+import { z } from "zod";
 
 const DELIVERY: Record<string, { label: string; failed: boolean }> = {
   accepted: { label: "Sending", failed: false },
@@ -29,6 +31,20 @@ export const deliveryStatus = (
     message.errorMessage ??
     (message.errorCode === null ? null : `Twilio error ${message.errorCode}`);
   return { ...known, reason };
+};
+
+const conflictRefusal = z.object({
+  statusCode: z.literal(409),
+  error: z.enum(StaffTextConflict),
+});
+
+/** Why a send was refused over a thread change the sender hadn't seen, or
+ * null for any other failure, an unrecognised conflict included. */
+export const staffTextConflict = (
+  thrown: unknown,
+): StaffTextConflict | null => {
+  const parsed = conflictRefusal.safeParse(thrown);
+  return parsed.success ? parsed.data.error : null;
 };
 
 /** The thread's order: by `createdAt`, then id. */

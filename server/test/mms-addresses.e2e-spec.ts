@@ -2,6 +2,7 @@ import { MmsOptout } from "src/mms/mms-optout.entity";
 import { Mms } from "src/mms/mms.entity";
 import { MmsModule } from "src/mms/mms.module";
 import { MmsService } from "src/mms/mms.service";
+import { TwilioStatusWorker } from "src/mms/twiliostatus.worker";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
@@ -92,7 +93,9 @@ describe("Mms Twilio address columns (e2e)", () => {
       },
     });
 
-    const refreshed = await mmsService.refreshMmsData(original);
+    const refreshed = await ctx.app
+      .get(TwilioStatusWorker)
+      .refreshMmsData(original);
 
     expect(refreshed).toMatchObject({
       id: original.id,

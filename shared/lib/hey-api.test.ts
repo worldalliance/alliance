@@ -1,6 +1,7 @@
-import { errorMessage } from "@alliance/common/errorMessage";
+import { errorMessage, GENERIC_FAILURE } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
 import { client } from "../client/client.gen";
-import { createClientConfig } from "./hey-api";
+import { createClientConfig, refreshSession } from "./hey-api";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 
 const originalNavigator = globalThis.navigator;
@@ -208,6 +209,27 @@ describe("a request refused for an expired session", () => {
     expect(signedOut).toBe(1);
   });
 
+  // The refresh route refuses only with 401, so a 403 comes from something in
+  // between, such as a proxy, and says nothing about the session.
+  it.each([503, 403])(
+    "fails, rather than reporting the session expired, when the refresh answers %i",
+    async (status) => {
+      api.alsoServing({
+        "POST /auth/refresh": () => new Response(null, { status }),
+      });
+      let signedOut = 0;
+      const onSignedOut = () => signedOut++;
+      window.addEventListener("auth:unauthorized", onSignedOut);
+      const { fetch } = createClientConfig({ fetch: expiredOnce });
+
+      await expect(
+        fetch!(new Request("http://api.test/tasks")),
+      ).rejects.toThrow(GENERIC_FAILURE);
+      window.removeEventListener("auth:unauthorized", onSignedOut);
+      expect(signedOut).toBe(0);
+    },
+  );
+
   it("is not sent again when it carries a multipart body", async () => {
     const { fetch } = createClientConfig({ fetch: expiredOnce });
     const body = new FormData();
@@ -220,5 +242,46 @@ describe("a request refused for an expired session", () => {
     expect(res.status).toBe(401);
     expect(sent).toHaveLength(1);
     expect(refreshes).toBe(1);
+  });
+});
+
+describe("refreshSession", () => {
+  const answering = (status: number) =>
+    api.alsoServing({
+      "POST /auth/refresh": () => new Response(null, { status }),
+    });
+
+  it("reports a refreshed session", async () => {
+    answering(200);
+
+    expect(await refreshSession()).toEqual(R.success(true));
+  });
+
+  it("reports a refused session", async () => {
+    answering(401);
+
+    expect(await refreshSession()).toEqual(R.success(false));
+  });
+
+  it("fails when the refresh couldn't settle the session", async () => {
+    answering(503);
+
+    expect(await refreshSession()).toEqual(
+      R.failure(new Error(GENERIC_FAILURE, { cause: 503 })),
+    );
+  });
+
+  it("fails when the refresh couldn't be sent, then sends the next one", async () => {
+    api.alsoServing({
+      "POST /auth/refresh": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+
+    expect(await refreshSession()).toEqual(
+      R.failure(new TypeError("Failed to fetch")),
+    );
+    answering(200);
+    expect(await refreshSession()).toEqual(R.success(true));
   });
 });

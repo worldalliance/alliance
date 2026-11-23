@@ -21,12 +21,16 @@ export default function TextHistory({
   fetchOlder,
   contactName,
   sentId,
+  conflictsShown,
   emptyText,
 }: {
   thread: TextPage;
   fetchOlder: (before: number) => Promise<TextPage>;
   contactName: string;
   sentId: number | undefined;
+  /** Counts the composer's conflict warnings, each of which scrolls to the
+   * end so the texts it warns about are in view. */
+  conflictsShown: number;
   emptyText: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -36,6 +40,7 @@ export default function TextHistory({
   const sentShown =
     sentId !== undefined && messages.some((text) => text.id === sentId);
   const followedSent = useRef<number>(undefined);
+  const followedConflict = useRef(conflictsShown);
   const place = useRef<Place | null>(null);
   const olderHadFocus = useRef(false);
 
@@ -63,8 +68,12 @@ export default function TextHistory({
       followedSent.current = sentId;
       atBottom.current = true;
     }
+    if (followedConflict.current !== conflictsShown) {
+      followedConflict.current = conflictsShown;
+      atBottom.current = true;
+    }
     if (atBottom.current) element.scrollTop = element.scrollHeight;
-  }, [thread, sentId, sentShown]);
+  }, [thread, sentId, sentShown, conflictsShown]);
 
   useEffect(() => {
     const element = scroller.current;

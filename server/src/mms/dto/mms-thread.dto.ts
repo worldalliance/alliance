@@ -389,6 +389,21 @@ export class SendStaffTextDto {
   })
   @Matches(/\S/, { message: "body must not be blank" })
   body: string;
+
+  /** BACKCOMPAT(staff-text-after-id): optional for admin tabs loaded before
+   * the composer sent afterId; make it required once the server has logged no
+   * "sent without afterId" line for a week. */
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      "The newest text the sender saw, or null if they saw none. The send is refused with 409 and error `newer_texts` if the thread has a newer text not sent by the sender. If the thread doesn't contain this text, a member's send is refused with 409 and error `number_changed`, and a send by thread id with 400",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
+  afterId?: number | null;
 }
 
 /** BACKCOMPAT(mms-thread-ids): remove with GET needs-reply, once no deployed

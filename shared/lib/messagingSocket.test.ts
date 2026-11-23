@@ -1,11 +1,12 @@
 import { R, type Result } from "@alliance/common/result";
-import { afterEach, beforeEach, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, expect, it, jest, mock, spyOn } from "bun:test";
 import { Manager, type Socket } from "socket.io-client";
 import { connectMessagingSocket } from "./messagingSocket";
 
 const cleanups: (() => void)[] = [];
 
 beforeEach(() => {
+  spyOn(console, "warn").mockImplementation(() => {});
   spyOn(Manager.prototype, "open").mockImplementation(function (this: Manager) {
     return this;
   });
@@ -14,6 +15,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
   mock.restore();
+  jest.useRealTimers();
 });
 
 const expired = new Error("jwt expired");
@@ -122,11 +124,91 @@ it("leaves an error that is not about the token alone", async () => {
   expect(disconnect).not.toHaveBeenCalled();
 });
 
-it("registers no listeners without a refresh callback", () => {
-  const { socket } = attached();
+it("doesn't reconnect after an auth error without a refresh callback", async () => {
+  const { socket, connect } = attached();
 
-  expect(socket.listeners("connect_error")).toHaveLength(0);
-  expect(socket.listeners("connect")).toHaveLength(0);
+  await connectError(socket, new Error("Unauthorized"));
+
+  expect(connect).not.toHaveBeenCalled();
+});
+
+it("retries a handshake the server couldn't check, backing off until it connects", async () => {
+  jest.useFakeTimers();
+  spyOn(Math, "random").mockReturnValue(0.5);
+  const warn = spyOn(console, "warn");
+  const refresh = mock(async () => R.success(true));
+  const { socket, connect } = attached(refresh);
+  const unavailable = new Error("Unavailable");
+
+  await connectError(socket, unavailable);
+  jest.advanceTimersByTime(999);
+  expect(connect).not.toHaveBeenCalled();
+  jest.advanceTimersByTime(1);
+  expect(connect).toHaveBeenCalledTimes(1);
+
+  await connectError(socket, unavailable);
+  jest.advanceTimersByTime(1999);
+  expect(connect).toHaveBeenCalledTimes(1);
+  jest.advanceTimersByTime(1);
+  expect(connect).toHaveBeenCalledTimes(2);
+
+  for (const listener of socket.listeners("connect")) listener();
+  await connectError(socket, unavailable);
+  jest.advanceTimersByTime(1000);
+  expect(connect).toHaveBeenCalledTimes(3);
+  expect(refresh).not.toHaveBeenCalled();
+  expect(warn.mock.calls.map(([message]) => message)).toEqual([
+    "Socket handshake refused as unavailable; retrying in 1000 ms",
+    "Socket handshake refused as unavailable; retrying in 2000 ms",
+    "Socket handshake refused as unavailable; retrying in 1000 ms",
+  ]);
+});
+
+it("refreshes again after a handshake refused as unavailable", async () => {
+  jest.useFakeTimers();
+  spyOn(Math, "random").mockReturnValue(0.5);
+  const refresh = mock(async () => R.success(true));
+  const { socket, connect, disconnect } = attached(refresh);
+
+  await connectError(socket);
+  await connectError(socket, new Error("Unavailable"));
+  jest.advanceTimersByTime(1000);
+  await connectError(socket);
+
+  expect(refresh).toHaveBeenCalledTimes(2);
+  expect(connect).toHaveBeenCalledTimes(3);
+  expect(disconnect).not.toHaveBeenCalled();
+});
+
+it("spreads the retries of sockets refused together", async () => {
+  jest.useFakeTimers();
+  spyOn(Math, "random").mockReturnValue(0);
+  const { socket, connect } = attached();
+
+  await connectError(socket, new Error("Unavailable"));
+  jest.advanceTimersByTime(500);
+
+  expect(connect).toHaveBeenCalledTimes(1);
+});
+
+it("stops retrying once closed", async () => {
+  jest.useFakeTimers();
+  const { socket, connect, close } = attached();
+
+  await connectError(socket, new Error("Unavailable"));
+  close();
+  jest.advanceTimersByTime(30000);
+
+  expect(connect).not.toHaveBeenCalled();
+});
+
+it("shares a connection between cookie sockets that never refresh", () => {
+  const config = { getWebSocketUrl: () => "http://shared.test" };
+  const first = connectMessagingSocket("/a", config);
+  const second = connectMessagingSocket("/b", config);
+  cleanups.push(first.close, second.close);
+
+  expect(second.socket.io).toBe(first.socket.io);
 });
 
 it("ignores another auth error while refresh is pending", async () => {

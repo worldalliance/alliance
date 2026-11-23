@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { MemoryRouter } from "react-router";
+import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
 import NeedsReplyPage from "./NeedsReplyPage";
 
 let threads: NeedsReplyThreadDto[];
@@ -49,13 +50,15 @@ beforeEach(() => {
 
 afterEach(resetClock);
 
-const renderPage = () => {
+const renderPage = (live = OFFLINE) => {
   const { wrapper: Wrapper, client } = queryWrapper();
   render(
     <Wrapper>
-      <MemoryRouter>
-        <NeedsReplyPage />
-      </MemoryRouter>
+      <MmsThreadsLiveContext.Provider value={live}>
+        <MemoryRouter>
+          <NeedsReplyPage />
+        </MemoryRouter>
+      </MmsThreadsLiveContext.Provider>
     </Wrapper>,
   );
   return client;
@@ -100,6 +103,38 @@ it("names a waiting number no member has by its phone number", async () => {
 
   const row = await screen.findByRole("link", { name: /\(415\) 555-0109/ });
   expect(row.getAttribute("href")).toBe(`/texts/${threadIdOf(9)}`);
+});
+
+it("names an admin replying to a waiting number on its row, member or not", async () => {
+  threads = [
+    waiting({
+      userId: 7,
+      name: "Sam",
+      lastMessageBody: "Is it still on?",
+      waitingSince: new Date().toISOString(),
+    }),
+    {
+      threadId: threadIdOf(9),
+      phoneNumber: "+14155550109",
+      members: [],
+      lastMessageBody: "Who is this?",
+      waitingSince: new Date().toISOString(),
+    },
+  ];
+  renderPage({
+    ...OFFLINE,
+    composers: [
+      { phoneNumber: "+14155550007", adminId: 2, adminName: "Priya" },
+      { phoneNumber: "+14155550109", adminId: 3, adminName: "Ana" },
+    ],
+  });
+
+  const sam = await screen.findByRole("link", { name: /Sam/ });
+  expect(sam.textContent).toContain("Priya is replying…");
+  expect(sam.textContent).not.toContain("Ana");
+  expect(
+    screen.getByRole("link", { name: /\(415\) 555-0109/ }).textContent,
+  ).toContain("Ana is replying…");
 });
 
 it("says when nothing is waiting", async () => {

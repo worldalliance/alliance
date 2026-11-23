@@ -55,6 +55,11 @@ serveApi(
         ? Response.json({ message: "down" }, { status: 500 })
         : Response.json(page([1, 2], false));
     },
+    "POST /mms-threads/7": () =>
+      Response.json(
+        { statusCode: 409, error: "newer_texts", message: "Newer texts" },
+        { status: 409 },
+      ),
   }),
 );
 
@@ -359,6 +364,22 @@ it("keeps the reader's place when a poll brings a new text", async () => {
 
   await screen.findByText("Text 6");
   expect(log.scrollTop).toBe(100);
+});
+
+it("scrolls to the end when newer texts refuse a send", async () => {
+  renderSection();
+  const log = await screen.findByRole("region", { name: "Text history" });
+  Object.defineProperty(log, "scrollHeight", { get: () => 1000 });
+  scrollTo(log, 100);
+  fireEvent.change(screen.getByLabelText("Text Sam"), {
+    target: { value: "Happy to help" },
+  });
+
+  newest = page([3, 4, 5, 6], true);
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  await screen.findByRole("button", { name: "Send anyway" });
+  expect(log.scrollTop).toBe(1000);
 });
 
 it("keeps the end in view as an image loads", async () => {

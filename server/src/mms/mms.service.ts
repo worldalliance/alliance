@@ -8,6 +8,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -24,10 +25,14 @@ import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import { SendErrorKind, textSendError } from "src/utils/send-error";
 import Twilio from "twilio";
-import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
+import type {
+  MessageInstance,
+  MessageStatus,
+} from "twilio/lib/rest/api/v2010/account/message";
 import { env } from "../config/env";
 import { MmsNumberService } from "./mms-number.service";
 import { Mms, MmsDirection } from "./mms.entity";
+import { emitThreadChanged } from "./mms.events";
 
 /** Twilio delivers to UK numbers only from an alphanumeric sender. */
 const UK_SENDER_ID = "The Alliance";
@@ -87,6 +92,7 @@ export class MmsService {
     private readonly eventLogService: EventLogService,
     private readonly messageTracking: MessageTrackingService,
     private readonly mmsNumberService: MmsNumberService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     if (env("NODE_ENV") === NodeEnv.Test) {
       return;
@@ -394,6 +400,15 @@ export class MmsService {
     return to.startsWith("+44") ? UK_SENDER_ID : this.twilioPhoneNumber;
   }
 
+  private async saveOutbound(mms: Mms): Promise<Mms> {
+    const saved = await this.mmsRepository.save(mms);
+    emitThreadChanged(this.eventEmitter, {
+      phoneNumber: saved.to,
+      needsReplyChanged: saved.sentById !== null,
+    });
+    return saved;
+  }
+
   private saveSent(params: {
     message: SentMessage;
     to: string;
@@ -403,7 +418,7 @@ export class MmsService {
     createdAt?: Date;
   }): Promise<Mms> {
     const { message, to, body, cid, sentById, createdAt } = params;
-    return this.mmsRepository.save(
+    return this.saveOutbound(
       this.mmsRepository.create({
         to,
         from: this.senderFor(to),
@@ -428,7 +443,7 @@ export class MmsService {
     sentById: number | null;
   }): Promise<Mms> {
     const { to, body, cid, sentById } = params;
-    return this.mmsRepository.save(
+    return this.saveOutbound(
       this.mmsRepository.create({
         to,
         from: "+15555550100",
@@ -493,27 +508,8 @@ export class MmsService {
       });
   }
 
-  async refreshMmsData(mms: Mms): Promise<Mms> {
-    const message = await this.twilioClient.messages.get(mms.twilioSid).fetch();
-    if (message.errorCode) {
-      this.eventLogService.sendMessage({
-        type: EventType.SmsFailure,
-        payload: {
-          kind: SmsFailureKind.DeliveryFailed,
-          phoneNumber: mms.to,
-          errorCode: message.errorCode,
-        },
-        blob: message.toJSON(),
-        userId: null,
-      });
-    }
-    mms.to = message.to;
-    mms.from = message.from;
-    mms.body = message.body;
-    mms.status = message.status;
-    mms.errorCode = message.errorCode;
-    mms.errorMessage = message.errorMessage;
-    return this.mmsRepository.save(mms);
+  fetchMessage(sid: string): Promise<MessageInstance> {
+    return this.twilioClient.messages.get(sid).fetch();
   }
 
   // doesnt throw to allow fallback to mail - TODO this is kind of unintuitive

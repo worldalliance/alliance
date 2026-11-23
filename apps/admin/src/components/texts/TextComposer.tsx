@@ -1,4 +1,7 @@
-import { STAFF_TEXT_MAX_LENGTH } from "@alliance/common/staffText";
+import {
+  STAFF_TEXT_MAX_LENGTH,
+  StaffTextConflict,
+} from "@alliance/common/staffText";
 import {
   minuteStart,
   useClockMinute,
@@ -13,18 +16,54 @@ import {
   LocalTimeUnknown,
   memberLocalTime,
   QUIET_HOURS_LABEL,
+  staffTextConflict,
 } from "../../lib/memberTexts";
+import { useReportComposing } from "../../lib/useReportComposing";
+import ComposingNotice from "./ComposingNotice";
+
+const CONFLICT_COPY: Record<
+  StaffTextConflict,
+  { warning: string; loadFailed: string }
+> = {
+  [StaffTextConflict.NewerTexts]: {
+    warning:
+      "New texts arrived while you were writing. Read them above before you send.",
+    loadFailed:
+      "New texts arrived but couldn't be loaded. Try again in a moment.",
+  },
+  [StaffTextConflict.NumberChanged]: {
+    warning:
+      "This member's phone number changed while you were writing. Check the thread above before you send.",
+    loadFailed:
+      "This member's phone number changed but the thread couldn't be loaded. Try again in a moment.",
+  },
+};
 
 export default function TextComposer({
   recipientName,
+  phoneNumber,
   timeZone,
+  newestTextId,
+  threadLoadFailed,
+  onConflictShown,
   send,
 }: {
   recipientName: string;
+  /** The thread's number, as its query matches texts by. */
+  phoneNumber: string;
   timeZone: string | null;
-  send: (body: string) => Promise<unknown>;
+  /** Read when called, so it sees a refetch that hasn't rendered yet. */
+  newestTextId: () => number | null;
+  threadLoadFailed: () => boolean;
+  onConflictShown: () => void;
+  send: (body: string, afterId: number | null) => Promise<unknown>;
 }) {
   const [body, setBody] = useState("");
+  const seenThrough = useRef<number | null>(null);
+  const [conflict, setConflict] = useState<{
+    kind: StaffTextConflict;
+    confirmedQuietHours: boolean;
+  } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quietWarning, setQuietWarning] = useState<string | null>(null);
@@ -34,8 +73,9 @@ export default function TextComposer({
   const mounted = useRef(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const sendAnyway = useRef<HTMLButtonElement>(null);
-  const warning = quietWarning !== null;
+  const warning = quietWarning !== null || conflict !== null;
   const now = minuteStart(useClockMinute());
+  useReportComposing(phoneNumber, body);
 
   useEffect(() => {
     if (warning) sendAnyway.current?.focus();
@@ -66,18 +106,35 @@ export default function TextComposer({
     setTriedBlank(blank);
     if (blank || tooLong || pending) return;
     if (localTime.ok && localTime.value.quiet && !params.confirmedQuietHours) {
+      setConflict(null);
       setQuietWarning(localTime.value.label);
       return;
     }
     setQuietWarning(null);
-    if (params.confirmedQuietHours) textarea.current?.focus();
+    setConflict(null);
+    if (warning) textarea.current?.focus();
     setPending(true);
     setError(null);
     const sent = body;
+    const afterId = seenThrough.current;
     try {
-      await send(sent);
+      await send(sent, afterId);
       setBody((current) => (current === sent ? "" : current));
     } catch (thrown) {
+      const kind = staffTextConflict(thrown);
+      if (mounted.current && kind !== null) {
+        if (threadLoadFailed()) {
+          setError(CONFLICT_COPY[kind].loadFailed);
+          return;
+        }
+        seenThrough.current = newestTextId();
+        setConflict({
+          kind,
+          confirmedQuietHours: params.confirmedQuietHours,
+        });
+        onConflictShown();
+        return;
+      }
       const message = adminRefusalMessage(
         thrown,
         "The text may not have gone out. Check the thread in a minute before trying again.",
@@ -103,14 +160,20 @@ export default function TextComposer({
         void submit({ confirmedQuietHours: false });
       }}
     >
-      <label htmlFor={inputId} className="block text-xs text-zinc-600">
-        Text {recipientName}
-      </label>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={inputId} className="block text-xs text-zinc-600">
+          Text {recipientName}
+        </label>
+        <ComposingNotice phoneNumber={phoneNumber} />
+      </div>
       <TextareaAutosize
         ref={textarea}
         id={inputId}
         value={body}
-        onChange={(event) => setBody(event.target.value)}
+        onChange={(event) => {
+          if (!body) seenThrough.current = newestTextId();
+          setBody(event.target.value);
+        }}
         minRows={2}
         maxRows={8}
         aria-describedby={describedBy}
@@ -142,21 +205,31 @@ export default function TextComposer({
           -character limit. Shorten it to send.
         </p>
       )}
-      {quietWarning && (
+      {warning && (
         <div
           role="alert"
           className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
         >
           <p>
-            It&apos;s {quietWarning} for {recipientName}. Texts between{" "}
-            {QUIET_HOURS_LABEL} their time can be unwelcome.
+            {quietWarning !== null ? (
+              <>
+                It&apos;s {quietWarning} for {recipientName}. Texts between{" "}
+                {QUIET_HOURS_LABEL} their time can be unwelcome.
+              </>
+            ) : (
+              conflict && CONFLICT_COPY[conflict.kind].warning
+            )}
           </p>
           <div className="mt-2 flex gap-2">
             <Button
               ref={sendAnyway}
               size="small"
               color={ButtonColor.Stone}
-              onClick={() => void submit({ confirmedQuietHours: true })}
+              onClick={() =>
+                void submit({
+                  confirmedQuietHours: conflict?.confirmedQuietHours ?? true,
+                })
+              }
             >
               Send anyway
             </Button>
@@ -164,6 +237,7 @@ export default function TextComposer({
               size="small"
               onClick={() => {
                 setQuietWarning(null);
+                setConflict(null);
                 textarea.current?.focus();
               }}
             >
@@ -190,7 +264,7 @@ export default function TextComposer({
           {error}
         </p>
       )}
-      {!quietWarning && (
+      {!warning && (
         <Button
           type="submit"
           size="small"

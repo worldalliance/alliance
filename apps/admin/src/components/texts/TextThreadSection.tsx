@@ -2,7 +2,13 @@ import type { ReplyState } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { type MouseEvent, type ReactNode, useEffect, useRef } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import type { TextPage } from "../../lib/useOlderTexts";
 import {
@@ -30,7 +36,9 @@ export default function TextThreadSection<T extends Thread>(props: {
   markNeedsReply: (throughId: number) => Promise<unknown>;
   markingHandled: boolean;
   markingNeedsReply: boolean;
-  composer: (thread: T) => ReactNode;
+  /** `onConflictShown` scrolls the thread to its end, so the texts a send
+   * refusal warns about are in view. */
+  composer: (thread: T, onConflictShown: () => void) => ReactNode;
   headerLink?: ReactNode;
 }) {
   const { threadKey, contactName, thread, markingOptedOut } = props;
@@ -40,6 +48,7 @@ export default function TextThreadSection<T extends Thread>(props: {
   );
   const optedOutBadge = useRef<HTMLSpanElement>(null);
   const focusBadgeFor = useRef<string | number | null>(null);
+  const [conflictsShown, setConflictsShown] = useState(0);
 
   useEffect(() => {
     if (focusBadgeFor.current !== threadKey) focusBadgeFor.current = null;
@@ -154,9 +163,14 @@ export default function TextThreadSection<T extends Thread>(props: {
             fetchOlder={props.fetchOlder}
             contactName={contactName}
             sentId={props.sentId}
+            conflictsShown={conflictsShown}
             emptyText={props.emptyText}
           />
-          <div className={COMPOSER_AREA}>{props.composer(thread.data)}</div>
+          <div className={COMPOSER_AREA}>
+            {props.composer(thread.data, () =>
+              setConflictsShown((count) => count + 1),
+            )}
+          </div>
         </>
       ) : (
         <>

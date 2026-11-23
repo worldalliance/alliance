@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { href, Link } from "react-router";
+import ComposingNotice from "../components/texts/ComposingNotice";
 import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { textPreview, threadContactName } from "../lib/memberTexts";
@@ -145,18 +146,27 @@ const NeedsReplyPage = () => {
                   to={href("/texts/:threadId", { threadId: thread.threadId })}
                   className="flex flex-col gap-0.5 px-3 py-2 hover:bg-zinc-50"
                 >
-                  <span className="flex justify-between gap-2 text-sm">
+                  <div className="flex justify-between gap-2 text-sm">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span
+                        className={cn("font-medium", left && "text-zinc-500")}
+                      >
+                        {threadContactName(thread)}
+                      </span>
+                      <ComposingNotice
+                        phoneNumber={thread.phoneNumber}
+                        announce={false}
+                        className="truncate"
+                      />
+                    </div>
                     <span
-                      className={cn("font-medium", left && "text-zinc-500")}
+                      className={cn("shrink-0 text-zinc-600", left && "italic")}
                     >
-                      {threadContactName(thread)}
-                    </span>
-                    <span className={cn("text-zinc-600", left && "italic")}>
                       {left
                         ? "No longer waiting"
                         : `Waiting ${formatDistanceToNow(new Date(thread.waitingSince))}`}
                     </span>
-                  </span>
+                  </div>
                   <span className="truncate text-sm text-zinc-600">
                     {textPreview(thread.lastMessageBody)}
                   </span>

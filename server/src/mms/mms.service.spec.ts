@@ -1,6 +1,7 @@
 import { R } from "@alliance/common/result";
 import { setEnv } from "@alliance/common/set-env";
 import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { EventType } from "src/eventlog/event-log.entity";
 import type { EventLogService } from "src/eventlog/eventlog.service";
 import {
@@ -96,6 +97,7 @@ describe("MmsService sendMms", () => {
       eventLogService,
       messageTracking,
       mmsNumbers,
+      new EventEmitter2(),
     );
     service["twilioPhoneNumber"] = "+15555550100";
 
