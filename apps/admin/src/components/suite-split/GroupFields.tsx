@@ -6,7 +6,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useId } from "react";
 import MarkedDiagnostics from "../MarkedDiagnostics";
 import FallbackSelect from "./FallbackSelect";
-import { hasRequiredWork } from "./splitDrafts";
+import { CONDITION_HINT, hasRequiredWork } from "./splitDrafts";
 
 export const SplitProblemList: React.FC<{ problems: SplitProblemDto[] }> = ({
   problems,
@@ -113,7 +113,7 @@ const GroupFields: React.FC<{
             <label className="block text-sm space-y-1">
               <span className="font-medium">Condition</span>
               <span id={`${id}-hint`} className="block text-zinc-600">
-                A yes/no formula, such as isOnList(&quot;Volunteers&quot;).
+                {CONDITION_HINT}
               </span>
               <textarea
                 aria-describedby={`${id}-hint`}

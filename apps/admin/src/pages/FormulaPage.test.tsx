@@ -33,6 +33,7 @@ test("saves a new formula and moves to its page, focusing Save", async () => {
       },
     ],
     deletions: [],
+    groupFixes: [],
   });
   await screen.findByRole("heading", { name: "tripled" });
   await waitFor(() => expect(document.activeElement?.textContent).toBe("Save"));
@@ -188,6 +189,7 @@ test("deletes after confirmation and returns to the list", async () => {
     {
       edits: [],
       deletions: [{ id: doubled.id, baseVersionId: 2 }],
+      groupFixes: [],
     },
   ]);
 });

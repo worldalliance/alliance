@@ -22,7 +22,8 @@ function fallbackOf(value: string): GroupFallback | null {
 const FallbackSelect: React.FC<{
   value: GroupFallback | null;
   onChange: (value: GroupFallback | null) => void;
-}> = ({ value, onChange }) => (
+  disabled?: boolean;
+}> = ({ value, onChange, disabled }) => (
   <label className="block text-sm space-y-1">
     <span className="font-medium">When the condition is undecided</span>
     <span className="block text-zinc-600">
@@ -31,6 +32,7 @@ const FallbackSelect: React.FC<{
     <select
       className="border border-zinc-300 rounded px-2 py-1"
       value={value ?? ""}
+      disabled={disabled}
       onChange={(event) => onChange(fallbackOf(event.target.value))}
     >
       <option value="">Not chosen</option>

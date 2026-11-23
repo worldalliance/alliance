@@ -7,15 +7,53 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useRef } from "react";
 import { asDraft } from "../../lib/formulaDraft";
 import FormulaFields from "./FormulaFields";
+import GroupFixFields, {
+  groupFixOf,
+  type GroupFixDraft,
+} from "./GroupFixFields";
 import OtherFormulaProblems from "./OtherFormulaProblems";
 
+/** A fix being made in this save, whose heading takes focus once its fix opens. */
+const FixSection: React.FC<{
+  id: string;
+  /** The fix "Fix it in this save" opened, whose heading takes focus from that unmounted button. */
+  focusFix: React.RefObject<string | null>;
+  heading: React.ReactNode;
+  onStop: () => void;
+  children: React.ReactNode;
+}> = ({ id, focusFix, heading, onStop, children }) => (
+  <section className="border-t border-zinc-200 pt-4 space-y-2">
+    <div className="flex items-center gap-3">
+      <h2
+        ref={(element) => {
+          if (element === null || focusFix.current !== id) return;
+          focusFix.current = null;
+          element.focus();
+        }}
+        tabIndex={-1}
+        className="font-semibold text-zinc-900"
+      >
+        {heading}
+      </h2>
+      <Button size="small" color={ButtonColor.White} onClick={onStop}>
+        Stop fixing it
+      </Button>
+    </div>
+    {children}
+  </section>
+);
+
 /**
- * Formulas whose problems refused a save, each with "Fix it in this save", and
- * the fields of those being fixed, which the next save sends along.
+ * Formulas and split groups whose problems refused a save, each with "Fix it
+ * in this save", and the fields of those being fixed, which the next save
+ * sends along.
  */
 const FormulaFixes: React.FC<{
   fixes: FormulaEditDto[];
   onFixesChange: (fixes: FormulaEditDto[]) => void;
+  /** Split group conditions being fixed in the same save. */
+  groupFixes: GroupFixDraft[];
+  onGroupFixesChange: (fixes: GroupFixDraft[]) => void;
   /** The problems not shown elsewhere on the page. */
   problems: FormulaProblemDto[];
   /** The formulas as the page opened them. */
@@ -32,50 +70,41 @@ const FormulaFixes: React.FC<{
 }> = ({
   fixes,
   onFixesChange,
+  groupFixes,
+  onGroupFixesChange,
   problems,
   formulas,
   readOnly,
   heading,
   onStopped,
 }) => {
-  /** The fix "Fix it in this save" opened, whose heading takes focus from that unmounted button. */
   const focusFix = useRef<string | null>(null);
-  const fixing = new Set(fixes.map((fix) => fix.id));
+  const fixing = new Set([
+    ...fixes.map((fix) => fix.id),
+    ...groupFixes.map((fix) => fix.problemId),
+  ]);
   return (
     <>
       {fixes.map((fix) => (
-        <section
+        <FixSection
           key={fix.id}
-          className="border-t border-zinc-200 pt-4 space-y-2"
-        >
-          <div className="flex items-center gap-3">
-            <h2
-              ref={(element) => {
-                if (element === null || focusFix.current !== fix.id) return;
-                focusFix.current = null;
-                element.focus();
-              }}
-              tabIndex={-1}
-              className="font-semibold text-zinc-900"
-            >
+          id={fix.id}
+          focusFix={focusFix}
+          onStop={() => {
+            onFixesChange(fixes.filter((other) => other.id !== fix.id));
+            onStopped(fix.id);
+          }}
+          heading={
+            <>
               Fixing{" "}
               <span className="font-mono">
                 {formulas.find((formula) => formula.id === fix.id)?.name ??
                   fix.name}
               </span>{" "}
               in this save
-            </h2>
-            <Button
-              size="small"
-              color={ButtonColor.White}
-              onClick={() => {
-                onFixesChange(fixes.filter((other) => other.id !== fix.id));
-                onStopped(fix.id);
-              }}
-            >
-              Stop fixing it
-            </Button>
-          </div>
+            </>
+          }
+        >
           <FormulaFields
             draft={fix}
             problems={problems.filter((problem) => problem.id === fix.id)}
@@ -86,12 +115,52 @@ const FormulaFixes: React.FC<{
             }
             readOnly={readOnly}
           />
-        </section>
+        </FixSection>
+      ))}
+      {groupFixes.map((draft) => (
+        <FixSection
+          key={draft.problemId}
+          id={draft.problemId}
+          focusFix={focusFix}
+          onStop={() => {
+            onGroupFixesChange(
+              groupFixes.filter((other) => other.problemId !== draft.problemId),
+            );
+            onStopped(draft.problemId);
+          }}
+          heading={
+            <>
+              Fixing group &quot;{draft.group.groupName}&quot; of{" "}
+              {draft.group.suiteName} in this save
+            </>
+          }
+        >
+          <GroupFixFields
+            draft={draft}
+            problems={problems.filter(
+              (problem) => problem.id === draft.problemId,
+            )}
+            readOnly={readOnly}
+            onChange={(fix) =>
+              onGroupFixesChange(
+                groupFixes.map((other) =>
+                  other.problemId === draft.problemId
+                    ? { ...other, fix }
+                    : other,
+                ),
+              )
+            }
+          />
+        </FixSection>
       ))}
       <OtherFormulaProblems
         problems={problems.filter((problem) => !fixing.has(problem.id))}
         formulas={formulas}
         heading={heading}
+        onFixGroup={(problem) => {
+          focusFix.current = problem.id;
+          onGroupFixesChange([...groupFixes, groupFixOf(problem)]);
+        }}
         onFix={(formula, problem) => {
           focusFix.current = formula.id;
           onFixesChange([

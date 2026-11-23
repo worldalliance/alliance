@@ -32,6 +32,8 @@ const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
 
+const suiteSplitsAdminAll = () => ["suiteSplitsSplitAdmin"] as const;
+
 const memberTextThreadsAdminAll = () => ["mmsThreadGetThreadAdmin"] as const;
 const numberTextThreadsAdminAll = () =>
   ["mmsThreadGetNumberThreadAdmin"] as const;
@@ -230,8 +232,9 @@ export const queryKeys = {
   actionSuiteAdmin: (suiteId: number) =>
     ["actionSuitesSuiteAdmin", suiteId] as const,
   actionSuitesAdmin: () => ["actionSuitesSuitesAdmin"] as const,
+  suiteSplitsAdminAll,
   suiteSplitAdmin: (suiteId: number) =>
-    ["suiteSplitsSplitAdmin", suiteId] as const,
+    [...suiteSplitsAdminAll(), suiteId] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,

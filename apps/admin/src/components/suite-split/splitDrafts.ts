@@ -75,3 +75,7 @@ export function moved<T>(groups: T[], index: number, by: -1 | 1): T[] {
   [next[index], next[target]] = [next[target], next[index]];
   return next;
 }
+
+/** Shown under a group's condition wherever an admin edits one. */
+export const CONDITION_HINT =
+  'A yes/no formula, such as isOnList("Volunteers").';

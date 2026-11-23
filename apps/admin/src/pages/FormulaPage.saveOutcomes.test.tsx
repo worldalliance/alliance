@@ -1,3 +1,5 @@
+import type { FormulaProblemDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import {
   api,
@@ -46,6 +48,58 @@ test("shows what a save would break, and saves the fix with it", async () => {
   await waitFor(() =>
     expect(screen.queryByText("Fixing", { exact: false })).toBeNull(),
   );
+});
+
+test("saves a split group's fix with the formula", async () => {
+  const gated: FormulaProblemDto = {
+    kind: "dependent",
+    id: "split:7:group-1",
+    text: "base",
+    diagnostics: [{ message: "This is undecided.", start: 0, end: 4 }],
+    split: {
+      suiteId: 7,
+      suiteName: "Week 12",
+      versionId: 3,
+      groupId: "group-1",
+      groupName: "Gated",
+      fallback: null,
+    },
+  };
+  api.answers = [[gated], []];
+  const { client } = renderPage(`/formulas/${base.id}`);
+  const split = queryKeys.suiteSplitAdmin(7);
+  client.setQueryData(split, {});
+  await screen.findByRole("heading", { name: "base" });
+  typeText("Formula", "null");
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Fix it in this save" }),
+  );
+  const condition = screen.getByRole("textbox", { name: "Condition" });
+  expect(condition.getAttribute("aria-invalid")).toBe("true");
+  expect(
+    screen.getByText('A yes/no formula, such as isOnList("Volunteers").').id,
+  ).toBe(condition.getAttribute("aria-describedby")?.split(" ")[0]);
+  fireEvent.change(
+    screen.getByRole("combobox", { name: /When the condition is undecided/ }),
+    { target: { value: "continue" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  await waitFor(() => expect(api.saves).toHaveLength(2));
+  expect(api.saves[1].groupFixes).toEqual([
+    {
+      suiteId: 7,
+      baseVersionId: 3,
+      groupId: "group-1",
+      text: "base",
+      fallback: "continue",
+    },
+  ]);
+  await waitFor(() =>
+    expect(screen.queryByText("Fixing", { exact: false })).toBeNull(),
+  );
+  expect(client.getQueryState(split)?.isInvalidated).toBe(true);
 });
 
 test("opens a fix with the names the save gives", async () => {
@@ -195,6 +249,7 @@ test("says to delete again when a delete is refused", async () => {
   expect(api.saves[1]).toEqual({
     edits: [expect.objectContaining({ id: doubled.id, text: "2" })],
     deletions: [{ id: base.id, baseVersionId: 1 }],
+    groupFixes: [],
   });
 });
 
@@ -212,7 +267,9 @@ test("drops a fix's problems when the admin stops fixing it", async () => {
   await waitFor(() => expect(api.saves).toHaveLength(2));
   await screen.findByRole("button", { name: "Save" });
   fireEvent.click(screen.getByRole("button", { name: "Stop fixing it" }));
-  expect(screen.queryByText("Problems in other formulas")).toBeNull();
+  expect(
+    screen.queryByText("Problems in other formulas and groups"),
+  ).toBeNull();
   expect(document.activeElement).toBe(
     screen.getByRole("button", { name: "Save" }),
   );
