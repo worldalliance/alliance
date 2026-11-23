@@ -1,13 +1,8 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title More Safer Chatbots for Children reviews are ready
+extends layout.pug
 
-  body
-    p Thank you for reviewing. KORA has sent more transcripts, and we’d value your help again.
-    p
-      | Review more:
-      |
-      a(href=url)= url
+block title
+  | More Safer Chatbots for Children reviews are ready
+
+block content
+  p Thank you for reviewing. KORA has sent more transcripts, and we’d value your help again.
+  +button(url, "Review more")

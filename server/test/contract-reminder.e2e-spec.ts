@@ -120,12 +120,12 @@ describe("ContractReminderWorker (e2e)", () => {
       [
         control,
         ContractReminderCopy.Control,
-        "Sign your membership contract to participate in actions",
+        "One last step to join the Alliance",
       ],
       [
         variant,
         ContractReminderCopy.AgreementV1,
-        "The last step is entering into the membership agreement.",
+        "One last step to join the Alliance",
       ],
     ] as const) {
       const mails = await remindersTo(user.email);

@@ -1,6 +1,7 @@
 import { commentPath } from "@alliance/common/commentPath";
 import { appendQueryParam, preferNewDomain } from "@alliance/common/url";
 import {
+  waitlistLinkUrl,
   waitlistShareUrl,
   waitlistUnsubscribeUrl,
 } from "@alliance/common/waitlist";
@@ -26,6 +27,10 @@ function waitlistBaseUrl() {
 
 export function waitlistShareLink(code: string) {
   return waitlistShareUrl(waitlistBaseUrl(), code);
+}
+
+export function waitlistOwnLink(code: string) {
+  return waitlistLinkUrl(waitlistBaseUrl(), code);
 }
 
 export function waitlistUnsubscribeLink(token: string) {
@@ -77,9 +82,8 @@ export function tasksUrl(full = false) {
   return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-export function membershipUrl(full = false) {
-  const path = `/membership`;
-  return full ? `${siteBaseUrl()}${path}` : path;
+export function onboardingAgreementUrl() {
+  return `${siteBaseUrl()}/onboarding?step=agreement`;
 }
 
 export function postUrl(postId: number) {

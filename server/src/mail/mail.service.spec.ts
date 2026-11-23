@@ -14,6 +14,9 @@ import {
 } from "./mail.service";
 import { harness, useMailSendingEnv } from "./mail.service.fixtures";
 
+const buttonHref = (html: unknown) =>
+  /bgcolor="#62a124"[^>]*><a href="([^"]*)"/.exec(String(html))?.[1];
+
 describe("sendMail", () => {
   useMailSendingEnv();
   afterEach(() => jest.restoreAllMocks());
@@ -124,45 +127,49 @@ describe("sendMail", () => {
       customMessage: message,
     });
 
-    expect(html).toContain(`<body><div>${message}</div></body>`);
+    expect(html).toContain(`<div>${message}</div></td>`);
   });
 
   const contractReminders: Record<
     ContractReminderCopy,
-    { subject: string; paragraphs: string[] }
+    { subject: string; paragraphs: string[]; button: string }
   > = {
     [ContractReminderCopy.Control]: {
-      subject: "Sign your membership contract to participate in actions",
+      subject: "One last step to join the Alliance",
       paragraphs: [
-        "Dear &lt;b&gt;Jo&amp;&lt;/b&gt;,",
-        "You signed up for the Alliance platform, but did not sign the membership contract. Please note that until you do, you will be unable to participate in Alliance actions.",
-        "The contract matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.",
-        "By signing, you’re telling other members that they can count on you. Because they’ve signed, you can count on them too.",
-        "You can sign your contract in the tasks page: https://app.example.org/tasks?cid=track-1",
-        'If you’d like to learn more about the Alliance and why reliability matters before signing, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">this video</a>.',
+        "Hi &lt;b&gt;Jo&amp;&lt;/b&gt;,",
+        "You’re almost done! You’ve created an account on the Alliance platform, but did not complete the membership agreement. Please note that until you do, you will be unable to participate in our projects.",
+        "You can complete the membership agreement here:",
+        "The agreement matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.",
+        "By completing it, you’re telling other members that they can count on you. Because they’ve completed it, you can count on them too. The world needs you.",
+        'If you’d like to learn more about the Alliance and why reliability matters before joining, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">this video</a>.',
         "Thank you for your interest in the Alliance.",
         "Best,",
         "The Alliance Team",
       ],
+      button:
+        "https://app.example.org/onboarding?step=agreement&amp;cid=track-1",
     },
     [ContractReminderCopy.AgreementV1]: {
-      subject: "The last step is entering into the membership agreement.",
+      subject: "One last step to join the Alliance",
       paragraphs: [
         "Hi &lt;b&gt;Jo&amp;&lt;/b&gt;,",
-        "You signed up for the Alliance, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.",
-        "By signing, you are letting other members know they can count on you, just like you can count on them.",
-        'You can enter into the agreement here: <a href="https://app.example.org/membership?cid=track-1">https://app.example.org/membership</a>',
-        'If you would like to learn more about the Alliance and why reliability matters before signing, you can watch this video: <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s</a>',
+        "You created an Alliance account, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.",
+        "By entering into it, you are letting other members know they can count on you, just like you can count on them.",
+        "You can enter into the agreement here:",
+        'If you would like to learn more about the Alliance and why reliability matters before joining, you can watch this video: <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s</a>',
         "Best,",
         "The Alliance Team",
       ],
+      button:
+        "https://app.example.org/onboarding?step=agreement&amp;cid=track-1",
     },
   };
 
   it.each(Object.values(ContractReminderCopy))(
     "sends the %s contract reminder, attributed to its member",
     async (copy) => {
-      const { subject, paragraphs } = contractReminders[copy];
+      const { subject, paragraphs, button } = contractReminders[copy];
       process.env.ALT_APP_URL = "https://app.example.org";
       const sent: ISendMailOptions[] = [];
       const { service, tracked } = await harness((options) => {
@@ -184,6 +191,7 @@ describe("sendMail", () => {
       expect(
         [...String(sent[0].html).matchAll(/<p>(.*?)<\/p>/g)].map((m) => m[1]),
       ).toEqual(paragraphs);
+      expect(buttonHref(sent[0].html)).toBe(button);
       expect(mail.cid).toBe("track-1");
       expect(tracked).toEqual([
         {
@@ -218,8 +226,27 @@ describe("sendMail", () => {
     ).toEqual([
       "Hi Jo,",
       "Your agreement has been reinstated. Task assignment resumes with the next action, and your participation is counted in action planning from this point.",
-      '<a href="https://app.example.org/tasks">https://app.example.org/tasks</a>',
     ]);
+    expect(buttonHref(sent[0].html)).toBe("https://app.example.org/tasks");
+  });
+
+  it("links the paused-agreement email to the onboarding agreement step", async () => {
+    process.env.ALT_APP_URL = "https://app.example.org";
+    const sent: ISendMailOptions[] = [];
+    const { service } = await harness((options) => {
+      sent.push(options);
+      return Promise.resolve({
+        accepted: ["member@example.org"],
+        messageId: "",
+      });
+    });
+
+    await service.sendContractSuspendedEmail("member@example.org", "Jo");
+
+    expect(sent[0].subject).toBe("Alliance agreement paused");
+    expect(buttonHref(sent[0].html)).toBe(
+      "https://app.example.org/onboarding?step=agreement",
+    );
   });
 
   it("reports a failed tracking insert as unsent, without sending", async () => {

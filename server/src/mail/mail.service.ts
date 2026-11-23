@@ -20,8 +20,9 @@ import {
 import { tagHtmlLinks } from "src/link-tracking/tag-links";
 import { reinstatementMessage } from "src/notifs/textnotifcontents";
 import {
-  membershipUrl,
+  onboardingAgreementUrl,
   passwordResetUrl,
+  siteBaseUrl,
   tasksUrl,
   verifyEmailUrl,
 } from "src/search/approutes";
@@ -62,12 +63,12 @@ const CONTRACT_REMINDER_CONTENT: Record<
   { subject: string; link: () => string }
 > = {
   [ContractReminderCopy.Control]: {
-    subject: "Sign your membership contract to participate in actions",
-    link: () => tasksUrl(true),
+    subject: "One last step to join the Alliance",
+    link: onboardingAgreementUrl,
   },
   [ContractReminderCopy.AgreementV1]: {
-    subject: "The last step is entering into the membership agreement.",
-    link: () => membershipUrl(true),
+    subject: "One last step to join the Alliance",
+    link: onboardingAgreementUrl,
   },
 };
 
@@ -123,10 +124,14 @@ export class MailService {
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
     const pug = await import("pug");
+    const siteUrl = siteBaseUrl();
+    if (!siteUrl) {
+      throw new Error("APP_URL is not set, so the email layout has no links");
+    }
 
     return pug.renderFile(
       __dirname + `/templates/${this.templates[emailType]}.pug`,
-      { ...context },
+      { ...context, siteUrl },
     );
   }
 
@@ -356,9 +361,10 @@ export class MailService {
     return this.sendMail({
       recipient: email,
       emailType: EmailType.ContractSuspended,
-      subject: "Alliance contract suspended",
+      subject: "Alliance agreement paused",
       context: {
         name,
+        link: onboardingAgreementUrl(),
       },
       tracking: null,
     });
@@ -410,14 +416,15 @@ export class MailService {
     recipient: string;
     emailType: WaitlistEmailType;
     url: string;
+    ownUrl: string;
     unsubscribeUrl: string;
   }): Promise<Mail> {
-    const { recipient, emailType, url, unsubscribeUrl } = params;
+    const { recipient, emailType, url, ownUrl, unsubscribeUrl } = params;
     return this.sendMail({
       recipient,
       emailType,
       subject: WAITLIST_SUBJECTS[emailType],
-      context: { url, unsubscribeUrl },
+      context: { url, ownUrl, unsubscribeUrl },
       tracking: null,
     });
   }

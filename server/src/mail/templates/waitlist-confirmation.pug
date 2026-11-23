@@ -1,13 +1,13 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title You’re on the Alliance waitlist
+extends layout.pug
 
-  body
-    p You’re on the Alliance waitlist. We’ll email you when you can join.
-    p Invite others to join with your personal link:
-    p #{url}
-    p If you didn’t join the waitlist, you can ignore this email.
-    include waitlist-unsubscribe.pug
+block title
+  | You’re on the Alliance waitlist
+
+block content
+  p You’re on the waitlist! We’ll email you when the project launches.
+  p Invite others to join with your personal link:
+  p
+    a(href=url)= url
+  +button(ownUrl, "Invite others")
+  p If you didn’t join the waitlist, you can ignore this email.
+  include waitlist-unsubscribe.pug

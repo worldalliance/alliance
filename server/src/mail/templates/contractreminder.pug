@@ -1,48 +1,46 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title= subject
+extends layout.pug
 
-  body
-    - const videoUrl = "https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s"
-    if copy === "control"
-      p Dear #{name},
+block title
+  | #{subject}
 
-      p You signed up for the Alliance platform, but did not sign the membership contract. Please note that until you do, you will be unable to participate in Alliance actions.
+block content
+  - const videoUrl = "https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s"
+  if copy === "control"
+    p Hi #{name},
 
-      p The contract matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.
+    p You’re almost done! You’ve created an account on the Alliance platform, but did not complete the membership agreement. Please note that until you do, you will be unable to participate in our projects.
 
-      p By signing, you’re telling other members that they can count on you. Because they’ve signed, you can count on them too.
+    p You can complete the membership agreement here:
+    +button(link, "Join the Alliance")
 
-      p You can sign your contract in the tasks page: #{link}
+    p The agreement matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.
 
-      p
-        | If you’d like to learn more about the Alliance and why reliability matters before signing, you can watch 
-        a(href=videoUrl) this video
-        | .
+    p By completing it, you’re telling other members that they can count on you. Because they’ve completed it, you can count on them too. The world needs you.
 
-      p Thank you for your interest in the Alliance.
+    p
+      | If you’d like to learn more about the Alliance and why reliability matters before joining, you can watch 
+      a(href=videoUrl) this video
+      | .
 
-      p Best,
-      p The Alliance Team
-    else if copy === "agreement_v1"
-      p Hi #{name},
+    p Thank you for your interest in the Alliance.
 
-      p You signed up for the Alliance, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.
+    p Best,
+    p The Alliance Team
+  else if copy === "agreement_v1"
+    p Hi #{name},
 
-      p By signing, you are letting other members know they can count on you, just like you can count on them.
+    p You created an Alliance account, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.
 
-      p
-        | You can enter into the agreement here: 
-        a(href=link)= link
+    p By entering into it, you are letting other members know they can count on you, just like you can count on them.
 
-      p
-        | If you would like to learn more about the Alliance and why reliability matters before signing, you can watch this video: 
-        a(href=videoUrl)= videoUrl
+    p You can enter into the agreement here:
+    +button(link, "Become a member")
 
-      p Best,
-      p The Alliance Team
-    else
-      - throw new Error(`unknown contract reminder copy: ${copy}`)
+    p
+      | If you would like to learn more about the Alliance and why reliability matters before joining, you can watch this video: 
+      a(href=videoUrl)= videoUrl
+
+    p Best,
+    p The Alliance Team
+  else
+    - throw new Error(`unknown contract reminder copy: ${copy}`)

@@ -1,13 +1,10 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title Alliance contract suspended
+extends layout.pug
 
-  body
-      p Hi #{name},
+block title
+  | Alliance agreement paused
 
-      p The Alliance relies on the dependability of all members. Since you missed an assigned non-optional task in each of the last 3 weeks you had tasks, we've suspended your agreement automatically.
-
-      p If this was in error or if you have any questions, please contact us.
+block content
+  p Hi #{name},
+  p The Alliance relies on the dependability of all members. Since you missed an assigned non-optional task in each of the last 3 weeks you had tasks, we've paused your agreement automatically. You can join again any time:
+  +button(link, "Join again")
+  p If this was in error or if you have any questions, please contact us.

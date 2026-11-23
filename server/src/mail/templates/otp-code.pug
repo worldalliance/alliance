@@ -1,10 +1,9 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title Your code is #{code}
+extends layout.pug
 
-  body
-    p Enter #{code} to #{action}.
-    p This code expires in #{expiry}. If you didn’t request it, you can ignore this email.
+block title
+  | Your code is #{code}
+
+block content
+  h3= code
+  p Enter the code above to #{action}
+  p.fine-print This code expires in #{expiry}. If you didn’t request it, you can ignore this email.
