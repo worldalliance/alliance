@@ -38,6 +38,17 @@ export const undecidedMessage = ({
   return `This is undecided when ${culprit} has no value. ${advice}`;
 };
 
+/** The split editor's names for a group's fallbacks, which its error messages point to. */
+export const PUT_HERE_LABEL = "Put them here";
+export const CONTINUE_LABEL = "Continue to the next group";
+
+export const groupFallbackMessage = ({ culprit }: { culprit: Culprit }) => {
+  const advice = `Pick what happens to those members: "${PUT_HERE_LABEL}" or "${CONTINUE_LABEL}".`;
+  if (culprit === "")
+    return `This can be undecided for some members. ${advice}`;
+  return `This is undecided for members when ${culprit} has no value. ${advice}`;
+};
+
 export const NEEDLESS_FALLBACK =
   "This fallback can't change the result: the value before `??` always has one. Remove the `?? …`.";
 
