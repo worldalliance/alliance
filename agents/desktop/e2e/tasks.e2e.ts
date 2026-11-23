@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { git } from "../src/main/repository/testing/fixture";
@@ -11,23 +11,13 @@ import {
   launch,
   workFolder,
 } from "./launch";
-
-const request = "Change hello to goodbye in a.txt";
-const taskFolder = () =>
-  test.info().outputPath("alliance-change-hello-to-goodbye-in-a-txt");
-
-async function repositoryReady(page: Page) {
-  await expect(
-    page.getByRole("button", { name: /^Alliance repository/ }),
-  ).toContainText("Ready");
-}
-
-// Creating a task, then its first turn, outlasts the default timeout on a loaded machine.
-const firstTurnDone = (page: Page) =>
-  expect(status(page)).toHaveText("Claude finished.", { timeout: 15_000 });
-
-const taskEntry = (page: Page, title = request) =>
-  page.getByRole("navigation").getByRole("button", { name: title }).first();
+import {
+  firstTurnDone,
+  repositoryReady,
+  request,
+  taskEntry,
+  taskFolder,
+} from "./task-helpers";
 
 test("a new task shows its setup, then its first conversation running in its own worktree", async () => {
   const { app, page } = await launch({

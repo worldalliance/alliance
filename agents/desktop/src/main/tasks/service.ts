@@ -1,4 +1,3 @@
-import path from "node:path";
 import { R, type Result } from "../../../../../common/src/result";
 import type { AgentKind } from "../../shared/agent-kind";
 import type { Conversation } from "../../shared/conversation";
@@ -16,13 +15,9 @@ import { conversationTitle } from "../conversations";
 import { fetchMain } from "../repository/fetch";
 import type { Git } from "../repository/git";
 import { localBranches, runNewWorktree, taskName } from "./create";
+import { listedTasks } from "./listed-tasks";
 import type { SavedTask, TaskStore } from "./store";
-import {
-  type Bun,
-  listWorktrees,
-  type Worktree,
-  WorktreeState,
-} from "./worktrees";
+import { type Bun, listWorktrees, type Worktree } from "./worktrees";
 
 type Creation = {
   key: string;
@@ -391,63 +386,18 @@ export class TaskService {
       ...next,
       tasks: [
         ...[...this.creations.values()].map(({ task }) => task),
-        ...this.listedTasks(),
+        ...listedTasks({
+          worktrees: this.worktrees,
+          saved: this.saved,
+          creating: new Set(
+            [...this.creations.values()].flatMap(({ name }) =>
+              name ? [name] : [],
+            ),
+          ),
+        }),
       ],
     };
     for (const listener of this.listeners) listener(this.state);
-  }
-
-  private listedTasks(): Task[] {
-    const creating = new Set(
-      [...this.creations.values()].flatMap(({ name }) => (name ? [name] : [])),
-    );
-    const saved = new Map(this.saved.map((task) => [task.worktree, task]));
-    const parents = new Map(
-      this.worktrees.flatMap(({ id, parent }) =>
-        id && parent ? [[id, parent]] : [],
-      ),
-    );
-    // A task nests under its parent, so one whose parents loop would show nowhere.
-    const inLoop = (key: string) => {
-      const seen = new Set<string>();
-      for (let at = parents.get(key); at; at = parents.get(at)) {
-        if (at === key || seen.has(at)) return true;
-        seen.add(at);
-      }
-      return false;
-    };
-    return this.worktrees.flatMap((worktree): Task[] => {
-      if (worktree.state === WorktreeState.Main) return [];
-      if (worktree.name && creating.has(worktree.name)) return [];
-      const key = worktree.id ?? worktree.path;
-      if (!key) return [];
-      const own = saved.get(key);
-      const looped = inLoop(key);
-      const parent =
-        worktree.parent && worktree.parent !== "main" && !looped
-          ? worktree.parent
-          : undefined;
-      return [
-        {
-          key,
-          title:
-            own?.title ??
-            worktree.name ??
-            (worktree.path ? path.basename(worktree.path) : key),
-          folder: worktree.path ?? undefined,
-          branch: worktree.branch ?? undefined,
-          parent,
-          createdByApp: own?.title !== undefined,
-          state: looped
-            ? {
-                status: TaskStatus.Broken,
-                problem:
-                  "The worktree records above it form a parent loop. Fix or remove those records.",
-              }
-            : listedState(worktree),
-        },
-      ];
-    });
   }
 }
 
@@ -464,36 +414,3 @@ const creatingTask = (params: {
   createdByApp: true,
   state: { status: TaskStatus.Creating, stage: params.stage },
 });
-
-function listedState(worktree: Worktree): Task["state"] {
-  if (worktree.prunable)
-    return {
-      status: TaskStatus.Broken,
-      problem:
-        "Its folder is gone. git worktree prune, run in Terminal from the repository, removes it from the list.",
-    };
-  switch (worktree.state) {
-    case WorktreeState.Main:
-    case WorktreeState.Recorded:
-    case WorktreeState.Unrecorded:
-      return {
-        status: TaskStatus.Ready,
-        problem: worktree.problem ?? undefined,
-      };
-    case WorktreeState.HalfCreated:
-      return { status: TaskStatus.NotFinished };
-    case WorktreeState.HalfRemoved:
-      return { status: TaskStatus.Removing };
-    case WorktreeState.Invalid:
-      return {
-        status: TaskStatus.Broken,
-        problem: worktree.problem
-          ? `Its records don't add up: ${worktree.problem}.`
-          : "Its records don't add up.",
-      };
-    default:
-      throw new Error(
-        `unknown worktree state: ${worktree.state satisfies never}`,
-      );
-  }
-}
