@@ -380,12 +380,13 @@ describe("Inbound MMS keywords (e2e)", () => {
       return logs.find((row) => row.blob?.body === body)!;
     };
 
-    it("pointing staff to the number's thread", async () => {
+    it("against the member, pointing staff to the number's thread", async () => {
       const logged = await inboundMessage("+14155559001", "subscribed hi");
 
       expect(logged.message).toBe(
         "Stopper texted: “subscribed hi” Reply in the thread on Texts.",
       );
+      expect(logged.userId).toBe(memberId);
       const thread = await ctx()
         .dataSource.getRepository(MmsThread)
         .findOneByOrFail({ phoneNumber: "+14155559001" });
@@ -420,6 +421,7 @@ describe("Inbound MMS keywords (e2e)", () => {
       expect(logged.message).toBe(
         "+14155559998, which no member has, texted: “stranger hi” Reply in the thread on Texts.",
       );
+      expect(logged.userId).toBeNull();
     });
 
     it("saying a number no member has opted out when it has", async () => {

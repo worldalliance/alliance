@@ -119,4 +119,16 @@ describe("Inbound MMS keywords for a shared number (e2e)", () => {
       .sort(byId);
     expect(attributed).toEqual([...memberIds].sort(byId));
   });
+
+  it("logs an unhandled text against no single member", async () => {
+    await inbound(SHARED, "shared hi");
+
+    const logs = await eventually(
+      () => eventLogRepo.findBy({ event: EventType.SmsInbound }),
+      (rows) => rows.some((row) => row.blob?.body === "shared hi"),
+    );
+    const logged = logs.find((row) => row.blob?.body === "shared hi")!;
+    expect(logged.message).toMatch(/^Sharer [AB], Sharer [AB] texted/);
+    expect(logged.userId).toBeNull();
+  });
 });

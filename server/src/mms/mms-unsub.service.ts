@@ -212,7 +212,7 @@ export class MmsUnsubService {
         body,
       },
       blob: { from, to, body },
-      userId: null,
+      userId: members.length === 1 ? members[0].id : null,
     });
   }
 }
