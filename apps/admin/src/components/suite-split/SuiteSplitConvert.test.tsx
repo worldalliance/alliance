@@ -73,14 +73,17 @@ it("starts using groups, or says why it can't", async () => {
   expect(converts).toBe(1);
 });
 
-it("reloads the suite once it uses groups, so the page shows the editor", async () => {
+it("reloads the suite and the suite list once it uses groups, so the page shows the editor and the action form hides its rules", async () => {
   const client = renderSection();
   const suite = queryKeys.actionSuiteAdmin(7);
+  const suites = queryKeys.actionSuitesAdmin();
   client.setQueryData(suite, {});
+  client.setQueryData(suites, []);
   await answerConfirm("Use groups");
-  await waitFor(() =>
-    expect(client.getQueryState(suite)?.isInvalidated).toBe(true),
-  );
+  await waitFor(() => {
+    expect(client.getQueryState(suite)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(suites)?.isInvalidated).toBe(true);
+  });
   expect(converts).toBe(1);
   await waitFor(() =>
     expect(document.activeElement).toBe(

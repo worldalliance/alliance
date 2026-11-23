@@ -59,6 +59,7 @@ const renderActionEditor = (isNew: boolean) => {
       actionId: isNew ? null : action.id,
       isNew,
       cohortParseFailed: false,
+      lookups,
       searchParams,
       setError,
     });

@@ -27,6 +27,9 @@ export function useSuiteSplit(suiteId: number, usesGroups: boolean) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.actionSuiteAdmin(suiteId),
       }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.actionSuitesAdmin(),
+      }),
     ]);
 
   const convert = useMutation({

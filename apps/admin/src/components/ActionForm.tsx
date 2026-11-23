@@ -5,10 +5,13 @@ import type {
 import { ActionSuiteDto, TagDto } from "@alliance/shared/client";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import { href, Link } from "react-router";
 import {
-  ActionFieldSection,
   actionFieldDefs,
+  ActionFieldSection,
+  inGroupSuite,
+  suiteKindUnknown,
   type ActionFieldDef,
 } from "../lib/actionFieldDefs";
 import ActionFormFields, { type ActionFieldInputs } from "./ActionFormFields";
@@ -133,6 +136,20 @@ const ActionForm: React.FC<ActionFormProps> = ({
     onCategoryChange,
   };
 
+  const kindUnknown = suiteKindUnknown(
+    { loading: suitesLoading, failed: suitesError },
+    form.suiteId,
+  );
+  const groupSuite = inGroupSuite(availableSuites, form.suiteId);
+  // Shown in a suite with groups once they hold values, which the suite
+  // refuses, such as on an action just moved into it. They stay shown after
+  // being cleared, so the control that cleared them keeps focus.
+  const ownRules =
+    cohortExpression != null || (form.prerequisiteActionIds ?? []).length > 0;
+  const rulesScope = `${actionId}:${form.suiteId}`;
+  const [heldRulesIn, setHeldRulesIn] = useState<string | null>(null);
+  if (ownRules && heldRulesIn !== rulesScope) setHeldRulesIn(rulesScope);
+
   const contentFields = getFieldsBySection(ActionFieldSection.Content);
   const settingsFields = getFieldsBySection(ActionFieldSection.Settings);
   const inUse = (fields: ActionFieldDef[]) =>
@@ -193,48 +210,83 @@ const ActionForm: React.FC<ActionFormProps> = ({
         );
       })}
 
-      <FormSection
-        title="Prerequisites"
-        description="Each member waits until every prerequisite resolves for them (they complete or withdraw, it excludes them, or its deadline passes) before the conditions below decide whether they participate."
-      >
-        <PrerequisitePicker
-          value={form.prerequisiteActionIds ?? []}
-          onChange={onPrerequisitesChange}
-          availableActions={allActions}
-          actionId={actionId}
-          loading={allActionsLoading}
-        />
-      </FormSection>
+      {groupSuite && (
+        <FormSection title="Groups">
+          <p className="text-sm text-gray-700">
+            This action&apos;s suite uses groups, which decide who takes part
+            and whether it&apos;s optional.{" "}
+            <Link
+              className="underline"
+              to={href("/suites/:suiteId", { suiteId: String(form.suiteId) })}
+            >
+              Edit the suite&apos;s groups
+            </Link>
+          </p>
+          {ownRules && (
+            <p role="alert" className="text-sm text-red-700">
+              Clear this action&apos;s prerequisites and participants below
+              before saving.
+            </p>
+          )}
+        </FormSection>
+      )}
+      {kindUnknown &&
+        (suitesError ? (
+          <p role="alert" className="text-sm text-red-700">
+            Suites failed to load, so optional work, prerequisites and
+            participants are hidden. Reload the page to try again.
+          </p>
+        ) : (
+          <p role="status" className="text-sm text-gray-700">
+            Optional work, prerequisites and participants show once suites load.
+          </p>
+        ))}
+      {!kindUnknown && (!groupSuite || heldRulesIn === rulesScope) && (
+        <>
+          <FormSection
+            title="Prerequisites"
+            description="Each member waits until every prerequisite resolves for them (they complete or withdraw, it excludes them, or its deadline passes) before the conditions below decide whether they participate."
+          >
+            <PrerequisitePicker
+              value={form.prerequisiteActionIds ?? []}
+              onChange={onPrerequisitesChange}
+              availableActions={allActions}
+              actionId={actionId}
+              loading={allActionsLoading}
+            />
+          </FormSection>
 
-      {/* TARGETING SECTION */}
-      <FormSection
-        title="Participating users"
-        description="Define which users should participate in this action using conditions and operators."
-      >
-        <CohortExpressionBuilder
-          value={cohortExpression}
-          onChange={onCohortExpressionChange}
-          availableTags={availableTags}
-          tagsLoading={tagsLoading}
-          tagsError={tagsError}
-          availableActions={allActions}
-          actionsLoading={allActionsLoading}
-          actionsError={allActionsLoadFailed}
-          availableUsers={availableUsers}
-          usersLoading={usersLoading}
-          usersError={usersError}
-          activeContractUserIds={activeContractUserIds}
-          onboarding={onboarding}
-        />
-        <OpenReferenceWarning
-          actionId={actionId}
-          expression={cohortExpression}
-          prerequisiteActionIds={form.prerequisiteActionIds ?? []}
-          memberActionStart={memberActionStart}
-          memberActionDeadline={memberActionDeadline}
-          actions={allActions}
-        />
-      </FormSection>
+          {/* TARGETING SECTION */}
+          <FormSection
+            title="Participating users"
+            description="Define which users should participate in this action using conditions and operators."
+          >
+            <CohortExpressionBuilder
+              value={cohortExpression}
+              onChange={onCohortExpressionChange}
+              availableTags={availableTags}
+              tagsLoading={tagsLoading}
+              tagsError={tagsError}
+              availableActions={allActions}
+              actionsLoading={allActionsLoading}
+              actionsError={allActionsLoadFailed}
+              availableUsers={availableUsers}
+              usersLoading={usersLoading}
+              usersError={usersError}
+              activeContractUserIds={activeContractUserIds}
+              onboarding={onboarding}
+            />
+            <OpenReferenceWarning
+              actionId={actionId}
+              expression={cohortExpression}
+              prerequisiteActionIds={form.prerequisiteActionIds ?? []}
+              memberActionStart={memberActionStart}
+              memberActionDeadline={memberActionDeadline}
+              actions={allActions}
+            />
+          </FormSection>
+        </>
+      )}
 
       {/* ACTION BUTTONS */}
       <div className="flex justify-end gap-3 pt-2">
