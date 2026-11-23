@@ -71,6 +71,29 @@ describe("mountKoraReview: reacting and grading", () => {
     expectValid(saved);
   });
 
+  it("measures each reply's words a bounded number of times per reaction, however many paragraphs it has", async () => {
+    await openReplies();
+    const words = reply().querySelectorAll(".tk").length;
+    const paragraphs = new Set(
+      [...reply().querySelectorAll(".tk")].map((t) => t.parentElement),
+    ).size;
+    const measure = Element.prototype.getBoundingClientRect;
+    let reads = 0;
+    Element.prototype.getBoundingClientRect = function () {
+      reads++;
+      return measure.call(this);
+    };
+    try {
+      reply().focus();
+      press("ArrowDown");
+      press("2");
+    } finally {
+      Element.prototype.getBoundingClientRect = measure;
+    }
+    expect(paragraphs).toBeGreaterThan(3);
+    expect(reads).toBeLessThan(words * 25);
+  });
+
   it("opens the picker on a click, and gives a thumbs up, a thumbs down or nothing for 2, 3 or 4 clicks", async () => {
     await openReplies();
     const line = reply().querySelector(".tk")!;

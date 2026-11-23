@@ -1,6 +1,6 @@
 import type { ReactionListCtx } from "./context.js";
 import { ICON, LABEL } from "./reactions.js";
-import { ReactionKind, type Passage, type View } from "./types.js";
+import { ReactionKind, type Line, type Passage, type View } from "./types.js";
 
 // "Your reactions": each reacted paragraph once, line for line as in the reply, its reacted lines picked out with
 // their reaction beside them. Neighbouring reacted paragraphs share an entry, so a later entry in the same turn
@@ -41,11 +41,12 @@ export function createReactionList(ctx: ReactionListCtx) {
       inPassage: passage.has(i),
     }));
   }
-  const blockOf = (v: View, line: number) =>
-    v.tokens[lines(v)[line]!.first]!.blk;
+  // Takes measured lines, since measuring reads every word's layout and a long reply would freeze if each lookup did it.
+  const blockOf = (v: View, ls: Line[]) => (line: number) =>
+    v.tokens[ls[line]!.first]!.blk;
   function groups(v: View): Row[][] {
     const ls = lines(v);
-    const blk = (i: number) => blockOf(v, i);
+    const blk = blockOf(v, ls);
     const rows = rowsOf(v);
     const out: Row[][] = [];
     let group: Row[] | null = null;
@@ -106,20 +107,13 @@ export function createReactionList(ctx: ReactionListCtx) {
   /** The paragraphs a 👎 passage spans, line for line, for the grading card. */
   function passageContext(p: Passage): HTMLElement {
     const v = S.views[p.mi]!;
-    const from = blockOf(
-        v,
-        lines(v).findIndex((l) => l.first === p.first.first),
-      ),
-      to = blockOf(
-        v,
-        lines(v).findIndex((l) => l.first === p.last.first),
-      );
+    const ls = lines(v);
+    const blk = blockOf(v, ls);
+    const from = blk(ls.findIndex((l) => l.first === p.first.first)),
+      to = blk(ls.findIndex((l) => l.first === p.last.first));
     return paragraphs(
       v,
-      rowsOf(v).filter((r) => {
-        const b = blockOf(v, r.line);
-        return b >= from && b <= to;
-      }),
+      rowsOf(v).filter((r) => blk(r.line) >= from && blk(r.line) <= to),
     );
   }
   function paragraphs(v: View, rows: Row[]): HTMLElement {
