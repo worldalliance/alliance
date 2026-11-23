@@ -3,12 +3,13 @@ import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router";
+import React, { useMemo } from "react";
+import { Link, useSearchParams } from "react-router";
 import ActionListCard from "../components/ActionListCard";
 import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
 import ActionTimeline from "../components/ActionTimeline";
 import CreateActionMenu from "../components/CreateActionMenu";
+import { readBuckets, writeBuckets } from "../lib/actionListBuckets";
 import {
   ACTION_STATUS_BUCKET_LABELS,
   ActionStatusBucket,
@@ -40,16 +41,16 @@ const ActionsList: React.FC = () => {
     [list.data],
   );
   const error = list.isError ? actionsLoadError(list.error) : null;
-  const [shownBuckets, setShownBuckets] = useState<
-    ReadonlySet<ActionStatusBucket>
-  >(
-    () =>
-      new Set([
-        ActionStatusBucket.Active,
-        ActionStatusBucket.Pending,
-        ActionStatusBucket.Draft,
-      ]),
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const shownBuckets = readBuckets(searchParams.get("status"));
+  const setShownBuckets = (buckets: ReadonlySet<ActionStatusBucket>) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      const status = writeBuckets(buckets);
+      if (status === null) next.delete("status");
+      else next.set("status", status);
+      return next;
+    });
 
   const participantsById = useActionParticipants(actions);
 

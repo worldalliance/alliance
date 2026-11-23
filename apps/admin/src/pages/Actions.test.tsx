@@ -2,8 +2,14 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { act, render, renderHook, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import ActionsList from "./Actions";
@@ -32,15 +38,23 @@ beforeEach(() => {
   served = loaded;
 });
 
-const renderPage = (query = queryWrapper()) =>
-  render(
-    <MemoryRouter>
-      <ToastProvider>
-        <ActionsList />
-      </ToastProvider>
-    </MemoryRouter>,
-    query,
+const renderPage = (query = queryWrapper(), url = "/") => {
+  const router = createMemoryRouter(
+    [
+      {
+        path: "*",
+        element: (
+          <ToastProvider>
+            <ActionsList />
+          </ToastProvider>
+        ),
+      },
+    ],
+    { initialEntries: [url] },
   );
+  render(<RouterProvider router={router} />, query);
+  return router;
+};
 
 it("lists the loaded actions that are not archived", async () => {
   renderPage();
@@ -138,4 +152,46 @@ it("links an in-progress suite card to its suite and each action to itself, nest
   ]);
   expect(section.querySelector("a a")).toBeNull();
   expect(section.textContent).toContain("1 active · 2 draft");
+});
+
+it("keeps the selected statuses when the page opens from a link", async () => {
+  served = [adminActionListItem(4, "Rally", { status: "completed" })];
+  renderPage(queryWrapper(), "/actions?status=completed");
+
+  expect(await screen.findAllByText("Rally")).toHaveLength(2);
+});
+
+it("writes the status filter to the URL, leaving it out at the defaults and keeping other params", async () => {
+  served = [
+    adminActionListItem(1, "Call your rep"),
+    adminActionListItem(4, "Rally", { status: "completed" }),
+  ];
+  const router = renderPage(queryWrapper(), "/actions?other=1");
+  // The list below the timeline always names Rally; the timeline only when shown.
+  const rallyShownInTimeline = () => screen.getAllByText("Rally").length === 2;
+  const toggleCompleted = async () => {
+    const trigger = await screen.findByRole("button", { name: /^Actions/ });
+    if (trigger.getAttribute("aria-expanded") !== "true") {
+      fireEvent.click(trigger);
+    }
+    fireEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Completed" }),
+    );
+  };
+
+  await toggleCompleted();
+  expect(router.state.location.search).toBe(
+    "?other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
+  );
+  expect(rallyShownInTimeline()).toBe(true);
+
+  await toggleCompleted();
+  expect(router.state.location.search).toBe("?other=1");
+  expect(rallyShownInTimeline()).toBe(false);
+
+  await act(() => router.navigate(-1));
+  expect(router.state.location.search).toBe(
+    "?other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
+  );
+  expect(rallyShownInTimeline()).toBe(true);
 });
