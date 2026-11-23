@@ -46,6 +46,12 @@ export type SplitWarning = { groupId: string; message: string };
 export const ONLY_LISTS_AND_FORMULAS =
   "Groups can read only member lists and formulas for now: waiting for earlier actions and settings isn't built yet.";
 
+/** Only a condition that can be undecided keeps its fallback, so a stored fallback always means something. */
+export const storedFallback = (params: {
+  mayBeUnknown: boolean;
+  fallback: GroupFallback | null;
+}): GroupFallback | null => (params.mayBeUnknown ? params.fallback : null);
+
 export function groupRule(fallback: GroupFallback | null): ResultRule {
   return {
     type: { kind: TypeKind.Boolean },
@@ -124,7 +130,10 @@ export function checkSplit(params: {
     groups.push({
       ...kept,
       condition: checked.value.tree,
-      fallback: checked.value.mayBeUnknown ? draft.fallback : null,
+      fallback: storedFallback({
+        mayBeUnknown: checked.value.mayBeUnknown,
+        fallback: draft.fallback,
+      }),
       noRequiredWorkTick: tick,
     });
   }
