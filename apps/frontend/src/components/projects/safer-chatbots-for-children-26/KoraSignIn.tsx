@@ -18,14 +18,9 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
 import { RotateCw } from "lucide-react";
 import posthog from "posthog-js";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { getApiUrl } from "../../../lib/config";
+import { codeDigits, useSecondsUntil } from "../../../lib/otpCode";
 import { posthogRequestContext } from "../../../lib/posthogRequestContext";
 import { useWebOtpCode } from "../../../lib/useWebOtpCode";
 import { ACCOUNT_BUTTON, EmailDivider } from "../../../onboarding/chrome";
@@ -48,21 +43,6 @@ function ErrorText({ children }: { children: ReactNode }) {
       {children}
     </p>
   );
-}
-
-const codeDigits = (text: string): string =>
-  text.replace(/\D/g, "").slice(0, OTP_CODE_LENGTH);
-
-const secondsUntil = (iso: string): number =>
-  Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / 1000));
-
-function useSecondsUntil(iso: string): number {
-  const [seconds, setSeconds] = useState(() => secondsUntil(iso));
-  useEffect(() => {
-    const timer = setInterval(() => setSeconds(secondsUntil(iso)), 1000);
-    return () => clearInterval(timer);
-  }, [iso]);
-  return seconds;
 }
 
 function CodeStep({
