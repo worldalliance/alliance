@@ -119,13 +119,13 @@ describe("ContractReminderWorker (e2e)", () => {
     for (const [user, copy, subject] of [
       [
         control,
-        ContractReminderCopy.Control,
-        "Sign your membership contract to participate in actions",
+        ContractReminderCopy.ControlV2,
+        "One last step to join the Alliance",
       ],
       [
         variant,
-        ContractReminderCopy.AgreementV1,
-        "The last step is entering into the membership agreement.",
+        ContractReminderCopy.AgreementV2,
+        "One last step to join the Alliance",
       ],
     ] as const) {
       const mails = await remindersTo(user.email);

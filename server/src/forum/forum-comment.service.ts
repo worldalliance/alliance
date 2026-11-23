@@ -333,11 +333,10 @@ export class ForumCommentService {
             await this.mailService.sendMail({
               recipient: parentAuthor.email!,
               emailType: EmailType.ForumReply,
-              subject: `${authorDto.displayName} replied to your comment on ${post.title}`,
+              subject: `${authorDto.displayName} replied to your comment`,
               context: {
                 url,
                 displayName: authorDto.displayName,
-                postTitle: post.title,
               },
               tracking,
             });

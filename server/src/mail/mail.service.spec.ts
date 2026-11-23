@@ -4,8 +4,13 @@ import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
+import { otpEmail, OtpPurpose } from "src/otp/otp-copy";
 import { mailSendError, SendErrorKind } from "src/utils/send-error";
-import { ContractReminderCopy } from "./contract-reminder-copy";
+import {
+  CONTRACT_REMINDER_COPY,
+  ContractReminderCopy,
+  type SentContractReminderCopy,
+} from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 import {
   MailNotSentError,
@@ -13,6 +18,9 @@ import {
   MailUnrecordedError,
 } from "./mail.service";
 import { harness, useMailSendingEnv } from "./mail.service.fixtures";
+
+const buttonHref = (html: unknown) =>
+  /bgcolor="#62a124"[^>]*><a href="([^"]*)"/.exec(String(html))?.[1];
 
 describe("sendMail", () => {
   useMailSendingEnv();
@@ -112,6 +120,7 @@ describe("sendMail", () => {
 
     expect(mail.cid).toBe("track-1");
     expect(html).toContain("https://app.example.org/tasks?cid=track-1");
+    expect(html).toContain('href="https://app.example.org/people"');
   });
 
   it("places a custom email's block HTML in the body without a paragraph around it", async () => {
@@ -124,45 +133,49 @@ describe("sendMail", () => {
       customMessage: message,
     });
 
-    expect(html).toContain(`<body><div>${message}</div></body>`);
+    expect(html).toContain(`<div>${message}</div></td>`);
   });
 
   const contractReminders: Record<
-    ContractReminderCopy,
-    { subject: string; paragraphs: string[] }
+    SentContractReminderCopy,
+    { subject: string; paragraphs: string[]; button: string }
   > = {
-    [ContractReminderCopy.Control]: {
-      subject: "Sign your membership contract to participate in actions",
+    [ContractReminderCopy.ControlV2]: {
+      subject: "One last step to join the Alliance",
       paragraphs: [
-        "Dear &lt;b&gt;Jo&amp;&lt;/b&gt;,",
-        "You signed up for the Alliance platform, but did not sign the membership contract. Please note that until you do, you will be unable to participate in Alliance actions.",
-        "The contract matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.",
-        "By signing, you’re telling other members that they can count on you. Because they’ve signed, you can count on them too.",
-        "You can sign your contract in the tasks page: https://app.example.org/tasks?cid=track-1",
-        'If you’d like to learn more about the Alliance and why reliability matters before signing, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">this video</a>.',
+        "Hi &lt;b&gt;Jo&amp;&lt;/b&gt;,",
+        "You’re almost done! You’ve created an account on the Alliance platform, but did not complete the membership agreement. Please note that until you do, you will be unable to participate in our projects.",
+        "You can complete the membership agreement here:",
+        "The agreement matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.",
+        "By completing it, you’re telling other members that they can count on you. Because they’ve completed it, you can count on them too. The world needs you.",
+        'If you’d like to learn more about the Alliance and why reliability matters before joining, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">this video</a>.',
         "Thank you for your interest in the Alliance.",
         "Best,",
         "The Alliance Team",
       ],
+      button:
+        "https://app.example.org/onboarding?step=agreement&amp;cid=track-1",
     },
-    [ContractReminderCopy.AgreementV1]: {
-      subject: "The last step is entering into the membership agreement.",
+    [ContractReminderCopy.AgreementV2]: {
+      subject: "One last step to join the Alliance",
       paragraphs: [
         "Hi &lt;b&gt;Jo&amp;&lt;/b&gt;,",
-        "You signed up for the Alliance, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.",
-        "By signing, you are letting other members know they can count on you, just like you can count on them.",
-        'You can enter into the agreement here: <a href="https://app.example.org/membership?cid=track-1">https://app.example.org/membership</a>',
-        'If you would like to learn more about the Alliance and why reliability matters before signing, you can watch this video: <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s</a>',
+        "You created an Alliance account, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.",
+        "By entering into it, you are letting other members know they can count on you, just like you can count on them.",
+        "You can enter into the agreement here:",
+        'If you would like to learn more about the Alliance and why reliability matters before joining, you can watch this video: <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s</a>',
         "Best,",
         "The Alliance Team",
       ],
+      button:
+        "https://app.example.org/onboarding?step=agreement&amp;cid=track-1",
     },
   };
 
-  it.each(Object.values(ContractReminderCopy))(
+  it.each(Object.values(CONTRACT_REMINDER_COPY))(
     "sends the %s contract reminder, attributed to its member",
     async (copy) => {
-      const { subject, paragraphs } = contractReminders[copy];
+      const { subject, paragraphs, button } = contractReminders[copy];
       process.env.ALT_APP_URL = "https://app.example.org";
       const sent: ISendMailOptions[] = [];
       const { service, tracked } = await harness((options) => {
@@ -184,6 +197,7 @@ describe("sendMail", () => {
       expect(
         [...String(sent[0].html).matchAll(/<p>(.*?)<\/p>/g)].map((m) => m[1]),
       ).toEqual(paragraphs);
+      expect(buttonHref(sent[0].html)).toBe(button);
       expect(mail.cid).toBe("track-1");
       expect(tracked).toEqual([
         {
@@ -218,8 +232,27 @@ describe("sendMail", () => {
     ).toEqual([
       "Hi Jo,",
       "Your agreement has been reinstated. Task assignment resumes with the next action, and your participation is counted in action planning from this point.",
-      '<a href="https://app.example.org/tasks">https://app.example.org/tasks</a>',
     ]);
+    expect(buttonHref(sent[0].html)).toBe("https://app.example.org/tasks");
+  });
+
+  it("links the paused-agreement email to the onboarding agreement step", async () => {
+    process.env.ALT_APP_URL = "https://app.example.org";
+    const sent: ISendMailOptions[] = [];
+    const { service } = await harness((options) => {
+      sent.push(options);
+      return Promise.resolve({
+        accepted: ["member@example.org"],
+        messageId: "",
+      });
+    });
+
+    await service.sendContractSuspendedEmail("member@example.org", "Jo");
+
+    expect(sent[0].subject).toBe("Alliance agreement paused");
+    expect(buttonHref(sent[0].html)).toBe(
+      "https://app.example.org/onboarding?step=agreement",
+    );
   });
 
   it("reports a failed tracking insert as unsent, without sending", async () => {
@@ -233,7 +266,7 @@ describe("sendMail", () => {
         userId: 7,
         email: "member@example.org",
         name: "Jane",
-        copy: ContractReminderCopy.Control,
+        copy: ContractReminderCopy.ControlV2,
       }),
     ).rejects.toBeInstanceOf(MailNotSentError);
 
@@ -252,7 +285,7 @@ describe("sendMail", () => {
         userId: 7,
         email: "member@example.org",
         name: "Jane",
-        copy: ContractReminderCopy.Control,
+        copy: ContractReminderCopy.ControlV2,
       }),
     ).rejects.toBeInstanceOf(MailNotSentError);
     expect(discarded).toEqual(["track-1"]);
@@ -369,27 +402,70 @@ describe("sendMail", () => {
   );
 });
 
-describe("waitlist templates", () => {
-  it.each([EmailType.WaitlistConfirmation, EmailType.WaitlistLink])(
-    "links %s emails to unsubscribing",
-    async (emailType) => {
-      const moduleRef = await Test.createTestingModule({
+describe("templates", () => {
+  const mailService = async () =>
+    (
+      await Test.createTestingModule({
         providers: [
           MailService,
           { provide: MailerService, useValue: {} },
           { provide: getRepositoryToken(Mail), useValue: {} },
           { provide: MessageTrackingService, useValue: {} },
         ],
-      }).compile();
+      }).compile()
+    ).get(MailService);
 
-      const html = await moduleRef.get(MailService).renderHtml(emailType, {
+  const unsubscribeUrl = "https://example.org/waitlist/unsubscribe?token=t";
+
+  it.each([EmailType.WaitlistConfirmation, EmailType.WaitlistLink])(
+    "links %s emails to unsubscribing",
+    async (emailType) => {
+      const html = await (
+        await mailService()
+      ).renderHtml(emailType, {
         url: "https://example.org/share",
-        unsubscribeUrl: "https://example.org/waitlist/unsubscribe?token=t",
+        ownUrl: "https://example.org/waitlist?link=own",
+        unsubscribeUrl,
       });
 
       expect(html).toContain(
-        '<a href="https://example.org/waitlist/unsubscribe?token=t">Unsubscribe from waitlist emails</a>',
+        `<a href="${unsubscribeUrl}">Unsubscribe from waitlist emails</a>`,
       );
     },
   );
+
+  it.each([
+    [EmailType.ForumReply, { url: "https://example.org/c", displayName: "Jo" }],
+    [EmailType.KoraLaunch, { url: "https://example.org/c" }],
+    [EmailType.KoraMoreReviews, { url: "https://example.org/c" }],
+  ])("links the %s email's button to its url", async (emailType, context) => {
+    const html = await (await mailService()).renderHtml(emailType, context);
+
+    expect(buttonHref(html)).toBe("https://example.org/c");
+  });
+
+  it.each(Object.values(OtpPurpose))(
+    "shows the %s code without a button",
+    async (purpose) => {
+      const { context } = otpEmail({ purpose, code: "123456" });
+
+      const html = await (
+        await mailService()
+      ).renderHtml(EmailType.OtpCode, context);
+
+      expect(html).toContain("<h3>123456</h3>");
+      expect(buttonHref(html)).toBeUndefined();
+    },
+  );
+
+  it("refuses to render a button with no link", async () => {
+    const service = await mailService();
+
+    await expect(
+      service.renderHtml(EmailType.WaitlistLink, {
+        url: "https://example.org/share",
+        unsubscribeUrl,
+      }),
+    ).rejects.toThrow('email button "Invite others" has no url');
+  });
 });

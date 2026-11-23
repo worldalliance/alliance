@@ -1,13 +1,8 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title Safer Chatbots for Children: reviews are open
+extends layout.pug
 
-  body
-    p The reviews you signed up for are ready. It takes about an hour, and you can stop and pick up where you left off.
-    p
-      | Start reviewing:
-      |
-      a(href=url)= url
+block title
+  | Safer Chatbots for Children: Project launch
+
+block content
+  p The project has launched and your reviews are ready. It takes about an hour, and you can stop and pick up where you left off.
+  +button(url, "Start reviewing")
