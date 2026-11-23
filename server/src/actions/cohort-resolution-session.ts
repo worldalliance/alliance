@@ -62,6 +62,7 @@ export class CohortResolutionSession {
   >();
   readonly actionWithEventsById = new Map<number, Promise<Action | null>>();
   readonly admittedActionIdsByUser = new Map<number, Promise<Set<number>>>();
+  readonly optionalRowActionIdsByUser = new Map<number, Promise<Set<number>>>();
   readonly admittedUserIdsByAction = new Map<number, Promise<Set<number>>>();
   readonly decisionsByUser = new Map<number, Promise<Map<number, boolean>>>();
   readonly decisionsByAction = new Map<number, Promise<Map<number, boolean>>>();

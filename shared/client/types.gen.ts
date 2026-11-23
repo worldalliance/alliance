@@ -2448,7 +2448,7 @@ export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed'
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
-export type ViewerOptionalReason = 'contract_gap';
+export type ViewerOptionalReason = 'contract_gap' | 'split_group';
 
 export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
 

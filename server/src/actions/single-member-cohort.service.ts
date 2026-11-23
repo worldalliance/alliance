@@ -152,7 +152,7 @@ export class SingleMemberCohortService {
         const now = new Date();
         if (!canMissActionDeadline(action, now)) return false;
 
-        const [terminalUserIds, inCohort] = await Promise.all([
+        const [terminalUserIds, inCohort, optionalRows] = await Promise.all([
           this.prerequisiteProgressService.loadTerminalUserIds(
             actionId,
             user.id,
@@ -163,13 +163,18 @@ export class SingleMemberCohortService {
             visitedActionIds: new Set(visitedActionIds).add(actionId),
             session,
           }),
+          this.cohortAdmissionService.loadOptionalRowActionIds(
+            user.id,
+            session,
+          ),
         ]);
         // `user` must have `contractEvents` and `awayRanges` loaded; without
         // them the contract and away checks silently read false.
         return computeMissedActionDeadline({
           action,
           user,
-          inCohort,
+          // A split group's row can make the action optional for them alone.
+          inCohort: inCohort && !optionalRows.has(actionId),
           hasTerminalActivity: terminalUserIds.size > 0,
           now,
         });
