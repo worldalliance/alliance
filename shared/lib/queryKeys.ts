@@ -157,6 +157,8 @@ export const queryKeys = {
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   koraParticipantCount: () => ["koraParticipantCount"] as const,
   koraReview: () => ["koraReviewState"] as const,
+  koraActionReview: (actionId: number) =>
+    ["koraActionReviewState", actionId] as const,
   koraHome: () => ["koraReviewHome"] as const,
   koraState: () => ["koraState"] as const,
   webHandoff: () => ["webHandoffCreate"] as const,

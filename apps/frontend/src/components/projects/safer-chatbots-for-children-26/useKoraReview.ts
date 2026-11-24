@@ -1,9 +1,11 @@
+import { KoraReviewPhase } from "@alliance/common/kora";
 import type {
   KoraAssignedTranscript,
   KoraSaveResult,
 } from "@alliance/kora-review";
 import { parseKoraTranscript } from "@alliance/kora-review/parse";
 import {
+  koraActionReviewState,
   koraReviewHome,
   koraReviewMore,
   koraReviewNext,
@@ -68,5 +70,28 @@ export function useKoraHome() {
     queryFn: () =>
       koraReviewHome({ throwOnError: true }).then((res) => res.data),
     retry: retryUnlessRefused(1),
+  });
+}
+
+/** A Kora review action's own assignment; the server completes the action when it finishes or finds nothing to review. */
+export function useKoraActionReview(actionId: number, enabled: boolean) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.koraActionReview(actionId),
+    queryFn: async () => {
+      const { data } = await koraActionReviewState({
+        path: { id: actionId },
+        throwOnError: true,
+      });
+      if (data.phase !== KoraReviewPhase.Reviewing) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.action(actionId),
+        });
+      }
+      return data;
+    },
+    enabled,
+    retry: retryUnlessRefused(1),
+    staleTime: Infinity,
   });
 }

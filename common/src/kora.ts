@@ -9,6 +9,10 @@ export const KORA_PROJECT_PATH = "/projects/safer-chatbots-for-children";
 
 export const KORA_REVIEW_PATH = `${KORA_PROJECT_PATH}/review`;
 
+/** A Kora review action's own review page, without the project's navigation; the mobile app shows it in a WebView. */
+export const koraActionReviewPath = (actionId: number) =>
+  `/actions/${actionId}/review`;
+
 export enum KoraProjectStatus {
   Pending = "pending",
   Active = "active",

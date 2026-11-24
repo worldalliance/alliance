@@ -1,5 +1,5 @@
-import { KORA_REVIEW_PATH } from "@alliance/common/kora";
-import { router } from "expo-router";
+import { KORA_REVIEW_PATH, koraActionReviewPath } from "@alliance/common/kora";
+import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 import { WebView } from "react-native-webview";
 import Button, { ButtonColor } from "../../components/system/Button";
@@ -9,8 +9,12 @@ import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { colors } from "../../lib/style/colors";
 import { useWebHandoffCode } from "../../lib/useWebHandoff";
 
-/** Kora reviews in a webview, signed in with a single-use handoff code. */
+/** Kora reviews in a webview, signed in with a single-use handoff code: an action's own review, or more reviews without one. */
 export default function KoraReviewScreen() {
+  const { actionId } = useLocalSearchParams<{ actionId?: string }>();
+  const path = actionId
+    ? koraActionReviewPath(Number(actionId))
+    : KORA_REVIEW_PATH;
   const handoff = useWebHandoffCode();
   // The review tool's note drafts and unsaved annotations live in the WebView.
   useBlockResumeRestart(true);
@@ -53,7 +57,7 @@ export default function KoraReviewScreen() {
       </View>
     );
   }
-  const uri = `${getApiUrl()}/auth/web-handoff/redeem?code=${encodeURIComponent(handoff.data)}&next=${encodeURIComponent(KORA_REVIEW_PATH)}`;
+  const uri = `${getApiUrl()}/auth/web-handoff/redeem?code=${encodeURIComponent(handoff.data)}&next=${encodeURIComponent(path)}`;
   return (
     <View className="flex-1 bg-white">
       {close}
