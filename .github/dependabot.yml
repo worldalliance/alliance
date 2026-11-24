@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # The CLIs the Alliance agent bundles. A bump's PR fails until someone records the new version's captures, which the failing test explains.
+  - package-ecosystem: bun
+    directory: /agents/desktop
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: "@anthropic-ai/claude-code"
+      - dependency-name: "@openai/codex"
+    # Claude Code's latest tag is its daily channel, so a release waits about as long as its stable tag lags.
+    cooldown:
+      default-days: 7
