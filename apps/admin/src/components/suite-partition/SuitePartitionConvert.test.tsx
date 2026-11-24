@@ -15,10 +15,7 @@ serveApi(
       converts += 1;
       return convertStatus === 201
         ? Response.json({}, { status: 201 })
-        : Response.json(
-            { message: "Clear them first on: Call." },
-            { status: convertStatus },
-          );
+        : Response.json({ message: "Refused." }, { status: convertStatus });
     },
   }),
 );
@@ -65,11 +62,9 @@ it("partitions the suite, or says why it can't", async () => {
   convertStatus = 400;
   renderSection();
   await answerConfirm("Partition suite");
-  expect(
-    (await screen.findByText("Clear them first on: Call.")).getAttribute(
-      "role",
-    ),
-  ).toBe("alert");
+  expect((await screen.findByText("Refused.")).getAttribute("role")).toBe(
+    "alert",
+  );
   expect(converts).toBe(1);
 });
 

@@ -67,7 +67,9 @@ describe("Suite partitions (e2e)", () => {
       .getRepository(Action)
       .update(actions[0].id, { prerequisiteActionIds: [actions[1].id] });
     const refused = await fx.convert(suite.id).expect(400);
-    expect(refused.body.message).toContain("Clear them first on: Call.");
+    expect(refused.body.message).toBe(
+      'A partition replaces each action\'s own participants and prerequisites, so clear them first on: Call. On each action, use "Clear expression" under "Participating users" and remove every prerequisite under "Prerequisites", then save.',
+    );
 
     await ctx.dataSource
       .getRepository(Action)

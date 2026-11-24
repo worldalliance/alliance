@@ -90,7 +90,7 @@ export class SuitePartitionsService {
       );
       if (ruled.length > 0) {
         throw new BadRequestException(
-          `A partition replaces each action's own participants and prerequisites. Clear them first on: ${ruled.map((action) => action.name).join(", ")}.`,
+          `A partition replaces each action's own participants and prerequisites, so clear them first on: ${ruled.map((action) => action.name).join(", ")}. On each action, use "Clear expression" under "Participating users" and remove every prerequisite under "Prerequisites", then save.`,
         );
       }
       await manager.insert(SuitePartition, { suiteId, createdById: userId });
