@@ -24,10 +24,11 @@ const appData =
       ? path.resolve(process.env.XDG_CONFIG_HOME)
       : path.join(homedir(), ".config");
 
-/** The development app's CLI folders. */
-export const devFolders = (): AgentFolders => ({
+/** The development app's CLI folders, with an unused bin, since the scripted task starts no CLI by bare name. */
+export const devFolders = (scratch: string): AgentFolders => ({
   claudeConfigDir: devClaudeConfigDir(appData),
   codexHome: devCodexHome(appData),
+  bin: path.join(scratch, "bin"),
 });
 
 /** The CLI a development build bundles, or the one its variable names. */

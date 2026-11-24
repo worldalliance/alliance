@@ -15,7 +15,7 @@ export type CodexCli = {
   folders: AgentFolders;
 };
 
-/** Every Codex command but the version check takes these, ahead of its own arguments, so no run sends analytics or feedback or checks for updates, which the app's releases manage. */
+/** Every Codex command the app runs but its version check, and every one its agents run through the codex launcher, takes these ahead of its own arguments, so no run sends analytics or feedback or checks for updates, which the app's releases manage, and its commands run in a non-login shell, where neither a profile nor macOS's path_helper moves the launchers off the front of PATH. */
 export const codexConfigArgs = [
   "-c",
   "analytics.enabled=false",
@@ -23,6 +23,8 @@ export const codexConfigArgs = [
   "feedback.enabled=false",
   "-c",
   "check_for_update_on_startup=false",
+  "-c",
+  "allow_login_shell=false",
 ] as const;
 
 const codexCommand = (cli: CodexCli): CliCommand => ({

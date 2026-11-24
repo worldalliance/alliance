@@ -10,6 +10,7 @@ export const stubCli: ClaudeCli = {
   folders: {
     claudeConfigDir: "/nonexistent/claude",
     codexHome: "/nonexistent/codex",
+    bin: "/nonexistent/bin",
   },
 };
 

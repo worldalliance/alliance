@@ -9,14 +9,14 @@ import {
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
-import { R } from "../../../../common/src/result";
+import { R, type Result } from "../../../../common/src/result";
 import { AgentKind } from "../shared/agent-kind";
 import { repositoryFolder } from "../shared/repository";
+import { writeAgentLaunchers } from "./agent/agent-launchers";
 import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
 import { createClaudeBackend } from "./agent/claude/backend";
 import { isSignedInToCodex, signInToCodex } from "./agent/codex/auth";
 import { createCodexBackend } from "./agent/codex/backend";
-import { createCodexHome } from "./agent/codex/process";
 import { findExecutable } from "./cli-executable";
 import { ConversationStore } from "./conversations";
 import { describeError } from "./describe-error";
@@ -263,6 +263,7 @@ void app.whenReady().then(() => {
       ? devClaudeConfigDir(appData)
       : path.join(userData, "claude"),
     codexHome: devData ? devCodexHome(appData) : path.join(userData, "codex"),
+    bin: path.join(userData, "bin"),
   };
   const find = (agent: AgentKind) =>
     findExecutable({
@@ -301,11 +302,22 @@ void app.whenReady().then(() => {
   registerRepositoryIpc({ repository, rendererUrl });
   void repository.locate({ autoClone: true });
   const sessions = registerIpc({
-    // A codex that a Claude session starts refuses every command but --version without CODEX_HOME.
-    findAgent: (agent) =>
-      R.flatMap(createCodexHome(folders), () =>
-        R.map(find(agent), agents[agent]),
-      ),
+    // Each lookup of an agent not found yet rewrites both launchers, so a CLI that appears after launch reaches agents' bare names once its own agent is looked up.
+    findAgent: (agent) => {
+      const found: Record<AgentKind, Result<string, Error>> = {
+        [AgentKind.Claude]: find(AgentKind.Claude),
+        [AgentKind.Codex]: find(AgentKind.Codex),
+      };
+      const launchers = writeAgentLaunchers({
+        folders,
+        claude: found[AgentKind.Claude],
+        codex: found[AgentKind.Codex],
+      });
+      return R.map(
+        R.flatMap(launchers, () => found[agent]),
+        agents[agent],
+      );
+    },
     environmentLoaded,
     conversations: new ConversationStore(
       path.join(userData, "conversations.json"),

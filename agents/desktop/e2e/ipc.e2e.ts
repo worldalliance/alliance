@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AgentEventKind } from "../src/shared/agent-event";
 import { AgentKind } from "../src/shared/agent-kind";
@@ -328,7 +328,7 @@ test("a page other than the app's own is refused and hears no session events", a
   await app.close();
 });
 
-test("a Claude Code that appears at its executable path while the app runs is found on the next check", async () => {
+test("a Claude Code that appears at its executable path while the app runs is found on the next check, and agents' claude launcher then names it", async () => {
   const claude = test.info().outputPath("claude");
   const { app, page } = await launch({
     captures: [authStatusCapture(true)],
@@ -347,5 +347,9 @@ test("a Claude Code that appears at its executable path while the app runs is fo
     ok: true,
     value: true,
   });
+  const userData = await app.evaluate(({ app }) => app.getPath("userData"));
+  expect(readFileSync(path.join(userData, "bin", "claude"), "utf8")).toContain(
+    `exec '${claude}' "$@"`,
+  );
   await app.close();
 });

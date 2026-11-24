@@ -5,5 +5,6 @@ export const testFolders = (
 ): AgentFolders => ({
   claudeConfigDir: "/config",
   codexHome: "/codex",
+  bin: "/agent-bin",
   ...folders,
 });

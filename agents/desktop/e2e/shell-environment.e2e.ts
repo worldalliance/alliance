@@ -121,13 +121,16 @@ test("quitting while the login shell hangs stops it and what its profile started
     .toEqual([]);
 });
 
-test("launched by bun run dev, the app skips the login shell and an agent's CLI runs with the environment the app started with", async () => {
+test("launched by bun run dev, the app skips the login shell and an agent's CLI runs with the environment the app started with, behind the launchers", async () => {
   const seen = await claudeEnvironment({
     shell: writeShell("export ALLIANCE_TEST_PROFILE=loaded"),
     env: { ALLIANCE_AGENT_DEV_SCRIPT: "1" },
   });
   expect(seen.profile).toBe("");
   expect(seen.PATH?.endsWith(process.env.PATH ?? "")).toBe(true);
+  const first = seen.PATH?.split(path.delimiter)[0] ?? "";
+  expect(path.basename(first)).toBe("bin");
+  expect(existsSync(path.join(first, "claude"))).toBe(true);
   expect(seen.devScript).toBe("");
 });
 

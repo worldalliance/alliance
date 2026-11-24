@@ -18,6 +18,7 @@ export const stubCli: CodexCli = {
     return {
       claudeConfigDir: "/nonexistent/claude",
       codexHome: stub.scratchPath("home"),
+      bin: "/nonexistent/bin",
     };
   },
 };

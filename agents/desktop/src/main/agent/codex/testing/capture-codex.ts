@@ -28,7 +28,7 @@ import { redactCapture } from "./redact";
 
 const { scratch, recordDir } = captureScratch("codex-capture");
 const workFile = path.join(scratch, "a.txt");
-const folders = devFolders();
+const folders = devFolders(scratch);
 const home = folders.codexHome;
 writeFileSync(workFile, "hello\n");
 

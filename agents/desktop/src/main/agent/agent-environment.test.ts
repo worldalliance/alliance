@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test";
+import path from "node:path";
 import { agentEnvironment } from "./agent-environment";
 import { testFolders } from "./testing/folders";
 
-test("every CLI's environment drops both vendors' namespaces but Codex's root certificate, sets both private folders and turns off Claude's nonessential traffic", () => {
+test("every CLI's environment drops both vendors' namespaces but Codex's root certificate, sets both private folders, turns off Claude's nonessential traffic and puts the launchers first on PATH", () => {
   expect(
     agentEnvironment(testFolders(), {
-      PATH: "/usr/bin:/bin",
+      PATH: ["/usr/bin", "/bin"].join(path.delimiter),
       HOME: "/home/user",
       SSH_AUTH_SOCK: "/agent.sock",
       GH_TOKEN: "g",
@@ -34,7 +35,7 @@ test("every CLI's environment drops both vendors' namespaces but Codex's root ce
       CODEX_REFRESH_TOKEN_URL_OVERRIDE: "http://auth",
     }),
   ).toEqual({
-    PATH: "/usr/bin:/bin",
+    PATH: ["/agent-bin", "/usr/bin", "/bin"].join(path.delimiter),
     HOME: "/home/user",
     SSH_AUTH_SOCK: "/agent.sock",
     GH_TOKEN: "g",
@@ -45,4 +46,8 @@ test("every CLI's environment drops both vendors' namespaces but Codex's root ce
     DISABLE_UPDATES: "1",
     CODEX_HOME: "/codex",
   });
+});
+
+test("with no PATH, the launchers are the whole PATH", () => {
+  expect(agentEnvironment(testFolders(), {}).PATH).toBe("/agent-bin");
 });

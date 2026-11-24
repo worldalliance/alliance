@@ -1,9 +1,13 @@
-/** The app-private folders both CLIs run with, so a CLI one agent starts gets the app's sign-in and settings whichever agent started it. */
+import path from "node:path";
+
+/** The app-private folders both CLIs run with, so a CLI an agent starts by bare name gets the app's sign-in and settings whichever agent started it. */
 export type AgentFolders = {
   /** CLAUDE_CONFIG_DIR, holding Claude Code's settings, sign-in and session history. */
   claudeConfigDir: string;
   /** CODEX_HOME, holding Codex's config, sign-in and session history. */
   codexHome: string;
+  /** Holds the claude and codex launchers, first on the agents' PATH. */
+  bin: string;
 };
 
 // Each CLI reads its credentials, endpoints, home and a parent session's markers from these namespaces. Codex's custom root certificate passes, since a TLS-intercepting proxy needs it.
@@ -23,6 +27,7 @@ export function agentEnvironment(
     ...Object.fromEntries(
       Object.entries(base).filter(([name]) => inherited(name)),
     ),
+    PATH: [folders.bin, base.PATH].filter(Boolean).join(path.delimiter),
     CLAUDE_CONFIG_DIR: folders.claudeConfigDir,
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
     DISABLE_FEEDBACK_COMMAND: "1",

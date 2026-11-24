@@ -28,7 +28,7 @@ import { redactCapture } from "./redact";
 
 const { scratch, recordDir } = captureScratch("claude-capture");
 const workFile = path.join(scratch, "a.txt");
-const folders = devFolders();
+const folders = devFolders(scratch);
 writeFileSync(workFile, "hello\n");
 
 const realClaude = devExecutable(AgentKind.Claude);

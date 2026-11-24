@@ -11,6 +11,7 @@ Checked 2026-11-23 by a research subagent and the implementing agent.
 - VS Code's `shellEnv.ts` (https://github.com/microsoft/vscode/blob/main/src/vs/platform/shell/node/shellEnv.ts, source code) and FAQ (https://code.visualstudio.com/docs/supporting/faq), vendor practice: launched from the UI, VS Code runs the user's shell once, detached, as `$SHELL -i -l -c`, or `-ic` for csh and tcsh, with other forms for PowerShell, Nushell and xonsh, prints its environment between markers random to each run, waits up to 10 seconds by default, and on failure shows "Unable to resolve your shell environment in a reasonable time" and runs without it. Zed's environment docs (https://zed.dev/docs/environment), vendor practice: it loads a login shell's environment at startup too.
 - Which launches skip that load, checked 2026-11-23 on each project's `main`, vendor practice from source code: VS Code's `getResolvedShellEnv` (`shellEnv.ts` above) skips it when `VSCODE_CLI=1`, which `isLaunchedFromCli` (https://github.com/microsoft/vscode/blob/main/src/vs/platform/environment/node/argvHelper.ts) reads and both its `code` command and its developer launcher `scripts/code.sh` (https://github.com/microsoft/vscode/blob/main/scripts/code.sh) set, and traces "skipped (VSCODE_CLI is set)"; Zed's `main.rs` (https://github.com/zed-industries/zed/blob/main/crates/zed/src/main.rs) loads it only when stdout isn't a terminal; `shell-env`, `shell-path` and `fix-path` never skip it outside Windows. POSIX (https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html, formal standard) defines `TERM` only as the terminal type, not as a launch signal. On the implementing developer's Mac: launchd's GUI environment (`launchctl print gui/$UID`) held only `SSH_AUTH_SOCK`, and an app started with `open` from a terminal received that terminal's environment, `TERM` included, with stdout not a terminal; electron-vite 6.0.0's `dev` starts Electron with the inherited environment and `stdio: 'inherit'`.
 - `shell-env` 4.0.3 (https://github.com/sindresorhus/shell-env, source read from its npm tarball), common practice: runs `-ilc` with oh-my-zsh's auto-update and tmux autostart turned off, with no timeout, and splits `env`'s output on newlines; when the default shell fails it tries `/bin/zsh` and `/bin/bash`, then returns `process.env`, and when a shell the caller named fails it rethrows (`index.js` at tag `v4.0.3`, checked 2026-11-23). `fix-path` (https://github.com/sindresorhus/fix-path) builds on it and warns that packaged Electron apps opened from the Finder may not quit properly.
+- Codex at tag `rust-v0.167.0` (https://github.com/openai/codex, source code): `allow_login_shell` defaults to true (`core/src/config/mod.rs`); with it false, `exec_command` runs `<shell> -c` and refuses a model's `login: true` (`core/src/tools/handlers/unified_exec.rs`); the shell snapshot, built from a login, interactive shell, wraps only `-lc` commands (`core/src/tools/runtimes/mod.rs`, `maybe_wrap_shell_lc_with_snapshot`). Codex's own `exec` tests run against a local mock of the Responses API through a `model_providers` entry with `requires_openai_auth=false` (`exec/tests/suite/apply_patch.rs`).
 
 ## Shell environment timeouts
 
@@ -27,6 +28,18 @@ Checked 2026-11-24. JetBrains IDEs, vendor practice from source code: `DEFAULT_S
 ## Codex's npm launcher
 
 `@openai/codex@0.167.0`'s `bin/codex.js` maps the platform to a target triple (Linux to `*-unknown-linux-musl`), finds `vendor/<triple>/bin/codex` in the platform package, sets `CODEX_MANAGED_PACKAGE_ROOT` and one `CODEX_MANAGED_BY_<package manager>` variable, and execs the binary with its arguments. It changes no other environment, PATH included.
+
+## Codex's config overrides
+
+Codex 0.167.0 (installed through Bun), 2026-11-23: `codex -c analytics.enabled=false --version`, `codex -c analytics.enabled=false exec --help` and `codex -c analytics.enabled=false login status` each exit 0, so the launcher can put the overrides before any subcommand.
+
+## Codex's command shell
+
+`src/main/agent/codex/shell-path.test.ts` on macOS 27 arm64 with Codex 0.167.0, 2026-11-23: with `allow_login_shell` left on, Codex ran `/bin/zsh -lc 'command -v claude codex'` and printed the `claude` and `codex` the test home's `.zprofile` put first, ahead of the launchers the environment put first; with `allow_login_shell=false` it printed the launchers.
+
+## Claude's command shell
+
+The review's hub agent on the implementing developer's Mac (zsh, a `~/.zshrc` that prepends folders to PATH) with Claude Code 2.1.322, 2026-11-23: a real Claude turn, started through `agentEnvironment` from a terminal-launched app, ran `command -v claude codex` with its Bash tool, which printed the app's launchers, and its PATH began with the launcher folder, ahead of `~/.zshrc`'s prepends.
 
 ## Login-shell environment
 
