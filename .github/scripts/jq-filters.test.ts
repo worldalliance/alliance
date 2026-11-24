@@ -23,9 +23,9 @@ function jq(params: {
 
 const HASH = "0123456789ab";
 
-describe("formatjs-declined.jq", () => {
+describe("pr-declined.jq", () => {
   const declined = (prs: unknown[]) =>
-    jq({ filter: "scripts/formatjs-declined.jq", input: prs });
+    jq({ filter: "scripts/pr-declined.jq", input: prs });
 
   test("picks closed pull requests, merged ones included", () => {
     expect(

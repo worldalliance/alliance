@@ -23,7 +23,7 @@ headline="add-all-tz.js SHA-1 $after"
 if [ "$after" != "$before" ]; then
   # jq rather than gh's --jq, whose built-in gojq is not what jq-filters.test.ts runs.
   formatjs_prs=$(gh api "repos/$GITHUB_REPOSITORY/pulls?head=$GITHUB_REPOSITORY_OWNER:formatjs/$after&state=all" \
-    | jq -f ../.github/scripts/formatjs-declined.jq)
+    | jq -f ../.github/scripts/pr-declined.jq)
   declined_by=()
   for pr in $formatjs_prs; do
     declined_by+=("#$pr")
