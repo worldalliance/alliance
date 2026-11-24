@@ -2,6 +2,7 @@ import type {
   FormulaNode,
   VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
+import { partition } from "es-toolkit";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { sameFormula } from "./conditionFormula";
 
@@ -60,6 +61,44 @@ export const expressionKeys = {
   outputView: (viewId: string) => `output:${part(viewId)}`,
   within: (scope: string, id: string) => `${scope}/${part(id)}`,
 };
+
+/** Elements `ids` moving from page `from` to page `to`. */
+export type ElementExpressionsMove = {
+  from: string;
+  to: string;
+  ids: string[];
+};
+
+/**
+ * `buffers` with the moved elements' text, their contents' included, keyed
+ * under their new page in place of any text it held under their keys.
+ */
+export function moveElementBuffers(
+  buffers: Readonly<Record<string, ExpressionBuffer>>,
+  { from, to, ids }: ElementExpressionsMove,
+): Record<string, ExpressionBuffer> {
+  const ownedOn = (page: string) => (key: string) =>
+    ids.some((id) => {
+      const scope = expressionKeys.within(
+        expressionKeys.pageElements(page),
+        id,
+      );
+      return key === scope || key.startsWith(`${scope}/`);
+    });
+  const [leaving, rest] = partition(Object.entries(buffers), ([key]) =>
+    ownedOn(from)(key),
+  );
+  const fromScope = expressionKeys.pageElements(from);
+  return {
+    ...Object.fromEntries(rest.filter(([key]) => !ownedOn(to)(key))),
+    ...Object.fromEntries(
+      leaving.map(([key, buffer]) => [
+        expressionKeys.pageElements(to) + key.slice(fromScope.length),
+        buffer,
+      ]),
+    ),
+  };
+}
 
 /**
  * Buffers kept in component state rather than the draft, so they last as
