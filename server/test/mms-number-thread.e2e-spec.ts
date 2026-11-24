@@ -91,20 +91,6 @@ describe("Thread rows (e2e)", () => {
 });
 
 describe("Number threads (e2e)", () => {
-  it("lists a number two members share once, naming both", async () => {
-    const first = await createMember("+14155558715");
-    const second = await createMember("+14155558715");
-    await inbound({ from: "+14155558715", body: "Hi" });
-
-    const entries = (await needsReply()).filter(
-      (entry) => entry.phoneNumber === "+14155558715",
-    );
-
-    expect(entries.map((entry) => entry.members.map(({ id }) => id))).toEqual([
-      [first.id, second.id],
-    ]);
-  });
-
   it("lists a number whose only member deleted their account, naming no one", async () => {
     const member = await createMember("+14155558754");
     await inbound({ from: "+14155558754", body: "Hi" });

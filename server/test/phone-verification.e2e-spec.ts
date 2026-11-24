@@ -277,6 +277,34 @@ describe("Phone verification (e2e)", () => {
     const update = (member: User, body: object) =>
       post(member, "/user/update", body);
 
+    it("waits for a verify of the number, then refuses it", async () => {
+      const phoneNumber = uniquePhone();
+      const claimant = await createMember();
+      const latecomer = await createMember();
+      const sent = await sendCode(claimant, phoneNumber).expect(200);
+      let late: Promise<request.Response> | undefined;
+      const find = EntityManager.prototype.find;
+      const holderLookup = jest
+        .spyOn(EntityManager.prototype, "find")
+        .mockImplementation(async function (this: EntityManager, ...args) {
+          if (args[0] === User && !late) {
+            late = update(latecomer, { phoneNumber }).then((res) => res);
+            await waitForLockWait(ctx.dataSource);
+          }
+          return find.apply(this, args);
+        });
+
+      await post(claimant, "/user/phone/code/verify", {
+        challengeToken: sent.body.challengeToken,
+        code: codes.lastCode(),
+      }).expect(204);
+      holderLookup.mockRestore();
+
+      expect((await late)?.status).toBe(409);
+      expect((await reload(latecomer)).phoneNumber).toBeNull();
+      expect((await reload(claimant)).phoneNumber).toBe(phoneNumber);
+    });
+
     it("saves a free number as unverified", async () => {
       const member = await createMember({
         phoneNumber: uniquePhone(),

@@ -231,16 +231,6 @@ describe("Needs reply (e2e)", () => {
     });
   });
 
-  it("lists each member who shares the number", async () => {
-    const first = await createMember("+14155558210");
-    const second = await createMember("+14155558210");
-    await inbound({ from: "+14155558210", body: "Question?" });
-
-    expect(
-      (await needsReply()).filter((id) => [first.id, second.id].includes(id)),
-    ).toEqual([first.id, second.id]);
-  });
-
   describe("marking handled", () => {
     it("leaves a member out until they text again", async () => {
       const member = await createMember("+14155558230");
@@ -365,22 +355,21 @@ describe("Needs reply (e2e)", () => {
       ).toEqual(["marked_handled"]);
     });
 
-    it("records one event when members sharing a number are marked at once", async () => {
-      const first = await createMember("+14155558238");
-      const second = await createMember("+14155558238");
+    it("records one event when a thread is marked several times at once", async () => {
+      const member = await createMember("+14155558238");
       await inbound({ from: "+14155558238", body: "Thanks!" });
       await inbound({ from: "+14155558238", body: "Bye" });
-      const seen = await latestId(first.id);
-      const members = [first, second, first, second];
+      const seen = await latestId(member.id);
+      const marks = [1, 2, 3, 4];
       await Promise.all(
-        members.map((m) => markHandled(m.id, seen).expect(204)),
+        marks.map(() => markHandled(member.id, seen).expect(204)),
       );
       await Promise.all(
-        members.map((m) => markNeedsReply(m.id, seen).expect(204)),
+        marks.map(() => markNeedsReply(member.id, seen).expect(204)),
       );
 
       expect(
-        (await threadEvents(first.id)).map((e: { kind: string }) => e.kind),
+        (await threadEvents(member.id)).map((e: { kind: string }) => e.kind),
       ).toEqual(["marked_handled", "marked_needs_reply"]);
     });
 

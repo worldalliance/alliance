@@ -120,17 +120,6 @@ describe("Phone verification codes per account (e2e)", () => {
     expect((await reload(holder)).phoneNumberVerifiedAt).toBeInstanceOf(Date);
   });
 
-  it("keeps accounts sharing a number under its limit", async () => {
-    const phoneNumber = uniquePhone();
-    const holders = await Promise.all(
-      Array.from({ length: 6 }, () => createMember({ phoneNumber })),
-    );
-    for (const holder of holders.slice(0, 5)) {
-      await sendCode(holder, phoneNumber).expect(200);
-    }
-    await sendCode(holders[5], phoneNumber).expect(429);
-  });
-
   it("counts KORA sign-in codes apart from phone verification", async () => {
     const phoneNumber = uniquePhone();
     const otp = ctx.app.get(OtpService);

@@ -43,8 +43,9 @@ const changedRows = z.array(
 
 /**
  * Updates every account on the number, deleted ones included so a restored one
- * keeps the opt-out, and returns the live accounts the update changed. A member
- * who left the number while the update waited on their row is not among them.
+ * keeps the opt-out, and returns the live accounts the update changed: the
+ * number's holder, if any. A member who left the number while the update waited
+ * on their row is not among them.
  */
 async function setUnsubscribed(
   manager: EntityManager,
@@ -72,7 +73,7 @@ export class MmsUnsubService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  /** Opts the number out of texts and audits all members sharing it. */
+  /** Opts the number out of texts and audits it against its live holder, if any. */
   async unsubFromMms(
     phoneNumber: string,
     request: OptOutRequest,
@@ -136,7 +137,7 @@ export class MmsUnsubService {
     }
   }
 
-  /** Applies START to all matching members without deleting opt-out audits. */
+  /** Applies START to the number and its holders without deleting opt-out audits. */
   async subscribeToMms(
     phoneNumber: string,
     { rawBody }: { rawBody: string },
