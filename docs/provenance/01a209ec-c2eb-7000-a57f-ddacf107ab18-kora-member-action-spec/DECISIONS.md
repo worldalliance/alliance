@@ -3,13 +3,13 @@
 ## What exists (reconstructed from existing code)
 
 - `ActionTaskKind.KoraReview` actions render `KoraActionTask` (web `apps/frontend/src/components/KoraActionTask.tsx`, mobile `apps/mobile/components/KoraActionTask.tsx`) in place of a form. Web links to `KORA_REVIEW_PATH`; mobile pushes `/kora-review`, a WebView signed in with a single-use web handoff code.
-- `KoraActionListener` completes every non-archived Kora action for a member when a non-`extra` assignment completes, and `KoraReviewService.assign` marks every assignment after a member's first completed one `extra`. So today only the first fortnight could ever complete.
+- `KoraActionListener` completes every non-archived Kora action for a member when a non-`extra` assignment completes, and `KoraReviewService.assign` marks every assignment after a member's first completed one `extra`. So only the first Kora action a member worked on could ever complete.
 
 ## Data
 
-- **An assignment belongs to the action it was started from.** `kora_assignment.actionId` is nullable, with a unique index on (`reviewerId`, `actionId`) among live rows, and is set null if the action is deleted. `GET /actions/:id/kora-review` (`KoraActionReviewController`) creates or resumes that action's assignment for the member, never `extra`. Assignments started from the Kora project's review page keep today's `extra` rule and complete no action. Completing an action-bound assignment emits `KORA_ACTION_REVIEWED` with its action, and `KoraActionListener` completes only that action. If a member has two open Kora actions (a missed one still open), each gets its own assignment. Rationale: the requirement that each fortnight counts alone. (agent decision)
+- **An assignment belongs to the action it was started from.** `kora_assignment.actionId` is nullable, with a unique index on (`reviewerId`, `actionId`) among live rows, and is set null if the action is deleted. `GET /actions/:id/kora-review` (`KoraActionReviewController`) creates or resumes that action's assignment for the member, never `extra`. Assignments started from the Kora project's review page keep today's `extra` rule and complete no action. Completing an action-bound assignment emits `KORA_ACTION_REVIEWED` with its action, and `KoraActionListener` completes only that action. If a member has two open Kora actions (a missed one still open), each gets its own assignment. Rationale: the requirement that each action's task counts alone. (agent decision)
 - **Starting checks completion first.** The endpoint refuses a non-Kora action (404) and runs `ensureCompletionAllowed` before starting an assignment, so a member outside the cohort or past the deadline can't start one. (agent decision)
-- **Exit survey every fortnight.** Action-bound assignments aren't `extra`, so the tool asks its exit survey after each one. It is KORA's per-session feedback, which fits a recurring session. (agent decision)
+- **Exit survey after each action.** Action-bound assignments aren't `extra`, so the tool asks its exit survey after each one. It is KORA's per-session feedback, which fits a recurring session. (agent decision)
 - **Active time is stored on the assignment** as a running total of seconds, so it survives reloads and moving between phone and web. (agent decision)
 - **One step, no backward compatibility.** The change replaces the first-assignment rule outright, with no `BACKCOMPAT` fallback for assignments without `actionId`, since no member Kora actions or KORA data exist in production (see REQUIREMENTS.md). (agent decision)
 
@@ -40,7 +40,7 @@
 
 ## Out of scope
 
-- Automatic creation or repetition of actions; admins duplicate each fortnight's action.
+- Automatic creation or repetition of actions; admins duplicate the previous Kora review action.
 - A new form element type for embedding the review in task forms.
 - Showing minutes to the member.
 - Admin checks that an open batch has enough conversations for a cohort before launch.
