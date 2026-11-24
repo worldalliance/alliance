@@ -1,0 +1,2 @@
+- The revert is applied by hand because `git revert ce1e7413f` conflicts with the later rewrites of `server/src/mms/mms.service.ts`. It removes `UK_SENDER_ID`, `senderFor` and the UK test, and points their callers back at `twilioPhoneNumber`. (agent decision)
+- Outbound texts already stored with `from = "The Alliance"` stay as they are: text threads key outbound texts by `to` (`Mms.phoneNumber` in `server/src/mms/mms.entity.ts`), so those rows do not affect threading, and no migration is needed. (agent decision)
