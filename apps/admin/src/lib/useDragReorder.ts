@@ -53,6 +53,20 @@ export function moveSpan<T>({
   };
 }
 
+/** A one-item drag: the item at `from` dropped on the `position` side of `dropIndex`. */
+export type ListMove = {
+  from: number;
+  dropIndex: number;
+  position: DropPosition;
+};
+
+/** The span a one-item drag moves, and the gap it drops into. */
+export const itemMove = ({ from, dropIndex, position }: ListMove) => ({
+  start: from,
+  end: from + 1,
+  index: dropIndex + insertionOffset[position],
+});
+
 /**
  * Moves the item at `draggedIndex` to the `position` side of `dropIndex`. Null
  * when the move leaves the item where it was.
@@ -66,9 +80,7 @@ export function moveItem<T>(params: {
   const { items, draggedIndex, dropIndex, position } = params;
   return moveSpan({
     items,
-    start: draggedIndex,
-    end: draggedIndex + 1,
-    index: dropIndex + insertionOffset[position],
+    ...itemMove({ from: draggedIndex, dropIndex, position }),
   });
 }
 

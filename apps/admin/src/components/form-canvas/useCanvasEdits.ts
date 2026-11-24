@@ -22,7 +22,7 @@ import {
 } from "../../lib/moveElements";
 import { reorderPages } from "../../lib/reorderPages";
 import { updatePageElement } from "../../lib/updatePageElement";
-import { moveItem } from "../../lib/useDragReorder";
+import { moveItem, type ListMove } from "../../lib/useDragReorder";
 import {
   deriveVisibilityGroups,
   type GroupedPages,
@@ -45,7 +45,6 @@ import {
 import { SidebarSection } from "./sidebarSections";
 import type { CanvasSelectionState } from "./useCanvasSelection";
 import { useGuardedDeletion } from "./useGuardedDeletion";
-import type { ListMove } from "./useListDrag";
 
 export function useCanvasEdits({
   schema,

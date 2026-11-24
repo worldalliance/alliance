@@ -4,6 +4,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
+import type { ListMove } from "../../lib/useDragReorder";
 import {
   pageSegments,
   SegmentKind,
@@ -30,7 +31,7 @@ import {
   toggleChecked,
   type Span,
 } from "./rangeSelection";
-import { useListDrag, type ListDrag, type ListMove } from "./useListDrag";
+import { useListDrag, type ListDrag } from "./useListDrag";
 
 const PAGES = "pages";
 

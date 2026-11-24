@@ -12,6 +12,7 @@ import {
   type BlockWriteById,
 } from "../../lib/displayBlockById";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
+import type { ListMove } from "../../lib/useDragReorder";
 import {
   pageSegments,
   SegmentKind,
@@ -46,7 +47,7 @@ import {
   type Span,
 } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
-import { useListDrag, type ListMove } from "./useListDrag";
+import { useListDrag } from "./useListDrag";
 
 type FormCanvasProps = {
   page: Page;

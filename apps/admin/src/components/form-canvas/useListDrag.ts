@@ -1,11 +1,5 @@
 import { useState, type DragEvent } from "react";
-import { DropPosition } from "../../lib/useDragReorder";
-
-export type ListMove = {
-  from: number;
-  dropIndex: number;
-  position: DropPosition;
-};
+import { DropPosition, type ListMove } from "../../lib/useDragReorder";
 
 export type ListDrag = {
   onDragStart: (event: DragEvent) => void;
