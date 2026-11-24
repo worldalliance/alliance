@@ -44,7 +44,7 @@ const submit = (name = "Autumn") => {
   fireEvent.change(screen.getByLabelText("Suite name"), {
     target: { value: name },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create Suite" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create suite" }));
   return router;
 };
 
@@ -119,7 +119,7 @@ it("drops the server's refusal when a blank name is submitted next", async () =>
   fireEvent.change(screen.getByLabelText("Suite name"), {
     target: { value: "" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create Suite" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create suite" }));
 
   expect(await screen.findByText("Give the suite a name.")).toBeTruthy();
   expect(screen.queryByText(refusal)).toBeNull();

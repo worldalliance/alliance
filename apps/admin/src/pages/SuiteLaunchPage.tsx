@@ -15,6 +15,7 @@ const SuiteLaunchPage = () => {
   const suite = suiteQuery.data;
   return (
     <div className="mx-auto w-full max-w-4xl p-6">
+      <title>{`Launch ${suite?.name ?? "suite"} - Admin`}</title>
       {suite ? (
         <SuiteLaunchPanel
           suite={suite}

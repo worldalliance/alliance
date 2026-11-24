@@ -38,7 +38,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           >
             <ChevronDown className="h-3 w-3 text-black" />
           </button>
-          <h2 className="text-lg font-semibold">Add New Event</h2>
+          <h2 className="text-lg font-semibold">Add new event</h2>
         </div>
         {addEventExpanded && (
           <CreateEventForm
@@ -51,7 +51,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           />
         )}
       </Card>
-      <h2 className="text-lg font-semibold mb-4">All Events</h2>
+      <h2 className="text-lg font-semibold mb-4">All events</h2>
       <div className="space-y-3 mb-3">
         {action.events && action.events.length > 0 ? (
           sortByDateDescending(action.events).map((event) => (

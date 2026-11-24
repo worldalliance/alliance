@@ -17,7 +17,7 @@ const names: CohortNames = {
 
 describe("describeCohortExpression", () => {
   it("labels a single condition", () => {
-    expect(describeText({ type: "NonUSMember" }, names)).toBe("Non-US Member");
+    expect(describeText({ type: "NonUSMember" }, names)).toBe("Non-US member");
   });
 
   it("names a form by its display slug, or its id when unknown", () => {
@@ -51,7 +51,7 @@ describe("describeCohortExpression", () => {
         },
         names,
       ),
-    ).toBe("Tag: Volunteers and Completed Action: Call your rep");
+    ).toBe("Tag: Volunteers and Completed action: Call your rep");
   });
 
   it("falls back to ids for unknown tags and actions", () => {
@@ -66,7 +66,7 @@ describe("describeCohortExpression", () => {
         },
         names,
       ),
-    ).toBe("Tag: missing or Missed Action Deadline: #99");
+    ).toBe("Tag: missing or Missed action deadline: #99");
   });
 
   it("parenthesizes nested operators", () => {
@@ -90,7 +90,7 @@ describe("describeCohortExpression", () => {
         },
         names,
       ),
-    ).toBe("US Member and not (Group Lead or 2 manual users)");
+    ).toBe("US member and not (Group lead or 2 manual users)");
   });
 
   it("tags leaf segments with their condition type", () => {
@@ -101,7 +101,7 @@ describe("describeCohortExpression", () => {
       ),
     ).toEqual([
       { text: "not " },
-      { text: "Non-US Member", leaf: "NonUSMember" },
+      { text: "Non-US member", leaf: "NonUSMember" },
     ]);
   });
 });

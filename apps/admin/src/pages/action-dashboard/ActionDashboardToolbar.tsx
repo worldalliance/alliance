@@ -63,7 +63,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
           color={ButtonColor.White}
           className="!px-3 !text-sm gap-x-1"
         >
-          Open Suite
+          Open suite
         </Button>
       )}
       <Button
@@ -74,7 +74,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
         className="!px-3 !text-sm gap-x-1"
       >
         <Copy className="h-5 w-5" />
-        Duplicate Action
+        Duplicate action
       </Button>
       {unsaved && (
         <span className="self-center text-sm text-amber-800">
@@ -101,7 +101,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
                 onChange={(checked) => setExportActionEvents(checked)}
               />
               <LargeCheckbox
-                label="Task Form"
+                label="Task form"
                 checked={exportActionTaskForm}
                 onChange={(checked) => setExportActionTaskForm(checked)}
               />
@@ -129,7 +129,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
         color={ButtonColor.RedOutline}
         className="!px-3 !text-sm gap-x-1 bg-white hover:bg-red-50"
       >
-        {action.archived ? "Unarchive Action" : "Archive Action"}
+        {action.archived ? "Unarchive action" : "Archive action"}
       </Button>
     </div>
   );

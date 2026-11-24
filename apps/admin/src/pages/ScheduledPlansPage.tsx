@@ -76,6 +76,7 @@ const ScheduledPlansPage = () => {
 
   return (
     <CenterLayout width="3xl">
+      <title>Scheduled plans - Admin</title>
       <div className="mb-6 flex flex-col gap-1 max-w-3xl">
         <h1 className="font-semibold text-lg">Scheduled plans</h1>
         <p className="text-gray-600">Timeline of future automated actions</p>

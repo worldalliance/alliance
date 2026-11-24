@@ -19,7 +19,7 @@ it("labels an event's status pill with spaces between words", () => {
     </ToastProvider>,
   );
 
-  expect(screen.getByText("Office Action", { selector: "span" })).toBeTruthy();
+  expect(screen.getByText("Office action", { selector: "span" })).toBeTruthy();
 });
 
 it("lists events newest first without reordering the action's events", () => {

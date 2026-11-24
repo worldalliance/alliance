@@ -133,6 +133,8 @@ it("says why an edit was refused", async () => {
   renderPage();
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit for all" }));
+  expect(screen.getByLabelText("Title")).toBeTruthy();
+  expect(screen.getByLabelText("Date")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
   expect(await screen.findByText("Title is too long")).toBeTruthy();

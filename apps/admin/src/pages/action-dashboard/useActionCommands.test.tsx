@@ -2,11 +2,13 @@ import type { CreateActionDto } from "@alliance/shared/client";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { renderHook, screen } from "@testing-library/react";
+import { act, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { testActions } from "../../lib/testData";
+import { makeParsedAction } from "../../lib/testing/parsedAction";
 import { useActionCommands } from "./useActionCommands";
 
 let getFormStatus: number;
@@ -41,6 +43,7 @@ const notCalled = () => Promise.reject(new Error("not called"));
 
 function renderCommands(
   form: CreateActionDto = { ...testActions[0], taskFormId: 3 },
+  action: ParsedActionDto | null = null,
 ) {
   const { wrapper: QueryWrapper } = queryWrapper();
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -54,7 +57,7 @@ function renderCommands(
     () =>
       useActionCommands({
         admin: {
-          action: null,
+          action,
           createAction: (body: CreateActionDto) => {
             created.push(body);
             return Promise.resolve({
@@ -121,3 +124,15 @@ test("a task form that fails to load stops the duplicate", async () => {
   expect(created).toEqual([]);
   expect(errors).toEqual(["Form 3 is gone"]);
 });
+
+test.each([
+  [false, "Only admins can open it."],
+  [true, "Its public page stays open to anyone with the link."],
+])(
+  "archiving an action with publicOnly %s says who can still open it",
+  async (publicOnly, consequence) => {
+    const view = renderCommands(undefined, makeParsedAction({ publicOnly }));
+    act(() => void view.result.current.handleArchive());
+    expect(await screen.findByText(new RegExp(`^${consequence}`))).toBeTruthy();
+  },
+);

@@ -1,7 +1,7 @@
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
@@ -84,6 +84,12 @@ const ActionDashboard: React.FC = () => {
   const [incompleteUsersExpanded, setIncompleteUsersExpanded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
+  const tabButtons = useRef(new Map<Tab, HTMLButtonElement>());
+  // The overview's own controls unmount with it, so focus moves to the tab.
+  const openTabFromOverview = (tab: Tab) => {
+    onTabChange(tab);
+    tabButtons.current.get(tab)?.focus();
+  };
 
   const editor = useActionEditor({
     admin,
@@ -120,20 +126,20 @@ const ActionDashboard: React.FC = () => {
   const actionExport = useActionExport(actionId);
 
   const tabData: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Status Overview" },
-    { key: "details", label: "Action Details" },
-    { key: "events", label: "Event Management" },
+    { key: "overview", label: "Status overview" },
+    { key: "details", label: "Action details" },
+    { key: "events", label: "Events" },
     { key: "updates", label: "Updates" },
     ...(action
       ? [
-          { key: "form" as Tab, label: "Task Form" },
-          { key: "form-variants" as Tab, label: "Form Variants" },
+          { key: "form" as Tab, label: "Task form" },
+          { key: "form-variants" as Tab, label: "Form variants" },
         ]
       : []),
-    { key: "follow-up-forms", label: "Follow-up Forms" },
+    { key: "follow-up-forms", label: "Follow-up forms" },
     { key: "responses", label: "Responses" },
     ...(action
-      ? [{ key: "cohort-decisions" as Tab, label: "Cohort Decisions" }]
+      ? [{ key: "cohort-decisions" as Tab, label: "Cohort decisions" }]
       : []),
   ];
 
@@ -148,20 +154,20 @@ const ActionDashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <title>Action Dashboard</title>
+      <title>{`${isNew ? "New action" : (action?.name ?? "Action")} - Admin`}</title>
       <div className="flex justify-between items-center mb-2">
-        <div className="p-5 pb-0 flex flex-row justify-between w-full">
-          <div className="flex flex-row gap-x-2 ">
+        <div className="p-5 pb-0 flex flex-row flex-wrap justify-between gap-y-2 w-full">
+          <div className="flex min-w-0 flex-row gap-x-2">
             <div className="flex flex-row gap-x-2 items-center">
               {action?.archived && (
-                <span className="px-2 py-1 rounded-sm bg-red-200">
+                <span className="px-2 py-1 rounded-sm bg-gray-200 text-gray-700">
                   Archived
                 </span>
               )}
             </div>
             <div className="flex flex-col">
               <h1 className="text-[#111] text-[16pt] font-bold">
-                {isNew ? "Create New Action" : `${action?.name}`}
+                {isNew ? "Create new action" : `${action?.name}`}
               </h1>
               {action && (
                 <SlugField
@@ -177,24 +183,37 @@ const ActionDashboard: React.FC = () => {
               </div>
             )}
           </div>
-          <button
-            onClick={handleCancel}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
-          >
-            ← Back
-          </button>
+          <div className="mr-5 flex flex-wrap items-start gap-x-4 text-sm text-nowrap">
+            {action && (
+              <a
+                href={getSiteUrl() + `/actions/${action.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="py-1 text-blue-600 underline"
+              >
+                View action page
+              </a>
+            )}
+            <Link
+              to="/actions"
+              className="py-1 text-gray-600 hover:text-gray-800"
+            >
+              ← Back to actions
+            </Link>
+          </div>
         </div>
       </div>
-      <p className="p-2 border border-gray-200 mb-4 mx-5">
-        Please see{" "}
+      <p className="mb-4 mx-5 text-sm text-gray-600">
+        Before writing copy, read the{" "}
         <a
-          className="text-green underline"
+          className="text-blue-600 underline"
           href="https://docs.google.com/document/d/1vxeA31milcWRhpkGjGWHp1RQbpDFRjS541E9SzdKkFc/edit?usp=sharing"
           target="_blank"
           rel="noreferrer"
         >
-          Action copy guidelines
+          action copy guidelines
         </a>
+        .
       </p>
       {errorMessage && (
         <div
@@ -223,25 +242,22 @@ const ActionDashboard: React.FC = () => {
               {tabData.map((tab) => (
                 <button
                   key={tab.key}
+                  ref={(button) => {
+                    if (button) tabButtons.current.set(tab.key, button);
+                  }}
+                  type="button"
+                  aria-current={activeTab === tab.key ? "page" : undefined}
                   onClick={() => onTabChange(tab.key)}
                   className={cn(
                     "py-2 px-1 border-b-2 text-sm text-nowrap",
                     activeTab === tab.key
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-blue-500 text-blue-600 font-medium"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
                   )}
                 >
                   {tab.label}
                 </button>
               ))}
-              <a
-                href={getSiteUrl() + `/actions/${action?.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="py-2 px-1 border-b-2 font-medium text-sm text-nowrap border-transparent text-blue-500 hover:text-blue-600 hover:border-blue-300"
-              >
-                View Action Page →
-              </a>
             </nav>
           </div>
 
@@ -256,7 +272,7 @@ const ActionDashboard: React.FC = () => {
                 unsaved={editor.dirty}
                 onDuplicate={handleDuplicate}
                 onArchive={handleArchive}
-                onTabChange={onTabChange}
+                onTabChange={openTabFromOverview}
                 setSearchParams={setSearchParams}
                 incompleteUsersExpanded={incompleteUsersExpanded}
                 setIncompleteUsersExpanded={setIncompleteUsersExpanded}

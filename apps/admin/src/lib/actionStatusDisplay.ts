@@ -3,8 +3,8 @@ import type { ActionStatus } from "@alliance/shared/client";
 export const ACTION_STATUS_LABELS: Record<ActionStatus, string> = {
   draft: "Draft",
   planned: "Planned",
-  office_action: "Office Action",
-  member_action: "Member Action",
+  office_action: "Office action",
+  member_action: "Member action",
   resolution: "Resolution",
   completed: "Completed",
   failed: "Failed",

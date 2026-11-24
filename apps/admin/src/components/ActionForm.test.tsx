@@ -61,7 +61,7 @@ describe("ActionForm", () => {
     expect(fieldKinds("Custom stat")).toEqual(["select", "number", "text"]);
     expect(
       within(section("Settings")).getByRole("switch", {
-        name: /^Staff Preview/,
+        name: /^Staff preview/,
       }),
     ).toBeTruthy();
 
@@ -83,8 +83,8 @@ describe("ActionForm", () => {
     ]);
 
     const content = within(section("Content"));
-    expect(content.getByText("Action Authors")).toBeTruthy();
-    expect(content.getByText("Reviewed By")).toBeTruthy();
+    expect(content.getByText("Action authors")).toBeTruthy();
+    expect(content.getByText("Reviewed by")).toBeTruthy();
     expect(within(section("Settings")).getByText("Category")).toBeTruthy();
   });
 
@@ -114,7 +114,7 @@ describe("ActionForm", () => {
     expect(open("Custom stat")).toBe(false);
   });
 
-  it("leaves out Staff Preview when the page controls it", () => {
+  it("leaves out Staff preview when the page controls it", () => {
     renderForm({ props: { hideStaffPreview: true } });
 
     expect(fieldNames("Settings")).toEqual([
@@ -137,10 +137,10 @@ describe("ActionForm", () => {
       "forumParticipationIncludeChildren",
     ]);
     expect(leafTexts("Forum participation")).toEqual([
-      "Forum Post ID (override)",
+      "Forum post ID (override)",
       "Autocomplete based on replies to this post, ignoring any forum validator on the form. Leave blank to use the form's validator.",
-      "Forum Participation Action",
-      "Autocomplete action for users who leave comment but dont hit complete",
+      "Forum participation action",
+      "Completes the action for members who comment but don't press complete",
       "Include child replies",
       "Also count replies to nested child posts of the override post",
     ]);
@@ -150,54 +150,54 @@ describe("ActionForm", () => {
     renderForm();
 
     const content = leafTexts("Content");
-    expect(content.slice(0, content.indexOf("Action Authors"))).toEqual([
+    expect(content.slice(0, content.indexOf("Action authors"))).toEqual([
       "Name",
       "Short description",
       "Action page description",
       "Cover image",
-      "Square Thumbnail URL",
-      "Thumbnail Alt Text",
+      "Square thumbnail URL",
+      "Thumbnail alt text",
       "Left empty, the thumbnail is announced as the action name.",
     ]);
     expect(leafTexts("Settings")).toEqual([
       "Priority",
       "Category",
       "Suite",
-      "Visibility Mode",
+      "Visibility mode",
       "Task",
       "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
-      "Time Estimate (min)",
-      "Staff Preview",
-      "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
+      "Time estimate (min)",
+      "Staff preview",
+      "Staff see it on their home pages until the Member action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
     ]);
     expect(leafTexts("Audience")).toEqual([
       "Onboarding",
-      "Prevent completion by members who signed their contracts before action",
-      "Public Only",
+      "Members with a contract can complete it only if they signed their first one after the Member action event starts",
+      "Public only",
       "For actions completed by non-members and not by members",
     ]);
     expect(leafTexts("Completion")).toEqual([
-      "Complete After Deadline",
-      "Show in tasks view after deadline passes",
-      "Prevent Completion",
+      "Complete after deadline",
+      "Keeps it in the tasks view after the deadline passes",
+      "Prevent completion",
       "Prevents members from completing the action even on the detail page",
       "Optional",
-      "Shows prominent dismiss dialog above task card",
+      "Shows a prominent dismiss option above the task card",
     ]);
     expect(leafTexts("Custom stat")).toEqual([
-      "Custom Stat Type",
-      "Custom Stat Goal",
-      "Custom Stat Label",
+      "Custom stat type",
+      "Custom stat goal",
+      "Custom stat label",
     ]);
     expect(options("Suite")).toEqual([["", "No suite"]]);
-    expect(options("Visibility Mode")).toEqual([
-      ["all_members", "All Members"],
-      ["participating_groups", "Participating Groups"],
+    expect(options("Visibility mode")).toEqual([
+      ["all_members", "All members"],
+      ["participating_groups", "Participating groups"],
       ["public", "Public"],
     ]);
-    expect(options("Custom Stat Type")).toEqual([
+    expect(options("Custom stat type")).toEqual([
       ["none", "None"],
-      ["users_invited", "Users Invited"],
+      ["users_invited", "Users invited"],
     ]);
   });
 });

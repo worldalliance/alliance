@@ -38,6 +38,7 @@ const NewActionSuitePage = () => {
 
   return (
     <div className="w-full h-screen flex items-center justify-center">
+      <title>New suite - Admin</title>
       <Card className="p-6">
         <form onSubmit={handleCreateSuite} className="space-y-4">
           <h1 className="font-bold">Create a new action suite</h1>
@@ -74,7 +75,7 @@ const NewActionSuitePage = () => {
               Cancel
             </Button>
             <Button color={ButtonColor.Black} type="submit">
-              Create Suite
+              Create suite
             </Button>
           </div>
         </form>

@@ -147,7 +147,7 @@ const ActionUpdatesTab = ({
         </a>
         .
       </p>
-      <p className="font-bold">Add a status update...</p>
+      <p className="font-bold">Add a status update</p>
       <Card className="space-y-2">
         <div className="p-3 bg-zinc-100 rounded-md space-y-4">
           <label className="flex flex-col gap-1">
@@ -272,7 +272,7 @@ const ActionUpdatesTab = ({
             )}
           </div>
           <div className="flex flex-col gap-1 text-sm">
-            <span className="font-bold">Preview Update</span>
+            <span className="font-bold">Preview update</span>
             <span className="text-xs text-zinc-600">
               {UPDATE_PREVIEW_DESCRIPTION}
             </span>
@@ -327,11 +327,11 @@ const ActionUpdatesTab = ({
                 )}
                 <Link
                   to={`/actions/${actionId}/updates/${update.id}`}
-                  title="Edit update"
-                  aria-label="Edit update"
-                  className="text-zinc-500 hover:text-zinc-900"
+                  aria-label={`Edit ${update.title}`}
+                  className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900"
                 >
-                  <SquarePen className="w-4 h-4" />
+                  <SquarePen className="w-4 h-4" aria-hidden />
+                  Edit
                 </Link>
               </>
             }

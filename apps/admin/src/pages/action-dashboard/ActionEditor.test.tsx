@@ -85,7 +85,7 @@ it.each([
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: isNew ? "Create Action" : "Save Changes",
+      name: isNew ? "Create action" : "Save changes",
     }),
   );
   fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));

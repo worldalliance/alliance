@@ -243,7 +243,7 @@ it("populates the default reminders in order", async () => {
     await screen.findByText("Reminders created successfully."),
   ).toBeTruthy();
   expect(groups.map((group) => group.name)).toEqual([
-    "Member Action announcement",
+    "Member action announcement",
     "24-48h reminder",
     "6-24h reminder",
     "3 hour reminder",
@@ -264,7 +264,7 @@ it("populates only the announcement without a deadline event", async () => {
     ),
   ).toBeTruthy();
   expect(groups.map((group) => group.name)).toEqual([
-    "Member Action announcement",
+    "Member action announcement",
   ]);
 });
 
@@ -315,13 +315,13 @@ it("says why an edit was refused and keeps the form open", async () => {
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
   const submit = await screen.findByRole("button", {
-    name: "Update Reminders",
+    name: "Update reminders",
   });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
   fireEvent.click(submit);
 
   expect(await screen.findByText("Reminder name taken")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Update Reminders" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Update reminders" })).toBeTruthy();
 });
 
 it.each([
@@ -338,7 +338,7 @@ it.each([
 
     fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
     const submit = await screen.findByRole("button", {
-      name: "Update Reminders",
+      name: "Update reminders",
     });
     await waitFor(() => expect(submit).toHaveProperty("disabled", false));
     fireEvent.click(submit);
@@ -351,7 +351,7 @@ it.each([
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(updateRequests).toBe(saves));
     expect(
-      await screen.findByRole("button", { name: "Update Reminders" }),
+      await screen.findByRole("button", { name: "Update reminders" }),
     ).toBeTruthy();
   },
 );
@@ -364,7 +364,7 @@ const openPresets = async () => {
 const createFromAnnouncementPreset = async () => {
   await openPresets();
   fireEvent.click(screen.getByRole("button", { name: "Announcement" }));
-  const submit = screen.getByRole("button", { name: "Create Reminders" });
+  const submit = screen.getByRole("button", { name: "Create reminders" });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
   fireEvent.click(submit);
   fireEvent.change(
@@ -414,7 +414,7 @@ it("disables a dependency-deadline preset without an upcoming deadline", async (
   renderTab();
   await openPresets();
   // The preset is also disabled before the candidates load, so wait for them.
-  fireEvent.click(screen.getByRole("button", { name: "Two Day Range" }));
+  fireEvent.click(screen.getByRole("button", { name: "Two day range" }));
   await screen.findByRole("option", { name: /^Dependency 10 deadline/ });
   fireEvent.click(screen.getByRole("button", { name: "Load preset..." }));
 
@@ -438,8 +438,8 @@ it("creates a group from the form and closes it", async () => {
   expect(
     await screen.findByText("Personal reminders group scheduled successfully."),
   ).toBeTruthy();
-  expect(screen.getByText("Member Action announcement")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Create Reminders" })).toBeNull();
+  expect(screen.getByText("Member action announcement")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Create reminders" })).toBeNull();
 });
 
 it("says why a create from the form was refused and keeps it open", async () => {
@@ -449,7 +449,7 @@ it("says why a create from the form was refused and keeps it open", async () => 
   await createFromAnnouncementPreset();
 
   expect(await screen.findAllByText("Reminder name taken")).not.toHaveLength(0);
-  expect(screen.getByRole("button", { name: "Create Reminders" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Create reminders" })).toBeTruthy();
 });
 
 it("previews an expanded reminder's messages", async () => {
@@ -481,7 +481,7 @@ it("does not preview a reminder being edited", async () => {
   renderTab();
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
-  await screen.findByRole("button", { name: "Update Reminders" });
+  await screen.findByRole("button", { name: "Update reminders" });
   await new Promise((resolve) => setTimeout(resolve, 50));
 
   expect(previewRequests).toEqual([]);

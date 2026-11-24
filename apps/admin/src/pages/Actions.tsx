@@ -137,6 +137,13 @@ const ActionsList: React.FC = () => {
       });
   }, [actions]);
 
+  const title = <title>Actions - Admin</title>;
+  const errorNote = error && (
+    <p role="alert" className="flex-shrink-0 text-red-600">
+      {error}
+    </p>
+  );
+
   // Mounted from the first render, before any message, so screen readers
   // announce the message when it arrives.
   const withStatus = (page: React.ReactNode) => (
@@ -155,21 +162,32 @@ const ActionsList: React.FC = () => {
   );
 
   if (list.isPending) {
-    return withStatus(<p>Loading actions...</p>);
+    return withStatus(
+      <p className="p-5">
+        {title}
+        Loading actions...
+      </p>,
+    );
   }
 
   if (error && !list.data) {
-    return withStatus(<p className="text-red-500">{error}</p>);
+    return withStatus(
+      <div className="p-5">
+        {title}
+        {errorNote}
+      </div>,
+    );
   }
 
   if (!list.data?.length) {
     return withStatus(
-      <div className="space-y-4">
+      <div className="space-y-4 p-5">
+        {title}
         <div className="flex justify-between items-center">
-          <p className="font-bold ml-2">Actions</p>
+          <h1 className="font-bold">Actions</h1>
           <CreateActionMenu />
         </div>
-        {error && <p className="text-red-500">{error}</p>}
+        {errorNote}
         <p>No actions yet. Create one to get started.</p>
       </div>,
     );
@@ -177,8 +195,8 @@ const ActionsList: React.FC = () => {
 
   return withStatus(
     <div className="flex flex-col p-5 gap-y-3">
-      <title>Admin panel</title>
-      {error && <p className="text-red-500 flex-shrink-0">{error}</p>}
+      {title}
+      {errorNote}
       <ActionTimeline
         actions={timelineActions}
         header={

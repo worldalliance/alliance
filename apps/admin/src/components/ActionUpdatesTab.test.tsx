@@ -464,3 +464,11 @@ it("asks for a date once the date is cleared", () => {
 
   expect(screen.getByText("Pick a date.")).toBeTruthy();
 });
+
+it("names each update's edit link after its update", () => {
+  renderTab([existing, { ...existing, id: 8, title: "Older news" }]);
+
+  expect(
+    screen.getByRole("link", { name: "Edit Older news" }).getAttribute("href"),
+  ).toBe("/actions/4/updates/8");
+});

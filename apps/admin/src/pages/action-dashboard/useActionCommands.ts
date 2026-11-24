@@ -108,8 +108,9 @@ export function useActionCommands(params: {
     const confirmed =
       action?.archived ||
       (await confirm({
-        title: "Confirm Archive",
-        message: "Are you sure you want to archive this action?",
+        title: "Archive this action?",
+        message: `${action?.publicOnly ? "Its public page stays open to anyone with the link." : "Only admins can open it."} It also leaves the actions list unless archived actions are shown.`,
+        confirmLabel: "Archive",
       }));
     if (confirmed && actionId) {
       const archived = action?.archived;
@@ -124,6 +125,7 @@ export function useActionCommands(params: {
   }, [
     actionId,
     action?.archived,
+    action?.publicOnly,
     confirm,
     archiveAction,
     unarchiveAction,

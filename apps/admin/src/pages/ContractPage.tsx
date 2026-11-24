@@ -175,7 +175,7 @@ const ContractPage: React.FC = () => {
   }
 
   const pageTitle = isNew
-    ? "Create Contract"
+    ? "Create contract"
     : contract
       ? contract.name?.trim() || `Contract #${contract.id}`
       : "Contract";
@@ -382,7 +382,7 @@ const ContractPage: React.FC = () => {
                       htmlFor="startDate"
                       className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                      Start Date
+                      Start date
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -416,7 +416,7 @@ const ContractPage: React.FC = () => {
                       htmlFor="endDate"
                       className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                      End Date
+                      End date
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -469,8 +469,8 @@ const ContractPage: React.FC = () => {
                   ? "Creating..."
                   : "Saving..."
                 : isNew
-                  ? "Create Contract"
-                  : "Save Changes"}
+                  ? "Create contract"
+                  : "Save changes"}
             </button>
           </div>
         </form>

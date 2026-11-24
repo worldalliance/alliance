@@ -13,10 +13,10 @@ describe("ActionForm editing", () => {
       screen.getByLabelText<HTMLInputElement>(label).checked;
     expect(value("Name")).toBe("Call your rep");
     expect(value("Action page description")).toBe("Intro");
-    expect(value("Visibility Mode")).toBe("all_members");
-    expect(value("Time Estimate (min)")).toBe("10");
+    expect(value("Visibility mode")).toBe("all_members");
+    expect(value("Time estimate (min)")).toBe("10");
     expect(checked(/^Optional/)).toBe(true);
-    expect(checked(/^Public Only/)).toBe(false);
+    expect(checked(/^Public only/)).toBe(false);
 
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Write your rep" },
@@ -24,16 +24,16 @@ describe("ActionForm editing", () => {
     fireEvent.change(screen.getByLabelText("Action page description"), {
       target: { value: "Hi" },
     });
-    fireEvent.change(screen.getByLabelText("Visibility Mode"), {
+    fireEvent.change(screen.getByLabelText("Visibility mode"), {
       target: { value: "public" },
     });
-    fireEvent.change(screen.getByLabelText("Time Estimate (min)"), {
+    fireEvent.change(screen.getByLabelText("Time estimate (min)"), {
       target: { value: "5" },
     });
-    fireEvent.change(screen.getByLabelText("Custom Stat Label"), {
+    fireEvent.change(screen.getByLabelText("Custom stat label"), {
       target: { value: "Invites" },
     });
-    fireEvent.click(screen.getByLabelText(/^Public Only/));
+    fireEvent.click(screen.getByLabelText(/^Public only/));
     fireEvent.click(screen.getByLabelText(/^Optional/));
     expect(edits).toEqual([
       ["name", "Write your rep"],
