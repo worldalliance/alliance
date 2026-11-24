@@ -49,6 +49,7 @@ const ActionUpdatesTab = ({
   const [newUpdate, setNewUpdate] =
     useState<CreateActionUpdateDto>(defaultNewUpdate);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<ReadonlySet<number>>(
     new Set(),
@@ -67,22 +68,29 @@ const ActionUpdatesTab = ({
       ...next,
       nonCompleterResult: next.nonCompleterResult || null,
     });
-  const isSubmitDisabled =
-    creating ||
-    !newUpdate.title.trim() ||
-    (newUpdate.notifyType !== "none" &&
-      !readGroupResults({
-        completed: texts.shortNotifString,
-        didNotComplete: texts.nonCompleterResult,
-      }).ok) ||
-    (newUpdate.notifyType === "tag" && !newUpdate.tagId);
+  const groupResults = readGroupResults({
+    completed: texts.shortNotifString,
+    didNotComplete: texts.nonCompleterResult,
+  });
+  const missing =
+    [
+      !newUpdate.title.trim() && "Add a title.",
+      !newUpdate.date && "Pick a date.",
+      newUpdate.notifyType !== "none" &&
+        !groupResults.ok &&
+        `${groupResults.error} Or set the audience to "${ACTION_UPDATE_NOTIFY_TYPE_LABELS.none}".`,
+      newUpdate.notifyType === "tag" &&
+        !newUpdate.tagId &&
+        "Pick the tag to notify.",
+    ]
+      .filter(Boolean)
+      .join(" ") || null;
 
   const handleSubmit = async () => {
-    if (isSubmitDisabled) {
-      return;
-    }
-
+    if (creating) return;
+    setSubmitAttempted(true);
     setCreateError(null);
+    if (missing) return;
     const created = await R.fromPromise(
       create.mutateAsync({ actionId, body: newUpdate }),
       (thrown) => {
@@ -95,6 +103,7 @@ const ActionUpdatesTab = ({
       return;
     }
     setNewUpdate(defaultNewUpdate);
+    setSubmitAttempted(false);
     navigate(`/actions/${actionId}/updates/${created.value.id}`);
   };
 
@@ -272,15 +281,15 @@ const ActionUpdatesTab = ({
         </div>
       </Card>
       <div className="flex items-center justify-end gap-3">
-        {createError && (
+        {(createError ?? (submitAttempted && missing)) && (
           <p className="text-sm text-red-700" role="alert">
-            {createError}
+            {createError ?? missing}
           </p>
         )}
         <Button
           onClick={handleSubmit}
           color={ButtonColor.Black}
-          disabled={isSubmitDisabled}
+          disabled={creating}
         >
           Create and write content
         </Button>

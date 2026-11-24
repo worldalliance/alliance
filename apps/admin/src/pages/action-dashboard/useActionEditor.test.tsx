@@ -139,6 +139,25 @@ describe("useActionEditor", () => {
     expect(result.current.dirty).toBe(false);
   });
 
+  it("asks for a name instead of saving a blank one", async () => {
+    const { result, updateAction } = renderEditor({ name: "   " });
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    await act(() => result.current.handleSubmit(submitEvent));
+
+    expect(setError).toHaveBeenLastCalledWith("Give the action a name.");
+    expect(updateAction).not.toHaveBeenCalled();
+
+    act(() =>
+      result.current.handleInputChange({
+        target: { name: "name", value: "Call your rep", type: "text" },
+      } as React.ChangeEvent<HTMLInputElement>),
+    );
+    const clear = setError.mock.lastCall?.[0];
+    expect(clear("Give the action a name.")).toBeNull();
+    expect(clear("Failed to archive action")).toBe("Failed to archive action");
+  });
+
   it("is dirty once a new action has an edit", async () => {
     const { result } = renderEditor({}, { isNew: true });
     await waitFor(() => expect(result.current.dirty).toBe(false));

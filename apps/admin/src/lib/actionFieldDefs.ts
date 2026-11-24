@@ -105,7 +105,6 @@ export function actionFieldDefs(
       label: ACTION_TEXT_FIELD_LABELS.shortDescription,
       type: "textarea",
       section: ActionFieldSection.Content,
-      required: true,
       rows: 2,
     },
     {
@@ -113,7 +112,6 @@ export function actionFieldDefs(
       label: ACTION_TEXT_FIELD_LABELS.body,
       type: "markdowntextarea",
       section: ActionFieldSection.Content,
-      required: true,
     },
     {
       name: "image",

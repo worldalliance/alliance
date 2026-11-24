@@ -88,6 +88,16 @@ describe("ActionForm", () => {
     expect(within(section("Settings")).getByText("Category")).toBeTruthy();
   });
 
+  it("requires a name and leaves the descriptions optional, since drafts save without them", () => {
+    renderForm();
+
+    const required = (label: string) =>
+      screen.getByLabelText<HTMLTextAreaElement>(label).required;
+    expect(required("Name")).toBe(true);
+    expect(required("Short description")).toBe(false);
+    expect(required("Action page description")).toBe(false);
+  });
+
   it("opens a rarely used section when one of its fields is set", () => {
     renderForm();
 

@@ -47,6 +47,8 @@ function emptyActionDraft(suiteId: number | undefined): CreateActionDto {
   };
 }
 
+const NAME_MISSING = "Give the action a name.";
+
 // Keys are sorted so a field patched into a saved draft that lacked it
 // compares equal to the form. A blank field may be absent, null or ""
 // depending on whether it was seeded, fetched or cleared, so all three
@@ -126,7 +128,7 @@ export function useActionEditor(params: {
     suitesError: boolean;
   };
   searchParams: URLSearchParams;
-  setError: (error: string | null) => void;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
 }) {
   const {
     admin: { action, isFetching: actionFetching, createAction, updateAction },
@@ -295,6 +297,9 @@ export function useActionEditor(params: {
       ...prev,
       [name]: actionFormInputValue(name, value),
     }));
+    if (name === "name" && value.trim()) {
+      setError((shown) => (shown === NAME_MISSING ? null : shown));
+    }
   };
 
   const handleCohortExpressionChange = useCallback(
@@ -353,6 +358,11 @@ export function useActionEditor(params: {
 
     if (imageUploading) {
       setError(imageUploadingMessage);
+      return;
+    }
+
+    if (!form.name.trim()) {
+      setError(NAME_MISSING);
       return;
     }
 

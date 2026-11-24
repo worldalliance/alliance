@@ -87,7 +87,12 @@ it("asks before an edited new action is left, and opens the created action unask
   const { router, editor } = renderEditorAt("/actions/new");
   await waitFor(() => expect(editor().dirty).toBe(false));
 
-  act(() => editor().handleCohortExpressionChange({ type: "AllMembers" }));
+  act(() =>
+    // handleInputChange reads only the event's target.
+    editor().handleInputChange({
+      target: { name: "name", value: "Call your rep", type: "text" },
+    } as React.ChangeEvent<HTMLInputElement>),
+  );
   await act(() => router.navigate("/projects"));
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(router.state.location.pathname).toBe("/actions/new");
