@@ -162,7 +162,7 @@ export const condition: ResultRule = {
   type: boolean,
   undecided: Undecided.NeedsFallback,
 };
-export const groupCondition: ResultRule = {
+export const partCondition: ResultRule = {
   type: boolean,
   undecided: Undecided.Allowed,
 };

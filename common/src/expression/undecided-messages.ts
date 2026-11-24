@@ -38,11 +38,11 @@ export const undecidedMessage = ({
   return `This is undecided when ${culprit} has no value. ${advice}`;
 };
 
-/** The split editor's names for a group's fallbacks, which its error messages point to. */
+/** The partition editor's names for a part's fallbacks, which its error messages point to. */
 export const PUT_HERE_LABEL = "Put them here";
-export const CONTINUE_LABEL = "Continue to the next group";
+export const CONTINUE_LABEL = "Continue to the next part";
 
-export const groupFallbackMessage = ({ culprit }: { culprit: Culprit }) => {
+export const partFallbackMessage = ({ culprit }: { culprit: Culprit }) => {
   const advice = `Pick what happens to those members: "${PUT_HERE_LABEL}" or "${CONTINUE_LABEL}".`;
   if (culprit === "")
     return `This can be undecided for some members. ${advice}`;

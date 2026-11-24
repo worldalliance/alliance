@@ -279,7 +279,7 @@ test("shows the formulas a delete would break, and deletes with the fix", async 
     edits: [],
     deletions: [],
     deletedLists: [{ id: volunteers.id, baseVersionId: 5 }],
-    groupFixes: [],
+    partFixes: [],
   });
   fireEvent.click(screen.getByRole("button", { name: "Fix it in this save" }));
   fireEvent.change(await screen.findByLabelText(/^Formula/), {
@@ -306,20 +306,20 @@ test("shows the formulas a delete would break, and deletes with the fix", async 
     ],
     deletions: [],
     deletedLists: [{ id: volunteers.id, baseVersionId: 5 }],
-    groupFixes: [],
+    partFixes: [],
   });
 });
 
-const groupReadsVolunteers: FormulaProblemDto = {
+const partReadsVolunteers: FormulaProblemDto = {
   ...readsVolunteers,
   kind: "dependent",
-  id: "split:4:group-1",
-  split: {
+  id: "partition:4:part-1",
+  partition: {
     suiteId: 4,
     suiteName: "Week 12",
     versionId: 2,
-    groupId: "group-1",
-    groupName: "Listed",
+    partId: "part-1",
+    partName: "Listed",
     fallback: null,
   },
 };
@@ -333,8 +333,8 @@ const remove = async () => {
   );
 };
 
-test("deletes a list with the fix of a split group that reads it", async () => {
-  formulaAnswers = [[groupReadsVolunteers], []];
+test("deletes a list with the fix of a part that reads it", async () => {
+  formulaAnswers = [[partReadsVolunteers], []];
   const router = renderPage(`/member-lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   await remove();
@@ -349,19 +349,19 @@ test("deletes a list with the fix of a split group that reads it", async () => {
   await waitFor(() =>
     expect(router.state.location.pathname).toBe("/member-lists"),
   );
-  expect(formulaSaves[1].groupFixes).toEqual([
+  expect(formulaSaves[1].partFixes).toEqual([
     {
       suiteId: 4,
       baseVersionId: 2,
-      groupId: "group-1",
+      partId: "part-1",
       text: "false",
       fallback: null,
     },
   ]);
 });
 
-test("asks before leaving while a split group's fix differs from how it opened", async () => {
-  formulaAnswers = [[groupReadsVolunteers]];
+test("asks before leaving while a part's fix differs from how it opened", async () => {
+  formulaAnswers = [[partReadsVolunteers]];
   const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
   const router = renderPage(`/member-lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
@@ -376,7 +376,7 @@ test("asks before leaving while a split group's fix differs from how it opened",
   expect(router.state.location.pathname).toBe(`/member-lists/${volunteers.id}`);
 
   fireEvent.change(condition(), {
-    target: { value: groupReadsVolunteers.text },
+    target: { value: partReadsVolunteers.text },
   });
   await act(() => router.navigate("/member-lists"));
   expect(confirm).toHaveBeenCalledTimes(1);

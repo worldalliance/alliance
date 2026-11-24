@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { assertNotSplitAction } from "src/suite-splits/split-guards";
+import { assertNotPartitionAction } from "src/suite-partitions/partition-guards";
 import { In, type EntityManager, type Repository } from "typeorm";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
@@ -56,7 +56,7 @@ export class CohortDecisionStaffService {
   }): Promise<ActionCohortDecision> {
     const { actionId, userId, included, note, staffUserId, now } = params;
     await this.decisionRepository.manager.transaction(async (em) => {
-      await assertNotSplitAction(em, actionId);
+      await assertNotPartitionAction(em, actionId);
       const decision = await em.findOne(ActionCohortDecision, {
         where: { actionId, userId },
         lock: { mode: "pessimistic_write" },

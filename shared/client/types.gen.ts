@@ -2501,7 +2501,7 @@ export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed'
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
-export type ViewerOptionalReason = 'contract_gap' | 'split_group';
+export type ViewerOptionalReason = 'contract_gap' | 'partition_part';
 
 export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
 
@@ -3834,9 +3834,9 @@ export type ActionSuiteDto = {
     reminderGroups: Array<ReminderGroupDto>;
     generalUpdates: Array<GeneralUpdateDto>;
     /**
-     * Whether the suite's groups decide its actions' participants and optional work.
+     * Whether the suite is partitioned, so its partition decides its actions' participants and optional work.
      */
-    usesGroups: boolean;
+    isPartitioned: boolean;
 };
 
 export type CreateActionSuiteDto = {
@@ -4808,17 +4808,17 @@ export type ListDeletionDto = {
     baseVersionId: number;
 };
 
-export type GroupFallback = 'put_here' | 'continue';
+export type PartFallback = 'put_here' | 'continue';
 
-export type GroupFixDto = {
+export type PartFixDto = {
     suiteId: number;
     /**
-     * The split version the fix started from.
+     * The partition version the fix started from.
      */
     baseVersionId: number;
-    groupId: string;
+    partId: string;
     text: string;
-    fallback: GroupFallback | null;
+    fallback: PartFallback | null;
 };
 
 export type SaveFormulasDto = {
@@ -4829,9 +4829,9 @@ export type SaveFormulasDto = {
      */
     deletedLists?: Array<ListDeletionDto>;
     /**
-     * Split group conditions fixed in the same save.
+     * Part conditions fixed in the same save.
      */
-    groupFixes?: Array<GroupFixDto>;
+    partFixes?: Array<PartFixDto>;
 };
 
 export type SaveProblemKind = 'name' | 'named' | 'dependent';
@@ -4845,16 +4845,16 @@ export type FormulaDiagnosticDto = {
     end: number;
 };
 
-export type SplitGroupRefDto = {
+export type PartitionPartRefDto = {
     suiteId: number;
     suiteName: string;
     /**
-     * The split version a fix starts from.
+     * The partition version a fix starts from.
      */
     versionId: number;
-    groupId: string;
-    groupName: string;
-    fallback: GroupFallback | null;
+    partId: string;
+    partName: string;
+    fallback: PartFallback | null;
 };
 
 export type FormulaProblemDto = {
@@ -4873,9 +4873,9 @@ export type FormulaProblemDto = {
     text?: string;
     diagnostics?: Array<FormulaDiagnosticDto>;
     /**
-     * Set when the dependent is a split group's condition.
+     * Set when the dependent is a part's condition.
      */
-    split?: SplitGroupRefDto;
+    partition?: PartitionPartRefDto;
 };
 
 export type SaveFormulasResultDto = {
@@ -4920,16 +4920,16 @@ export type UpdateMemberListDto = {
 };
 
 /**
- * The kind of work the group had when ticked as intentionally without required work.
+ * The kind of work the part had when ticked as intentionally without required work.
  */
-export type GroupWork = 'optional_only' | 'nothing';
+export type PartWork = 'optional_only' | 'nothing';
 
 /**
  * An action not listed is not assigned.
  */
 export type CellAssignment = 'required' | 'optional';
 
-export type SplitCellDto = {
+export type PartitionCellDto = {
     actionId: number;
     /**
      * An action not listed is not assigned.
@@ -4937,60 +4937,60 @@ export type SplitCellDto = {
     assignment: CellAssignment;
 };
 
-export type SplitGroupDto = {
+export type PartitionPartDto = {
     id: string;
     name: string;
     text: string | null;
-    fallback: GroupFallback | null;
+    fallback: PartFallback | null;
     /**
-     * The kind of work the group had when ticked as intentionally without required work.
+     * The kind of work the part had when ticked as intentionally without required work.
      */
-    noRequiredWorkTick: GroupWork | null;
-    cells: Array<SplitCellDto>;
+    noRequiredWorkTick: PartWork | null;
+    cells: Array<PartitionCellDto>;
 };
 
-export type SplitActionDto = {
+export type PartitionActionDto = {
     id: number;
     name: string;
 };
 
-export type SuiteSplitDto = {
+export type SuitePartitionDto = {
     versionId: number;
-    groups: Array<SplitGroupDto>;
-    actions: Array<SplitActionDto>;
+    parts: Array<PartitionPartDto>;
+    actions: Array<PartitionActionDto>;
     /**
-     * Whether the split has gone live.
+     * Whether the partition has gone live.
      */
     launched: boolean;
     launchFailedAt: string | null;
     launchFailure: string | null;
 };
 
-export type SplitGroupDraftDto = {
+export type PartitionPartDraftDto = {
     id: string;
     name: string;
     /**
-     * The condition as text; null only for the last group, "Everyone else".
+     * The condition as text; null only for the last part, "Everyone else".
      */
     text: string | null;
-    fallback: GroupFallback | null;
+    fallback: PartFallback | null;
     noRequiredWorkTick: boolean;
-    cells: Array<SplitCellDto>;
+    cells: Array<PartitionCellDto>;
 };
 
-export type SaveSplitDto = {
-    groups: Array<SplitGroupDraftDto>;
+export type SavePartitionDto = {
+    parts: Array<PartitionPartDraftDto>;
     /**
-     * The split version the admin edited.
+     * The partition version the admin edited.
      */
     baseVersionId: number;
 };
 
-export type SplitProblemDto = {
+export type PartitionProblemDto = {
     /**
-     * The group it is about.
+     * The part it is about.
      */
-    groupId: string | null;
+    partId: string | null;
     /**
      * Set for a problem with no place in the text.
      */
@@ -5002,26 +5002,26 @@ export type SplitProblemDto = {
     diagnostics?: Array<FormulaDiagnosticDto>;
 };
 
-export type SplitWarningDto = {
-    groupId: string;
+export type PartitionWarningDto = {
+    partId: string;
     message: string;
 };
 
-export type SaveSplitResultDto = {
-    problems: Array<SplitProblemDto>;
-    warnings: Array<SplitWarningDto>;
+export type SavePartitionResultDto = {
+    problems: Array<PartitionProblemDto>;
+    warnings: Array<PartitionWarningDto>;
     /**
-     * The split as stored, unless the check refused the save.
+     * The partition as stored, unless the check refused the save.
      */
-    split: SuiteSplitDto | null;
+    partition: SuitePartitionDto | null;
 };
 
-export type SplitGroupsDto = {
-    groups: Array<SplitGroupDraftDto>;
+export type PartitionPartsDto = {
+    parts: Array<PartitionPartDraftDto>;
 };
 
-export type GroupCountDto = {
-    groupId: string;
+export type PartCountDto = {
+    partId: string;
     count: number;
 };
 
@@ -5038,27 +5038,27 @@ export type PreviewErrorDto = {
 
 export type UntakenBranchDto = {
     /**
-     * The group or formula it is in.
+     * The part or formula it is in.
      */
     where: string;
     text: string;
 };
 
-export type SplitPreviewDto = {
+export type PartitionPreviewDto = {
     population: number;
-    groups: Array<GroupCountDto>;
+    parts: Array<PartCountDto>;
     byWork: WorkCountsDto;
     couldNotDecide: number;
     errors: Array<PreviewErrorDto>;
     untakenBranches: Array<UntakenBranchDto>;
 };
 
-export type SplitPreviewResultDto = {
+export type PartitionPreviewResultDto = {
     /**
-     * Why the groups can't be previewed as they are; empty when `preview` is set.
+     * Why the partition can't be previewed as it is; empty when `preview` is set.
      */
-    problems: Array<SplitProblemDto>;
-    preview?: SplitPreviewDto;
+    problems: Array<PartitionProblemDto>;
+    preview?: PartitionPreviewDto;
 };
 
 export type HostedDocDto = {
@@ -15975,7 +15975,7 @@ export type FormulasSaveAdminData = {
 
 export type FormulasSaveAdminErrors = {
     /**
-     * A formula, list or split changed since the admin opened it.
+     * A formula, list or partition changed since the admin opened it.
      */
     409: HeyApiError;
 };
@@ -16060,105 +16060,105 @@ export type MemberListsUpdateAdminResponses = {
 
 export type MemberListsUpdateAdminResponse = MemberListsUpdateAdminResponses[keyof MemberListsUpdateAdminResponses];
 
-export type SuiteSplitsSplitAdminData = {
+export type SuitePartitionsPartitionAdminData = {
     body?: never;
     path: {
         suiteId: number;
     };
     query?: never;
-    url: '/actions/suite/{suiteId}/split';
+    url: '/actions/suite/{suiteId}/partition';
 };
 
-export type SuiteSplitsSplitAdminErrors = {
+export type SuitePartitionsPartitionAdminErrors = {
     /**
-     * The suite doesn't use groups.
+     * The suite doesn't use parts.
      */
     404: HeyApiError;
 };
 
-export type SuiteSplitsSplitAdminError = SuiteSplitsSplitAdminErrors[keyof SuiteSplitsSplitAdminErrors];
+export type SuitePartitionsPartitionAdminError = SuitePartitionsPartitionAdminErrors[keyof SuitePartitionsPartitionAdminErrors];
 
-export type SuiteSplitsSplitAdminResponses = {
-    200: SuiteSplitDto;
+export type SuitePartitionsPartitionAdminResponses = {
+    200: SuitePartitionDto;
 };
 
-export type SuiteSplitsSplitAdminResponse = SuiteSplitsSplitAdminResponses[keyof SuiteSplitsSplitAdminResponses];
+export type SuitePartitionsPartitionAdminResponse = SuitePartitionsPartitionAdminResponses[keyof SuitePartitionsPartitionAdminResponses];
 
-export type SuiteSplitsConvertToSplitAdminData = {
+export type SuitePartitionsConvertToPartitionAdminData = {
     body?: never;
     path: {
         suiteId: number;
     };
     query?: never;
-    url: '/actions/suite/{suiteId}/split';
+    url: '/actions/suite/{suiteId}/partition';
 };
 
-export type SuiteSplitsConvertToSplitAdminErrors = {
+export type SuitePartitionsConvertToPartitionAdminErrors = {
     /**
      * An action still has its own participants or prerequisites.
      */
     400: HeyApiError;
     /**
-     * The suite already uses groups or is scheduled.
+     * The suite already uses parts or is scheduled.
      */
     409: HeyApiError;
 };
 
-export type SuiteSplitsConvertToSplitAdminError = SuiteSplitsConvertToSplitAdminErrors[keyof SuiteSplitsConvertToSplitAdminErrors];
+export type SuitePartitionsConvertToPartitionAdminError = SuitePartitionsConvertToPartitionAdminErrors[keyof SuitePartitionsConvertToPartitionAdminErrors];
 
-export type SuiteSplitsConvertToSplitAdminResponses = {
-    200: SuiteSplitDto;
+export type SuitePartitionsConvertToPartitionAdminResponses = {
+    200: SuitePartitionDto;
 };
 
-export type SuiteSplitsConvertToSplitAdminResponse = SuiteSplitsConvertToSplitAdminResponses[keyof SuiteSplitsConvertToSplitAdminResponses];
+export type SuitePartitionsConvertToPartitionAdminResponse = SuitePartitionsConvertToPartitionAdminResponses[keyof SuitePartitionsConvertToPartitionAdminResponses];
 
-export type SuiteSplitsSaveSplitAdminData = {
-    body: SaveSplitDto;
+export type SuitePartitionsSavePartitionAdminData = {
+    body: SavePartitionDto;
     path: {
         suiteId: number;
     };
     query?: never;
-    url: '/actions/suite/{suiteId}/split/save';
+    url: '/actions/suite/{suiteId}/partition/save';
 };
 
-export type SuiteSplitsSaveSplitAdminErrors = {
+export type SuitePartitionsSavePartitionAdminErrors = {
     /**
-     * The groups or the suite's actions changed since the admin opened them.
+     * The partition or the suite's actions changed since the admin opened them.
      */
     409: HeyApiError;
 };
 
-export type SuiteSplitsSaveSplitAdminError = SuiteSplitsSaveSplitAdminErrors[keyof SuiteSplitsSaveSplitAdminErrors];
+export type SuitePartitionsSavePartitionAdminError = SuitePartitionsSavePartitionAdminErrors[keyof SuitePartitionsSavePartitionAdminErrors];
 
-export type SuiteSplitsSaveSplitAdminResponses = {
-    200: SaveSplitResultDto;
+export type SuitePartitionsSavePartitionAdminResponses = {
+    200: SavePartitionResultDto;
 };
 
-export type SuiteSplitsSaveSplitAdminResponse = SuiteSplitsSaveSplitAdminResponses[keyof SuiteSplitsSaveSplitAdminResponses];
+export type SuitePartitionsSavePartitionAdminResponse = SuitePartitionsSavePartitionAdminResponses[keyof SuitePartitionsSavePartitionAdminResponses];
 
-export type SuiteSplitsPreviewSplitAdminData = {
-    body: SplitGroupsDto;
+export type SuitePartitionsPreviewPartitionAdminData = {
+    body: PartitionPartsDto;
     path: {
         suiteId: number;
     };
     query?: never;
-    url: '/actions/suite/{suiteId}/split/preview';
+    url: '/actions/suite/{suiteId}/partition/preview';
 };
 
-export type SuiteSplitsPreviewSplitAdminErrors = {
+export type SuitePartitionsPreviewPartitionAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type SuiteSplitsPreviewSplitAdminError = SuiteSplitsPreviewSplitAdminErrors[keyof SuiteSplitsPreviewSplitAdminErrors];
+export type SuitePartitionsPreviewPartitionAdminError = SuitePartitionsPreviewPartitionAdminErrors[keyof SuitePartitionsPreviewPartitionAdminErrors];
 
-export type SuiteSplitsPreviewSplitAdminResponses = {
-    200: SplitPreviewResultDto;
+export type SuitePartitionsPreviewPartitionAdminResponses = {
+    200: PartitionPreviewResultDto;
 };
 
-export type SuiteSplitsPreviewSplitAdminResponse = SuiteSplitsPreviewSplitAdminResponses[keyof SuiteSplitsPreviewSplitAdminResponses];
+export type SuitePartitionsPreviewPartitionAdminResponse = SuitePartitionsPreviewPartitionAdminResponses[keyof SuitePartitionsPreviewPartitionAdminResponses];
 
 export type HostedDocsFindAllAdminData = {
     body?: never;

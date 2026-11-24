@@ -4,9 +4,9 @@ import { checkExpression } from "./check";
 import {
   catalog,
   condition,
-  groupCondition,
   named,
   NEEDLESS,
+  partCondition,
   passes,
   problems,
   string,
@@ -250,7 +250,7 @@ describe("named expressions", () => {
       at: "isCalifornia",
     });
     expect(
-      passes("isCalifornia", { ...groupCondition, named: [isCalifornia] })
+      passes("isCalifornia", { ...partCondition, named: [isCalifornia] })
         .mayBeUnknown,
     ).toBe(true);
     expect(

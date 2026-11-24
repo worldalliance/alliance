@@ -32,7 +32,7 @@ const suite = {
   events: [],
   reminderGroups: [],
   generalUpdates: [],
-  usesGroups: false,
+  isPartitioned: false,
 } satisfies ActionSuiteDto;
 const tag = makeTag({ id: "t1", name: "Volunteers" });
 

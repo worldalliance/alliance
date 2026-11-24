@@ -3,8 +3,8 @@ import {
   NEEDLESS,
   UNDECIDED_STATE,
   condition,
-  groupCondition,
   named,
+  partCondition,
   passes,
   problems,
   variable,
@@ -113,12 +113,12 @@ describe("undecided results", () => {
     ]);
   });
 
-  test("a split group may stay undecided and reports that it can", () => {
-    expect(passes('state === "CA"', groupCondition).mayBeUnknown).toBe(true);
+  test("a part may stay undecided and reports that it can", () => {
+    expect(passes('state === "CA"', partCondition).mayBeUnknown).toBe(true);
     expect(
-      passes('state === "CA" || total > 1', groupCondition).mayBeUnknown,
+      passes('state === "CA" || total > 1', partCondition).mayBeUnknown,
     ).toBe(true);
-    expect(passes("total > 1", groupCondition).mayBeUnknown).toBe(false);
+    expect(passes("total > 1", partCondition).mayBeUnknown).toBe(false);
   });
 
   test("a parameter that accepts a missing value takes an unknown tsc can't see", () => {
@@ -137,7 +137,7 @@ describe("undecided results", () => {
   ])(
     "a narrowed read inside a list, record or function leaves a fallback after it allowed: %s",
     (text) => {
-      passes(text, groupCondition);
+      passes(text, partCondition);
     },
   );
 
@@ -148,7 +148,7 @@ describe("undecided results", () => {
   ])(
     "a read whose missing value can't reach the left of ?? leaves it needless: %s",
     (text) => {
-      expect(problems(text, groupCondition)).toContainEqual({
+      expect(problems(text, partCondition)).toContainEqual({
         message: NEEDLESS,
         at: "false",
       });
@@ -159,7 +159,7 @@ describe("undecided results", () => {
     "marks[0] === 1 && (marks[0] ?? 0) === 1",
     'items[0]?.name === "a" && (items[0]?.name ?? "x") === "a"',
   ])("a fallback on a narrowed read by position isn't needless: %s", (text) => {
-    passes(text, groupCondition);
+    passes(text, partCondition);
   });
 
   test("an unknown an inner ?? decides doesn't reach an outer one", () => {
@@ -321,7 +321,7 @@ describe("undecided results", () => {
   test.each([
     ['(state === "CA") ?? 5', condition, "5", "boolean"],
     ["(marks.indexOf(3) ?? false) + 1", variable, "false", "number"],
-    ['state === "CA" && (state ?? 5) === "CA"', groupCondition, "5", "string"],
+    ['state === "CA" && (state ?? 5) === "CA"', partCondition, "5", "string"],
   ])("%s: a required fallback must fit the value", (text, rule, at, type) => {
     expect(problems(text, rule)).toEqual([
       {

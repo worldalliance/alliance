@@ -11,7 +11,7 @@ const suite = (id: number, name: string): ActionSuiteDto => ({
   events: [],
   reminderGroups: [],
   generalUpdates: [],
-  usesGroups: false,
+  isPartitioned: false,
 });
 
 let suites: ActionSuiteDto[];

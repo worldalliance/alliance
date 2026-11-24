@@ -188,14 +188,14 @@ test.each([
 });
 
 test("a dependent left undecided without a fallback is listed", () => {
-  const group = dependent("group", "amount === 10");
+  const part = dependent("part", "amount === 10");
   expect(
     problems([{ id: "a", name: "amount", source: "count" }], {
-      dependents: [group],
+      dependents: [part],
     }),
   ).toContainEqual({
     kind: SaveProblemKind.Dependent,
-    id: "group",
+    id: "part",
     text: "amount === 10",
     diagnostics: [
       expect.objectContaining({
@@ -209,7 +209,7 @@ test("a dependent left undecided without a fallback is listed", () => {
 test("a dependent fixed as text reads names the save introduces", () => {
   const rename = { id: "a", name: "base", source: "total" };
   const fixed = (text: string): Dependent => ({
-    id: "group",
+    id: "part",
     fixed: text,
     rule: condition,
   });
@@ -217,7 +217,7 @@ test("a dependent fixed as text reads names the save introduces", () => {
     R.unwrap(save([rename], { dependents: [fixed("base === 10")] })).dependents,
   ).toEqual([
     {
-      id: "group",
+      id: "part",
       tree: R.unwrap(
         parseExpression("base === 10", {
           catalog,
@@ -232,7 +232,7 @@ test("a dependent fixed as text reads names the save introduces", () => {
   ).toEqual([
     {
       kind: SaveProblemKind.Dependent,
-      id: "group",
+      id: "part",
       text: 'double(  "x") > base',
       diagnostics: [expect.objectContaining({ start: 9, end: 12 })],
     },
@@ -241,25 +241,25 @@ test("a dependent fixed as text reads names the save introduces", () => {
 
 test("a dependent fixed as text that doesn't parse is listed", () => {
   const listed = problems([{ id: "a", name: "base", source: "total" }], {
-    dependents: [{ id: "group", fixed: "amount ===", rule: condition }],
+    dependents: [{ id: "part", fixed: "amount ===", rule: condition }],
   });
   expect(listed.map(({ kind, id }) => ({ kind, id }))).toEqual([
-    { kind: SaveProblemKind.Dependent, id: "group" },
+    { kind: SaveProblemKind.Dependent, id: "part" },
   ]);
 });
 
 test("a dependent fixed as text is checked though it reads nothing changed", () => {
   expect(
     problems([{ id: "a", name: "base", source: "total" }], {
-      dependents: [{ id: "group", fixed: "count === 1", rule: condition }],
+      dependents: [{ id: "part", fixed: "count === 1", rule: condition }],
     }).map(({ kind, id }) => ({ kind, id })),
-  ).toEqual([{ kind: SaveProblemKind.Dependent, id: "group" }]);
+  ).toEqual([{ kind: SaveProblemKind.Dependent, id: "part" }]);
 });
 
 test("a dependent fixed as a tree is checked and returned", () => {
   const rename = { id: "a", name: "base", source: "total" };
   const fixed = (tree: Expr): Dependent => ({
-    id: "group",
+    id: "part",
     fixed: tree,
     rule: condition,
   });
@@ -269,11 +269,11 @@ test("a dependent fixed as a tree is checked and returned", () => {
       kind,
       id,
     })),
-  ).toEqual([{ kind: SaveProblemKind.Dependent, id: "group" }]);
+  ).toEqual([{ kind: SaveProblemKind.Dependent, id: "part" }]);
   const tree = parse("(count ?? 0) === 1");
   expect(
     R.unwrap(save([rename], { dependents: [fixed(tree)] })).dependents,
-  ).toEqual([{ id: "group", tree, mayBeUnknown: false }]);
+  ).toEqual([{ id: "part", tree, mayBeUnknown: false }]);
 });
 
 test("a stored dependent that reads nothing changed isn't checked", () => {
@@ -316,9 +316,9 @@ test("an already broken stored named expression blocks only through a checked re
 });
 
 test("a problem is listed once, at the named expression it's in", () => {
-  const group = dependent("group", "doubled > 10");
+  const part = dependent("part", "doubled > 10");
   const listed = problems([{ id: "a", name: "amount", source: '"x"' }], {
-    dependents: [group],
+    dependents: [part],
   });
   expect(listed).toEqual([
     {
@@ -342,8 +342,8 @@ test("a stored dependent reading a change through another named expression is ch
     others: [amount],
   });
   const withAlias = [...stored, alias];
-  const group: Dependent = {
-    id: "group",
+  const part: Dependent = {
+    id: "part",
     stored: R.unwrap(
       parseExpression("alias > 10", { catalog, named: withAlias }),
     ),
@@ -353,12 +353,12 @@ test("a stored dependent reading a change through another named expression is ch
     catalog,
     named: withAlias,
     save: [{ id: "a", name: "amount", source: '"x"' }],
-    dependents: [group],
+    dependents: [part],
   });
   if (result.ok) throw new Error("expected the save to be blocked");
   expect(result.error.map(({ kind, id }) => ({ kind, id }))).toContainEqual({
     kind: SaveProblemKind.Dependent,
-    id: "group",
+    id: "part",
   });
 });
 

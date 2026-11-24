@@ -59,7 +59,7 @@ export class ActionEventRecipientService {
     /** Share loads across calls within one request; see CohortResolverService.resolveCohortMemberIds. */
     session?: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
-    /** Leaves out members a split group's row assigns the action as optional. */
+    /** Leaves out members a part's row assigns the action as optional. */
     requiredOnly?: boolean;
   }): Promise<Map<number, User[]>> {
     const { entries, includeSuspended, requiredOnly } = params;
@@ -215,7 +215,7 @@ export class ActionEventRecipientService {
       }),
     ]);
 
-    // A split group's row can make an action optional for some members only.
+    // A part's row can make an action optional for some members only.
     const optionalRows = excludeOptionalActions
       ? await this.cohortAdmissionService.loadOptionalRowMemberIds(
           actions.map((action) => action.id),

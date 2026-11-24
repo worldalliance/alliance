@@ -19,7 +19,7 @@ serveApi(
             events: [],
             reminderGroups: [],
             generalUpdates: [],
-            usesGroups: false,
+            isPartitioned: false,
           } satisfies ActionSuiteDto)
         : Response.json(
             { message: "name must be shorter than or equal to 255 characters" },

@@ -42,12 +42,12 @@ export function useSaveFormulasAdmin() {
       formulasSaveAdmin({ body, throwOnError: true }).then(
         (r) => r.data.problems,
       ),
-    // A save can fix a split's group, or change how its conditions print.
+    // A save can fix a partition's part, or change how its conditions print.
     onSuccess: (problems) =>
       problems.length > 0
         ? undefined
         : queryClient.invalidateQueries({
-            queryKey: queryKeys.suiteSplitsAdminAll(),
+            queryKey: queryKeys.suitePartitionsAdminAll(),
           }),
   });
 }

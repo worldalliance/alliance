@@ -14,7 +14,7 @@ const doubled = named({
 });
 const stored = [amount, doubled];
 const big = {
-  id: "split-group",
+  id: "partition-part",
   rule: condition,
   stored: R.unwrap(parseExpression("doubled > 10", { catalog, named: stored })),
 };

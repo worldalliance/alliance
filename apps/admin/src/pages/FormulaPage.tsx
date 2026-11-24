@@ -15,9 +15,9 @@ import FormulaFields from "../components/formulas/FormulaFields";
 import FormulaFixes from "../components/formulas/FormulaFixes";
 import FormulaHistory from "../components/formulas/FormulaHistory";
 import {
-  groupFixChanged,
-  type GroupFixDraft,
-} from "../components/formulas/GroupFixFields";
+  partFixChanged,
+  type PartFixDraft,
+} from "../components/formulas/PartFixFields";
 import SaveRefusal, { type Refusal } from "../components/formulas/SaveRefusal";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { asDraft } from "../lib/formulaDraft";
@@ -128,7 +128,7 @@ const FormulaEditor: React.FC<{
   );
   /** Other formulas the admin is fixing in the same save. */
   const [fixes, setFixes] = useState<FormulaEditDto[]>([]);
-  const [groupFixes, setGroupFixes] = useState<GroupFixDraft[]>([]);
+  const [partFixes, setPartFixes] = useState<PartFixDraft[]>([]);
   const [problems, setProblems] = useState<FormulaProblemDto[]>([]);
   const [refusedDelete, setRefusedDelete] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
@@ -163,9 +163,7 @@ const FormulaEditor: React.FC<{
   };
   const hasUnsavedChanges =
     !saved &&
-    (changed(primary) ||
-      fixes.some(changed) ||
-      groupFixes.some(groupFixChanged));
+    (changed(primary) || fixes.some(changed) || partFixes.some(partFixChanged));
   const navigateUnprompted = useUnsavedChangesPrompt({ hasUnsavedChanges });
   const newHref = useHref(`/formulas/${NEW}`);
   const ownHref = useHref(`/formulas/${primary.id}`);
@@ -205,7 +203,7 @@ const FormulaEditor: React.FC<{
     saveFormulas.mutate(
       {
         edits: deleting ? fixes : [primary, ...fixes],
-        groupFixes: groupFixes.map((draft) => draft.fix),
+        partFixes: partFixes.map((draft) => draft.fix),
         deletions:
           deleting && primary.baseVersionId !== null
             ? [{ id: primary.id, baseVersionId: primary.baseVersionId }]
@@ -218,7 +216,7 @@ const FormulaEditor: React.FC<{
           setRefusedDelete(deleting);
           if (refused.length > 0) return;
           setFixes([]);
-          setGroupFixes([]);
+          setPartFixes([]);
           success(deleting ? `Deleted ${stored?.name}.` : "Saved.");
           if (deleting) {
             forget(primary.id);
@@ -298,12 +296,12 @@ const FormulaEditor: React.FC<{
         <FormulaFixes
           fixes={fixes}
           onFixesChange={setFixes}
-          groupFixes={groupFixes}
-          onGroupFixesChange={setGroupFixes}
+          partFixes={partFixes}
+          onPartFixesChange={setPartFixes}
           problems={problems.filter((problem) => problem.id !== primary.id)}
           formulas={formulas}
           readOnly={busy}
-          heading="Problems in other formulas and groups"
+          heading="Problems in other formulas and parts"
           onStopped={(id) => {
             setProblems(problems.filter((problem) => problem.id !== id));
             saveButton.current?.focus();

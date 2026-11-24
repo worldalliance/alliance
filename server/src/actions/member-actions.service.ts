@@ -55,7 +55,7 @@ const MEMBER_FEED_RELATIONS = {
  */
 const keepsUncompletedTask = {
   [ViewerOptionalReason.ContractGap]: false,
-  [ViewerOptionalReason.SplitGroup]: true,
+  [ViewerOptionalReason.PartitionPart]: true,
 } satisfies Record<ViewerOptionalReason, boolean>;
 
 @Injectable()

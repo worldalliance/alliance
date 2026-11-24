@@ -26,7 +26,7 @@ const action: ParsedActionDto = {
 
 const renderEditor = (
   overrides: Partial<ParsedActionDto> = {},
-  suites: { id: number; usesGroups: boolean }[] | null = [],
+  suites: { id: number; isPartitioned: boolean }[] | null = [],
 ) => {
   const updateAction = jest.fn(async () => action);
   let editor!: ActionEditorState;
@@ -111,7 +111,7 @@ describe("useActionEditor", () => {
   });
 
   it.each([
-    ["a group suite action's save", [{ id: 3, usesGroups: true }]],
+    ["a partitioned suite action's save", [{ id: 3, isPartitioned: true }]],
     ["the save of an action whose suite's kind is unknown", null],
   ])(
     "leaves the optional flag, which the grid sets, out of %s",
@@ -129,8 +129,8 @@ describe("useActionEditor", () => {
 
   it("keeps the optional flag the grid stored, so a move out of the suite sends it", async () => {
     const { result, updateAction } = renderEditor({ optional: false }, [
-      { id: 3, usesGroups: true },
-      { id: 4, usesGroups: false },
+      { id: 3, isPartitioned: true },
+      { id: 4, isPartitioned: false },
     ]);
     await waitFor(() => expect(result.current.draftSeeded).toBe(true));
 

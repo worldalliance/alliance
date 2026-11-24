@@ -13,8 +13,8 @@ import {
   ValidateIf,
   ValidateNested,
 } from "class-validator";
-import type { SplitDependentLabel } from "src/suite-splits/split-dependents";
-import { GroupFallback } from "src/suite-splits/split-groups";
+import type { PartitionDependentLabel } from "src/suite-partitions/partition-dependents";
+import { PartFallback } from "src/suite-partitions/partition-parts";
 import { toLowerCase, trimToNull } from "src/utils/transforms";
 import type { FormulaVersion } from "../entities/formula-version.entity";
 import type { CurrentFormula } from "../formula-store";
@@ -149,15 +149,15 @@ export class SaveFormulasDto {
   deletedLists?: ListDeletionDto[];
 
   @ApiPropertyOptional({
-    type: () => GroupFixDto,
+    type: () => PartFixDto,
     isArray: true,
-    description: "Split group conditions fixed in the same save.",
+    description: "Part conditions fixed in the same save.",
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => GroupFixDto)
-  groupFixes?: GroupFixDto[];
+  @Type(() => PartFixDto)
+  partFixes?: PartFixDto[];
 }
 
 export class FormulaDiagnosticDto {
@@ -167,45 +167,45 @@ export class FormulaDiagnosticDto {
   @ApiProperty() end: number;
 }
 
-export class SplitGroupRefDto {
+export class PartitionPartRefDto {
   @ApiProperty() suiteId: number;
   @ApiProperty() suiteName: string;
-  @ApiProperty({ description: "The split version a fix starts from." })
+  @ApiProperty({ description: "The partition version a fix starts from." })
   versionId: number;
-  @ApiProperty() groupId: string;
-  @ApiProperty() groupName: string;
+  @ApiProperty() partId: string;
+  @ApiProperty() partName: string;
   @ApiProperty({
-    enum: GroupFallback,
-    enumName: "GroupFallback",
+    enum: PartFallback,
+    enumName: "PartFallback",
     nullable: true,
   })
-  fallback: GroupFallback | null;
+  fallback: PartFallback | null;
 
-  constructor(input: SplitDependentLabel) {
+  constructor(input: PartitionDependentLabel) {
     this.suiteId = input.suiteId;
     this.suiteName = input.suiteName;
     this.versionId = input.versionId;
-    this.groupId = input.groupId;
-    this.groupName = input.groupName;
+    this.partId = input.partId;
+    this.partName = input.partName;
     this.fallback = input.fallback;
   }
 }
 
-export class GroupFixDto {
+export class PartFixDto {
   @ApiProperty() @IsInt() suiteId: number;
-  @ApiProperty({ description: "The split version the fix started from." })
+  @ApiProperty({ description: "The partition version the fix started from." })
   @IsInt()
   baseVersionId: number;
-  @ApiProperty() @Transform(toLowerCase) @IsUUID() groupId: string;
+  @ApiProperty() @Transform(toLowerCase) @IsUUID() partId: string;
   @ApiProperty() @IsString() @MaxLength(20000) text: string;
   @ApiProperty({
-    enum: GroupFallback,
-    enumName: "GroupFallback",
+    enum: PartFallback,
+    enumName: "PartFallback",
     nullable: true,
   })
   @ValidateIf((_object, value) => value !== null)
-  @IsEnum(GroupFallback)
-  fallback: GroupFallback | null;
+  @IsEnum(PartFallback)
+  fallback: PartFallback | null;
 }
 
 export class FormulaProblemDto {
@@ -227,16 +227,16 @@ export class FormulaProblemDto {
   diagnostics?: FormulaDiagnosticDto[];
 
   @ApiPropertyOptional({
-    type: () => SplitGroupRefDto,
-    description: "Set when the dependent is a split group's condition.",
+    type: () => PartitionPartRefDto,
+    description: "Set when the dependent is a part's condition.",
   })
-  split?: SplitGroupRefDto;
+  partition?: PartitionPartRefDto;
 
   constructor(input: FormulaSaveProblem) {
     this.kind = input.kind;
     this.id = input.id;
-    if (input.split !== undefined)
-      this.split = new SplitGroupRefDto(input.split);
+    if (input.partition !== undefined)
+      this.partition = new PartitionPartRefDto(input.partition);
     switch (input.kind) {
       case SaveProblemKind.Name:
         this.message = input.message;

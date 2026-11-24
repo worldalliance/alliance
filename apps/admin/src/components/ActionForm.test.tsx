@@ -385,7 +385,7 @@ describe("ActionForm", () => {
             events: [],
             reminderGroups: [],
             generalUpdates: [],
-            usesGroups: false,
+            isPartitioned: false,
           },
         ],
       },
@@ -398,21 +398,21 @@ describe("ActionForm", () => {
     expect(screen.getByLabelText<HTMLSelectElement>("Suite").value).toBe("3");
   });
 
-  const groupSuite: ActionSuiteDto = {
+  const partitionedSuite: ActionSuiteDto = {
     id: 3,
     name: "Climate",
     actions: [],
     events: [],
     reminderGroups: [],
     generalUpdates: [],
-    usesGroups: true,
+    isPartitioned: true,
   };
 
-  it("leaves optional work, prerequisites and participants to the groups of a suite that uses them", () => {
+  it("leaves optional work, prerequisites and participants to the parts of a suite that uses them", () => {
     renderForm({
       form: { suiteId: 3, optional: false },
       props: {
-        availableSuites: [groupSuite],
+        availableSuites: [partitionedSuite],
       },
     });
 
@@ -423,7 +423,7 @@ describe("ActionForm", () => {
     ).toBeNull();
     expect(
       screen
-        .getByRole("link", { name: "Edit the suite's groups" })
+        .getByRole("link", { name: "Edit the suite's partition" })
         .getAttribute("href"),
     ).toBe("/suites/3");
   });
@@ -456,11 +456,11 @@ describe("ActionForm", () => {
     expect(screen.getByRole("heading", { name: "Prerequisites" })).toBeTruthy();
   });
 
-  it("keeps showing the prerequisites and participants an action brings into a suite with groups", () => {
+  it("keeps showing the prerequisites and participants an action brings into a partitioned suite", () => {
     renderForm({
       form: { suiteId: 3, optional: true, prerequisiteActionIds: [9] },
       props: {
-        availableSuites: [groupSuite],
+        availableSuites: [partitionedSuite],
       },
     });
 
@@ -471,12 +471,12 @@ describe("ActionForm", () => {
     );
   });
 
-  it("keeps showing the participants an action brings into a suite with groups, after they're cleared too", () => {
+  it("keeps showing the participants an action brings into a partitioned suite, after they're cleared too", () => {
     const { rerender } = renderForm({
       form: { suiteId: 3 },
       props: {
         cohortExpression: { type: "Tag", tagId: "x" },
-        availableSuites: [groupSuite],
+        availableSuites: [partitionedSuite],
       },
     });
     screen.getByText(/^Clear this action's prerequisites/);

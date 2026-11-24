@@ -10,7 +10,7 @@ import { href, Link } from "react-router";
 import {
   actionFieldDefs,
   ActionFieldSection,
-  inGroupSuite,
+  inPartitionedSuite,
   suiteKindUnknown,
   type ActionFieldDef,
 } from "../lib/actionFieldDefs";
@@ -140,8 +140,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
     { loading: suitesLoading, failed: suitesError },
     form.suiteId,
   );
-  const groupSuite = inGroupSuite(availableSuites, form.suiteId);
-  // Shown in a suite with groups once they hold values, which the suite
+  const partitionedSuite = inPartitionedSuite(availableSuites, form.suiteId);
+  // Shown in a partitioned suite once they hold values, which the suite
   // refuses, such as on an action just moved into it. They stay shown after
   // being cleared, so the control that cleared them keeps focus.
   const ownRules =
@@ -210,16 +210,16 @@ const ActionForm: React.FC<ActionFormProps> = ({
         );
       })}
 
-      {groupSuite && (
-        <FormSection title="Groups">
+      {partitionedSuite && (
+        <FormSection title="Partition">
           <p className="text-sm text-gray-700">
-            This action&apos;s suite uses groups, which decide who takes part
-            and whether it&apos;s optional.{" "}
+            This action&apos;s suite is partitioned: its partition decides who
+            gets this action and whether it&apos;s optional.{" "}
             <Link
               className="underline"
               to={href("/suites/:suiteId", { suiteId: String(form.suiteId) })}
             >
-              Edit the suite&apos;s groups
+              Edit the suite&apos;s partition
             </Link>
           </p>
           {ownRules && (
@@ -241,7 +241,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
             Optional work, prerequisites and participants show once suites load.
           </p>
         ))}
-      {!kindUnknown && (!groupSuite || heldRulesIn === rulesScope) && (
+      {!kindUnknown && (!partitionedSuite || heldRulesIn === rulesScope) && (
         <>
           <FormSection
             title="Prerequisites"
