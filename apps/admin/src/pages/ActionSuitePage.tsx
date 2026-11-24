@@ -128,6 +128,7 @@ const ActionSuitePage = () => {
         suiteId={suiteId}
         isPartitioned={suite.isPartitioned}
         scheduled={launched}
+        canPartition={false}
       />
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}

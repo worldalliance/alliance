@@ -13,7 +13,8 @@ const SuitePartitionSection: React.FC<{
   suiteId: number;
   isPartitioned: boolean;
   scheduled: boolean;
-}> = ({ suiteId, isPartitioned, scheduled }) => {
+  canPartition: boolean;
+}> = ({ suiteId, isPartitioned, scheduled, canPartition }) => {
   const { partition, convert, save, preview } = useSuitePartition(
     suiteId,
     isPartitioned,
@@ -22,7 +23,11 @@ const SuitePartitionSection: React.FC<{
   const focusHeading = () => heading.current?.focus();
   if (!isPartitioned && scheduled) return null;
   const body = !isPartitioned ? (
-    <SuitePartitionConvert convert={convert} onConverted={focusHeading} />
+    <SuitePartitionConvert
+      convert={convert}
+      onConverted={focusHeading}
+      canPartition={canPartition}
+    />
   ) : partition.data !== undefined ? (
     <SuitePartitionEditor
       partition={partition.data}
