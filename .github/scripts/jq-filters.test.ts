@@ -46,6 +46,39 @@ describe("pr-declined.jq", () => {
   });
 });
 
+describe("pushed-by-others.jq", () => {
+  const bot = "bot@example.com";
+  const person = "person@example.com";
+  const pushed = (
+    commits: { author?: string; committer?: string; message?: string }[],
+  ) =>
+    jq({
+      filter: "scripts/pushed-by-others.jq",
+      input: commits.map((c) => ({
+        commit: {
+          author: { email: c.author ?? bot },
+          committer: { email: c.committer ?? bot },
+          message: c.message ?? "bump",
+        },
+      })),
+      env: { BOT_EMAIL: bot },
+    });
+
+  test("is false when the bot wrote and committed every commit", () => {
+    expect(
+      pushed([{}, { message: `bump\n\nCo-authored-by: Bot <${bot}>` }]),
+    ).toEqual([false]);
+  });
+
+  test("is true when a person wrote, co-wrote, or amended a commit", () => {
+    expect(pushed([{}, { author: person }])).toEqual([true]);
+    expect(
+      pushed([{ message: `fix\n\nCo-authored-by: A Person <${person}>` }]),
+    ).toEqual([true]);
+    expect(pushed([{ committer: person }])).toEqual([true]);
+  });
+});
+
 describe("tzdb-pr-declined.jq", () => {
   const declined = (pr: {
     state: string;
