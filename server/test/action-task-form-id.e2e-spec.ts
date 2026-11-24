@@ -113,6 +113,57 @@ describe("Action task form id (e2e)", () => {
     expect(exported.body.taskForm).toBeUndefined();
   });
 
+  const exportAndPaste = async (params: {
+    actionId: number;
+    withForm: boolean;
+    taskFormId?: number;
+  }) => {
+    const exported = await request(ctx.app.getHttpServer())
+      .get(`/actions/export/${params.actionId}?taskForm=${params.withForm}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    const body = { ...exported.body };
+    if (params.taskFormId !== undefined) body.taskFormId = params.taskFormId;
+    return request(ctx.app.getHttpServer())
+      .post("/actions/pasteJson")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ body: JSON.stringify(body) })
+      .expect(201);
+  };
+
+  it("pastes an action with a copy of its form beside the original", async () => {
+    const taskFormId = await createForm();
+    const original = await create({ taskFormId }).expect(201);
+
+    const pasted = await exportAndPaste({
+      actionId: original.body.id,
+      withForm: true,
+    });
+    expect(pasted.body.taskFormId).not.toBeNull();
+    expect(pasted.body.taskFormId).not.toBe(taskFormId);
+    const copied = await request(ctx.app.getHttpServer())
+      .get(`/actions/export/${pasted.body.id}?taskForm=true`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    expect(copied.body.taskForm.formSnapshot.schema).toEqual(schema);
+
+    const kept = await getActionAsAdmin(ctx, original.body.id).expect(200);
+    expect(kept.body.taskFormId).toBe(taskFormId);
+  });
+
+  it("pastes an action exported without its form with no form", async () => {
+    const original = await create({ taskFormId: await createForm() }).expect(
+      201,
+    );
+
+    const pasted = await exportAndPaste({
+      actionId: original.body.id,
+      withForm: false,
+      taskFormId: 999_999,
+    });
+    expect(pasted.body.taskFormId).toBeNull();
+  });
+
   it.each(["", "5", 1.5, 0, -1, 2_147_483_648, true])(
     "rejects a form id of %p",
     async (taskFormId) => {

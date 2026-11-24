@@ -87,8 +87,9 @@ export class ActionImportExportService {
       followUpForms: _followUpForms,
       reviewers,
       project: _project,
-      // Action ids name different actions in another environment.
+      // Ids name different rows in another environment; `taskForm` carries the form itself.
       prerequisiteActionIds: _prerequisiteActionIds,
+      taskFormId: _taskFormId,
       // Regenerated, so importing a copy beside its original can't conflict.
       slug: _slug,
       ...actionCols
