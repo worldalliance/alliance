@@ -1,11 +1,17 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
-import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
+import {
+  ActionCategory,
+  CreateActionDto,
+  type ActionSuiteDto,
+} from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { omit } from "es-toolkit";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { useContentConfirm } from "../../components/useContentConfirm";
+import { groupsMaySetOptional } from "../../lib/actionFieldDefs";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
@@ -101,6 +107,11 @@ export function useActionEditor(params: {
   actionId: number | null;
   isNew: boolean;
   cohortParseFailed: boolean;
+  lookups: {
+    availableSuites?: readonly Pick<ActionSuiteDto, "id" | "usesGroups">[];
+    suitesLoading: boolean;
+    suitesError: boolean;
+  };
   searchParams: URLSearchParams;
   setError: (error: string | null) => void;
 }) {
@@ -109,6 +120,7 @@ export function useActionEditor(params: {
     actionId,
     isNew,
     cohortParseFailed,
+    lookups,
     searchParams,
     setError,
   } = params;
@@ -346,15 +358,38 @@ export function useActionEditor(params: {
         cohortExpression,
         imageKey,
       });
+      // The grid sets the hidden flag, and may have changed it since load.
+      const gridOptional = groupsMaySetOptional(
+        {
+          suites: lookups.availableSuites ?? [],
+          loading: lookups.suitesLoading,
+          failed: lookups.suitesError,
+        },
+        form.suiteId,
+      );
       const result = await R.fromPromise(
-        updateAction(formData),
+        updateAction(gridOptional ? omit(formData, ["optional"]) : formData),
         logActionError(),
       );
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setSavedDraft(submitted);
+      if (!gridOptional) {
+        setSavedDraft(submitted);
+        return;
+      }
+      // Kept as stored, so a move out of the suite doesn't send a stale flag.
+      const { optional } = result.value;
+      setForm((prev) => ({ ...prev, optional }));
+      setSavedDraft(
+        draftOf({
+          form: { ...form, optional },
+          reviewerRows,
+          cohortExpression,
+          imageKey,
+        }),
+      );
     }
   };
 

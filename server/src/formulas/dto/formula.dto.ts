@@ -1,11 +1,9 @@
-import {
-  SaveProblemKind,
-  type SaveProblem,
-} from "@alliance/common/expression/named";
+import { SaveProblemKind } from "@alliance/common/expression/named";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   IsArray,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -15,9 +13,12 @@ import {
   ValidateIf,
   ValidateNested,
 } from "class-validator";
+import type { SplitDependentLabel } from "src/suite-splits/split-dependents";
+import { GroupFallback } from "src/suite-splits/split-groups";
 import { toLowerCase, trimToNull } from "src/utils/transforms";
 import type { FormulaVersion } from "../entities/formula-version.entity";
 import type { CurrentFormula } from "../formula-store";
+import type { FormulaSaveProblem } from "../formulas.service";
 
 /** A formula's current version printed as text. */
 export type FormulaDtoArgs = CurrentFormula & {
@@ -146,6 +147,17 @@ export class SaveFormulasDto {
   @ValidateNested({ each: true })
   @Type(() => ListDeletionDto)
   deletedLists?: ListDeletionDto[];
+
+  @ApiPropertyOptional({
+    type: () => GroupFixDto,
+    isArray: true,
+    description: "Split group conditions fixed in the same save.",
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GroupFixDto)
+  groupFixes?: GroupFixDto[];
 }
 
 export class FormulaDiagnosticDto {
@@ -153,6 +165,47 @@ export class FormulaDiagnosticDto {
   @ApiProperty({ description: "Offset into the problem's text." })
   start: number;
   @ApiProperty() end: number;
+}
+
+export class SplitGroupRefDto {
+  @ApiProperty() suiteId: number;
+  @ApiProperty() suiteName: string;
+  @ApiProperty({ description: "The split version a fix starts from." })
+  versionId: number;
+  @ApiProperty() groupId: string;
+  @ApiProperty() groupName: string;
+  @ApiProperty({
+    enum: GroupFallback,
+    enumName: "GroupFallback",
+    nullable: true,
+  })
+  fallback: GroupFallback | null;
+
+  constructor(input: SplitDependentLabel) {
+    this.suiteId = input.suiteId;
+    this.suiteName = input.suiteName;
+    this.versionId = input.versionId;
+    this.groupId = input.groupId;
+    this.groupName = input.groupName;
+    this.fallback = input.fallback;
+  }
+}
+
+export class GroupFixDto {
+  @ApiProperty() @IsInt() suiteId: number;
+  @ApiProperty({ description: "The split version the fix started from." })
+  @IsInt()
+  baseVersionId: number;
+  @ApiProperty() @Transform(toLowerCase) @IsUUID() groupId: string;
+  @ApiProperty() @IsString() @MaxLength(20000) text: string;
+  @ApiProperty({
+    enum: GroupFallback,
+    enumName: "GroupFallback",
+    nullable: true,
+  })
+  @ValidateIf((_object, value) => value !== null)
+  @IsEnum(GroupFallback)
+  fallback: GroupFallback | null;
 }
 
 export class FormulaProblemDto {
@@ -173,9 +226,17 @@ export class FormulaProblemDto {
   @ApiPropertyOptional({ type: () => FormulaDiagnosticDto, isArray: true })
   diagnostics?: FormulaDiagnosticDto[];
 
-  constructor(input: SaveProblem) {
+  @ApiPropertyOptional({
+    type: () => SplitGroupRefDto,
+    description: "Set when the dependent is a split group's condition.",
+  })
+  split?: SplitGroupRefDto;
+
+  constructor(input: FormulaSaveProblem) {
     this.kind = input.kind;
     this.id = input.id;
+    if (input.split !== undefined)
+      this.split = new SplitGroupRefDto(input.split);
     switch (input.kind) {
       case SaveProblemKind.Name:
         this.message = input.message;
@@ -195,7 +256,7 @@ export class FormulaProblemDto {
   }
 }
 
-export type SaveFormulasResult = { problems: SaveProblem[] };
+export type SaveFormulasResult = { problems: FormulaSaveProblem[] };
 
 export class SaveFormulasResultDto {
   @ApiProperty({

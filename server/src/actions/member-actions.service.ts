@@ -39,6 +39,7 @@ import {
   computeCanCompleteAction,
   computeCompletionBlock,
   resolveUserActionStatus,
+  ViewerOptionalReason,
   type ViewerCohort,
 } from "./user-action-status";
 
@@ -47,6 +48,15 @@ const MEMBER_FEED_RELATIONS = {
   followUpForms: true,
   reviewers: true,
 } satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
+
+/**
+ * Tasks optional for the member stay unless their contract caused it;
+ * reminder groups drop optional tasks through `excludeOptionalActions`.
+ */
+const keepsUncompletedTask = {
+  [ViewerOptionalReason.ContractGap]: false,
+  [ViewerOptionalReason.SplitGroup]: true,
+} satisfies Record<ViewerOptionalReason, boolean>;
 
 @Injectable()
 export class MemberActionsService {
@@ -103,21 +113,25 @@ export class MemberActionsService {
   }): Promise<ViewerCohort> {
     const { action, user, session, now, undecidedActionIds } = params;
     if (!user) {
-      return { admitted: false, eligible: false };
+      return { admitted: false, eligible: false, optionalRow: false };
     }
-    const [live, admittedActionIds] = await Promise.all([
+    const [live, admittedActionIds, optionalRowActionIds] = await Promise.all([
       this.singleMemberCohortService.computeIsInActionCohort({
         user,
         action,
         session,
       }),
       this.cohortAdmissionService.loadAdmittedActionIds(user.id, session),
+      this.cohortAdmissionService.loadOptionalRowActionIds(user.id, session),
     ]);
-    const admitted =
-      readsSavedDecisions(action, now) && !undecidedActionIds.has(action.id)
-        ? admittedActionIds.has(action.id)
-        : live;
-    return { admitted, eligible: admitted || live };
+    const saved =
+      readsSavedDecisions(action, now) && !undecidedActionIds.has(action.id);
+    const admitted = saved ? admittedActionIds.has(action.id) : live;
+    return {
+      admitted,
+      eligible: admitted || live,
+      optionalRow: saved && optionalRowActionIds.has(action.id),
+    };
   }
 
   async findMemberPublic(
@@ -407,9 +421,8 @@ export class MemberActionsService {
         (action) =>
           action.status !== ActionStatus.Draft &&
           action.viewer?.assigned &&
-          // Action-wide optional tasks stay; reminder groups drop those
-          // through `excludeOptionalActions`.
-          !(action.viewer?.optional && !action.optional) &&
+          (action.viewer.optionalReason === null ||
+            keepsUncompletedTask[action.viewer.optionalReason]) &&
           action.userRelation !== UserActionRelation.Completed,
       )
       .sort((a, b) => b.priority - a.priority);

@@ -35,6 +35,7 @@ const ProjectActionPage = () => {
     actionId,
     isNew: false,
     cohortParseFailed: cohortExpressionError != null,
+    lookups,
     searchParams,
     setError,
   });

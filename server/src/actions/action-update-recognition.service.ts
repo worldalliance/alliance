@@ -29,7 +29,7 @@ import { actionUrl } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import { textReachable } from "src/user/user.utils";
 import { mailSendError, SendErrorKind } from "src/utils/send-error";
-import { DataSource, In, Raw, type EntityManager } from "typeorm";
+import { Any, DataSource, In, type EntityManager } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import {
   findLatestCompletions,
@@ -66,9 +66,6 @@ const PROVES_NOT_SENT: Record<SendErrorKind, boolean> = {
   [SendErrorKind.Unknown]: false,
 };
 
-const anyOf = (ids: readonly number[]) =>
-  Raw((column) => `${column} = ANY(:ids)`, { ids });
-
 @Injectable()
 export class ActionUpdateRecognitionService {
   private readonly logger = new Logger(ActionUpdateRecognitionService.name);
@@ -100,14 +97,14 @@ export class ActionUpdateRecognitionService {
     if (!results.ok) return results;
 
     const users = await em.find(User, {
-      where: { id: anyOf(userIds) },
+      where: { id: Any(userIds) },
       select: { id: true, name: true },
     });
     const terminal = await em.find(ActionActivity, {
       where: {
         actionId: update.actionId,
         type: In(TERMINAL_ACTIVITY_TYPES),
-        userId: anyOf(userIds),
+        userId: Any(userIds),
       },
     });
     const completedIds = new Set(
@@ -310,7 +307,7 @@ export class ActionUpdateRecognitionService {
     if (!claimed.length) return false;
 
     const exposures = await this.dataSource.manager.find(ActionUpdateExposure, {
-      where: { id: anyOf(claimed.map((row) => row.id)) },
+      where: { id: Any(claimed.map((row) => row.id)) },
       relations: {
         user: { contractEvents: true },
         actionUpdate: true,

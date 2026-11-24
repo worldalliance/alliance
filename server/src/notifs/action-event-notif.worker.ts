@@ -173,7 +173,9 @@ export class ActionEventNotifWorker {
       plan.group.useSuiteTaskCount ? plan.group.actionSuite?.id : undefined,
     );
     if (plan.group.excludeOptionalActions) {
-      return tasks.filter((task) => !task.optional);
+      // The member's own optionality: a split group's row can make a task
+      // optional for them alone.
+      return tasks.filter((task) => !(task.viewer?.optional ?? task.optional));
     }
     return tasks;
   }

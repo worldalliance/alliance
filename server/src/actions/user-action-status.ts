@@ -114,6 +114,8 @@ export enum ViewerActionRelation {
 export enum ViewerOptionalReason {
   /** The viewer's contract missed part of the member-action window. */
   ContractGap = "contract_gap",
+  /** The viewer's split group has this action as optional work. */
+  SplitGroup = "split_group",
 }
 
 /** Assigned as a pair, so the union's correlation survives the assignment. */
@@ -211,6 +213,8 @@ export type ViewerCohort = {
    * decision left out, without assigning it to them.
    */
   eligible: boolean;
+  /** The saved decision admits them as optional work, as a split group's row can. */
+  optionalRow: boolean;
 };
 
 /**
@@ -289,9 +293,11 @@ export function resolveUserActionStatus(params: {
   const assigned = assignment !== ActionAssignment.Unassigned;
   const optionality: ViewerOptionality = action.optional
     ? { optional: true, optionalReason: null }
-    : assignment === ActionAssignment.Optional
-      ? { optional: true, optionalReason: ViewerOptionalReason.ContractGap }
-      : { optional: false, optionalReason: null };
+    : cohort.admitted && cohort.optionalRow
+      ? { optional: true, optionalReason: ViewerOptionalReason.SplitGroup }
+      : assignment === ActionAssignment.Optional
+        ? { optional: true, optionalReason: ViewerOptionalReason.ContractGap }
+        : { optional: false, optionalReason: null };
 
   const awayDuringWindow = computeIsAwayDuringWindow({ action, user });
 

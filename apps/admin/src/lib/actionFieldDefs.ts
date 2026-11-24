@@ -2,6 +2,7 @@ import {
   ActionTaskKind,
   CreateActionDto,
   VisibilityMode,
+  type ActionSuiteDto,
 } from "@alliance/shared/client";
 import { tracksCustomStat } from "@alliance/shared/lib/customActionStat";
 import { suiteOptions } from "./suiteOptions";
@@ -62,6 +63,28 @@ export const ACTION_TEXT_FIELD_LABELS = {
   shortDescription: "Short description",
   body: "Action page description",
 } as const;
+
+/** Whether the action's suite decides its participants and optional work by groups. */
+export const inGroupSuite = (
+  suites: readonly Pick<ActionSuiteDto, "id" | "usesGroups">[],
+  suiteId: number | null | undefined,
+) => suites.some((suite) => suite.id === suiteId && suite.usesGroups);
+
+/** Whether the suites are still loading, or failed to, for an action in one. */
+export const suiteKindUnknown = (
+  params: { loading: boolean; failed: boolean },
+  suiteId: number | null | undefined,
+) => suiteId != null && (params.loading || params.failed);
+
+/** Whether the action's suite sets its optional flag, or may while the suites are unknown. */
+export const groupsMaySetOptional = (
+  params: {
+    suites: readonly Pick<ActionSuiteDto, "id" | "usesGroups">[];
+    loading: boolean;
+    failed: boolean;
+  },
+  suiteId: number | null | undefined,
+) => suiteKindUnknown(params, suiteId) || inGroupSuite(params.suites, suiteId);
 
 export function actionFieldDefs(
   params: Parameters<typeof suiteOptions>[0],
@@ -223,6 +246,9 @@ export function actionFieldDefs(
       type: "checkbox",
       section: ActionFieldSection.Completion,
       helpText: "Shows prominent dismiss dialog above task card",
+      // A suite's groups set optional work, and the server sets the flag of
+      // an action moved into one from them.
+      show: (f) => !groupsMaySetOptional(params, f.suiteId),
     },
     {
       name: "isForumParticipationAction",

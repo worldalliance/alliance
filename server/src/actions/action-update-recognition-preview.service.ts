@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { DataSource, In, Raw } from "typeorm";
+import { Any, DataSource, In } from "typeorm";
 import {
   findLatestCompletions,
   TERMINAL_ACTIVITY_TYPES,
@@ -30,7 +30,7 @@ export class ActionUpdateRecognitionPreviewService {
       where: {
         actionId,
         type: In(TERMINAL_ACTIVITY_TYPES),
-        userId: Raw((column) => `${column} = ANY(:ids)`, { ids: userIds }),
+        userId: Any(userIds),
       },
     });
     const completedIds = new Set(

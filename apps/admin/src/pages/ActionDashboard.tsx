@@ -91,6 +91,7 @@ const ActionDashboard: React.FC = () => {
     actionId,
     isNew,
     cohortParseFailed,
+    lookups,
     searchParams,
     setError,
   });

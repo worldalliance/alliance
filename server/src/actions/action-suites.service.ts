@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
+import { assertNoSplitLaunch } from "src/suite-splits/split-guards";
 import { type Repository } from "typeorm";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
@@ -91,6 +92,10 @@ export class ActionSuitesService {
             em: manager,
             actionIds: actions.map((action) => action.id),
           });
+          await assertNoSplitLaunch(
+            manager,
+            actions.map((action) => action.id),
+          );
           return events;
         },
       });
@@ -122,7 +127,7 @@ export class ActionSuitesService {
   }
 
   async findSuites(): Promise<ActionSuite[]> {
-    return this.actionSuiteRepository.find();
+    return this.actionSuiteRepository.find({ relations: { split: true } });
   }
 
   async findSuite(id: number): Promise<ParsedActionSuite> {
@@ -132,6 +137,7 @@ export class ActionSuitesService {
         actions: { events: true, activities: true, reviewers: true },
         reminderGroups: { memberActionEvent: true, deadlineEvent: true },
         generalUpdates: { schemaSnapshot: true },
+        split: true,
       },
       relationLoadStrategy: "query",
     });
@@ -144,7 +150,7 @@ export class ActionSuitesService {
     const suite = this.actionSuiteRepository.create(createActionSuiteDto);
     const saved = await this.actionSuiteRepository.save(suite);
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([suite.id]);
-    return saved;
+    return Object.assign(saved, { split: null });
   }
 
   async batchUpdateSuiteEvents(params: {
@@ -199,6 +205,7 @@ export class ActionSuitesService {
           await em.update(ActionEvent, id, body);
         }
         await assertPrerequisitesValid({ em, actionIds });
+        await assertNoSplitLaunch(em, actionIds);
       },
     });
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([suiteId]);

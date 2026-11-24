@@ -1,7 +1,8 @@
 /**
- * Re-runs the save check over every stored formula against this release's
+ * Re-runs the save check over every stored formula, and the condition of
+ * each group in a split whose suite hasn't gone live, against this release's
  * catalog and check, so a change that breaks one fails the deploy instead of
- * the formula. Run from ~/nest-backend/server by scripts/deploy_backend.sh
+ * the formula or group. Run from ~/nest-backend/server by scripts/deploy_backend.sh
  * after migrations, and again once the new backend is healthy.
  *
  *   bun scripts/check-stored-formulas.ts
@@ -14,7 +15,10 @@ async function main() {
   try {
     const checked = await checkStoredFormulas(dataSource.manager);
     if (checked.ok) {
-      console.log(`${checked.value} stored formulas pass the check.`);
+      const { formulas, groups } = checked.value;
+      console.log(
+        `${formulas} stored formulas and ${groups} draft split groups pass the check.`,
+      );
       return;
     }
     console.error(checked.error);

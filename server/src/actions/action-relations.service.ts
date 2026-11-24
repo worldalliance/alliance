@@ -29,6 +29,7 @@ import {
 } from "./action-activity-status";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionsService } from "./actions.service";
+import { CohortAdmissionService } from "./cohort-admission.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -51,6 +52,7 @@ export class ActionRelationsService {
     private readonly communityService: CommunityService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly participants: ActionParticipantsService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   async findActionRelationsForUsers(
@@ -107,6 +109,12 @@ export class ActionRelationsService {
         order: { createdAt: "ASC" },
       });
     });
+
+    const optionalRowsP = actionsP.then((actions) =>
+      this.cohortAdmissionService.loadOptionalRowMemberIds(
+        actions.map((a) => a.id),
+      ),
+    );
 
     // --- end of promise defs ---
 
@@ -211,7 +219,8 @@ export class ActionRelationsService {
       detail.activities.push(activity);
     }
 
-    for (const actionMap of relationByUserThenAction.values()) {
+    const optionalRows = await optionalRowsP;
+    for (const [userId, actionMap] of relationByUserThenAction) {
       for (const [actionId, detail] of actionMap) {
         const action = actionById.get(actionId)!;
         const terminal = findLatestTerminalActivity(detail.activities);
@@ -239,7 +248,7 @@ export class ActionRelationsService {
         detail.status = resolveUserActionPillStatus({
           isJoined: detail.isJoined,
           isAway: detail.isAway,
-          optional: action.optional,
+          optional: action.optional || optionalRows.get(actionId)!.has(userId),
           deadlinePassed: hasMemberActionDeadlinePassed(
             action.memberActionPhase?.deadlineEvent?.date,
             now,

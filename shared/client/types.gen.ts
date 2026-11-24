@@ -2448,7 +2448,7 @@ export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed'
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
-export type ViewerOptionalReason = 'contract_gap';
+export type ViewerOptionalReason = 'contract_gap' | 'split_group';
 
 export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
 
@@ -3780,6 +3780,10 @@ export type ActionSuiteDto = {
     events: Array<ActionEventDto>;
     reminderGroups: Array<ReminderGroupDto>;
     generalUpdates: Array<GeneralUpdateDto>;
+    /**
+     * Whether the suite's groups decide its actions' participants and optional work.
+     */
+    usesGroups: boolean;
 };
 
 export type CreateActionSuiteDto = {
@@ -4372,6 +4376,19 @@ export type ListDeletionDto = {
     baseVersionId: number;
 };
 
+export type GroupFallback = 'put_here' | 'continue';
+
+export type GroupFixDto = {
+    suiteId: number;
+    /**
+     * The split version the fix started from.
+     */
+    baseVersionId: number;
+    groupId: string;
+    text: string;
+    fallback: GroupFallback | null;
+};
+
 export type SaveFormulasDto = {
     edits: Array<FormulaEditDto>;
     deletions: Array<FormulaDeletionDto>;
@@ -4379,6 +4396,10 @@ export type SaveFormulasDto = {
      * Member lists to delete; refused, like a formula deletion, while a formula reads one.
      */
     deletedLists?: Array<ListDeletionDto>;
+    /**
+     * Split group conditions fixed in the same save.
+     */
+    groupFixes?: Array<GroupFixDto>;
 };
 
 export type SaveProblemKind = 'name' | 'named' | 'dependent';
@@ -4390,6 +4411,18 @@ export type FormulaDiagnosticDto = {
      */
     start: number;
     end: number;
+};
+
+export type SplitGroupRefDto = {
+    suiteId: number;
+    suiteName: string;
+    /**
+     * The split version a fix starts from.
+     */
+    versionId: number;
+    groupId: string;
+    groupName: string;
+    fallback: GroupFallback | null;
 };
 
 export type FormulaProblemDto = {
@@ -4407,6 +4440,10 @@ export type FormulaProblemDto = {
      */
     text?: string;
     diagnostics?: Array<FormulaDiagnosticDto>;
+    /**
+     * Set when the dependent is a split group's condition.
+     */
+    split?: SplitGroupRefDto;
 };
 
 export type SaveFormulasResultDto = {
@@ -4448,6 +4485,148 @@ export type UpdateMemberListDto = {
      * The name the admin saw before editing.
      */
     baseName: string;
+};
+
+/**
+ * The kind of work the group had when ticked as intentionally without required work.
+ */
+export type GroupWork = 'optional_only' | 'nothing';
+
+/**
+ * An action not listed is not assigned.
+ */
+export type CellAssignment = 'required' | 'optional';
+
+export type SplitCellDto = {
+    actionId: number;
+    /**
+     * An action not listed is not assigned.
+     */
+    assignment: CellAssignment;
+};
+
+export type SplitGroupDto = {
+    id: string;
+    name: string;
+    text: string | null;
+    fallback: GroupFallback | null;
+    /**
+     * The kind of work the group had when ticked as intentionally without required work.
+     */
+    noRequiredWorkTick: GroupWork | null;
+    cells: Array<SplitCellDto>;
+};
+
+export type SplitActionDto = {
+    id: number;
+    name: string;
+};
+
+export type SuiteSplitDto = {
+    versionId: number;
+    groups: Array<SplitGroupDto>;
+    actions: Array<SplitActionDto>;
+    /**
+     * Whether the split has gone live.
+     */
+    launched: boolean;
+    launchFailedAt: string | null;
+    launchFailure: string | null;
+};
+
+export type SplitGroupDraftDto = {
+    id: string;
+    name: string;
+    /**
+     * The condition as text; null only for the last group, "Everyone else".
+     */
+    text: string | null;
+    fallback: GroupFallback | null;
+    noRequiredWorkTick: boolean;
+    cells: Array<SplitCellDto>;
+};
+
+export type SaveSplitDto = {
+    groups: Array<SplitGroupDraftDto>;
+    /**
+     * The split version the admin edited.
+     */
+    baseVersionId: number;
+};
+
+export type SplitProblemDto = {
+    /**
+     * The group it is about.
+     */
+    groupId: string | null;
+    /**
+     * Set for a problem with no place in the text.
+     */
+    message?: string;
+    /**
+     * The text `diagnostics` are located in.
+     */
+    text?: string;
+    diagnostics?: Array<FormulaDiagnosticDto>;
+};
+
+export type SplitWarningDto = {
+    groupId: string;
+    message: string;
+};
+
+export type SaveSplitResultDto = {
+    problems: Array<SplitProblemDto>;
+    warnings: Array<SplitWarningDto>;
+    /**
+     * The split as stored, unless the check refused the save.
+     */
+    split: SuiteSplitDto | null;
+};
+
+export type SplitGroupsDto = {
+    groups: Array<SplitGroupDraftDto>;
+};
+
+export type GroupCountDto = {
+    groupId: string;
+    count: number;
+};
+
+export type WorkCountsDto = {
+    required: number;
+    optionalOnly: number;
+    nothing: number;
+};
+
+export type PreviewErrorDto = {
+    message: string;
+    count: number;
+};
+
+export type UntakenBranchDto = {
+    /**
+     * The group or formula it is in.
+     */
+    where: string;
+    text: string;
+};
+
+export type SplitPreviewDto = {
+    population: number;
+    groups: Array<GroupCountDto>;
+    byWork: WorkCountsDto;
+    couldNotDecide: number;
+    errors: Array<PreviewErrorDto>;
+    untakenBranches: Array<UntakenBranchDto>;
+};
+
+export type SplitPreviewResultDto = {
+    /**
+     * Why the groups can't be previewed as they are; empty when `preview` is set.
+     */
+    problems: Array<SplitProblemDto>;
+    preview?: SplitPreviewDto;
 };
 
 export type HostedDocDto = {
@@ -14839,7 +15018,7 @@ export type FormulasSaveAdminData = {
 
 export type FormulasSaveAdminErrors = {
     /**
-     * A formula or list changed since the admin opened it.
+     * A formula, list or split changed since the admin opened it.
      */
     409: HeyApiError;
 };
@@ -14923,6 +15102,106 @@ export type MemberListsUpdateAdminResponses = {
 };
 
 export type MemberListsUpdateAdminResponse = MemberListsUpdateAdminResponses[keyof MemberListsUpdateAdminResponses];
+
+export type SuiteSplitsSplitAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/split';
+};
+
+export type SuiteSplitsSplitAdminErrors = {
+    /**
+     * The suite doesn't use groups.
+     */
+    404: HeyApiError;
+};
+
+export type SuiteSplitsSplitAdminError = SuiteSplitsSplitAdminErrors[keyof SuiteSplitsSplitAdminErrors];
+
+export type SuiteSplitsSplitAdminResponses = {
+    200: SuiteSplitDto;
+};
+
+export type SuiteSplitsSplitAdminResponse = SuiteSplitsSplitAdminResponses[keyof SuiteSplitsSplitAdminResponses];
+
+export type SuiteSplitsConvertToSplitAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/split';
+};
+
+export type SuiteSplitsConvertToSplitAdminErrors = {
+    /**
+     * An action still has its own participants or prerequisites.
+     */
+    400: HeyApiError;
+    /**
+     * The suite already uses groups or is scheduled.
+     */
+    409: HeyApiError;
+};
+
+export type SuiteSplitsConvertToSplitAdminError = SuiteSplitsConvertToSplitAdminErrors[keyof SuiteSplitsConvertToSplitAdminErrors];
+
+export type SuiteSplitsConvertToSplitAdminResponses = {
+    200: SuiteSplitDto;
+};
+
+export type SuiteSplitsConvertToSplitAdminResponse = SuiteSplitsConvertToSplitAdminResponses[keyof SuiteSplitsConvertToSplitAdminResponses];
+
+export type SuiteSplitsSaveSplitAdminData = {
+    body: SaveSplitDto;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/split/save';
+};
+
+export type SuiteSplitsSaveSplitAdminErrors = {
+    /**
+     * The groups or the suite's actions changed since the admin opened them.
+     */
+    409: HeyApiError;
+};
+
+export type SuiteSplitsSaveSplitAdminError = SuiteSplitsSaveSplitAdminErrors[keyof SuiteSplitsSaveSplitAdminErrors];
+
+export type SuiteSplitsSaveSplitAdminResponses = {
+    200: SaveSplitResultDto;
+};
+
+export type SuiteSplitsSaveSplitAdminResponse = SuiteSplitsSaveSplitAdminResponses[keyof SuiteSplitsSaveSplitAdminResponses];
+
+export type SuiteSplitsPreviewSplitAdminData = {
+    body: SplitGroupsDto;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/split/preview';
+};
+
+export type SuiteSplitsPreviewSplitAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type SuiteSplitsPreviewSplitAdminError = SuiteSplitsPreviewSplitAdminErrors[keyof SuiteSplitsPreviewSplitAdminErrors];
+
+export type SuiteSplitsPreviewSplitAdminResponses = {
+    200: SplitPreviewResultDto;
+};
+
+export type SuiteSplitsPreviewSplitAdminResponse = SuiteSplitsPreviewSplitAdminResponses[keyof SuiteSplitsPreviewSplitAdminResponses];
 
 export type HostedDocsFindAllAdminData = {
     body?: never;

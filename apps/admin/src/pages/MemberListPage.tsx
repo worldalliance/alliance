@@ -14,6 +14,10 @@ import React, { useId, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormulaFixes from "../components/formulas/FormulaFixes";
+import {
+  groupFixChanged,
+  type GroupFixDraft,
+} from "../components/formulas/GroupFixFields";
 import SaveRefusal, { type Refusal } from "../components/formulas/SaveRefusal";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { asDraft } from "../lib/formulaDraft";
@@ -115,6 +119,7 @@ const ListEditor: React.FC<{
   /** Why the last delete was refused, by formula. */
   const [problems, setProblems] = useState<FormulaProblemDto[]>([]);
   const [fixes, setFixes] = useState<FormulaEditDto[]>([]);
+  const [groupFixes, setGroupFixes] = useState<GroupFixDraft[]>([]);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const busy = saveList.isPending || saveFormulas.isPending;
 
@@ -126,7 +131,8 @@ const ListEditor: React.FC<{
     name !== (stored?.name ?? "") ||
     !sameMembers(userIds, stored?.userIds ?? []) ||
     pasted.trim() !== "" ||
-    fixes.some(fixChanged);
+    fixes.some(fixChanged) ||
+    groupFixes.some(groupFixChanged);
   const navigateUnprompted = useUnsavedChangesPrompt({ hasUnsavedChanges });
 
   const refuse = (error: unknown, fallback: string) =>
@@ -200,6 +206,7 @@ const ListEditor: React.FC<{
         edits: fixes,
         deletions: [],
         deletedLists: [{ id: list.id, baseVersionId: list.versionId }],
+        groupFixes: groupFixes.map((draft) => draft.fix),
       },
       {
         onSuccess: async (refused) => {
@@ -357,10 +364,12 @@ const ListEditor: React.FC<{
           <FormulaFixes
             fixes={fixes}
             onFixesChange={setFixes}
+            groupFixes={groupFixes}
+            onGroupFixesChange={setGroupFixes}
             problems={problems}
             formulas={formulas}
             readOnly={busy}
-            heading="Formulas that read this list"
+            heading="What reads this list"
             onStopped={(fixId) => {
               setProblems(problems.filter((problem) => problem.id !== fixId));
               deleteButton.current?.focus();

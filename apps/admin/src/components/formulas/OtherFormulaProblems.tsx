@@ -2,6 +2,7 @@ import type {
   FormulaDto,
   FormulaProblemDto,
   SaveProblemKind,
+  SplitGroupRefDto,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import NewTabMark from "@alliance/sharedweb/ui/NewTabMark";
@@ -16,17 +17,43 @@ const IN_A_FORMULA: Record<SaveProblemKind, boolean> = {
   dependent: false,
 };
 
+const SplitGroupProblem: React.FC<{
+  problem: FormulaProblemDto & { split: SplitGroupRefDto };
+  onFix: (problem: FormulaProblemDto & { split: SplitGroupRefDto }) => void;
+}> = ({ problem, onFix }) => (
+  <div className="flex items-center gap-3">
+    <Link
+      to={`/suites/${problem.split.suiteId}`}
+      target="_blank"
+      className="text-sm underline"
+    >
+      Group &quot;{problem.split.groupName}&quot; of {problem.split.suiteName}
+      <NewTabMark />
+    </Link>
+    <Button
+      size="small"
+      color={ButtonColor.White}
+      onClick={() => onFix(problem)}
+    >
+      Fix it in this save
+    </Button>
+  </div>
+);
+
 /**
- * Problems refusing a save in formulas the page isn't editing, each with a way
- * to fix it in the same save. A formula the save reads can be listed without
- * the save having broken it.
+ * Problems refusing a save in formulas the page isn't editing or in split
+ * groups, each with a way to fix it in the same save. A formula the save reads
+ * can be listed without the save having broken it.
  */
 const OtherFormulaProblems: React.FC<{
   problems: FormulaProblemDto[];
   formulas: FormulaDto[];
   onFix: (formula: FormulaDto, problem: FormulaProblemDto) => void;
+  onFixGroup: (
+    problem: FormulaProblemDto & { split: SplitGroupRefDto },
+  ) => void;
   heading: string;
-}> = ({ problems, formulas, onFix, heading }) => {
+}> = ({ problems, formulas, onFix, onFixGroup, heading }) => {
   if (problems.length === 0) return null;
   return (
     <section className="border border-red-300 rounded p-4 space-y-4 max-w-3xl">
@@ -37,7 +64,14 @@ const OtherFormulaProblems: React.FC<{
           return (
             <li key={`${problem.kind}:${problem.id}`} className="space-y-2">
               {!IN_A_FORMULA[problem.kind] ? (
-                <p className="font-mono text-sm">{problem.id}</p>
+                problem.split === undefined ? (
+                  <p className="font-mono text-sm">{problem.id}</p>
+                ) : (
+                  <SplitGroupProblem
+                    problem={{ ...problem, split: problem.split }}
+                    onFix={onFixGroup}
+                  />
+                )
               ) : (
                 <div className="flex items-center gap-3">
                   <Link

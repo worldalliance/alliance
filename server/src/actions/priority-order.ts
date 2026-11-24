@@ -1,4 +1,5 @@
 import { EntityManager } from "typeorm";
+import type { SetPriorityDto } from "./dto/action.dto";
 import { Action } from "./entities/action.entity";
 import { GeneralUpdate } from "./entities/general-update.entity";
 
@@ -19,4 +20,18 @@ export async function shiftPrioritiesAfterInsertion(
       .where("priority >= :min", { min: 0 })
       .execute();
   });
+}
+
+export async function setPriorities(
+  em: EntityManager,
+  dto: SetPriorityDto,
+): Promise<void> {
+  await Promise.all([
+    ...dto.actionPriorities.map(({ id, priority }) =>
+      em.update(Action, id, { priority }),
+    ),
+    ...dto.generalUpdatePriorities.map(({ id, priority }) =>
+      em.update(GeneralUpdate, id, { priority }),
+    ),
+  ]);
 }

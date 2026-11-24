@@ -135,6 +135,7 @@ export class PlatformTenureAnalyticsService {
         })),
         includeSuspended: true,
         session,
+        requiredOnly: true,
       });
 
     for (const {
