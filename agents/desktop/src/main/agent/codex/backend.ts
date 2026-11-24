@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { R, type Result } from "../../../../../../common/src/result";
+import { agentEnvironment } from "../agent-environment";
 import {
   cancelKillAfterMs,
   couldNotStart,
@@ -16,12 +17,7 @@ import {
 } from "../session";
 import { type SessionHooks, sessionRegistry } from "../session-registry";
 import { withCodexHomeLock } from "./home-lock";
-import {
-  checkCodexVersion,
-  type CodexCli,
-  codexConfigArgs,
-  codexEnvironment,
-} from "./process";
+import { checkCodexVersion, type CodexCli, codexConfigArgs } from "./process";
 import {
   CodexNoticeKind,
   initializeParams,
@@ -272,7 +268,7 @@ export function createCodexBackend(
   const sessions = sessionRegistry();
   const failedCloses = new Set<Promise<void>>();
   let versionChecked = false;
-  // Every app-server shares cli.home: overlapping first launches race to create its sqlite state, and overlapping hook trust writes to its config.toml overwrite each other. The queue orders this app's setups; withCodexHomeLock keeps other processes' out.
+  // Every app-server shares cli.folders.codexHome: overlapping first launches race to create its sqlite state, and overlapping hook trust writes to its config.toml overwrite each other. The queue orders this app's setups; withCodexHomeLock keeps other processes' out.
   let setupQueue: Promise<unknown> = Promise.resolve();
   const failedToStart = (cwd: string) => (error: unknown) =>
     couldNotStart({ executable: cli.executable, cwd, error });
@@ -303,7 +299,7 @@ export function createCodexBackend(
       // --strict-config fails the launch on a key this version doesn't know, such as an override a later version renamed.
       args: [...codexConfigArgs, "app-server", "--strict-config"],
       cwd: params.cwd,
-      env: codexEnvironment(cli.home),
+      env: agentEnvironment(cli.folders),
     });
     if (!child.ok) return child;
     const session = new CodexSession({

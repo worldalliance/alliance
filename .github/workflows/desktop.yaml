@@ -57,3 +57,6 @@ jobs:
 
       - name: Test
         run: xvfb-run --auto-servernum bun run test
+
+      - name: Test Packaged App
+        run: xvfb-run --auto-servernum bun run test:packaged

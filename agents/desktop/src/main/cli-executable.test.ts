@@ -1,141 +1,133 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  chmodSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { AgentKind } from "../shared/agent-kind";
-import { CLAUDE_CODE_VERSION } from "./agent/claude/protocol";
-import { CODEX_VERSION } from "./agent/codex/version";
 import { executableVariable, findExecutable } from "./cli-executable";
 
-const claudeExecutableVariable = executableVariable(AgentKind.Claude);
-const findClaudeExecutable = (params: {
-  env: NodeJS.ProcessEnv;
+let root: string;
+afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+const place = (file: string, mode = 0o755) => {
+  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  writeFileSync(path.join(root, file), "", { mode });
+};
+
+const find = (params: {
+  agent: AgentKind;
   packaged: boolean;
-}) => findExecutable({ ...params, agent: AgentKind.Claude });
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+  arch?: string;
+}) =>
+  findExecutable({
+    env: {},
+    root,
+    platform: "darwin",
+    arch: "arm64",
+    ...params,
+  });
 
-let dir: string | undefined;
-afterEach(() => {
-  if (dir) rmSync(dir, { recursive: true, force: true });
-  dir = undefined;
-});
+const claudeInNodeModules =
+  "node_modules/@anthropic-ai/claude-code-darwin-arm64/claude";
+const codexInNodeModules =
+  "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex";
 
-function binDirs(): {
-  withClaude: string;
-  without: string;
-  notExecutable: string;
-  directory: string;
-} {
-  const root = mkdtempSync(path.join(tmpdir(), "claude-path-"));
-  dir = root;
-  const make = (name: string, mode?: number) => {
-    const bin = path.join(root, name);
-    mkdirSync(bin);
-    if (mode !== undefined) {
-      writeFileSync(path.join(bin, "claude"), "");
-      chmodSync(path.join(bin, "claude"), mode);
-    }
-    return bin;
-  };
-  return {
-    withClaude: make("with", 0o755),
-    without: make("without"),
-    notExecutable: make("plain", 0o644),
-    directory: (() => {
-      const bin = make("dir");
-      mkdirSync(path.join(bin, "claude"));
-      return bin;
-    })(),
-  };
-}
-
-describe("findExecutable for Claude", () => {
-  test("finds the first executable claude on PATH", () => {
-    const bins = binDirs();
-    const PATH = [
-      bins.without,
-      bins.notExecutable,
-      bins.directory,
-      bins.withClaude,
-    ].join(path.delimiter);
-    expect(findClaudeExecutable({ env: { PATH }, packaged: false })).toEqual({
+describe("findExecutable", () => {
+  test("a development build runs each CLI from its platform's package in node_modules", () => {
+    root = mkdtempSync(path.join(tmpdir(), "cli-executable-"));
+    place(claudeInNodeModules);
+    place(codexInNodeModules);
+    expect(find({ agent: AgentKind.Claude, packaged: false })).toEqual({
       ok: true,
-      value: path.join(bins.withClaude, "claude"),
+      value: path.join(root, claudeInNodeModules),
+    });
+    expect(find({ agent: AgentKind.Codex, packaged: false })).toEqual({
+      ok: true,
+      value: path.join(root, codexInNodeModules),
     });
   });
 
-  test("prefers the executable the variable names", () => {
-    expect(
-      findClaudeExecutable({
-        env: { PATH: "/usr/bin", [claudeExecutableVariable]: "/stub" },
-        packaged: false,
-      }),
-    ).toEqual({ ok: true, value: "/stub" });
+  test("a packaged app runs each CLI from its resources, ignoring the variables", () => {
+    root = mkdtempSync(path.join(tmpdir(), "cli-executable-"));
+    place("cli/claude-code/claude");
+    place("cli/codex/x86_64-unknown-linux-musl/bin/codex");
+    const env = {
+      [executableVariable(AgentKind.Claude)]: "/stub",
+      [executableVariable(AgentKind.Codex)]: "/stub",
+    };
+    const linux = {
+      packaged: true,
+      env,
+      platform: "linux",
+      arch: "x64",
+    } as const;
+    expect(find({ ...linux, agent: AgentKind.Claude })).toEqual({
+      ok: true,
+      value: path.join(root, "cli/claude-code/claude"),
+    });
+    expect(find({ ...linux, agent: AgentKind.Codex })).toEqual({
+      ok: true,
+      value: path.join(root, "cli/codex/x86_64-unknown-linux-musl/bin/codex"),
+    });
   });
 
-  test("resolves a relative variable against the working directory", () => {
+  test("a development build prefers the executable the agent's own variable names, resolved against the working directory", () => {
+    root = mkdtempSync(path.join(tmpdir(), "cli-executable-"));
+    place(claudeInNodeModules);
+    place("stub");
+    const named = path.relative(process.cwd(), path.join(root, "stub"));
     expect(
-      findClaudeExecutable({
-        env: { [claudeExecutableVariable]: "stub" },
+      find({
+        agent: AgentKind.Claude,
         packaged: false,
+        env: { [executableVariable(AgentKind.Claude)]: named },
       }),
-    ).toEqual({ ok: true, value: path.resolve("stub") });
+    ).toEqual({ ok: true, value: path.join(root, "stub") });
+    expect(
+      find({
+        agent: AgentKind.Claude,
+        packaged: false,
+        env: { [executableVariable(AgentKind.Codex)]: named },
+      }),
+    ).toEqual({ ok: true, value: path.join(root, claudeInNodeModules) });
   });
 
-  test("says how to install Claude Code when PATH has none", () => {
-    const found = findClaudeExecutable({
-      env: { PATH: binDirs().without },
+  test("a variable naming no executable file fails, naming both", () => {
+    root = mkdtempSync(path.join(tmpdir(), "cli-executable-"));
+    place("plain", 0o644);
+    const found = find({
+      agent: AgentKind.Codex,
       packaged: false,
+      env: { [executableVariable(AgentKind.Codex)]: path.join(root, "plain") },
     });
-    expect(!found.ok && found.error.message).toContain(
-      `couldn't find Claude Code. Install Claude Code ${CLAUDE_CODE_VERSION} so`,
+    expect(!found.ok && found.error.message).toBe(
+      `couldn't find Codex at ${path.join(root, "plain")}, which ALLIANCE_AGENT_CODEX_EXECUTABLE names.`,
     );
   });
 
-  test("a packaged app ignores PATH and the variable", () => {
-    const found = findClaudeExecutable({
-      env: { PATH: binDirs().withClaude, [claudeExecutableVariable]: "/stub" },
-      packaged: true,
-    });
-    expect(found.ok).toBe(false);
-  });
-});
-
-describe("findExecutable for Codex", () => {
-  test("finds codex on PATH, or the executable its own variable names", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "codex-path-"));
-    dir = root;
-    writeFileSync(path.join(root, "codex"), "");
-    chmodSync(path.join(root, "codex"), 0o755);
-    expect(
-      findExecutable({
-        agent: AgentKind.Codex,
-        env: { PATH: root, [claudeExecutableVariable]: "/claude" },
-        packaged: false,
-      }),
-    ).toEqual({ ok: true, value: path.join(root, "codex") });
-    expect(
-      findExecutable({
-        agent: AgentKind.Codex,
-        env: { [executableVariable(AgentKind.Codex)]: "/stub" },
-        packaged: false,
-      }),
-    ).toEqual({ ok: true, value: "/stub" });
+  test("a missing bundled CLI fails, saying how to install it in a development build and what's missing when packaged", () => {
+    root = mkdtempSync(path.join(tmpdir(), "cli-executable-"));
+    const dev = find({ agent: AgentKind.Claude, packaged: false });
+    expect(!dev.ok && dev.error.message).toBe(
+      `couldn't find the Claude Code Alliance agent bundles at ${path.join(root, claudeInNodeModules)}. Run bun install in ${root}.`,
+    );
+    const packaged = find({ agent: AgentKind.Codex, packaged: true });
+    expect(!packaged.ok && packaged.error.message).toBe(
+      `this build of Alliance agent doesn't include Codex for darwin-arm64: ${path.join(root, "cli/codex/aarch64-apple-darwin/bin/codex")} is missing or not executable.`,
+    );
   });
 
-  test("says how to install Codex when PATH has none", () => {
-    const found = findExecutable({
-      agent: AgentKind.Codex,
-      env: { PATH: binDirs().without },
+  test("a platform the app doesn't run the CLIs on fails, naming it", () => {
+    root = mkdtempSync(path.join(tmpdir(), "cli-executable-"));
+    const found = find({
+      agent: AgentKind.Claude,
       packaged: false,
+      platform: "win32",
+      arch: "x64",
     });
     expect(!found.ok && found.error.message).toBe(
-      `couldn't find Codex. Install Codex ${CODEX_VERSION} so that codex is on PATH.`,
+      "Alliance agent doesn't include Claude Code for win32-x64.",
     );
   });
 });

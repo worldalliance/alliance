@@ -71,7 +71,7 @@ if (mode === "generate") {
   ];
   if (differing.length > 0) {
     console.error(
-      `The committed Codex protocol types don't match Codex ${CODEX_VERSION}'s. Run bun scripts/codex-protocol.ts generate from agents/desktop. Differing files:\n${differing.join("\n")}`,
+      `The committed Codex protocol types don't match Codex ${CODEX_VERSION}'s. Run bun scripts/codex-protocol.ts generate from agents/desktop. A new CODEX_VERSION also needs its captures recorded, signed in, with bun src/main/agent/codex/testing/capture-codex.ts. Differing files:\n${differing.join("\n")}`,
     );
     process.exit(1);
   }

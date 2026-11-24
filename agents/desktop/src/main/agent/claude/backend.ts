@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
+import { agentEnvironment } from "../agent-environment";
 import {
   cancelKillAfterMs,
   couldNotStart,
@@ -11,11 +12,7 @@ import {
 import { CliSession } from "../cli-session";
 import type { AgentBackend, AgentMessage, AgentSession } from "../session";
 import { type SessionHooks, sessionRegistry } from "../session-registry";
-import {
-  checkClaudeVersion,
-  type ClaudeCli,
-  claudeEnvironment,
-} from "./process";
+import { checkClaudeVersion, type ClaudeCli } from "./process";
 import {
   ClaudeLineKind,
   claudeSessionArgs,
@@ -136,7 +133,7 @@ export function createClaudeBackend(
       executable: cli.executable,
       args: [...claudeSessionArgs, ...params.sessionArgs],
       cwd: params.cwd,
-      env: claudeEnvironment(cli.configDir),
+      env: agentEnvironment(cli.folders),
     });
     if (!child.ok) return child;
     return R.success(

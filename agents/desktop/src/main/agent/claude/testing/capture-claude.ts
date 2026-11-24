@@ -1,18 +1,18 @@
 // Runs the thin path against the real, signed-in Claude Code through the adapter, checks it, and saves the redacted traffic as captures.
 // Usage, from agents/desktop: bun src/main/agent/claude/testing/capture-claude.ts
-import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { R } from "../../../../../../../common/src/result";
 import { AgentEventKind } from "../../../../shared/agent-event";
-import { devClaudeConfigDir } from "../../../dev-app-data";
+import { AgentKind } from "../../../../shared/agent-kind";
 import {
-  appData,
   captureScratch,
   check,
   checkTranscriptUploaded,
+  devExecutable,
+  devFolders,
   machine,
   repo,
   runScriptedTask,
@@ -28,25 +28,25 @@ import { redactCapture } from "./redact";
 
 const { scratch, recordDir } = captureScratch("claude-capture");
 const workFile = path.join(scratch, "a.txt");
-const configDir = devClaudeConfigDir(appData);
+const folders = devFolders(scratch);
 writeFileSync(workFile, "hello\n");
 
-const realClaude = execFileSync("which", ["claude"], {
-  encoding: "utf8",
-}).trim();
-const real: ClaudeCli = { executable: realClaude, configDir };
+const realClaude = devExecutable(AgentKind.Claude);
+const real: ClaudeCli = { executable: realClaude, folders };
 const recorded: ClaudeCli = {
   executable: fileURLToPath(
     new URL("../../testing/record-cli.ts", import.meta.url),
   ),
-  configDir,
+  folders,
 };
 process.env.ALLIANCE_AGENT_RECORD_REAL = realClaude;
 process.env.ALLIANCE_AGENT_RECORD_DIR = recordDir;
 
 R.unwrap(await checkClaudeVersion(real));
 if (!R.unwrap(await isSignedInToClaude(real))) {
-  console.log(`Signing in to Claude in ${configDir}; finish in the browser.`);
+  console.log(
+    `Signing in to Claude in ${folders.claudeConfigDir}; finish in the browser.`,
+  );
   R.unwrap(await signInToClaude(real));
   check(
     R.unwrap(await isSignedInToClaude(real)),

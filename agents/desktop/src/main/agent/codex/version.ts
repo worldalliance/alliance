@@ -1,1 +1,3 @@
-export const CODEX_VERSION = "0.167.0";
+import { codexPackage, pinnedVersions } from "../cli-versions";
+
+export const CODEX_VERSION = pinnedVersions[codexPackage];

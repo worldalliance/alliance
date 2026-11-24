@@ -188,7 +188,7 @@ export async function checkCliVersion(params: {
     ? R.success(undefined)
     : R.failure(
         new Error(
-          `${cli.executable} is ${product} ${found}, but Alliance agent supports only ${expected}`,
+          `${cli.executable} is ${product} ${found}, but Alliance agent supports only ${expected}. In a development build, run bun install in agents/desktop.`,
         ),
       );
 }

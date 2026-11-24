@@ -9,9 +9,10 @@ import {
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
-import { R } from "../../../../common/src/result";
+import { R, type Result } from "../../../../common/src/result";
 import { AgentKind } from "../shared/agent-kind";
 import { repositoryFolder } from "../shared/repository";
+import { writeAgentLaunchers } from "./agent/agent-launchers";
 import { isSignedInToClaude, signInToClaude } from "./agent/claude/auth";
 import { createClaudeBackend } from "./agent/claude/backend";
 import { isSignedInToCodex, signInToCodex } from "./agent/codex/auth";
@@ -32,6 +33,7 @@ import {
   testSource,
   testSourceVariable,
 } from "./repository/source";
+import { loadShellEnvironment } from "./shell-environment";
 import { registerWorktreeIpc } from "./worktrees/ipc";
 import { WorktreeService } from "./worktrees/service";
 import { WorktreeStore } from "./worktrees/store";
@@ -213,19 +215,68 @@ app.on("did-become-active", () => {
   if (hiddenForQuit) app.hide();
 });
 
+// Set by `bun run dev`, whose terminal already gave the app the user's shell environment. Removed so an app an agent starts from this one loads its own.
+const devScript =
+  !app.isPackaged && process.env.ALLIANCE_AGENT_DEV_SCRIPT === "1";
+delete process.env.ALLIANCE_AGENT_DEV_SCRIPT;
+
+// An app opened from the Finder starts with launchd's minimal PATH, which leaves out Homebrew and the rest of what the user's shell profile adds.
+function loadUserEnvironment(signal: AbortSignal): Promise<void> {
+  if (devScript) {
+    console.log(
+      "Skipped loading the login-shell environment (ALLIANCE_AGENT_DEV_SCRIPT is set)",
+    );
+    return Promise.resolve();
+  }
+  const startedAt = Date.now();
+  return loadShellEnvironment({ env: process.env, signal }).then((loaded) => {
+    if (signal.aborted) return;
+    console.log(
+      `Loading the login-shell environment took ${Date.now() - startedAt} ms`,
+    );
+    if (loaded.ok) {
+      Object.assign(process.env, loaded.value);
+      console.log("Loaded the login-shell environment");
+      return;
+    }
+    const title = "Alliance agent couldn't load your shell environment";
+    const detail = `${loaded.error.message}. Agents, git and Bun run with the PATH the app started with, so commands your shell profile adds may be missing: ${process.env.PATH ?? ""}`;
+    console.error(`${title}: ${detail}`);
+    if (!headless)
+      void dialog.showMessageBox({ type: "error", message: title, detail });
+  });
+}
+
 void app.whenReady().then(() => {
   if (headless) app.dock?.hide();
+  const stopLoading = new AbortController();
+  const environmentLoaded = loadUserEnvironment(stopLoading.signal);
+  const findLoadedGit = () =>
+    environmentLoaded.then(() =>
+      findGit({ env: process.env, platform: process.platform }),
+    );
   protocol.handle("app", serveRenderer);
   const userData = app.getPath("userData");
   const appData = app.getPath("appData");
+  const folders = {
+    claudeConfigDir: devData
+      ? devClaudeConfigDir(appData)
+      : path.join(userData, "claude"),
+    codexHome: devData ? devCodexHome(appData) : path.join(userData, "codex"),
+    bin: path.join(userData, "bin"),
+  };
+  const find = (agent: AgentKind) =>
+    findExecutable({
+      agent,
+      env: process.env,
+      packaged: app.isPackaged,
+      root: app.isPackaged ? process.resourcesPath : app.getAppPath(),
+      platform: process.platform,
+      arch: process.arch,
+    });
   const agents: Record<AgentKind, (executable: string) => Agent> = {
     [AgentKind.Claude]: (executable) => {
-      const cli = {
-        executable,
-        configDir: devData
-          ? devClaudeConfigDir(appData)
-          : path.join(userData, "claude"),
-      };
+      const cli = { executable, folders };
       return {
         backend: createClaudeBackend(cli),
         isSignedIn: (signal) => isSignedInToClaude(cli, signal),
@@ -233,10 +284,7 @@ void app.whenReady().then(() => {
       };
     },
     [AgentKind.Codex]: (executable) => {
-      const cli = {
-        executable,
-        home: devData ? devCodexHome(appData) : path.join(userData, "codex"),
-      };
+      const cli = { executable, folders };
       return {
         backend: createCodexBackend(cli),
         isSignedIn: (signal) => isSignedInToCodex(cli, signal),
@@ -249,16 +297,28 @@ void app.whenReady().then(() => {
     saved: new SavedRepository(path.join(userData, "repository.json")),
     ownCheckout:
       app.isPackaged || testSourceJson ? undefined : app.getAppPath(),
-    findGit: () => findGit({ env: process.env, platform: process.platform }),
+    findGit: findLoadedGit,
   });
   registerRepositoryIpc({ repository, rendererUrl });
   void repository.locate({ autoClone: true });
   const sessions = registerIpc({
-    findAgent: (agent) =>
-      R.map(
-        findExecutable({ agent, env: process.env, packaged: app.isPackaged }),
+    // Each lookup of an agent not found yet rewrites both launchers, so a CLI that appears after launch reaches agents' bare names once its own agent is looked up.
+    findAgent: (agent) => {
+      const found: Record<AgentKind, Result<string, Error>> = {
+        [AgentKind.Claude]: find(AgentKind.Claude),
+        [AgentKind.Codex]: find(AgentKind.Codex),
+      };
+      const launchers = writeAgentLaunchers({
+        folders,
+        claude: found[AgentKind.Claude],
+        codex: found[AgentKind.Codex],
+      });
+      return R.map(
+        R.flatMap(launchers, () => found[agent]),
         agents[agent],
-      ),
+      );
+    },
+    environmentLoaded,
     conversations: new ConversationStore(
       path.join(userData, "conversations.json"),
     ),
@@ -269,8 +329,9 @@ void app.whenReady().then(() => {
   const worktrees = new WorktreeService({
     checkout: () => repositoryFolder(repository.current()),
     repositoryUrl: repositorySource.url,
-    findGit: () => findGit({ env: process.env, platform: process.platform }),
-    findBun: () => {
+    findGit: findLoadedGit,
+    findBun: async () => {
+      await environmentLoaded;
       const executable = findOnPath("bun", process.env);
       return executable
         ? R.success({ executable, env: gitEnvironment() })
@@ -295,10 +356,14 @@ void app.whenReady().then(() => {
   listIfMoved();
   // Worktrees made in a terminal show up when the user comes back to the app.
   app.on("browser-window-focus", () => void worktrees.refresh());
-  closeSessions = () =>
-    Promise.all([worktrees.close(), sessions.close(), repository.close()]).then(
-      () => undefined,
-    );
+  closeSessions = () => {
+    stopLoading.abort();
+    return Promise.all([
+      worktrees.close(),
+      sessions.close(),
+      repository.close(),
+    ]).then(() => undefined);
+  };
   nativeTheme.on("updated", () => {
     for (const window of BrowserWindow.getAllWindows())
       window.setBackgroundColor(windowBackground());

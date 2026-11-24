@@ -10,41 +10,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
 import { CaptureRecordKind } from "../testing/capture-record";
-import {
-  checkCodexVersion,
-  codexConfigArgs,
-  codexEnvironment,
-  runCodex,
-} from "./process";
+import { testFolders } from "../testing/folders";
+import { checkCodexVersion, codexConfigArgs, runCodex } from "./process";
 import { captured } from "./testing/capture";
 import { replay, stopReplay, stubCli, writeCapture } from "./testing/stub";
 
 afterEach(stopReplay);
-
-test("the environment keeps Codex's root certificate, drops its and OpenAI's other settings and Claude's and Anthropic's namespaces, and sets the private home", () => {
-  expect(
-    codexEnvironment("/home/codex", {
-      PATH: "/bin",
-      HOME: "/home/user",
-      CODEX_HOME: "/elsewhere",
-      CODEX_API_KEY: "[redacted]",
-      CODEX_THREAD_ID: "parent",
-      CODEX_CA_CERTIFICATE: "/certs/proxy.pem",
-      OPENAI_API_KEY: "[redacted]",
-      OPENAI_BASE_URL: "https://example.com",
-      ANTHROPIC_API_KEY: "[redacted]",
-      ANTHROPIC_AUTH_TOKEN: "[redacted]",
-      CLAUDE_CODE_OAUTH_TOKEN: "[redacted]",
-      CLAUDE_CONFIG_DIR: "/home/user/.claude",
-      CLAUDE_CODE_USE_BEDROCK: "1",
-    }),
-  ).toEqual({
-    PATH: "/bin",
-    HOME: "/home/user",
-    CODEX_CA_CERTIFICATE: "/certs/proxy.pem",
-    CODEX_HOME: "/home/codex",
-  });
-});
 
 test("a run creates the private home, open only to the user, runs in its environment and passes the overrides first", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "codex-run-test-"));
@@ -58,7 +29,10 @@ test("a run creates the private home, open only to the user, runs in its environ
   const key = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "[redacted]";
   try {
-    const run = await runCodex({ executable, home }, { args: ["login"] });
+    const run = await runCodex(
+      { executable, folders: testFolders({ codexHome: home }) },
+      { args: ["login"] },
+    );
     expect(R.map(run, (exited) => exited.stdout.split("\n"))).toEqual(
       R.success([home, "unset", ...codexConfigArgs, "login", ""]),
     );
@@ -78,7 +52,10 @@ test("a run that can't create the private home fails without running Codex", asy
   writeFileSync(path.join(dir, "file"), "");
   const home = path.join(dir, "file", "home");
   try {
-    const run = await runCodex({ executable, home }, { args: ["login"] });
+    const run = await runCodex(
+      { executable, folders: testFolders({ codexHome: home }) },
+      { args: ["login"] },
+    );
     expect(run.ok ? "" : run.error.message).toStartWith(
       `Alliance agent couldn't create Codex's folder ${home}:`,
     );
@@ -104,6 +81,6 @@ test("another version fails the version check, naming both", async () => {
   );
   const checked = await checkCodexVersion(stubCli);
   expect(checked.ok ? "" : checked.error.message).toEndWith(
-    "is Codex 0.1.0, but Alliance agent supports only 0.167.0",
+    "is Codex 0.1.0, but Alliance agent supports only 0.167.0. In a development build, run bun install in agents/desktop.",
   );
 });

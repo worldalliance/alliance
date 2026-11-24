@@ -7,11 +7,13 @@
     "lib": ["ES2024"],
     "types": ["node"],
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "resolveJsonModule": true
   },
   "include": [
     "electron.vite.config.ts",
     "playwright.config.ts",
+    "playwright.packaged.config.ts",
     "scripts",
     "src/main",
     "src/preload",
