@@ -1,30 +1,12 @@
 import { R, type Result } from "../../../../../common/src/result";
 import type { Problem } from "../../shared/repository";
-import { CreationStage } from "../../shared/task";
+import { CreationStage } from "../../shared/worktree";
 import { failureOutput, runCli } from "../agent/cli-process";
 import { gitEnvironment } from "../git-environment";
 import type { Git } from "../repository/git";
 
-// A worktree's test database is alliance_<name>_test, which Postgres cuts off past 63 bytes.
-const maxNameLength = 40;
-
-/** A worktree name from the task's first words, lowercase letters, digits and dashes as scripts/new-worktree.sh requires, that no worktree or branch in taken uses. */
-export function taskName(request: string, taken: ReadonlySet<string>): string {
-  const words = request
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(" ")
-    .filter(Boolean);
-  let base = "";
-  for (const word of words) {
-    const next = base ? `${base}-${word}` : word;
-    if (next.length > maxNameLength - 3) break;
-    base = next;
-  }
-  base ||= words[0]?.slice(0, maxNameLength - 3) || "task";
+/** base, numbered (-2, -3) past every name in taken. */
+export function worktreeName(base: string, taken: ReadonlySet<string>): string {
   if (!taken.has(base)) return base;
   for (let suffix = 2; ; suffix++)
     if (!taken.has(`${base}-${suffix}`)) return `${base}-${suffix}`;
@@ -93,7 +75,7 @@ export async function runNewWorktree(params: {
   );
   if (exited.ok && exited.value.code === 0) return R.success(undefined);
   return R.failure({
-    message: "Alliance agent couldn't set up the task's own copy.",
+    message: "Alliance agent couldn't create the worktree.",
     details: exited.ok
       ? failureOutput("scripts/new-worktree.sh", exited.value).message
       : exited.error.message,

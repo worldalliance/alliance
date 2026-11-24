@@ -1,0 +1,20 @@
+# Decisions
+
+## Scope
+
+- This PR renames tasks to worktrees and makes "New worktree" name-only. Moving the archived flag into the scripts' record, which the user approved, is ALL-2407, a separate PR, because it changes the shared worktree scripts and their tests while this one stays inside `agents/desktop` (agent decision).
+- The rename covers code as well as interface: types, files, IPC channels, CSS classes, test names, and the store file, now `worktrees.json` with a `worktrees` array (agent decision). The agent CLIs' own "task" words, such as Claude's Task tool in `src/main/agent/claude/protocol.ts`, the generated Codex protocol and the captures, stay, since they name the CLIs' things.
+- The store file is renamed without migrating `tasks.json`, so titles and archived flags saved by earlier dev builds are dropped, and so is unsent text in a worktree's message box, whose local storage key moves from `task:` to `worktree:` (agent decision). The app is unpackaged (`package.json` version `0.0.0`) and saving tasks merged the day this task started, so only development builds have the file, and ALL-2407 removes the store.
+- The script's row types in `src/main/worktrees/list.ts` are `ListedWorktree` and `ListedWorktreeState`, so the app's own `Worktree` and `WorktreeState` keep the plain names (agent decision).
+
+## Creating by name
+
+- "New worktree" is a form with a Name field and a "Create worktree" button. The field takes free text, and the form shows the worktree name it becomes, made by `nameBase` in `src/shared/worktree.ts`, the rule creation already applied to requests, now shared with the form: lowercase ASCII letters and digits joined by dashes, cut at a whole word, or within a first word too long to fit, to at most 37 characters (agent decision, the free-text option of the question the user answered with "no titles").
+- The Name field's unsent text is kept under the drafts key `new-worktree`, so a request left under the old form's `new` key doesn't turn up as a name; that entry stays unused in local storage (agent decision).
+- A name another worktree or local branch already takes is numbered (`-2`, `-3`) rather than refused, as before, so typing an existing branch's name never checks out that branch (agent decision; `new-worktree.sh` checks out an existing branch rather than starting from main). The preview shows the unnumbered name, since which names are taken is only known once `main` is fetched.
+- A name with no letter from a to z or digit once accents are dropped, such as one written only in Cyrillic or Chinese, is refused, on submit, with the problem in words next to the field, rather than becoming a default name (agent decision, following the root `AGENTS.md` fail-loudly rule).
+- The worktree view shows the worktree's name as its heading. With no first message, the "Starting the agent" stage, the failed creation's request and agent, and "Edit request" go; a failed creation offers "Edit name", which puts the name back in the New worktree form and drops the failed creation. When that form already holds a typed name, Edit name only opens the form, keeping that name and the failed creation, so neither name is lost (agent decision).
+- With titles gone, the app can't tell which worktrees it created, so the "Made outside Alliance agent" hint goes (agent decision). The earlier rule that the app never deletes a worktree it didn't create is untouched, since the app deletes nothing yet; its fate is decided with ALL-2319.
+- The main process no longer starts conversations for creations, so `registerIpc` stops returning `startConversation`, which only creation used (agent decision, deleting what the change orphaned).
+- Try again on a creation whose worktree the script made but the listing couldn't find shows a new "Finding the new worktree…" stage while it lists again, in place of "Starting the agent…" (agent decision).
+- The window still opens on New worktree, now the name form, so no agent's sign-in shows until a conversation form does, as in "Ask without a worktree" or a ready worktree (agent decision, keeping New worktree the main way to start work).

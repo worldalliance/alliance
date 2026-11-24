@@ -3,7 +3,7 @@ import { existsSync, rmSync } from "node:fs";
 import { testSourceVariable } from "../src/main/repository/source";
 import { IpcChannel } from "../src/shared/ipc";
 import {
-  askWithoutTask,
+  askWithoutWorktree,
   finishFirstTurn,
   heldClaude,
   saveConversation,
@@ -27,7 +27,9 @@ test("a conversation streams replies, shows tool calls, stops, and resumes after
   });
   const { page } = first;
 
-  await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "New worktree" }),
+  ).toBeVisible();
   await finishFirstTurn(page);
   await expect(page.locator(".user")).toHaveText(
     "Change hello to goodbye in a.txt",
@@ -246,23 +248,25 @@ test("reopening a conversation started in this run after an error keeps its mess
   await app.close();
 });
 
-test("without the repository, a new task or a conversation without one says the repository must be ready and keeps the message", async () => {
+test("without the repository, a new worktree or a conversation without one says the repository must be ready and keeps what was typed", async () => {
   const { app, page } = await launch({
     captures: [authStatusCapture(true)],
     env: { [testSourceVariable]: process.env[testSourceVariable] ?? "" },
   });
   const sidebar = page.getByRole("navigation");
   await expect(sidebar).toContainText(
-    "Tasks show once the Alliance repository above is ready.",
+    "Worktrees show once the Alliance repository above is ready.",
   );
-  for (const view of ["New task", "Ask without a task"]) {
-    await sidebar.getByRole("button", { name: view }).click();
-    await send(page, "Hello");
-    await expect(page.getByRole("alert")).toHaveText(
-      "Alliance agent needs the Alliance repository to be ready first. See Alliance repository in the sidebar.",
-    );
-    await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
-  }
+  const needsRepository =
+    "Alliance agent needs the Alliance repository to be ready first. See Alliance repository in the sidebar.";
+  await page.getByLabel("Name").fill("Hello");
+  await page.getByRole("button", { name: "Create worktree" }).click();
+  await expect(page.getByRole("alert")).toHaveText(needsRepository);
+  await expect(page.getByLabel("Name")).toHaveValue("Hello");
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
+  await send(page, "Hello");
+  await expect(page.getByRole("alert")).toHaveText(needsRepository);
+  await expect(page.getByLabel("Message Claude")).toHaveValue("Hello");
   await app.close();
 });
 
@@ -277,7 +281,7 @@ test("saved conversations that can't be read say so in the sidebar", async () =>
 
 test("a start the app refuses says why and keeps the message and focus", async () => {
   const { app, page } = await launch({ captures: [authStatusCapture(true)] });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   rmSync(workFolder(), { recursive: true });
   await page.getByLabel("Message Claude").fill("Hello");
   await page.getByRole("button", { name: "Send" }).press("Enter");
@@ -295,7 +299,7 @@ test("a conversation whose CLI exits before reading its first message isn't offe
     captures: [authStatusCapture(true)],
     claude: unreadingClaude(),
   });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await send(page, "Hello");
   const move = page.getByRole("button", {
     name: "Move your message to a new conversation",
@@ -310,7 +314,7 @@ test("a conversation whose CLI exits before reading its first message isn't offe
 
   await page
     .getByRole("navigation")
-    .getByRole("button", { name: "Ask without a task" })
+    .getByRole("button", { name: "Ask without a worktree" })
     .click();
   await page.getByLabel("Message Claude").fill("Typed meanwhile");
   await page.getByRole("navigation").getByText("Hello").click();
@@ -370,7 +374,7 @@ test("the message box and agent choice are read-only while a conversation starts
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await expect(page.getByLabel("Message Claude")).not.toBeEditable();
@@ -396,12 +400,12 @@ test("a start the user leaves and comes back to still shows as starting", async 
     captures: [authStatusCapture(true), captured("edit-and-interrupt-session")],
     claude,
   });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   const sidebar = page.getByRole("navigation");
   await sidebar.getByRole("button", { name: /^Saved/ }).click();
-  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
   await expect(page.getByRole("button", { name: "Starting…" })).toBeVisible();
   await expect(page.getByLabel("Message Claude")).not.toBeEditable();
   release();
@@ -419,11 +423,11 @@ test("a view opened from the sidebar leaves focus there", async () => {
   await finishFirstTurn(page);
   const sidebar = page.getByRole("navigation");
   const newConversation = sidebar.getByRole("button", {
-    name: "Ask without a task",
+    name: "Ask without a worktree",
   });
   await newConversation.click();
   await expect(
-    page.getByRole("heading", { name: "Ask without a task" }),
+    page.getByRole("heading", { name: "Ask without a worktree" }),
   ).toBeVisible();
   await expect(newConversation).toBeFocused();
   const conversation = sidebar.getByRole("button", { name: /Change hello/ });
@@ -441,12 +445,12 @@ test("each conversation keeps its unsent message while the user moves between th
   const box = page.getByLabel("Message Claude");
   const sidebar = page.getByRole("navigation");
   await box.fill("Half a message to the conversation");
-  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
   await expect(box).toHaveValue("");
   await box.fill("Half a first message");
   await sidebar.getByRole("button", { name: /Change hello/ }).click();
   await expect(box).toHaveValue("Half a message to the conversation");
-  await sidebar.getByRole("button", { name: "Ask without a task" }).click();
+  await sidebar.getByRole("button", { name: "Ask without a worktree" }).click();
   await expect(box).toHaveValue("Half a first message");
   await app.close();
 });

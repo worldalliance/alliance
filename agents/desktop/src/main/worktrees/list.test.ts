@@ -4,7 +4,7 @@ import {
   listWorktrees,
   WorktreeState as ScriptWorktreeState,
 } from "../../../../../scripts/list-worktrees";
-import { parseWorktreeList, WorktreeState } from "./worktrees";
+import { ListedWorktreeState, parseWorktreeList } from "./list";
 
 const entry = {
   path: "/w/alliance-fix",
@@ -28,7 +28,7 @@ test("reads version 1, ignoring fields the app doesn't use or know", () => {
     value: [
       {
         path: "/w/alliance-fix",
-        state: WorktreeState.Recorded,
+        state: ListedWorktreeState.Recorded,
         problem: null,
         id: "record-1",
         name: "fix",
@@ -60,8 +60,8 @@ test("refuses output that isn't JSON or isn't a list", () => {
 test("reads what the repository's scripts/list-worktrees.ts prints, and knows its every state", () => {
   const repo = path.resolve(import.meta.dir, "../../../../..");
   const parsed = parseWorktreeList(JSON.stringify(listWorktrees(repo)));
-  expect(parsed.ok && parsed.value[0]?.state).toBe(WorktreeState.Main);
-  expect(Object.values(WorktreeState)).toEqual(
+  expect(parsed.ok && parsed.value[0]?.state).toBe(ListedWorktreeState.Main);
+  expect<string[]>(Object.values(ListedWorktreeState)).toEqual(
     Object.values(ScriptWorktreeState),
   );
 });

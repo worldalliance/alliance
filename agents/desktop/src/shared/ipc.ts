@@ -3,7 +3,7 @@ import type { AgentEvent } from "./agent-event";
 import type { AgentKind } from "./agent-kind";
 import type { Conversation } from "./conversation";
 import type { Problem, RepositoryState } from "./repository";
-import type { TasksState } from "./task";
+import type { WorktreesState } from "./worktree";
 
 export type { Conversation } from "./conversation";
 
@@ -27,13 +27,13 @@ export enum IpcChannel {
   RepositoryUseExisting = "repository:use-existing",
   RepositoryUpdate = "repository:update",
   RepositoryCheckAgain = "repository:check-again",
-  TasksState = "tasks:state",
-  TasksChanged = "tasks:changed",
-  CreateTask = "task:create",
-  RetryTask = "task:retry",
-  DismissTask = "task:dismiss",
-  ArchiveTask = "task:archive",
-  RestoreTask = "task:restore",
+  WorktreesState = "worktrees:state",
+  WorktreesChanged = "worktrees:changed",
+  CreateWorktree = "worktree:create",
+  RetryWorktree = "worktree:retry",
+  DismissWorktree = "worktree:dismiss",
+  ArchiveWorktree = "worktree:archive",
+  RestoreWorktree = "worktree:restore",
 }
 
 export type IpcResult<T> = Result<T, string>;
@@ -47,12 +47,7 @@ export type StartInput = {
   agent: AgentKind;
 };
 
-/** A created task's key and folder, and its first conversation, which fails when the worktree is ready but the conversation couldn't start. */
-export type CreatedTask = {
-  key: string;
-  folder: string;
-  conversation: IpcResult<Conversation>;
-};
+export type CreatedWorktree = { key: string; folder: string };
 
 export type SessionEvent = { sessionId: string; event: AgentEvent };
 
@@ -62,7 +57,7 @@ export type RendererEvents = {
   /** The id of a new conversation removed because its CLI exited before reading its first message. */
   [IpcChannel.ConversationRemoved]: string;
   [IpcChannel.RepositoryChanged]: RepositoryState;
-  [IpcChannel.TasksChanged]: TasksState;
+  [IpcChannel.WorktreesChanged]: WorktreesState;
 };
 
 /** What each invoked channel's main-process handler returns. */
@@ -82,11 +77,11 @@ export type IpcReplies = {
   [IpcChannel.RepositoryUseExisting]: RepositoryReply;
   [IpcChannel.RepositoryUpdate]: RepositoryReply;
   [IpcChannel.RepositoryCheckAgain]: RepositoryReply;
-  [IpcChannel.TasksState]: IpcResult<TasksState>;
-  [IpcChannel.CreateTask]: IpcResult<CreatedTask>;
-  [IpcChannel.RetryTask]: IpcResult<CreatedTask>;
-  [IpcChannel.ArchiveTask]: IpcResult<void>;
-  [IpcChannel.RestoreTask]: IpcResult<void>;
+  [IpcChannel.WorktreesState]: IpcResult<WorktreesState>;
+  [IpcChannel.CreateWorktree]: IpcResult<CreatedWorktree>;
+  [IpcChannel.RetryWorktree]: IpcResult<CreatedWorktree>;
+  [IpcChannel.ArchiveWorktree]: IpcResult<void>;
+  [IpcChannel.RestoreWorktree]: IpcResult<void>;
 };
 
 type Reply<C extends keyof IpcReplies> = Promise<IpcReplies[C]>;
@@ -121,17 +116,16 @@ export type AgentApi = {
   /** Fast-forwards an outdated copy to the latest main, resolving once done. */
   updateRepository(): Reply<IpcChannel.RepositoryUpdate>;
   checkRepositoryAgain(): Reply<IpcChannel.RepositoryCheckAgain>;
-  tasksState(): Reply<IpcChannel.TasksState>;
-  onTasksChanged(listener: (state: TasksState) => void): () => void;
-  /** Creates a task's worktree, then starts its first conversation with request; the task is listed as new:<creationId> meanwhile, and stays listed with its problem if creation fails. */
-  createTask(input: {
+  worktreesState(): Reply<IpcChannel.WorktreesState>;
+  onWorktreesChanged(listener: (state: WorktreesState) => void): () => void;
+  /** Creates a worktree named after name; it is listed as new:<creationId> meanwhile, and stays listed with its problem if creation fails. */
+  createWorktree(input: {
     creationId: string;
-    request: string;
-    agent: AgentKind;
-  }): Reply<IpcChannel.CreateTask>;
-  retryTask(key: string): Reply<IpcChannel.RetryTask>;
-  dismissTask(key: string): void;
-  /** Stops the task's agents, then hides it. */
-  archiveTask(key: string): Reply<IpcChannel.ArchiveTask>;
-  restoreTask(key: string): Reply<IpcChannel.RestoreTask>;
+    name: string;
+  }): Reply<IpcChannel.CreateWorktree>;
+  retryWorktree(key: string): Reply<IpcChannel.RetryWorktree>;
+  dismissWorktree(key: string): void;
+  /** Stops the worktree's agents, then hides it. */
+  archiveWorktree(key: string): Reply<IpcChannel.ArchiveWorktree>;
+  restoreWorktree(key: string): Reply<IpcChannel.RestoreWorktree>;
 };

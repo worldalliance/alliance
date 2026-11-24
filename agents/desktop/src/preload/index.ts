@@ -46,13 +46,14 @@ const api: AgentApi = {
   useExistingRepository: () => invoke(IpcChannel.RepositoryUseExisting),
   updateRepository: () => invoke(IpcChannel.RepositoryUpdate),
   checkRepositoryAgain: () => invoke(IpcChannel.RepositoryCheckAgain),
-  tasksState: () => invoke(IpcChannel.TasksState),
-  onTasksChanged: (listener) => listen(IpcChannel.TasksChanged, listener),
-  createTask: (input) => invoke(IpcChannel.CreateTask, input),
-  retryTask: (key) => invoke(IpcChannel.RetryTask, key),
-  dismissTask: (key) => ipcRenderer.send(IpcChannel.DismissTask, key),
-  archiveTask: (key) => invoke(IpcChannel.ArchiveTask, key),
-  restoreTask: (key) => invoke(IpcChannel.RestoreTask, key),
+  worktreesState: () => invoke(IpcChannel.WorktreesState),
+  onWorktreesChanged: (listener) =>
+    listen(IpcChannel.WorktreesChanged, listener),
+  createWorktree: (input) => invoke(IpcChannel.CreateWorktree, input),
+  retryWorktree: (key) => invoke(IpcChannel.RetryWorktree, key),
+  dismissWorktree: (key) => ipcRenderer.send(IpcChannel.DismissWorktree, key),
+  archiveWorktree: (key) => invoke(IpcChannel.ArchiveWorktree, key),
+  restoreWorktree: (key) => invoke(IpcChannel.RestoreWorktree, key),
 };
 
 contextBridge.exposeInMainWorld("agent", api);
