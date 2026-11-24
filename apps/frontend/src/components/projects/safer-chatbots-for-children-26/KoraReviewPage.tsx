@@ -1,13 +1,7 @@
 import { KORA_PROJECT_PATH, KoraReviewPhase } from "@alliance/common/kora";
-import {
-  parseKoraCategories,
-  parseKoraExport,
-  parseKoraTranscript,
-} from "@alliance/kora-review/parse";
 import type { KoraReviewStateDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMemo } from "react";
 import { Navigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../../../lib/AuthContext";
@@ -17,13 +11,9 @@ import { SiteRoot } from "../../../site/PageShell";
 import { SITE_COL } from "../../../site/ui";
 import { REVIEW_COPY } from "./copy";
 import { KoraNavbar } from "./KoraNavbar";
-import { type KoraToolOptions, KoraReviewTool } from "./KoraReviewTool";
+import { KoraAssignmentReview } from "./KoraReviewTool";
 import { useKoraParticipant } from "./useKoraParticipant";
-import {
-  nextKoraTranscript,
-  saveKoraExport,
-  useKoraReview,
-} from "./useKoraReview";
+import { useKoraReview } from "./useKoraReview";
 
 export const SIGN_IN_TO_REVIEW = `${KORA_PROJECT_PATH}?next=review`;
 
@@ -33,49 +23,6 @@ export function meta() {
     description: "Review chatbot transcripts for the Alliance and KORA.",
     url: `${KORA_PROJECT_PATH}/review`,
   });
-}
-
-function ReviewTool({
-  state,
-  onComplete,
-}: {
-  state: KoraReviewStateDto;
-  onComplete: () => void;
-}) {
-  const assignment = state.assignment;
-  const options = useMemo(
-    (): KoraToolOptions | null =>
-      assignment
-        ? {
-            reviewerId: state.reviewerId,
-            assignment: {
-              batchId: assignment.id,
-              size: assignment.size,
-              transcripts: assignment.transcripts.map((t) => ({
-                transcript: parseKoraTranscript(t.transcript),
-                contentHash: t.contentHash,
-              })),
-            },
-            savedExport: assignment.savedExport
-              ? parseKoraExport(assignment.savedExport)
-              : null,
-            collectProfile: state.collectProfile,
-            collectExitSurvey: !assignment.extra,
-            optOutCategories: parseKoraCategories(state.optOutCategories),
-            save: (exported) => saveKoraExport(assignment.id, { ...exported }),
-            next: () => nextKoraTranscript(assignment.id),
-          }
-        : null,
-    [
-      assignment,
-      state.reviewerId,
-      state.collectProfile,
-      state.optOutCategories,
-    ],
-  );
-  return (
-    options && <KoraReviewTool options={options} onComplete={onComplete} />
-  );
 }
 
 function Finished({
@@ -156,7 +103,10 @@ export default function KoraReviewPage() {
       return <Navigate to={KORA_PROJECT_PATH} replace />;
     case KoraReviewPhase.Reviewing:
       return shell(
-        <ReviewTool state={state} onComplete={() => void review.refresh()} />,
+        <KoraAssignmentReview
+          state={state}
+          onComplete={() => void review.refresh()}
+        />,
       );
     case KoraReviewPhase.Finished:
     case KoraReviewPhase.NoneLeft:

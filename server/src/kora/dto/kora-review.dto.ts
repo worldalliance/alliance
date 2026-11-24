@@ -1,7 +1,8 @@
 import { KoraReviewPhase, KoraUserBatchStatus } from "@alliance/common/kora";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsObject } from "class-validator";
+import { IsInt, IsObject, Max, Min } from "class-validator";
 import type { KoraTranscript } from "../entities/kora-transcript.entity";
+import { KORA_ACTIVE_REPORT_MAX_SECONDS } from "../kora-active-time";
 import type { KoraHome, KoraUserBatch } from "../kora-home";
 import type { KoraSaved } from "../kora-review.service";
 import { KoraTranscriptPreviewDto } from "./kora-batch.dto";
@@ -98,6 +99,17 @@ export class SaveKoraExportDto {
   @ApiProperty({ type: "object", additionalProperties: true })
   @IsObject()
   export: Record<string, unknown>;
+}
+
+export class ReportKoraActiveTimeDto {
+  @ApiProperty({
+    description:
+      "Seconds of visible, recently used review time since the last report",
+  })
+  @IsInt()
+  @Min(1)
+  @Max(KORA_ACTIVE_REPORT_MAX_SECONDS)
+  seconds: number;
 }
 
 export class KoraExportSavedDto {

@@ -8,6 +8,7 @@ import { Comment } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumModule } from "src/forum/forum.module";
+import { KoraModule } from "src/kora/kora.module";
 import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
@@ -99,6 +100,7 @@ import { GeneralUpdatesController } from "./general-updates.controller";
 import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
+import { KoraActionReviewController } from "./kora-action-review.controller";
 import { KoraActionListener } from "./kora-action.listener";
 import { MemberActionsService } from "./member-actions.service";
 import { ProjectActionsController } from "./project-actions.controller";
@@ -160,8 +162,10 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     FormSnapshotModule,
     SplitPlacementModule,
     forwardRef(() => ShareUrlsModule),
+    KoraModule,
   ],
   controllers: [
+    KoraActionReviewController,
     ActionsController,
     GeneralUpdatesController,
     ActionUpdatesController,

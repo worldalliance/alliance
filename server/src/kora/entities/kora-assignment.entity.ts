@@ -1,3 +1,4 @@
+import { Action } from "src/actions/entities/action.entity";
 import {
   CreateDateColumnTz,
   DeleteDateColumnTz,
@@ -16,6 +17,10 @@ import { KoraReviewer } from "./kora-reviewer.entity";
 
 /** A reviewer's set of transcripts. Its id is the batchId the review tool echoes in its export. */
 @Entity()
+@Index(["reviewerId", "actionId"], {
+  unique: true,
+  where: `"actionId" IS NOT NULL AND "deletedAt" IS NULL`,
+})
 export class KoraAssignment {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -31,6 +36,22 @@ export class KoraAssignment {
   /** Requested after the reviewer finished an earlier assignment. */
   @Column({ type: "boolean" })
   extra: boolean;
+
+  /** The Kora review action it was started from, which only it completes. */
+  @Column({ type: "int", nullable: true })
+  actionId: number | null;
+
+  @ManyToOne(() => Action, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "actionId" })
+  action?: Relation<Action>;
+
+  /** Visible, recently used review time the member's client reported. */
+  @Column({ type: "int", default: 0 })
+  activeSeconds: number;
+
+  /** The latest active-time report, which caps the next one. */
+  @Column({ type: "timestamptz", nullable: true })
+  activeReportedAt: Date | null;
 
   /** The newest batch when the assignment was made; deleting that batch deletes the assignment. */
   @Column({ type: "uuid" })

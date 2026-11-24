@@ -2361,6 +2361,59 @@ export type UpdateClusterDto = {
     displayName: string;
 };
 
+export type KoraReviewPhase = 'reviewing' | 'finished' | 'none_left' | 'not_active';
+
+export type KoraTranscriptPreviewDto = {
+    transcript: {
+        [key: string]: unknown;
+    };
+    contentHash: string;
+};
+
+export type KoraReviewAssignmentDto = {
+    /**
+     * The batchId the review tool echoes
+     */
+    id: string;
+    /**
+     * Requested after finishing an earlier one
+     */
+    extra: boolean;
+    /**
+     * How many transcripts the assignment asks for
+     */
+    size: number;
+    /**
+     * Those given so far; the next comes from the next endpoint
+     */
+    transcripts: Array<KoraTranscriptPreviewDto>;
+    savedExport: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type KoraReviewStateDto = {
+    phase: KoraReviewPhase;
+    /**
+     * Opaque; the only identity the tool sees
+     */
+    reviewerId: string;
+    collectProfile: boolean;
+    /**
+     * Categories the reviewer opted out of in any assignment
+     */
+    optOutCategories: Array<string>;
+    /**
+     * Has finished at least one assignment
+     */
+    reviewed: boolean;
+    /**
+     * Reviews finished in extra assignments
+     */
+    extraReviews: number;
+    assignment?: KoraReviewAssignmentDto;
+};
+
 export type ActionReviewerResponseDto = {
     /**
      * Display name of the reviewer
@@ -4170,6 +4223,385 @@ export type UpdatePostSettingsDto = {
     tags?: UpdatePostTagsDto;
 };
 
+export type KoraParticipantCountDto = {
+    count: number;
+};
+
+export type KoraProjectStatus = 'pending' | 'active' | 'closed';
+
+export type KoraProjectDto = {
+    status: KoraProjectStatus;
+};
+
+export type KoraParticipantDto = {
+    id: string;
+    name: string;
+    /**
+     * The email or phone signed in with, partly hidden
+     */
+    maskedContact: string;
+};
+
+export type OtpChannel = 'email' | 'sms';
+
+export type PendingKoraCodeDto = {
+    channel: OtpChannel;
+    /**
+     * Where the code went, partly hidden
+     */
+    maskedDestination: string;
+    resendAvailableAt: string;
+    expiresAt: string;
+};
+
+export type KoraParticipantStateDto = {
+    participant: KoraParticipantDto | null;
+    /**
+     * A code this browser asked for and has not used
+     */
+    pendingCode: PendingKoraCodeDto | null;
+    /**
+     * A verified contact is waiting on a name
+     */
+    signupPending: boolean;
+};
+
+export type StartKoraCodeDto = {
+    /**
+     * Send this or `phoneNumber`
+     */
+    email?: string;
+    /**
+     * E.164; send this or `email`
+     */
+    phoneNumber?: string;
+};
+
+export type VerifyKoraCodeDto = {
+    /**
+     * The device's IANA timezone, when it could be detected
+     */
+    timeZone?: string | null;
+    code: string;
+};
+
+export type KoraCodeVerifiedDto = {
+    /**
+     * Null when the new participant still has to give a name
+     */
+    participant: KoraParticipantDto | null;
+};
+
+export type CompleteKoraSignupDto = {
+    /**
+     * The device's IANA timezone, when it could be detected
+     */
+    timeZone?: string | null;
+    name: string;
+};
+
+export type KoraAdminProjectDto = {
+    status: KoraProjectStatus;
+    /**
+     * Whether the project may be made active now
+     */
+    canActivate: boolean;
+    /**
+     * Participants not yet told the reviews are open
+     */
+    toNotify: number;
+    /**
+     * Reviewers who finished and haven't been told about the newest batch
+     */
+    moreToNotify: number;
+};
+
+export type UpdateKoraProjectDto = {
+    status: KoraProjectStatus;
+};
+
+export type KoraNotifyQueuedDto = {
+    /**
+     * Participants the launch message is being sent to
+     */
+    queued: number;
+};
+
+export type KoraAdminParticipantDto = {
+    id: string;
+    name: string;
+    email: string | null;
+    /**
+     * E.164
+     */
+    phoneNumber: string | null;
+    timeZone: string | null;
+    createdAt: string;
+    /**
+     * Providers connected besides the contact's own code
+     */
+    providers: Array<OAuthProvider>;
+};
+
+export type KoraAdminAbandonedSignupDto = {
+    id: string;
+    channel: OtpChannel;
+    /**
+     * The email address or E.164 mobile number
+     */
+    destination: string;
+    /**
+     * Set when a provider, not a code, verified the contact
+     */
+    provider: OAuthProvider | null;
+    verifiedAt: string;
+    /**
+     * The contact has since become a participant
+     */
+    recovered: boolean;
+};
+
+export type KoraAdminOverviewDto = {
+    participants: Array<KoraAdminParticipantDto>;
+    abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
+};
+
+export type KoraAdminCategoryDto = {
+    category: string;
+    /**
+     * Pairs in open batches
+     */
+    pairs: number;
+    /**
+     * Reviews its pairs still need to reach their targets
+     */
+    reviewsNeeded: number;
+    /**
+     * Reviewers who opted out of it
+     */
+    optedOut: number;
+};
+
+export type KoraAdminCategoriesDto = {
+    categories: Array<KoraAdminCategoryDto>;
+};
+
+export type KoraAdminConversationDto = {
+    id: string;
+    category: string;
+    /**
+     * When its batch was uploaded
+     */
+    uploadedAt: string;
+    /**
+     * Its batch's review target
+     */
+    reviewsPerTranscript: number;
+    /**
+     * Finished reviews
+     */
+    reviews: number;
+    /**
+     * Median time finished reviews had it open; null with none
+     */
+    medianTimeMs: number | null;
+    minTimeMs: number | null;
+    maxTimeMs: number | null;
+};
+
+export type KoraAdminConversationsDto = {
+    conversations: Array<KoraAdminConversationDto>;
+};
+
+export type KoraBatchDto = {
+    id: string;
+    transcriptsPerAssignment: number;
+    reviewsPerTranscript: number;
+    retiredAt: string | null;
+    closesAt: string | null;
+    createdAt: string;
+    transcriptCount: number;
+};
+
+export type KoraRejectedLineDto = {
+    line: number;
+    problems: Array<string>;
+};
+
+export type KoraUploadRejectedDto = {
+    message: string;
+    rejected: Array<KoraRejectedLineDto>;
+};
+
+export type KoraBatchEventKind = 'upload' | 'retire' | 'reactivate' | 'delete' | 'assignment_completed';
+
+export type KoraBatchEventDto = {
+    id: string;
+    kind: KoraBatchEventKind;
+    batchId: string | null;
+    batchUploadedAt: string | null;
+    transcriptCount: number | null;
+    ratingCount: number | null;
+    assignmentCount: number | null;
+    assignmentId: string | null;
+    reviewerId: string | null;
+    adminName: string | null;
+    createdAt: string;
+    /**
+     * The event names an assignment that no longer exists
+     */
+    assignmentDeleted: boolean;
+};
+
+export type SetKoraBatchClosesAtDto = {
+    /**
+     * Must be in the future
+     */
+    closesAt: string;
+};
+
+export type KoraDeletionImpactDto = {
+    transcriptCount: number;
+    ratingCount: number;
+    assignmentCount: number;
+};
+
+export type KoraUserBatchStatus = 'ready' | 'open' | 'done' | 'closed';
+
+export type KoraUserBatchDto = {
+    /**
+     * Null for an offer not yet started
+     */
+    id: string | null;
+    status: KoraUserBatchStatus;
+    releasedAt: string;
+    closesAt: string | null;
+    /**
+     * Pairs ranked or skipped
+     */
+    progress: number;
+    total: number;
+};
+
+export type KoraHomeDto = {
+    /**
+     * Pairs ranked, not counting skipped ones
+     */
+    totalRanked: number;
+    userBatches: Array<KoraUserBatchDto>;
+};
+
+export type SaveKoraExportDto = {
+    export: {
+        [key: string]: unknown;
+    };
+};
+
+export type KoraExportSavedDto = {
+    /**
+     * The assignment is finished
+     */
+    completed: boolean;
+    /**
+     * Transcripts no longer in the assignment whose results the save dropped; the tool removes them
+     */
+    removed: Array<string>;
+};
+
+export type KoraNextTranscriptDto = {
+    /**
+     * Null once the assignment is full or nothing is left to give
+     */
+    next: KoraTranscriptPreviewDto | null;
+};
+
+export type ReportKoraActiveTimeDto = {
+    /**
+     * Seconds of visible, recently used review time since the last report
+     */
+    seconds: number;
+};
+
+export type KoraExportsDto = {
+    /**
+     * Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }
+     */
+    exports: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type KoraSpecExportDto = {
+    /**
+     * export_id, kind, generated_at, spec_version and row counts
+     */
+    export: {
+        [key: string]: unknown;
+    };
+    /**
+     * One per completed rating
+     */
+    ratings: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per highlighted passage
+     */
+    highlights: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per session started
+     */
+    sessions: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per conversation skipped
+     */
+    skips: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per reviewer
+     */
+    reviewers: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type KoraAnswerCountDto = {
+    value: string;
+    count: number;
+};
+
+export type KoraQuestionCountsDto = {
+    question: string;
+    answers: Array<KoraAnswerCountDto>;
+};
+
+export type KoraAnswerCountsDto = {
+    /**
+     * Reviewers who answered the profile
+     */
+    profiles: number;
+    profile: Array<KoraQuestionCountsDto>;
+    /**
+     * Exit surveys answered
+     */
+    exitSurveys: number;
+    exitSurvey: Array<KoraQuestionCountsDto>;
+};
+
+export type KoraAssignmentExportDto = {
+    id: string;
+    reviewerId: string;
+    completedAt: string | null;
+    export: {
+        [key: string]: unknown;
+    } | null;
+};
+
 export type CreateActionPartnershipResponseDto = {
     organizationName: string;
     organizationWebsite: string;
@@ -5786,431 +6218,6 @@ export type SaveWaitlistEmailTemplateDto = {
      */
     body: string;
     name: string;
-};
-
-export type KoraParticipantCountDto = {
-    count: number;
-};
-
-export type KoraProjectStatus = 'pending' | 'active' | 'closed';
-
-export type KoraProjectDto = {
-    status: KoraProjectStatus;
-};
-
-export type KoraParticipantDto = {
-    id: string;
-    name: string;
-    /**
-     * The email or phone signed in with, partly hidden
-     */
-    maskedContact: string;
-};
-
-export type OtpChannel = 'email' | 'sms';
-
-export type PendingKoraCodeDto = {
-    channel: OtpChannel;
-    /**
-     * Where the code went, partly hidden
-     */
-    maskedDestination: string;
-    resendAvailableAt: string;
-    expiresAt: string;
-};
-
-export type KoraParticipantStateDto = {
-    participant: KoraParticipantDto | null;
-    /**
-     * A code this browser asked for and has not used
-     */
-    pendingCode: PendingKoraCodeDto | null;
-    /**
-     * A verified contact is waiting on a name
-     */
-    signupPending: boolean;
-};
-
-export type StartKoraCodeDto = {
-    /**
-     * Send this or `phoneNumber`
-     */
-    email?: string;
-    /**
-     * E.164; send this or `email`
-     */
-    phoneNumber?: string;
-};
-
-export type VerifyKoraCodeDto = {
-    /**
-     * The device's IANA timezone, when it could be detected
-     */
-    timeZone?: string | null;
-    code: string;
-};
-
-export type KoraCodeVerifiedDto = {
-    /**
-     * Null when the new participant still has to give a name
-     */
-    participant: KoraParticipantDto | null;
-};
-
-export type CompleteKoraSignupDto = {
-    /**
-     * The device's IANA timezone, when it could be detected
-     */
-    timeZone?: string | null;
-    name: string;
-};
-
-export type KoraAdminProjectDto = {
-    status: KoraProjectStatus;
-    /**
-     * Whether the project may be made active now
-     */
-    canActivate: boolean;
-    /**
-     * Participants not yet told the reviews are open
-     */
-    toNotify: number;
-    /**
-     * Reviewers who finished and haven't been told about the newest batch
-     */
-    moreToNotify: number;
-};
-
-export type UpdateKoraProjectDto = {
-    status: KoraProjectStatus;
-};
-
-export type KoraNotifyQueuedDto = {
-    /**
-     * Participants the launch message is being sent to
-     */
-    queued: number;
-};
-
-export type KoraAdminParticipantDto = {
-    id: string;
-    name: string;
-    email: string | null;
-    /**
-     * E.164
-     */
-    phoneNumber: string | null;
-    timeZone: string | null;
-    createdAt: string;
-    /**
-     * Providers connected besides the contact's own code
-     */
-    providers: Array<OAuthProvider>;
-};
-
-export type KoraAdminAbandonedSignupDto = {
-    id: string;
-    channel: OtpChannel;
-    /**
-     * The email address or E.164 mobile number
-     */
-    destination: string;
-    /**
-     * Set when a provider, not a code, verified the contact
-     */
-    provider: OAuthProvider | null;
-    verifiedAt: string;
-    /**
-     * The contact has since become a participant
-     */
-    recovered: boolean;
-};
-
-export type KoraAdminOverviewDto = {
-    participants: Array<KoraAdminParticipantDto>;
-    abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
-};
-
-export type KoraAdminCategoryDto = {
-    category: string;
-    /**
-     * Pairs in open batches
-     */
-    pairs: number;
-    /**
-     * Reviews its pairs still need to reach their targets
-     */
-    reviewsNeeded: number;
-    /**
-     * Reviewers who opted out of it
-     */
-    optedOut: number;
-};
-
-export type KoraAdminCategoriesDto = {
-    categories: Array<KoraAdminCategoryDto>;
-};
-
-export type KoraAdminConversationDto = {
-    id: string;
-    category: string;
-    /**
-     * When its batch was uploaded
-     */
-    uploadedAt: string;
-    /**
-     * Its batch's review target
-     */
-    reviewsPerTranscript: number;
-    /**
-     * Finished reviews
-     */
-    reviews: number;
-    /**
-     * Median time finished reviews had it open; null with none
-     */
-    medianTimeMs: number | null;
-    minTimeMs: number | null;
-    maxTimeMs: number | null;
-};
-
-export type KoraAdminConversationsDto = {
-    conversations: Array<KoraAdminConversationDto>;
-};
-
-export type KoraBatchDto = {
-    id: string;
-    transcriptsPerAssignment: number;
-    reviewsPerTranscript: number;
-    retiredAt: string | null;
-    closesAt: string | null;
-    createdAt: string;
-    transcriptCount: number;
-};
-
-export type KoraRejectedLineDto = {
-    line: number;
-    problems: Array<string>;
-};
-
-export type KoraUploadRejectedDto = {
-    message: string;
-    rejected: Array<KoraRejectedLineDto>;
-};
-
-export type KoraTranscriptPreviewDto = {
-    transcript: {
-        [key: string]: unknown;
-    };
-    contentHash: string;
-};
-
-export type KoraBatchEventKind = 'upload' | 'retire' | 'reactivate' | 'delete' | 'assignment_completed';
-
-export type KoraBatchEventDto = {
-    id: string;
-    kind: KoraBatchEventKind;
-    batchId: string | null;
-    batchUploadedAt: string | null;
-    transcriptCount: number | null;
-    ratingCount: number | null;
-    assignmentCount: number | null;
-    assignmentId: string | null;
-    reviewerId: string | null;
-    adminName: string | null;
-    createdAt: string;
-    /**
-     * The event names an assignment that no longer exists
-     */
-    assignmentDeleted: boolean;
-};
-
-export type SetKoraBatchClosesAtDto = {
-    /**
-     * Must be in the future
-     */
-    closesAt: string;
-};
-
-export type KoraDeletionImpactDto = {
-    transcriptCount: number;
-    ratingCount: number;
-    assignmentCount: number;
-};
-
-export type KoraReviewPhase = 'reviewing' | 'finished' | 'none_left' | 'not_active';
-
-export type KoraReviewAssignmentDto = {
-    /**
-     * The batchId the review tool echoes
-     */
-    id: string;
-    /**
-     * Requested after finishing an earlier one
-     */
-    extra: boolean;
-    /**
-     * How many transcripts the assignment asks for
-     */
-    size: number;
-    /**
-     * Those given so far; the next comes from the next endpoint
-     */
-    transcripts: Array<KoraTranscriptPreviewDto>;
-    savedExport: {
-        [key: string]: unknown;
-    } | null;
-};
-
-export type KoraReviewStateDto = {
-    phase: KoraReviewPhase;
-    /**
-     * Opaque; the only identity the tool sees
-     */
-    reviewerId: string;
-    collectProfile: boolean;
-    /**
-     * Categories the reviewer opted out of in any assignment
-     */
-    optOutCategories: Array<string>;
-    /**
-     * Has finished at least one assignment
-     */
-    reviewed: boolean;
-    /**
-     * Reviews finished in extra assignments
-     */
-    extraReviews: number;
-    assignment?: KoraReviewAssignmentDto;
-};
-
-export type KoraUserBatchStatus = 'ready' | 'open' | 'done' | 'closed';
-
-export type KoraUserBatchDto = {
-    /**
-     * Null for an offer not yet started
-     */
-    id: string | null;
-    status: KoraUserBatchStatus;
-    releasedAt: string;
-    closesAt: string | null;
-    /**
-     * Pairs ranked or skipped
-     */
-    progress: number;
-    total: number;
-};
-
-export type KoraHomeDto = {
-    /**
-     * Pairs ranked, not counting skipped ones
-     */
-    totalRanked: number;
-    userBatches: Array<KoraUserBatchDto>;
-};
-
-export type SaveKoraExportDto = {
-    export: {
-        [key: string]: unknown;
-    };
-};
-
-export type KoraExportSavedDto = {
-    /**
-     * The assignment is finished
-     */
-    completed: boolean;
-    /**
-     * Transcripts no longer in the assignment whose results the save dropped; the tool removes them
-     */
-    removed: Array<string>;
-};
-
-export type KoraNextTranscriptDto = {
-    /**
-     * Null once the assignment is full or nothing is left to give
-     */
-    next: KoraTranscriptPreviewDto | null;
-};
-
-export type KoraExportsDto = {
-    /**
-     * Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }
-     */
-    exports: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type KoraSpecExportDto = {
-    /**
-     * export_id, kind, generated_at, spec_version and row counts
-     */
-    export: {
-        [key: string]: unknown;
-    };
-    /**
-     * One per completed rating
-     */
-    ratings: Array<{
-        [key: string]: unknown;
-    }>;
-    /**
-     * One per highlighted passage
-     */
-    highlights: Array<{
-        [key: string]: unknown;
-    }>;
-    /**
-     * One per session started
-     */
-    sessions: Array<{
-        [key: string]: unknown;
-    }>;
-    /**
-     * One per conversation skipped
-     */
-    skips: Array<{
-        [key: string]: unknown;
-    }>;
-    /**
-     * One per reviewer
-     */
-    reviewers: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type KoraAnswerCountDto = {
-    value: string;
-    count: number;
-};
-
-export type KoraQuestionCountsDto = {
-    question: string;
-    answers: Array<KoraAnswerCountDto>;
-};
-
-export type KoraAnswerCountsDto = {
-    /**
-     * Reviewers who answered the profile
-     */
-    profiles: number;
-    profile: Array<KoraQuestionCountsDto>;
-    /**
-     * Exit surveys answered
-     */
-    exitSurveys: number;
-    exitSurvey: Array<KoraQuestionCountsDto>;
-};
-
-export type KoraAssignmentExportDto = {
-    id: string;
-    reviewerId: string;
-    completedAt: string | null;
-    export: {
-        [key: string]: unknown;
-    } | null;
 };
 
 export type HeyApiError = {
@@ -11387,6 +11394,30 @@ export type HealthDbResponses = {
 
 export type HealthDbResponse = HealthDbResponses[keyof HealthDbResponses];
 
+export type KoraActionReviewStateData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/kora-review';
+};
+
+export type KoraActionReviewStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraActionReviewStateError = KoraActionReviewStateErrors[keyof KoraActionReviewStateErrors];
+
+export type KoraActionReviewStateResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraActionReviewStateResponse = KoraActionReviewStateResponses[keyof KoraActionReviewStateResponses];
+
 export type ActionsFindAllLoggedInData = {
     body?: never;
     path?: never;
@@ -14400,6 +14431,932 @@ export type ForumPinCommentAdminResponses = {
 };
 
 export type ForumPinCommentAdminResponse = ForumPinCommentAdminResponses[keyof ForumPinCommentAdminResponses];
+
+export type KoraParticipantCountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/participants/count';
+};
+
+export type KoraParticipantCountErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraParticipantCountError = KoraParticipantCountErrors[keyof KoraParticipantCountErrors];
+
+export type KoraParticipantCountResponses = {
+    200: KoraParticipantCountDto;
+};
+
+export type KoraParticipantCountResponse = KoraParticipantCountResponses[keyof KoraParticipantCountResponses];
+
+export type KoraProjectData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/project';
+};
+
+export type KoraProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraProjectError = KoraProjectErrors[keyof KoraProjectErrors];
+
+export type KoraProjectResponses = {
+    200: KoraProjectDto;
+};
+
+export type KoraProjectResponse = KoraProjectResponses[keyof KoraProjectResponses];
+
+export type KoraStateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/me';
+};
+
+export type KoraStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraStateError = KoraStateErrors[keyof KoraStateErrors];
+
+export type KoraStateResponses = {
+    200: KoraParticipantStateDto;
+};
+
+export type KoraStateResponse = KoraStateResponses[keyof KoraStateResponses];
+
+export type KoraAbandonCodeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/code';
+};
+
+export type KoraAbandonCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAbandonCodeError = KoraAbandonCodeErrors[keyof KoraAbandonCodeErrors];
+
+export type KoraAbandonCodeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAbandonCodeResponse = KoraAbandonCodeResponses[keyof KoraAbandonCodeResponses];
+
+export type KoraSendCodeData = {
+    body: StartKoraCodeDto;
+    path?: never;
+    query?: never;
+    url: '/kora/code';
+};
+
+export type KoraSendCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraSendCodeError = KoraSendCodeErrors[keyof KoraSendCodeErrors];
+
+export type KoraSendCodeResponses = {
+    200: PendingKoraCodeDto;
+};
+
+export type KoraSendCodeResponse = KoraSendCodeResponses[keyof KoraSendCodeResponses];
+
+export type KoraVerifyCodeData = {
+    body: VerifyKoraCodeDto;
+    path?: never;
+    query?: never;
+    url: '/kora/code/verify';
+};
+
+export type KoraVerifyCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraVerifyCodeError = KoraVerifyCodeErrors[keyof KoraVerifyCodeErrors];
+
+export type KoraVerifyCodeResponses = {
+    200: KoraCodeVerifiedDto;
+};
+
+export type KoraVerifyCodeResponse = KoraVerifyCodeResponses[keyof KoraVerifyCodeResponses];
+
+export type KoraCompleteSignupData = {
+    body: CompleteKoraSignupDto;
+    path?: never;
+    query?: never;
+    url: '/kora/signup';
+};
+
+export type KoraCompleteSignupErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraCompleteSignupError = KoraCompleteSignupErrors[keyof KoraCompleteSignupErrors];
+
+export type KoraCompleteSignupResponses = {
+    200: KoraParticipantDto;
+};
+
+export type KoraCompleteSignupResponse = KoraCompleteSignupResponses[keyof KoraCompleteSignupResponses];
+
+export type KoraSignOutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/sign-out';
+};
+
+export type KoraSignOutErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraSignOutError = KoraSignOutErrors[keyof KoraSignOutErrors];
+
+export type KoraSignOutResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraSignOutResponse = KoraSignOutResponses[keyof KoraSignOutResponses];
+
+export type KoraOAuthStartData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query: {
+        returnTo: string;
+        timeZone?: string;
+        posthogSessionId?: string;
+        posthogDistinctId?: string;
+    };
+    url: '/kora/{provider}/start';
+};
+
+export type KoraOAuthStartErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthStartError = KoraOAuthStartErrors[keyof KoraOAuthStartErrors];
+
+export type KoraOAuthStartResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthStartResponse = KoraOAuthStartResponses[keyof KoraOAuthStartResponses];
+
+export type KoraOAuthCallbackData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+        /**
+         * JSON Apple posts on the first authorization, holding the name.
+         */
+        user?: string;
+    };
+    url: '/kora/{provider}/callback';
+};
+
+export type KoraOAuthCallbackErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackError = KoraOAuthCallbackErrors[keyof KoraOAuthCallbackErrors];
+
+export type KoraOAuthCallbackResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackResponse = KoraOAuthCallbackResponses[keyof KoraOAuthCallbackResponses];
+
+export type KoraOAuthCallbackFormData = {
+    body: OAuthCallbackDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/kora/{provider}/callback';
+};
+
+export type KoraOAuthCallbackFormErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackFormError = KoraOAuthCallbackFormErrors[keyof KoraOAuthCallbackFormErrors];
+
+export type KoraOAuthCallbackFormResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
+
+export type KoraAdminProjectData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/project';
+};
+
+export type KoraAdminProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminProjectError = KoraAdminProjectErrors[keyof KoraAdminProjectErrors];
+
+export type KoraAdminProjectResponses = {
+    200: KoraAdminProjectDto;
+};
+
+export type KoraAdminProjectResponse = KoraAdminProjectResponses[keyof KoraAdminProjectResponses];
+
+export type KoraAdminUpdateProjectData = {
+    body: UpdateKoraProjectDto;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/project';
+};
+
+export type KoraAdminUpdateProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminUpdateProjectError = KoraAdminUpdateProjectErrors[keyof KoraAdminUpdateProjectErrors];
+
+export type KoraAdminUpdateProjectResponses = {
+    200: KoraAdminProjectDto;
+};
+
+export type KoraAdminUpdateProjectResponse = KoraAdminUpdateProjectResponses[keyof KoraAdminUpdateProjectResponses];
+
+export type KoraAdminNotifyWaitlistData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/notify-waitlist';
+};
+
+export type KoraAdminNotifyWaitlistErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminNotifyWaitlistError = KoraAdminNotifyWaitlistErrors[keyof KoraAdminNotifyWaitlistErrors];
+
+export type KoraAdminNotifyWaitlistResponses = {
+    200: KoraNotifyQueuedDto;
+};
+
+export type KoraAdminNotifyWaitlistResponse = KoraAdminNotifyWaitlistResponses[keyof KoraAdminNotifyWaitlistResponses];
+
+export type KoraAdminNotifyMoreData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/notify-more';
+};
+
+export type KoraAdminNotifyMoreErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminNotifyMoreError = KoraAdminNotifyMoreErrors[keyof KoraAdminNotifyMoreErrors];
+
+export type KoraAdminNotifyMoreResponses = {
+    200: KoraNotifyQueuedDto;
+};
+
+export type KoraAdminNotifyMoreResponse = KoraAdminNotifyMoreResponses[keyof KoraAdminNotifyMoreResponses];
+
+export type KoraAdminOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/participants';
+};
+
+export type KoraAdminOverviewErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminOverviewError = KoraAdminOverviewErrors[keyof KoraAdminOverviewErrors];
+
+export type KoraAdminOverviewResponses = {
+    200: KoraAdminOverviewDto;
+};
+
+export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
+
+export type KoraAdminCategoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/categories';
+};
+
+export type KoraAdminCategoriesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminCategoriesError = KoraAdminCategoriesErrors[keyof KoraAdminCategoriesErrors];
+
+export type KoraAdminCategoriesResponses = {
+    200: KoraAdminCategoriesDto;
+};
+
+export type KoraAdminCategoriesResponse = KoraAdminCategoriesResponses[keyof KoraAdminCategoriesResponses];
+
+export type KoraAdminConversationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/conversations';
+};
+
+export type KoraAdminConversationsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminConversationsError = KoraAdminConversationsErrors[keyof KoraAdminConversationsErrors];
+
+export type KoraAdminConversationsResponses = {
+    200: KoraAdminConversationsDto;
+};
+
+export type KoraAdminConversationsResponse = KoraAdminConversationsResponses[keyof KoraAdminConversationsResponses];
+
+export type KoraAdminDeleteParticipantData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/participants/{id}';
+};
+
+export type KoraAdminDeleteParticipantErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminDeleteParticipantError = KoraAdminDeleteParticipantErrors[keyof KoraAdminDeleteParticipantErrors];
+
+export type KoraAdminDeleteParticipantResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAdminDeleteParticipantResponse = KoraAdminDeleteParticipantResponses[keyof KoraAdminDeleteParticipantResponses];
+
+export type KoraAdminDeleteAbandonedSignupData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/abandoned-signups/{id}';
+};
+
+export type KoraAdminDeleteAbandonedSignupErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminDeleteAbandonedSignupError = KoraAdminDeleteAbandonedSignupErrors[keyof KoraAdminDeleteAbandonedSignupErrors];
+
+export type KoraAdminDeleteAbandonedSignupResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAdminDeleteAbandonedSignupResponse = KoraAdminDeleteAbandonedSignupResponses[keyof KoraAdminDeleteAbandonedSignupResponses];
+
+export type KoraBatchesListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches';
+};
+
+export type KoraBatchesListErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesListError = KoraBatchesListErrors[keyof KoraBatchesListErrors];
+
+export type KoraBatchesListResponses = {
+    200: Array<KoraBatchDto>;
+};
+
+export type KoraBatchesListResponse = KoraBatchesListResponses[keyof KoraBatchesListResponses];
+
+export type KoraBatchesUploadData = {
+    body: {
+        transcripts: Blob | File;
+        transcriptsPerAssignment: number;
+        reviewsPerTranscript: number;
+        closesAt: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches';
+};
+
+export type KoraBatchesUploadErrors = {
+    400: KoraUploadRejectedDto;
+};
+
+export type KoraBatchesUploadError = KoraBatchesUploadErrors[keyof KoraBatchesUploadErrors];
+
+export type KoraBatchesUploadResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesUploadResponse = KoraBatchesUploadResponses[keyof KoraBatchesUploadResponses];
+
+export type KoraBatchesRandomTranscriptData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/random-transcript';
+};
+
+export type KoraBatchesRandomTranscriptErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesRandomTranscriptError = KoraBatchesRandomTranscriptErrors[keyof KoraBatchesRandomTranscriptErrors];
+
+export type KoraBatchesRandomTranscriptResponses = {
+    200: KoraTranscriptPreviewDto;
+};
+
+export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
+
+export type KoraBatchesEventsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches/events';
+};
+
+export type KoraBatchesEventsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesEventsError = KoraBatchesEventsErrors[keyof KoraBatchesEventsErrors];
+
+export type KoraBatchesEventsResponses = {
+    200: Array<KoraBatchEventDto>;
+};
+
+export type KoraBatchesEventsResponse = KoraBatchesEventsResponses[keyof KoraBatchesEventsResponses];
+
+export type KoraBatchesRetireData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/retire';
+};
+
+export type KoraBatchesRetireErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesRetireError = KoraBatchesRetireErrors[keyof KoraBatchesRetireErrors];
+
+export type KoraBatchesRetireResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesRetireResponse = KoraBatchesRetireResponses[keyof KoraBatchesRetireResponses];
+
+export type KoraBatchesReactivateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/reactivate';
+};
+
+export type KoraBatchesReactivateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesReactivateError = KoraBatchesReactivateErrors[keyof KoraBatchesReactivateErrors];
+
+export type KoraBatchesReactivateResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesReactivateResponse = KoraBatchesReactivateResponses[keyof KoraBatchesReactivateResponses];
+
+export type KoraBatchesSetClosesAtData = {
+    body: SetKoraBatchClosesAtDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/closes-at';
+};
+
+export type KoraBatchesSetClosesAtErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesSetClosesAtError = KoraBatchesSetClosesAtErrors[keyof KoraBatchesSetClosesAtErrors];
+
+export type KoraBatchesSetClosesAtResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesSetClosesAtResponse = KoraBatchesSetClosesAtResponses[keyof KoraBatchesSetClosesAtResponses];
+
+export type KoraBatchesDeletionImpactData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/deletion-impact';
+};
+
+export type KoraBatchesDeletionImpactErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesDeletionImpactError = KoraBatchesDeletionImpactErrors[keyof KoraBatchesDeletionImpactErrors];
+
+export type KoraBatchesDeletionImpactResponses = {
+    200: KoraDeletionImpactDto;
+};
+
+export type KoraBatchesDeletionImpactResponse = KoraBatchesDeletionImpactResponses[keyof KoraBatchesDeletionImpactResponses];
+
+export type KoraBatchesDeleteData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}';
+};
+
+export type KoraBatchesDeleteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesDeleteError = KoraBatchesDeleteErrors[keyof KoraBatchesDeleteErrors];
+
+export type KoraBatchesDeleteResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraBatchesDeleteResponse = KoraBatchesDeleteResponses[keyof KoraBatchesDeleteResponses];
+
+export type KoraReviewStateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review';
+};
+
+export type KoraReviewStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewStateError = KoraReviewStateErrors[keyof KoraReviewStateErrors];
+
+export type KoraReviewStateResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraReviewStateResponse = KoraReviewStateResponses[keyof KoraReviewStateResponses];
+
+export type KoraReviewHomeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review/home';
+};
+
+export type KoraReviewHomeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewHomeError = KoraReviewHomeErrors[keyof KoraReviewHomeErrors];
+
+export type KoraReviewHomeResponses = {
+    200: KoraHomeDto;
+};
+
+export type KoraReviewHomeResponse = KoraReviewHomeResponses[keyof KoraReviewHomeResponses];
+
+export type KoraReviewMoreData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review/more';
+};
+
+export type KoraReviewMoreErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewMoreError = KoraReviewMoreErrors[keyof KoraReviewMoreErrors];
+
+export type KoraReviewMoreResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraReviewMoreResponse = KoraReviewMoreResponses[keyof KoraReviewMoreResponses];
+
+export type KoraReviewSaveData = {
+    body: SaveKoraExportDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/export';
+};
+
+export type KoraReviewSaveErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewSaveError = KoraReviewSaveErrors[keyof KoraReviewSaveErrors];
+
+export type KoraReviewSaveResponses = {
+    200: KoraExportSavedDto;
+};
+
+export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
+
+export type KoraReviewNextData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/next';
+};
+
+export type KoraReviewNextErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewNextError = KoraReviewNextErrors[keyof KoraReviewNextErrors];
+
+export type KoraReviewNextResponses = {
+    200: KoraNextTranscriptDto;
+};
+
+export type KoraReviewNextResponse = KoraReviewNextResponses[keyof KoraReviewNextResponses];
+
+export type KoraReviewReportActiveTimeData = {
+    body: ReportKoraActiveTimeDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/active-time';
+};
+
+export type KoraReviewReportActiveTimeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewReportActiveTimeError = KoraReviewReportActiveTimeErrors[keyof KoraReviewReportActiveTimeErrors];
+
+export type KoraReviewReportActiveTimeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraReviewReportActiveTimeResponse = KoraReviewReportActiveTimeResponses[keyof KoraReviewReportActiveTimeResponses];
+
+export type KoraResultsExportsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/results/exports';
+};
+
+export type KoraResultsExportsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsExportsError = KoraResultsExportsErrors[keyof KoraResultsExportsErrors];
+
+export type KoraResultsExportsResponses = {
+    200: KoraExportsDto;
+};
+
+export type KoraResultsExportsResponse = KoraResultsExportsResponses[keyof KoraResultsExportsResponses];
+
+export type KoraResultsKoraExportData = {
+    body?: never;
+    path?: never;
+    query?: {
+        kind?: 'rolling' | 'final';
+    };
+    url: '/kora/admin/results/kora-export';
+};
+
+export type KoraResultsKoraExportErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsKoraExportError = KoraResultsKoraExportErrors[keyof KoraResultsKoraExportErrors];
+
+export type KoraResultsKoraExportResponses = {
+    200: KoraSpecExportDto;
+};
+
+export type KoraResultsKoraExportResponse = KoraResultsKoraExportResponses[keyof KoraResultsKoraExportResponses];
+
+export type KoraResultsAnswersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/results/answers';
+};
+
+export type KoraResultsAnswersErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsAnswersError = KoraResultsAnswersErrors[keyof KoraResultsAnswersErrors];
+
+export type KoraResultsAnswersResponses = {
+    200: KoraAnswerCountsDto;
+};
+
+export type KoraResultsAnswersResponse = KoraResultsAnswersResponses[keyof KoraResultsAnswersResponses];
+
+export type KoraResultsAssignmentData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/results/assignments/{id}';
+};
+
+export type KoraResultsAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsAssignmentError = KoraResultsAssignmentErrors[keyof KoraResultsAssignmentErrors];
+
+export type KoraResultsAssignmentResponses = {
+    200: KoraAssignmentExportDto;
+};
+
+export type KoraResultsAssignmentResponse = KoraResultsAssignmentResponses[keyof KoraResultsAssignmentResponses];
 
 export type ActionPartnershipsFindAllResponsesAdminData = {
     body?: never;
@@ -17480,906 +18437,6 @@ export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
 };
 
 export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
-
-export type KoraParticipantCountData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/participants/count';
-};
-
-export type KoraParticipantCountErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraParticipantCountError = KoraParticipantCountErrors[keyof KoraParticipantCountErrors];
-
-export type KoraParticipantCountResponses = {
-    200: KoraParticipantCountDto;
-};
-
-export type KoraParticipantCountResponse = KoraParticipantCountResponses[keyof KoraParticipantCountResponses];
-
-export type KoraProjectData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/project';
-};
-
-export type KoraProjectErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraProjectError = KoraProjectErrors[keyof KoraProjectErrors];
-
-export type KoraProjectResponses = {
-    200: KoraProjectDto;
-};
-
-export type KoraProjectResponse = KoraProjectResponses[keyof KoraProjectResponses];
-
-export type KoraStateData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/me';
-};
-
-export type KoraStateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraStateError = KoraStateErrors[keyof KoraStateErrors];
-
-export type KoraStateResponses = {
-    200: KoraParticipantStateDto;
-};
-
-export type KoraStateResponse = KoraStateResponses[keyof KoraStateResponses];
-
-export type KoraAbandonCodeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/code';
-};
-
-export type KoraAbandonCodeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAbandonCodeError = KoraAbandonCodeErrors[keyof KoraAbandonCodeErrors];
-
-export type KoraAbandonCodeResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraAbandonCodeResponse = KoraAbandonCodeResponses[keyof KoraAbandonCodeResponses];
-
-export type KoraSendCodeData = {
-    body: StartKoraCodeDto;
-    path?: never;
-    query?: never;
-    url: '/kora/code';
-};
-
-export type KoraSendCodeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraSendCodeError = KoraSendCodeErrors[keyof KoraSendCodeErrors];
-
-export type KoraSendCodeResponses = {
-    200: PendingKoraCodeDto;
-};
-
-export type KoraSendCodeResponse = KoraSendCodeResponses[keyof KoraSendCodeResponses];
-
-export type KoraVerifyCodeData = {
-    body: VerifyKoraCodeDto;
-    path?: never;
-    query?: never;
-    url: '/kora/code/verify';
-};
-
-export type KoraVerifyCodeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraVerifyCodeError = KoraVerifyCodeErrors[keyof KoraVerifyCodeErrors];
-
-export type KoraVerifyCodeResponses = {
-    200: KoraCodeVerifiedDto;
-};
-
-export type KoraVerifyCodeResponse = KoraVerifyCodeResponses[keyof KoraVerifyCodeResponses];
-
-export type KoraCompleteSignupData = {
-    body: CompleteKoraSignupDto;
-    path?: never;
-    query?: never;
-    url: '/kora/signup';
-};
-
-export type KoraCompleteSignupErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraCompleteSignupError = KoraCompleteSignupErrors[keyof KoraCompleteSignupErrors];
-
-export type KoraCompleteSignupResponses = {
-    200: KoraParticipantDto;
-};
-
-export type KoraCompleteSignupResponse = KoraCompleteSignupResponses[keyof KoraCompleteSignupResponses];
-
-export type KoraSignOutData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/sign-out';
-};
-
-export type KoraSignOutErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraSignOutError = KoraSignOutErrors[keyof KoraSignOutErrors];
-
-export type KoraSignOutResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraSignOutResponse = KoraSignOutResponses[keyof KoraSignOutResponses];
-
-export type KoraOAuthStartData = {
-    body?: never;
-    path: {
-        provider: OAuthProvider;
-    };
-    query: {
-        returnTo: string;
-        timeZone?: string;
-        posthogSessionId?: string;
-        posthogDistinctId?: string;
-    };
-    url: '/kora/{provider}/start';
-};
-
-export type KoraOAuthStartErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthStartError = KoraOAuthStartErrors[keyof KoraOAuthStartErrors];
-
-export type KoraOAuthStartResponses = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthStartResponse = KoraOAuthStartResponses[keyof KoraOAuthStartResponses];
-
-export type KoraOAuthCallbackData = {
-    body?: never;
-    path: {
-        provider: OAuthProvider;
-    };
-    query?: {
-        code?: string;
-        state?: string;
-        error?: string;
-        /**
-         * JSON Apple posts on the first authorization, holding the name.
-         */
-        user?: string;
-    };
-    url: '/kora/{provider}/callback';
-};
-
-export type KoraOAuthCallbackErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackError = KoraOAuthCallbackErrors[keyof KoraOAuthCallbackErrors];
-
-export type KoraOAuthCallbackResponses = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackResponse = KoraOAuthCallbackResponses[keyof KoraOAuthCallbackResponses];
-
-export type KoraOAuthCallbackFormData = {
-    body: OAuthCallbackDto;
-    path: {
-        provider: OAuthProvider;
-    };
-    query?: never;
-    url: '/kora/{provider}/callback';
-};
-
-export type KoraOAuthCallbackFormErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackFormError = KoraOAuthCallbackFormErrors[keyof KoraOAuthCallbackFormErrors];
-
-export type KoraOAuthCallbackFormResponses = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
-
-export type KoraAdminProjectData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/project';
-};
-
-export type KoraAdminProjectErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminProjectError = KoraAdminProjectErrors[keyof KoraAdminProjectErrors];
-
-export type KoraAdminProjectResponses = {
-    200: KoraAdminProjectDto;
-};
-
-export type KoraAdminProjectResponse = KoraAdminProjectResponses[keyof KoraAdminProjectResponses];
-
-export type KoraAdminUpdateProjectData = {
-    body: UpdateKoraProjectDto;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/project';
-};
-
-export type KoraAdminUpdateProjectErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminUpdateProjectError = KoraAdminUpdateProjectErrors[keyof KoraAdminUpdateProjectErrors];
-
-export type KoraAdminUpdateProjectResponses = {
-    200: KoraAdminProjectDto;
-};
-
-export type KoraAdminUpdateProjectResponse = KoraAdminUpdateProjectResponses[keyof KoraAdminUpdateProjectResponses];
-
-export type KoraAdminNotifyWaitlistData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/notify-waitlist';
-};
-
-export type KoraAdminNotifyWaitlistErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminNotifyWaitlistError = KoraAdminNotifyWaitlistErrors[keyof KoraAdminNotifyWaitlistErrors];
-
-export type KoraAdminNotifyWaitlistResponses = {
-    200: KoraNotifyQueuedDto;
-};
-
-export type KoraAdminNotifyWaitlistResponse = KoraAdminNotifyWaitlistResponses[keyof KoraAdminNotifyWaitlistResponses];
-
-export type KoraAdminNotifyMoreData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/notify-more';
-};
-
-export type KoraAdminNotifyMoreErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminNotifyMoreError = KoraAdminNotifyMoreErrors[keyof KoraAdminNotifyMoreErrors];
-
-export type KoraAdminNotifyMoreResponses = {
-    200: KoraNotifyQueuedDto;
-};
-
-export type KoraAdminNotifyMoreResponse = KoraAdminNotifyMoreResponses[keyof KoraAdminNotifyMoreResponses];
-
-export type KoraAdminOverviewData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/participants';
-};
-
-export type KoraAdminOverviewErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminOverviewError = KoraAdminOverviewErrors[keyof KoraAdminOverviewErrors];
-
-export type KoraAdminOverviewResponses = {
-    200: KoraAdminOverviewDto;
-};
-
-export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
-
-export type KoraAdminCategoriesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/categories';
-};
-
-export type KoraAdminCategoriesErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminCategoriesError = KoraAdminCategoriesErrors[keyof KoraAdminCategoriesErrors];
-
-export type KoraAdminCategoriesResponses = {
-    200: KoraAdminCategoriesDto;
-};
-
-export type KoraAdminCategoriesResponse = KoraAdminCategoriesResponses[keyof KoraAdminCategoriesResponses];
-
-export type KoraAdminConversationsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/conversations';
-};
-
-export type KoraAdminConversationsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminConversationsError = KoraAdminConversationsErrors[keyof KoraAdminConversationsErrors];
-
-export type KoraAdminConversationsResponses = {
-    200: KoraAdminConversationsDto;
-};
-
-export type KoraAdminConversationsResponse = KoraAdminConversationsResponses[keyof KoraAdminConversationsResponses];
-
-export type KoraAdminDeleteParticipantData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/participants/{id}';
-};
-
-export type KoraAdminDeleteParticipantErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminDeleteParticipantError = KoraAdminDeleteParticipantErrors[keyof KoraAdminDeleteParticipantErrors];
-
-export type KoraAdminDeleteParticipantResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraAdminDeleteParticipantResponse = KoraAdminDeleteParticipantResponses[keyof KoraAdminDeleteParticipantResponses];
-
-export type KoraAdminDeleteAbandonedSignupData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/abandoned-signups/{id}';
-};
-
-export type KoraAdminDeleteAbandonedSignupErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminDeleteAbandonedSignupError = KoraAdminDeleteAbandonedSignupErrors[keyof KoraAdminDeleteAbandonedSignupErrors];
-
-export type KoraAdminDeleteAbandonedSignupResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraAdminDeleteAbandonedSignupResponse = KoraAdminDeleteAbandonedSignupResponses[keyof KoraAdminDeleteAbandonedSignupResponses];
-
-export type KoraBatchesListData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/batches';
-};
-
-export type KoraBatchesListErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesListError = KoraBatchesListErrors[keyof KoraBatchesListErrors];
-
-export type KoraBatchesListResponses = {
-    200: Array<KoraBatchDto>;
-};
-
-export type KoraBatchesListResponse = KoraBatchesListResponses[keyof KoraBatchesListResponses];
-
-export type KoraBatchesUploadData = {
-    body: {
-        transcripts: Blob | File;
-        transcriptsPerAssignment: number;
-        reviewsPerTranscript: number;
-        closesAt: string;
-    };
-    path?: never;
-    query?: never;
-    url: '/kora/admin/batches';
-};
-
-export type KoraBatchesUploadErrors = {
-    400: KoraUploadRejectedDto;
-};
-
-export type KoraBatchesUploadError = KoraBatchesUploadErrors[keyof KoraBatchesUploadErrors];
-
-export type KoraBatchesUploadResponses = {
-    200: KoraBatchDto;
-};
-
-export type KoraBatchesUploadResponse = KoraBatchesUploadResponses[keyof KoraBatchesUploadResponses];
-
-export type KoraBatchesRandomTranscriptData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/batches/{id}/random-transcript';
-};
-
-export type KoraBatchesRandomTranscriptErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesRandomTranscriptError = KoraBatchesRandomTranscriptErrors[keyof KoraBatchesRandomTranscriptErrors];
-
-export type KoraBatchesRandomTranscriptResponses = {
-    200: KoraTranscriptPreviewDto;
-};
-
-export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
-
-export type KoraBatchesEventsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/batches/events';
-};
-
-export type KoraBatchesEventsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesEventsError = KoraBatchesEventsErrors[keyof KoraBatchesEventsErrors];
-
-export type KoraBatchesEventsResponses = {
-    200: Array<KoraBatchEventDto>;
-};
-
-export type KoraBatchesEventsResponse = KoraBatchesEventsResponses[keyof KoraBatchesEventsResponses];
-
-export type KoraBatchesRetireData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/batches/{id}/retire';
-};
-
-export type KoraBatchesRetireErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesRetireError = KoraBatchesRetireErrors[keyof KoraBatchesRetireErrors];
-
-export type KoraBatchesRetireResponses = {
-    200: KoraBatchDto;
-};
-
-export type KoraBatchesRetireResponse = KoraBatchesRetireResponses[keyof KoraBatchesRetireResponses];
-
-export type KoraBatchesReactivateData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/batches/{id}/reactivate';
-};
-
-export type KoraBatchesReactivateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesReactivateError = KoraBatchesReactivateErrors[keyof KoraBatchesReactivateErrors];
-
-export type KoraBatchesReactivateResponses = {
-    200: KoraBatchDto;
-};
-
-export type KoraBatchesReactivateResponse = KoraBatchesReactivateResponses[keyof KoraBatchesReactivateResponses];
-
-export type KoraBatchesSetClosesAtData = {
-    body: SetKoraBatchClosesAtDto;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/batches/{id}/closes-at';
-};
-
-export type KoraBatchesSetClosesAtErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesSetClosesAtError = KoraBatchesSetClosesAtErrors[keyof KoraBatchesSetClosesAtErrors];
-
-export type KoraBatchesSetClosesAtResponses = {
-    200: KoraBatchDto;
-};
-
-export type KoraBatchesSetClosesAtResponse = KoraBatchesSetClosesAtResponses[keyof KoraBatchesSetClosesAtResponses];
-
-export type KoraBatchesDeletionImpactData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/batches/{id}/deletion-impact';
-};
-
-export type KoraBatchesDeletionImpactErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesDeletionImpactError = KoraBatchesDeletionImpactErrors[keyof KoraBatchesDeletionImpactErrors];
-
-export type KoraBatchesDeletionImpactResponses = {
-    200: KoraDeletionImpactDto;
-};
-
-export type KoraBatchesDeletionImpactResponse = KoraBatchesDeletionImpactResponses[keyof KoraBatchesDeletionImpactResponses];
-
-export type KoraBatchesDeleteData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/batches/{id}';
-};
-
-export type KoraBatchesDeleteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraBatchesDeleteError = KoraBatchesDeleteErrors[keyof KoraBatchesDeleteErrors];
-
-export type KoraBatchesDeleteResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraBatchesDeleteResponse = KoraBatchesDeleteResponses[keyof KoraBatchesDeleteResponses];
-
-export type KoraReviewStateData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/review';
-};
-
-export type KoraReviewStateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraReviewStateError = KoraReviewStateErrors[keyof KoraReviewStateErrors];
-
-export type KoraReviewStateResponses = {
-    200: KoraReviewStateDto;
-};
-
-export type KoraReviewStateResponse = KoraReviewStateResponses[keyof KoraReviewStateResponses];
-
-export type KoraReviewHomeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/review/home';
-};
-
-export type KoraReviewHomeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraReviewHomeError = KoraReviewHomeErrors[keyof KoraReviewHomeErrors];
-
-export type KoraReviewHomeResponses = {
-    200: KoraHomeDto;
-};
-
-export type KoraReviewHomeResponse = KoraReviewHomeResponses[keyof KoraReviewHomeResponses];
-
-export type KoraReviewMoreData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/review/more';
-};
-
-export type KoraReviewMoreErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraReviewMoreError = KoraReviewMoreErrors[keyof KoraReviewMoreErrors];
-
-export type KoraReviewMoreResponses = {
-    200: KoraReviewStateDto;
-};
-
-export type KoraReviewMoreResponse = KoraReviewMoreResponses[keyof KoraReviewMoreResponses];
-
-export type KoraReviewSaveData = {
-    body: SaveKoraExportDto;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/review/assignments/{id}/export';
-};
-
-export type KoraReviewSaveErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraReviewSaveError = KoraReviewSaveErrors[keyof KoraReviewSaveErrors];
-
-export type KoraReviewSaveResponses = {
-    200: KoraExportSavedDto;
-};
-
-export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
-
-export type KoraReviewNextData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/review/assignments/{id}/next';
-};
-
-export type KoraReviewNextErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraReviewNextError = KoraReviewNextErrors[keyof KoraReviewNextErrors];
-
-export type KoraReviewNextResponses = {
-    200: KoraNextTranscriptDto;
-};
-
-export type KoraReviewNextResponse = KoraReviewNextResponses[keyof KoraReviewNextResponses];
-
-export type KoraResultsExportsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/results/exports';
-};
-
-export type KoraResultsExportsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraResultsExportsError = KoraResultsExportsErrors[keyof KoraResultsExportsErrors];
-
-export type KoraResultsExportsResponses = {
-    200: KoraExportsDto;
-};
-
-export type KoraResultsExportsResponse = KoraResultsExportsResponses[keyof KoraResultsExportsResponses];
-
-export type KoraResultsKoraExportData = {
-    body?: never;
-    path?: never;
-    query?: {
-        kind?: 'rolling' | 'final';
-    };
-    url: '/kora/admin/results/kora-export';
-};
-
-export type KoraResultsKoraExportErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraResultsKoraExportError = KoraResultsKoraExportErrors[keyof KoraResultsKoraExportErrors];
-
-export type KoraResultsKoraExportResponses = {
-    200: KoraSpecExportDto;
-};
-
-export type KoraResultsKoraExportResponse = KoraResultsKoraExportResponses[keyof KoraResultsKoraExportResponses];
-
-export type KoraResultsAnswersData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/results/answers';
-};
-
-export type KoraResultsAnswersErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraResultsAnswersError = KoraResultsAnswersErrors[keyof KoraResultsAnswersErrors];
-
-export type KoraResultsAnswersResponses = {
-    200: KoraAnswerCountsDto;
-};
-
-export type KoraResultsAnswersResponse = KoraResultsAnswersResponses[keyof KoraResultsAnswersResponses];
-
-export type KoraResultsAssignmentData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/results/assignments/{id}';
-};
-
-export type KoraResultsAssignmentErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraResultsAssignmentError = KoraResultsAssignmentErrors[keyof KoraResultsAssignmentErrors];
-
-export type KoraResultsAssignmentResponses = {
-    200: KoraAssignmentExportDto;
-};
-
-export type KoraResultsAssignmentResponse = KoraResultsAssignmentResponses[keyof KoraResultsAssignmentResponses];
 
 export type ClientOptions = {
     baseUrl: string;

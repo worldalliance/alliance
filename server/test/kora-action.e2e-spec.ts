@@ -1,6 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionTaskKind } from "@alliance/common/actionTask";
-import { KoraProjectStatus } from "@alliance/common/kora";
+import { KoraProjectStatus, KoraReviewPhase } from "@alliance/common/kora";
 import { milliseconds } from "date-fns";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -8,8 +8,10 @@ import {
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { KoraAssignment } from "src/kora/entities/kora-assignment.entity";
 import { KoraBatch } from "src/kora/entities/kora-batch.entity";
 import { KoraReviewer } from "src/kora/entities/kora-reviewer.entity";
+import { KORA_ACTION_ACTIVE_SECONDS } from "src/kora/kora-active-time";
 import { KoraBatchActionsService } from "src/kora/kora-batch-actions.service";
 import { KoraBatchService } from "src/kora/kora-batch.service";
 import { KoraModule } from "src/kora/kora.module";
@@ -74,11 +76,11 @@ describe("Kora review actions (e2e)", () => {
     await closeTestApp(ctx.app);
   });
 
-  const uploadTwo = async () => {
+  const uploadTwo = async (idPrefix = "A") => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
       transcriptsText: koraConversationsFile(
-        koraConversation("A1"),
-        koraConversation("A2"),
+        koraConversation(`${idPrefix}1`),
+        koraConversation(`${idPrefix}2`),
       ),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
@@ -93,9 +95,13 @@ describe("Kora review actions (e2e)", () => {
       .agent(ctx.app.getHttpServer())
       .set("Authorization", `Bearer ${ctx.accessToken}`)
       .set("Origin", ORIGIN);
-  /** Rates the first `count` pairs the assignment gives, asking for each next one as the tool does. */
-  const rate = async (agent: ReturnType<typeof member>, count: number) => {
-    const state = (await agent.get("/kora/review").expect(200)).body;
+  /** Rates the first `count` conversations the assignment gives, asking for each next one as the tool does. */
+  const rate = async (
+    agent: ReturnType<typeof member>,
+    count: number,
+    statePath = "/kora/review",
+  ) => {
+    const state = (await agent.get(statePath).expect(200)).body;
     const id: string = state.assignment.id;
     const transcripts: {
       transcript: { transcriptId: string; category: string };
@@ -131,26 +137,141 @@ describe("Kora review actions (e2e)", () => {
     return completed(actionId);
   };
 
-  it("completes a member's Kora actions when they finish their first assignment", async () => {
+  const reviewPath = (actionId: number) => `/actions/${actionId}/kora-review`;
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+
+  it("completes only the action whose assignment the member finished", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "First Kora review",
+      ActionTaskKind.KoraReview,
+    );
+    const later = await liveAction(
+      "Second Kora review",
+      ActionTaskKind.KoraReview,
+    );
+    await rate(member(), 2, reviewPath(kora.id));
+
+    expect(await eventuallyCompleted(kora.id)).toBe(true);
+    await settle();
+    expect(await completed(later.id)).toBe(false);
+  });
+
+  it("completes no action for an assignment started outside one", async () => {
     await uploadTwo();
     const kora = await liveAction(
       "Review chatbot transcripts",
       ActionTaskKind.KoraReview,
     );
-    const other = await liveAction("Some form action", ActionTaskKind.Form);
     await rate(member(), 2);
 
-    expect(await eventuallyCompleted(kora.id)).toBe(true);
-    expect(await completed(other.id)).toBe(false);
+    await settle();
+    expect(await completed(kora.id)).toBe(false);
   });
 
-  it("completes a member's Kora actions when, after a retire, nothing is left to give them", async () => {
+  it("resumes the action's own assignment on a later visit", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const first = (await member().get(reviewPath(kora.id)).expect(200)).body;
+    const again = (await member().get(reviewPath(kora.id)).expect(200)).body;
+
+    expect(first.assignment.extra).toBe(false);
+    expect(again.assignment.id).toBe(first.assignment.id);
+  });
+
+  it("completes the action once 15 active minutes have passed and the current conversation is finished", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const agent = member();
+    const state = (await agent.get(reviewPath(kora.id)).expect(200)).body;
+    const id: string = state.assignment.id;
+    await ctx.dataSource
+      .getRepository(KoraAssignment)
+      .update({ id }, { activeSeconds: KORA_ACTION_ACTIVE_SECONDS });
+
+    const saved = await agent
+      .put(`/kora/review/assignments/${id}/export`)
+      .send({
+        export: koraExport({
+          reviewerId: state.reviewerId,
+          assignmentId: id,
+          transcripts: state.assignment.transcripts,
+          done: [state.assignment.transcripts[0].transcript.transcriptId],
+        }),
+      })
+      .expect(200);
+    expect(saved.body.completed).toBe(true);
+    const { next } = (
+      await agent.post(`/kora/review/assignments/${id}/next`).expect(200)
+    ).body;
+    expect(next).toBeNull();
+    expect(await eventuallyCompleted(kora.id)).toBe(true);
+  });
+
+  it("caps reported active time by the time since the last report", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const agent = member();
+    const id: string = (await agent.get(reviewPath(kora.id)).expect(200)).body
+      .assignment.id;
+    const report = (seconds: number) =>
+      agent
+        .post(`/kora/review/assignments/${id}/active-time`)
+        .send({ seconds });
+
+    await report(30).expect(204);
+    await report(30).expect(204);
+    await report(61).expect(400);
+
+    const stored = await ctx.dataSource
+      .getRepository(KoraAssignment)
+      .findOneByOrFail({ id });
+    expect(stored.activeSeconds).toBeGreaterThanOrEqual(30);
+    expect(stored.activeSeconds).toBeLessThan(40);
+  });
+
+  it("completes the action when there is nothing to review", async () => {
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
+
+    expect(state.phase).toBe(KoraReviewPhase.NoneLeft);
+    expect(await completed(kora.id)).toBe(true);
+    await member().get(reviewPath(kora.id)).expect(200);
+  });
+
+  it("tells the member's client the action is a Kora review", async () => {
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const { body } = await member().get(`/actions/slug/${kora.id}`).expect(200);
+    expect(body.taskKind).toBe(ActionTaskKind.KoraReview);
+  });
+
+  it("refuses a form action", async () => {
+    const form = await liveAction("Some form action", ActionTaskKind.Form);
+    await member().get(reviewPath(form.id)).expect(404);
+  });
+
+  it("completes the action when, after a retire, nothing is left to give", async () => {
     const batch = await uploadTwo();
     const kora = await liveAction(
       "Review chatbot transcripts",
       ActionTaskKind.KoraReview,
     );
-    const id = await rate(member(), 1);
+    const id = await rate(member(), 1, reviewPath(kora.id));
     expect(await completed(kora.id)).toBe(false);
 
     const retired = await ctx.app
@@ -162,19 +283,71 @@ describe("Kora review actions (e2e)", () => {
     expect(await eventuallyCompleted(kora.id)).toBe(true);
   });
 
-  it("leaves a member's Kora actions open when a retire empties an assignment they never rated", async () => {
+  it("completes the action on the next visit when a retire empties an assignment never rated", async () => {
     const batch = await uploadTwo();
     const kora = await liveAction(
       "Review chatbot transcripts",
       ActionTaskKind.KoraReview,
     );
-    await member().get("/kora/review").expect(200);
+    const id: string = (await member().get(reviewPath(kora.id)).expect(200))
+      .body.assignment.id;
 
     await ctx.app
       .get(KoraBatchActionsService)
       .retire({ batchId: batch.id, actor: koraAdminActor(ctx) });
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await member().post(`/kora/review/assignments/${id}/next`).expect(200);
+    await settle();
     expect(await completed(kora.id)).toBe(false);
+
+    const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
+    expect(state.phase).toBe(KoraReviewPhase.NoneLeft);
+    expect(await completed(kora.id)).toBe(true);
+  });
+
+  it("starts a fresh assignment, keeping its active time, when the action's assignment closed and a newer batch is open", async () => {
+    const closing = await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const first: string = (await member().get(reviewPath(kora.id)).expect(200))
+      .body.assignment.id;
+    const past = new Date(Date.now() - milliseconds({ seconds: 1 }));
+    await ctx.dataSource
+      .getRepository(KoraAssignment)
+      .update({ id: first }, { closesAt: past, activeSeconds: 120 });
+    await ctx.dataSource
+      .getRepository(KoraBatch)
+      .update({ id: closing.id }, { closesAt: past });
+    await uploadTwo("B");
+
+    const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
+
+    expect(state.phase).toBe(KoraReviewPhase.Reviewing);
+    expect(state.assignment.id).not.toBe(first);
+    const fresh = await ctx.dataSource
+      .getRepository(KoraAssignment)
+      .findOneByOrFail({ id: state.assignment.id });
+    expect(fresh).toMatchObject({ actionId: kora.id, activeSeconds: 120 });
+    await settle();
+    expect(await completed(kora.id)).toBe(false);
+  });
+
+  it("completes the action on a later visit to a finished assignment whose completion was missed", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    await rate(member(), 2, reviewPath(kora.id));
+    expect(await eventuallyCompleted(kora.id)).toBe(true);
+    await ctx.dataSource
+      .getRepository(ActionActivity)
+      .delete({ actionId: kora.id, userId: ctx.testUserId });
+
+    const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
+
+    expect(state.phase).toBe(KoraReviewPhase.Finished);
+    expect(await completed(kora.id)).toBe(true);
   });
 });
