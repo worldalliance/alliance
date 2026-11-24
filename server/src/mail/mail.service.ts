@@ -20,15 +20,16 @@ import {
 import { tagHtmlLinks } from "src/link-tracking/tag-links";
 import { reinstatementMessage } from "src/notifs/textnotifcontents";
 import {
-  membershipUrl,
+  onboardingAgreementUrl,
   passwordResetUrl,
+  requiredSiteBaseUrl,
   tasksUrl,
   verifyEmailUrl,
 } from "src/search/approutes";
 import { DeliveryFailure, deliverySends } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
 import { env } from "../config/env";
-import { ContractReminderCopy } from "./contract-reminder-copy";
+import type { SentContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
@@ -57,19 +58,7 @@ const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
   [EmailType.WaitlistLink]: "Your Alliance waitlist link",
 };
 
-const CONTRACT_REMINDER_CONTENT: Record<
-  ContractReminderCopy,
-  { subject: string; link: () => string }
-> = {
-  [ContractReminderCopy.Control]: {
-    subject: "Sign your membership contract to participate in actions",
-    link: () => tasksUrl(true),
-  },
-  [ContractReminderCopy.AgreementV1]: {
-    subject: "The last step is entering into the membership agreement.",
-    link: () => membershipUrl(true),
-  },
-};
+const CONTRACT_REMINDER_SUBJECT = "One last step to join the Alliance";
 
 /** Thrown by `sendMail` when it failed before handing the message to the mail server. */
 export class MailNotSentError extends Error {}
@@ -123,10 +112,9 @@ export class MailService {
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
     const pug = await import("pug");
-
     return pug.renderFile(
       __dirname + `/templates/${this.templates[emailType]}.pug`,
-      { ...context },
+      { ...context, siteUrl: requiredSiteBaseUrl() },
     );
   }
 
@@ -356,9 +344,10 @@ export class MailService {
     return this.sendMail({
       recipient: email,
       emailType: EmailType.ContractSuspended,
-      subject: "Alliance contract suspended",
+      subject: "Alliance agreement paused",
       context: {
         name,
+        link: onboardingAgreementUrl(),
       },
       tracking: null,
     });
@@ -384,23 +373,25 @@ export class MailService {
     userId: number;
     email: string;
     name: string;
-    copy: ContractReminderCopy;
+    copy: SentContractReminderCopy;
   }): Promise<Mail> {
-    const { subject, link } = CONTRACT_REMINDER_CONTENT[params.copy];
     return this.sendMail({
       recipient: params.email,
       emailType: EmailType.ContractReminder,
-      subject,
+      subject: CONTRACT_REMINDER_SUBJECT,
       context: {
         copy: params.copy,
-        subject,
+        subject: CONTRACT_REMINDER_SUBJECT,
         name: params.name,
-        link: link(),
+        link: onboardingAgreementUrl(),
       },
       tracking: {
         owner: { userId: params.userId },
         source: MessageSource.ContractReminder,
-        context: { contractReminderCopy: params.copy, subject },
+        context: {
+          contractReminderCopy: params.copy,
+          subject: CONTRACT_REMINDER_SUBJECT,
+        },
         actionEventNotifId: null,
       },
     });
@@ -410,14 +401,15 @@ export class MailService {
     recipient: string;
     emailType: WaitlistEmailType;
     url: string;
+    ownUrl: string;
     unsubscribeUrl: string;
   }): Promise<Mail> {
-    const { recipient, emailType, url, unsubscribeUrl } = params;
+    const { recipient, emailType, url, ownUrl, unsubscribeUrl } = params;
     return this.sendMail({
       recipient,
       emailType,
       subject: WAITLIST_SUBJECTS[emailType],
-      context: { url, unsubscribeUrl },
+      context: { url, ownUrl, unsubscribeUrl },
       tracking: null,
     });
   }

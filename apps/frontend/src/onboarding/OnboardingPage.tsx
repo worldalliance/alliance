@@ -145,13 +145,38 @@ const OnboardingPage = () => {
   );
 
   // A reload with nothing saved cannot submit a half-filled account, so it
-  // restarts rather than stranding the member on a later screen.
+  // restarts rather than stranding the member on a later screen. Emails link
+  // members who already have an account to the agreement, so arriving there
+  // signed out means logging in first.
   useEffect(() => {
     if (authLoading) return;
-    if (step !== OnboardingStep.Account && !email && !registered) {
-      goTo(OnboardingStep.Account);
+    if (step === OnboardingStep.Account || email || registered) return;
+    if (step === OnboardingStep.Agreement) {
+      const back = `${href("/onboarding")}?step=${OnboardingStep.Agreement}`;
+      navigate(`${href("/login")}?redirect=${encodeURIComponent(back)}`, {
+        replace: true,
+      });
+      return;
     }
-  }, [step, email, goTo, registered, authLoading]);
+    goTo(OnboardingStep.Account);
+  }, [step, email, goTo, navigate, registered, authLoading]);
+
+  // Joining makes the contract active while this step still shows, until its
+  // own navigation commits, and Join picks its own destination.
+  useEffect(() => {
+    if (authLoading || submitting || joinPhase !== JoinPhase.Idle) return;
+    if (step === OnboardingStep.Agreement && user?.hasActiveContract) {
+      navigate(redirectAfterLogin, { replace: true });
+    }
+  }, [
+    authLoading,
+    submitting,
+    joinPhase,
+    step,
+    user,
+    navigate,
+    redirectAfterLogin,
+  ]);
 
   // Land back on the screen the draft left off at, once per load.
   const resumedRef = useRef(false);
@@ -225,18 +250,21 @@ const OnboardingPage = () => {
     if (previous) goTo(previous);
   }, [step, goTo]);
 
-  const enterPlatform = useCallback(async () => {
-    if (leavingRef.current) return;
-    leavingRef.current = true;
-    setJoinPhase(JoinPhase.Leaving);
-    const fadeMs = prefersReducedMotion() ? 0 : PANEL_FADE_MS;
-    const fade = new Promise<void>((resolve) => {
-      window.setTimeout(resolve, fadeMs);
-    });
-    const sessionP = R.fromPromise(onLogin());
-    const [, session] = await Promise.all([fade, sessionP]);
-    navigate(session.ok ? walkthroughStartHref() : href("/login"));
-  }, [onLogin, navigate]);
+  const enterPlatform = useCallback(
+    async (target: string) => {
+      if (leavingRef.current) return;
+      leavingRef.current = true;
+      setJoinPhase(JoinPhase.Leaving);
+      const fadeMs = prefersReducedMotion() ? 0 : PANEL_FADE_MS;
+      const fade = new Promise<void>((resolve) => {
+        window.setTimeout(resolve, fadeMs);
+      });
+      const sessionP = R.fromPromise(onLogin());
+      const [, session] = await Promise.all([fade, sessionP]);
+      navigate(session.ok ? target : href("/login"));
+    },
+    [onLogin, navigate],
+  );
 
   // Registration waits until Join, so an account only ever exists alongside a
   // signed agreement.
@@ -248,6 +276,7 @@ const OnboardingPage = () => {
     }
     setError(null);
     setSubmitting(true);
+    const rejoining = user?.lastContractEvent !== undefined;
 
     if (!registered) {
       const registration = await authRegister({
@@ -306,10 +335,14 @@ const OnboardingPage = () => {
     //   goTo(OnboardingStep.MobileApp);
     //   return;
     // }
-    await enterPlatform();
+    await enterPlatform(
+      rejoining ? redirectAfterLogin : walkthroughStartHref(),
+    );
     setSubmitting(false);
   }, [
     submitting,
+    user,
+    redirectAfterLogin,
     registered,
     signedName,
     email,

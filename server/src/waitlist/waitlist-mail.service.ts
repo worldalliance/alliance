@@ -6,6 +6,7 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService, type WaitlistEmailType } from "src/mail/mail.service";
 import {
+  waitlistOwnLink,
   waitlistShareLink,
   waitlistUnsubscribeLink,
 } from "src/search/approutes";
@@ -130,6 +131,7 @@ export class WaitlistMailService {
       recipient,
       emailType,
       url: waitlistShareLink(entry.code),
+      ownUrl: waitlistOwnLink(entry.code),
       unsubscribeUrl: waitlistUnsubscribeLink(entry.unsubscribeToken),
     });
   }

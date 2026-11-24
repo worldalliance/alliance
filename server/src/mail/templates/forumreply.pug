@@ -1,9 +1,8 @@
-doctype html
-html(lang="en")
-  head
-    meta(charset="UTF-8")
-    meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title #{displayName} replied to your comment on #{postTitle}
+extends layout.pug
 
-  body
-      p View and reply to the comment here: #{url}
+block title
+  | #{displayName} replied to your comment
+
+block content
+  p View and reply to the comment here:
+  +button(url, "View comment")

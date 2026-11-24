@@ -14,7 +14,7 @@ export enum OtpChannel {
 
 type OtpCopy = {
   codeLabel: string;
-  /** Fills "Enter 123456 to {emailAction}." in the email body. */
+  /** Fills "Enter the code above to {emailAction}" in the email body. */
   emailAction: string;
 };
 

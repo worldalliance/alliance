@@ -97,6 +97,9 @@ describe("Waitlist mail (e2e)", () => {
           url: expect.stringContaining(
             `/projects/democratic-grantmaking-26?ref=${code}`,
           ),
+          ownUrl: expect.stringContaining(
+            `/projects/democratic-grantmaking-26?link=${code}`,
+          ),
           unsubscribeUrl: expect.stringContaining(
             `/waitlist/unsubscribe?token=${entry.unsubscribeToken}`,
           ),
@@ -162,6 +165,7 @@ describe("Waitlist mail (e2e)", () => {
           recipient: email,
           emailType: EmailType.WaitlistLink,
           url: expect.stringContaining(`?ref=${entry.code}`),
+          ownUrl: expect.stringContaining(`?link=${entry.code}`),
           unsubscribeUrl: expect.stringContaining(entry.unsubscribeToken),
         },
       ],

@@ -1,6 +1,7 @@
 import { commentPath } from "@alliance/common/commentPath";
 import { appendQueryParam, preferNewDomain } from "@alliance/common/url";
 import {
+  waitlistLinkUrl,
   waitlistShareUrl,
   waitlistUnsubscribeUrl,
 } from "@alliance/common/waitlist";
@@ -16,20 +17,22 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-function waitlistBaseUrl() {
+export function requiredSiteBaseUrl() {
   const baseUrl = siteBaseUrl();
-  if (!baseUrl) {
-    throw new Error("APP_URL is not set, so a waitlist link has no host");
-  }
+  if (!baseUrl) throw new Error("APP_URL is not set");
   return baseUrl;
 }
 
 export function waitlistShareLink(code: string) {
-  return waitlistShareUrl(waitlistBaseUrl(), code);
+  return waitlistShareUrl(requiredSiteBaseUrl(), code);
+}
+
+export function waitlistOwnLink(code: string) {
+  return waitlistLinkUrl(requiredSiteBaseUrl(), code);
 }
 
 export function waitlistUnsubscribeLink(token: string) {
-  return waitlistUnsubscribeUrl(waitlistBaseUrl(), token);
+  return waitlistUnsubscribeUrl(requiredSiteBaseUrl(), token);
 }
 
 export function signupUrl(full = false) {
@@ -77,9 +80,8 @@ export function tasksUrl(full = false) {
   return full ? `${siteBaseUrl()}${path}` : path;
 }
 
-export function membershipUrl(full = false) {
-  const path = `/membership`;
-  return full ? `${siteBaseUrl()}${path}` : path;
+export function onboardingAgreementUrl() {
+  return `${siteBaseUrl()}/onboarding?step=agreement`;
 }
 
 export function postUrl(postId: number) {
