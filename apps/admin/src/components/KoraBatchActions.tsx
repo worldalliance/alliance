@@ -1,8 +1,9 @@
+import { Features } from "@alliance/common/features";
 import type {
   KoraBatchDto,
   KoraDeletionImpactDto,
 } from "@alliance/shared/client";
-import { isProduction } from "@alliance/sharedweb/lib/config";
+import { isFeatureEnabled } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useState, type ReactNode } from "react";
@@ -138,7 +139,7 @@ export function useKoraBatchActions(batches: KoraBatchDto[]): {
           Retire
         </Button>
       )}
-      {!isProduction() && (
+      {isFeatureEnabled(Features.KoraStagingTools) && (
         <Button
           color={ButtonColor.RedOutline}
           size="small"

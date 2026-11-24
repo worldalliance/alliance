@@ -1,12 +1,13 @@
+import { Features } from "@alliance/common/features";
 import { KoraBatchEventKind, KoraReviewStatus } from "@alliance/common/kora";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
+import { isFeatureEnabled } from "src/config/features";
 import type { EntityManager } from "typeorm";
 import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
 import type { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KORA_ACTION_REVIEWED, type KoraActionReviewed } from "./kora-events";
 import { heldRows } from "./kora-pool";
-import { koraStagingTools } from "./kora-staging-tools";
 
 export type KoraCompletion = {
   assignmentId: string;
@@ -36,7 +37,7 @@ export async function logCompletion(
   manager: EntityManager,
   completion: KoraCompletion,
 ): Promise<void> {
-  if (!koraStagingTools()) return;
+  if (!isFeatureEnabled(Features.KoraStagingTools)) return;
   await manager.insert(KoraBatchEvent, {
     kind: KoraBatchEventKind.AssignmentCompleted,
     assignmentId: completion.assignmentId,
