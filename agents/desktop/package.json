@@ -15,7 +15,7 @@
     "test:packaged": "bun run package && playwright test -c playwright.packaged.config.ts"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "2.1.322",
+    "@anthropic-ai/claude-code": "2.1.327",
     "@openai/codex": "0.167.0",
     "@playwright/test": "~1.64.1",
     "@types/bun": "^1.4.4",
