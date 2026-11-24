@@ -2,8 +2,15 @@ import { R } from "@alliance/common/result";
 import { webEnv } from "@alliance/sharedweb/lib/env";
 import { posthogBuildProperties } from "@alliance/sharedweb/lib/posthogBuildProperties";
 import posthog, { type CaptureResult, type Properties } from "posthog-js";
+import "posthog-js/dist/exception-autocapture";
 import { useEffect, useState } from "react";
-import { type Params, useLocation, useMatches } from "react-router";
+import {
+  type ClientOnErrorFunction,
+  isRouteErrorResponse,
+  type Params,
+  useLocation,
+  useMatches,
+} from "react-router";
 
 const UNKNOWN_PAGE = "/[unknown]";
 const URL_KEY = /(url|pathname|referrer)$/;
@@ -16,6 +23,7 @@ const DROPPED_KEY =
 
 const templatesByPathname = new Map<string, string>();
 let staffIdentified = false;
+const heldRouteErrors: unknown[] = [];
 
 interface ScrubContext {
   origin: string;
@@ -127,10 +135,52 @@ export function initAnalytics(): void {
     // The flags request sends person properties, such as the entry URL,
     // without passing them through before_send.
     advanced_disable_flags: true,
-    capture_exceptions: false,
+    capture_exceptions: {
+      capture_unhandled_errors: true,
+      capture_unhandled_rejections: true,
+      capture_console_errors: false,
+    },
     before_send: beforeSend,
   });
   registerSuperProperties();
+}
+
+/** Sends an error React Router catches, such as a loader's or a render's,
+ * which no handler posthog-js installs sees. A not-found is expected, and
+ * admin's loaders throw it as `Error("Not found")`. An error before a staff
+ * member is identified waits for syncStaff, since one on a page's first load
+ * always comes before `/auth/me` answers. */
+export const captureRouteError: ClientOnErrorFunction = (
+  error,
+  { location, params },
+) => {
+  const notFound =
+    isRouteErrorResponse(error) ||
+    (error instanceof Error && error.message === "Not found");
+  if (notFound || !posthog.__loaded) return;
+  // The root error boundary replaces the page, so useAnalytics may not have
+  // recorded this path's template. The params are decoded, as React Router
+  // decodes the pathname it matches.
+  templatesByPathname.set(
+    location.pathname,
+    routeTemplate({ pathname: decodePath(location.pathname), params }),
+  );
+  if (staffIdentified) posthog.captureException(error);
+  else heldRouteErrors.push(error);
+};
+
+function decodePath(pathname: string): string {
+  return pathname
+    .split("/")
+    .map((segment) =>
+      R.unwrapOr(
+        R.fromThrowable(() =>
+          decodeURIComponent(segment).replaceAll("/", "%2F"),
+        ),
+        segment,
+      ),
+    )
+    .join("/");
 }
 
 function registerSuperProperties(): void {
@@ -141,6 +191,17 @@ interface Staff {
   id: number;
   email: string;
   name: string;
+}
+
+interface AuthSession {
+  user: (Staff & { admin: boolean }) | undefined;
+  isImpersonation: boolean;
+  loading: boolean;
+}
+
+function sessionStaff(session: AuthSession): Staff | undefined {
+  const { user, isImpersonation } = session;
+  return user?.admin && !isImpersonation ? user : undefined;
 }
 
 function reset(): void {
@@ -158,25 +219,39 @@ export function syncStaff(staff: Staff | undefined): void {
     reset();
   }
   staffIdentified = staff !== undefined;
+  const held = heldRouteErrors.splice(0);
   if (staff) {
     posthog.identify(staff.id.toString(), {
       email: staff.email,
       name: staff.name,
     });
+    held.forEach((error) => posthog.captureException(error));
   }
+}
+
+/** Whether the root error boundary, which replaces Root and the identity it
+ * settles, must identify staff itself, as on a page's first load. */
+export function boundaryNeedsStaffIdentity(): boolean {
+  return posthog.__loaded && !staffIdentified;
+}
+
+/** Settles identity for the root error boundary, sending or dropping held
+ * errors, unless Root already identified staff. */
+export function useBoundaryStaffIdentity(session: AuthSession): void {
+  const { loading } = session;
+  const staff = sessionStaff(session);
+  useEffect(() => {
+    if (!loading && !staffIdentified) syncStaff(staff);
+  }, [loading, staff]);
 }
 
 /** Sends a page view per route once the session's staff member is known: an
  * admin signed in as themselves, since an impersonated admin's visits aren't
  * theirs. Identity settles once per page load, so signing out leaves the page
  * leave under the staff member's id, and the login page's load resets it. */
-export function useAnalytics(session: {
-  user: (Staff & { admin: boolean }) | undefined;
-  isImpersonation: boolean;
-  loading: boolean;
-}): void {
-  const { user, isImpersonation, loading } = session;
-  const staff = user?.admin && !isImpersonation ? user : undefined;
+export function useAnalytics(session: AuthSession): void {
+  const { loading } = session;
+  const staff = sessionStaff(session);
   const { pathname } = useLocation();
   const leaf = useMatches().at(-1);
   const template = leaf ? routeTemplate(leaf) : UNKNOWN_PAGE;

@@ -20,7 +20,11 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
-import { useAnalytics } from "./lib/analytics";
+import {
+  boundaryNeedsStaffIdentity,
+  useAnalytics,
+  useBoundaryStaffIdentity,
+} from "./lib/analytics";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import { getSiteUrl } from "./lib/config";
 
@@ -39,6 +43,24 @@ export function HydrateFallback() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <>
+      {boundaryNeedsStaffIdentity() && (
+        <AuthProvider>
+          <StaffIdentity />
+        </AuthProvider>
+      )}
+      <ErrorDetails error={error} />
+    </>
+  );
+}
+
+function StaffIdentity() {
+  useBoundaryStaffIdentity(useAuth());
+  return null;
+}
+
+function ErrorDetails({ error }: { error: unknown }) {
   if (!import.meta.env.PROD) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">

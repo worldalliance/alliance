@@ -2,9 +2,16 @@ import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import posthog, { type CaptureResult } from "posthog-js";
 import { createContext, useContext } from "react";
-import { createMemoryRouter, matchRoutes, RouterProvider } from "react-router";
+import {
+  createMemoryRouter,
+  data,
+  matchRoutes,
+  Outlet,
+  RouterProvider,
+} from "react-router";
 import {
   beforeSend,
+  captureRouteError,
   routeTemplate,
   scrubEvent,
   scrubLocation,
@@ -324,5 +331,109 @@ describe("useAnalytics", () => {
     const page = renderAt("/members");
     page.settle({ ...session, loading: false });
     expect(calls).toEqual(["reset", "register", "$pageview dropped"]);
+  });
+});
+
+describe("captureRouteError", () => {
+  const sent: unknown[] = [];
+
+  beforeEach(() => {
+    sent.splice(0);
+    syncStaff(staff);
+    posthog.__loaded = true;
+    spyOn(posthog, "captureException").mockImplementation((error) => {
+      const event = beforeSend({
+        uuid: "u",
+        event: "$exception",
+        properties: { $current_url: window.location.href },
+      });
+      sent.push([error, event?.properties.$current_url]);
+      return undefined;
+    });
+    spyOn(console, "error").mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    syncStaff(undefined);
+    posthog.__loaded = false;
+    window.happyDOM.setURL("about:blank");
+  });
+
+  const renderAt = async (path: string, thrown: unknown) => {
+    window.happyDOM.setURL(`${origin}${path}`);
+    // Nested under a root route, as admin's pages are, since onError passes
+    // the root match's params.
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          Component: Outlet,
+          ErrorBoundary: () => null,
+          HydrateFallback: () => null,
+          children: [
+            {
+              path: "forms/:formId",
+              loader: () => {
+                throw thrown;
+              },
+              Component: () => null,
+            },
+            {
+              path: "members",
+              Component: () => {
+                throw thrown;
+              },
+            },
+          ],
+        },
+      ],
+      { initialEntries: [path] },
+    );
+    await act(async () => {
+      render(<RouterProvider router={router} onError={captureRouteError} />);
+    });
+  };
+
+  it("sends a loader's error under the route template", async () => {
+    const error = new Error("boom");
+    await renderAt("/forms/43", error);
+    expect(sent).toEqual([[error, `${origin}/forms/:formId`]]);
+  });
+
+  it("sends a render error", async () => {
+    const error = new Error("boom");
+    await renderAt("/members", error);
+    expect(sent).toEqual([[error, `${origin}/members`]]);
+  });
+
+  it("sends an error on a percent-encoded path under the route template", async () => {
+    const error = new Error("boom");
+    await renderAt("/forms/%34%33", error);
+    expect(sent).toEqual([[error, `${origin}/forms/:formId`]]);
+  });
+
+  it("holds an error until a staff member is identified", async () => {
+    const error = new Error("boom");
+    syncStaff(undefined);
+    await renderAt("/members", error);
+    expect(sent).toEqual([]);
+
+    syncStaff(staff);
+    expect(sent).toEqual([[error, `${origin}/members`]]);
+  });
+
+  it("drops a held error once identity settles without staff", async () => {
+    syncStaff(undefined);
+    await renderAt("/members", new Error("boom"));
+    syncStaff(undefined);
+    syncStaff(staff);
+    expect(sent).toEqual([]);
+  });
+
+  it.each([
+    ["a route error response", data(null, { status: 404 })],
+    ["admin's not-found error", new Error("Not found")],
+  ])("skips %s", async (_, thrown) => {
+    await renderAt("/forms/43", thrown);
+    expect(sent).toEqual([]);
   });
 });
