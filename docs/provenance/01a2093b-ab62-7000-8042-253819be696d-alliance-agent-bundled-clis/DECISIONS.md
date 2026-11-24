@@ -48,6 +48,10 @@ Claude Code's `LICENSE.md` ships beside its binary. Codex's npm packages carry n
 
 Shipped whole with their NOTICE and licences, by the user's answer in review round 4, replacing an exclusion that held only while Codex ran a turn without them, which nothing re-checked on a bump. Copies used within one organisation aren't distribution under GNU's licence FAQ (EVIDENCE.md, Sources), and builds go only to the Alliance's employees (REQUIREMENTS.md, Recipients), so shipping them triggers no LGPL obligations; Electron already ships LGPL-2.1-or-later `libffmpeg.dylib` in every build. If builds ever leave the organisation, both LGPL components need their sources hosted and their notices linked, and whether signing limits LGPL replaceability becomes a lawyer's call. The costs are about 20 MB, a microphone-capable voice helper the app never uses, and more files for ALL-2042 to sign. Rejected: packaging only the files the app needs (a hand-kept list breaks quietly when Codex changes its layout, and would have to keep `codex-package.json` and Linux's `bwrap`), deferring to ALL-2042, and keeping the exclusion with CI guards.
 
+## Version bumps
+
+A bump of either CLI changes `package.json` and `bun.lock` but can't record captures, which need a signed-in CLI and real model calls, so `src/main/agent/cli-versions.test.ts` fails when the pinned version has no captures, saying which script records them; for Codex it also names `bun scripts/codex-protocol.ts generate`. CI's protocol check runs before the tests and fails first on a Codex bump, so its message names the capture script too. The user named no owner for re-recording captures.
+
 ## Size
 
 The packaged macOS arm64 app is 975 MB, 700 MB of it the two CLIs (EVIDENCE.md, Packaged build). Every `bun install` in `agents/desktop` downloads the host's CLI binaries, about 600 MB.
