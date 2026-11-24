@@ -4,8 +4,9 @@ import { printNames } from "@alliance/common/expression/check";
 import { reads } from "@alliance/common/expression/dependencies";
 import { printExpression } from "@alliance/common/expression/print";
 import type { Expr } from "@alliance/common/expression/tree";
+import { GroupWork } from "@alliance/common/suite-split";
 import { countBy } from "es-toolkit";
-import { GroupWork, workOf, type SplitGroup } from "./split-groups";
+import { workOf, type SplitGroup } from "./split-groups";
 import { ResolutionKind, resolveGroup } from "./split-resolve";
 
 export type SplitPreview = {

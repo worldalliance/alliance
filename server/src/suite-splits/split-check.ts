@@ -18,12 +18,12 @@ import {
   type Expr,
 } from "@alliance/common/expression/tree";
 import { R, type Result } from "@alliance/common/result";
+import { GroupWork } from "@alliance/common/suite-split";
 import { BadRequestException } from "@nestjs/common";
 import { isEqual } from "es-toolkit";
 import {
   EVERYONE_ELSE,
   GroupFallback,
-  GroupWork,
   workOf,
   type SplitGroup,
 } from "./split-groups";

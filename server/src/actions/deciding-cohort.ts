@@ -1,8 +1,5 @@
-import {
-  CellAssignment,
-  cellOf,
-  type SplitGroup,
-} from "src/suite-splits/split-groups";
+import { CellAssignment } from "@alliance/common/suite-split";
+import { cellOf, type SplitGroup } from "src/suite-splits/split-groups";
 import type { User } from "src/user/entities/user.entity";
 
 /**

@@ -1,3 +1,4 @@
+import { CellAssignment, GroupWork } from "@alliance/common/suite-split";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
@@ -16,7 +17,7 @@ import type { ParsedAction } from "src/actions/entities/action.entity";
 import { FormulaDiagnosticDto } from "src/formulas/dto/formula.dto";
 import { toLowerCase } from "src/utils/transforms";
 import type { SplitProblem, SplitWarning } from "../split-check";
-import { CellAssignment, GroupFallback, GroupWork } from "../split-groups";
+import { GroupFallback } from "../split-groups";
 import type { SplitPreview } from "../split-preview";
 import type {
   SplitPreviewResult,

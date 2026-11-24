@@ -10,3 +10,4 @@
 - claude:9c04ffc7-0e41-451f-9fe5-da74d052c583 (subagent)
 - claude:2f8a5d45-16b3-445f-a93e-073197ae0458 (subagent)
 - claude:adc2cae8-d873-45bc-9f32-0b5278e9e49d (subagent)
+- claude:22a29610-3965-45ae-b37a-b30386f63474 (subagent)

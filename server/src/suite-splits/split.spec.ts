@@ -1,6 +1,7 @@
 import { TypeKind, type Scope } from "@alliance/common/expression/catalog";
 import { parseExpression } from "@alliance/common/expression/parse";
 import { R } from "@alliance/common/result";
+import { CellAssignment, GroupWork } from "@alliance/common/suite-split";
 import { BadRequestException } from "@nestjs/common";
 import { catalogWith } from "src/formulas/formula-catalog";
 import {
@@ -9,10 +10,8 @@ import {
   type GroupDraft,
 } from "./split-check";
 import {
-  CellAssignment,
   EVERYONE_ELSE,
   GroupFallback,
-  GroupWork,
   impliedOptional,
   type SplitGroup,
 } from "./split-groups";

@@ -1,23 +1,15 @@
 import { exprSchema } from "@alliance/common/expression/tree-schema";
+import {
+  CellAssignment,
+  GroupWork,
+  workOfCells,
+} from "@alliance/common/suite-split";
 import { z } from "zod";
 
 /** What a group does with a member whose condition is undecided. */
 export enum GroupFallback {
   PutHere = "put_here",
   Continue = "continue",
-}
-
-export enum CellAssignment {
-  Required = "required",
-  Optional = "optional",
-  NotAssigned = "not_assigned",
-}
-
-/** The kind of work a group's grid row gives its members. */
-export enum GroupWork {
-  Required = "required",
-  OptionalOnly = "optional_only",
-  Nothing = "nothing",
 }
 
 export const EVERYONE_ELSE = "Everyone else";
@@ -62,13 +54,9 @@ export function workOf(
   group: Pick<SplitGroup, "cells">,
   actionIds: readonly number[],
 ): GroupWork {
-  const assigned = group.cells.filter((cell) =>
-    actionIds.includes(cell.actionId),
+  return workOfCells(
+    group.cells.filter((cell) => actionIds.includes(cell.actionId)),
   );
-  if (assigned.some((cell) => cell.assignment === CellAssignment.Required)) {
-    return GroupWork.Required;
-  }
-  return assigned.length > 0 ? GroupWork.OptionalOnly : GroupWork.Nothing;
 }
 
 /**

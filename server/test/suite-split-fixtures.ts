@@ -1,12 +1,9 @@
+import { CellAssignment } from "@alliance/common/suite-split";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
-import {
-  CellAssignment,
-  EVERYONE_ELSE,
-  GroupFallback,
-} from "../src/suite-splits/split-groups";
+import { EVERYONE_ELSE, GroupFallback } from "../src/suite-splits/split-groups";
 import type { TestContext } from "./e2e-test-utils";
 
 export type Draft = {
