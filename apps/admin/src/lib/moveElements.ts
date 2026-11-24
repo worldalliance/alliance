@@ -65,3 +65,19 @@ export function moveElements({
         : page,
   );
 }
+
+/** Page ids, and top-level element ids, that more than one page or element carries. */
+export function repeatedIds(pages: readonly Page[]): string[] {
+  const repeats = (ids: string[]) =>
+    ids.filter((id, index) => ids.indexOf(id) !== index);
+  return [
+    ...new Set([
+      ...repeats(pages.map((page) => page.id)),
+      ...repeats(
+        pages.flatMap((page) =>
+          page.fields.flatMap((element) => (element.id ? [element.id] : [])),
+        ),
+      ),
+    ]),
+  ];
+}

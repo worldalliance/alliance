@@ -110,6 +110,7 @@ export function FormBuilder(props: FormBuilderProps) {
     loadSchema,
     setGroups,
     expressions,
+    moveElementExpressions,
   } = formDraft;
   const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
   const canvas = useCanvasSelection({
@@ -221,6 +222,7 @@ export function FormBuilder(props: FormBuilderProps) {
     visibilityGroups,
     canvasGroups,
     updateSchema,
+    moveExpressions: moveElementExpressions,
     canvas,
   });
   const { closeInsertion, deletionDialog } = edits;
