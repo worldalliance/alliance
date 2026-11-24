@@ -165,6 +165,19 @@ it("offers no launch once the suite has launched", async () => {
   expect(screen.queryByText(/already has/)).toBeNull();
 });
 
+it("keeps partitioning off, since a partition can't be undone yet", async () => {
+  suiteLoad = unlaunchedSuite([]);
+  renderPage();
+
+  const button = await screen.findByRole("button", {
+    name: "Partition this suite",
+  });
+  expect(button.hasAttribute("disabled")).toBe(true);
+  expect(
+    screen.getByText("Partitioning is off until a partition can be undone."),
+  ).toBeTruthy();
+});
+
 it("offers the parts in place of a launch for a suite that uses parts", async () => {
   suiteLoad = unlaunchedSuite([], true);
   renderPage();

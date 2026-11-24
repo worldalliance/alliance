@@ -1,0 +1,2 @@
+- The button stays visible but disabled, with a visible sentence saying why, per the ux-guidelines rule that a disabled control says why in visible text. It uses the native `disabled` attribute rather than `aria-disabled` because it is disabled from first render, so focus can't be on it when it becomes disabled.
+- `ActionSuitePage` passes `canPartition={false}` down; the confirm-and-convert flow and its tests stay, rendering with `canPartition` on, so re-enabling is a one-line change. The server's convert endpoint stays live: the admin panel is its only caller.

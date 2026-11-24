@@ -108,7 +108,12 @@ const renderSection = () => {
       {
         path: "/",
         element: (
-          <SuitePartitionSection suiteId={7} isPartitioned scheduled={false} />
+          <SuitePartitionSection
+            suiteId={7}
+            isPartitioned
+            scheduled={false}
+            canPartition
+          />
         ),
       },
     ],

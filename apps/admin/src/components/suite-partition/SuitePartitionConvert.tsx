@@ -7,7 +7,8 @@ import { adminRefusalMessage } from "../../lib/adminRefusal";
 const SuitePartitionConvert: React.FC<{
   convert: UseMutationResult<unknown, Error, void>;
   onConverted: () => void;
-}> = ({ convert, onConverted }) => {
+  canPartition: boolean;
+}> = ({ convert, onConverted, canPartition }) => {
   const { confirm } = useToast();
   const partitionSuite = async (anchorEl: HTMLElement) => {
     if (convert.isPending) return;
@@ -29,8 +30,14 @@ const SuitePartitionConvert: React.FC<{
         or optional. It replaces each action&apos;s own participants and
         prerequisites, and can&apos;t be undone.
       </p>
+      {!canPartition && (
+        <p className="text-sm text-zinc-600">
+          Partitioning is off until a partition can be undone.
+        </p>
+      )}
       <Button
         color={ButtonColor.White}
+        disabled={!canPartition}
         aria-disabled={convert.isPending}
         className="aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
         onClick={(event) => void partitionSuite(event.currentTarget)}

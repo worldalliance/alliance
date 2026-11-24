@@ -35,6 +35,7 @@ const renderSection = (scheduled = false) => {
             suiteId={7}
             isPartitioned={false}
             scheduled={scheduled}
+            canPartition
           />
         ),
       },
