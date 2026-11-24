@@ -65,9 +65,13 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
     });
     if (!uploaded.ok) throw new Error(JSON.stringify(uploaded.error));
   };
+  const timed = <E extends { results: object[] }>(e: E, timeMs?: number) =>
+    timeMs === undefined
+      ? e
+      : { ...e, results: e.results.map((r) => ({ ...r, timeMs })) };
   const review = async (
     browser: TestAgent,
-    options: { finish: boolean; profile?: boolean },
+    options: { finish: boolean; profile?: boolean; timeMs?: number },
   ) => {
     const s: State = (await browser.get("/kora/review").expect(200)).body;
     const transcripts = [...s.assignment.transcripts];
@@ -77,15 +81,18 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
         .set("Origin", ORIGIN)
         .send({
           export: {
-            ...koraExport({
-              reviewerId: s.reviewerId,
-              assignmentId: s.assignment.id,
-              transcripts,
-              done: options.finish
-                ? transcripts.map((t) => t.transcript.transcriptId)
-                : [],
-              profile: options.profile,
-            }),
+            ...timed(
+              koraExport({
+                reviewerId: s.reviewerId,
+                assignmentId: s.assignment.id,
+                transcripts,
+                done: options.finish
+                  ? transcripts.map((t) => t.transcript.transcriptId)
+                  : [],
+                profile: options.profile,
+              }),
+              options.timeMs,
+            ),
             ...(exitSurvey
               ? {
                   exitSurvey: {
@@ -102,7 +109,7 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
         })
         .expect(200);
     await send(false);
-    if (!options.finish) return;
+    if (!options.finish) return transcripts;
     for (;;) {
       const { next } = (
         await browser
@@ -115,6 +122,7 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
       await send(false);
     }
     await send(true);
+    return transcripts;
   };
   const participant = async () => {
     const browser = h.browser();
@@ -232,6 +240,46 @@ describe("Kora results and the more-reviews notice (e2e)", () => {
       question: "exit_q1",
       answers: [{ value: "very", count: 1 }],
     });
+  });
+
+  it("lists each conversation with its finished reviews and their times open", async () => {
+    await upload();
+    const timesById = new Map<string, number[]>();
+    for (const timeMs of [270000, 90000, 30000]) {
+      const { browser } = await participant();
+      for (const { transcript } of await review(browser, {
+        finish: true,
+        timeMs,
+      })) {
+        const id = transcript.transcriptId;
+        timesById.set(id, [...(timesById.get(id) ?? []), timeMs]);
+      }
+    }
+    const median = (xs: number[]) => {
+      const sorted = xs.toSorted((x, y) => x - y);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
+
+    const rows = (await admin("get", "/kora/admin/conversations").expect(200))
+      .body.conversations;
+    expect(rows.map((r: { id: string }) => r.id)).toEqual(
+      [1, 2, 3, 4].map((n) => `M${batchNumber}-${n}`),
+    );
+    expect([...timesById.values()].some((t) => t.length > 1)).toBe(true);
+    for (const row of rows) {
+      const times = timesById.get(row.id) ?? [];
+      expect(row).toMatchObject({
+        category: "academic_dishonesty_and_misuse",
+        reviewsPerTranscript: 3,
+        reviews: times.length,
+        medianTimeMs: times.length ? median(times) : null,
+        minTimeMs: times.length ? Math.min(...times) : null,
+        maxTimeMs: times.length ? Math.max(...times) : null,
+      });
+    }
   });
 
   it("keeps results from non-admins", async () => {

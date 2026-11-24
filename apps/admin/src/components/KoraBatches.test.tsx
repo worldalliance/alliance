@@ -96,7 +96,7 @@ test("uploads the transcripts file with the settings, then offers a preview", as
   await screen.findByText(/Read 12 transcripts\./);
   const [sent] = uploads;
   expect(sent.get("transcriptsPerAssignment")).toBe("8");
-  expect(sent.get("reviewsPerTranscript")).toBe("3");
+  expect(sent.get("reviewsPerTranscript")).toBe("5");
   expect(sent.get("transcripts")).toBeInstanceOf(File);
   expect(sent.has("exportSchema")).toBe(false);
   expect(sent.get("closesAt")).toBe(

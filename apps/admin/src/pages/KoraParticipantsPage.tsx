@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { KoraBatches } from "../components/KoraBatches";
-import { KoraCategories } from "../components/KoraCategories";
+import { KoraConversations } from "../components/KoraConversations";
 import { KoraNotify } from "../components/KoraNotify";
 import { KoraProjectStatusControl } from "../components/KoraProjectStatusControl";
 import { KoraResults } from "../components/KoraResults";
@@ -172,7 +172,7 @@ const KoraParticipantsPage: React.FC = () => {
 
       <KoraBatches />
 
-      <KoraCategories />
+      <KoraConversations />
 
       <KoraNotify notice={KoraNoticeKind.Launch} />
 

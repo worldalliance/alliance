@@ -1,5 +1,5 @@
 import {
-  koraAdminCategories,
+  koraAdminConversations,
   koraBatchesDelete,
   koraBatchesDeletionImpact,
   koraBatchesEvents,
@@ -25,12 +25,12 @@ export function useKoraBatchesAdmin() {
   });
 }
 
-export function useKoraCategoriesAdmin() {
+export function useKoraConversationsAdmin() {
   return useQuery({
-    queryKey: queryKeys.koraCategoriesAdmin(),
+    queryKey: queryKeys.koraConversationsAdmin(),
     queryFn: () =>
-      koraAdminCategories({ throwOnError: true }).then(
-        (r) => r.data.categories,
+      koraAdminConversations({ throwOnError: true }).then(
+        (r) => r.data.conversations,
       ),
   });
 }
@@ -41,7 +41,7 @@ function useRefreshBatches() {
     Promise.all(
       [
         queryKeys.koraBatchesAdmin(),
-        queryKeys.koraCategoriesAdmin(),
+        queryKeys.koraConversationsAdmin(),
         queryKeys.koraBatchEventsAdmin(),
         queryKeys.koraProjectAdmin(),
       ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
