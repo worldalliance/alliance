@@ -6,8 +6,9 @@ export const MAX_PER_CATEGORY = 3;
  * Picks the next transcript for an assignment that already holds `bound`
  * categories, in the order given. Stays in the last category while the
  * assignment has fewer than MAX_PER_CATEGORY from it, so pairs on a topic come
- * together; otherwise takes the transcript furthest from its review target,
- * from a category under the cap unless only capped ones are left.
+ * together; otherwise takes the transcript closest to its review target, so
+ * transcripts finish their reviews one after another rather than all at the
+ * end, from a category under the cap unless only capped ones are left.
  */
 export function pickNext<C extends Candidate>(params: {
   candidates: C[];
@@ -29,7 +30,7 @@ export function pickNext<C extends Candidate>(params: {
     : open.length
       ? open
       : params.candidates;
-  const top = Math.max(...pool.map((c) => c.deficit));
-  const furthest = pool.filter((c) => c.deficit === top);
-  return furthest[Math.floor(params.random() * furthest.length)] ?? null;
+  const fewest = Math.min(...pool.map((c) => c.deficit));
+  const closest = pool.filter((c) => c.deficit === fewest);
+  return closest[Math.floor(params.random() * closest.length)] ?? null;
 }
