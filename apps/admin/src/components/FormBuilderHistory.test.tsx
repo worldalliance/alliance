@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   insertElement,
   openSection,
+  pageTitle,
   selectElement,
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
@@ -101,8 +102,6 @@ beforeEach(() => {
 const nextTask = () => act(async () => {});
 const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
-const pageTitle = () =>
-  screen.getByPlaceholderText<HTMLInputElement>("Page title");
 const copyPage = () => {
   openSection("Advanced");
   fireEvent.click(button("Copy page"));

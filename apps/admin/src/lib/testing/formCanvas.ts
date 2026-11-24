@@ -40,6 +40,9 @@ export const openSection = (name: "Content" | "Conditions" | "Advanced") =>
 export const settings = () =>
   within(screen.getByRole("complementary", { name: "Settings" }));
 
+export const pageTitle = () =>
+  screen.getByPlaceholderText<HTMLInputElement>("Page title");
+
 export const heading = () => settings().getAllByRole("heading")[0]?.textContent;
 
 export const canvasGroups = () =>

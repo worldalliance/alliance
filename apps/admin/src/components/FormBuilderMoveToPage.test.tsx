@@ -7,6 +7,7 @@ import {
   outline,
   selectElement,
 } from "../lib/testing/formCanvas";
+import { entries } from "../lib/testing/formOutline";
 import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
@@ -34,11 +35,6 @@ const schema: FormSchema = {
   outputViews: [],
   aggregateViews: [],
 };
-
-const entries = () =>
-  outline()
-    .getAllByRole("button", { name: /^(?!Contents of|Add page)/ })
-    .map((button) => button.textContent);
 
 it("moves the selected element to the end of the page picked, keeping it selected and in view", async () => {
   const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
