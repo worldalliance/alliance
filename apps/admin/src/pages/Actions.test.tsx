@@ -160,6 +160,9 @@ it("keeps the selected statuses when the page opens from a link", async () => {
   renderPage(queryWrapper(), "/actions?status=completed");
 
   expect(await screen.findAllByText("Rally")).toHaveLength(2);
+  expect(
+    screen.queryByText("No actions match the selected statuses."),
+  ).toBeNull();
 });
 
 it("keeps the status menu open, and focus on its item, as its last match is filtered out and back in", async () => {
@@ -171,7 +174,14 @@ it("keeps the status menu open, and focus on its item, as its last match is filt
   act(() => draft().focus());
   fireEvent.click(draft());
   expect(
-    await screen.findByText("No actions with timeline events found."),
+    await screen.findByText("No actions match the selected statuses.", {
+      selector: "[role=status]",
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByText("No actions match the selected statuses.", {
+      selector: "div",
+    }),
   ).toBeTruthy();
   expect(document.activeElement).toBe(draft());
   expect(screen.getByRole("menuitemcheckbox", { name: "Active" })).toBeTruthy();
@@ -179,10 +189,29 @@ it("keeps the status menu open, and focus on its item, as its last match is filt
   fireEvent.click(draft());
   await waitFor(() =>
     expect(
-      screen.queryByText("No actions with timeline events found."),
-    ).toBeNull(),
+      screen.queryAllByText("No actions match the selected statuses."),
+    ).toHaveLength(0),
   );
   expect(document.activeElement).toBe(draft());
+});
+
+it("says the status filter hides every action, rather than that none has events, in a status region mounted before the list loads", async () => {
+  served = [adminActionListItem(4, "Rally", { status: "completed" })];
+  renderPage();
+  const region = screen.getByText("", { selector: "p[role=status]" });
+  expect(region.textContent).toBe("");
+
+  await waitFor(() =>
+    expect(region.textContent).toBe("No actions match the selected statuses."),
+  );
+  expect(
+    screen.getByText("No actions match the selected statuses.", {
+      selector: "div",
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText("No actions with timeline events found."),
+  ).toBeNull();
 });
 
 it("writes the status filter to the URL, leaving it out at the defaults and keeping other params", async () => {

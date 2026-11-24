@@ -34,6 +34,8 @@ type ActionSuiteGroup = {
   isArchivedOnly: boolean;
 };
 
+const NO_STATUS_MATCH = "No actions match the selected statuses.";
+
 const ActionsList: React.FC = () => {
   const list = useActionsAdmin();
   const actions = useMemo(
@@ -52,6 +54,9 @@ const ActionsList: React.FC = () => {
       return next;
     });
 
+  const timelineActions = actions.filter((action) =>
+    shownBuckets.has(actionStatusBucket(action)),
+  );
   const participantsById = useActionParticipants(actions);
 
   const suitesInProgress = useMemo(() => inProgressSuites(actions), [actions]);
@@ -125,16 +130,29 @@ const ActionsList: React.FC = () => {
       });
   }, [actions]);
 
+  // Mounted from the first render, before any message, so screen readers
+  // announce the message when it arrives.
+  const withStatus = (page: React.ReactNode) => (
+    <>
+      <p role="status" className="sr-only">
+        {actions.length > 0 && timelineActions.length === 0
+          ? NO_STATUS_MATCH
+          : ""}
+      </p>
+      {page}
+    </>
+  );
+
   if (list.isPending) {
-    return <p>Loading actions...</p>;
+    return withStatus(<p>Loading actions...</p>);
   }
 
   if (error && !list.data) {
-    return <p className="text-red-500">{error}</p>;
+    return withStatus(<p className="text-red-500">{error}</p>);
   }
 
   if (actions.length === 0) {
-    return (
+    return withStatus(
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <p className="font-bold ml-2">Actions</p>
@@ -142,18 +160,16 @@ const ActionsList: React.FC = () => {
         </div>
         {error && <p className="text-red-500">{error}</p>}
         <p>No actions found.</p>
-      </div>
+      </div>,
     );
   }
 
-  return (
+  return withStatus(
     <div className="flex flex-col p-5 gap-y-3">
       <title>Admin panel</title>
       {error && <p className="text-red-500 flex-shrink-0">{error}</p>}
       <ActionTimeline
-        actions={actions.filter((action) =>
-          shownBuckets.has(actionStatusBucket(action)),
-        )}
+        actions={timelineActions}
         header={
           <div className="flex h-full items-center gap-x-2">
             <ActionStatusBucketFilter
@@ -165,6 +181,9 @@ const ActionsList: React.FC = () => {
         }
         latestLaunchFirst
         participantsById={participantsById}
+        emptyMessage={
+          timelineActions.length === 0 ? NO_STATUS_MATCH : undefined
+        }
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
       {suitesInProgress.length > 0 && (
@@ -255,7 +274,7 @@ const ActionsList: React.FC = () => {
           </div>
         ))}
       </div>
-    </div>
+    </div>,
   );
 };
 

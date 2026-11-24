@@ -33,6 +33,7 @@ interface ActionTimelineProps {
   focusOnDate?: Date | string | number | null;
   latestLaunchFirst?: boolean;
   participantsById?: ReadonlyMap<number, CohortSegment[]>;
+  emptyMessage?: React.ReactNode;
 }
 
 const EMPTY_REMINDERS: TimelineReminder[] = [];
@@ -47,6 +48,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   focusOnDate,
   latestLaunchFirst = false,
   participantsById,
+  emptyMessage = "No actions with timeline events found.",
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -197,7 +199,6 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   };
 
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
-    const emptyMessage = "No actions with timeline events found.";
     // Nested as in the populated chart below, so React keeps the header's
     // controls, and their focus, mounted when the chart empties or fills.
     return header ? (
