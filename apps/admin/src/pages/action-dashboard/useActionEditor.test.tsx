@@ -1,5 +1,6 @@
 import { makeProfile } from "@alliance/shared/lib/testFixtures";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -13,6 +14,12 @@ import { makeParsedAction } from "../../lib/testing/parsedAction";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
 const action = makeParsedAction({ shortDescription: "Short", body: "Body" });
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <LeaveGuardRouter>
+    <ToastProvider>{children}</ToastProvider>
+  </LeaveGuardRouter>
+);
 
 const noSearchParams = new URLSearchParams();
 const setError = jest.fn();
@@ -50,7 +57,7 @@ const renderEditor = (
     });
     return editor.contentDialog;
   };
-  render(<Harness />, { wrapper: LeaveGuardRouter });
+  render(<Harness />, { wrapper });
   return {
     result: {
       get current() {
@@ -98,7 +105,7 @@ const renderSwitchingEditor = (
     return editor.contentDialog;
   };
   const { rerender } = render(<Harness actionId={action.id} shown={action} />, {
-    wrapper: LeaveGuardRouter,
+    wrapper,
   });
   return {
     result: {
@@ -137,6 +144,7 @@ describe("useActionEditor", () => {
 
     await act(() => result.current.handleSubmit(submitEvent));
     expect(result.current.dirty).toBe(false);
+    expect(screen.getByText(`Saved "${action.name}"`)).toBeTruthy();
   });
 
   it("asks for a name instead of saving a blank one", async () => {
@@ -356,6 +364,7 @@ describe("useActionEditor", () => {
     });
 
     expect(result.current.dirty).toBe(false);
+    expect(screen.getByText(`Saved "${action.name}"`)).toBeTruthy();
   });
 
   it.each([

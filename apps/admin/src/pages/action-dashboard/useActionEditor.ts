@@ -7,6 +7,7 @@ import {
   type ActionSuiteDto,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { omit } from "es-toolkit";
 import jsonStableStringify from "json-stable-stringify";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -168,6 +169,7 @@ export function useActionEditor(params: {
   useEffect(() => {
     currentActionId.current = actionId;
   }, [actionId]);
+  const { success } = useToast();
 
   useEffect(() => {
     if (isNew) {
@@ -398,6 +400,7 @@ export function useActionEditor(params: {
         return;
       }
       const created = result.value;
+      success(`Saved "${form.name.trim()}"`);
       if (currentActionId.current !== actionId) return;
       setSavedDraft(null);
       navigateUnprompted(() => handleActionCreated(created));
@@ -427,6 +430,7 @@ export function useActionEditor(params: {
         setError(result.error);
         return;
       }
+      success(`Saved "${form.name.trim()}"`);
       if (currentActionId.current !== actionId) return;
       if (!gridOptional) {
         setSavedDraft(submitted);

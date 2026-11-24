@@ -249,6 +249,17 @@ describe("ActionUpdatePage", () => {
     expect(sends).toBe(0);
   });
 
+  it("confirms a saved change with a toast", async () => {
+    api.alsoServing({
+      "PATCH /actions/updateUpdate/:id": () => Response.json(served),
+    });
+    await renderDetails();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText(`Saved "${served.title}"`)).toBeTruthy();
+  });
+
   it("announces a refused save as an alert", async () => {
     api.alsoServing({
       "PATCH /actions/updateUpdate/:id": () =>

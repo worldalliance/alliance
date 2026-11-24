@@ -8,7 +8,7 @@ import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { ConfirmMode } from "@alliance/sharedweb/ui/ToastProvider";
+import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
@@ -79,6 +79,7 @@ const ActionUpdatePage: React.FC = () => {
   const changingVisibility = publishNow.isPending || unpublish.isPending;
   const [error, setError] = useState<string | null>(null);
   const confirm = useConfirmOnPage();
+  const { success } = useToast();
 
   // A copy cached by an earlier visit may be stale, and saving a form filled
   // from it would write those stale details back. A newer copy refills a form
@@ -114,12 +115,13 @@ const ActionUpdatePage: React.FC = () => {
       if (!(await confirmSave(body))) return;
       try {
         fillForm(await saveDetails(body));
+        success(`Saved "${body.title}"`);
       } catch (err) {
         setError("Failed to save update");
         console.error(err);
       }
     },
-    [form, saveDetails, fillForm, confirmSave],
+    [form, saveDetails, fillForm, confirmSave, success],
   );
 
   const writeAndRefill = useCallback(

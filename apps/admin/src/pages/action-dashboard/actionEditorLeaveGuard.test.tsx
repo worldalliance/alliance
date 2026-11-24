@@ -172,6 +172,7 @@ it("leaves staff on the action they moved to when a new action's create resolves
   });
 
   expect(router.state.location.pathname).toBe("/actions/7");
+  expect(screen.getByText(`Saved "Call your rep"`)).toBeTruthy();
   expect(editor.dirty).toBe(true);
   expect(confirm).toHaveBeenCalledTimes(1);
 });

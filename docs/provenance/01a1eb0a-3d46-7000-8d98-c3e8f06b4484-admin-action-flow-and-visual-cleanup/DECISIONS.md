@@ -15,7 +15,7 @@ This task covers safety and feedback in the action flow. The class-name cleanup 
 
 ## Feedback and dead ends
 
-5. Saving an action or an update's details shows a "saved" toast.
+5. Saving an action or an update's details shows a "saved" toast naming it, so a save that finishes after staff move on still says which one landed.
 6. Only an action's name is required in the form, and a name of only spaces is refused on save, as a suite's is. Each missing-name message clears once a name is typed and stays while the name is only spaces; a server refusal stays until the next try. The action's message stays in the page's error banner rather than moving beside the field, which would thread a field error through the shared form; typing a name clears the banner only while it still shows that message. Short description and body lose their unused `required` flag: drafts are saved without them, and the readiness checklist owns them.
 7. "Create and write content" stays enabled and, when pressed, names everything missing at once in one message, rather than a linked error summary, since the form is short.
 8. The actions list gains a "Show archived" checkbox, off by default, so archived actions can be found and unarchived. It sits beside the status filter rather than in it: that filter narrows only the timeline, while archived actions appear in both the timeline, marked, and the list.
