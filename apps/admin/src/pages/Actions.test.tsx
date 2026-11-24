@@ -8,6 +8,7 @@ import {
   render,
   renderHook,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
@@ -159,6 +160,29 @@ it("keeps the selected statuses when the page opens from a link", async () => {
   renderPage(queryWrapper(), "/actions?status=completed");
 
   expect(await screen.findAllByText("Rally")).toHaveLength(2);
+});
+
+it("keeps the status menu open, and focus on its item, as its last match is filtered out and back in", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: /^Actions/ }));
+  const draft = () => screen.getByRole("menuitemcheckbox", { name: "Draft" });
+  await screen.findByRole("menuitemcheckbox", { name: "Draft" });
+
+  act(() => draft().focus());
+  fireEvent.click(draft());
+  expect(
+    await screen.findByText("No actions with timeline events found."),
+  ).toBeTruthy();
+  expect(document.activeElement).toBe(draft());
+  expect(screen.getByRole("menuitemcheckbox", { name: "Active" })).toBeTruthy();
+
+  fireEvent.click(draft());
+  await waitFor(() =>
+    expect(
+      screen.queryByText("No actions with timeline events found."),
+    ).toBeNull(),
+  );
+  expect(document.activeElement).toBe(draft());
 });
 
 it("writes the status filter to the URL, leaving it out at the defaults and keeping other params", async () => {
