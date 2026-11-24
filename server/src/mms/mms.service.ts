@@ -34,9 +34,6 @@ import { MmsNumberService } from "./mms-number.service";
 import { Mms, MmsDirection } from "./mms.entity";
 import { emitThreadChanged } from "./mms.events";
 
-/** Twilio delivers to UK numbers only from an alphanumeric sender. */
-const UK_SENDER_ID = "The Alliance";
-
 const SEND_TIMEOUT_MS = milliseconds({ seconds: 10 });
 
 /**
@@ -345,7 +342,7 @@ export class MmsService {
     const { to, body, mediaUrls } = params;
     return this.twilioClient.messages.create({
       to,
-      from: this.senderFor(to),
+      from: this.twilioPhoneNumber,
       body,
       mediaUrl: mediaUrls,
     });
@@ -382,7 +379,7 @@ export class MmsService {
     this.eventLogService.sendMessage({
       type: EventType.SmsFailure,
       payload: { ...failure, phoneNumber: to },
-      blob: { errorMessage: failure.error, to, from: this.senderFor(to) },
+      blob: { errorMessage: failure.error, to, from: this.twilioPhoneNumber },
       userId:
         failure.kind === SmsFailureKind.SendFailed ? failure.userId : null,
     });
@@ -394,10 +391,6 @@ export class MmsService {
       redact({ logged: text, to }),
       redact({ logged: thrownStack(error), to }),
     );
-  }
-
-  private senderFor(to: string): string {
-    return to.startsWith("+44") ? UK_SENDER_ID : this.twilioPhoneNumber;
   }
 
   private async saveOutbound(mms: Mms): Promise<Mms> {
@@ -421,7 +414,7 @@ export class MmsService {
     return this.saveOutbound(
       this.mmsRepository.create({
         to,
-        from: this.senderFor(to),
+        from: this.twilioPhoneNumber,
         body,
         direction: MmsDirection.Outbound,
         sentById,

@@ -254,28 +254,6 @@ describe("MmsService sendMms", () => {
     expect(discard.mock.calls).toEqual(result ? [] : [["track-1"]]);
   });
 
-  it("sends to UK numbers from the alphanumeric sender", async () => {
-    const create = jest.fn(() => Promise.resolve(message));
-    service["twilioClient"] = {
-      messages: { create },
-    } as unknown as Twilio.Twilio;
-
-    await asProduction(() =>
-      service.sendMms({
-        to: "+447700900123",
-        userId: USER_ID,
-        body: BODY,
-        mediaUrls: [],
-        tracking: null,
-      }),
-    );
-
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "+447700900123", from: "The Alliance" }),
-    );
-    expect(saved).toEqual([expect.objectContaining({ from: "The Alliance" })]);
-  });
-
   it("gives up on a send twilio never answers", async () => {
     service["twilioClient"] = {
       messages: { create: () => new Promise(() => {}) },
