@@ -1,3 +1,4 @@
+import { KoraReviewStatus } from "@alliance/common/kora";
 import type { OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
@@ -8,6 +9,7 @@ import { DataSource } from "typeorm";
 import type {
   KoraAdminAbandonedSignup,
   KoraAdminCategory,
+  KoraAdminConversation,
   KoraAdminOverview,
 } from "./dto/kora-admin.dto";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
@@ -102,6 +104,35 @@ export class KoraAdminService {
        WHERE ${OPEN_BATCH}
        GROUP BY t."category"
        ORDER BY "reviewsNeeded" DESC, t."category"`,
+    );
+  }
+
+  /**
+   * Every conversation in every batch, newest batch first, with its finished
+   * reviews and the time they had it open.
+   */
+  conversations(): Promise<KoraAdminConversation[]> {
+    return this.dataSource.query(
+      `SELECT t."id", t."category", b."createdAt" AS "uploadedAt",
+         b."reviewsPerTranscript",
+         COUNT(r."timeMs")::int AS "reviews",
+         round(percentile_cont(0.5) WITHIN GROUP (ORDER BY r."timeMs"))::int AS "medianTimeMs",
+         MIN(r."timeMs") AS "minTimeMs",
+         MAX(r."timeMs") AS "maxTimeMs"
+       FROM "kora_transcript" t
+       JOIN "kora_batch" b ON b."id" = t."batchId"
+       LEFT JOIN LATERAL (
+         SELECT (result->>'timeMs')::int AS "timeMs"
+         FROM "kora_assignment_transcript" at
+         JOIN "kora_assignment" a ON a."id" = at."assignmentId"
+         CROSS JOIN jsonb_array_elements(a."export"->'results') result
+         WHERE at."transcriptId" = t."id"
+           AND at."status" = '${KoraReviewStatus.Done}'
+           AND a."deletedAt" IS NULL
+           AND result->>'transcriptId' = t."id"
+       ) r ON true
+       GROUP BY t."id", b."id"
+       ORDER BY b."createdAt" DESC, t."position"`,
     );
   }
 

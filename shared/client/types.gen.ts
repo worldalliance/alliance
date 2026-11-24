@@ -5772,6 +5772,33 @@ export type KoraAdminCategoriesDto = {
     categories: Array<KoraAdminCategoryDto>;
 };
 
+export type KoraAdminConversationDto = {
+    id: string;
+    category: string;
+    /**
+     * When its batch was uploaded
+     */
+    uploadedAt: string;
+    /**
+     * Its batch's review target
+     */
+    reviewsPerTranscript: number;
+    /**
+     * Finished reviews
+     */
+    reviews: number;
+    /**
+     * Median time finished reviews had it open; null with none
+     */
+    medianTimeMs: number | null;
+    minTimeMs: number | null;
+    maxTimeMs: number | null;
+};
+
+export type KoraAdminConversationsDto = {
+    conversations: Array<KoraAdminConversationDto>;
+};
+
 export type KoraBatchDto = {
     id: string;
     transcriptsPerAssignment: number;
@@ -17580,6 +17607,28 @@ export type KoraAdminCategoriesResponses = {
 };
 
 export type KoraAdminCategoriesResponse = KoraAdminCategoriesResponses[keyof KoraAdminCategoriesResponses];
+
+export type KoraAdminConversationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/conversations';
+};
+
+export type KoraAdminConversationsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminConversationsError = KoraAdminConversationsErrors[keyof KoraAdminConversationsErrors];
+
+export type KoraAdminConversationsResponses = {
+    200: KoraAdminConversationsDto;
+};
+
+export type KoraAdminConversationsResponse = KoraAdminConversationsResponses[keyof KoraAdminConversationsResponses];
 
 export type KoraAdminDeleteParticipantData = {
     body?: never;

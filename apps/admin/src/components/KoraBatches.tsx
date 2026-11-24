@@ -112,7 +112,7 @@ function UploadForm() {
             type="number"
             min={1}
             max={50}
-            defaultValue={3}
+            defaultValue={5}
             required
             className={FIELD}
           />

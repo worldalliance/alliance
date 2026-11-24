@@ -44,23 +44,6 @@ describe("redactExport", () => {
     });
   });
 
-  it("redacts the profile's free-text country and gender", () => {
-    expect(
-      redactExport({
-        results: [],
-        profile: {
-          country: "mail me x@example.org",
-          gender: "call +1 555 555 0101",
-          age_band: "25_34",
-        },
-      }).profile,
-    ).toEqual({
-      country: `mail me ${REDACTED}`,
-      gender: `call ${REDACTED}`,
-      age_band: "25_34",
-    });
-  });
-
   it("keeps a redacted field within the export schema's maxLength", () => {
     const q4_text = "mail a@b.co ".padEnd(280, "x");
     const redacted = redactExport({ results: [{ q4_text }] });

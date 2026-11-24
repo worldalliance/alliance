@@ -2,6 +2,7 @@ import { OAuthProvider } from "@alliance/common/oauth";
 import { ApiProperty, PickType } from "@nestjs/swagger";
 import { KoraAbandonedSignup } from "../entities/kora-abandoned-signup.entity";
 import { KoraParticipant } from "../entities/kora-participant.entity";
+import { KoraTranscript } from "../entities/kora-transcript.entity";
 
 export type KoraAdminParticipant = {
   participant: KoraParticipant;
@@ -120,5 +121,62 @@ export class KoraAdminCategoriesDto {
 
   constructor(input: KoraAdminCategory[]) {
     this.categories = input.map((c) => new KoraAdminCategoryDto(c));
+  }
+}
+
+export type KoraAdminConversation = Pick<KoraTranscript, "id" | "category"> & {
+  uploadedAt: Date;
+  reviewsPerTranscript: number;
+  reviews: number;
+  medianTimeMs: number | null;
+  minTimeMs: number | null;
+  maxTimeMs: number | null;
+};
+
+export class KoraAdminConversationDto extends PickType(KoraTranscript, [
+  "id",
+  "category",
+]) {
+  @ApiProperty({ description: "When its batch was uploaded" })
+  uploadedAt: Date;
+
+  @ApiProperty({ description: "Its batch's review target" })
+  reviewsPerTranscript: number;
+
+  @ApiProperty({ description: "Finished reviews" })
+  reviews: number;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "Median time finished reviews had it open; null with none",
+  })
+  medianTimeMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  minTimeMs: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  maxTimeMs: number | null;
+
+  constructor(input: KoraAdminConversation) {
+    super();
+    this.id = input.id;
+    this.category = input.category;
+    this.uploadedAt = input.uploadedAt;
+    this.reviewsPerTranscript = input.reviewsPerTranscript;
+    this.reviews = input.reviews;
+    this.medianTimeMs = input.medianTimeMs;
+    this.minTimeMs = input.minTimeMs;
+    this.maxTimeMs = input.maxTimeMs;
+  }
+}
+
+export class KoraAdminConversationsDto {
+  @ApiProperty({ type: () => KoraAdminConversationDto, isArray: true })
+  conversations: KoraAdminConversationDto[];
+
+  constructor(input: KoraAdminConversation[]) {
+    this.conversations = input.map((c) => new KoraAdminConversationDto(c));
   }
 }

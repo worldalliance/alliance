@@ -1,3 +1,4 @@
+import { COUNTRY_CODES } from "../countries.js";
 import { parseKoraExitSurvey, parseKoraProfile } from "../parse.js";
 import type { SurveysCtx } from "./context.js";
 
@@ -9,9 +10,7 @@ type SurveyField = {
   opts?: Record<string, string>;
   multi?: boolean;
   dropdown?: boolean;
-  req?: boolean;
   text?: boolean;
-  long?: boolean;
   when?: (a: SurveyAnswers) => boolean;
 };
 
@@ -32,88 +31,117 @@ export function createSurveys(ctx: SurveysCtx) {
   /* ---------- Profile and exit survey ---------- */
   const PNTS = "prefer_not_to_say",
     PNTS_LABEL = "Prefer not to say";
+  const countryName = new Intl.DisplayNames(["en"], { type: "region" });
+  const COUNTRIES = Object.fromEntries(
+    COUNTRY_CODES.map((c) => [c, countryName.of(c) ?? c] as const).sort(
+      (a, b) => a[1].localeCompare(b[1], "en"),
+    ),
+  );
   const PROFILE_FIELDS: SurveyField[] = [
-    {
-      id: "is_parent",
-      q: "Are you the parent or guardian of a child under 18?",
-      opts: { yes: "Yes", no: "No" },
-      req: true,
-    },
-    {
-      id: "children_age_bands",
-      q: "How old are your children?",
-      opts: {
-        under_7: "Under 7",
-        "7_10": "7 to 10",
-        "11_13": "11 to 13",
-        "14_17": "14 to 17",
-      },
-      multi: true,
-      req: true,
-      when: (a) => a.is_parent === "yes",
-    },
-    {
-      id: "country",
-      q: "Country of residence",
-      text: true,
-      req: true,
-    },
     {
       id: "age_band",
       q: "Your age",
       dropdown: true,
       opts: {
-        "18_24": "18 to 24",
-        "25_34": "25 to 34",
-        "35_44": "35 to 44",
-        "45_54": "45 to 54",
-        "55_plus": "55 and over",
+        "18to29": "18 to 29",
+        "30to39": "30 to 39",
+        "40to49": "40 to 49",
+        "50to59": "50 to 59",
+        "60plus": "60 and over",
       },
-      req: true,
+    },
+    {
+      id: "gender",
+      q: "Gender",
+      opts: { woman: "Woman", man: "Man", other: "Other" },
+    },
+    {
+      id: "country",
+      q: "Country of residence",
+      dropdown: true,
+      opts: COUNTRIES,
+    },
+    {
+      id: "us_region",
+      q: "Which part of the United States?",
+      opts: {
+        northeast: "Northeast",
+        midwest: "Midwest",
+        south: "South",
+        west: "West",
+      },
+      when: (a) => a.country === "US",
+    },
+    {
+      id: "is_parent",
+      q: "Are you the parent or guardian of a child under 18?",
+      opts: { yes: "Yes", no: "No" },
+    },
+    {
+      id: "children_age_bands",
+      q: "How old are your children?",
+      opts: {
+        under7: "Under 7",
+        "7to9": "7 to 9",
+        "10to12": "10 to 12",
+        "13to17": "13 to 17",
+      },
+      multi: true,
+      when: (a) => a.is_parent === "yes",
+    },
+    {
+      id: "child_ai_use",
+      q: "Do your children use AI chatbots?",
+      opts: {
+        never: "Never",
+        sometimes: "Sometimes",
+        often: "Often",
+        dont_know: "Don't know",
+      },
+      when: (a) => a.is_parent === "yes",
+    },
+    {
+      id: "works_with_children_or_health",
+      q: "Do you work professionally with children or in healthcare?",
+      opts: { yes: "Yes", no: "No" },
+    },
+    {
+      id: "education",
+      q: "Highest level of education",
+      dropdown: true,
+      opts: {
+        high_school_or_less: "High school or less",
+        some_college: "Some college",
+        bachelors: "Bachelor's degree",
+        graduate: "Graduate degree",
+      },
+    },
+    {
+      id: "household_income",
+      q: "Household income",
+      dropdown: true,
+      opts: {
+        under_50k: "Under $50,000",
+        "50k_to_100k": "$50,000 to $100,000",
+        "100k_to_150k": "$100,000 to $150,000",
+        over_150k: "Over $150,000",
+      },
     },
     {
       id: "english",
       q: "How fluent is your English?",
       dropdown: true,
       opts: {
-        native: "Native or bilingual",
+        native_or_bilingual: "Native or bilingual",
         fluent: "Fluent",
         comfortable: "Comfortable",
         basic: "Basic",
       },
-      req: true,
-    },
-    { id: "gender", q: "Gender (optional)", text: true },
-    {
-      id: "education",
-      q: "Highest level of education (optional)",
-      dropdown: true,
-      opts: {
-        secondary: "Secondary school or less",
-        some_college: "Vocational or some college",
-        bachelor: "Bachelor's degree",
-        postgraduate: "Postgraduate degree",
-      },
-    },
-    {
-      id: "ai_use",
-      q: "How often do you use AI chatbots? (optional)",
-      dropdown: true,
-      opts: {
-        never: "Never",
-        monthly: "Monthly",
-        weekly: "Weekly",
-        daily: "Daily",
-      },
-    },
-    {
-      id: "works_with_children",
-      q: "Do you work with children professionally? (optional)",
-      opts: { yes: "Yes", no: "No" },
     },
   ];
+  const GATES = new Set(["country", "is_parent"]);
   const PROFILE: SurveyField[] = PROFILE_FIELDS.map((f) =>
-    f.text || f.req
+    f.multi
       ? f
       : Object.assign(f, {
           opts: Object.assign({}, f.opts, { [PNTS]: PNTS_LABEL }),
@@ -174,57 +202,33 @@ export function createSurveys(ctx: SurveysCtx) {
       id: "exit_q6",
       q: "Anything we should change? (optional)",
       text: true,
-      long: true,
     },
   ];
   function surveyField(
     f: SurveyField,
     ans: SurveyAnswers,
-    onChange: (repaint: boolean, from: HTMLInputElement) => void,
+    onChange: (
+      repaint: boolean,
+      from: HTMLInputElement | HTMLSelectElement,
+    ) => void,
   ) {
     if (f.text) {
-      const inp = h(f.long ? "textarea" : "input", {
+      const inp = h("textarea", {
         id: "sv-" + f.id,
-        type: f.long ? null : "text",
-        rows: f.long ? 3 : null,
-        maxlength: f.long ? 2000 : 100,
+        rows: 3,
+        maxlength: 2000,
         autocomplete: "off",
       });
       const given = ans[f.id];
-      inp.value = typeof given === "string" && given !== PNTS ? given : "";
+      inp.value = typeof given === "string" ? given : "";
       inp.addEventListener("input", () => {
         ans[f.id] = inp.value.trim();
       });
-      if (f.long || f.req)
-        return h(
-          "div",
-          { class: "field" },
-          h("label", { for: "sv-" + f.id }, f.q),
-          inp,
-        );
-      const box = h("input", {
-        type: "checkbox",
-        id: "sv-" + f.id + "-pnts",
-        checked: ans[f.id] === PNTS,
-      });
-      const sync = () => {
-        inp.disabled = box.checked;
-        if (box.checked) ans[f.id] = PNTS;
-        else ans[f.id] = inp.value.trim();
-      };
-      box.addEventListener("change", sync);
-      inp.disabled = box.checked;
       return h(
         "div",
         { class: "field" },
         h("label", { for: "sv-" + f.id }, f.q),
         inp,
-        h(
-          "label",
-          { class: "chk", for: "sv-" + f.id + "-pnts" },
-          box,
-          h("span", {}, PNTS_LABEL),
-        ),
       );
     }
     if (f.dropdown) {
@@ -235,6 +239,7 @@ export function createSurveys(ctx: SurveysCtx) {
           id: "sv-" + f.id,
           onchange: () => {
             ans[f.id] = sel.value || undefined;
+            onChange(GATES.has(f.id), sel);
           },
         },
         h("option", { value: "" }, "Choose an answer"),
@@ -276,7 +281,7 @@ export function createSurveys(ctx: SurveysCtx) {
                   else s.delete(v);
                   ans[f.id] = [...s];
                 } else ans[f.id] = v;
-                onChange(f.id === "is_parent", input);
+                onChange(GATES.has(f.id), input);
               },
             }),
             h("span", {}, label),
@@ -286,8 +291,7 @@ export function createSurveys(ctx: SurveysCtx) {
     );
   }
   function renderProfile() {
-    const ans: SurveyAnswers = {},
-      err = h("p", { class: "err", role: "alert" });
+    const ans: SurveyAnswers = {};
     const box = h("div", { class: "form" });
     const paint = () =>
       box.replaceChildren(
@@ -296,7 +300,9 @@ export function createSurveys(ctx: SurveysCtx) {
             if (!repaint) return;
             paint();
             const again = box.querySelector<HTMLElement>(
-              `input[name="${from.name}"][value="${from.value}"]`,
+              from instanceof HTMLSelectElement
+                ? `#${from.id}`
+                : `input[name="${from.name}"][value="${from.value}"]`,
             );
             if (again) again.focus();
           }),
@@ -305,34 +311,17 @@ export function createSurveys(ctx: SurveysCtx) {
     paint();
     const submit = (e: SubmitEvent) => {
       e.preventDefault();
-      const missing = PROFILE.filter(
-        (f) =>
-          f.req &&
-          (!f.when || f.when(ans)) &&
-          !(f.multi ? (ans[f.id] || []).length : ans[f.id]),
-      );
-      if (missing.length) {
-        err.textContent =
-          "Please answer: " +
-          missing.map((f) => f.q.replace(/\?$/, "")).join("; ") +
-          ".";
-        err.focus();
-        return;
-      }
       S.profile = parseKoraProfile(
         Object.fromEntries(
           PROFILE.map((f) => {
-            let v: string | string[] | null | undefined = ans[f.id];
-            if (f.multi)
-              v = ans.is_parent === "yes" && v && v.length ? v : null;
-            return [f.id, v == null || v === "" ? null : v];
+            const v = !f.when || f.when(ans) ? ans[f.id] : undefined;
+            return [f.id, v == null || v.length === 0 ? null : v];
           }),
         ),
       );
       changed();
       startReviewing();
     };
-    err.setAttribute("tabindex", "-1");
     app.replaceChildren(
       topBar({ stage: "Pre-survey" }),
       h(
@@ -347,13 +336,12 @@ export function createSurveys(ctx: SurveysCtx) {
         h(
           "p",
           { class: "lede" },
-          "They help us understand who reviewed. Your answers go with your reviews under a code, never your name.",
+          "They help us understand who reviewed. Every question is optional. Your answers go with your reviews under a code, never your name.",
         ),
         h(
           "form",
           { class: "card form", novalidate: true, onsubmit: submit },
           box,
-          err,
           h(
             "button",
             { class: "big primary", type: "submit" },

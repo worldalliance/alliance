@@ -15,7 +15,7 @@ serveApi(
   routes({
     "GET /kora/admin/batches": () => Response.json([]),
     "GET /kora/admin/batches/events": () => Response.json([]),
-    "GET /kora/admin/categories": () => Response.json({ categories: [] }),
+    "GET /kora/admin/conversations": () => Response.json({ conversations: [] }),
     "GET /kora/admin/results/answers": () =>
       Response.json({
         profiles: 0,

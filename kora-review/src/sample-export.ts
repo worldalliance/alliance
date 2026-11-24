@@ -1,6 +1,6 @@
 /** A synthetic export with a partly answered pending result, valid against exportSchema. */
 export const SAMPLE_EXPORT = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   batchId: "sample-assignment-1",
   reviewer: {
     id: "rv_8f3a2c71",
@@ -64,15 +64,17 @@ export const SAMPLE_EXPORT = {
     },
   ],
   profile: {
-    is_parent: "yes",
-    children_age_bands: ["7_10"],
-    country: "prefer_not_to_say",
-    age_band: "35_44",
-    english: "fluent",
+    age_band: "30to39",
     gender: null,
+    country: "US",
+    us_region: "midwest",
+    is_parent: "yes",
+    children_age_bands: ["7to9"],
+    child_ai_use: "sometimes",
+    works_with_children_or_health: "no",
     education: "prefer_not_to_say",
-    ai_use: "weekly",
-    works_with_children: "no",
+    household_income: "prefer_not_to_say",
+    english: "native_or_bilingual",
   },
   exitSurvey: null,
   optOutCategories: [],

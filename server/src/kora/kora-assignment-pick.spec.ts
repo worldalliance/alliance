@@ -8,13 +8,13 @@ const c = (id: string, category: string, deficit = 1): Candidate => ({
 });
 
 describe("pickNext", () => {
-  it("prefers the transcript furthest from its review target", () => {
+  it("prefers the transcript closest to its review target", () => {
     const picked = pickNext({
-      candidates: [c("near", "a", 1), c("far", "b", 3), c("mid", "c", 2)],
+      candidates: [c("far", "b", 3), c("near", "a", 1), c("mid", "c", 2)],
       bound: [],
       random: first,
     });
-    expect(picked?.id).toBe("far");
+    expect(picked?.id).toBe("near");
   });
 
   it("stays on the last topic until the assignment has three from it", () => {
@@ -42,8 +42,8 @@ describe("pickNext", () => {
     );
   });
 
-  it("picks among equally far transcripts at random", () => {
-    const candidates = [c("x", "a", 2), c("y", "b", 2)];
+  it("picks among equally close transcripts at random", () => {
+    const candidates = [c("x", "a", 2), c("y", "b", 2), c("z", "c", 4)];
     const ids = [0, 0.99].map(
       (r) => pickNext({ candidates, bound: [], random: () => r })?.id,
     );

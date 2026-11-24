@@ -163,44 +163,44 @@ describe("mountKoraReview: moving through the pairs", () => {
     expect(e.optOutCategories).toEqual([KoraCategory.Violence]);
   });
 
-  it("asks the profile first, with prefer-not-to-say only on the optional questions", async () => {
+  it("asks the profile first, every question optional, with prefer-not-to-say on all but the children's ages", async () => {
     mount({ collectProfile: true });
     await tick(10);
     expect(el.querySelector(".rhead")!.textContent).toBe("Pre-survey");
-    expect(el.querySelector(".lede")!.textContent).not.toContain(
-      "Prefer not to say",
+    expect(el.querySelector(".lede")!.textContent).toContain(
+      "Every question is optional",
     );
-    const [parent, ...groups] = [...el.querySelectorAll("fieldset")];
-    expect(parent.textContent).toContain("parent or guardian");
-    expect(parent.textContent).not.toContain("Prefer not to say");
+    const groups = [...el.querySelectorAll("fieldset")];
+    expect(groups.map((g) => g.querySelector("legend")?.textContent)).toEqual([
+      "Gender",
+      "Are you the parent or guardian of a child under 18?",
+      "Do you work professionally with children or in healthcare?",
+    ]);
     for (const g of groups)
       expect(g.textContent).toContain("Prefer not to say");
-    expect(
-      [...el.querySelectorAll(".chk")].map(
-        (c) => c.closest(".field")?.querySelector("label")?.textContent,
-      ),
-    ).toEqual(["Gender (optional)"]);
     const selects = [...el.querySelectorAll("select")];
     expect(selects.map((s) => s.labels[0]?.textContent)).toEqual([
       "Your age",
+      "Country of residence",
+      "Highest level of education",
+      "Household income",
       "How fluent is your English?",
-      "Highest level of education (optional)",
-      "How often do you use AI chatbots? (optional)",
     ]);
-    for (const [i, s] of selects.entries()) {
+    for (const s of selects) {
       expect(s.value).toBe("");
-      expect(s.textContent.includes("Prefer not to say")).toBe(i >= 2);
+      expect(s.textContent).toContain("Prefer not to say");
     }
+    expect(
+      selects[1].querySelector<HTMLOptionElement>('option[value="KE"]')!.text,
+    ).toBe("Kenya");
     button("Continue").click();
-    expect(el.querySelector(".err")?.textContent).toMatch(/Your age/);
-    selects[0].value = "25_34";
-    selects[0].dispatchEvent(new Event("change"));
-    button("Continue").click();
-    expect(el.querySelector(".err")?.textContent).not.toMatch(/Your age/);
-    expect(el.querySelector(".err")?.textContent).toMatch(/English/);
+    await handle!.flush();
+    const e = saves.at(-1)!;
+    expectValid(e);
+    expect(Object.values(e.profile!).every((v) => v === null)).toBe(true);
   });
 
-  it("saves the children's age bands a parent picks, with no prefer-not-to-say", async () => {
+  it("asks the follow-ups a parent or a US resident gets", async () => {
     mount({ collectProfile: true });
     await tick(10);
     const pick = (value: string, checked = true) => {
@@ -208,29 +208,82 @@ describe("mountKoraReview: moving through the pairs", () => {
       i.checked = checked;
       i.dispatchEvent(new Event("change"));
     };
+    const choose = (label: string, value: string) => {
+      const s = [...el.querySelectorAll("select")].find(
+        (x) => x.labels[0]?.textContent === label,
+      )!;
+      s.value = value;
+      s.dispatchEvent(new Event("change"));
+    };
     pick("yes");
-    const ages = el.querySelectorAll("fieldset")[1];
-    expect(ages.textContent).toContain("How old are your children?");
+    const legends = () =>
+      [...el.querySelectorAll("legend")].map((l) => l.textContent);
+    expect(legends()).toContain("How old are your children?");
+    expect(legends()).toContain("Do your children use AI chatbots?");
+    const ages = [...el.querySelectorAll("fieldset")].find((f) =>
+      f.textContent.includes("How old are your children?"),
+    )!;
     expect(ages.textContent).not.toContain("Prefer not to say");
-    pick("7_10");
-    pick("under_7");
-    pick("under_7", false);
-    const country = el.querySelector<HTMLInputElement>('input[type="text"]')!;
-    country.value = "Kenya";
-    country.dispatchEvent(new Event("input"));
-    const [age, english] = el.querySelectorAll("select");
-    age.value = "25_34";
-    age.dispatchEvent(new Event("change"));
-    english.value = "fluent";
-    english.dispatchEvent(new Event("change"));
+    pick("7to9");
+    pick("under7");
+    pick("under7", false);
+    pick("dont_know");
+    choose("Country of residence", "US");
+    expect(document.activeElement?.id).toEndWith("sv-country");
+    expect(legends()).toContain("Which part of the United States?");
+    pick("midwest");
+    choose("Your age", "30to39");
+    choose("How fluent is your English?", "fluent");
     button("Continue").click();
     await handle!.flush();
     const e = saves.at(-1)!;
     expectValid(e);
     expect(e.profile).toMatchObject({
+      age_band: "30to39",
+      country: "US",
+      us_region: "midwest",
       is_parent: "yes",
-      children_age_bands: ["7_10"],
-      country: "Kenya",
+      children_age_bands: ["7to9"],
+      child_ai_use: "dont_know",
+      english: "fluent",
+    });
+  });
+
+  it("saves null for follow-ups hidden again", async () => {
+    mount({ collectProfile: true });
+    await tick(10);
+    const pick = (value: string, checked = true) => {
+      const i = el.querySelector<HTMLInputElement>(`input[value="${value}"]`)!;
+      i.checked = checked;
+      i.dispatchEvent(new Event("change"));
+    };
+    const choose = (label: string, value: string) => {
+      const s = [...el.querySelectorAll("select")].find(
+        (x) => x.labels[0]?.textContent === label,
+      )!;
+      s.value = value;
+      s.dispatchEvent(new Event("change"));
+    };
+    const legends = () =>
+      [...el.querySelectorAll("legend")].map((l) => l.textContent);
+    pick("yes");
+    pick("7to9");
+    choose("Country of residence", "US");
+    pick("midwest");
+    choose("Country of residence", "KE");
+    pick("no");
+    expect(legends()).not.toContain("Which part of the United States?");
+    expect(legends()).not.toContain("How old are your children?");
+    button("Continue").click();
+    await handle!.flush();
+    const e = saves.at(-1)!;
+    expectValid(e);
+    expect(e.profile).toMatchObject({
+      country: "KE",
+      us_region: null,
+      is_parent: "no",
+      children_age_bands: null,
+      child_ai_use: null,
     });
   });
 });

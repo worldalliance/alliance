@@ -21,6 +21,7 @@ import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
   KoraAdminCategoriesDto,
+  KoraAdminConversationsDto,
   KoraAdminOverviewDto,
 } from "./dto/kora-admin.dto";
 import {
@@ -115,10 +116,19 @@ export class KoraAdminController {
     return new KoraAdminOverviewDto(await this.adminService.overview());
   }
 
+  // BACKCOMPAT(kora-admin-categories): remove with KoraAdminCategoriesDto once an admin build reading /conversations is live in production.
   @Get("categories")
   @ApiOkResponse({ type: KoraAdminCategoriesDto })
   async categories(): Promise<KoraAdminCategoriesDto> {
     return new KoraAdminCategoriesDto(await this.adminService.categories());
+  }
+
+  @Get("conversations")
+  @ApiOkResponse({ type: KoraAdminConversationsDto })
+  async conversations(): Promise<KoraAdminConversationsDto> {
+    return new KoraAdminConversationsDto(
+      await this.adminService.conversations(),
+    );
   }
 
   @Delete("participants/:id")

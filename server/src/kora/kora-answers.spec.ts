@@ -6,7 +6,7 @@ describe("countAnswers", () => {
       {
         reviewerId: "r1",
         exported: {
-          profile: { is_parent: "yes", children_age_bands: ["7_10", "11_13"] },
+          profile: { is_parent: "yes", children_age_bands: ["7to9", "10to12"] },
           exitSurvey: null,
         },
       },
@@ -35,8 +35,8 @@ describe("countAnswers", () => {
       {
         question: "children_age_bands",
         answers: [
-          { value: "11_13", count: 1 },
-          { value: "7_10", count: 1 },
+          { value: "10to12", count: 1 },
+          { value: "7to9", count: 1 },
           { value: NO_ANSWER, count: 1 },
         ],
       },

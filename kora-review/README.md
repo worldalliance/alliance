@@ -62,7 +62,7 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 | `KoraSaveResult`                               | What `save` may resolve with: `{ removed }`, transcript ids no longer in the assignment.                                                                                                                 |
 | `KoraSaveState`                                | `Saved` and `Failed`.                                                                                                                                                                                    |
 | `transcriptSchema`, `exportSchema`             | JSON Schema draft 2020-12 objects.                                                                                                                                                                       |
-| `SCHEMA_VERSION`                               | `2`.                                                                                                                                                                                                     |
+| `SCHEMA_VERSION`                               | `5`.                                                                                                                                                                                                     |
 | `KoraCategory`                                 | Enum of KORA's 26 risk ids.                                                                                                                                                                              |
 | `KoraTranscript`, `KoraExport` and their parts | Types generated from the schemas.                                                                                                                                                                        |
 
@@ -76,7 +76,7 @@ In React, own only the container and mount in an effect. See [example/src/KoraRe
 - **Progress** is shown as "N of M reviewed" against `size`, where a conversation counts once it's reviewed or skipped. There's no time estimate.
 - **Content warnings.** Before each conversation in a sensitive category, the reviewer can continue, skip that conversation (`optedOut: true`), or skip every conversation in the category (added to `optOutCategories`). The host passes earlier opt-outs back as the `optOutCategories` option so later exports keep them.
 - **Completion.** When every conversation is reviewed or skipped and `size` conversations were given or `next` gave null, the tool asks the exit survey (if `collectExitSurvey`), sets `isDone`, saves, and then calls `onComplete`, once per mount. Mounting with an export that's already `isDone` shows the summary and calls `onComplete` once. The host shows the thank-you and any "review more" choice; to start another assignment, unmount and mount again with the new assignment and `savedExport: null`.
-- **Profile.** With `collectProfile`, the profile questions come before the first conversation. The optional questions have a "Prefer not to say" answer; the required ones don't.
+- **Profile.** With `collectProfile`, the profile questions come before the first conversation. They are KORA_SPEC.md section 5's demographics, stored under the keys and values of KORA's export schema. Every question is optional, and all but the children's ages offer "Prefer not to say"; a skipped question saves as null.
 
 ## Theming
 

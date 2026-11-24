@@ -5,11 +5,12 @@
 //
 // Bump SCHEMA_VERSION whenever either schema changes shape.
 
+import { COUNTRY_CODES } from "./countries.js";
 import { CATEGORY_IDS } from "./risk-ids.js";
 
 export { CATEGORY_ENUM_NAMES, CATEGORY_IDS } from "./risk-ids.js";
 
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
 
 const BASE = "https://github.com/worldalliance/korabench-review/schemas";
 
@@ -345,21 +346,40 @@ export const exportSchema: Record<string, unknown> = {
     profile: {
       title: "KoraProfile",
       description:
-        "Profile answers. Optional questions offer prefer_not_to_say; required ones hold it only in older exports. null means not asked or skipped.",
+        "Profile answers, under the keys and values of KORA's export schema (KORA_SPEC.md section 5, Annex D). Every question is optional: prefer_not_to_say when the reviewer chose it, null when they skipped the question or it wasn't shown.",
       type: "object",
       additionalProperties: false,
       required: [
+        "age_band",
+        "gender",
+        "country",
+        "us_region",
         "is_parent",
         "children_age_bands",
-        "country",
-        "age_band",
-        "english",
-        "gender",
+        "child_ai_use",
+        "works_with_children_or_health",
         "education",
-        "ai_use",
-        "works_with_children",
+        "household_income",
+        "english",
       ],
       properties: {
+        age_band: enumOrNull([
+          "18to29",
+          "30to39",
+          "40to49",
+          "50to59",
+          "60plus",
+          PNTS,
+        ]),
+        gender: enumOrNull(["woman", "man", "other", PNTS]),
+        country: {
+          description: "ISO 3166-1 alpha-2.",
+          ...enumOrNull([...COUNTRY_CODES, PNTS]),
+        },
+        us_region: {
+          description: "Null unless country is US.",
+          ...enumOrNull(["northeast", "midwest", "south", "west", PNTS]),
+        },
         is_parent: enumOrNull(["yes", "no", PNTS]),
         children_age_bands: {
           description: "Null unless is_parent is yes.",
@@ -370,40 +390,38 @@ export const exportSchema: Record<string, unknown> = {
               uniqueItems: true,
               items: {
                 type: "string",
-                enum: ["under_7", "7_10", "11_13", "14_17", PNTS],
+                enum: ["under7", "7to9", "10to12", "13to17"],
               },
             },
             { type: "null" },
           ],
         },
-        country: {
-          type: ["string", "null"],
-          maxLength: 100,
-          description: "Free text, or prefer_not_to_say.",
+        child_ai_use: {
+          description: "Null unless is_parent is yes.",
+          ...enumOrNull(["never", "sometimes", "often", "dont_know", PNTS]),
         },
-        age_band: enumOrNull([
-          "18_24",
-          "25_34",
-          "35_44",
-          "45_54",
-          "55_plus",
-          PNTS,
-        ]),
-        english: enumOrNull(["native", "fluent", "comfortable", "basic", PNTS]),
-        gender: {
-          type: ["string", "null"],
-          maxLength: 100,
-          description: "Free text, or prefer_not_to_say.",
-        },
+        works_with_children_or_health: enumOrNull(["yes", "no", PNTS]),
         education: enumOrNull([
-          "secondary",
+          "high_school_or_less",
           "some_college",
-          "bachelor",
-          "postgraduate",
+          "bachelors",
+          "graduate",
           PNTS,
         ]),
-        ai_use: enumOrNull(["never", "monthly", "weekly", "daily", PNTS]),
-        works_with_children: enumOrNull(["yes", "no", PNTS]),
+        household_income: enumOrNull([
+          "under_50k",
+          "50k_to_100k",
+          "100k_to_150k",
+          "over_150k",
+          PNTS,
+        ]),
+        english: enumOrNull([
+          "native_or_bilingual",
+          "fluent",
+          "comfortable",
+          "basic",
+          PNTS,
+        ]),
       },
     },
     exitSurvey: {
