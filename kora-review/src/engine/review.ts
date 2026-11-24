@@ -21,10 +21,12 @@ export function createReview(ctx: ReviewCtx) {
     h,
     icon,
     later,
+    on,
     progressText,
     reducedMotion,
     renderMarkdown,
     topBar,
+    win,
   } = ctx;
   const renderRank: Late["renderRank"] = (...args) =>
     ctx.late().renderRank(...args);
@@ -49,10 +51,39 @@ export function createReview(ctx: ReviewCtx) {
     );
 
   // KORA's child line: gender, when given, then age.
-  const childLine = (t: Transcript) =>
-    [t.context.childGender, `${t.context.childAge} years old`]
+  const childLine = (t: Transcript) => {
+    const line = [t.context.childGender, `${t.context.childAge} years old`]
       .filter(Boolean)
       .join(", ");
+    return line.charAt(0).toUpperCase() + line.slice(1);
+  };
+
+  // On phones the stylesheet collapses a tucked reminder, giving the thread its height while scrolling down.
+  // Collapsing shrinks the sticky header, and the browser's scroll anchoring then moves the page by that
+  // height; those scrolls are ignored until the collapse settles, or the reminder would bounce straight back.
+  const SCROLL_SLACK_PX = 8,
+    TUCK_SETTLE_MS = 300;
+  let lastScrollY = win.scrollY,
+    settling = false;
+  on(
+    win,
+    "scroll",
+    () => {
+      const y = win.scrollY;
+      if (settling || Math.abs(y - lastScrollY) < SCROLL_SLACK_PX) return;
+      const tuck = y > lastScrollY && y > 0;
+      lastScrollY = y;
+      const rules = $$(".rules")[0];
+      if (!rules || rules.classList.contains("tucked") === tuck) return;
+      rules.classList.toggle("tucked", tuck);
+      settling = true;
+      later(() => {
+        settling = false;
+        lastScrollY = win.scrollY;
+      }, TUCK_SETTLE_MS);
+    },
+    { passive: true },
+  );
 
   /* ---------- Review ---------- */
   function renderReview(slow = false) {
@@ -67,10 +98,7 @@ export function createReview(ctx: ReviewCtx) {
     );
     const header = topBar({
       chip: catChip(t.category),
-      age:
-        t.context.childAge != null
-          ? ageMenu(t, `Child, ${childLine(t)}`)
-          : undefined,
+      age: t.context.childAge != null ? ageMenu(t, childLine(t)) : undefined,
       pairId: t.id,
       stage: progressText(),
       below: rules,
@@ -273,8 +301,7 @@ export function createReview(ctx: ReviewCtx) {
       h(
         "p",
         { class: "opener-who" },
-        h("b", {}, "Child"),
-        t.context.childAge != null ? h("span", {}, childLine(t)) : null,
+        h("b", {}, t.context.childAge != null ? childLine(t) : "Child"),
       ),
       icon("chat"),
       renderMessage(t, first, 0, null),

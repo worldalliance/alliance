@@ -124,7 +124,7 @@
   border-radius: 999px;
   background: var(--card);
   border: 1px solid var(--line);
-  font: 700 12px/1.4 var(--f-mono);
+  font: 700 12px/1.4 var(--f-body);
   white-space: nowrap;
   max-width: 100%;
   overflow: hidden;

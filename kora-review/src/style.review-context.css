@@ -65,6 +65,28 @@
   font: 400 15px/1.3 var(--f-display);
   color: var(--ink);
 }
+@media (max-width: 899px) {
+  .kora-review .rules {
+    max-height: 12em;
+    overflow: hidden;
+    transition:
+      max-height 0.2s ease,
+      opacity 0.2s ease,
+      padding 0.2s ease,
+      margin 0.2s ease;
+  }
+  .kora-review .rules.tucked {
+    max-height: 0;
+    opacity: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 899px) and (prefers-reduced-motion: reduce) {
+  .kora-review .rules {
+    transition: none;
+  }
+}
 .kora-review .rrow .cage {
   font: 700 12px/1.2 var(--f-body);
   color: var(--accent-ink);

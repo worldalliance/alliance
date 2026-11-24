@@ -3,6 +3,7 @@ import { describe, expect, it } from "bun:test";
 import {
   button,
   el,
+  hash,
   mount,
   pairs,
   tick,
@@ -22,7 +23,7 @@ describe("mountKoraReview: the child's story and the scenario", () => {
     await tick(10);
     button("Got it", el.querySelector(".kr-intro")!).click();
     await tick(10);
-    expect(chip().textContent).toBe("Child, 11 years old");
+    expect(chip().textContent).toBe("11 years old");
     expect(chip().getAttribute("aria-haspopup")).toBe("menu");
     expect(menu().hidden).toBe(true);
 
@@ -58,5 +59,51 @@ describe("mountKoraReview: the child's story and the scenario", () => {
     dlg.dispatchEvent(new Event("close"));
     expect(el.querySelector("dialog.story-dlg")).toBeNull();
     expect(document.activeElement).toBe(chip());
+  });
+
+  it("names the child by gender and age, capitalised, in the chip and above the first message", async () => {
+    const t = { ...pairs[0], childGender: "boy" };
+    mount({
+      assignment: {
+        batchId: "sample-assignment-1",
+        size: 1,
+        transcripts: [{ transcript: t, contentHash: hash(t) }],
+      },
+    });
+    await tick(10);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(10);
+    expect(chip().textContent).toBe("Boy, 11 years old");
+    expect(el.querySelector(".opener-who")?.textContent).toBe(
+      "Boy, 11 years old",
+    );
+  });
+
+  it("tucks the reminder away while scrolling down and brings it back on any scroll up", async () => {
+    mount();
+    await tick(10);
+    button("Got it", el.querySelector(".kr-intro")!).click();
+    await tick(10);
+    const rules = el.querySelector(".rules")!;
+    const scrollTo = (y: number) => {
+      Object.defineProperty(window, "scrollY", {
+        value: y,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event("scroll"));
+    };
+    const tucked = () => rules.classList.contains("tucked");
+    scrollTo(200);
+    expect(tucked()).toBe(true);
+    scrollTo(127);
+    expect(tucked()).toBe(true);
+    await tick(400);
+    scrollTo(131);
+    expect(tucked()).toBe(true);
+    scrollTo(80);
+    expect(tucked()).toBe(false);
+    await tick(400);
+    scrollTo(0);
+    expect(tucked()).toBe(false);
   });
 });
