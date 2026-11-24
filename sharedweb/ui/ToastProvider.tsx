@@ -149,7 +149,7 @@ const toastRegion: Record<ToastVariant, ToastRegion> = {
 
 const toastColorClasses: Record<ToastVariant, string> = {
   [ToastVariant.Info]: "bg-slate-700 text-white",
-  [ToastVariant.Success]: "bg-emerald-600 text-white",
+  [ToastVariant.Success]: "bg-emerald-700 text-white",
   [ToastVariant.Warning]: "bg-amber-500 text-white",
   [ToastVariant.Error]: "bg-white text-red-500 border border-red-500",
 };

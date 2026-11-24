@@ -31,9 +31,10 @@ This task covers safety and feedback in the action flow. The class-name cleanup 
 ## Visual
 
 14. The "Archived" and "Optional" badges on the action card are neutral, so red stays for danger and blue for selection.
+15. The shared success toast is darkened from `emerald-600` to `emerald-700` in every app: its white text fell below the 4.5:1 minimum, and this task adds toasts on it.
 
 ## Added after review
 
-15. The sidebar shows a "Production" badge in production. The title was already tinted red there; the badge names the environment in words, since colour alone is no cue.
-16. On the action dashboard, Duplicate is disabled while the action editor has unsaved edits, with a visible reason: it copies the draft and then leaves the page, so the leave prompt would come after the copy exists.
-17. `useLeaveGuard` throws outside `LeaveGuard`, which wraps the admin routes, so a page that loses the navigation prompt fails loudly instead.
+16. The sidebar shows a "Production" badge in production. The title was already tinted red there; the badge names the environment in words, since colour alone is no cue.
+17. On the action dashboard, Duplicate is disabled while the action editor has unsaved edits, with a visible reason: it copies the draft and then leaves the page, so the leave prompt would come after the copy exists.
+18. `useLeaveGuard` throws outside `LeaveGuard`, which wraps the admin routes, so a page that loses the navigation prompt fails loudly instead.
