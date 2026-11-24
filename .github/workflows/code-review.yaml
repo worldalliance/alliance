@@ -37,10 +37,12 @@ jobs:
       - name: Setup Node (for installing Claude Code CLI)
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install Claude Code CLI
-        run: npm i -g @anthropic-ai/claude-code
+        run: |
+          npm i -g --engine-strict @anthropic-ai/claude-code@latest
+          claude --version
 
       - name: Run Claude Code (headless, Opus)
         id: run_claude
