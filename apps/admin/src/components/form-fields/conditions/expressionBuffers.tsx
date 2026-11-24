@@ -46,13 +46,19 @@ export const ExpressionBuffersContext =
  */
 export const ExpressionScope = createContext<string | null>(null);
 
-/** The keys `ExpressionScope` holds, by where the editor sits. */
+// Unlike encodeURIComponent, this never throws, even on a lone surrogate.
+const part = (id: string) => id.replaceAll("%", "%25").replaceAll("/", "%2F");
+
+/**
+ * The keys `ExpressionScope` holds, by where the editor sits. Ids are free
+ * strings, so each escapes its `/`, leaving `/` only between a key's parts.
+ */
 export const expressionKeys = {
-  page: (pageId: string) => `page:${pageId}`,
-  pageElements: (pageId: string) => `element:${pageId}`,
-  group: (groupKey: string) => `group:${groupKey}`,
-  outputView: (viewId: string) => `output:${viewId}`,
-  within: (scope: string, id: string) => `${scope}/${id}`,
+  page: (pageId: string) => `page:${part(pageId)}`,
+  pageElements: (pageId: string) => `element:${part(pageId)}`,
+  group: (groupKey: string) => `group:${part(groupKey)}`,
+  outputView: (viewId: string) => `output:${part(viewId)}`,
+  within: (scope: string, id: string) => `${scope}/${part(id)}`,
 };
 
 /**
