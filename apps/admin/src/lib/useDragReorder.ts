@@ -10,7 +10,7 @@ export const positionIn = (clientY: number, rect: DOMRect) =>
     ? DropPosition.Before
     : DropPosition.After;
 
-const insertionOffset: Record<DropPosition, number> = {
+export const insertionOffset: Record<DropPosition, number> = {
   [DropPosition.Before]: 0,
   [DropPosition.After]: 1,
 };
@@ -19,7 +19,7 @@ const insertionOffset: Record<DropPosition, number> = {
  * Whether the gap before `index` touches the items `start` up to, not
  * including, `end`, so moving them there changes nothing.
  */
-const leavesInPlace = ({
+export const leavesInPlace = ({
   start,
   end,
   index,

@@ -7,3 +7,8 @@
 - claude:a9a02731-35ec-4782-b3ec-724c5b4b511c (subagent)
 - claude:b2a50fdd-9f7c-4a10-abd8-b966122e6154 (subagent)
 - claude:09e889ea-8976-42e0-9e34-04f45230db4b (subagent)
+- claude:61f9bce2-f75f-4e8c-9e04-28e143123ae9 (subagent)
+- claude:fdd8022b-665a-43c6-b363-b4fd50d94dd9 (subagent)
+- claude:dcedc779-a00d-45af-b4fe-5363849fa700 (subagent)
+- claude:a8ecef5a-c264-466e-b7f4-b132ac78029e (subagent)
+- claude:5c7906e2-3fa0-4a74-9a7f-8e2a4ccc094b (subagent)

@@ -318,9 +318,12 @@ export function useCanvasEdits({
     });
   };
 
-  const moveElement = (move: ListMove, pageIndex = selectedPageIndex) => {
+  const moveElement = (move: ListMove) => {
     const { start, end, index } = itemMove(move);
-    moveElementsTo({ pageIndex, start, end }, { pageIndex, index });
+    moveElementsTo(
+      { pageIndex: selectedPageIndex, start, end },
+      { pageIndex: selectedPageIndex, index },
+    );
   };
 
   const duplicateElement = (index: number) => {
