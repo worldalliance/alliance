@@ -18,7 +18,12 @@ import {
   runScriptedTask,
   writeCaptures,
 } from "../../testing/capture-run";
-import { isSignedInToCodex, signInToCodex } from "../auth";
+import {
+  CodexLogin,
+  isSignedInToCodex,
+  readCodexLogin,
+  signInToCodex,
+} from "../auth";
 import { createCodexBackend } from "../backend";
 import { withCodexHomeLock } from "../home-lock";
 import { checkCodexVersion, type CodexCli } from "../process";
@@ -50,7 +55,14 @@ process.env.ALLIANCE_AGENT_RECORD_REAL = realCodex;
 process.env.ALLIANCE_AGENT_RECORD_DIR = recordDir;
 
 R.unwrap(await checkCodexVersion(real));
-if (!R.unwrap(await isSignedInToCodex(real))) {
+// OpenAI recommends an API key for automation, such as a recording in CI.
+const recordsOn: Record<CodexLogin, boolean> = {
+  [CodexLogin.ChatGpt]: true,
+  [CodexLogin.ApiKey]: true,
+  [CodexLogin.OtherCredential]: false,
+  [CodexLogin.SignedOut]: false,
+};
+if (!recordsOn[R.unwrap(await readCodexLogin(real))]) {
   console.log(`Signing in to Codex in ${home}; finish in the browser.`);
   R.unwrap(await signInToCodex(real));
   check(R.unwrap(await isSignedInToCodex(real)), "signed in after codex login");
