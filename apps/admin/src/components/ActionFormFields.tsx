@@ -205,7 +205,7 @@ const ActionFormFields: React.FC<
         <label
           key={String(f.name)}
           className={cn(
-            "flex items-start justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors",
+            "relative flex items-start justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors",
             isChecked
               ? "border-blue-400 bg-blue-50"
               : "border-gray-200 hover:border-gray-300 bg-white",
