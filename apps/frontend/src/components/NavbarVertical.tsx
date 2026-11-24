@@ -254,12 +254,15 @@ const NavbarVertical: React.FC<{
 
         <div
           className={cn(
-            "flex flex-col items-start px-4 py-4",
+            "flex flex-col items-start px-4 py-4 md:pt-0",
             collapsed && "md:min-h-0 md:flex-1",
           )}
         >
-          <Link to={href("/")}>
-            <p className="font-logotype p-3 text-xl mb-12 h-sm whitespace-nowrap">
+          <Link
+            to={href("/")}
+            className="mb-12 h-sm md:mb-13 md:flex md:h-(--navbar-top-bar-height) md:items-center"
+          >
+            <p className="font-logotype p-3 text-xl whitespace-nowrap md:py-0">
               The Alliance
             </p>
           </Link>
