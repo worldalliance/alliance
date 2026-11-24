@@ -44,13 +44,15 @@ const problems = (...args: Parameters<typeof save>) => {
   return result.error;
 };
 
-test("a save that breaks nothing returns the saved trees", () => {
+test("a save that breaks nothing returns the saved trees and the named expressions after it", () => {
+  const tripled = { id: "c", name: "tripled", tree: parse("amount * 3") };
   expect(
     R.unwrap(save([{ id: "c", name: "tripled", source: "amount * 3" }])),
-  ).toEqual({
-    named: [{ id: "c", name: "tripled", tree: parse("amount * 3") }],
-    dependents: [],
-  });
+  ).toEqual({ named: [tripled], after: [...stored, tripled], dependents: [] });
+});
+
+test("the named expressions after a save leave out the deleted ones", () => {
+  expect(R.unwrap(save([], { deleted: ["b"] })).after).toEqual([amount]);
 });
 
 test("a saved expression's own problem is located in the admin's text", () => {
@@ -369,6 +371,9 @@ test("two named expressions can trade names in one save", () => {
   expect(result.value.named[1].tree).toEqual(
     expect.objectContaining({ left: { kind: ExprKind.Ref, id: "a" } }),
   );
+  expect(
+    result.value.after.filter(({ id }) => id === "a" || id === "b"),
+  ).toEqual(result.value.named);
 });
 
 test("a saved expression's problem is listed once, in the admin's text", () => {

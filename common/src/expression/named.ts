@@ -84,7 +84,8 @@ const NAMED_RULE: ResultRule = { undecided: Undecided.Allowed };
  * expression it is in, so a dependent that fails only through a named
  * expression it reads isn't listed, and a broken named expression a checked
  * one reads is listed whether or not the save broke it. On success, returns
- * the saved named expressions and the fixed dependents as trees.
+ * the saved named expressions, every named expression as it stands after the
+ * save, and the fixed dependents, as trees.
  */
 export function checkNamedSave(params: {
   catalog: Catalog;
@@ -94,7 +95,11 @@ export function checkNamedSave(params: {
   deleted?: readonly string[];
   deletedLists?: readonly MemberListName[];
 }): Result<
-  { named: NamedExpression[]; dependents: FixedDependent[] },
+  {
+    named: NamedExpression[];
+    after: NamedExpression[];
+    dependents: FixedDependent[];
+  },
   SaveProblem[]
 > {
   return checkChange({ ...params, everything: false });
@@ -139,7 +144,11 @@ function checkChange({
   /** Checks every stored expression, not only those reading a change. */
   everything: boolean;
 }): Result<
-  { named: NamedExpression[]; dependents: FixedDependent[] },
+  {
+    named: NamedExpression[];
+    after: NamedExpression[];
+    dependents: FixedDependent[];
+  },
   SaveProblem[]
 > {
   const changed = new Set([...save.map((each) => each.id), ...deleted]);
@@ -379,7 +388,7 @@ function checkChange({
     }
   }
   return problems.empty
-    ? R.success({ named: saved, dependents: fixed })
+    ? R.success({ named: saved, after: scope.named, dependents: fixed })
     : R.failure(problems.list());
 }
 
