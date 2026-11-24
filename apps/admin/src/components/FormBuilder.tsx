@@ -122,7 +122,7 @@ export function FormBuilder(props: FormBuilderProps) {
     reloadEditors,
     selectPlace,
     selectedPageIndex,
-    keepPage,
+    keepSelection,
     setSelection,
     selectionKey,
     selectFromOutline,
@@ -298,16 +298,13 @@ export function FormBuilder(props: FormBuilderProps) {
   const canUndo = formDraft.canUndo && !historyLocked;
   const canRedo = formDraft.canRedo && !historyLocked;
   const { undo: undoDraft, redo: redoDraft } = formDraft;
-  const travel = useCallback(
-    (move: () => void) => {
-      keepPage(move);
-      reloadEditors();
-      closeInsertion();
-    },
-    [closeInsertion, keepPage, reloadEditors],
-  );
-  const undo = useCallback(() => travel(undoDraft), [travel, undoDraft]);
-  const redo = useCallback(() => travel(redoDraft), [travel, redoDraft]);
+  const travel = (move: () => void) => {
+    keepSelection(move);
+    reloadEditors();
+    closeInsertion();
+  };
+  const undo = () => travel(undoDraft);
+  const redo = () => travel(redoDraft);
 
   const goToIssue = (issue: FormIssue) =>
     openIssue(issue, {

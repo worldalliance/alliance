@@ -1,5 +1,5 @@
 import type { FormPlace } from "@alliance/common/forms/form-conditions";
-import type { Page } from "@alliance/common/forms/form-schema";
+import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import { useCallback, useState } from "react";
 import { useSelectedPage } from "../../lib/useSelectedPage";
 import type { VisibilityGroups } from "../../lib/visibilityGroups";
@@ -11,10 +11,47 @@ import {
   targetKey,
   type CanvasSelection,
   type CanvasTarget,
+  type ResolvedTarget,
 } from "./canvasSelection";
 import { DrawerKind, useWideCanvasLayout } from "./CanvasWorkspace";
 import { extendSelection, type Span } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
+
+/** The element the selection starts at, whose position history travel may shift. */
+function heldElement(page: Page, resolved: ResolvedTarget): PageItem | null {
+  switch (resolved.kind) {
+    case CanvasTargetKind.Page:
+      return null;
+    case CanvasTargetKind.Element:
+      return page.fields[resolved.index] ?? null;
+    case CanvasTargetKind.Range:
+      return page.fields[resolved.anchor] ?? null;
+    case CanvasTargetKind.Group:
+      return page.fields[resolved.start] ?? null;
+    default:
+      throw new Error(
+        `unknown target: ${JSON.stringify(resolved satisfies never)}`,
+      );
+  }
+}
+
+/** `target` once the element it holds sits at `index`, or null for the page. */
+function followHeld(target: CanvasTarget, index: number): CanvasTarget | null {
+  switch (target.kind) {
+    case CanvasTargetKind.Page:
+      return null;
+    case CanvasTargetKind.Element:
+      return { ...target, index };
+    case CanvasTargetKind.Group:
+      return target;
+    case CanvasTargetKind.Range:
+      return followHeld(forgetPositions(target), index);
+    default:
+      throw new Error(
+        `unknown target: ${JSON.stringify(target satisfies never)}`,
+      );
+  }
+}
 
 export const SECTION_ON_SELECT: Record<CanvasTargetKind, SidebarSection> = {
   [CanvasTargetKind.Page]: SidebarSection.Content,
@@ -106,6 +143,27 @@ export function useCanvasSelection({
     });
   }
 
+  const [held, setHeld] = useState<PageItem | null>(null);
+  const keepSelection = (move: () => void) => {
+    keepPage(move);
+    setHeld(heldElement(currentPage, resolvedTarget));
+  };
+  if (held) {
+    setHeld(null);
+    // Within a page the address finds the element as before; the element
+    // itself is followed only onto another page, where the address can't.
+    const page = pages.find((candidate) => candidate.fields.includes(held));
+    const target =
+      page &&
+      page.id !== selection.pageId &&
+      followHeld(selection.target, page.fields.indexOf(held));
+    if (page && target) {
+      setSelectedPageIndex(pages.indexOf(page));
+      setSelection({ pageId: page.id, target });
+      setRevealPending(true);
+    }
+  }
+
   const extendTo = (clicked: Span, alone: CanvasTarget) =>
     extendSelection({
       fields: currentPage.fields,
@@ -119,7 +177,7 @@ export function useCanvasSelection({
     selectPlace: setPlaceOnLoad,
     selectedPageIndex,
     setSelectedPageIndex,
-    keepPage,
+    keepSelection,
     currentPage,
     setSelection,
     resolvedTarget,
