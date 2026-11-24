@@ -269,6 +269,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   </div>
                   <ActionTimelineRowMeta
                     status={action.status}
+                    archived={action.archived}
                     participants={participantsById?.get(action.id)}
                   />
                 </Link>

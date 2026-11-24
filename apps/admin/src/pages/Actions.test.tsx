@@ -57,6 +57,9 @@ const renderPage = (query = queryWrapper(), url = "/") => {
   return router;
 };
 
+const archivedToggle = () =>
+  screen.getByRole<HTMLInputElement>("checkbox", { name: "Show archived" });
+
 it("lists the loaded actions that are not archived", async () => {
   renderPage();
   expect((await screen.findAllByText("Call your rep")).length).toBeGreaterThan(
@@ -69,7 +72,9 @@ it("says the actions failed to load instead of listing none", async () => {
   loadStatus = 500;
   renderPage();
   expect(await screen.findByText("Failed to load actions")).toBeTruthy();
-  expect(screen.queryByText("No actions found.")).toBeNull();
+  expect(
+    screen.queryByText("No actions yet. Create one to get started."),
+  ).toBeNull();
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
@@ -105,64 +110,85 @@ it("shows a write once the list is invalidated", async () => {
 });
 
 it("shows a refetch error above an empty list", async () => {
-  served = [adminActionListItem(2, "Old petition", { archived: true })];
+  served = [];
   const query = queryWrapper();
   renderPage(query);
-  await screen.findByText("No actions found.");
+  await screen.findByText("No actions yet. Create one to get started.");
 
   loadStatus = 500;
   await act(() => query.client.refetchQueries());
 
   expect(await screen.findByText("Failed to load actions")).toBeTruthy();
-  expect(screen.getByText("No actions found.")).toBeTruthy();
+  expect(
+    screen.getByText("No actions yet. Create one to get started."),
+  ).toBeTruthy();
 });
 
-it("offers the create menu when no actions are unarchived", async () => {
-  served = [adminActionListItem(2, "Old petition", { archived: true })];
+it("offers the create menu when there are no actions", async () => {
+  served = [];
   renderPage();
-  await screen.findByText("No actions found.");
+  await screen.findByText("No actions yet. Create one to get started.");
   expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
 });
 
-it("links an in-progress suite card to its suite and each action to itself, nesting no link", async () => {
-  const suite = {
-    id: 5,
-    name: "Fall push",
-    createdAt: "2026-01-02T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    events: [],
-  };
-  served = [
-    adminActionListItem(1, "Call your rep", { suite }),
-    adminActionListItem(3, "Write a letter", { suite }),
-    adminActionListItem(4, "Rally", { suite, status: "member_action" }),
-  ];
+it("lists an archived action, marked in the timeline, once archived ones are shown", async () => {
+  served = [adminActionListItem(2, "Old petition", { archived: true })];
   renderPage();
-  const section = (
-    await screen.findByText("Suites with draft or active actions")
-  ).closest("section");
-  if (!section) throw new Error("no in-progress suites section");
-  const hrefs = [...section.querySelectorAll("a")].map((link) =>
-    link.getAttribute("href"),
+  expect(
+    await screen.findByText(/^Every action is archived\./, { selector: "div" }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText("No actions with timeline events found."),
+  ).toBeNull();
+  expect(screen.queryByText("Old petition")).toBeNull();
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Show archived actions" }),
   );
-  expect(hrefs).toEqual([
-    "/suites/5",
-    "/actions/1",
-    "/actions/3",
-    "/actions/4",
-  ]);
-  expect(section.querySelector("a a")).toBeNull();
-  expect(section.textContent).toContain("1 active · 2 draft");
+
+  expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
+    0,
+  );
+  expect(archivedToggle().checked).toBe(true);
+  expect(document.activeElement).toBe(archivedToggle());
+  expect(screen.getByText("archived")).toBeTruthy();
 });
 
-it("keeps the selected statuses when the page opens from a link", async () => {
-  served = [adminActionListItem(4, "Rally", { status: "completed" })];
-  renderPage(queryWrapper(), "/actions?status=completed");
+it("keeps archived actions shown when the page opens from a link that shows them", async () => {
+  served = [adminActionListItem(2, "Old petition", { archived: true })];
+  renderPage(queryWrapper(), "/actions?archived=1");
 
-  expect(await screen.findAllByText("Rally")).toHaveLength(2);
+  expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
+    0,
+  );
+  expect(archivedToggle().checked).toBe(true);
+
+  const toggle = archivedToggle();
+  act(() => toggle.focus());
+  fireEvent.click(toggle);
+
   expect(
-    screen.queryByText("No actions match the selected statuses."),
-  ).toBeNull();
+    await screen.findByText("Every action is archived.", {
+      selector: "[role=status]",
+    }),
+  ).toBeTruthy();
+  expect(screen.queryByText("Old petition")).toBeNull();
+  expect(document.activeElement).toBe(toggle);
+});
+
+it("steps back through archived toggles with Back", async () => {
+  const router = renderPage(queryWrapper(), "/actions");
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Show archived" }),
+  );
+  expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
+    0,
+  );
+
+  await act(() => router.navigate(-1));
+
+  expect(archivedToggle().checked).toBe(false);
+  expect(screen.queryByText("Old petition")).toBeNull();
 });
 
 it("keeps the status menu open, and focus on its item, as its last match is filtered out and back in", async () => {
@@ -211,6 +237,75 @@ it("says the status filter hides every action, rather than that none has events,
   ).toBeTruthy();
   expect(
     screen.queryByText("No actions with timeline events found."),
+  ).toBeNull();
+});
+
+it("lists a suite with only archived actions after the others", async () => {
+  const suiteFields = {
+    createdAt: "2026-01-02T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+    events: [],
+  };
+  served = [
+    adminActionListItem(2, "Old petition", {
+      archived: true,
+      suite: { ...suiteFields, id: 8, name: "Retired suite" },
+    }),
+    adminActionListItem(3, "Call your rep", {
+      suite: { ...suiteFields, id: 9, name: "Live suite" },
+    }),
+  ];
+  renderPage();
+
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Show archived" }),
+  );
+
+  const retired = await screen.findByRole("link", { name: "Retired suite" });
+  const live = screen.getAllByRole("link", { name: "Live suite" }).at(-1)!;
+  expect(
+    live.compareDocumentPosition(retired) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("links an in-progress suite card to its suite and each action to itself, nesting no link", async () => {
+  const suite = {
+    id: 5,
+    name: "Fall push",
+    createdAt: "2026-01-02T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+    events: [],
+  };
+  served = [
+    adminActionListItem(1, "Call your rep", { suite }),
+    adminActionListItem(3, "Write a letter", { suite }),
+    adminActionListItem(4, "Rally", { suite, status: "member_action" }),
+  ];
+  renderPage();
+  const section = (
+    await screen.findByText("Suites with draft or active actions")
+  ).closest("section");
+  if (!section) throw new Error("no in-progress suites section");
+  const hrefs = [...section.querySelectorAll("a")].map((link) =>
+    link.getAttribute("href"),
+  );
+  expect(hrefs).toEqual([
+    "/suites/5",
+    "/actions/1",
+    "/actions/3",
+    "/actions/4",
+  ]);
+  expect(section.querySelector("a a")).toBeNull();
+  expect(section.textContent).toContain("1 active · 2 draft");
+});
+
+it("keeps the selected statuses when the page opens from a link", async () => {
+  served = [adminActionListItem(4, "Rally", { status: "completed" })];
+  renderPage(queryWrapper(), "/actions?status=completed");
+
+  expect(await screen.findAllByText("Rally")).toHaveLength(2);
+  expect(
+    screen.queryByText("No actions match the selected statuses."),
   ).toBeNull();
 });
 
