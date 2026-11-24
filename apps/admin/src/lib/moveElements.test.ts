@@ -1,5 +1,5 @@
 import type { Page } from "@alliance/common/forms/form-schema";
-import { moveElements } from "./moveElements";
+import { moveElements, repeatedIds } from "./moveElements";
 
 const block = (id: string) =>
   ({ id, type: "display", kind: "text", text: id }) as const;
@@ -99,4 +99,24 @@ it("leaves pages the move doesn't touch as they were", () => {
     to: { pageIndex: 1, index: 0 },
   });
   expect(moved?.[2]).toBe(third);
+});
+
+describe("repeatedIds", () => {
+  it("names an element id two elements carry, on any pages", () => {
+    expect(
+      repeatedIds([...pages, { id: "p3", fields: ["b"].map(block) }]),
+    ).toEqual(["b"]);
+  });
+
+  it("names a page id two pages carry", () => {
+    expect(repeatedIds([...pages, { id: "p1", fields: [] }])).toEqual(["p1"]);
+  });
+
+  it("names nothing for a page id an element carries", () => {
+    expect(repeatedIds([...pages, { id: "a", fields: [] }])).toEqual([]);
+  });
+
+  it("names nothing on a form whose ids are unique", () => {
+    expect(repeatedIds(pages)).toEqual([]);
+  });
 });

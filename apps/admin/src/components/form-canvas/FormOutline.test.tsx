@@ -26,7 +26,7 @@ it("shows a child selected before it mounts", () => {
       issues={indexIssues([])}
       onAddPage={() => {}}
       onMovePage={() => {}}
-      onMoveElement={() => {}}
+      onMoveElements={() => {}}
     />,
   );
   expect(
@@ -86,7 +86,7 @@ it("counts a collapsed group's member issues on its row", () => {
       ])}
       onAddPage={() => {}}
       onMovePage={() => {}}
-      onMoveElement={() => {}}
+      onMoveElements={() => {}}
     />,
   );
   fireEvent.click(

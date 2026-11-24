@@ -283,3 +283,37 @@ it("keeps an output block's rule-less text behind its toggle until turned off", 
     revisitEditor: () => revisit("Shareable Text", "Output View"),
   });
 });
+
+it("keeps an element's expression text when it moves to another page, and back on Undo", async () => {
+  renderFormBuilder(
+    twoPagesWith([
+      {
+        id: "a",
+        type: "input",
+        kind: "text",
+        label: "A",
+        visibleIfFormula: shownWhenQ,
+      },
+    ]),
+  );
+  selectElement("A");
+  openSection("Conditions");
+  editAsExpression();
+  await typeExpression("c1 AND");
+  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
+  await act(async () => {});
+  openSection("Conditions");
+  expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
+
+  revisit("One", "Two");
+  selectElement("A");
+  openSection("Conditions");
+  expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+  revisit("Two", "One");
+  selectElement("A");
+  openSection("Conditions");
+  expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
+});

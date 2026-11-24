@@ -455,7 +455,7 @@ export function targetKey(page: Page, target: ResolvedTarget): string {
       return target.child ? key + childKey(element, target.child) : key;
     }
     case CanvasTargetKind.Group:
-      return `group:${target.key}`;
+      return `group:${page.id}/${target.key}`;
     case CanvasTargetKind.Range: {
       const ends = [target.start, target.end - 1].map((index) =>
         keyPart(page.fields[index], index),

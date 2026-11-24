@@ -2,7 +2,8 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { dragOverAt } from "../lib/testing/dragOverAt";
 import { OutputBuilder } from "./OutputBuilder";
 
 const renderBuilder = (
@@ -120,14 +121,6 @@ describe("OutputBuilder", () => {
           })),
         },
       ],
-    };
-
-    // The test DOM drops `clientY` from a drag event's init, and lays every
-    // element out at zero, so -1 is above an element's midpoint and 1 below.
-    const dragOverAt = (element: Element, clientY: number) => {
-      const event = createEvent.dragOver(element, { dataTransfer: {} });
-      Object.defineProperty(event, "clientY", { value: clientY });
-      fireEvent(element, event);
     };
 
     const dragFirstOnto = (

@@ -12,6 +12,7 @@ import {
   type BlockWriteById,
 } from "../../lib/displayBlockById";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
+import type { ListMove } from "../../lib/useDragReorder";
 import {
   pageSegments,
   SegmentKind,
@@ -46,7 +47,7 @@ import {
   type Span,
 } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
-import { useListDrag, type ListMove } from "./useListDrag";
+import { useListDrag } from "./useListDrag";
 
 type FormCanvasProps = {
   page: Page;
@@ -113,9 +114,7 @@ export function FormCanvas({
   step,
 }: FormCanvasProps) {
   const fields = page.fields;
-  const { acceptDrop, drop, dragFor } = useListDrag<string>((_, move) =>
-    onMove(move),
-  );
+  const { acceptDrop, drop, dragFor } = useListDrag(onMove);
 
   const ref = useRef<HTMLDivElement>(null);
   const selectedKey = targetKey(page, selected);
@@ -169,7 +168,7 @@ export function FormCanvas({
             ? summarize(element.visibleIfFormula)
             : null
         }
-        drag={dragFor(page.id, index)}
+        drag={dragFor(index)}
       />
     );
   };
