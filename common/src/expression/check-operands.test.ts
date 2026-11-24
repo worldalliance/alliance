@@ -3,8 +3,8 @@ import { Undecided } from "./check";
 import {
   NEEDLESS,
   condition,
-  groupCondition,
   named,
+  partCondition,
   passes,
   problems,
   variable,
@@ -160,12 +160,12 @@ test.each([
 ])(
   "a read isMissing narrows to missing in %s is still checked as declared",
   (text, message, at) => {
-    expect(problems(text, groupCondition)).toContainEqual({ message, at });
+    expect(problems(text, partCondition)).toContainEqual({ message, at });
   },
 );
 
 test("a list's length read by key is checked as a number where isMissing narrows it", () => {
-  passes('isMissing(items["length"]) || items["length"] > 0', groupCondition);
+  passes('isMissing(items["length"]) || items["length"] > 0', partCondition);
 });
 
 test.each([

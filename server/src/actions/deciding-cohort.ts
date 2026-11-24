@@ -1,10 +1,13 @@
-import { CellAssignment } from "@alliance/common/suite-split";
-import { cellOf, type SplitGroup } from "src/suite-splits/split-groups";
+import { CellAssignment } from "@alliance/common/suite-partition";
+import {
+  cellOf,
+  type PartitionPart,
+} from "src/suite-partitions/partition-parts";
 import type { User } from "src/user/entities/user.entity";
 
 /**
- * Who an action's cohort decision covers and how. A split suite's action
- * decides only members its split placed, from their group's grid cell; any
+ * Who an action's cohort decision covers and how. A partitioned suite's action
+ * decides only members its partition placed, from their part's grid cell; any
  * other action decides everyone it is given, by its cohort rule.
  */
 export type DecidingCohort = {
@@ -28,18 +31,18 @@ export function ruleCohort(params: {
   };
 }
 
-export function splitCohort(params: {
+export function partitionCohort(params: {
   actionId: number;
-  groups: ReadonlyMap<number, SplitGroup>;
+  parts: ReadonlyMap<number, PartitionPart>;
 }): DecidingCohort {
-  const { actionId, groups } = params;
+  const { actionId, parts } = params;
   const cell = (user: User) => {
-    const group = groups.get(user.id);
-    if (group === undefined) throw new Error(`user ${user.id} isn't placed`);
-    return cellOf(group, actionId);
+    const part = parts.get(user.id);
+    if (part === undefined) throw new Error(`user ${user.id} isn't placed`);
+    return cellOf(part, actionId);
   };
   return {
-    decides: (user) => groups.has(user.id),
+    decides: (user) => parts.has(user.id),
     included: (user) => cell(user) !== CellAssignment.NotAssigned,
     optional: (user) => cell(user) === CellAssignment.Optional,
     required: (user) => cell(user) === CellAssignment.Required,

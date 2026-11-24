@@ -160,7 +160,7 @@ export function getViewerOnlyOptionalReason(
   switch (reason) {
     case "contract_gap":
       return ViewerOnlyOptionalReason.ContractGap;
-    case "split_group":
+    case "partition_part":
     case null:
       break;
     default:

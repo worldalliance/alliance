@@ -22,14 +22,14 @@ import {
   deletedListNames,
 } from "src/member-lists/member-list-store";
 import {
-  draftSplits,
+  draftPartitions,
   labelOf,
   outsideReadProblems,
-  splitDependents,
-  writeGroupFixes,
-  type GroupFix,
-  type SplitDependentLabel,
-} from "src/suite-splits/split-dependents";
+  partitionDependents,
+  writePartFixes,
+  type PartFix,
+  type PartitionDependentLabel,
+} from "src/suite-partitions/partition-dependents";
 import { DataSource, In, type EntityManager } from "typeorm";
 import type { FormulaDtoArgs, FormulaVersionDtoArgs } from "./dto/formula.dto";
 import {
@@ -56,8 +56,10 @@ export type FormulaEdit = {
 
 export type FormulaDeletion = { id: string; baseVersionId: number };
 
-/** A refusal, naming the split group when it is in one. */
-export type FormulaSaveProblem = SaveProblem & { split?: SplitDependentLabel };
+/** A refusal, naming the part when it is in one. */
+export type FormulaSaveProblem = SaveProblem & {
+  partition?: PartitionDependentLabel;
+};
 
 /** A member list to delete; `baseVersionId` is the membership the admin saw. */
 export type ListDeletion = { id: string; baseVersionId: number };
@@ -113,23 +115,23 @@ export class FormulasService {
 
   /**
    * Saves `edits` and deletes `deletions` and `deletedLists` together, with
-   * `groupFixes`, or returns why the check refused them and writes nothing.
-   * Throws `ConflictException` when a formula, list or split changed since the
-   * admin opened it or the split's suite has gone live, and
-   * `BadRequestException` for a fix of a group without a condition or a second
-   * fix of one group.
+   * `partFixes`, or returns why the check refused them and writes nothing.
+   * Throws `ConflictException` when a formula, list or partition changed since the
+   * admin opened it or the partition's suite has gone live, and
+   * `BadRequestException` for a fix of a part without a condition or a second
+   * fix of one part.
    */
   async save({
     edits,
     deletions,
     deletedLists,
-    groupFixes,
+    partFixes,
     savedById,
   }: {
     edits: FormulaEdit[];
     deletions: FormulaDeletion[];
     deletedLists: ListDeletion[];
-    groupFixes: GroupFix[];
+    partFixes: PartFix[];
     savedById: number;
   }): Promise<FormulaSaveProblem[]> {
     const ids = [...edits, ...deletions].map((each) => each.id);
@@ -158,7 +160,7 @@ export class FormulasService {
       }
       const lists = await currentLists(manager);
       assertListBases(lists, deletedLists);
-      const splits = await draftSplits(manager);
+      const partitions = await draftPartitions(manager);
       const catalog = catalogWith(
         lists.filter((list) => !listIds.includes(list.id)),
       );
@@ -166,20 +168,20 @@ export class FormulasService {
       const checked = checkNamedSave({
         catalog,
         named: current.map(asNamed),
-        dependents: splitDependents(splits, groupFixes),
+        dependents: partitionDependents(partitions, partFixes),
         save: edits.map(({ id, name, text }) => ({ id, name, source: text })),
         deleted: deletedIds,
         deletedLists: lists.filter((list) => listIds.includes(list.id)),
       });
       const label = (problem: SaveProblem): FormulaSaveProblem => ({
         ...problem,
-        split: labelOf(splits, problem.id),
+        partition: labelOf(partitions, problem.id),
       });
       if (!checked.ok) return checked.error.map(label);
       const { after } = checked.value;
       const names = printNames({ scope: { catalog, named: after } });
       const outside = outsideReadProblems({
-        splits,
+        partitions,
         named: after,
         fixed: checked.value.dependents,
         print: (tree) => printExpression(tree, names),
@@ -198,10 +200,10 @@ export class FormulasService {
           : [{ ...edit, tree }];
       });
       await write({ manager, changed, deletions, savedById });
-      await writeGroupFixes({
+      await writePartFixes({
         manager,
-        splits,
-        fixes: groupFixes,
+        partitions,
+        fixes: partFixes,
         fixed: checked.value.dependents,
         savedById,
       });

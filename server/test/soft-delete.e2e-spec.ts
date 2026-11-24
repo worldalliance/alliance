@@ -42,7 +42,7 @@ const PHYSICALLY_DELETED = [
   "OtpRateEvent",
   "RecentSearch",
   "SpentToken",
-  "SuiteSplitPlacement",
+  "SuitePartitionPlacement",
   "WaitlistBrowser",
   "WaitlistEntryTag",
   "WebHandoff",
@@ -60,9 +60,9 @@ const NEVER_DELETED = [
   "MemberListVersion",
   "MmsThread",
   "MmsThreadEvent",
-  "SuiteSplit",
-  "SuiteSplitPin",
-  "SuiteSplitVersion",
+  "SuitePartition",
+  "SuitePartitionPin",
+  "SuitePartitionVersion",
 ];
 
 describe("softDeleteCascade (e2e)", () => {

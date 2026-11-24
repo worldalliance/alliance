@@ -49,7 +49,8 @@ export class FormulasController {
   @ApiOkResponse({ type: SaveFormulasResultDto })
   @ApiResponse({
     status: 409,
-    description: "A formula, list or split changed since the admin opened it.",
+    description:
+      "A formula, list or partition changed since the admin opened it.",
   })
   async saveAdmin(
     @Body() body: SaveFormulasDto,
@@ -60,7 +61,7 @@ export class FormulasController {
         edits: body.edits,
         deletions: body.deletions,
         deletedLists: body.deletedLists ?? [],
-        groupFixes: body.groupFixes ?? [],
+        partFixes: body.partFixes ?? [],
         savedById: user.sub,
       }),
     });

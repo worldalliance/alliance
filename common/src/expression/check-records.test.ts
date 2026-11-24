@@ -4,7 +4,7 @@ import { Undecided, checkExpression } from "./check";
 import {
   GUARDED,
   NEEDLESS,
-  groupCondition,
+  partCondition,
   passes,
   problems,
   string,
@@ -457,6 +457,6 @@ test.each([
 ])(
   "a guard on a key written as text decides the field it names in %s",
   (text) => {
-    expect(passes(text, groupCondition).mayBeUnknown).toBe(false);
+    expect(passes(text, partCondition).mayBeUnknown).toBe(false);
   },
 );

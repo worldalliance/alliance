@@ -7,11 +7,8 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useRef } from "react";
 import { asDraft } from "../../lib/formulaDraft";
 import FormulaFields from "./FormulaFields";
-import GroupFixFields, {
-  groupFixOf,
-  type GroupFixDraft,
-} from "./GroupFixFields";
 import OtherFormulaProblems from "./OtherFormulaProblems";
+import PartFixFields, { partFixOf, type PartFixDraft } from "./PartFixFields";
 
 /** A fix being made in this save, whose heading takes focus once its fix opens. */
 const FixSection: React.FC<{
@@ -44,16 +41,16 @@ const FixSection: React.FC<{
 );
 
 /**
- * Formulas and split groups whose problems refused a save, each with "Fix it
+ * Formulas and parts whose problems refused a save, each with "Fix it
  * in this save", and the fields of those being fixed, which the next save
  * sends along.
  */
 const FormulaFixes: React.FC<{
   fixes: FormulaEditDto[];
   onFixesChange: (fixes: FormulaEditDto[]) => void;
-  /** Split group conditions being fixed in the same save. */
-  groupFixes: GroupFixDraft[];
-  onGroupFixesChange: (fixes: GroupFixDraft[]) => void;
+  /** Part conditions being fixed in the same save. */
+  partFixes: PartFixDraft[];
+  onPartFixesChange: (fixes: PartFixDraft[]) => void;
   /** The problems not shown elsewhere on the page. */
   problems: FormulaProblemDto[];
   /** The formulas as the page opened them. */
@@ -70,8 +67,8 @@ const FormulaFixes: React.FC<{
 }> = ({
   fixes,
   onFixesChange,
-  groupFixes,
-  onGroupFixesChange,
+  partFixes,
+  onPartFixesChange,
   problems,
   formulas,
   readOnly,
@@ -81,7 +78,7 @@ const FormulaFixes: React.FC<{
   const focusFix = useRef<string | null>(null);
   const fixing = new Set([
     ...fixes.map((fix) => fix.id),
-    ...groupFixes.map((fix) => fix.problemId),
+    ...partFixes.map((fix) => fix.problemId),
   ]);
   return (
     <>
@@ -117,33 +114,33 @@ const FormulaFixes: React.FC<{
           />
         </FixSection>
       ))}
-      {groupFixes.map((draft) => (
+      {partFixes.map((draft) => (
         <FixSection
           key={draft.problemId}
           id={draft.problemId}
           focusFix={focusFix}
           onStop={() => {
-            onGroupFixesChange(
-              groupFixes.filter((other) => other.problemId !== draft.problemId),
+            onPartFixesChange(
+              partFixes.filter((other) => other.problemId !== draft.problemId),
             );
             onStopped(draft.problemId);
           }}
           heading={
             <>
-              Fixing group &quot;{draft.group.groupName}&quot; of{" "}
-              {draft.group.suiteName} in this save
+              Fixing part &quot;{draft.part.partName}&quot; of{" "}
+              {draft.part.suiteName} in this save
             </>
           }
         >
-          <GroupFixFields
+          <PartFixFields
             draft={draft}
             problems={problems.filter(
               (problem) => problem.id === draft.problemId,
             )}
             readOnly={readOnly}
             onChange={(fix) =>
-              onGroupFixesChange(
-                groupFixes.map((other) =>
+              onPartFixesChange(
+                partFixes.map((other) =>
                   other.problemId === draft.problemId
                     ? { ...other, fix }
                     : other,
@@ -157,9 +154,9 @@ const FormulaFixes: React.FC<{
         problems={problems.filter((problem) => !fixing.has(problem.id))}
         formulas={formulas}
         heading={heading}
-        onFixGroup={(problem) => {
+        onFixPart={(problem) => {
           focusFix.current = problem.id;
-          onGroupFixesChange([...groupFixes, groupFixOf(problem)]);
+          onPartFixesChange([...partFixes, partFixOf(problem)]);
         }}
         onFix={(formula, problem) => {
           focusFix.current = formula.id;

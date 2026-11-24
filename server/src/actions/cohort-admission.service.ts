@@ -29,8 +29,8 @@ export class CohortAdmissionService {
   }
 
   /**
-   * The actions whose decision admits the member as optional work: a split
-   * group's grid row can make an action optional for some members only.
+   * The actions whose decision admits the member as optional work: a partition
+   * part's grid row can make an action optional for some members only.
    */
   loadOptionalRowActionIds(
     userId: number,

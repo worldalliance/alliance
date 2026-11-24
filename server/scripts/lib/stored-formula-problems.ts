@@ -14,21 +14,21 @@ import {
   type CurrentFormula,
 } from "../../src/formulas/formula-store";
 import {
-  draftSplits,
+  draftPartitions,
   labelOf,
-  splitDependents,
-  type DraftSplit,
-} from "../../src/suite-splits/split-dependents";
+  partitionDependents,
+  type DraftPartition,
+} from "../../src/suite-partitions/partition-dependents";
 
 /**
  * Re-runs the save check over every stored formula, and the condition of
- * each group in a split whose suite hasn't gone live, against this release's
+ * each part in a partition whose suite hasn't gone live, against this release's
  * catalog and check. Resolves to how many of each passed, or to a report
- * naming each formula or group this release breaks or can't read.
+ * naming each formula or part this release breaks or can't read.
  */
 export async function checkStoredFormulas(
   manager: EntityManager,
-): Promise<Result<{ formulas: number; groups: number }, string>> {
+): Promise<Result<{ formulas: number; parts: number }, string>> {
   const stored = (await currentVersions(manager)).map(
     ({ formula, version }) => ({
       formula,
@@ -49,8 +49,8 @@ export async function checkStoredFormulas(
   const current = stored.flatMap(({ formula, version }) =>
     version.ok ? [{ formula, version: version.value }] : [],
   );
-  const splits = await draftSplits(manager);
-  const dependents = splitDependents(splits, []).flatMap((each) =>
+  const partitions = await draftPartitions(manager);
+  const dependents = partitionDependents(partitions, []).flatMap((each) =>
     "stored" in each ? [each] : [],
   );
   const checked = checkStored({
@@ -59,17 +59,24 @@ export async function checkStoredFormulas(
     dependents,
   });
   return checked.ok
-    ? R.success({ formulas: current.length, groups: dependents.length })
+    ? R.success({ formulas: current.length, parts: dependents.length })
     : R.failure(
-        describeStoredProblems({ problems: checked.error, current, splits }),
+        describeStoredProblems({
+          problems: checked.error,
+          current,
+          partitions,
+        }),
       );
 }
 
-function dependentLabel(splits: readonly DraftSplit[], id: string): string {
-  const split = labelOf(splits, id);
-  return split === undefined
+function dependentLabel(
+  partitions: readonly DraftPartition[],
+  id: string,
+): string {
+  const partition = labelOf(partitions, id);
+  return partition === undefined
     ? `Dependent ${id}`
-    : `Group "${split.groupName}" of suite "${split.suiteName}" (${split.suiteId})`;
+    : `Part "${partition.partName}" of suite "${partition.suiteName}" (${partition.suiteId})`;
 }
 
 const label = ({ id, name }: { id: string; name: string }) =>
@@ -78,11 +85,11 @@ const label = ({ id, name }: { id: string; name: string }) =>
 function describeStoredProblems({
   problems,
   current,
-  splits,
+  partitions,
 }: {
   problems: readonly SaveProblem[];
   current: readonly CurrentFormula[];
-  splits: readonly DraftSplit[];
+  partitions: readonly DraftPartition[];
 }): string {
   const names = new Map(
     current.map(({ formula }) => [formula.id, formula.name]),
@@ -97,7 +104,7 @@ function describeStoredProblems({
         const owner =
           problem.kind === SaveProblemKind.Named
             ? formula(problem.id)
-            : dependentLabel(splits, problem.id);
+            : dependentLabel(partitions, problem.id);
         return [
           `${owner}: ${problem.text}`,
           ...problem.diagnostics.map(

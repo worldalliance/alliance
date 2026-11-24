@@ -11,7 +11,7 @@ import { omit } from "es-toolkit";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { useContentConfirm } from "../../components/useContentConfirm";
-import { groupsMaySetOptional } from "../../lib/actionFieldDefs";
+import { partsMaySetOptional } from "../../lib/actionFieldDefs";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
@@ -108,7 +108,7 @@ export function useActionEditor(params: {
   isNew: boolean;
   cohortParseFailed: boolean;
   lookups: {
-    availableSuites?: readonly Pick<ActionSuiteDto, "id" | "usesGroups">[];
+    availableSuites?: readonly Pick<ActionSuiteDto, "id" | "isPartitioned">[];
     suitesLoading: boolean;
     suitesError: boolean;
   };
@@ -359,7 +359,7 @@ export function useActionEditor(params: {
         imageKey,
       });
       // The grid sets the hidden flag, and may have changed it since load.
-      const gridOptional = groupsMaySetOptional(
+      const gridOptional = partsMaySetOptional(
         {
           suites: lookups.availableSuites ?? [],
           loading: lookups.suitesLoading,

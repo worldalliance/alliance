@@ -173,7 +173,7 @@ export class SingleMemberCohortService {
         return computeMissedActionDeadline({
           action,
           user,
-          // A split group's row can make the action optional for them alone.
+          // A part's row can make the action optional for them alone.
           inCohort: inCohort && !optionalRows.has(actionId),
           hasTerminalActivity: terminalUserIds.size > 0,
           now,

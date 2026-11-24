@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
-import { assertNoSplitLaunch } from "src/suite-splits/split-guards";
+import { assertNoPartitionLaunch } from "src/suite-partitions/partition-guards";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { isUniqueViolation } from "src/utils/db-errors";
@@ -173,7 +173,7 @@ export class ProjectActionsService {
         const launch = await saveEvent(body.launch);
         if (body.deadline) await saveEvent(body.deadline);
         await assertPrerequisitesValid({ em, actionIds: [actionId] });
-        await assertNoSplitLaunch(em, [actionId]);
+        await assertNoPartitionLaunch(em, [actionId]);
         for (const reminder of body.reminders) {
           await this.reminderGroupService.createReminderGroup(
             launch.id,

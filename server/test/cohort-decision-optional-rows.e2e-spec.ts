@@ -90,7 +90,7 @@ describe("Decision rows marked optional (e2e)", () => {
     expect(await viewer(required)).toMatchObject({ optional: false });
     expect(await viewer(optional)).toMatchObject({
       optional: true,
-      optionalReason: ViewerOptionalReason.SplitGroup,
+      optionalReason: ViewerOptionalReason.PartitionPart,
     });
   });
 

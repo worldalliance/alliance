@@ -50,25 +50,25 @@ test("shows what a save would break, and saves the fix with it", async () => {
   );
 });
 
-test("saves a split group's fix with the formula", async () => {
+test("saves a part's fix with the formula", async () => {
   const gated: FormulaProblemDto = {
     kind: "dependent",
-    id: "split:7:group-1",
+    id: "partition:7:part-1",
     text: "base",
     diagnostics: [{ message: "This is undecided.", start: 0, end: 4 }],
-    split: {
+    partition: {
       suiteId: 7,
       suiteName: "Week 12",
       versionId: 3,
-      groupId: "group-1",
-      groupName: "Gated",
+      partId: "part-1",
+      partName: "Gated",
       fallback: null,
     },
   };
   api.answers = [[gated], []];
   const { client } = renderPage(`/formulas/${base.id}`);
-  const split = queryKeys.suiteSplitAdmin(7);
-  client.setQueryData(split, {});
+  const partition = queryKeys.suitePartitionAdmin(7);
+  client.setQueryData(partition, {});
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "null");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -87,11 +87,11 @@ test("saves a split group's fix with the formula", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
   await waitFor(() => expect(api.saves).toHaveLength(2));
-  expect(api.saves[1].groupFixes).toEqual([
+  expect(api.saves[1].partFixes).toEqual([
     {
       suiteId: 7,
       baseVersionId: 3,
-      groupId: "group-1",
+      partId: "part-1",
       text: "base",
       fallback: "continue",
     },
@@ -99,7 +99,7 @@ test("saves a split group's fix with the formula", async () => {
   await waitFor(() =>
     expect(screen.queryByText("Fixing", { exact: false })).toBeNull(),
   );
-  expect(client.getQueryState(split)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(partition)?.isInvalidated).toBe(true);
 });
 
 test("opens a fix with the names the save gives", async () => {
@@ -249,7 +249,7 @@ test("says to delete again when a delete is refused", async () => {
   expect(api.saves[1]).toEqual({
     edits: [expect.objectContaining({ id: doubled.id, text: "2" })],
     deletions: [{ id: base.id, baseVersionId: 1 }],
-    groupFixes: [],
+    partFixes: [],
   });
 });
 
@@ -259,17 +259,14 @@ test("drops a fix's problems when the admin stops fixing it", async () => {
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Fix it in this save" }),
-  );
+  await screen.findByText("Problems in other formulas and parts");
+  fireEvent.click(screen.getByRole("button", { name: "Fix it in this save" }));
   typeText("Formula", "base + oops", 1);
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(api.saves).toHaveLength(2));
   await screen.findByRole("button", { name: "Save" });
   fireEvent.click(screen.getByRole("button", { name: "Stop fixing it" }));
-  expect(
-    screen.queryByText("Problems in other formulas and groups"),
-  ).toBeNull();
+  expect(screen.queryByText("Problems in other formulas and parts")).toBeNull();
   expect(document.activeElement).toBe(
     screen.getByRole("button", { name: "Save" }),
   );

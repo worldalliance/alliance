@@ -26,7 +26,7 @@ import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
-import { SplitPlacementModule } from "src/suite-splits/split-placement.module";
+import { PartitionPlacementModule } from "src/suite-partitions/partition-placement.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -160,7 +160,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     FacepileModule,
     EventLogModule,
     FormSnapshotModule,
-    SplitPlacementModule,
+    PartitionPlacementModule,
     forwardRef(() => ShareUrlsModule),
     KoraModule,
   ],
