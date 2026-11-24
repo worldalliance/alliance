@@ -51,6 +51,7 @@
     "morgan": "^1.10.0",
     "papaparse": "^5.7.0",
     "pm2": "^6.0.6",
+    "posthog-js": "^1.311.0",
     "react": "19.2.3",
     "react-diff-viewer-continued": "^4.2.2",
     "react-dom": "19.2.3",

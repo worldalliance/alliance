@@ -35,3 +35,10 @@ it("moves only navigations off the legacy domain", () => {
     `map "$http_sec_fetch_mode:$http_accept" $moved_host {\n    default            "";\n    "~^navigate:"      $new_host;\n    "~^:.*text/html"   $new_host;\n}`,
   );
 });
+
+it("keeps session cookies out of requests forwarded to PostHog", () => {
+  const events = conf.slice(conf.indexOf("location /events/ {"));
+  expect(events.slice(0, events.indexOf("\n    }"))).toContain(
+    'proxy_set_header Cookie "";',
+  );
+});

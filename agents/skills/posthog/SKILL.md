@@ -9,4 +9,6 @@ description: Read before pulling PostHog data from its API, such as production e
 
 The server sends its errors, request logs and other events from production only (`posthogClientIfEnabled` in `server/src/posthog/posthog-client.ts`), so a staging or development server error leaves no trace here. Mailgun webhook events are the exception: whichever non-test server receives one sends it for mail tagged `production`.
 
+The admin panel's deployed builds send their events into the same project as the member site, each tagged `app: admin`, with URLs replaced by route templates such as `/forms/:formId`. Member-site events carry no `app`, so exclude admin with `coalesce(properties.app, '') != 'admin'`.
+
 PostHog gives every tab in a browser one session ID, and the replay player interleaves their windows. Group snapshots by window ID before reading a timeline.
