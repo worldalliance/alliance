@@ -20,6 +20,14 @@ import {
 } from "./action-activity.service";
 import { ActionsService } from "./actions.service";
 
+/** Whether a visit in this phase completes the action: `Finished` again too, in case the completion event's attempt failed. */
+const COMPLETES_ACTION: Record<KoraReviewPhase, boolean> = {
+  [KoraReviewPhase.Reviewing]: false,
+  [KoraReviewPhase.Finished]: true,
+  [KoraReviewPhase.NoneLeft]: true,
+  [KoraReviewPhase.NotActive]: false,
+};
+
 @Controller("actions")
 export class KoraActionReviewController {
   constructor(
@@ -28,7 +36,7 @@ export class KoraActionReviewController {
     private readonly reviewService: KoraReviewService,
   ) {}
 
-  /** Starts or resumes the member's review for a Kora review action; with nothing left to review, completes the action. */
+  /** Starts or resumes the member's review for a Kora review action; once it is finished or nothing is left to review, completes the action. */
   @Get(":id/kora-review")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: KoraReviewStateDto })
@@ -47,7 +55,7 @@ export class KoraActionReviewController {
       now: new Date(),
     });
     const state = await this.reviewService.forAction({ userId, actionId: id });
-    if (state.phase === KoraReviewPhase.NoneLeft) {
+    if (COMPLETES_ACTION[state.phase]) {
       await this.activityService.completeAction(id, userId).catch((error) => {
         if (!(error instanceof ActivityAlreadyExistsException)) throw error;
       });

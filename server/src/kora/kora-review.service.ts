@@ -29,7 +29,7 @@ import { actionTimeUp, recordActiveTime } from "./kora-active-time";
 import {
   completionOf,
   emitActionReviewed,
-  type KoraCompletion,
+  finishAssignment,
   logCompletion,
 } from "./kora-completion";
 import {
@@ -95,7 +95,7 @@ export class KoraReviewService {
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NotActive);
       }
-      return this.assign(manager, reviewer);
+      return this.assign(manager, { reviewer });
     });
   }
 
@@ -110,7 +110,7 @@ export class KoraReviewService {
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
       }
-      return this.assign(manager, reviewer);
+      return this.assign(manager, { reviewer });
     });
   }
 
@@ -138,16 +138,29 @@ export class KoraReviewService {
           held.length > 0 ? KoraReviewPhase.Finished : KoraReviewPhase.NoneLeft,
         );
       }
+      const closed =
+        assignment?.closesAt != null && assignment.closesAt <= new Date();
+      if (assignment && !closed) {
+        return this.reviewing(manager, reviewer, assignment);
+      }
       if (assignment) {
-        const closed = assignment.closesAt && assignment.closesAt <= new Date();
-        return closed
-          ? this.summary(manager, reviewer, KoraReviewPhase.NoneLeft)
-          : this.reviewing(manager, reviewer, assignment);
+        // Unlinked so the action can start a new one; it no longer completes the action.
+        await manager.update(
+          KoraAssignment,
+          { id: assignment.id },
+          { actionId: null },
+        );
       }
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
       }
-      return this.assign(manager, reviewer, params.actionId);
+      return this.assign(manager, {
+        reviewer,
+        action: {
+          id: params.actionId,
+          activeSeconds: assignment?.activeSeconds ?? 0,
+        },
+      });
     });
   }
 
@@ -308,36 +321,12 @@ export class KoraReviewService {
           });
       const completion = transcript
         ? null
-        : await this.finish(manager, { assignment, reviewer });
+        : await finishAssignment(manager, { assignment, reviewer });
       return { transcript, completion };
     });
     if (!outcome) return R.failure(KoraSaveError.NotFound);
     if (outcome.completion) emitActionReviewed(this.events, outcome.completion);
     return R.success(outcome.transcript);
-  }
-
-  /**
-   * Marks an assignment with nothing more to give finished, once none of its
-   * transcripts is pending. Only one that holds a transcript credits the
-   * member, as finishing it themselves would.
-   */
-  private async finish(
-    manager: EntityManager,
-    params: { assignment: KoraAssignment; reviewer: KoraReviewer },
-  ): Promise<KoraCompletion | null> {
-    const held = await heldRows(manager, params.assignment.id);
-    if (held.some((r) => r.status === KoraReviewStatus.Pending)) return null;
-    await manager.update(
-      KoraAssignment,
-      { id: params.assignment.id },
-      { completedAt: new Date() },
-    );
-    const completion = completionOf({
-      ...params,
-      statuses: held.map((r) => r.status),
-    });
-    await logCompletion(manager, completion);
-    return held.length > 0 ? completion : null;
   }
 
   private async sizeOf(
@@ -457,7 +446,7 @@ export class KoraReviewService {
     await bindNext(manager, { assignment, size });
     const held = await heldRows(manager, assignment.id);
     if (held.length === 0) {
-      await this.finish(manager, { assignment, reviewer });
+      await finishAssignment(manager, { assignment, reviewer });
       return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
     }
     const loaded: KoraLoadedAssignment = {
@@ -473,11 +462,15 @@ export class KoraReviewService {
     };
   }
 
+  /** `action` carries active time over from the action's earlier, closed assignment. */
   private async assign(
     manager: EntityManager,
-    reviewer: KoraReviewer,
-    actionId: number | null = null,
+    params: {
+      reviewer: KoraReviewer;
+      action?: { id: number; activeSeconds: number };
+    },
   ): Promise<KoraReviewState> {
+    const { reviewer, action } = params;
     const newest = await newestOpenBatch(manager);
     const available = newest ? await candidates(manager, reviewer.id) : [];
     if (!newest || available.length === 0) {
@@ -485,9 +478,9 @@ export class KoraReviewService {
     }
     const assignment = await manager.save(KoraAssignment, {
       reviewerId: reviewer.id,
-      extra:
-        actionId === null && (await this.hasCompleted(manager, reviewer.id)),
-      actionId,
+      extra: !action && (await this.hasCompleted(manager, reviewer.id)),
+      actionId: action?.id ?? null,
+      activeSeconds: action?.activeSeconds ?? 0,
       schemaBatchId: newest.id,
       export: null,
       lastActivityAt: new Date(),

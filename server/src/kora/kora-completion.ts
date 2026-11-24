@@ -1,8 +1,11 @@
 import { KoraBatchEventKind, KoraReviewStatus } from "@alliance/common/kora";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { EntityManager } from "typeorm";
+import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatchEvent } from "./entities/kora-batch-event.entity";
+import type { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KORA_ACTION_REVIEWED, type KoraActionReviewed } from "./kora-events";
+import { heldRows } from "./kora-pool";
 import { koraStagingTools } from "./kora-staging-tools";
 
 export type KoraCompletion = {
@@ -52,4 +55,28 @@ export function emitActionReviewed(
     userId: completion.userId,
     actionId: completion.actionId,
   } satisfies KoraActionReviewed);
+}
+
+/**
+ * Marks an assignment with nothing more to give finished, once none of its
+ * transcripts is pending. Only one that holds a transcript credits the
+ * member, as finishing it themselves would.
+ */
+export async function finishAssignment(
+  manager: EntityManager,
+  params: { assignment: KoraAssignment; reviewer: KoraReviewer },
+): Promise<KoraCompletion | null> {
+  const held = await heldRows(manager, params.assignment.id);
+  if (held.some((r) => r.status === KoraReviewStatus.Pending)) return null;
+  await manager.update(
+    KoraAssignment,
+    { id: params.assignment.id },
+    { completedAt: new Date() },
+  );
+  const completion = completionOf({
+    ...params,
+    statuses: held.map((r) => r.status),
+  });
+  await logCompletion(manager, completion);
+  return held.length > 0 ? completion : null;
 }

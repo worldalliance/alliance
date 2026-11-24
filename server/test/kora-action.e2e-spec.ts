@@ -76,11 +76,11 @@ describe("Kora review actions (e2e)", () => {
     await closeTestApp(ctx.app);
   });
 
-  const uploadTwo = async () => {
+  const uploadTwo = async (idPrefix = "A") => {
     const uploaded = await ctx.app.get(KoraBatchService).upload({
       transcriptsText: koraConversationsFile(
-        koraConversation("A1"),
-        koraConversation("A2"),
+        koraConversation(`${idPrefix}1`),
+        koraConversation(`${idPrefix}2`),
       ),
       transcriptsPerAssignment: 2,
       reviewsPerTranscript: 1,
@@ -301,6 +301,53 @@ describe("Kora review actions (e2e)", () => {
 
     const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
     expect(state.phase).toBe(KoraReviewPhase.NoneLeft);
+    expect(await completed(kora.id)).toBe(true);
+  });
+
+  it("starts a fresh assignment, keeping its active time, when the action's assignment closed and a newer batch is open", async () => {
+    const closing = await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    const first: string = (await member().get(reviewPath(kora.id)).expect(200))
+      .body.assignment.id;
+    const past = new Date(Date.now() - milliseconds({ seconds: 1 }));
+    await ctx.dataSource
+      .getRepository(KoraAssignment)
+      .update({ id: first }, { closesAt: past, activeSeconds: 120 });
+    await ctx.dataSource
+      .getRepository(KoraBatch)
+      .update({ id: closing.id }, { closesAt: past });
+    await uploadTwo("B");
+
+    const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
+
+    expect(state.phase).toBe(KoraReviewPhase.Reviewing);
+    expect(state.assignment.id).not.toBe(first);
+    const fresh = await ctx.dataSource
+      .getRepository(KoraAssignment)
+      .findOneByOrFail({ id: state.assignment.id });
+    expect(fresh).toMatchObject({ actionId: kora.id, activeSeconds: 120 });
+    await settle();
+    expect(await completed(kora.id)).toBe(false);
+  });
+
+  it("completes the action on a later visit to a finished assignment whose completion was missed", async () => {
+    await uploadTwo();
+    const kora = await liveAction(
+      "Review chatbot transcripts",
+      ActionTaskKind.KoraReview,
+    );
+    await rate(member(), 2, reviewPath(kora.id));
+    expect(await eventuallyCompleted(kora.id)).toBe(true);
+    await ctx.dataSource
+      .getRepository(ActionActivity)
+      .delete({ actionId: kora.id, userId: ctx.testUserId });
+
+    const state = (await member().get(reviewPath(kora.id)).expect(200)).body;
+
+    expect(state.phase).toBe(KoraReviewPhase.Finished);
     expect(await completed(kora.id)).toBe(true);
   });
 });
