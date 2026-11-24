@@ -52,7 +52,7 @@ jobs:
           raw_json="$(
             claude -p \
               --output-format json \
-              --model claude-opus-4-6 \
+              --model opus \
               --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*),Bash(git rev-parse:*)" \
               < .github/commit-review/prompt.md
           )"
@@ -74,7 +74,6 @@ jobs:
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ fromJSON(steps.aws.outputs.secrets || '{}').OPENAI_API_KEY }}
-          model: gpt-5.5
           prompt-file: .github/commit-review/prompt.md
           sandbox: read-only
 
