@@ -144,8 +144,8 @@ export function RepositoryView({ shown }: { shown: ShownRepository }) {
           <>
             <Folder label="Folder" folder={state.folder} />
             <p>
-              This copy is older than Alliance agent needs, so tasks can't use
-              it yet.
+              This copy is older than Alliance agent needs, so worktrees can't
+              use it yet.
             </p>
             {state.problem && <ProblemText problem={state.problem} />}
             {state.blocker ? (
@@ -214,9 +214,7 @@ export function RepositoryView({ shown }: { shown: ShownRepository }) {
   return (
     <div className="start repository">
       <h1>Alliance repository</h1>
-      <p className="hint">
-        Agents work on their own copy of this for each task.
-      </p>
+      <p className="hint">Agents work in worktrees, each a copy of this.</p>
       {body()}
       {actionProblem && actionProblem.status === shown.state?.status && (
         <ProblemText problem={actionProblem.problem} />

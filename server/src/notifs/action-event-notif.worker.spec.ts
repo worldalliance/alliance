@@ -217,6 +217,12 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
         name: "Also Required",
         timeEstimate: 20,
       } as unknown as ActionDto,
+      {
+        id: 4,
+        name: "Optional for them",
+        optional: false,
+        viewer: { optional: true },
+      } as unknown as ActionDto,
     ]);
 
     const plan: NotificationPlan = {

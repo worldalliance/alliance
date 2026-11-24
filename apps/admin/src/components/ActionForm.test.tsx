@@ -1,4 +1,4 @@
-import type { CreateActionDto } from "@alliance/shared/client";
+import type { ActionSuiteDto, CreateActionDto } from "@alliance/shared/client";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -8,6 +8,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { createActionForm } from "../lib/testing/createActionForm";
 import ActionForm from "./ActionForm";
 
@@ -44,41 +45,51 @@ const renderForm = (
   );
   const onImageChange = jest.fn();
   const onCategoryChange = jest.fn();
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <ToastProvider>
-        <ActionForm
-          form={{ ...baseForm, ...params.form }}
-          onInputChange={onInputChange}
-          onImageChange={onImageChange}
-          onSubmit={jest.fn()}
-          saving={false}
-          imagePreview={null}
-          onCancelImageUpload={jest.fn()}
-          isNew={true}
-          tagsLoading={false}
-          tagsError={false}
-          suitesLoading={false}
-          suitesError={false}
-          usersLoading={false}
-          usersError={false}
-          cohortExpression={null}
-          onCohortExpressionChange={jest.fn()}
-          onPrerequisitesChange={jest.fn()}
-          authorIds={[]}
-          onAuthorsChange={jest.fn()}
-          onCategoryChange={onCategoryChange}
-          reviewers={[]}
-          onReviewersChange={jest.fn()}
-          allActionsLoadFailed={false}
-          memberActionStart={null}
-          memberActionDeadline={null}
-          {...params.props}
-        />
-      </ToastProvider>
-    </QueryClientProvider>,
+  const client = new QueryClient();
+  const ui = (props?: Partial<ActionFormProps>) => (
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <ActionForm
+            form={{ ...baseForm, ...params.form }}
+            onInputChange={onInputChange}
+            onImageChange={onImageChange}
+            onSubmit={jest.fn()}
+            saving={false}
+            imagePreview={null}
+            onCancelImageUpload={jest.fn()}
+            isNew={true}
+            tagsLoading={false}
+            tagsError={false}
+            suitesLoading={false}
+            suitesError={false}
+            usersLoading={false}
+            usersError={false}
+            cohortExpression={null}
+            onCohortExpressionChange={jest.fn()}
+            onPrerequisitesChange={jest.fn()}
+            authorIds={[]}
+            onAuthorsChange={jest.fn()}
+            onCategoryChange={onCategoryChange}
+            reviewers={[]}
+            onReviewersChange={jest.fn()}
+            allActionsLoadFailed={false}
+            memberActionStart={null}
+            memberActionDeadline={null}
+            {...props}
+          />
+        </ToastProvider>
+      </QueryClientProvider>
+    </MemoryRouter>
   );
-  return { edits, onImageChange, onCategoryChange };
+  const { rerender } = render(ui(params.props));
+  return {
+    edits,
+    onImageChange,
+    onCategoryChange,
+    rerender: (props: Partial<ActionFormProps>) =>
+      rerender(ui({ ...params.props, ...props })),
+  };
 };
 
 const section = (title: string) => {
@@ -374,6 +385,7 @@ describe("ActionForm", () => {
             events: [],
             reminderGroups: [],
             generalUpdates: [],
+            usesGroups: false,
           },
         ],
       },
@@ -384,6 +396,94 @@ describe("ActionForm", () => {
       ["3", "Climate"],
     ]);
     expect(screen.getByLabelText<HTMLSelectElement>("Suite").value).toBe("3");
+  });
+
+  const groupSuite: ActionSuiteDto = {
+    id: 3,
+    name: "Climate",
+    actions: [],
+    events: [],
+    reminderGroups: [],
+    generalUpdates: [],
+    usesGroups: true,
+  };
+
+  it("leaves optional work, prerequisites and participants to the groups of a suite that uses them", () => {
+    renderForm({
+      form: { suiteId: 3, optional: false },
+      props: {
+        availableSuites: [groupSuite],
+      },
+    });
+
+    expect(fieldNames("Completion")).not.toContain("optional");
+    expect(screen.queryByRole("heading", { name: "Prerequisites" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Participating users" }),
+    ).toBeNull();
+    expect(
+      screen
+        .getByRole("link", { name: "Edit the suite's groups" })
+        .getAttribute("href"),
+    ).toBe("/suites/3");
+  });
+
+  it("shows no optional work, prerequisites or participants until the suites load", () => {
+    renderForm({ form: { suiteId: 3 }, props: { suitesLoading: true } });
+
+    expect(fieldNames("Completion")).not.toContain("optional");
+    expect(screen.queryByRole("heading", { name: "Prerequisites" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Participating users" }),
+    ).toBeNull();
+    screen.getByText(/^Optional work, .* show once suites load\.$/);
+  });
+
+  it("shows no optional work, prerequisites or participants when the suites failed to load", () => {
+    renderForm({ form: { suiteId: 3 }, props: { suitesError: true } });
+
+    expect(fieldNames("Completion")).not.toContain("optional");
+    expect(screen.queryByRole("heading", { name: "Prerequisites" })).toBeNull();
+    expect(
+      screen.getByText(/^Suites failed to load/).getAttribute("role"),
+    ).toBe("alert");
+  });
+
+  it("shows optional work and prerequisites of an action with no suite while the suites load", () => {
+    renderForm({ form: { suiteId: null }, props: { suitesLoading: true } });
+
+    expect(fieldNames("Completion")).toContain("optional");
+    expect(screen.getByRole("heading", { name: "Prerequisites" })).toBeTruthy();
+  });
+
+  it("keeps showing the prerequisites and participants an action brings into a suite with groups", () => {
+    renderForm({
+      form: { suiteId: 3, optional: true, prerequisiteActionIds: [9] },
+      props: {
+        availableSuites: [groupSuite],
+      },
+    });
+
+    expect(fieldNames("Completion")).not.toContain("optional");
+    expect(screen.getByRole("heading", { name: "Prerequisites" })).toBeTruthy();
+    screen.getByText(
+      "Clear this action's prerequisites and participants below before saving.",
+    );
+  });
+
+  it("keeps showing the participants an action brings into a suite with groups, after they're cleared too", () => {
+    const { rerender } = renderForm({
+      form: { suiteId: 3 },
+      props: {
+        cohortExpression: { type: "Tag", tagId: "x" },
+        availableSuites: [groupSuite],
+      },
+    });
+    screen.getByText(/^Clear this action's prerequisites/);
+    rerender({ cohortExpression: null });
+
+    screen.getByRole("heading", { name: "Participating users" });
+    expect(screen.queryByText(/^Clear this action's prerequisites/)).toBeNull();
   });
 
   it("shows the stored categories", () => {

@@ -197,6 +197,7 @@ export class MemberRetentionAnalyticsService {
           })),
         ),
         includeSuspended: true,
+        requiredOnly: !includeOptional,
       });
 
     for (const [actionIndex, group] of actionGroups.entries()) {

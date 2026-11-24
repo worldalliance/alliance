@@ -24,20 +24,27 @@ export async function send(page: Page, text: string) {
 
 export const status = (page: Page) => page.getByRole("status");
 
-/** Opens Ask without a task once the test's repository is ready in workFolder. */
-export async function askWithoutTask(page: Page) {
+/** Shows Ask without a worktree the way launch shows its first view: a dispatched click moves no focus, so a panel that takes a lost focus on mount, such as the sign-in panel, takes it as it would there. */
+export const showAsk = (page: Page) =>
+  page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Ask without a worktree" })
+    .dispatchEvent("click");
+
+/** Opens Ask without a worktree once the test's repository is ready in workFolder. */
+export async function askWithoutWorktree(page: Page) {
   await expect(
     page.getByRole("button", { name: /^Alliance repository/ }),
   ).toContainText("Ready");
   await page
     .getByRole("navigation")
-    .getByRole("button", { name: "Ask without a task" })
+    .getByRole("button", { name: "Ask without a worktree" })
     .click();
   await expect(page.getByText(workFolder())).toBeVisible();
 }
 
 export async function finishFirstTurn(page: Page) {
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await send(page, "Change hello to goodbye in a.txt");
   await expect(status(page)).toHaveText("Claude finished.");
 }

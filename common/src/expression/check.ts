@@ -35,21 +35,28 @@ import {
 import { analyze, type Excused } from "./undecided";
 import {
   NOT_ASSIGNABLE,
+  groupFallbackMessage,
   undecidedMessage,
   type Culprit,
 } from "./undecided-messages";
 import { isNullableType, isYesNoType } from "./undecided-source";
 
 export enum Undecided {
-  /** The consumer handles an unknown result itself, as a split group's fallback does. */
+  /** The consumer handles an unknown result itself, as a split group with a fallback picked does. */
   Allowed = "allowed",
   /** An unknown result needs an inline `??`, as visibility and required-if do. */
   NeedsFallback = "needsFallback",
+  /** An unknown result needs the split group's own fallback, which isn't picked. */
+  NeedsGroupFallback = "needsGroupFallback",
 }
 
-const NEEDS_FALLBACK: Record<Undecided, boolean> = {
-  [Undecided.Allowed]: false,
-  [Undecided.NeedsFallback]: true,
+const UNDECIDED_MESSAGE: Record<
+  Undecided,
+  ((params: { culprit: Culprit; yesNo: boolean }) => string) | undefined
+> = {
+  [Undecided.Allowed]: undefined,
+  [Undecided.NeedsFallback]: undecidedMessage,
+  [Undecided.NeedsGroupFallback]: groupFallbackMessage,
 };
 
 export type ResultRule = {
@@ -388,9 +395,10 @@ export function checkExpression({
       checker.getNonNullableType(type),
       checker.getTypeAtLocation(declared.type),
     );
-  if (culprit !== undefined && fits && NEEDS_FALLBACK[rule.undecided]) {
+  const message = UNDECIDED_MESSAGE[rule.undecided];
+  if (culprit !== undefined && fits && message !== undefined) {
     diagnostics.push({
-      message: undecidedMessage({ culprit, yesNo: isYesNoType(type) }),
+      message: message({ culprit, yesNo: isYesNoType(type) }),
       start: 0,
       end: text.length,
     });

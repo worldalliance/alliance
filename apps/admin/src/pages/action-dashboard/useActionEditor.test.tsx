@@ -24,7 +24,10 @@ const action: ParsedActionDto = {
   cohortExpression: null,
 };
 
-const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
+const renderEditor = (
+  overrides: Partial<ParsedActionDto> = {},
+  suites: { id: number; usesGroups: boolean }[] | null = [],
+) => {
   const updateAction = jest.fn(async () => action);
   let editor!: ActionEditorState;
   const Harness = () => {
@@ -38,6 +41,11 @@ const renderEditor = (overrides: Partial<ParsedActionDto> = {}) => {
       actionId: action.id,
       isNew: false,
       cohortParseFailed: false,
+      lookups: {
+        availableSuites: suites ?? undefined,
+        suitesLoading: suites === null,
+        suitesError: false,
+      },
       searchParams: new URLSearchParams(),
       setError: jest.fn(),
     });
@@ -58,6 +66,18 @@ const allMembers = { type: "AllMembers" } as const;
 
 // handleSubmit only calls preventDefault on the event.
 const submitEvent = { preventDefault: () => {} } as React.FormEvent;
+
+const moveTo = (editor: ActionEditorState, suiteId: string) => {
+  const suite = document.createElement("input");
+  suite.name = "suiteId";
+  suite.value = suiteId;
+  // handleInputChange reads only the event's target.
+  act(() =>
+    editor.handleInputChange({
+      target: suite,
+    } as React.ChangeEvent<HTMLInputElement>),
+  );
+};
 
 describe("useActionEditor", () => {
   it("is dirty after an edit and clean again once it saves", async () => {
@@ -87,6 +107,41 @@ describe("useActionEditor", () => {
         staffPreview: true,
         cohortExpression: allMembers,
       }),
+    );
+  });
+
+  it.each([
+    ["a group suite action's save", [{ id: 3, usesGroups: true }]],
+    ["the save of an action whose suite's kind is unknown", null],
+  ])(
+    "leaves the optional flag, which the grid sets, out of %s",
+    async (_, suites) => {
+      const { result, updateAction } = renderEditor({}, suites);
+      await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+      moveTo(result.current, "3");
+      await act(() => result.current.handleSubmit(submitEvent));
+      expect(updateAction).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ optional: expect.anything() }),
+      );
+    },
+  );
+
+  it("keeps the optional flag the grid stored, so a move out of the suite sends it", async () => {
+    const { result, updateAction } = renderEditor({ optional: false }, [
+      { id: 3, usesGroups: true },
+      { id: 4, usesGroups: false },
+    ]);
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    moveTo(result.current, "3");
+    updateAction.mockResolvedValueOnce({ ...action, optional: true });
+    await act(() => result.current.handleSubmit(submitEvent));
+    expect(result.current.dirty).toBe(false);
+    moveTo(result.current, "4");
+    await act(() => result.current.handleSubmit(submitEvent));
+    expect(updateAction).toHaveBeenLastCalledWith(
+      expect.objectContaining({ optional: true }),
     );
   });
 

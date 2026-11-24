@@ -33,7 +33,7 @@ import {
   testSourceVariable,
 } from "../src/main/repository/source";
 import { git, makeSource } from "../src/main/repository/testing/fixture";
-import { commitWorktreeScripts } from "../src/main/tasks/testing/fixture";
+import { commitWorktreeScripts } from "../src/main/worktrees/testing/fixture";
 import { AgentKind } from "../src/shared/agent-kind";
 import type { AgentApi } from "../src/shared/ipc";
 import { RepositoryStatus } from "../src/shared/repository";
@@ -138,7 +138,7 @@ export async function launch(
   return { app, page };
 }
 
-/** This test's stand-in for the Alliance repository, with fake worktree scripts and, from the first call, files by relative path, which the app clones into workFolder at its first launch, so conversations without a task run there. */
+/** This test's stand-in for the Alliance repository, with fake worktree scripts and, from the first call, files by relative path, which the app clones into workFolder at its first launch, so conversations without a worktree run there. */
 export function testRepository(
   files: Record<string, string> = {},
 ): RepositorySource {

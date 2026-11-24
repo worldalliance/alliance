@@ -52,6 +52,17 @@ export class ActionCohortDecision {
   @Column()
   included: boolean;
 
+  /**
+   * True when the member's split group has the action as optional work. False
+   * and null leave the action's own flag in force, which the grid keeps false
+   * wherever a group requires the action. Null on rows of suites without a
+   * split (BACKCOMPAT(split-row-optional): until no suite without a split is
+   * still read).
+   */
+  @ApiProperty({ type: Boolean, nullable: true })
+  @Column({ type: "boolean", nullable: true })
+  optional: boolean | null;
+
   @ApiProperty({ enum: CohortDecisionReason, enumName: "CohortDecisionReason" })
   @Column({ type: "enum", enum: CohortDecisionReason })
   reason: CohortDecisionReason;

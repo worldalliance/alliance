@@ -11,7 +11,7 @@ import {
 } from "../src/main/agent/testing/capture-record";
 import { executableVariable } from "../src/main/cli-executable";
 import { AgentKind } from "../src/shared/agent-kind";
-import { askWithoutTask, status } from "./chat-helpers";
+import { askWithoutWorktree, showAsk, status } from "./chat-helpers";
 import {
   authStatusCapture,
   codexLoginStatusCapture,
@@ -65,7 +65,7 @@ test("a Codex conversation streams replies, shows tool calls, stops, and resumes
   });
   const { page } = first;
 
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await expect(page.getByRole("radio", { name: "Claude" })).toBeChecked();
   await page.getByRole("radio", { name: "Codex" }).check();
   await expect(page.getByText(/^Codex works in the main copy/)).toBeVisible();
@@ -137,7 +137,7 @@ test("a Codex conversation whose app-server exits before reading its first messa
     captures: [authStatusCapture(true)],
     codexCaptures: [codexLoginStatusCapture(true), unreading],
   });
-  await askWithoutTask(page);
+  await askWithoutWorktree(page);
   await page.getByRole("radio", { name: "Codex" }).check();
   await sendToCodex(page, "Hello");
   await expect(
@@ -162,11 +162,13 @@ test("each agent signs in on its own, a signed-out agent's conversation waits fo
       codexCaptured("edit-and-interrupt-session"),
     ],
   });
-  await askWithoutTask(first.page);
+  await askWithoutWorktree(first.page);
   await first.page.getByRole("radio", { name: "Codex" }).check();
   await sendToCodex(first.page, "Change hello to goodbye in a.txt");
   await expect(status(first.page)).toHaveText("Codex finished.");
-  await first.page.getByRole("button", { name: "Ask without a task" }).click();
+  await first.page
+    .getByRole("button", { name: "Ask without a worktree" })
+    .click();
   await expect(first.page.getByRole("radio", { name: "Claude" })).toBeChecked();
   await expect(first.page.getByLabel("Message Claude")).toBeVisible();
   await first.app.close();
@@ -175,7 +177,7 @@ test("each agent signs in on its own, a signed-out agent's conversation waits fo
     captures: [authStatusCapture(true)],
     codexCaptures: [codexLoginStatusCapture(false)],
   });
-  await expect(page.getByLabel("Message Claude")).toBeVisible();
+  await expect(page.getByLabel("Name")).toBeVisible();
   await page
     .getByRole("button", { name: /Change hello to goodbye in a\.txt/ })
     .click();
@@ -186,7 +188,7 @@ test("each agent signs in on its own, a signed-out agent's conversation waits fo
     page.getByText("Alliance agent uses your own ChatGPT subscription."),
   ).toBeVisible();
   await expect(box(page)).toHaveCount(0);
-  await page.getByRole("button", { name: "Ask without a task" }).click();
+  await page.getByRole("button", { name: "Ask without a worktree" }).click();
   await expect(page.getByRole("radio", { name: "Claude" })).toBeChecked();
   await expect(page.getByLabel("Message Claude")).toBeVisible();
   await page.getByRole("radio", { name: "Codex" }).check();
@@ -203,6 +205,7 @@ test("Sign in to Codex runs codex login in the app's own CODEX_HOME, then offers
     captures: [authStatusCapture(true)],
     env: { [codexVariable]: codexSigningIn(`echo "$CODEX_HOME" > "${home}"`) },
   });
+  await showAsk(page);
   await page.getByRole("radio", { name: "Codex" }).check();
   await page.getByRole("button", { name: "Sign in to Codex" }).click();
   await expect(box(page)).toBeVisible();
@@ -220,6 +223,7 @@ test("cancelling Codex's sign-in stops codex login", async () => {
       [codexVariable]: codexSigningIn(`touch "${started}"; exec sleep 30`),
     },
   });
+  await showAsk(page);
   await page.getByRole("radio", { name: "Codex" }).check();
   await page.getByRole("button", { name: "Sign in to Codex" }).click();
   await expect.poll(() => existsSync(started)).toBe(true);

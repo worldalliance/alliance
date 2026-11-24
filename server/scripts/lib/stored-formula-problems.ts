@@ -13,15 +13,22 @@ import {
   currentVersions,
   type CurrentFormula,
 } from "../../src/formulas/formula-store";
+import {
+  draftSplits,
+  labelOf,
+  splitDependents,
+  type DraftSplit,
+} from "../../src/suite-splits/split-dependents";
 
 /**
- * Re-runs the save check over every stored formula against this release's
- * catalog and check. Resolves to how many passed, or to a report naming each
- * formula this release breaks or can't read.
+ * Re-runs the save check over every stored formula, and the condition of
+ * each group in a split whose suite hasn't gone live, against this release's
+ * catalog and check. Resolves to how many of each passed, or to a report
+ * naming each formula or group this release breaks or can't read.
  */
 export async function checkStoredFormulas(
   manager: EntityManager,
-): Promise<Result<number, string>> {
+): Promise<Result<{ formulas: number; groups: number }, string>> {
   const stored = (await currentVersions(manager)).map(
     ({ formula, version }) => ({
       formula,
@@ -42,22 +49,41 @@ export async function checkStoredFormulas(
   const current = stored.flatMap(({ formula, version }) =>
     version.ok ? [{ formula, version: version.value }] : [],
   );
+  const splits = await draftSplits(manager);
+  const dependents = splitDependents(splits, []).flatMap((each) =>
+    "stored" in each ? [each] : [],
+  );
   const checked = checkStored({
     catalog: await formulaCatalog(manager),
     named: current.map(asNamed),
+    dependents,
   });
   return checked.ok
-    ? R.success(current.length)
-    : R.failure(describeStoredProblems(checked.error, current));
+    ? R.success({ formulas: current.length, groups: dependents.length })
+    : R.failure(
+        describeStoredProblems({ problems: checked.error, current, splits }),
+      );
+}
+
+function dependentLabel(splits: readonly DraftSplit[], id: string): string {
+  const split = labelOf(splits, id);
+  return split === undefined
+    ? `Dependent ${id}`
+    : `Group "${split.groupName}" of suite "${split.suiteName}" (${split.suiteId})`;
 }
 
 const label = ({ id, name }: { id: string; name: string }) =>
   `Formula \`${name}\` (${id})`;
 
-function describeStoredProblems(
-  problems: readonly SaveProblem[],
-  current: readonly CurrentFormula[],
-): string {
+function describeStoredProblems({
+  problems,
+  current,
+  splits,
+}: {
+  problems: readonly SaveProblem[];
+  current: readonly CurrentFormula[];
+  splits: readonly DraftSplit[];
+}): string {
   const names = new Map(
     current.map(({ formula }) => [formula.id, formula.name]),
   );
@@ -71,7 +97,7 @@ function describeStoredProblems(
         const owner =
           problem.kind === SaveProblemKind.Named
             ? formula(problem.id)
-            : `Dependent ${problem.id}`;
+            : dependentLabel(splits, problem.id);
         return [
           `${owner}: ${problem.text}`,
           ...problem.diagnostics.map(

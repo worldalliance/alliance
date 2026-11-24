@@ -1,10 +1,12 @@
-import type { ActionSuiteDto } from "@alliance/shared/client";
+import { SPLIT_LAUNCH_REFUSED } from "@alliance/common/suite-split";
+import type { ActionSuiteDto, SuiteSplitDto } from "@alliance/shared/client";
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, jest, spyOn } from "bun:test";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import ActionSuitePage from "./ActionSuitePage";
 import SuiteLaunchPage from "./SuiteLaunchPage";
 
@@ -17,16 +19,37 @@ const loadSuite = () =>
     events: [makeEvent({ id: 1, title: "Launch" })],
     reminderGroups: [],
     generalUpdates: [],
+    usesGroups: false,
   } satisfies ActionSuiteDto);
-const unlaunchedSuite = (events: ActionSuiteDto["events"]) => () =>
-  Response.json({
-    id: 3,
-    name: "Suite",
-    actions: [makeAction()],
-    events,
-    reminderGroups: [],
-    generalUpdates: [],
-  } satisfies ActionSuiteDto);
+const unlaunchedSuite =
+  (events: ActionSuiteDto["events"], usesGroups = false) =>
+  () =>
+    Response.json({
+      id: 3,
+      name: "Suite",
+      actions: [makeAction()],
+      events,
+      reminderGroups: [],
+      generalUpdates: [],
+      usesGroups,
+    } satisfies ActionSuiteDto);
+const split = {
+  versionId: 1,
+  groups: [
+    {
+      id: "00000000-0000-4000-8000-0000000000e1",
+      name: "Everyone else",
+      text: null,
+      fallback: null,
+      noRequiredWorkTick: null,
+      cells: [],
+    },
+  ],
+  actions: [],
+  launched: false,
+  launchFailedAt: null,
+  launchFailure: null,
+} satisfies SuiteSplitDto;
 let suiteLoad = loadSuite;
 let eventDelete = failure;
 let eventEdit = failure;
@@ -35,6 +58,7 @@ serveApi(
   routes(
     {
       "GET /actions/suite/:id": () => suiteLoad(),
+      "GET /actions/suite/:suiteId/split": () => Response.json(split),
       "DELETE /actions/suite/:suiteId/events/:eventId": () => eventDelete(),
       "PATCH /actions/suite/:suiteId/batchUpdateSuiteEvents/:eventId": () =>
         eventEdit(),
@@ -44,23 +68,28 @@ serveApi(
 );
 
 afterEach(() => {
+  jest.restoreAllMocks();
   suiteLoad = loadSuite;
   eventDelete = failure;
   eventEdit = failure;
 });
 
-const renderPage = () =>
+const renderPage = (initialEntry = "/suites/3") => {
+  const router = createMemoryRouter(
+    [
+      { path: "/suites/:suiteId", element: <ActionSuitePage /> },
+      { path: "/suites/:suiteId/launch", element: <SuiteLaunchPage /> },
+    ],
+    { initialEntries: [initialEntry] },
+  );
   render(
-    <MemoryRouter initialEntries={["/suites/3"]}>
-      <ToastProvider>
-        <Routes>
-          <Route path="/suites/:suiteId" element={<ActionSuitePage />} />
-          <Route path="/suites/:suiteId/launch" element={<SuiteLaunchPage />} />
-        </Routes>
-      </ToastProvider>
-    </MemoryRouter>,
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
     queryWrapper(),
   );
+  return router;
+};
 
 it("says when the suite fails to load", async () => {
   suiteLoad = failure;
@@ -131,4 +160,35 @@ it("offers no launch once the suite has launched", async () => {
     screen.queryByRole("button", { name: "Begin launch process" }),
   ).toBeNull();
   expect(screen.queryByText(/already has/)).toBeNull();
+});
+
+it("offers the groups in place of a launch for a suite that uses groups", async () => {
+  suiteLoad = unlaunchedSuite([], true);
+  renderPage();
+
+  expect(await screen.findByText(SPLIT_LAUNCH_REFUSED)).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Begin launch process" }),
+  ).toBeNull();
+  expect(
+    await screen.findByRole("heading", { name: "1. Everyone else" }),
+  ).toBeTruthy();
+});
+
+it("drops one suite's unsaved groups on moving to another", async () => {
+  suiteLoad = unlaunchedSuite([], true);
+  const router = renderPage("/suites/4");
+  await screen.findByRole("heading", { name: "1. Everyone else" });
+  await act(() => router.navigate("/suites/3"));
+  fireEvent.click(await screen.findByRole("button", { name: "Add group" }));
+  expect(
+    screen.getByRole("heading", { name: "2. Everyone else" }),
+  ).toBeTruthy();
+
+  spyOn(window, "confirm").mockReturnValue(true);
+  await act(() => router.navigate("/suites/4"));
+
+  expect(
+    await screen.findByRole("heading", { name: "1. Everyone else" }),
+  ).toBeTruthy();
 });

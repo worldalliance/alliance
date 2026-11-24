@@ -11,6 +11,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -278,6 +279,7 @@ test("shows the formulas a delete would break, and deletes with the fix", async 
     edits: [],
     deletions: [],
     deletedLists: [{ id: volunteers.id, baseVersionId: 5 }],
+    groupFixes: [],
   });
   fireEvent.click(screen.getByRole("button", { name: "Fix it in this save" }));
   fireEvent.change(await screen.findByLabelText(/^Formula/), {
@@ -304,7 +306,82 @@ test("shows the formulas a delete would break, and deletes with the fix", async 
     ],
     deletions: [],
     deletedLists: [{ id: volunteers.id, baseVersionId: 5 }],
+    groupFixes: [],
   });
+});
+
+const groupReadsVolunteers: FormulaProblemDto = {
+  ...readsVolunteers,
+  kind: "dependent",
+  id: "split:4:group-1",
+  split: {
+    suiteId: 4,
+    suiteName: "Week 12",
+    versionId: 2,
+    groupId: "group-1",
+    groupName: "Listed",
+    fallback: null,
+  },
+};
+
+const remove = async () => {
+  fireEvent.click(screen.getByRole("button", { name: "Delete list" }));
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Delete list",
+    }),
+  );
+};
+
+test("deletes a list with the fix of a split group that reads it", async () => {
+  formulaAnswers = [[groupReadsVolunteers], []];
+  const router = renderPage(`/member-lists/${volunteers.id}`);
+  await screen.findByRole("heading", { name: "Volunteers" });
+  await remove();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Fix it in this save" }),
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Condition" }), {
+    target: { value: "false" },
+  });
+  await remove();
+
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe("/member-lists"),
+  );
+  expect(formulaSaves[1].groupFixes).toEqual([
+    {
+      suiteId: 4,
+      baseVersionId: 2,
+      groupId: "group-1",
+      text: "false",
+      fallback: null,
+    },
+  ]);
+});
+
+test("asks before leaving while a split group's fix differs from how it opened", async () => {
+  formulaAnswers = [[groupReadsVolunteers]];
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const router = renderPage(`/member-lists/${volunteers.id}`);
+  await screen.findByRole("heading", { name: "Volunteers" });
+  await remove();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Fix it in this save" }),
+  );
+  const condition = () => screen.getByRole("textbox", { name: "Condition" });
+  fireEvent.change(condition(), { target: { value: "false" } });
+  await act(() => router.navigate("/member-lists"));
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(router.state.location.pathname).toBe(`/member-lists/${volunteers.id}`);
+
+  fireEvent.change(condition(), {
+    target: { value: groupReadsVolunteers.text },
+  });
+  await act(() => router.navigate("/member-lists"));
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(router.state.location.pathname).toBe("/member-lists");
+  confirm.mockRestore();
 });
 
 test("opens on fetched formulas, not cached ones a fix would conflict with", async () => {

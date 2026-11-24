@@ -1,6 +1,6 @@
 import { randomInt } from "crypto";
 import { chunk } from "es-toolkit";
-import { Raw, type EntityManager } from "typeorm";
+import { Any, type EntityManager } from "typeorm";
 import {
   Experiment,
   ExperimentArm,
@@ -46,7 +46,7 @@ async function readExperimentArms(
   const assignments = await em.find(ExperimentAssignment, {
     where: {
       experiment,
-      userId: Raw((column) => `${column} = ANY(:userIds)`, { userIds }),
+      userId: Any(userIds),
     },
     withDeleted: true,
   });

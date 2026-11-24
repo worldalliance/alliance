@@ -36,11 +36,19 @@ export function useFormulaVersionsAdmin({
 
 /** Resolves to the problems that refused the save, empty once saved. */
 export function useSaveFormulasAdmin() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: SaveFormulasDto) =>
       formulasSaveAdmin({ body, throwOnError: true }).then(
         (r) => r.data.problems,
       ),
+    // A save can fix a split's group, or change how its conditions print.
+    onSuccess: (problems) =>
+      problems.length > 0
+        ? undefined
+        : queryClient.invalidateQueries({
+            queryKey: queryKeys.suiteSplitsAdminAll(),
+          }),
   });
 }
 

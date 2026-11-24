@@ -287,6 +287,7 @@ export class AnalyticsService {
           action,
           eventId: memberActionEvent.id,
         })),
+        requiredOnly: true,
       });
     const activeUsers = new Map<number, User>();
     const participantsByAction = new Map<number, Set<number>>();

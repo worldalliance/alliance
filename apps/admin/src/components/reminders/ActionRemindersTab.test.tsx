@@ -106,6 +106,7 @@ const renderTab = (events = [makeEvent({ newStatus: "member_action" })]) =>
             events: [],
             reminderGroups: [],
             generalUpdates: [],
+            usesGroups: false,
           }}
         />
       </ToastProvider>

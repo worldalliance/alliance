@@ -7,7 +7,7 @@ import {
   git,
   makeSource,
 } from "../src/main/repository/testing/fixture";
-import { commitWorktreeScripts } from "../src/main/tasks/testing/fixture";
+import { commitWorktreeScripts } from "../src/main/worktrees/testing/fixture";
 import type { AgentApi } from "../src/shared/ipc";
 import { chooseFolder } from "./chat-helpers";
 import { authStatusCapture, launch } from "./launch";
@@ -15,7 +15,7 @@ import { authStatusCapture, launch } from "./launch";
 // page.evaluate callbacks run in the renderer, where the preload defines window.agent.
 declare const window: { agent: AgentApi };
 
-// With working worktree scripts, so the sidebar lists tasks rather than a listing failure.
+// With working worktree scripts, so the sidebar lists worktrees rather than a listing failure.
 function fixtureSource(): RepositorySource {
   const source = makeSource({
     folder: test.info().outputPath("source"),
@@ -33,11 +33,11 @@ const launchWith = (source: RepositorySource, captures: string[] = []) =>
 const entry = (page: Page) =>
   page.getByRole("button", { name: /^Alliance repository/ });
 
-test("a fresh machine clones into the default folder, and conversations without a task start there", async () => {
+test("a fresh machine clones into the default folder, and conversations without a worktree start there", async () => {
   const source = fixtureSource();
   const { app, page } = await launchWith(source);
   await expect(entry(page)).toContainText("Ready");
-  await page.getByRole("button", { name: "Ask without a task" }).click();
+  await page.getByRole("button", { name: "Ask without a worktree" }).click();
   await expect(page.getByText(source.defaultFolder)).toBeVisible();
   expect(git(source.defaultFolder, "rev-parse", "HEAD")).toBe(
     source.minimumCommit,
@@ -46,7 +46,7 @@ test("a fresh machine clones into the default folder, and conversations without 
   await entry(page).click();
   await expect(page).toHaveTitle("Alliance repository – Alliance agent");
   await expect(
-    page.getByText("Agents work on their own copy of this for each task."),
+    page.getByText("Agents work in worktrees, each a copy of this."),
   ).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Ready.");
   await app.close();
@@ -72,7 +72,9 @@ test("a copy chosen with Use existing copy is kept across launches", async () =>
 
   const second = await launchWith(source);
   await expect(entry(second.page)).toContainText("Ready");
-  await second.page.getByRole("button", { name: "Ask without a task" }).click();
+  await second.page
+    .getByRole("button", { name: "Ask without a worktree" })
+    .click();
   await expect(second.page.getByText(chosen)).toBeVisible();
   await second.app.close();
 });

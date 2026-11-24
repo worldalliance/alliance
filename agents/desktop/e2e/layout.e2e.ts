@@ -14,6 +14,7 @@ declare const window: { agent: AgentApi };
 
 test("a 320 px wide window leaves the message box most of its width", async () => {
   const { app, page } = await launch({ captures: [authStatusCapture(true)] });
+  await page.getByRole("button", { name: "Ask without a worktree" }).click();
   await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0]?.setContentSize(320, 600),
   );
@@ -116,5 +117,18 @@ test("reopening a conversation whose long folder is gone wraps in a 320 px wide 
   await narrow(app, page);
   await page.getByRole("button", { name: /Saved/ }).click();
   await expectAlertFits(page, "couldn't open this conversation");
+  await app.close();
+});
+
+test("a long worktree name's preview wraps in a 320 px wide window", async () => {
+  const { app, page } = await launch({ captures: [authStatusCapture(true)] });
+  await narrow(app, page);
+  await page.getByLabel("Name").fill("a".repeat(37));
+  await expect(page.locator("code")).toHaveText("a".repeat(37));
+  expect(
+    await page
+      .locator("main")
+      .evaluate((main) => main.scrollWidth - main.clientWidth),
+  ).toBe(0);
   await app.close();
 });

@@ -1,3 +1,4 @@
+import { SPLIT_LAUNCH_REFUSED } from "@alliance/common/suite-split";
 import { UpdateActionEventDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -12,6 +13,7 @@ import {
   existingLaunchEvent,
   hasLaunched,
 } from "../components/suite-launch/launchBlockers";
+import SuiteSplitSection from "../components/suite-split/SuiteSplitSection";
 import SuiteEventList from "../components/SuiteEventList";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -107,7 +109,9 @@ const ActionSuitePage = () => {
         onReminderClick={handleHighlightReminder}
       />
       {!launched &&
-        (launchRefusal ? (
+        (suite.usesGroups ? (
+          <p className="text-sm text-zinc-500">{SPLIT_LAUNCH_REFUSED}</p>
+        ) : launchRefusal ? (
           <p className="text-sm text-zinc-500">{launchRefusal}</p>
         ) : (
           <Button
@@ -119,6 +123,12 @@ const ActionSuitePage = () => {
             Begin launch process
           </Button>
         ))}
+      <SuiteSplitSection
+        key={suiteId}
+        suiteId={suiteId}
+        usesGroups={suite.usesGroups}
+        scheduled={launched}
+      />
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}
         events={suite.events}

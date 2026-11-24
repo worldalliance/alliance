@@ -1,9 +1,8 @@
-/* alliance/max-lines 750 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
-import { lockLiveIds } from "src/datasources/soft-delete";
 import { assertLeaseHeld } from "src/leases/cron-lease";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
@@ -23,11 +22,12 @@ import {
   readsDecisionsOf,
   type CohortEnrollment,
 } from "./cohort-decision";
+import { CohortDecisionStore, type DecisionRow } from "./cohort-decision.store";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
-import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
-import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
+import { ruleCohort, type DecidingCohort } from "./deciding-cohort";
+import { DecidingCohortService } from "./deciding-cohort.service";
 import {
   Action,
   parseAction,
@@ -37,13 +37,6 @@ import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { SingleMemberCohortService } from "./single-member-cohort.service";
 
-const INSERT_CHUNK_SIZE = 1000;
-
-type DecisionRow = Pick<
-  ActionCohortDecision,
-  "actionId" | "userId" | "included" | "reason" | "resolvedAt"
->;
-
 @Injectable()
 export class CohortDecisionService {
   private readonly logger = new Logger(CohortDecisionService.name);
@@ -51,14 +44,12 @@ export class CohortDecisionService {
   constructor(
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
-    @InjectRepository(ActionCohortDecision)
-    private readonly decisionRepository: Repository<ActionCohortDecision>,
-    @InjectRepository(ActionCohortDecisionCorrection)
-    private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
+    private readonly store: CohortDecisionStore,
     private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
+    private readonly decidingCohort: DecidingCohortService,
   ) {}
 
   /**
@@ -95,7 +86,7 @@ export class CohortDecisionService {
     );
     if (backfill.length === 0 && catchUp.length === 0) return;
 
-    const decidedByAction = await this.findDecidedUserIds(
+    const decidedByAction = await this.store.findDecidedUserIds(
       catchUp.map(({ action }) => action.id),
     );
     const session = new CohortResolutionSession();
@@ -160,7 +151,7 @@ export class CohortDecisionService {
   ): Promise<boolean> {
     assertLeaseHeld();
     const result = await R.fromPromiseFn(async () =>
-      this.insert(await resolve()),
+      this.store.insert(await resolve()),
     );
     if (R.isFailure(result)) {
       this.logger.error(
@@ -226,8 +217,10 @@ export class CohortDecisionService {
     T extends { action: ParsedAction; enrollment: { start: Date } },
   >(closed: T[]): Promise<[T[], T[]]> {
     const [withDecisions, cutover] = await Promise.all([
-      this.findActionIdsWithDecisions(closed.map(({ action }) => action.id)),
-      this.findCutover(),
+      this.store.findActionIdsWithDecisions(
+        closed.map(({ action }) => action.id),
+      ),
+      this.store.findCutover(),
     ]);
     return partition(closed, ({ action, enrollment }) =>
       belongsToBackfill({
@@ -236,6 +229,37 @@ export class CohortDecisionService {
         cutover,
       }),
     );
+  }
+
+  /**
+   * Members admissible at `at` and ready, with the cohort deciding them;
+   * `undefined` when none is pending or the cohort decides nobody.
+   */
+  private async pendingCohort(params: {
+    action: ParsedAction;
+    users: User[];
+    at: Date;
+    session: CohortResolutionSession;
+    now: Date;
+  }): Promise<{ pending: User[]; cohort: DecidingCohort } | undefined> {
+    const { action, users, at, session, now } = params;
+    const admissible = users.filter((user) =>
+      isCohortAdmissible({ action, user, at }),
+    );
+    if (admissible.length === 0) return undefined;
+    const pending = await this.prerequisiteProgressService.filterReady({
+      action,
+      users: admissible,
+      session,
+      now,
+    });
+    if (pending.length === 0) return undefined;
+    const cohort = await this.decidingCohort.cohortFor({
+      action,
+      users: pending,
+      session,
+    });
+    return cohort && { pending, cohort };
   }
 
   private async resolveAction(params: {
@@ -248,65 +272,56 @@ export class CohortDecisionService {
     const { action, enrollment, users, session, now } = params;
     switch (enrollment.state) {
       case CohortEnrollmentState.Open: {
-        const admissible = users.filter((user) =>
-          isCohortAdmissible({ action, user, at: now }),
-        );
-        if (admissible.length === 0) return [];
-        const pending = await this.prerequisiteProgressService.filterReady({
+        const found = await this.pendingCohort({
           action,
-          users: admissible,
+          users,
+          at: now,
           session,
           now,
         });
-        if (pending.length === 0) return [];
-        const cohort = await this.cohortResolverService.resolveCohortMemberIds(
-          action.cohortExpression,
-          session,
-        );
+        if (found === undefined) return [];
+        const { pending, cohort } = found;
         return this.decide({
           action,
-          users: pending,
-          included: (user) => cohort.has(user.id),
+          users: pending.filter(cohort.decides),
+          cohort,
           reason: (user) =>
             admissionReason({ action, user, start: enrollment.start }),
           now,
         });
       }
       case CohortEnrollmentState.Closed: {
-        const admissible = users.filter((user) =>
-          isCohortAdmissible({ action, user, at: enrollment.deadline }),
-        );
-        if (admissible.length === 0) return [];
-        const pending = await this.prerequisiteProgressService.filterReady({
+        const found = await this.pendingCohort({
           action,
-          users: admissible,
+          users,
+          at: enrollment.deadline,
           session,
           now,
         });
-        // Only a member held to the whole window of a non-optional action
+        if (found === undefined) return [];
+        const { pending, cohort } = found;
+        const deciding = pending.filter(cohort.decides);
+        // Only a member held to the whole window of work required of them
         // could miss it. Anyone else was only ever optional, so deciding them
         // late creates no missed obligation.
         const obligated = (user: User) =>
-          !action.optional &&
+          cohort.required(user) &&
           user.hasActiveContractInFullRange({
             startDate: enrollment.start,
             endDate: enrollment.deadline,
           });
         await this.warnAboutLateDecisions({
           action,
-          users: pending.filter(obligated),
+          users: deciding.filter(obligated),
           deadline: enrollment.deadline,
         });
-        const cohort = pending.some((user) => !obligated(user))
-          ? await this.cohortResolverService.resolveCohortMemberIds(
-              action.cohortExpression,
-              session,
-            )
-          : new Set<number>();
         return this.decide({
           action,
-          users: pending,
-          included: (user) => !obligated(user) && cohort.has(user.id),
+          users: deciding,
+          cohort: {
+            ...cohort,
+            included: (user) => !obligated(user) && cohort.included(user),
+          },
           reason: (user) =>
             obligated(user)
               ? CohortDecisionReason.ResolvedAfterDeadline
@@ -382,7 +397,7 @@ export class CohortDecisionService {
     const rows = this.decide({
       action,
       users: pending,
-      included: (user) => cohort.has(user.id),
+      cohort: ruleCohort({ memberIds: cohort, optional: action.optional }),
       reason: () => CohortDecisionReason.Backfill,
       now,
     });
@@ -395,36 +410,6 @@ export class CohortDecisionService {
       logger: this.logger,
     });
     return rows;
-  }
-
-  /**
-   * When the resolver first ran: its earliest ordinary decision, counting one
-   * staff have since corrected.
-   */
-  private async findCutover(): Promise<Date | null> {
-    const ordinary = In([
-      CohortDecisionReason.Launch,
-      CohortDecisionReason.Signing,
-      CohortDecisionReason.PrerequisitesResolved,
-    ]);
-    const [decision, correction] = await Promise.all([
-      this.decisionRepository.findOne({
-        where: { reason: ordinary },
-        order: { resolvedAt: "ASC" },
-        select: { resolvedAt: true },
-      }),
-      this.correctionRepository.findOne({
-        where: { previousReason: ordinary },
-        order: { previousResolvedAt: "ASC" },
-        select: { previousResolvedAt: true },
-      }),
-    ]);
-    const times = [decision?.resolvedAt, correction?.previousResolvedAt].filter(
-      (time) => time !== undefined,
-    );
-    return times.length === 0
-      ? null
-      : new Date(Math.min(...times.map((time) => time.getTime())));
   }
 
   /**
@@ -442,7 +427,7 @@ export class CohortDecisionService {
       this.cohortResolverService.primeActiveUsers(session, () =>
         this.userService.findActiveUsersForRoster(),
       ),
-      this.findDecidedUserIds([action.id]),
+      this.store.findDecidedUserIds([action.id]),
     ]);
     const decided = decidedByAction.get(action.id) ?? new Set<number>();
     const settled = users.filter((user) => isSettled(user, now));
@@ -456,7 +441,7 @@ export class CohortDecisionService {
         `Failed to decide the closed actions action ${action.id} reads`,
       );
     }
-    await this.insert(
+    await this.store.insert(
       await this.resolveAction({
         action,
         enrollment,
@@ -500,7 +485,7 @@ export class CohortDecisionService {
       ),
     );
     if (admissible.length === 0) return new Set();
-    const decidedByAction = await this.findDecidedUserIds(
+    const decidedByAction = await this.store.findDecidedUserIds(
       admissible.map(({ action }) => action.id),
       users.length === 1 ? users[0].id : undefined,
     );
@@ -569,27 +554,12 @@ export class CohortDecisionService {
       return this.decideForUser({ user, actions: decidable, now });
     }
     const open = openEnrollments(decidable, now);
-    const decided = await this.loadDecidedActionIds(user.id, open);
+    const decided = await this.store.loadDecidedActionIds(user.id, open);
     return new Set(
       open
         .map(({ action }) => action.id)
         .filter((actionId) => !decided.has(actionId)),
     );
-  }
-
-  private async loadDecidedActionIds(
-    userId: number,
-    open: Array<{ action: ParsedAction }>,
-  ): Promise<Set<number>> {
-    if (open.length === 0) return new Set();
-    const rows = await this.decisionRepository.find({
-      where: {
-        userId,
-        actionId: In(open.map(({ action }) => action.id)),
-      },
-      select: { actionId: true },
-    });
-    return new Set(rows.map((row) => row.actionId));
   }
 
   /**
@@ -605,7 +575,7 @@ export class CohortDecisionService {
     const { user, actions, now } = params;
     const open = openEnrollments(actions, now);
     if (open.length === 0) return new Set();
-    const decided = await this.loadDecidedActionIds(user.id, open);
+    const decided = await this.store.loadDecidedActionIds(user.id, open);
     const undecided = open.filter(({ action }) => !decided.has(action.id));
     if (undecided.length === 0) return new Set();
     const admissible = undecided.filter(({ action }) =>
@@ -644,22 +614,23 @@ export class CohortDecisionService {
       }
       rows.push(...result.value);
     }
-    await this.insert(rows);
+    await this.store.insert(rows);
     return failed;
   }
 
   private decide(params: {
     action: ParsedAction;
     users: User[];
-    included: (user: User) => boolean;
+    cohort: Pick<DecidingCohort, "included" | "optional">;
     reason: (user: User) => CohortDecisionReason;
     now: Date;
   }): DecisionRow[] {
-    const { action, users, included, reason, now } = params;
+    const { action, users, cohort, reason, now } = params;
     const rows = users.map((user) => ({
       actionId: action.id,
       userId: user.id,
-      included: included(user),
+      included: cohort.included(user),
+      optional: cohort.optional(user),
       reason: reason(user),
       resolvedAt: now,
     }));
@@ -692,71 +663,5 @@ export class CohortDecisionService {
     return (await this.findResolvableActions(now)).filter(({ enrollment }) =>
       isInCatchUp(enrollment, now),
     );
-  }
-
-  private async findActionIdsWithDecisions(
-    actionIds: number[],
-  ): Promise<Set<number>> {
-    if (actionIds.length === 0) return new Set();
-    const rows = await this.decisionRepository
-      .createQueryBuilder("decision")
-      .select('DISTINCT decision."actionId"', "actionId")
-      .where('decision."actionId" IN (:...actionIds)', { actionIds })
-      .getRawMany<{ actionId: number }>();
-    return new Set(rows.map((row) => row.actionId));
-  }
-
-  private async findDecidedUserIds(
-    actionIds: number[],
-    onlyUserId?: number,
-  ): Promise<Map<number, Set<number>>> {
-    const rows = await this.decisionRepository.find({
-      where: {
-        actionId: In(actionIds),
-        ...(onlyUserId === undefined ? {} : { userId: onlyUserId }),
-      },
-      select: { actionId: true, userId: true },
-    });
-    const byAction = new Map<number, Set<number>>();
-    for (const { actionId, userId } of rows) {
-      let userIds = byAction.get(actionId);
-      if (!userIds) {
-        userIds = new Set();
-        byAction.set(actionId, userIds);
-      }
-      userIds.add(userId);
-    }
-    return byAction;
-  }
-
-  /**
-   * All or nothing, so a later pass never skips a half-backfilled action. A
-   * concurrent writer's row wins; decisions are final once written. Rows for
-   * an action or account deleted since the pass loaded them are dropped.
-   */
-  private async insert(rows: DecisionRow[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.decisionRepository.manager.transaction(async (manager) => {
-      const liveActionIds = await lockLiveIds(manager, {
-        target: Action,
-        ids: [...new Set(rows.map((row) => row.actionId))],
-      });
-      const liveUserIds = await lockLiveIds(manager, {
-        target: User,
-        ids: [...new Set(rows.map((row) => row.userId))],
-      });
-      const live = rows.filter(
-        (row) => liveActionIds.has(row.actionId) && liveUserIds.has(row.userId),
-      );
-      for (let i = 0; i < live.length; i += INSERT_CHUNK_SIZE) {
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(ActionCohortDecision)
-          .values(live.slice(i, i + INSERT_CHUNK_SIZE))
-          .orIgnore()
-          .execute();
-      }
-    });
   }
 }

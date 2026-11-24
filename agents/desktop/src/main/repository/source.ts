@@ -13,7 +13,7 @@ export type RepositorySource = {
 export const allianceSource = (home: string): RepositorySource => ({
   url: "https://github.com/worldalliance/alliance.git",
   firstCommit: "08337694b991b30e3290e685ba656656c4ef5633",
-  // Adds scripts/list-worktrees.ts, which the task sidebar reads.
+  // Adds scripts/list-worktrees.ts, which the worktree sidebar reads.
   minimumCommit: "99c38cf0e4f7fb393bf874104f0074a35827db20",
   defaultFolder: path.join(home, "alliance", "workspaces", "alliance"),
 });

@@ -48,6 +48,11 @@ export type Bindings = Scope & {
   ) => Result<Value, EvalFailure>;
   /** Whether the member is on the list, at the membership the host pins. */
   isOnList: (listId: string) => Result<boolean, EvalFailure>;
+  /**
+   * Told each branch as the evaluation takes it, including in named
+   * expressions it reads: the very node `branches` lists for that tree.
+   */
+  onBranch?: (taken: Expr) => void;
 };
 
 type Params = ReadonlyMap<string, Value>;
@@ -119,7 +124,9 @@ class Evaluator {
         if (test === null) return null;
         if (typeof test !== "boolean")
           throw evalError("A ? test needs a yes/no value.");
-        return this.run(test ? expr.consequent : expr.alternate, params);
+        const taken = test ? expr.consequent : expr.alternate;
+        this.bindings.onBranch?.(taken);
+        return this.run(taken, params);
       }
       case ExprKind.Member:
         return member({
@@ -241,7 +248,9 @@ class Evaluator {
   ): Value {
     if (expr.op === BinaryOp.Coalesce) {
       const left = this.run(expr.left, params);
-      return left === null ? this.run(expr.right, params) : left;
+      if (left !== null) return left;
+      this.bindings.onBranch?.(expr.right);
+      return this.run(expr.right, params);
     }
     const [left, right] = this.all([expr.left, expr.right], params);
     return binary({ op: expr.op, left, right });
