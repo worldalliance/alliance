@@ -238,10 +238,6 @@ src/components/suite-partition/PartitionPreview.tsx
 src/components/suite-partition/SuitePartitionConvert.tsx
 src/components/suite-partition/SuitePartitionEditor.tsx
 src/components/suite-partition/SuitePartitionSection.tsx
-src/components/texts/ComposingNotice.tsx
-src/components/texts/TextComposer.tsx
-src/components/texts/TextHistory.tsx
-src/components/texts/TextThreadSection.tsx
 src/components/waitlist/EntryActions.tsx
 src/components/waitlist/EntryContactActions.tsx
 src/components/waitlist/InlineNameForm.tsx

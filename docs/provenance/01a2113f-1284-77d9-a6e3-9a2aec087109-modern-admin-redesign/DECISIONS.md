@@ -441,3 +441,10 @@ Agent decisions by the members area's lead and its page agents, for People, the 
 - **The Friend graph is a workspace with an inspector.** Its friendship count counts drawn, de-duplicated pairs; when friendships fail to load the summary leaves the count out. Graph nodes still can't take keyboard focus, as before; each member's friends are on their record (asks/members-07).
 - **Shared components restyled here keep their paths and props:** `FailedLoadsBanner` (now a danger banner; `className` ignored, `BACKCOMPAT(failed-loads-class)` until tasks stops passing it) and the force-graph filters (labels above their selects), so the tasks overview and the invite graph change look (`$B/fanout/mounts.md`).
 - **Review:** every commit went through the review loop with same-model (Opus 5.5) reviewers in a fresh context, as all agents ran on Opus from 08:20 Nov 25; the peek's wiring commit was written by Sonnet 5.5. Findings below the fix-now bar were dropped with a reason in the loop's ledger.
+
+## Inbox: the text conversation
+
+Agent judgement in the review loop; the user was asleep.
+
+- **A failed mark shows in the conversation it was made in, and as a toast once staff have left it.** The member record keeps one conversation mounted across members, so a banner not tied to its number showed one member's failed opt-out inside the next member's texts.
+- **The conversation's "Mark opted out" confirm closes when its conversation changes, not when the path does**, so it takes the section's own signal rather than `useConfirmOnPage()`: an inbox pane may switch conversations without a new path, and the same signal decides whether a failed mark shows as a banner or a toast.

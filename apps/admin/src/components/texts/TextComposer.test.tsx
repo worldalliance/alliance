@@ -116,7 +116,7 @@ it("keeps focus on Send while a send is in flight, sending once", async () => {
   send.focus();
 
   fireEvent.click(send);
-  const sending = screen.getByRole("button", { name: "Sending…" });
+  const sending = screen.getByRole("button", { name: "Send" });
   expect(sending.getAttribute("aria-disabled")).toBe("true");
   expect(document.activeElement).toBe(sending);
   fireEvent.click(sending);

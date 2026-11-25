@@ -201,7 +201,7 @@ it("shows one error for a thread that doesn't exist", async () => {
   renderPage();
 
   expect(await screen.findByText("Thread not found")).toBeTruthy();
-  expect(screen.queryByText("Failed to load texts")).toBeNull();
+  expect(screen.queryByText("Couldn't load texts")).toBeNull();
 });
 
 it("links to the page of each member on the number", async () => {

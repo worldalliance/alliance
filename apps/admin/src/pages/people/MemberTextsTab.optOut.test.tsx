@@ -105,10 +105,13 @@ it("says the opt-out is pending while it is", async () => {
   renderSection();
   await confirmMarkOptedOut();
 
-  const button = await screen.findByRole<HTMLButtonElement>("button", {
-    name: "Marking opted out…",
-  });
-  expect(button.disabled).toBe(true);
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBe("true"),
+  );
 });
 
 it("frees the next member's opt-out control while one is pending", async () => {
@@ -119,13 +122,13 @@ it("frees the next member's opt-out control while one is pending", async () => {
 
   show(KIM);
 
-  expect(
-    (
-      await screen.findByRole<HTMLButtonElement>("button", {
-        name: "Mark opted out",
-      })
-    ).disabled,
-  ).toBe(false);
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBeNull(),
+  );
 });
 
 it("still shows the opt-out pending after the section remounts mid-request", async () => {
@@ -137,10 +140,13 @@ it("still shows the opt-out pending after the section remounts mid-request", asy
   unmount();
   show(SAM);
 
-  const button = await screen.findByRole<HTMLButtonElement>("button", {
-    name: "Marking opted out…",
-  });
-  expect(button.disabled).toBe(true);
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBe("true"),
+  );
 });
 
 it("marks the member the opt-out was made for when it lands after the page moves on", async () => {
@@ -175,7 +181,9 @@ it("marks a member opted out after confirming and refreshes Needs Reply", async 
   await waitFor(() => expect(optOuts).toBe(1));
   expect(await screen.findByText("Opted out")).toBeTruthy();
   await waitFor(() =>
-    expect(document.activeElement).toBe(screen.getByText("Opted out")),
+    expect(document.activeElement).toBe(
+      screen.getByText("Opted out").parentElement,
+    ),
   );
   await waitFor(() => expect(needsReplyInvalidated(client)).toBe(true));
   expect(screen.queryByLabelText("Text Sam")).toBeNull();
@@ -184,9 +192,9 @@ it("marks a member opted out after confirming and refreshes Needs Reply", async 
 it("moves focus to the badge only once, not on a later visit", async () => {
   const { show } = renderSection();
   await confirmMarkOptedOut();
-  const badge = await screen.findByText("Opted out");
+  const badge = (await screen.findByText("Opted out")).parentElement;
   await waitFor(() => expect(document.activeElement).toBe(badge));
-  badge.blur();
+  badge?.blur();
 
   show(KIM);
   await screen.findByRole("button", { name: "Mark opted out" });
@@ -223,7 +231,13 @@ it("still focuses the next member's badge after an earlier opt-out fails", async
 
   show(KIM);
   await confirmMarkOptedOut();
-  await screen.findByRole("button", { name: "Marking opted out…" });
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Mark opted out" })
+        .getAttribute("aria-busy"),
+    ).toBe("true"),
+  );
   openSamGate();
   await screen.findByText("Problem marking Sam opted out");
   act(() => {
@@ -232,8 +246,38 @@ it("still focuses the next member's badge after an earlier opt-out fails", async
   });
   openKimGate();
 
-  const badge = await screen.findByText("Opted out");
+  const badge = (await screen.findByText("Opted out")).parentElement;
   await waitFor(() => expect(document.activeElement).toBe(badge));
+});
+
+const texts = () => screen.getByRole("region", { name: "Texts" });
+
+it("keeps a failed opt-out out of the next member's conversation", async () => {
+  optOutRefusal = "This phone number can't receive texts from staff.";
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  await screen.findByText("Problem marking Sam opted out");
+
+  show(KIM);
+  await screen.findByLabelText("Text Kim");
+
+  expect(texts().textContent).not.toContain("Problem marking Sam");
+});
+
+it("tells staff about an opt-out that fails after they move on, outside the next conversation", async () => {
+  let openGate = () => {};
+  optOutGate = new Promise((resolve) => (openGate = resolve));
+  optOutRefusal = "This phone number can't receive texts from staff.";
+  const { show } = renderSection();
+  await confirmMarkOptedOut();
+  await waitFor(() => expect(optOuts).toBe(1));
+
+  show(KIM);
+  await screen.findByLabelText("Text Kim");
+  openGate();
+
+  await screen.findByText("Problem marking Sam opted out");
+  expect(texts().textContent).not.toContain("Problem marking Sam");
 });
 
 it("leaves a member subscribed when the confirmation is cancelled", async () => {

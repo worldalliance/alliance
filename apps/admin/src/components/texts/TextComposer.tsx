@@ -6,6 +6,7 @@ import {
   minuteStart,
   useClockMinute,
 } from "@alliance/shared/lib/useClockMinute";
+import { Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { SegmentedMessage } from "sms-segments-calculator";
@@ -17,8 +18,10 @@ import {
   staffTextConflict,
 } from "../../lib/memberTexts";
 import { useReportComposing } from "../../lib/useReportComposing";
-import Button, { ButtonColor } from "../../ui/Button";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { Kbd } from "../../ui/Kbd";
 import { ToastVariant, useToast } from "../../ui/ToastProvider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/Tooltip";
 import ComposingNotice from "./ComposingNotice";
 
 const CONFLICT_COPY: Record<
@@ -89,12 +92,15 @@ export default function TextComposer({
   }, []);
 
   const localTime = memberLocalTime(timeZone, now);
+  const localTimeLabel = localTime.ok
+    ? `Their local time: ${localTime.value.label}`
+    : UNKNOWN_LOCAL_TIME[localTime.error];
   const segments = body ? new SegmentedMessage(body, "auto") : null;
   const tooLong = body.length > STAFF_TEXT_MAX_LENGTH;
   const blank = body.trim().length === 0;
   const blankShown = triedBlank && blank;
   const describedBy = [
-    `${inputId}-hint`,
+    !warning && `${inputId}-hint`,
     tooLong && `${inputId}-too-long`,
     blankShown && `${inputId}-blank`,
     error && `${inputId}-error`,
@@ -154,126 +160,148 @@ export default function TextComposer({
 
   return (
     <form
-      className="space-y-2"
+      className="flex flex-col gap-1.5"
       onSubmit={(event) => {
         event.preventDefault();
         void submit({ confirmedQuietHours: false });
       }}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={inputId} className="block text-xs text-zinc-600">
+      <div className="flex items-center justify-between gap-3">
+        <label
+          htmlFor={inputId}
+          className="min-w-0 truncate text-caption font-medium text-fg-muted"
+        >
           Text {recipientName}
         </label>
-        <ComposingNotice phoneNumber={phoneNumber} />
+        <ComposingNotice phoneNumber={phoneNumber} className="shrink-0" />
       </div>
-      <TextareaAutosize
-        ref={textarea}
-        id={inputId}
-        value={body}
-        onChange={(event) => {
-          if (!body) seenThrough.current = newestTextId();
-          setBody(event.target.value);
-        }}
-        minRows={2}
-        maxRows={8}
-        aria-describedby={describedBy}
-        aria-invalid={tooLong || blankShown}
-        className="w-full rounded border border-zinc-300 p-2 text-sm"
-      />
-      <div
-        id={`${inputId}-hint`}
-        className="flex flex-col text-xs text-zinc-600"
-      >
-        <span>
-          {segments
-            ? `${segments.segmentsCount} ${segments.segmentsCount === 1 ? "segment" : "segments"}${segments.encodingName === "UCS-2" ? " (emoji or special characters make segments shorter)" : ""}`
-            : `Up to ${STAFF_TEXT_MAX_LENGTH.toLocaleString()} characters. Texts over 160, or 70 with emoji or special characters, are split.`}
-        </span>
-        <span>
-          {localTime.ok
-            ? `Their local time: ${localTime.value.label}`
-            : UNKNOWN_LOCAL_TIME[localTime.error]}
-        </span>
-      </div>
-      {tooLong && (
-        <p
-          id={`${inputId}-too-long`}
-          role="alert"
-          className="text-sm text-red-600"
-        >
-          This text is over the {STAFF_TEXT_MAX_LENGTH.toLocaleString()}
-          -character limit. Shorten it to send.
-        </p>
-      )}
-      {warning && (
-        <div
-          role="alert"
-          className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
-        >
-          <p>
-            {quietWarning !== null ? (
-              <>
-                It&apos;s {quietWarning} for {recipientName}. Texts between{" "}
-                {QUIET_HOURS_LABEL} their time can be unwelcome.
-              </>
-            ) : (
-              conflict && CONFLICT_COPY[conflict.kind].warning
-            )}
-          </p>
-          <div className="mt-2 flex gap-2">
-            <Button
-              ref={sendAnyway}
-              size="small"
-              color={ButtonColor.Stone}
-              onClick={() =>
-                void submit({
-                  confirmedQuietHours: conflict?.confirmedQuietHours ?? true,
-                })
-              }
-            >
-              Send anyway
-            </Button>
-            <Button
-              size="small"
-              onClick={() => {
-                setQuietWarning(null);
-                setConflict(null);
-                textarea.current?.focus();
-              }}
-            >
-              Don&apos;t send
-            </Button>
+      <div className="overflow-hidden rounded-card border border-line-control bg-surface has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:-outline-offset-1 has-[textarea:focus-visible]:outline-accent has-[textarea[aria-invalid=true]]:border-danger">
+        <TextareaAutosize
+          ref={textarea}
+          id={inputId}
+          value={body}
+          onChange={(event) => {
+            if (!body) seenThrough.current = newestTextId();
+            setBody(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey))
+              return;
+            event.preventDefault();
+            // A warning is answered with its own buttons, not from the box.
+            if (!warning) void submit({ confirmedQuietHours: false });
+          }}
+          minRows={2}
+          maxRows={8}
+          aria-describedby={describedBy || undefined}
+          aria-invalid={tooLong || blankShown}
+          className="block w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-body text-fg outline-hidden"
+        />
+        {/* One height for the hints and for a warning, so a warning doesn't
+            push the history up. */}
+        {warning ? (
+          <div
+            role="alert"
+            className="flex min-h-22 flex-col justify-between gap-2 border-t border-warning bg-warning-soft px-3 py-2"
+          >
+            <p className="flex gap-2">
+              <TriangleAlert
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-warning"
+              />
+              <span>
+                {quietWarning !== null ? (
+                  <>
+                    It&apos;s {quietWarning} for {recipientName}. Texts between{" "}
+                    {QUIET_HOURS_LABEL} their time can be unwelcome.
+                  </>
+                ) : (
+                  conflict && CONFLICT_COPY[conflict.kind].warning
+                )}
+              </span>
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-caption text-fg-muted">
+                {localTimeLabel}
+              </span>
+              <Button
+                size="small"
+                variant={ButtonVariant.Default}
+                onClick={() => {
+                  setQuietWarning(null);
+                  setConflict(null);
+                  textarea.current?.focus();
+                }}
+              >
+                Don&apos;t send
+              </Button>
+              <Button
+                ref={sendAnyway}
+                size="small"
+                variant={ButtonVariant.Primary}
+                onClick={() =>
+                  void submit({
+                    confirmedQuietHours: conflict?.confirmedQuietHours ?? true,
+                  })
+                }
+              >
+                Send anyway
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-      {blankShown && (
-        <p
-          id={`${inputId}-blank`}
-          role="alert"
-          className="text-sm text-red-600"
-        >
-          Write a text to send.
-        </p>
-      )}
-      {error && (
-        <p
-          id={`${inputId}-error`}
-          role="alert"
-          className="text-sm text-red-600"
-        >
-          {error}
-        </p>
-      )}
-      {!warning && (
-        <Button
-          type="submit"
-          size="small"
-          color={ButtonColor.Stone}
-          aria-disabled={pending}
-        >
-          {pending ? "Sending…" : "Send"}
-        </Button>
-      )}
+        ) : (
+          <div className="flex min-h-22 items-end gap-3 px-3 py-2">
+            <div
+              id={`${inputId}-hint`}
+              className="flex min-w-0 flex-1 flex-col text-caption text-fg-muted"
+            >
+              <span>
+                {segments
+                  ? `${segments.segmentsCount} ${segments.segmentsCount === 1 ? "segment" : "segments"}${segments.encodingName === "UCS-2" ? " (emoji or special characters make segments shorter)" : ""}`
+                  : `Up to ${STAFF_TEXT_MAX_LENGTH.toLocaleString()} characters. Texts over 160, or 70 with emoji or special characters, are split.`}
+              </span>
+              <span>{localTimeLabel}</span>
+            </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="submit"
+                    size="small"
+                    variant={ButtonVariant.Primary}
+                    busy={pending}
+                  />
+                }
+              >
+                {!pending && <Send aria-hidden="true" className="size-4" />}
+                Send
+              </TooltipTrigger>
+              <TooltipContent className="flex items-center gap-1">
+                <Kbd>⌘ Enter</Kbd> or <Kbd>Ctrl Enter</Kbd>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+      </div>
+      {/* Holds one line, so a message under the box moves nothing. */}
+      <div className="flex min-h-4 flex-col gap-1 text-caption text-danger">
+        {tooLong && (
+          <p id={`${inputId}-too-long`} role="alert">
+            This text is over the {STAFF_TEXT_MAX_LENGTH.toLocaleString()}
+            -character limit. Shorten it to send.
+          </p>
+        )}
+        {blankShown && (
+          <p id={`${inputId}-blank`} role="alert">
+            Write a text to send.
+          </p>
+        )}
+        {error && (
+          <p id={`${inputId}-error`} role="alert">
+            {error}
+          </p>
+        )}
+      </div>
     </form>
   );
 }
