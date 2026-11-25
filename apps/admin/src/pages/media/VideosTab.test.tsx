@@ -7,12 +7,14 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { ToastProvider } from "../ui/ToastProvider";
-import VideoManagement from "./VideoManagement";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import MediaPlace from "../../places/MediaPlace";
+import { ToastProvider } from "../../ui/ToastProvider";
 
 const video = (id: number, originalFilename: string) =>
   ({
@@ -65,26 +67,80 @@ beforeEach(() => {
   deleted.length = 0;
 });
 
-const renderPage = (query = queryWrapper()) =>
+const renderPage = (
+  query = queryWrapper(),
+  url = "/content/media?tab=videos",
+) =>
   render(
-    <ToastProvider>
-      <MemoryRouter>
-        <VideoManagement />
-      </MemoryRouter>
-    </ToastProvider>,
+    <MemoryRouter initialEntries={[url]}>
+      <ToastProvider>
+        <MediaPlace />
+      </ToastProvider>
+    </MemoryRouter>,
     query,
   );
 
 const deleteFirst = async () => {
-  const [first] = await screen.findAllByRole("button", { name: "×" });
-  fireEvent.click(first);
-  fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete: intro.mp4" }),
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Delete video" }));
 };
 
 it("lists the loaded videos", async () => {
   renderPage();
   expect(await screen.findByText("intro.mp4")).toBeTruthy();
   expect(screen.getByText("outro.mp4")).toBeTruthy();
+});
+
+it("links each video to its record", async () => {
+  renderPage();
+  expect(
+    (await screen.findByRole("link", { name: "intro.mp4" })).getAttribute(
+      "href",
+    ),
+  ).toBe("/content/media/videos/1");
+});
+
+it("says what deleting a video leaves behind before deleting it", async () => {
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete: intro.mp4" }),
+  );
+
+  const dialog = within(await screen.findByRole("dialog"));
+  expect(dialog.getByText(/Delete the video “intro.mp4”\?/)).toBeTruthy();
+  expect(
+    dialog.getByText(
+      "Video 1 disappears from the app, but its files stay in storage, so a direct link someone already copied keeps playing it.",
+    ),
+  ).toBeTruthy();
+  fireEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(deleted).toEqual([]);
+  expect(screen.getByText("intro.mp4")).toBeTruthy();
+});
+
+it("filters the videos by filename, in the URL, and says when none match", async () => {
+  renderPage(queryWrapper(), "/content/media?tab=videos&q=out");
+  expect(await screen.findByText("outro.mp4")).toBeTruthy();
+  expect(screen.queryByText("intro.mp4")).toBeNull();
+  expect(screen.getByText("1 of 2 videos")).toBeTruthy();
+
+  fireEvent.change(screen.getByRole("searchbox", { name: "Filter videos" }), {
+    target: { value: "zzz" },
+  });
+  expect(await screen.findByText("No results")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  expect(await screen.findByText("intro.mp4")).toBeTruthy();
+});
+
+it("says there are no videos yet when none exist", async () => {
+  stored = [];
+  renderPage();
+  expect(await screen.findByText("No videos yet")).toBeTruthy();
 });
 
 it("removes a deleted video from the list", async () => {
@@ -100,8 +156,15 @@ it("keeps the video and says so when the delete fails", async () => {
   renderPage();
   await deleteFirst();
 
-  expect(await screen.findByText("Failed to delete video")).toBeTruthy();
+  // The banner stays until dismissed; the toast beside it goes on its own.
+  const dismiss = await screen.findByText("Dismiss", { selector: "button" });
+  const banner = dismiss.closest<HTMLElement>('[role="alert"]');
+  if (!banner) throw new Error("no banner");
+  expect(within(banner).getByText("Failed to delete video")).toBeTruthy();
   expect(screen.getByText("intro.mp4")).toBeTruthy();
+
+  fireEvent.click(dismiss);
+  expect(screen.queryByText("Dismiss", { selector: "button" })).toBeNull();
 });
 
 it("drops a video another admin already deleted", async () => {
@@ -144,8 +207,9 @@ it("keeps the delete when a refetch started before it lands after it", async () 
 it("says the videos failed to load instead of listing none", async () => {
   loadStatus = 500;
   renderPage();
-  expect(await screen.findByText("Failed to load videos")).toBeTruthy();
-  expect(screen.queryByText("No videos found.")).toBeNull();
+  expect(await screen.findByText("Couldn't load videos")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  expect(screen.queryByText("No videos yet")).toBeNull();
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
@@ -162,6 +226,6 @@ it("keeps the loaded videos beside a refetch error", async () => {
   loadStatus = 500;
   await act(() => query.client.refetchQueries());
 
-  expect(await screen.findByText("Failed to load videos")).toBeTruthy();
+  expect(await screen.findByText(/Couldn’t refresh the videos/)).toBeTruthy();
   expect(screen.getByText("intro.mp4")).toBeTruthy();
 });

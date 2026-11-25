@@ -54,7 +54,7 @@ export default [
       route("/content/general-updates/:id", "pages/GeneralUpdatePage.tsx"),
       route(FORUM_POST_PATH, "pages/PostsManagement.tsx"),
       route("/content/media", "places/MediaPlace.tsx"),
-      route("/content/media/videos/:videoId", "pages/VideoDetail.tsx"),
+      route("/content/media/videos/:videoId", "pages/media/VideoPage.tsx"),
 
       route("/activity", "pages/EventLogPage.tsx"),
       route("/activity/scheduled", "pages/scheduled/ScheduledJobsPage.tsx"),

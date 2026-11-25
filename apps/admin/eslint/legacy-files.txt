@@ -110,7 +110,6 @@ src/components/VariableInputPickers.tsx
 src/components/VariableInputRow.tsx
 src/components/VariableSamples.tsx
 src/components/VariableTextField.tsx
-src/components/VideoReplaceForm.tsx
 src/components/VisibilityGroupContext.tsx
 src/components/VisibilityProfilePicker.tsx
 src/components/WithdrawalInfo.tsx
@@ -316,7 +315,6 @@ src/pages/FriendGraphPage.tsx
 src/pages/GeneralUpdatePage.tsx
 src/pages/GeneralUpdatesPage.tsx
 src/pages/HostedDocsPage.tsx
-src/pages/ImageUpload.tsx
 src/pages/InviteFeedPage.tsx
 src/pages/InviteGraphPage.tsx
 src/pages/InviteLinksPage.tsx
@@ -347,8 +345,6 @@ src/pages/TextThreadPage.tsx
 src/pages/TextsPage.tsx
 src/pages/UserDetailView.tsx
 src/pages/UsersList.tsx
-src/pages/VideoDetail.tsx
-src/pages/VideoManagement.tsx
 src/pages/WaitlistEmailsPage.tsx
 src/pages/WaitlistPage.tsx
 src/pages/WelcomeQueuePage.tsx
