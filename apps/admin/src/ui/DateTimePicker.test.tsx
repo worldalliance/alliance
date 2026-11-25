@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
 import DateTimePicker, {
+  formatZonedDateTime,
   parseZonedDateTime,
   timeZoneLabel,
 } from "./DateTimePicker";
@@ -112,10 +113,17 @@ describe("parseZonedDateTime", () => {
     );
   });
 
-  it("keeps a year below 100, as typing a year passes through one", () => {
-    expect(
-      parseZonedDateTime("0020-07-04T09:30", PACIFIC)?.getUTCFullYear(),
-    ).toBe(20);
+  it("keeps the wall clock of an early year, as typing a year passes through one", () => {
+    for (const timeZone of [PACIFIC, "Europe/Paris"]) {
+      for (const wallClock of ["0020-07-04T09:30", "1850-07-04T09:30"]) {
+        expect(
+          formatZonedDateTime(parseZonedDateTime(wallClock, timeZone), {
+            timeZone,
+            precision: "minute",
+          }),
+        ).toBe(wallClock);
+      }
+    }
   });
 
   it("returns null for a value that isn't a date and time", () => {

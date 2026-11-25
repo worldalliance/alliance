@@ -68,6 +68,8 @@ export function formatZonedDateTime(
   return date ? format(new TZDate(date, timeZone), WALL_CLOCK[precision]) : "";
 }
 
+const GREGORIAN_CYCLE_MS = 146_097 * 86_400_000;
+
 /**
  * The instant a `datetime-local` value names on the zone's wall clock. A time
  * skipped when clocks go forward resolves an hour later; a time repeated when
@@ -84,11 +86,21 @@ export function parseZonedDateTime(
   const [year, month, day, hour, minute, second] = match
     .slice(1)
     .map((part) => Number(part ?? 0));
-  // The setters take a year below 100 as given; the constructor reads it as 19xx.
-  const date = new TZDate(2000, 0, 1, timeZone);
-  date.setFullYear(year, month - 1, day);
-  date.setHours(hour, minute, second, 0);
-  const time = date.getTime();
+  // The constructor reads a year below 100 as 19xx, so such a year is built
+  // one 400-year Gregorian cycle later and moved back; both lie in every
+  // zone's local mean time, so the offset is the same.
+  const cycles = year < 100 ? 1 : 0;
+  const time =
+    new TZDate(
+      year + 400 * cycles,
+      month - 1,
+      day,
+      hour,
+      minute,
+      second,
+      timeZone,
+    ).getTime() -
+    cycles * GREGORIAN_CYCLE_MS;
   return Number.isNaN(time) ? null : new Date(time);
 }
 
