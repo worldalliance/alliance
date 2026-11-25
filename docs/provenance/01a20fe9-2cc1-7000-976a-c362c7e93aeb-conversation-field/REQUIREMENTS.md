@@ -35,7 +35,7 @@ task: Spec a new "conversational" question type for the Alliance task form, in w
 
 - After a pick whose option has no reply, the note box, when that option shows one, appears at once, with no typing delay. (user-originated)
 - The admin sets per option whether the note box shows after that option is picked, so in the example it can show only after "not convinced". The admin can turn it on for every option. (agent-proposed, user-approved)
-- The note box is indented 75 px, like the member's options. (user-originated)
+- The note box is centred in the form, and narrower than the column, so it doesn't stretch across the page: its width is 70% of what the column leaves after a 90 px indent. (user-originated)
 - The admin can set the note box's label per option, as they set its placeholder. (user-originated)
 - The field's usual Required switch makes the choice required. Each option whose note box is on can also make the note required after that option. (agent-proposed, user-approved)
 

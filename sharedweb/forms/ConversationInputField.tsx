@@ -148,7 +148,7 @@ export function ConversationInputField({
       </div>
 
       {chosen?.note && !typing && (
-        <div className="ml-[75px] space-y-1">
+        <div className="mx-auto w-[calc((100%-90px)*0.7)] space-y-1">
           <label htmlFor={noteId} className="block text-sm text-zinc-700">
             {conversationNoteLabel(chosen.note)}
           </label>

@@ -160,23 +160,25 @@ export function ConversationInputField({
       ) : null}
 
       {chosen?.note && !typing ? (
-        <View className="ml-[75px] gap-1">
-          <Text className="text-sm text-zinc-700">
-            {conversationNoteLabel(chosen.note)}
-          </Text>
-          <TextInput
-            accessibilityLabel={conversationNoteLabel(chosen.note)}
-            className={cn(inputClasses({ hasError, disabled }), "text-base")}
-            style={{ minHeight: 96, paddingVertical: 12, lineHeight: 24 }}
-            value={typeof noteValue === "string" ? noteValue : ""}
-            onChangeText={(text) => onNoteChange?.(text)}
-            placeholder={chosen.note.placeholder}
-            placeholderTextColor="#9ca3af"
-            editable={!disabled}
-            multiline
-            textAlignVertical="top"
-            scrollEnabled={false}
-          />
+        <View className="mx-[45px] items-center">
+          <View className="w-[70%] gap-1">
+            <Text className="text-sm text-zinc-700">
+              {conversationNoteLabel(chosen.note)}
+            </Text>
+            <TextInput
+              accessibilityLabel={conversationNoteLabel(chosen.note)}
+              className={cn(inputClasses({ hasError, disabled }), "text-base")}
+              style={{ minHeight: 96, paddingVertical: 12, lineHeight: 24 }}
+              value={typeof noteValue === "string" ? noteValue : ""}
+              onChangeText={(text) => onNoteChange?.(text)}
+              placeholder={chosen.note.placeholder}
+              placeholderTextColor="#9ca3af"
+              editable={!disabled}
+              multiline
+              textAlignVertical="top"
+              scrollEnabled={false}
+            />
+          </View>
         </View>
       ) : null}
       {renderValidationMessage(errorMessage)}
