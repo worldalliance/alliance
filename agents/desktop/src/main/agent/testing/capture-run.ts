@@ -143,6 +143,13 @@ export async function runScriptedTask(params: {
       `Use ${params.editWith} to change the word hello to goodbye in ${path.relative(repo, params.workFile)}, then reply with one short sentence.`,
     ),
   });
+  const editErrors = edit.flatMap((e) =>
+    e.kind === AgentEventKind.Error ? [e.message] : [],
+  );
+  check(
+    editErrors.length === 0,
+    `the edit turn had no error, but it had: ${editErrors.join("; ")}`,
+  );
   check(
     readFileSync(params.workFile, "utf8").includes("goodbye"),
     "the file was edited",
@@ -155,10 +162,6 @@ export async function runScriptedTask(params: {
       AgentEventKind.AssistantText,
     ].every((k) => kinds(edit).includes(k)),
     "the edit turn streamed text and called a tool",
-  );
-  check(
-    !kinds(edit).includes(AgentEventKind.Error),
-    "the edit turn had no error",
   );
   const interrupted = await turn({
     session: first,

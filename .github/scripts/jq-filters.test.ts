@@ -23,9 +23,9 @@ function jq(params: {
 
 const HASH = "0123456789ab";
 
-describe("formatjs-declined.jq", () => {
+describe("pr-declined.jq", () => {
   const declined = (prs: unknown[]) =>
-    jq({ filter: "scripts/formatjs-declined.jq", input: prs });
+    jq({ filter: "scripts/pr-declined.jq", input: prs });
 
   test("picks closed pull requests, merged ones included", () => {
     expect(
@@ -43,6 +43,39 @@ describe("formatjs-declined.jq", () => {
         { number: 2, state: "closed", labels: [{ name: "superseded" }] },
       ]),
     ).toEqual([]);
+  });
+});
+
+describe("pushed-by-others.jq", () => {
+  const bot = "bot@example.com";
+  const person = "person@example.com";
+  const pushed = (
+    commits: { author?: string; committer?: string; message?: string }[],
+  ) =>
+    jq({
+      filter: "scripts/pushed-by-others.jq",
+      input: commits.map((c) => ({
+        commit: {
+          author: { email: c.author ?? bot },
+          committer: { email: c.committer ?? bot },
+          message: c.message ?? "bump",
+        },
+      })),
+      env: { BOT_EMAIL: bot },
+    });
+
+  test("is false when the bot wrote and committed every commit", () => {
+    expect(
+      pushed([{}, { message: `bump\n\nCo-authored-by: Bot <${bot}>` }]),
+    ).toEqual([false]);
+  });
+
+  test("is true when a person wrote, co-wrote, or amended a commit", () => {
+    expect(pushed([{}, { author: person }])).toEqual([true]);
+    expect(
+      pushed([{ message: `fix\n\nCo-authored-by: A Person <${person}>` }]),
+    ).toEqual([true]);
+    expect(pushed([{ committer: person }])).toEqual([true]);
   });
 });
 

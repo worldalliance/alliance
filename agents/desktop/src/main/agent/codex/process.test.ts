@@ -14,6 +14,7 @@ import { testFolders } from "../testing/folders";
 import { checkCodexVersion, codexConfigArgs, runCodex } from "./process";
 import { captured } from "./testing/capture";
 import { replay, stopReplay, stubCli, writeCapture } from "./testing/stub";
+import { CODEX_VERSION } from "./version";
 
 afterEach(stopReplay);
 
@@ -81,6 +82,6 @@ test("another version fails the version check, naming both", async () => {
   );
   const checked = await checkCodexVersion(stubCli);
   expect(checked.ok ? "" : checked.error.message).toEndWith(
-    "is Codex 0.1.0, but Alliance agent supports only 0.167.0. In a development build, run bun install in agents/desktop.",
+    `is Codex 0.1.0, but Alliance agent supports only ${CODEX_VERSION}. In a development build, run bun install in agents/desktop.`,
   );
 });

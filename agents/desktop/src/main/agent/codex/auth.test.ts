@@ -1,7 +1,12 @@
 import { afterEach, expect, test } from "bun:test";
 import { R } from "../../../../../../common/src/result";
 import { CaptureRecordKind } from "../testing/capture-record";
-import { isSignedInToCodex, signInToCodex } from "./auth";
+import {
+  CodexLogin,
+  isSignedInToCodex,
+  readCodexLogin,
+  signInToCodex,
+} from "./auth";
 import { codexConfigArgs } from "./process";
 import { replay, stopReplay, stubCli, writeCapture } from "./testing/stub";
 
@@ -29,6 +34,15 @@ test("codex login status decides whether Codex is signed in through ChatGPT", as
   expect(await isSignedInToCodex(stubCli)).toEqual(R.success(false));
   loginStatus("Logged in using access token\n", 0);
   expect(await isSignedInToCodex(stubCli)).toEqual(R.success(false));
+});
+
+test("codex login status tells an API key apart from other credentials", async () => {
+  loginStatus("API key configured - sk-[redacted]\n", 0);
+  expect(await readCodexLogin(stubCli)).toEqual(R.success(CodexLogin.ApiKey));
+  loginStatus("Logged in using access token\n", 0);
+  expect(await readCodexLogin(stubCli)).toEqual(
+    R.success(CodexLogin.OtherCredential),
+  );
 });
 
 test("a login status Alliance agent doesn't recognise, or with an unexpected exit code, fails, quoting it", async () => {

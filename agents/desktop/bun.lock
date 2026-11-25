@@ -18,6 +18,7 @@
         "@types/proper-lockfile": "^4.1.4",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
+        "@types/semver": "^7.8.0",
         "@types/write-file-atomic": "^4.0.3",
         "@vitejs/plugin-react": "^6.2.1",
         "electron": "^45.2.3",
@@ -27,6 +28,7 @@
         "eslint-plugin-react-hooks": "^7.1.1",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
+        "semver": "^7.7.3",
         "typescript": "~6.0.3",
         "typescript-eslint": "^8.72.1",
         "vite": "^8.3.6",
@@ -243,6 +245,8 @@
     "@types/responselike": ["@types/responselike@1.0.3", "", { "dependencies": { "@types/node": "*" } }, "sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw=="],
 
     "@types/retry": ["@types/retry@0.12.5", "", {}, "sha512-3xSjTp3v03X/lSQLkczaN9UIEwJMoMCA1+Nb5HfbJEQWogdeQIyVtTvxPXDQjZ5zws8rFQfVfRdz03ARihPJgw=="],
+
+    "@types/semver": ["@types/semver@7.8.0", "", {}, "sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ=="],
 
     "@types/write-file-atomic": ["@types/write-file-atomic@4.0.3", "", { "dependencies": { "@types/node": "*" } }, "sha512-qdo+vZRchyJIHNeuI1nrpsLw+hnkgqP/8mlaN6Wle/NKhydHmUN9l4p3ZE8yP90AJNJW4uB8HQhedb4f1vNayQ=="],
 
