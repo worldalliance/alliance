@@ -8,7 +8,7 @@ import {
   startOfDay,
 } from "date-fns";
 import { MemoryRouter } from "react-router";
-import type { TimelineReminder } from "../lib/actionTimelineData";
+import type { TimelineReminder } from "../../../lib/actionTimelineData";
 import ActionTimeline from "./ActionTimeline";
 
 const daysFromNow = (days: number) =>
@@ -74,12 +74,10 @@ describe("ActionTimeline", () => {
   it("says so when there is nothing to chart", () => {
     renderTimeline({ actions: [] });
 
-    expect(
-      screen.getByText("No actions with timeline events found."),
-    ).toBeTruthy();
+    expect(screen.getByText("No tasks with timeline events.")).toBeTruthy();
   });
 
-  it("colors member action bars by project, falling back to name", () => {
+  it("colors member action bars by project, and leaves the rest uncolored", () => {
     const project = { id: 1, name: "Shared project", category: [] };
     const withEvents = (id: number, name: string) => ({
       ...running,
@@ -95,13 +93,13 @@ describe("ActionTimeline", () => {
       ],
     });
     const barColor = (name: string) =>
-      /#[0-9a-f]{6}/.exec(
-        screen.getByTitle(new RegExp(`^${name}:`)).style.cssText,
+      /\bbg-cat-\d-soft\b/.exec(
+        screen.getByTitle(new RegExp(`^${name}:`)).outerHTML,
       )?.[0];
 
     expect(barColor("First")).toBeDefined();
     expect(barColor("First")).toBe(barColor("Second"));
-    expect(barColor("Third")).not.toBe(barColor("First"));
+    expect(barColor("Third")).toBeUndefined();
   });
 
   it("highlights every row of the hovered action's project", () => {
@@ -113,19 +111,22 @@ describe("ActionTimeline", () => {
         { ...running, id: 3, name: "Loner" },
       ],
     });
-    const nameRow = (name: string) => screen.getByText(name).closest("a")!;
+    const row = (name: string) =>
+      screen.getByRole("link", { name }).closest("[data-task-row]")!;
+    const highlighted = (name: string) =>
+      row(name).hasAttribute("data-highlighted");
 
-    fireEvent.mouseEnter(nameRow("Finished action"));
+    fireEvent.mouseEnter(row("Finished action"));
 
-    expect(nameRow("Running action").className).toContain(" bg-zinc-50");
-    expect(nameRow("Loner").className).not.toContain(" bg-zinc-50");
+    expect(highlighted("Running action")).toBe(true);
+    expect(highlighted("Loner")).toBe(false);
     expect(
-      screen.getByTitle(/^Running action:/).parentElement!.className,
-    ).toContain(" bg-gray-50");
+      row("Running action").contains(screen.getByTitle(/^Running action:/)),
+    ).toBe(true);
 
-    fireEvent.mouseLeave(nameRow("Finished action"));
+    fireEvent.mouseLeave(row("Finished action"));
 
-    expect(nameRow("Running action").className).not.toContain(" bg-zinc-50");
+    expect(highlighted("Running action")).toBe(false);
   });
 
   it("scrolls a week's header to the first action with a bar that week", () => {
@@ -136,11 +137,13 @@ describe("ActionTimeline", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: `Scroll to actions active in week ${weekNumber}`,
+        name: new RegExp(
+          `^Jump to the first task active in week ${weekNumber},`,
+        ),
       }),
     );
 
-    expect(container.querySelector(".overflow-auto")?.scrollTop).toBe(64);
+    expect(container.querySelector(".overflow-auto")?.scrollTop).toBe(56);
   });
 
   it("reports which reminder was clicked", () => {

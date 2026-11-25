@@ -1,0 +1,104 @@
+import { Link } from "react-router";
+import { formatDate, formatDateTime } from "../../../lib/formatDate";
+import { countOf } from "../../../lib/formatNumber";
+import { projectHref, suiteHref } from "../../../lib/hrefs";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
+import { cn } from "../../../ui/cn";
+import PhaseBadge, { phaseLabel } from "../../../ui/PhaseBadge";
+import { nameLinkClass } from "../../../ui/styles";
+import { zIndex } from "../../../ui/zIndex";
+import {
+  GroupBy,
+  pixelsAt,
+  PROJECT_CAT_CLASS,
+  projectCat,
+  type TimelineGroup,
+} from "./timelineRules";
+
+const HREF: Record<GroupBy, (id: number) => string> = {
+  [GroupBy.Suite]: suiteHref,
+  [GroupBy.Project]: projectHref,
+};
+
+/** A group's name, with what the group shares drawn across the weeks. */
+export function TimelineGroupHeader({
+  group,
+  start,
+}: {
+  group: TimelineGroup;
+  start: Date;
+}) {
+  const cat =
+    group.kind === GroupBy.Project && group.id !== null
+      ? PROJECT_CAT_CLASS[projectCat(group.id)]
+      : null;
+  const span = group.span;
+  const left = span ? pixelsAt(span.start.getTime(), start) : 0;
+  const width = span
+    ? Math.max(pixelsAt(span.end.getTime(), start) - left, 4)
+    : 0;
+  return (
+    <div className="flex h-10 border-b border-line bg-canvas">
+      <div
+        className={cn(
+          "sticky left-0 flex w-80 shrink-0 items-center gap-2 border-r border-line bg-canvas px-page",
+          zIndex.raised,
+        )}
+      >
+        {cat && (
+          <span
+            aria-hidden="true"
+            className={cn("size-3 shrink-0 rounded-sm", cat.solid)}
+          />
+        )}
+        {group.id === null ? (
+          <span className="truncate font-semibold text-fg-muted">
+            {group.name}
+          </span>
+        ) : (
+          <Link
+            to={HREF[group.kind](group.id)}
+            title={group.name}
+            className={cn(nameLinkClass, "truncate font-semibold")}
+          >
+            {group.name}
+          </Link>
+        )}
+        {group.phase && <PhaseBadge status={group.phase} />}
+        <span className="ml-auto shrink-0 text-caption whitespace-nowrap text-fg-muted tabular-nums">
+          {countOf(group.rows.length, "task")}
+        </span>
+      </div>
+      {span && (
+        <div className="relative flex-1">
+          {group.kind === GroupBy.Suite ? (
+            <div
+              className="absolute inset-y-2.5 flex items-center"
+              style={{ left: `${left}px` }}
+              title={`${phaseLabel("member_action")}: ${formatDateTime(span.start, { timeZone: LAUNCH_TIME_ZONE })} – ${formatDateTime(span.end, { timeZone: LAUNCH_TIME_ZONE })}`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-full rounded-sm border border-dashed border-fg-muted"
+                style={{ width: `${width}px` }}
+              />
+              <span className="ml-2 text-caption whitespace-nowrap text-fg-muted">
+                Members take action{" "}
+                {formatDate(span.start, { timeZone: LAUNCH_TIME_ZONE })} –{" "}
+                {formatDate(span.end, { timeZone: LAUNCH_TIME_ZONE })}
+              </span>
+            </div>
+          ) : (
+            cat && (
+              <span
+                aria-hidden="true"
+                className={cn("absolute inset-y-3.5 rounded-full", cat.soft)}
+                style={{ left: `${left}px`, width: `${width}px` }}
+              />
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

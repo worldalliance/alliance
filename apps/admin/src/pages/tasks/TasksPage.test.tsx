@@ -41,6 +41,8 @@ beforeEach(() => {
 });
 
 const LIST = "/tasks?view=list";
+/** The filter bar's count, not a timeline group's. */
+const COUNT = "[aria-live=polite]";
 
 const renderPage = (query = queryWrapper(), url = LIST) => {
   const router = createMemoryRouter(
@@ -289,7 +291,7 @@ it("keeps the selected statuses when the page opens from a link", async () => {
   expect(
     await screen.findByRole("button", { name: /^Status · Completed/ }),
   ).toBeTruthy();
-  expect(await screen.findByText("1 task")).toBeTruthy();
+  expect(await screen.findByText("1 task", { selector: COUNT })).toBeTruthy();
   expect(
     screen.queryByText("No tasks match the selected statuses."),
   ).toBeNull();
@@ -317,7 +319,8 @@ it("writes the status filter to the URL, leaving it out at the defaults and keep
   ];
   const router = renderPage(queryWrapper(), "/tasks?other=1");
   await screen.findByText("1 of 2 tasks");
-  const rallyShown = () => screen.queryByText("2 tasks") !== null;
+  const rallyShown = () =>
+    screen.queryByText("2 tasks", { selector: COUNT }) !== null;
   const toggleCompleted = async () => {
     const trigger = await screen.findByRole("button", { name: /^Status/ });
     if (trigger.getAttribute("aria-expanded") !== "true") {
