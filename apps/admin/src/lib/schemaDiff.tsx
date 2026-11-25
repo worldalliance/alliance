@@ -1,6 +1,7 @@
 import jsonStableStringify from "json-stable-stringify";
 import React, { useMemo, useState } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
+import Button, { ButtonVariant } from "../ui/Button";
 
 export const stableStringify = (value: unknown): string =>
   jsonStableStringify(value, { space: 2 }) ?? "";
@@ -106,69 +107,47 @@ export const SchemaDiffView: React.FC<{ before: unknown; after: unknown }> = ({
     change.added.length === 0 &&
     change.removed.length === 0 &&
     change.changed.length === 0;
+  const groups = [
+    { title: "Added", tone: "text-success", fields: change.added },
+    { title: "Removed", tone: "text-danger", fields: change.removed },
+    {
+      title: "Changed",
+      tone: "text-warning",
+      fields: change.changed.map((c) => ({ ...c.latest, id: c.id })),
+    },
+  ].filter((group) => group.fields.length > 0);
 
   return (
-    <div className="space-y-2 text-sm">
+    <div className="flex flex-col items-start gap-2 text-body">
       {noChanges ? (
-        <p className="text-zinc-500 italic">
-          No field-level differences. Other schema metadata may differ — toggle
-          full JSON below.
+        <p className="text-fg-muted">
+          No field-level differences. Other schema metadata may differ: show the
+          full JSON diff to check.
         </p>
       ) : (
-        <div className="space-y-2">
-          {change.added.length > 0 && (
-            <div>
-              <p className="font-semibold text-green-700">
-                Added ({change.added.length})
-              </p>
-              <ul className="ml-4 list-disc">
-                {change.added.map((f) => (
-                  <li key={f.id} className="text-green-700">
-                    {getFieldLabel(f)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {change.removed.length > 0 && (
-            <div>
-              <p className="font-semibold text-red-700">
-                Removed ({change.removed.length})
-              </p>
-              <ul className="ml-4 list-disc">
-                {change.removed.map((f) => (
-                  <li key={f.id} className="text-red-700">
-                    {getFieldLabel(f)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {change.changed.length > 0 && (
-            <div>
-              <p className="font-semibold text-amber-700">
-                Changed ({change.changed.length})
-              </p>
-              <ul className="ml-4 list-disc">
-                {change.changed.map((c) => (
-                  <li key={c.id} className="text-amber-700">
-                    {getFieldLabel(c.latest)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        groups.map(({ title, tone, fields }) => (
+          <div key={title}>
+            <p className={`font-medium ${tone}`}>
+              {title} ({fields.length})
+            </p>
+            <ul className="ml-4 list-disc">
+              {fields.map((f) => (
+                <li key={f.id}>{getFieldLabel(f)}</li>
+              ))}
+            </ul>
+          </div>
+        ))
       )}
-      <button
-        type="button"
-        className="text-xs text-blue-600 hover:underline"
+      <Button
+        variant={ButtonVariant.Ghost}
+        size="small"
+        aria-expanded={showFullJson}
         onClick={() => setShowFullJson((v) => !v)}
       >
         {showFullJson ? "Hide full JSON diff" : "Show full JSON diff"}
-      </button>
+      </Button>
       {showFullJson && (
-        <div className="max-h-96 overflow-auto rounded border border-zinc-200 text-xs">
+        <div className="max-h-96 w-full overflow-auto rounded-md border border-line text-caption">
           <ReactDiffViewer
             oldValue={oldText}
             newValue={newText}

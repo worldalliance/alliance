@@ -287,7 +287,6 @@ src/components/waitlist/email/EmailPreviewPanel.tsx
 src/components/waitlist/email/EmailRetryActions.tsx
 src/components/waitlist/email/EmailSendActions.tsx
 src/components/waitlist/email/EmailTemplateControls.tsx
-src/lib/schemaDiff.tsx
 src/pages/ActionDashboard.tsx
 src/pages/ActionSuitePage.tsx
 src/pages/ActionUpdatePage.tsx
