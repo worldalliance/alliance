@@ -1,5 +1,6 @@
 import {
   conversationNote,
+  conversationNoteLabel,
   fieldAnswerKeys,
   stripOrphanedNotes,
   withConversationNoteFields,
@@ -45,6 +46,14 @@ describe("conversationNote", () => {
       undefined,
     );
     expect(conversationNote(conversation(), {})).toBe(undefined);
+  });
+});
+
+describe("conversationNoteLabel", () => {
+  it("is the admin's label, or Your note, marked optional unless required", () => {
+    expect(conversationNoteLabel({ label: "Why?" })).toBe("Why?");
+    expect(conversationNoteLabel({ label: " " })).toBe("Your note (optional)");
+    expect(conversationNoteLabel({ required: true })).toBe("Your note");
   });
 });
 

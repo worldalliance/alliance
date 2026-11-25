@@ -1,4 +1,7 @@
-import { chosenConversationOption } from "@alliance/common/forms/conversation";
+import {
+  chosenConversationOption,
+  conversationNoteLabel,
+} from "@alliance/common/forms/conversation";
 import type {
   ConversationField,
   FormValue,
@@ -145,9 +148,9 @@ export function ConversationInputField({
       </div>
 
       {chosen?.note && !typing && (
-        <div className="space-y-1">
+        <div className="ml-[75px] space-y-1">
           <label htmlFor={noteId} className="block text-sm text-zinc-700">
-            Your note{chosen.note.required ? "" : " (optional)"}
+            {conversationNoteLabel(chosen.note)}
           </label>
           <TextareaAutosize
             id={noteId}

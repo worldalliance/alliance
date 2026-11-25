@@ -30,7 +30,7 @@ const field: ConversationField = {
       label: "Not convinced",
       value: "skeptic",
       reply: "Please leave a note about your skepticism",
-      note: { placeholder: "Your skepticism" },
+      note: { label: "Tell me why", placeholder: "Your skepticism" },
     },
   ],
   noteId: "aware_note",
@@ -80,14 +80,14 @@ describe("ConversationInputField", () => {
     expect(
       screen.getByRole("status", { name: "Dr Maria is typing" }),
     ).toBeTruthy();
-    expect(screen.queryByLabelText("Your note (optional)")).toBeNull();
+    expect(screen.queryByLabelText("Tell me why")).toBeNull();
 
     act(() => jest.advanceTimersByTime(EXPERT_TYPING_MS));
     expect(
       screen.getByText("Please leave a note about your skepticism"),
     ).toBeTruthy();
     expect(screen.getByText("Auto response")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Your note (optional)"), {
+    fireEvent.change(screen.getByLabelText("Tell me why"), {
       target: { value: "I doubt it" },
     });
     expect(screen.getByDisplayValue("I doubt it")).toBeTruthy();

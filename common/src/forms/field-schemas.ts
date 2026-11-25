@@ -343,6 +343,8 @@ const conversationOptionSchema = z.strictObject({
   note: z
     .strictObject({
       required: z.boolean().optional(),
+      /** Shown above the note box; blank falls back to "Your note". */
+      label: z.string().optional(),
       placeholder: z.string().optional(),
     })
     .optional(),

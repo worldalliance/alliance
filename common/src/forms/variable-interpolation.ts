@@ -244,7 +244,11 @@ function rewriteConversationText(
   const options = mapPreservingIdentity(field.options, (option) => {
     const text = interpolateStringProps(option, ["label", "reply"], rewrite);
     if (!text.note) return text;
-    const note = interpolateStringProps(text.note, ["placeholder"], rewrite);
+    const note = interpolateStringProps(
+      text.note,
+      ["label", "placeholder"],
+      rewrite,
+    );
     return note === text.note ? text : { ...text, note };
   });
   return { message: rewrite(field.message), options };
@@ -296,7 +300,12 @@ function visitElementText(
       element.options.forEach((option, index) => {
         const at = `${location}.options[${index}]`;
         visitProps(option, ["reply"], at, visit);
-        visitProps(option.note ?? {}, ["placeholder"], `${at}.note`, visit);
+        visitProps(
+          option.note ?? {},
+          ["label", "placeholder"],
+          `${at}.note`,
+          visit,
+        );
       });
     }
     if (hasOptionLabels(element)) {

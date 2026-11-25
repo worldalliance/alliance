@@ -29,6 +29,15 @@ export function conversationNote(
 export const conversationNoteId = (fieldId: string): string =>
   `${fieldId}_note`;
 
+/** The note box's label: the admin's, or "Your note", marked optional unless required. */
+export function conversationNoteLabel(
+  note: NonNullable<ConversationOption["note"]>,
+): string {
+  return (
+    note.label?.trim() || (note.required ? "Your note" : "Your note (optional)")
+  );
+}
+
 /** Every key a field's answer is stored under: its id, and a conversation's note id. */
 export function fieldAnswerKeys(field: AnyField): string[] {
   return field.kind === "conversation" ? [field.id, field.noteId] : [field.id];

@@ -1,3 +1,4 @@
+import { conversationNoteLabel } from "@alliance/common/forms/conversation";
 import type {
   ConversationField,
   ConversationOption,
@@ -171,6 +172,17 @@ export function EditableConversationField({
                     updateOption(index, { note: { ...option.note, required } })
                   }
                   label="Note required"
+                />
+                <VariableTextField
+                  aria-label={`Option ${index + 1} note box label`}
+                  value={option.note.label ?? ""}
+                  onChange={(label) =>
+                    updateOption(index, {
+                      note: { ...option.note, label: label || undefined },
+                    })
+                  }
+                  className={inputClassName}
+                  placeholder={`Note box label (default: ${conversationNoteLabel(option.note)})`}
                 />
                 <VariableTextField
                   value={option.note.placeholder ?? ""}

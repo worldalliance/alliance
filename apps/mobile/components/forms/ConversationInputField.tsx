@@ -1,4 +1,7 @@
-import { chosenConversationOption } from "@alliance/common/forms/conversation";
+import {
+  chosenConversationOption,
+  conversationNoteLabel,
+} from "@alliance/common/forms/conversation";
 import type {
   ConversationField,
   FormValue,
@@ -157,14 +160,12 @@ export function ConversationInputField({
       ) : null}
 
       {chosen?.note && !typing ? (
-        <View className="gap-1">
+        <View className="ml-[75px] gap-1">
           <Text className="text-sm text-zinc-700">
-            {chosen.note.required ? "Your note" : "Your note (optional)"}
+            {conversationNoteLabel(chosen.note)}
           </Text>
           <TextInput
-            accessibilityLabel={
-              chosen.note.required ? "Your note" : "Your note (optional)"
-            }
+            accessibilityLabel={conversationNoteLabel(chosen.note)}
             className={cn(inputClasses({ hasError, disabled }), "text-base")}
             style={{ minHeight: 96, paddingVertical: 12, lineHeight: 24 }}
             value={typeof noteValue === "string" ? noteValue : ""}
