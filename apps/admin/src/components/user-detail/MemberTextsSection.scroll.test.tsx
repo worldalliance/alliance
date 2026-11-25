@@ -461,3 +461,46 @@ describe("at the end of the thread", () => {
     expect(log.scrollTop).toBe(1040);
   });
 });
+
+describe("when the pane is resized", () => {
+  const original = globalThis.ResizeObserver;
+  let resized: () => void;
+
+  beforeAll(() => {
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        resized = () => callback([], this);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
+  afterAll(() => {
+    globalThis.ResizeObserver = original;
+  });
+
+  it("scrolls to the end once a pane mounted hidden is shown", async () => {
+    renderSection();
+    const log = await screen.findByRole("region", { name: "Text history" });
+    Object.defineProperty(log, "scrollHeight", { get: () => 1000 });
+
+    resized();
+
+    expect(log.scrollTop).toBe(1000);
+  });
+
+  it("returns to the reader's place once the pane is shown again", async () => {
+    renderSection();
+    const log = await screen.findByRole("region", { name: "Text history" });
+    Object.defineProperty(log, "scrollHeight", { get: () => 1000 });
+    tops = { 3: 150, 4: 300, 5: 450 };
+    scrollTo(log, 250);
+
+    log.scrollTop = 0;
+    resized();
+
+    expect(log.scrollTop).toBe(250);
+  });
+});
