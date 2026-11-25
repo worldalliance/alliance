@@ -31,7 +31,6 @@ src/components/CohortLeafEditors.tsx
 src/components/CohortVisualization.test.tsx
 src/components/CohortVisualization.tsx
 src/components/CollectiveResultFields.tsx
-src/components/ContractCard.tsx
 src/components/CountSamples.tsx
 src/components/CreateActionMenu.tsx
 src/components/CreateEventForm.tsx
@@ -246,7 +245,6 @@ src/pages/ActionUpdatesPage.tsx
 src/pages/Actions.tsx
 src/pages/AmbassadorProgramPage.tsx
 src/pages/ContractPage.tsx
-src/pages/ContractsPage.tsx
 src/pages/CustomLinksPage.tsx
 src/pages/ExternalShareTargetsPage.tsx
 src/pages/FormSnapshotMigration.tsx

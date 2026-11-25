@@ -34,7 +34,7 @@ export default [
       route("/tasks/forms/:formId", "places/FormRecord.tsx"),
       route("/tasks/formulas", "pages/formulas/FormulasPage.tsx"),
       route("/tasks/formulas/:formulaId", "pages/formulas/FormulaPage.tsx"),
-      route("/tasks/contracts", "pages/ContractsPage.tsx"),
+      route("/tasks/contracts", "pages/contracts/ContractsPage.tsx"),
       route("/tasks/contracts/:id", "pages/ContractPage.tsx"),
 
       route("/members", "pages/people/PeoplePage.tsx"),
