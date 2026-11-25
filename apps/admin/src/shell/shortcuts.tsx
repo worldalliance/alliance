@@ -276,20 +276,32 @@ const useRegistry = (): Registry => {
   return registry;
 };
 
-/**
- * Registers a keyboard shortcut while the component is mounted. A page's own
- * shortcut is listed under "This page" in the `?` list.
- */
-export function useShortcut(shortcut: Shortcut): void {
-  const { register } = useRegistry();
+function useRegistered(registry: Registry | null, shortcut: Shortcut): void {
+  const register = registry?.register;
   const id = useId();
   const run = useRef(shortcut.run);
   run.current = shortcut.run;
   const { keys, label, global } = shortcut;
   useEffect(
-    () => register(id, { keys, label, global, run: () => run.current() }),
+    () => register?.(id, { keys, label, global, run: () => run.current() }),
     [register, id, keys, label, global],
   );
+}
+
+/**
+ * Registers a keyboard shortcut while the component is mounted. A page's own
+ * shortcut is listed under "This page" in the `?` list.
+ */
+export function useShortcut(shortcut: Shortcut): void {
+  useRegistered(useRegistry(), shortcut);
+}
+
+/**
+ * `useShortcut` for a shared component that also renders outside the shell,
+ * such as on a full-screen page, where it binds nothing.
+ */
+export function useShortcutInShell(shortcut: Shortcut): void {
+  useRegistered(useContext(ShortcutsContext), shortcut);
 }
 
 /** Whether single-key shortcuts run, for a hint that names one. */

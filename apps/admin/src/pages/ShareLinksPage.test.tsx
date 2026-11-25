@@ -14,6 +14,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
@@ -456,10 +457,11 @@ it("drops a link it deletes", async () => {
   await pickOwner();
   await screen.findByText("Newsletter");
   fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(3),
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Delete",
+    }),
   );
-  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[2]);
 
   expect(await screen.findByText("Share link deleted")).toBeTruthy();
   expect(screen.queryByText("Newsletter")).toBeNull();
@@ -487,10 +489,11 @@ it("says when it cannot delete a link and keeps it", async () => {
   await pickOwner();
   await screen.findByText("Newsletter");
   fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(2),
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Delete",
+    }),
   );
-  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
 
   expect(await screen.findByText("Failed to delete share link.")).toBeTruthy();
   expect(screen.getByText("Newsletter")).toBeTruthy();

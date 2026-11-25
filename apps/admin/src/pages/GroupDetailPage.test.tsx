@@ -14,6 +14,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { Suspense } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -322,13 +323,11 @@ it("adds the picked member and clears the picker", async () => {
 const promoteSam = async () => {
   renderPage();
   fireEvent.click(await screen.findByRole("button", { name: "Make leader" }));
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: "Make leader" })).toHaveLength(
-      2,
-    ),
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Make leader",
+    }),
   );
-  const [, confirm] = screen.getAllByRole("button", { name: "Make leader" });
-  fireEvent.click(confirm);
 };
 
 it("promotes a member to leader", async () => {

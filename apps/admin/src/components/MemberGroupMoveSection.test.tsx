@@ -2,7 +2,13 @@ import type { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { makeCommunity, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { ToastProvider } from "../ui/ToastProvider";
 import MemberGroupMoveSection from "./MemberGroupMoveSection";
@@ -85,13 +91,11 @@ const submitTo = async (params: {
     target: { value: "5" },
   });
   fireEvent.click(screen.getByRole("button", { name: params.button }));
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: params.button })).toHaveLength(
-      2,
-    ),
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: params.button,
+    }),
   );
-  const [, confirm] = screen.getAllByRole("button", { name: params.button });
-  fireEvent.click(confirm);
   return refreshUser;
 };
 

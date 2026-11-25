@@ -12,6 +12,15 @@ export type SheetProps = {
   children: ReactNode;
   headerActions?: ReactNode;
   panelClassName?: string;
+  /** `peek` for a look at one row of a list; `wide` for a form or a table. */
+  size?: SheetSize;
+};
+
+export type SheetSize = "peek" | "wide";
+
+const SIZE: Record<SheetSize, string> = {
+  peek: "max-w-120",
+  wide: "max-w-3xl",
 };
 
 /** A dialog anchored to the right edge. */
@@ -22,6 +31,7 @@ const Sheet: React.FC<SheetProps> = ({
   children,
   headerActions,
   panelClassName,
+  size = "wide",
 }) => (
   <Dialog.Root
     open={open}
@@ -39,7 +49,8 @@ const Sheet: React.FC<SheetProps> = ({
       >
         <Dialog.Popup
           className={cn(
-            "flex h-full w-screen max-w-3xl flex-col bg-surface text-body text-fg shadow-pop outline-none",
+            "flex h-full w-screen flex-col bg-surface text-body text-fg shadow-pop outline-none",
+            SIZE[size],
             panelClassName,
           )}
         >

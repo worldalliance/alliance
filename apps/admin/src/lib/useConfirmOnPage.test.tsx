@@ -90,7 +90,10 @@ describe("useConfirmOnPage", () => {
     renderAt("/items/2", <UnmountableAsker />);
     act(() => screen.getByRole("button", { name: "Send" }).click());
 
-    act(() => screen.getByRole("button", { name: "Hide" }).click());
+    // The open question makes the page behind it inert.
+    act(() =>
+      screen.getByRole("button", { name: "Hide", hidden: true }).click(),
+    );
 
     expect(await answer).toBe(false);
     expect(screen.queryByText("Send to members?")).toBeNull();
