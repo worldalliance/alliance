@@ -27,6 +27,7 @@ afterEach(() => {
 
 const exported = {
   name: "Call your rep",
+  body: "Call your representative.",
   shortDescription: "Five minutes",
   suite: { name: "Fall push" },
   events: [
@@ -113,6 +114,7 @@ it("leaves the events out unless staff include them, and says what the paste cre
   expect(sentBodies).toEqual([
     {
       name: "Call your rep",
+      body: "Call your representative.",
       shortDescription: "Five minutes",
       suite: { name: "Fall push" },
     },
@@ -254,7 +256,7 @@ it("says what is wrong with JSON that isn't a task, and sends nothing", async ()
 
   expect(
     await within(dialog).findByText(
-      "This JSON isn't a task export: it needs a name, and any events need a status and a date",
+      "This JSON isn't a task export: it needs a name and a body, and any events need a status and a date",
     ),
   ).toBeTruthy();
   expect(sentBodies).toEqual([]);
@@ -289,7 +291,7 @@ it("lets staff paste by hand when the clipboard can't be read", async () => {
     ),
   ).toBeTruthy();
   fireEvent.change(within(dialog).getByRole("textbox", { name: "Task JSON" }), {
-    target: { value: JSON.stringify({ name: "Call your rep" }) },
+    target: { value: JSON.stringify({ name: "Call your rep", body: "" }) },
   });
   createTask(dialog);
 

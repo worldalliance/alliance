@@ -49,6 +49,7 @@ it("drops the events from the body unless they are included, keeping every other
   const parsed = parsePastedTask(
     JSON.stringify({
       name: "Call your rep",
+      body: "",
       priority: 4,
       events: [
         { newStatus: "member_action", date: "2026-11-20T17:00:00.000Z" },
@@ -59,6 +60,7 @@ it("drops the events from the body unless they are included, keeping every other
   expect(JSON.parse(pasteBody(parsed.value, { includeEvents: false }))).toEqual(
     {
       name: "Call your rep",
+      body: "",
       priority: 4,
     },
   );
@@ -70,11 +72,15 @@ it("drops the events from the body unless they are included, keeping every other
 it("refuses text that isn't JSON or a task", () => {
   expect(parsePastedTask("{").ok).toBe(false);
   expect(parsePastedTask("").ok).toBe(false);
-  expect(parsePastedTask(JSON.stringify({ name: "" })).ok).toBe(false);
+  expect(parsePastedTask(JSON.stringify({ name: "", body: "" })).ok).toBe(
+    false,
+  );
+  expect(parsePastedTask(JSON.stringify({ name: "x" })).ok).toBe(false);
   expect(
     parsePastedTask(
       JSON.stringify({
         name: "x",
+        body: "",
         events: [{ newStatus: "live", date: "soon" }],
       }),
     ).ok,

@@ -33,6 +33,7 @@ const pastedEventSchema = z.looseObject({
 // the rest pass through to the server untouched.
 const pastedTaskSchema = z.looseObject({
   name: z.string().trim().min(1),
+  body: z.string(),
   archived: z.boolean().optional(),
   staffPreview: z.boolean().optional(),
   publicOnly: z.boolean().optional(),
@@ -49,7 +50,7 @@ export type PastedEvent = z.infer<typeof pastedEventSchema>;
 
 export const NOT_JSON = "Paste the JSON a task's Export JSON copied";
 export const NOT_A_TASK =
-  "This JSON isn't a task export: it needs a name, and any events need a status and a date";
+  "This JSON isn't a task export: it needs a name and a body, and any events need a status and a date";
 
 export function parsePastedTask(text: string): Result<PastedTask, string> {
   if (text.trim() === "") return R.failure(NOT_JSON);
