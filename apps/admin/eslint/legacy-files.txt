@@ -61,7 +61,6 @@ src/components/FormSlugEditor.tsx
 src/components/FormulaEditor.tsx
 src/components/FormulaResultPreview.tsx
 src/components/GeneralUpdateCard.tsx
-src/components/GroupAssignmentPanel.tsx
 src/components/HistoryControls.tsx
 src/components/HomePlacementBadges.tsx
 src/components/IdentitySwatch.tsx
@@ -217,8 +216,6 @@ src/components/formulas/PartFixFields.tsx
 src/components/formulas/SaveRefusal.tsx
 src/components/general-update/GeneralUpdateAudienceFields.tsx
 src/components/general-update/GeneralUpdateScheduleFields.tsx
-src/components/group-detail/GroupMembership.tsx
-src/components/group-detail/GroupSettingsForm.tsx
 src/components/organizations/OrganizationCard.tsx
 src/components/organizations/OrganizationLinks.tsx
 src/components/output-builder/EditableOutputFieldBlock.tsx
@@ -336,8 +333,6 @@ src/pages/FormulasPage.tsx
 src/pages/FriendGraphPage.tsx
 src/pages/GeneralUpdatePage.tsx
 src/pages/GeneralUpdatesPage.tsx
-src/pages/GroupDetailPage.tsx
-src/pages/GroupsPage.tsx
 src/pages/HostedDocsPage.tsx
 src/pages/ImageUpload.tsx
 src/pages/InviteFeedPage.tsx

@@ -16,10 +16,11 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { Suspense } from "react";
-import { MemoryRouter, Route, Routes } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import GroupDetailPage from "./GroupDetailPage";
+import { Suspense, type ReactNode } from "react";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
+import LeaveGuard from "../../components/LeaveGuard";
+import { ToastProvider } from "../../ui/ToastProvider";
+import GroupPage from "./GroupPage";
 
 afterEach(cleanup);
 
@@ -123,21 +124,59 @@ afterEach(() => {
   contactInfoStatus = 200;
 });
 
-const renderPage = (id = "4", cached?: CommunityDto[]) => {
+const renderPage = (
+  params: {
+    id?: string;
+    tab?: "progress" | "settings";
+    cached?: CommunityDto[];
+    list?: ReactNode;
+  } = {},
+) => {
+  const { id = "4", tab, cached, list = <p>Groups list</p> } = params;
   const query = queryWrapper();
   if (cached) query.client.setQueryData(queryKeys.communitiesAdmin(), cached);
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <LeaveGuard>
+            <Suspense>
+              <Outlet />
+            </Suspense>
+          </LeaveGuard>
+        ),
+        children: [
+          { path: "/members/groups/:id", element: <GroupPage /> },
+          { path: "/members/groups", element: list },
+        ],
+      },
+    ],
+    { initialEntries: [`/members/groups/${id}${tab ? `?tab=${tab}` : ""}`] },
+  );
   render(
-    <MemoryRouter initialEntries={[`/members/groups/${id}`]}>
-      <ToastProvider>
-        <Routes>
-          <Route path="/members/groups/:id" element={<GroupDetailPage />} />
-          <Route path="/members/groups" element={<p>All groups</p>} />
-        </Routes>
-      </ToastProvider>
-    </MemoryRouter>,
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
     query,
   );
   return query.client;
+};
+
+const members = () => within(screen.getByRole("region", { name: "Members" }));
+
+/** Presses a row's button, then the same-named button of the confirmation it opens. */
+const pressAndConfirm = async (row: string, confirm: string) => {
+  fireEvent.click(await screen.findByRole("button", { name: row }));
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: confirm,
+    }),
+  );
+};
+
+const deleteNorth = async () => {
+  await screen.findByRole("heading", { level: 1, name: "North" });
+  await pressAndConfirm("Delete group", "Delete group");
 };
 
 it("shows the group with that id", async () => {
@@ -147,75 +186,85 @@ it("shows the group with that id", async () => {
 });
 
 it("says when no group has that id", async () => {
-  renderPage("9");
+  renderPage({ id: "9" });
 
-  expect(await screen.findByText("Community not found.")).toBeTruthy();
+  expect(await screen.findByText("Group not found")).toBeTruthy();
 });
 
 it("drops a removed member", async () => {
   renderPage();
-  await screen.findByText("Sam");
 
-  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await pressAndConfirm("Remove: Sam", "Remove member");
 
-  expect(
-    await screen.findByText("No members yet. Add someone above."),
-  ).toBeTruthy();
+  await waitFor(() =>
+    expect(members().queryByRole("link", { name: "Sam" })).toBeNull(),
+  );
+});
+
+it("keeps a member whose removal is not confirmed", async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: "Remove: Sam" }));
+
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Cancel",
+    }),
+  );
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(members().getByRole("link", { name: "Sam" })).toBeTruthy();
+  expect(memberInfoRequests).toBe(1);
 });
 
 it("says why a removal was refused", async () => {
   removeStatus = 400;
   renderPage();
-  await screen.findByText("Sam");
 
-  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await pressAndConfirm("Remove: Sam", "Remove member");
 
   expect(await screen.findAllByText("Sam leads this group")).toHaveLength(2);
-  expect(screen.getByText("Sam")).toBeTruthy();
+  expect(members().getByRole("link", { name: "Sam" })).toBeTruthy();
 });
 
 it("goes back to the groups once a group is deleted", async () => {
   renderPage();
-  await screen.findByRole("heading", { name: "North" });
 
-  fireEvent.click(screen.getByRole("button", { name: "Delete group" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Delete community" }),
-  );
+  await deleteNorth();
 
-  expect(await screen.findByText("All groups")).toBeTruthy();
+  expect(await screen.findByText("Groups list")).toBeTruthy();
+});
+
+it("deletes a group with unsaved settings without asking to leave", async () => {
+  const asked = jest.spyOn(window, "confirm").mockReturnValue(false);
+  try {
+    renderPage({ tab: "settings" });
+    fireEvent.change(await screen.findByLabelText("Name"), {
+      target: { value: "Northern" },
+    });
+
+    await pressAndConfirm("Delete group", "Delete group");
+
+    expect(await screen.findByText("Groups list")).toBeTruthy();
+    expect(asked).not.toHaveBeenCalled();
+  } finally {
+    asked.mockRestore();
+  }
 });
 
 it("never says a just-deleted group is missing", async () => {
   const LoadingGroups = () => {
     throw new Promise(() => {});
   };
-  render(
-    <MemoryRouter initialEntries={["/members/groups/4"]}>
-      <ToastProvider>
-        <Suspense>
-          <Routes>
-            <Route path="/members/groups/:id" element={<GroupDetailPage />} />
-            <Route path="/members/groups" element={<LoadingGroups />} />
-          </Routes>
-        </Suspense>
-      </ToastProvider>
-    </MemoryRouter>,
-    queryWrapper(),
-  );
-  await screen.findByRole("heading", { name: "North" });
+  renderPage({ list: <LoadingGroups /> });
 
-  fireEvent.click(screen.getByRole("button", { name: "Delete group" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Delete community" }),
-  );
-  await screen.findByText("Community deleted");
+  await deleteNorth();
+  await screen.findByText("Group deleted");
 
-  expect(screen.queryByText("Community not found.")).toBeNull();
+  expect(screen.queryByText("Group not found")).toBeNull();
 });
 
 it("shows the saved details", async () => {
-  renderPage();
+  renderPage({ tab: "settings" });
   fireEvent.change(await screen.findByLabelText("Name"), {
     target: { value: "Northwest" },
   });
@@ -225,10 +274,11 @@ it("shows the saved details", async () => {
   expect(
     await screen.findByRole("heading", { level: 1, name: "Northwest" }),
   ).toBeTruthy();
+  expect(await screen.findByText("Saved")).toBeTruthy();
 });
 
 it("says why the details are invalid", async () => {
-  renderPage();
+  renderPage({ tab: "settings" });
   fireEvent.change(await screen.findByLabelText("Name"), {
     target: { value: "   " },
   });
@@ -239,8 +289,8 @@ it("says why the details are invalid", async () => {
 });
 
 it("saves the details with the description cleared", async () => {
-  renderPage();
-  fireEvent.change(await screen.findByLabelText("Description"), {
+  renderPage({ tab: "settings" });
+  fireEvent.change(await screen.findByLabelText(/^Description/), {
     target: { value: "" },
   });
   fireEvent.change(screen.getByLabelText("Name"), {
@@ -256,7 +306,7 @@ it("saves the details with the description cleared", async () => {
 
 it("saves a capacity below the member count", async () => {
   listed = { ...north, users: [sam, ada, lee] };
-  renderPage();
+  renderPage({ tab: "settings" });
   fireEvent.change(await screen.findByDisplayValue("10"), {
     target: { value: "1" },
   });
@@ -266,83 +316,93 @@ it("saves a capacity below the member count", async () => {
   expect(await screen.findByText("Group updated")).toBeTruthy();
 });
 
+it("puts back the saved details on Discard", async () => {
+  renderPage({ tab: "settings" });
+  fireEvent.change(await screen.findByLabelText("Name"), {
+    target: { value: "Northwest" },
+  });
+  expect(screen.getByText("Unsaved changes")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+  expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe("North");
+});
+
 it("drops a removed leader", async () => {
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Remove leader" }));
+
+  await pressAndConfirm("Remove leader: Lee", "Remove leader");
 
   await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Remove leader" })).toBeNull(),
+    expect(members().queryByRole("link", { name: "Lee" })).toBeNull(),
   );
 });
 
 it("says when the id is not a number", async () => {
-  renderPage("abc");
+  renderPage({ id: "abc" });
 
-  expect(await screen.findByText("Invalid community id.")).toBeTruthy();
+  expect(await screen.findByText("Invalid group id.")).toBeTruthy();
 });
 
 it("says the id is not a number without waiting for the groups", async () => {
   onlineManager.setOnline(false);
-  renderPage("abc");
+  renderPage({ id: "abc" });
 
-  expect(await screen.findByText("Invalid community id.")).toBeTruthy();
+  expect(await screen.findByText("Invalid group id.")).toBeTruthy();
 });
 
 it("keeps unsaved details when the group refetches with changes", async () => {
-  const client = renderPage();
-  const description = await screen.findByLabelText("Description");
+  const client = renderPage({ tab: "settings" });
+  const description = await screen.findByLabelText(/^Description/);
   fireEvent.change(description, { target: { value: "Unsaved edit" } });
 
   listed = { ...north, description: "Newer details", users: [sam, ada] };
   await client.invalidateQueries();
 
-  await screen.findByText("Ada");
+  await screen.findByText(/^1 member ·/);
   expect(screen.getByDisplayValue("Unsaved edit")).toBeTruthy();
 });
 
-it("adds the picked member and clears the picker", async () => {
+const addAda = async (params: { open: string; pick: string; add: string }) => {
   renderPage();
-  await screen.findByText("Sam");
-  const picker = screen
-    .getByText("Add member", { selector: "label" })
+  fireEvent.click(await screen.findByRole("button", { name: params.open }));
+  const dialog = within(await screen.findByRole("dialog"));
+  const picker = dialog
+    .getByText(params.pick, { selector: "label" })
     .parentElement!.querySelector("input")!;
 
   fireEvent.change(picker, { target: { value: "Ada" } });
-  fireEvent.click(await screen.findByRole("button", { name: /Ada/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Add member" }));
-
-  expect(await screen.findByText("Ada")).toBeTruthy();
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Add member" })).toHaveProperty(
-      "disabled",
-      true,
-    ),
-  );
-});
-
-const promoteSam = async () => {
-  renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Make leader" }));
-  fireEvent.click(
-    within(await screen.findByRole("dialog")).getByRole("button", {
-      name: "Make leader",
-    }),
-  );
+  fireEvent.click(await dialog.findByRole("button", { name: /Ada/ }));
+  fireEvent.click(dialog.getByRole("button", { name: params.add }));
 };
 
-it("promotes a member to leader", async () => {
-  await promoteSam();
+it("adds the picked member and closes the picker", async () => {
+  await addAda({
+    open: "Add member…",
+    pick: "Member to add",
+    add: "Add member",
+  });
 
-  await waitFor(() =>
-    expect(
-      screen.getAllByRole("button", { name: "Remove leader" }),
-    ).toHaveLength(2),
-  );
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(members().getByRole("link", { name: "Ada" })).toBeTruthy();
+});
+
+const leaderRemovals = () =>
+  screen.getAllByRole("button", { name: /^Remove leader: / });
+
+it("promotes a member to leader", async () => {
+  renderPage();
+
+  await pressAndConfirm("Make leader: Sam", "Make leader");
+
+  await waitFor(() => expect(leaderRemovals()).toHaveLength(2));
 });
 
 it("shows the action's fallback when a write never reaches the server", async () => {
   addLeaderDrops = true;
-  await promoteSam();
+  renderPage();
+
+  await pressAndConfirm("Make leader: Sam", "Make leader");
 
   expect(
     await screen.findAllByText("Unable to promote leader. Please try again."),
@@ -354,19 +414,19 @@ it("says why loading the group was refused", async () => {
   renderPage();
 
   expect(await screen.findByText("Admins only")).toBeTruthy();
-  expect(screen.queryByText("Community not found.")).toBeNull();
+  expect(screen.queryByText("Group not found")).toBeNull();
 });
 
 it("says why saving the details was refused, keeping the edit", async () => {
   updateStatus = 400;
-  renderPage();
+  renderPage({ tab: "settings" });
   fireEvent.change(await screen.findByLabelText("Name"), {
     target: { value: "South" },
   });
 
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
-  expect(await screen.findAllByText("That name is taken")).toHaveLength(2);
+  expect(await screen.findAllByText(/That name is taken/)).toHaveLength(2);
   expect(screen.getByDisplayValue("South")).toBeTruthy();
 });
 
@@ -374,50 +434,49 @@ it("keeps loading while offline rather than saying the group is missing", async 
   onlineManager.setOnline(false);
   renderPage();
 
-  expect(await screen.findByText("Loading community…")).toBeTruthy();
-  expect(screen.queryByText("Community not found.")).toBeNull();
+  expect(await screen.findByRole("status", { name: "Loading" })).toBeTruthy();
+  expect(screen.queryByText("Group not found")).toBeNull();
 });
 
-it("adds the picked leader and clears the picker", async () => {
-  renderPage();
-  await screen.findByText("Sam");
-  const picker = screen
-    .getByText("Add leader", { selector: "label" })
-    .parentElement!.querySelector("input")!;
+it("adds the picked leader and closes the picker", async () => {
+  await addAda({
+    open: "Add leader…",
+    pick: "Leader to add",
+    add: "Add leader",
+  });
 
-  fireEvent.change(picker, { target: { value: "Ada" } });
-  fireEvent.click(await screen.findByRole("button", { name: /Ada/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Add leader" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(leaderRemovals()).toHaveLength(2);
+});
 
-  await waitFor(() =>
-    expect(
-      screen.getAllByRole("button", { name: "Remove leader" }),
-    ).toHaveLength(2),
+it("shows a failed add in its dialog alone", async () => {
+  addLeaderDrops = true;
+  await addAda({
+    open: "Add leader…",
+    pick: "Leader to add",
+    add: "Add leader",
+  });
+
+  const refusal = await screen.findByText(
+    "Unable to add leader. Please try again.",
   );
-  expect(screen.getByRole("button", { name: "Add leader" })).toHaveProperty(
-    "disabled",
-    true,
-  );
+  expect(screen.getByRole("dialog").contains(refusal)).toBe(true);
 });
 
 it("says why a delete was refused and stays on the group", async () => {
   deleteStatus = 400;
   renderPage();
-  await screen.findByRole("heading", { level: 1, name: "North" });
 
-  fireEvent.click(screen.getByRole("button", { name: "Delete group" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Delete community" }),
-  );
+  await deleteNorth();
 
   expect(await screen.findAllByText("North still has members")).toHaveLength(2);
-  expect(screen.queryByText("All groups")).toBeNull();
+  expect(screen.queryByText("Groups list")).toBeNull();
 });
 
 it("waits for the refetch when the cached list predates the group", async () => {
-  renderPage("4", []);
+  renderPage({ cached: [] });
 
-  expect(screen.getByText("Loading community…")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
   expect(
     await screen.findByRole("heading", { level: 1, name: "North" }),
   ).toBeTruthy();
@@ -425,38 +484,38 @@ it("waits for the refetch when the cached list predates the group", async () => 
 
 it("keeps loading offline when the cached list predates the group", async () => {
   onlineManager.setOnline(false);
-  renderPage("4", []);
+  renderPage({ cached: [] });
 
   await new Promise((resolve) => setTimeout(resolve, 50));
-  expect(screen.getByText("Loading community…")).toBeTruthy();
-  expect(screen.queryByText("Community not found.")).toBeNull();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
+  expect(screen.queryByText("Group not found")).toBeNull();
 });
 
 it("says why the refetch failed when the cached list predates the group", async () => {
   listStatus = 403;
-  renderPage("4", []);
+  renderPage({ cached: [] });
 
   expect(await screen.findByText("Admins only")).toBeTruthy();
-  expect(screen.queryByText("Community not found.")).toBeNull();
+  expect(screen.queryByText("Group not found")).toBeNull();
 });
 
 it("brings newer details into an untouched form when the refetch lands", async () => {
   listed = { ...north, description: "Fresh description" };
-  renderPage("4", [north]);
+  renderPage({ tab: "settings", cached: [north] });
 
   expect(await screen.findByDisplayValue("Fresh description")).toBeTruthy();
 });
 
 it("says why loading the member details was refused", async () => {
   memberInfoStatus = 403;
-  renderPage();
+  renderPage({ tab: "progress" });
 
   expect(await screen.findByText("Members only")).toBeTruthy();
 });
 
 it("says why loading the members' contact info was refused", async () => {
   contactInfoStatus = 403;
-  renderPage();
+  renderPage({ tab: "progress" });
 
   expect(await screen.findByText("Contact info is private")).toBeTruthy();
 });
@@ -473,10 +532,10 @@ it("loads the member details and users alongside the group", async () => {
 
 it("reloads the member details after a membership change", async () => {
   renderPage();
-  await screen.findByText("Sam");
+  await screen.findByRole("button", { name: "Remove: Sam" });
   await waitFor(() => expect(memberInfoRequests).toBe(1));
 
-  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await pressAndConfirm("Remove: Sam", "Remove member");
 
   await waitFor(() => expect(memberInfoRequests).toBe(2));
 });
