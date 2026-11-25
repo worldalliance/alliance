@@ -84,4 +84,71 @@ const designTokens = {
   },
 };
 
-export default { rules: { "design-tokens": designTokens } };
+const COLOR_LITERAL =
+  /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb|color-mix)\(|^(?:white|black)$/i;
+const FIXED_LENGTH = /\d(?:\.\d+)?(?:px|rem|em)\b/;
+const COLOR_ATTRIBUTES = new Set([
+  "fill",
+  "stroke",
+  "color",
+  "stopColor",
+  "floodColor",
+  "lightingColor",
+]);
+
+/** The static text of a string or template literal; `null` for anything computed. */
+function staticText(node) {
+  if (node?.type === "Literal" && typeof node.value === "string") {
+    return node.value;
+  }
+  if (node?.type === "TemplateLiteral") {
+    return node.quasis.map((quasi) => quasi.value.cooked ?? "").join(" ");
+  }
+  return null;
+}
+
+/** Why a value written in `style`, `fill` or `stroke` breaks the admin's tokens-only rule, or `null`. */
+export function valueProblem(text, { layout }) {
+  if (COLOR_LITERAL.test(text)) return "rawColorValue";
+  if (layout && FIXED_LENGTH.test(text)) return "fixedLength";
+  return null;
+}
+
+const designValues = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      rawColorValue:
+        "`{{text}}` is a raw colour. Pass a token as a value (`var(--color-…)`, or the values in src/ui/charts/chartColor.ts), or use a class.",
+      fixedLength:
+        "`{{text}}` is a fixed length in `style`. Use a class on the token scale; `style` is for values computed from data.",
+    },
+  },
+  create(context) {
+    const report = (node, layout) => {
+      const text = staticText(node);
+      const messageId = text === null ? null : valueProblem(text, { layout });
+      if (messageId) context.report({ node, messageId, data: { text } });
+    };
+    return {
+      JSXAttribute(node) {
+        const name = node.name.name;
+        const value =
+          node.value?.type === "JSXExpressionContainer"
+            ? node.value.expression
+            : node.value;
+        if (COLOR_ATTRIBUTES.has(name)) report(value, false);
+        if (name === "style" && value?.type === "ObjectExpression") {
+          for (const property of value.properties) {
+            if (property.type === "Property") report(property.value, true);
+          }
+        }
+      },
+    };
+  },
+};
+
+export default {
+  rules: { "design-tokens": designTokens, "design-values": designValues },
+};

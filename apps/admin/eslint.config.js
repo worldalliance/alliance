@@ -104,6 +104,7 @@ export default defineConfig([
     plugins: { admin: design },
     rules: {
       "admin/design-tokens": "error",
+      "admin/design-values": "error",
       "admin/imports": designImports({ sharedUi: false }),
       "admin/no-global-confirm": [
         "error",

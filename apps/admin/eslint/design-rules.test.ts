@@ -118,3 +118,58 @@ describe("admin/design-tokens", () => {
     ).toEqual([]);
   });
 });
+
+describe("admin/design-values", () => {
+  const lint = (code: string) =>
+    new Linter()
+      .verify(
+        code,
+        {
+          files: ["**/*.tsx"],
+          languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: { ecmaFeatures: { jsx: true } },
+          },
+          plugins: { admin: plugin },
+          rules: { "admin/design-values": "error" },
+        },
+        "Chart.tsx",
+      )
+      .map((message) => message.messageId);
+
+  it("reports raw colours in fill, stroke and style", () => {
+    expect(
+      lint(
+        'const a = <rect fill="#e5e7eb" stroke={"rgba(0,0,0,0.1)"} />;\n' +
+          'const b = <circle fill="white" />;\n' +
+          "const c = <div style={{ background: `color-mix(in oklab, ${x} 14%, transparent)` }} />;\n" +
+          'const d = <span style={{ color: "oklch(0.5 0.1 20)" }} />;',
+      ),
+    ).toEqual([
+      "rawColorValue",
+      "rawColorValue",
+      "rawColorValue",
+      "rawColorValue",
+      "rawColorValue",
+    ]);
+  });
+
+  it("reports a fixed length in style, not one computed from data", () => {
+    expect(
+      lint(
+        "const a = <div style={{ gridTemplateColumns: `12rem repeat(${n}, 2.75rem)` }} />;\n" +
+          "const b = <div style={{ width: `${share}%`, left: x, minWidth: width }} />;",
+      ),
+    ).toEqual(["fixedLength"]);
+  });
+
+  it("passes token values, patterns and none", () => {
+    expect(
+      lint(
+        'const a = <rect fill="var(--color-line)" stroke={chartColor.grid} />;\n' +
+          "const b = <rect fill={`url(#${id})`} />;\n" +
+          'const c = <path fill="none" stroke="currentColor" />;',
+      ),
+    ).toEqual([]);
+  });
+});
