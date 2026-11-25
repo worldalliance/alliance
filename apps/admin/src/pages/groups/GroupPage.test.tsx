@@ -599,5 +599,7 @@ it("says nothing of the contact details' refresh while progress has failed", asy
         ?.status,
     ).toBe("error"),
   );
-  expect(screen.queryByText(/Couldn't refresh the members' contact/)).toBeNull();
+  expect(
+    screen.queryByText(/Couldn't refresh the members' contact/),
+  ).toBeNull();
 });
