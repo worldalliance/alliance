@@ -1,7 +1,7 @@
 import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
-import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { adminRefusalMessage, rowRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
 import { videoHref } from "../../lib/hrefs";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
@@ -55,14 +55,8 @@ export function VideosTab() {
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deletion = useDeleteVideoAdmin({
-    onError: (error, id) => {
-      const reason = adminRefusalMessage(error, "");
-      setDeleteError(
-        reason
-          ? `Couldn't delete video ${id}: ${reason}`
-          : `Couldn't delete video ${id}.`,
-      );
-    },
+    onError: (error, id) =>
+      setDeleteError(rowRefusalMessage(error, `Couldn't delete video ${id}`)),
   });
 
   const deleteVideo = async (video: VideoListItemDto) => {
