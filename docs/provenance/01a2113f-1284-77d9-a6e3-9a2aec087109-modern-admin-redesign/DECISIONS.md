@@ -214,7 +214,7 @@ All agent judgement; nobody was there to ask. The bar is round 3's. Other agents
 
 - **The completion curve chart's average is "Average"**, since "Average of all tasks" was false whenever the run-length filter is on and a name for each case would add a branch for a legend word.
 - **Rule 9's accepted moves stay in the guide**, all of them the agents' acceptance, which the owner may overrule. Taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads.
-- **Selecting an element in the form builder expands the outline rows and the accordion section that hold it**, to show the selection. The agents treat this as revealing what the reader chose, not as the page jumping; the owner may judge it against their rule.
+- **Selecting an element in the form builder expands the outline rows and the accordion section that hold it**, to show the selection, and rule 9 lists it. The agents treat this as revealing what the reader chose, not as the page jumping; the owner may judge it against their rule.
 - **Removing the last suite on General updates while suites failed to load leaves focus where the browser puts it**: the Add suite select is disabled then, and the group already says the suites failed. Not fixed.
 - **Left as follow-ups:** the lint's gaps (ALL-2508), the invite funnel's accessibility (ALL-2509), the groups table's width with picks stored (ALL-2510), and the shared pieces the trial pages left for the system owner (ALL-2511).
 
