@@ -1,4 +1,5 @@
 import type { ImageField } from "@alliance/common/forms/form-schema";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -17,16 +18,18 @@ export function EditableImageField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        label="Caption"
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-        placeholder="Upload photo"
-      />
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
+      <InspectorGroup>
+        <FieldLabelEditor
+          label="Caption"
+          placeholder="Upload photo"
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
+        />
+        <RequiredToggle
+          checked={field.required}
+          onChange={(required) => onUpdate({ required })}
+        />
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

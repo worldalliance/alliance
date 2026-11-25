@@ -3,7 +3,11 @@ import {
   MIN_RANGE_OPTION_COUNT,
   type RangeField,
 } from "@alliance/common/forms/form-schema";
-import { getRangeOptionCount } from "@alliance/common/forms/range";
+import { getRangeValues } from "@alliance/common/forms/range";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Select } from "../../ui/Select";
+import { Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -17,6 +21,9 @@ export function EditableRangeField({
 }: BaseFieldProps<RangeField>) {
   const defaultValue =
     typeof field.defaultValue === "number" ? field.defaultValue : "";
+  const values = getRangeValues(field);
+  const defaultOutsideScale =
+    typeof defaultValue === "number" && !values.includes(defaultValue);
 
   const handleOptionCountChange = (raw: string) => {
     if (!raw) {
@@ -49,72 +56,76 @@ export function EditableRangeField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(value) => onUpdate({ label: value })}
-      />
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Number of options
-          </label>
-          <input
-            type="number"
-            min={MIN_RANGE_OPTION_COUNT}
-            max={MAX_RANGE_OPTION_COUNT}
-            value={field.optionCount}
-            onChange={(event) => handleOptionCountChange(event.target.value)}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
+        />
+        <Field
+          label="Number of options"
+          help={`From ${MIN_RANGE_OPTION_COUNT} to ${MAX_RANGE_OPTION_COUNT}.`}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="number"
+              min={MIN_RANGE_OPTION_COUNT}
+              max={MAX_RANGE_OPTION_COUNT}
+              value={field.optionCount ?? ""}
+              onChange={(event) => handleOptionCountChange(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="Default selection" mark="optional">
+          {(control) => (
+            <Select
+              {...control}
+              value={defaultValue}
+              onChange={(event) => handleDefaultValueChange(event.target.value)}
+            >
+              <option value="">None</option>
+              {defaultOutsideScale && (
+                <option value={defaultValue}>
+                  {defaultValue} (outside the scale)
+                </option>
+              )}
+              {values.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Start label" mark="optional">
+            {(control) => (
+              <Input
+                {...control}
+                value={field.startLabel ?? ""}
+                onChange={(event) =>
+                  onUpdate({ startLabel: event.target.value })
+                }
+                placeholder="Not likely"
+              />
+            )}
+          </Field>
+          <Field label="End label" mark="optional">
+            {(control) => (
+              <Input
+                {...control}
+                value={field.endLabel ?? ""}
+                onChange={(event) => onUpdate({ endLabel: event.target.value })}
+                placeholder="Most likely"
+              />
+            )}
+          </Field>
         </div>
-
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Default selection (optional)
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={getRangeOptionCount(field)}
-            value={defaultValue}
-            onChange={(event) => handleDefaultValueChange(event.target.value)}
-            placeholder="None"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Start label (optional)
-          </label>
-          <input
-            type="text"
-            value={field.startLabel ?? ""}
-            onChange={(event) => onUpdate({ startLabel: event.target.value })}
-            placeholder="e.g. Not likely"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            End label (optional)
-          </label>
-          <input
-            type="text"
-            value={field.endLabel ?? ""}
-            onChange={(event) => onUpdate({ endLabel: event.target.value })}
-            placeholder="e.g. Most likely"
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      </div>
+        <RequiredToggle
+          checked={field.required}
+          onChange={(required) => onUpdate({ required })}
+        />
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

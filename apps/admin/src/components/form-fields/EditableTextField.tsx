@@ -1,4 +1,7 @@
 import type { TextField } from "@alliance/common/forms/form-schema";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -17,47 +20,45 @@ export function EditableTextField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Placeholder Text
-        </label>
-        <input
-          type="text"
-          value={field.placeholder || ""}
-          onChange={(e) => onUpdate({ placeholder: e.target.value })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="Enter placeholder text"
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
         />
-      </div>
-
-      <div className="flex items-center space-x-4">
+        <Field label="Placeholder">
+          {(control) => (
+            <Input
+              {...control}
+              value={field.placeholder || ""}
+              onChange={(event) =>
+                onUpdate({ placeholder: event.target.value })
+              }
+              placeholder="Enter placeholder text"
+            />
+          )}
+        </Field>
+        <Field label="Max length">
+          {(control) => (
+            <Input
+              {...control}
+              type="number"
+              min="0"
+              value={field.maxLength || ""}
+              onChange={(event) =>
+                onUpdate({
+                  maxLength: event.target.value
+                    ? parseInt(event.target.value)
+                    : undefined,
+                })
+              }
+            />
+          )}
+        </Field>
         <RequiredToggle
           checked={field.required}
-          onChange={(checked) => onUpdate({ required: checked })}
+          onChange={(required) => onUpdate({ required })}
         />
-
-        <div className="flex items-center space-x-2">
-          <label className="text-xs text-gray-700">Max Length:</label>
-          <input
-            type="number"
-            value={field.maxLength || ""}
-            onChange={(e) =>
-              onUpdate({
-                maxLength: e.target.value
-                  ? parseInt(e.target.value)
-                  : undefined,
-              })
-            }
-            className="w-16 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            min="0"
-          />
-        </div>
-      </div>
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

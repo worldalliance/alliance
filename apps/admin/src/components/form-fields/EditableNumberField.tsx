@@ -1,8 +1,13 @@
 import type { NumberField } from "@alliance/common/forms/form-schema";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { CheckboxField, Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
+
+const parseNumber = (raw: string) => (raw ? parseFloat(raw) : undefined);
 
 export function EditableNumberField({
   field,
@@ -10,6 +15,7 @@ export function EditableNumberField({
   previousFields,
   laterFields,
 }: BaseFieldProps<NumberField>) {
+  const decimals = field.allowDecimals ?? false;
   return (
     <FieldWrapper
       field={field}
@@ -17,108 +23,96 @@ export function EditableNumberField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
-
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className="block text-xs text-gray-700 mb-1">Min Value</label>
-          <input
-            type="number"
-            value={field.min ?? ""}
-            onChange={(e) =>
-              onUpdate({
-                min: e.target.value ? parseFloat(e.target.value) : undefined,
-              })
-            }
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Min"
-          />
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Min">
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                value={field.min ?? ""}
+                onChange={(event) =>
+                  onUpdate({ min: parseNumber(event.target.value) })
+                }
+              />
+            )}
+          </Field>
+          <Field label="Max">
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                value={field.max ?? ""}
+                onChange={(event) =>
+                  onUpdate({ max: parseNumber(event.target.value) })
+                }
+              />
+            )}
+          </Field>
         </div>
-        <div>
-          <label className="block text-xs text-gray-700 mb-1">Max Value</label>
-          <input
-            type="number"
-            value={field.max ?? ""}
-            onChange={(e) =>
-              onUpdate({
-                max: e.target.value ? parseFloat(e.target.value) : undefined,
-              })
-            }
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Max"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-700 mb-1">Step</label>
-          <input
-            type="number"
-            value={field.step ?? ""}
-            onChange={(e) =>
-              onUpdate({
-                step: e.target.value ? parseFloat(e.target.value) : undefined,
-              })
-            }
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="1"
-            step="any"
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 mt-1">
-        <input
-          type="checkbox"
-          id={`${field.id}-allow-decimals`}
-          checked={field.allowDecimals ?? false}
-          onChange={(e) =>
+        <Field
+          label="Step"
+          help={decimals ? "Decimal places replace the step." : undefined}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="number"
+              step="any"
+              placeholder="1"
+              disabled={decimals}
+              value={field.step ?? ""}
+              onChange={(event) =>
+                onUpdate({ step: parseNumber(event.target.value) })
+              }
+            />
+          )}
+        </Field>
+        <CheckboxField
+          label="Allow decimals"
+          checked={decimals}
+          onChange={(event) =>
             onUpdate({
-              allowDecimals: e.target.checked,
-              decimalPlaces: e.target.checked
+              allowDecimals: event.target.checked,
+              decimalPlaces: event.target.checked
                 ? (field.decimalPlaces ?? 2)
                 : undefined,
-              step: e.target.checked ? undefined : field.step,
+              step: event.target.checked ? undefined : field.step,
             })
           }
-          className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
-        <label
-          htmlFor={`${field.id}-allow-decimals`}
-          className="text-xs text-gray-700"
+        <Field
+          label="Decimal places"
+          help={decimals ? undefined : "Applies once decimals are allowed."}
         >
-          Allow decimals
-        </label>
-      </div>
-
-      {field.allowDecimals && (
-        <div className="mt-1">
-          <label className="block text-xs text-gray-700 mb-1">
-            Decimal places
-          </label>
-          <input
-            type="number"
-            value={field.decimalPlaces ?? 2}
-            min={1}
-            max={10}
-            onChange={(e) => {
-              const val = parseInt(e.target.value, 10);
-              onUpdate({
-                decimalPlaces: Number.isNaN(val)
-                  ? 2
-                  : Math.max(1, Math.min(10, val)),
-              });
-            }}
-            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      )}
+          {(control) => (
+            <Input
+              {...control}
+              type="number"
+              min={1}
+              max={10}
+              disabled={!decimals}
+              value={decimals ? (field.decimalPlaces ?? 2) : ""}
+              onChange={(event) => {
+                const places = parseInt(event.target.value, 10);
+                onUpdate({
+                  decimalPlaces: Number.isNaN(places)
+                    ? 2
+                    : Math.max(1, Math.min(10, places)),
+                });
+              }}
+            />
+          )}
+        </Field>
+        <RequiredToggle
+          checked={field.required}
+          onChange={(required) => onUpdate({ required })}
+        />
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

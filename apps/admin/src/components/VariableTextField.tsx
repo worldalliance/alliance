@@ -3,7 +3,6 @@ import {
   VARIABLE_REFERENCE_OPEN,
   variableReferencePattern,
 } from "@alliance/common/forms/variables";
-import { cn } from "@alliance/shared/styles/util";
 import { SquareFunction } from "lucide-react";
 import {
   useEffect,
@@ -13,6 +12,10 @@ import {
   type KeyboardEvent,
 } from "react";
 import type { TextareaAutosizeProps } from "react-textarea-autosize";
+import { focusInPlace } from "../pages/forms/builder/kit/revealInPane";
+import { cn } from "../ui/cn";
+import { popupClass } from "../ui/styles";
+import { zIndex } from "../ui/zIndex";
 import FormTextarea from "./FormTextarea";
 import { useFormVariables } from "./FormVariablesContext";
 
@@ -156,7 +159,7 @@ export function VariableTextField({
     caretRef.current = caret;
     requestAnimationFrame(() => {
       const target = element();
-      target?.focus();
+      focusInPlace(target);
       target?.setSelectionRange(caret, caret);
     });
   };
@@ -168,7 +171,7 @@ export function VariableTextField({
   const openPicker = () => {
     const target = element();
     if (target && document.activeElement !== target) {
-      target.focus();
+      focusInPlace(target);
       target.setSelectionRange(value.length, value.length);
     }
     syncCaret();
@@ -207,7 +210,7 @@ export function VariableTextField({
   };
 
   const showPicker = variables.length > 0;
-  const sharedClassName = cn(className, showPicker && "pr-7");
+  const sharedClassName = cn(className, showPicker && "pr-8");
   const inputProps = {
     value,
     placeholder,
@@ -242,16 +245,16 @@ export function VariableTextField({
             aria-hidden
             className={cn(
               sharedClassName,
-              "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words border-transparent text-transparent",
+              "pointer-events-none absolute inset-0 overflow-hidden border-transparent break-words whitespace-pre-wrap text-transparent",
             )}
           >
             {segments.map((segment, index) => (
               <span
                 key={index}
                 className={cn(
-                  "rounded",
-                  segment.known === true && "bg-emerald-100",
-                  segment.known === false && "bg-red-100",
+                  "rounded-sm",
+                  segment.known === true && "bg-success-soft",
+                  segment.known === false && "bg-danger-soft",
                 )}
               >
                 {segment.text}
@@ -284,9 +287,9 @@ export function VariableTextField({
             aria-label="Insert a formula"
             onMouseDown={(event) => event.preventDefault()}
             onClick={openPicker}
-            className="absolute right-1 top-1 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="absolute top-1.5 right-1.5 rounded-sm p-0.5 text-fg-muted focus-ring hover:bg-surface-2 hover:text-fg"
           >
-            <SquareFunction size={14} />
+            <SquareFunction aria-hidden="true" className="size-4" />
           </button>
         )}
       </div>
@@ -294,7 +297,12 @@ export function VariableTextField({
       {menu && options.length > 0 && (
         <ul
           role="listbox"
-          className="absolute left-0 top-full z-30 mt-1 max-h-48 w-64 overflow-y-auto rounded border border-gray-200 bg-white py-1 shadow-lg"
+          aria-label="Formulas"
+          className={cn(
+            popupClass,
+            zIndex.popover,
+            "absolute top-full left-0 mt-1 max-h-48 w-64 max-w-full overflow-y-auto py-1",
+          )}
         >
           {options.map((variable, index) => (
             <li key={variable.name}>
@@ -306,16 +314,16 @@ export function VariableTextField({
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => insert(variable.name)}
                 className={cn(
-                  "flex w-full flex-col items-start px-2 py-1 text-left",
-                  index === activeIndex && "bg-blue-50",
+                  "flex w-full flex-col items-start px-2.5 py-1 text-left",
+                  index === activeIndex && "bg-accent-soft",
                 )}
               >
-                <span className="font-mono text-xs text-gray-800">
+                <span className="font-mono text-caption">
                   {VARIABLE_REFERENCE_OPEN}
                   {variable.name}
                   {"}"}
                 </span>
-                <span className="truncate font-mono text-[10px] text-gray-400">
+                <span className="w-full truncate font-mono text-caption text-fg-muted">
                   {variable.formula}
                 </span>
               </button>
@@ -325,7 +333,7 @@ export function VariableTextField({
       )}
 
       {unknownReferences.length > 0 && (
-        <p className="mt-0.5 text-xs text-red-600">
+        <p className="mt-1 text-caption text-danger">
           No such formula: {unknownReferences.join(", ")}
         </p>
       )}

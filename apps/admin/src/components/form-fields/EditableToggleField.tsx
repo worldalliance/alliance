@@ -1,5 +1,8 @@
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import type { ToggleField } from "@alliance/common/forms/form-schema";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Select } from "../../ui/Select";
+import { Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -26,41 +29,44 @@ export function EditableToggleField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
-      <RequiredToggle
-        label="On by default"
-        checked={field.defaultValue === true}
-        onChange={(checked) =>
-          onUpdate({ defaultValue: checked ? true : null })
-        }
-      />
-      <label className="block text-xs font-medium text-gray-700">
-        Keep at least one on with
-        <select
-          value={field.atLeastOneOnWith ?? ""}
-          onChange={(event) =>
-            onUpdate({ atLeastOneOnWith: event.target.value || undefined })
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
+        />
+        <RequiredToggle
+          label="On by default"
+          checked={field.defaultValue === true}
+          onChange={(checked) =>
+            onUpdate({ defaultValue: checked ? true : null })
           }
-          className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="">No other toggle</option>
-          {partnerMissing ? (
-            <option value={field.atLeastOneOnWith}>Removed toggle</option>
-          ) : null}
-          {otherToggles.map((other) => (
-            <option key={other.id} value={other.id}>
-              {fieldPickerLabel(other)}
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+        <Field label="Keep at least one on with">
+          {(control) => (
+            <Select
+              {...control}
+              value={field.atLeastOneOnWith ?? ""}
+              onChange={(event) =>
+                onUpdate({ atLeastOneOnWith: event.target.value || undefined })
+              }
+            >
+              <option value="">No other toggle</option>
+              {partnerMissing ? (
+                <option value={field.atLeastOneOnWith}>Removed toggle</option>
+              ) : null}
+              {otherToggles.map((other) => (
+                <option key={other.id} value={other.id}>
+                  {fieldPickerLabel(other)}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <RequiredToggle
+          checked={field.required}
+          onChange={(required) => onUpdate({ required })}
+        />
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

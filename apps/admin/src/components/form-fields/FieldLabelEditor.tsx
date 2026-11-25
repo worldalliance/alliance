@@ -1,3 +1,6 @@
+import { cn } from "../../ui/cn";
+import { controlClass } from "../../ui/styles";
+import { Field } from "../../ui/templates/Form";
 import { VariableTextField } from "../VariableTextField";
 
 type FieldLabelEditorProps = {
@@ -10,22 +13,23 @@ type FieldLabelEditorProps = {
 export function FieldLabelEditor({
   value,
   onChange,
-  label = "Field Label",
+  label = "Question",
   placeholder = "Enter field label",
 }: FieldLabelEditorProps) {
   return (
-    <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      <VariableTextField
-        multiline
-        rows={1}
-        value={value ?? ""}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-      />
-    </div>
+    <Field label={label}>
+      {(control) => (
+        <VariableTextField
+          id={control.id}
+          aria-describedby={control["aria-describedby"]}
+          multiline
+          minRows={1}
+          value={value ?? ""}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={cn(controlClass, "resize-none py-1.5")}
+        />
+      )}
+    </Field>
   );
 }

@@ -1,4 +1,7 @@
 import type { TextareaField } from "@alliance/common/forms/form-schema";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -17,53 +20,60 @@ export function EditableTextareaField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-
-      <div className="flex items-center space-x-2">
-        <label className="text-xs text-gray-700">Rows:</label>
-        <input
-          type="number"
-          value={field.rows || 3}
-          onChange={(e) => onUpdate({ rows: parseInt(e.target.value) || 3 })}
-          className="w-16 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          min="1"
-          max="20"
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
         />
-        <label className="text-xs text-gray-700">Max Length:</label>
-        <input
-          type="number"
-          value={field.maxLength || ""}
-          onChange={(e) =>
-            onUpdate({
-              maxLength: e.target.value ? parseInt(e.target.value) : undefined,
-            })
-          }
-          className="w-16 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mr-5"
-          min="0"
-        />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Rows">
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                min="1"
+                max="20"
+                value={field.rows || 3}
+                onChange={(event) =>
+                  onUpdate({ rows: parseInt(event.target.value) || 3 })
+                }
+              />
+            )}
+          </Field>
+          <Field label="Max length">
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                min="0"
+                value={field.maxLength || ""}
+                onChange={(event) =>
+                  onUpdate({
+                    maxLength: event.target.value
+                      ? parseInt(event.target.value)
+                      : undefined,
+                  })
+                }
+              />
+            )}
+          </Field>
+        </div>
+        <Field label="Placeholder">
+          {(control) => (
+            <Input
+              {...control}
+              value={field.placeholder ?? ""}
+              onChange={(event) =>
+                onUpdate({ placeholder: event.target.value || undefined })
+              }
+            />
+          )}
+        </Field>
         <RequiredToggle
           checked={field.required}
-          onChange={(checked) => onUpdate({ required: checked })}
+          onChange={(required) => onUpdate({ required })}
         />
-      </div>
-
-      <div className="space-y-1 w-full">
-        <label className="block text-xs text-gray-700 font-medium">
-          Placeholder
-        </label>
-        <input
-          type="text"
-          value={field.placeholder ?? ""}
-          onChange={(event) =>
-            onUpdate({ placeholder: event.target.value || undefined })
-          }
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="Enter placeholder text"
-        />
-      </div>
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

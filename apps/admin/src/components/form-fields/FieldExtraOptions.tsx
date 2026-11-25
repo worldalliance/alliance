@@ -4,9 +4,14 @@ import {
   type AnyField,
   type CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
+import type { ReactNode } from "react";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Select } from "../../ui/Select";
+import { CheckboxField, Field } from "../../ui/templates/Form";
 import {
   CHECKBOX_TARGET_LABELS,
   extractsIntoTarget,
+  getExtractionLabel,
   hasExtractionEnabled,
   supportsExtraction,
 } from "./fieldExtraction";
@@ -19,67 +24,74 @@ type FieldExtraOptionsProps = {
   onCheckboxExtractionTargetChange: (
     target: CheckboxExtractionTarget | "",
   ) => void;
+  /** The validator picker, shown under "Use custom validator" while it's on. */
+  validatorControl?: ReactNode;
 };
 
+function isExtractionTarget(value: string): value is CheckboxExtractionTarget {
+  return CHECKBOX_EXTRACTION_TARGETS.some((target) => target === value);
+}
+
+/** The Validation and Member data groups of a question's Advanced tab. */
 export function FieldExtraOptions({
   field,
   showCustomValidatorControl,
   onCustomValidatorToggle,
   onExtractionToggle,
   onCheckboxExtractionTargetChange,
+  validatorControl,
 }: FieldExtraOptionsProps) {
+  const extractionHelp =
+    supportsExtraction(field) && hasExtractionEnabled(field)
+      ? getExtractionLabel(field)
+      : undefined;
   return (
-    <div>
-      <label className="flex cursor-pointer items-center py-1.5 text-gray-700">
-        <input
-          type="checkbox"
-          className="mr-2"
+    <>
+      <InspectorGroup title="Validation">
+        <CheckboxField
+          label="Use custom validator"
           checked={showCustomValidatorControl}
           onChange={(event) => onCustomValidatorToggle(event.target.checked)}
         />
-        Use custom validator
-      </label>
+        {showCustomValidatorControl && validatorControl}
+      </InspectorGroup>
       {supportsExtraction(field) && (
-        <>
-          <div className="border-t border-gray-100 my-1" />
+        <InspectorGroup title="Member data">
           {extractsIntoTarget(field) ? (
-            <div className="py-1.5">
-              <label className="block text-gray-700 mb-1">
-                Extract response into:
-              </label>
-              <select
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={field.autoExtractUserData?.target || ""}
-                onChange={(e) =>
-                  onCheckboxExtractionTargetChange(
-                    e.target.value as CheckboxExtractionTarget | "",
-                  )
-                }
-              >
-                <option value="">None</option>
-                {(field.kind === "custom"
-                  ? CUSTOM_COMPONENT_EXTRACTION_TARGETS
-                  : CHECKBOX_EXTRACTION_TARGETS
-                ).map((target) => (
-                  <option key={target} value={target}>
-                    {CHECKBOX_TARGET_LABELS[target]}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Field label="Extract response into" help={extractionHelp}>
+              {(control) => (
+                <Select
+                  {...control}
+                  value={field.autoExtractUserData?.target ?? ""}
+                  onChange={(event) => {
+                    const { value } = event.target;
+                    onCheckboxExtractionTargetChange(
+                      isExtractionTarget(value) ? value : "",
+                    );
+                  }}
+                >
+                  <option value="">None</option>
+                  {(field.kind === "custom"
+                    ? CUSTOM_COMPONENT_EXTRACTION_TARGETS
+                    : CHECKBOX_EXTRACTION_TARGETS
+                  ).map((target) => (
+                    <option key={target} value={target}>
+                      {CHECKBOX_TARGET_LABELS[target]}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
           ) : (
-            <label className="flex cursor-pointer items-center py-1.5 text-gray-700">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={hasExtractionEnabled(field)}
-                onChange={(event) => onExtractionToggle(event.target.checked)}
-              />
-              Extract response into user data
-            </label>
+            <CheckboxField
+              label="Extract response into user data"
+              help={extractionHelp}
+              checked={hasExtractionEnabled(field)}
+              onChange={(event) => onExtractionToggle(event.target.checked)}
+            />
           )}
-        </>
+        </InspectorGroup>
       )}
-    </div>
+    </>
   );
 }

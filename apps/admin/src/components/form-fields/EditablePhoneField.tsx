@@ -1,4 +1,7 @@
 import type { PhoneField } from "@alliance/common/forms/form-schema";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
@@ -17,28 +20,27 @@ export function EditablePhoneField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Placeholder
-        </label>
-        <input
-          type="text"
-          value={field.placeholder || ""}
-          onChange={(e) => onUpdate({ placeholder: e.target.value })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="Enter placeholder text"
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(label) => onUpdate({ label })}
         />
-      </div>
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
+        <Field label="Placeholder">
+          {(control) => (
+            <Input
+              {...control}
+              value={field.placeholder || ""}
+              onChange={(event) =>
+                onUpdate({ placeholder: event.target.value })
+              }
+            />
+          )}
+        </Field>
+        <RequiredToggle
+          checked={field.required}
+          onChange={(required) => onUpdate({ required })}
+        />
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

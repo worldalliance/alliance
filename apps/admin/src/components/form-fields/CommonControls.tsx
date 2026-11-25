@@ -1,40 +1,35 @@
-import { cn } from "@alliance/shared/styles/util";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { CheckboxField } from "../../ui/templates/Form";
 
-type RequiredToggleProps = {
+type SettingCheckboxProps = {
   checked: boolean | undefined;
   onChange: (checked: boolean) => void;
   className?: string;
-  label?: string;
 };
 
 export function RequiredToggle({
   checked,
   onChange,
-  className = "",
+  className,
   label = "Required",
-}: RequiredToggleProps) {
+}: SettingCheckboxProps & { label?: string }) {
   return (
-    <label className={cn("flex items-center text-xs text-gray-700", className)}>
-      <input
-        type="checkbox"
-        checked={!!checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mr-2"
-      />
-      {label}
-    </label>
+    <CheckboxField
+      label={label}
+      checked={!!checked}
+      onChange={(event) => onChange(event.target.checked)}
+      className={className}
+    />
   );
 }
 
-type RequiredAsteriskProps = {
-  required?: boolean;
-  className?: string;
-};
-
 export function RequiredAsterisk({
   required,
-  className = "text-red-500 ml-1",
-}: RequiredAsteriskProps) {
+  className = "ml-1 text-danger",
+}: {
+  required?: boolean;
+  className?: string;
+}) {
   if (!required) return null;
   return <span className={className}>*</span>;
 }
@@ -52,67 +47,47 @@ export function duplicateOptionValues(
   return duplicates;
 }
 
-type DuplicateOptionsWarningProps = {
-  duplicates: Set<string>;
-};
-
 export function DuplicateOptionsWarning({
   duplicates,
-}: DuplicateOptionsWarningProps) {
+}: {
+  duplicates: Set<string>;
+}) {
   if (duplicates.size === 0) return null;
   return (
-    <p className="mt-1 text-[11px] text-red-500">
+    <Banner inline tone={BannerTone.Warning}>
       Duplicate option values ({Array.from(duplicates).join(", ")}): each option
       needs a unique value or the form won&apos;t save.
-    </p>
+    </Banner>
   );
 }
-
-type OutputFieldToggleProps = {
-  checked?: boolean;
-  onChange: (checked: boolean) => void;
-  className?: string;
-};
 
 export function OutputFieldToggle({
   checked,
   onChange,
-  className = "",
-}: OutputFieldToggleProps) {
+  className,
+}: Omit<SettingCheckboxProps, "checked"> & { checked?: boolean }) {
   return (
-    <label className={cn("flex items-center text-xs text-gray-700", className)}>
-      <input
-        type="checkbox"
-        checked={!!checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mr-2"
-      />
-      Set as output field
-    </label>
+    <RequiredToggle
+      label="Set as output field"
+      checked={checked}
+      onChange={onChange}
+      className={className}
+    />
   );
 }
-
-type OutputPrivateByDefaultToggleProps = {
-  checked?: boolean;
-  onChange: (checked: boolean) => void;
-  className?: string;
-};
 
 export function OutputPrivateByDefaultToggle({
   checked,
   onChange,
-  className = "",
-}: OutputPrivateByDefaultToggleProps) {
+  className,
+}: Omit<SettingCheckboxProps, "checked"> & { checked?: boolean }) {
   return (
-    <label className={cn("flex items-center text-xs text-gray-700", className)}>
-      <input
-        type="checkbox"
-        checked={!!checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mr-2"
-      />
-      Private by default
-    </label>
+    <RequiredToggle
+      label="Private by default"
+      checked={checked}
+      onChange={onChange}
+      className={className}
+    />
   );
 }
 
@@ -124,14 +99,10 @@ export function AutoExtractUserDataToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center text-xs text-gray-700">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mr-1"
-      />
-      Automatically extract into user data
-    </label>
+    <RequiredToggle
+      label="Automatically extract into user data"
+      checked={checked}
+      onChange={onChange}
+    />
   );
 }

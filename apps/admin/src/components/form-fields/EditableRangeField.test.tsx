@@ -39,7 +39,10 @@ function renderEditor(optionCount: number | undefined) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  const [count, defaultSelection] = screen.getAllByRole("spinbutton");
+  const count = screen.getByRole("spinbutton", { name: "Number of options" });
+  const defaultSelection = screen.getByRole<HTMLSelectElement>("combobox", {
+    name: /^Default selection/,
+  });
   return { count, defaultSelection };
 }
 
@@ -56,9 +59,8 @@ describe("EditableRangeField", () => {
   ])(
     "caps the default selection at the rendered count for optionCount=%p",
     (optionCount, max) => {
-      expect(
-        renderEditor(optionCount).defaultSelection.getAttribute("max"),
-      ).toBe(max);
+      const { options } = renderEditor(optionCount).defaultSelection;
+      expect(options[options.length - 1]?.value).toBe(max);
     },
   );
 });

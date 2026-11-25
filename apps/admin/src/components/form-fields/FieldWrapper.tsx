@@ -5,6 +5,7 @@ import type {
 import { isDraftValidatorId } from "@alliance/common/forms/visible-if-formula";
 import { CustomValidatorType } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
 import { SectionPanels } from "../form-canvas/sidebarSections";
 import {
   OutputFieldToggle,
@@ -13,12 +14,7 @@ import {
 import { ElementConditions } from "./conditions/VisibilityConditions";
 import { useCustomValidatorDrafts } from "./customValidatorDrafts";
 import { CustomValidatorSelect } from "./CustomValidatorSelect";
-import {
-  extractsIntoTarget,
-  getExtractionLabel,
-  hasExtractionEnabled,
-  supportsExtraction,
-} from "./fieldExtraction";
+import { extractsIntoTarget, supportsExtraction } from "./fieldExtraction";
 import { FieldExtraOptions } from "./FieldExtraOptions";
 import type { FieldWrapperProps } from "./types";
 import { useValidatorConfig } from "./useValidatorConfig";
@@ -153,31 +149,9 @@ export function FieldWrapper<T extends AnyField>({
     } as unknown as Partial<T>);
   };
 
-  const outputToggles = isCurrentFormField && field.kind !== "custom" && (
-    <div className="mt-2 flex items-center gap-4">
-      <OutputFieldToggle
-        checked={Boolean(field.output?.output)}
-        onChange={handleOutputFieldToggle}
-      />
-      {field.output?.output && (
-        <OutputPrivateByDefaultToggle
-          checked={Boolean(field.output?.privateByDefault)}
-          onChange={handleOutputPrivateByDefaultToggle}
-        />
-      )}
-    </div>
-  );
-  const customValidatorSelect = (
-    <CustomValidatorSelect
-      type={validatorConfig?.type}
-      idArgument={validatorConfig?.idArgument ?? null}
-      onChange={handleValidatorChange}
-    />
-  );
-
   return (
     <SectionPanels
-      content={<div className="space-y-3">{children}</div>}
+      content={children}
       conditions={
         <ElementConditions
           field={field}
@@ -188,7 +162,7 @@ export function FieldWrapper<T extends AnyField>({
       }
       advanced={
         isCurrentFormField && (
-          <div className="space-y-3 text-sm">
+          <>
             <FieldExtraOptions
               field={field}
               showCustomValidatorControl={showCustomValidatorControl}
@@ -197,15 +171,30 @@ export function FieldWrapper<T extends AnyField>({
               onCheckboxExtractionTargetChange={
                 handleCheckboxExtractionTargetChange
               }
+              validatorControl={
+                <CustomValidatorSelect
+                  label="Validator"
+                  type={validatorConfig?.type}
+                  idArgument={validatorConfig?.idArgument ?? null}
+                  onChange={handleValidatorChange}
+                />
+              }
             />
-            {supportsExtraction(field) && hasExtractionEnabled(field) && (
-              <p className="text-xs text-blue-600">
-                {getExtractionLabel(field)}
-              </p>
+            {field.kind !== "custom" && (
+              <InspectorGroup title="Output">
+                <OutputFieldToggle
+                  checked={Boolean(field.output?.output)}
+                  onChange={handleOutputFieldToggle}
+                />
+                {field.output?.output && (
+                  <OutputPrivateByDefaultToggle
+                    checked={Boolean(field.output?.privateByDefault)}
+                    onChange={handleOutputPrivateByDefaultToggle}
+                  />
+                )}
+              </InspectorGroup>
             )}
-            {showCustomValidatorControl && customValidatorSelect}
-            {outputToggles}
-          </div>
+          </>
         )
       }
     />
