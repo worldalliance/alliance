@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { expect, it, mock } from "bun:test";
 import { createRef } from "react";
 import FilterBar, {
@@ -18,6 +25,7 @@ const renderBar = (params: {
   onOptions?: (selected: Set<string>) => void;
   onToggle?: (checked: boolean) => void;
   onSearch?: (value: string) => void;
+  query?: string;
 }) => {
   const filters: FilterDefinition[] = [
     {
@@ -26,6 +34,7 @@ const renderBar = (params: {
       label: "Kind",
       options: OPTIONS,
       selected: new Set(params.selected),
+      defaultSelected: new Set(["a"]),
       onChange: params.onOptions ?? mock(),
     },
     {
@@ -33,6 +42,7 @@ const renderBar = (params: {
       key: "old",
       label: "Include old",
       checked: params.checked,
+      defaultChecked: false,
       onChange: params.onToggle ?? mock(),
     },
   ];
@@ -40,7 +50,7 @@ const renderBar = (params: {
     <FilterBar
       search={{
         label: "Search things",
-        value: "",
+        value: params.query ?? "",
         onChange: params.onSearch ?? mock(),
       }}
       filters={filters}
@@ -95,6 +105,7 @@ it("moves focus to the Filters button when the last chip goes", () => {
           key: "old",
           label: "Include old",
           checked,
+          defaultChecked: false,
           onChange: () => rerender(bar(false)),
         },
       ]}
@@ -121,6 +132,7 @@ it("focuses a chip that appears when its filter turns on, and throws once it's g
           key: "old",
           label: "Include old",
           checked,
+          defaultChecked: false,
           onChange: mock(),
         },
       ]}
@@ -228,4 +240,83 @@ it("shows a search Back restores after the page skipped values the box sent", ()
   rerender(searchBar("a"));
   rerender(searchBar("ab"));
   expect(box.value).toBe("ab");
+});
+
+it("offers Clear all only while something differs from the defaults", () => {
+  renderBar({ selected: ["a"], checked: false });
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
+it("returns the search and every changed filter to its default on Clear all", () => {
+  const onOptions = mock();
+  const onToggle = mock();
+  const onSearch = mock();
+  renderBar({
+    selected: ["b"],
+    checked: true,
+    query: "rally",
+    onOptions,
+    onToggle,
+    onSearch,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  expect(onSearch).toHaveBeenCalledWith("");
+  expect(onOptions).toHaveBeenCalledWith(new Set(["a"]));
+  expect(onToggle).toHaveBeenCalledWith(false);
+  expect(document.activeElement).toBe(
+    screen.getByRole("searchbox", { name: "Search things" }),
+  );
+});
+
+it("leaves filters already at their default alone on Clear all", () => {
+  const onOptions = mock();
+  const onToggle = mock();
+  renderBar({ selected: ["a"], checked: true, onOptions, onToggle });
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  expect(onToggle).toHaveBeenCalledWith(false);
+  expect(onOptions).not.toHaveBeenCalled();
+});
+
+it("offers Clear all only while a chip or the search shows", () => {
+  renderBar({ selected: ["a", "b"], checked: false });
+  expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+  cleanup();
+  renderBar({ selected: ["a"], checked: true });
+  expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
+});
+
+it("empties the typed search on Clear all, even with the box focused", () => {
+  render(searchBar("rally"));
+  const box = screen.getByRole<HTMLInputElement>("searchbox");
+  box.focus();
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  expect(box.value).toBe("");
+});
+
+it("clears a typed search the page hasn't caught up with", () => {
+  const onSearch = mock();
+  const { rerender } = render(searchBar("", onSearch));
+  const box = screen.getByRole<HTMLInputElement>("searchbox");
+  fireEvent.change(box, { target: { value: "x" } });
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  expect(onSearch).toHaveBeenLastCalledWith("");
+  rerender(searchBar("x", onSearch));
+  rerender(searchBar("", onSearch));
+  expect(box.value).toBe("");
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
+it("shows a value Back restores after Clear all on an already empty search", () => {
+  const { rerender } = render(searchBar(""));
+  const box = screen.getByRole<HTMLInputElement>("searchbox");
+  fireEvent.change(box, { target: { value: "x" } });
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+  rerender(searchBar("x"));
+  expect(box.value).toBe("x");
+});
+
+it("offers Clear all for an empty selection", () => {
+  renderBar({ selected: [], checked: false });
+  expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
 });

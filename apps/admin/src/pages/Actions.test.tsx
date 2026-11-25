@@ -214,6 +214,38 @@ it("shows the default status filter as a chip that removes it", async () => {
   );
 });
 
+it("clears the search and returns the filters to their defaults, keeping the layout", async () => {
+  served = [
+    adminActionListItem(1, "Call your rep"),
+    adminActionListItem(4, "Rally", { status: "completed" }),
+  ];
+  renderPage(
+    queryWrapper(),
+    "/actions?q=Rally&status=completed&archived=1&group=suite",
+  );
+  expect(await screen.findByText("Rally")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+
+  expect(await screen.findByText("Call your rep")).toBeTruthy();
+  expect(screen.queryByText("Rally")).toBeNull();
+  expect(screen.getByTestId("search").textContent).toBe("?group=suite");
+  expect(screen.getByRole("list", { name: "Active filters" }).textContent).toBe(
+    "Status: Active, Pending, Draft",
+  );
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
+it("offers no Clear all when the default filters alone hide every action", async () => {
+  served = [adminActionListItem(4, "Rally", { status: "completed" })];
+  renderPage(queryWrapper(), "/actions");
+
+  expect(
+    await screen.findByText("No actions match these filters.", VISIBLE),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
 it("searches action names and keeps the search in the URL", async () => {
   served = [
     adminActionListItem(1, "Call your rep"),

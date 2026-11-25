@@ -65,6 +65,8 @@ const TimelineView = ({
   );
 };
 
+const DEFAULT_BUCKETS = readBuckets(null);
+
 const ActionsList: React.FC = () => {
   const list = useActionsAdmin();
   const error = list.isError ? actionsLoadError(list.error) : null;
@@ -188,6 +190,7 @@ const ActionsList: React.FC = () => {
                 label: "Status",
                 options: BUCKET_OPTIONS,
                 selected: shownBuckets,
+                defaultSelected: DEFAULT_BUCKETS,
                 onChange: (selected) => setStatus(writeBuckets(selected)),
               },
               {
@@ -195,6 +198,7 @@ const ActionsList: React.FC = () => {
                 key: "archived",
                 label: "Include archived",
                 checked: showArchived,
+                defaultChecked: false,
                 onChange: setShowArchived,
               },
             ]}

@@ -23,6 +23,7 @@ type OptionsFilter = {
   label: string;
   options: readonly { value: string; label: string }[];
   selected: ReadonlySet<string>;
+  defaultSelected: ReadonlySet<string>;
   onChange: (selected: Set<string>) => void;
 };
 
@@ -31,6 +32,7 @@ type ToggleFilter = {
   key: string;
   label: string;
   checked: boolean;
+  defaultChecked: boolean;
   onChange: (checked: boolean) => void;
 };
 
@@ -61,6 +63,31 @@ const chipFor = (filter: FilterDefinition): Chip | null => {
             clear: () => filter.onChange(false),
           }
         : null;
+    default:
+      throw new Error(`unknown filter: ${filter satisfies never}`);
+  }
+};
+
+const isDefault = (filter: FilterDefinition): boolean => {
+  switch (filter.kind) {
+    case FilterKind.Options:
+      return (
+        filter.selected.size === filter.defaultSelected.size &&
+        [...filter.selected].every((value) => filter.defaultSelected.has(value))
+      );
+    case FilterKind.Toggle:
+      return filter.checked === filter.defaultChecked;
+    default:
+      throw new Error(`unknown filter: ${filter satisfies never}`);
+  }
+};
+
+const resetToDefault = (filter: FilterDefinition) => {
+  switch (filter.kind) {
+    case FilterKind.Options:
+      return filter.onChange(new Set(filter.defaultSelected));
+    case FilterKind.Toggle:
+      return filter.onChange(filter.defaultChecked);
     default:
       throw new Error(`unknown filter: ${filter satisfies never}`);
   }
@@ -119,15 +146,17 @@ type FilterBarProps = {
 };
 
 /**
- * A search box, a Filters popover and a chip per active filter. The page owns
- * the values.
+ * A search box, a Filters popover, a chip per active filter, and Clear all
+ * while the search or a chip shows and anything differs from its default. The
+ * page owns the values.
  */
 const FilterBar = ({ search, filters, ref }: FilterBarProps) => {
+  const searchRef = useRef<HTMLInputElement>(null);
   // The page's value can lag behind typing, as a URL updated in a transition
   // does. Values the box sent are expected back in order and keep the draft;
   // any other value, such as one Back restored, replaces it. The page can skip
-  // values, so reaching the last one sent forgets the rest, as typing back to
-  // the page's value does.
+  // values, so reaching the last one sent forgets the rest, as sending the
+  // page's own value does.
   const [draft, setDraft] = useState(search.value);
   const sent = useRef<string[]>([]);
   useEffect(() => {
@@ -158,6 +187,20 @@ const FilterBar = ({ search, filters, ref }: FilterBarProps) => {
       : triggerRef.current
     )?.focus();
   };
+  const searching = draft !== "" || search.value !== "";
+  const offerClearAll =
+    searching || (chips.length > 0 && !filters.every(isDefault));
+  const sendSearch = (value: string) => {
+    setDraft(value);
+    if (value === search.value) sent.current = [];
+    else sent.current.push(value);
+    search.onChange(value);
+  };
+  const clearAll = () => {
+    if (searching) sendSearch("");
+    filters.filter((filter) => !isDefault(filter)).forEach(resetToDefault);
+    searchRef.current?.focus();
+  };
   return (
     <div className="flex flex-wrap items-center gap-2">
       <label className="relative flex items-center">
@@ -168,15 +211,11 @@ const FilterBar = ({ search, filters, ref }: FilterBarProps) => {
           className="pointer-events-none absolute left-2 text-zinc-500"
         />
         <input
+          ref={searchRef}
           type="search"
           value={draft}
           placeholder={search.label}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            if (event.target.value === search.value) sent.current = [];
-            else sent.current.push(event.target.value);
-            search.onChange(event.target.value);
-          }}
+          onChange={(event) => sendSearch(event.target.value)}
           className={cn(inputClass, "w-64 pl-7")}
         />
       </label>
@@ -230,6 +269,15 @@ const FilterBar = ({ search, filters, ref }: FilterBarProps) => {
             </li>
           ))}
         </ul>
+      )}
+      {offerClearAll && (
+        <button
+          type="button"
+          onClick={clearAll}
+          className="rounded-md px-1.5 py-0.5 text-sm text-zinc-600 underline outline-hidden hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-blue-600"
+        >
+          Clear all
+        </button>
       )}
     </div>
   );
