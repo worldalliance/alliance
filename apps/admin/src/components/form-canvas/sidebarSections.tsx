@@ -32,6 +32,8 @@ type SidebarSectionsValue = {
   sections: readonly SidebarSection[];
   active: SidebarSection;
   idPrefix: string;
+  /** Builder layout controls closing the Content section, after the editor's own settings. */
+  layout: ReactNode;
   /** Builder actions closing the Advanced section, after the editor's own settings. */
   actions: ReactNode;
   /**
@@ -60,6 +62,7 @@ export function SidebarSections({
   sections,
   active,
   onSelect,
+  layout,
   actions,
   dependencies,
   children,
@@ -67,6 +70,7 @@ export function SidebarSections({
   sections: readonly SidebarSection[];
   active: SidebarSection;
   onSelect: (section: SidebarSection) => void;
+  layout?: ReactNode;
   actions?: ReactNode;
   dependencies?: ReactNode;
   children: ReactNode;
@@ -91,7 +95,7 @@ export function SidebarSections({
 
   return (
     <SidebarSectionsContext.Provider
-      value={{ sections, active, idPrefix, actions, dependencies }}
+      value={{ sections, active, idPrefix, layout, actions, dependencies }}
     >
       <div
         ref={tabsRef}
@@ -142,7 +146,7 @@ export function SectionPanels(
   if (!context) {
     throw new Error("SectionPanels renders inside SidebarSections");
   }
-  const { sections, active, idPrefix, actions, dependencies } = context;
+  const { sections, active, idPrefix, layout, actions, dependencies } = context;
   if (!visited.has(active)) setVisited(new Set([...visited, active]));
   const dependenciesSection = sections.includes(SidebarSection.Conditions)
     ? SidebarSection.Conditions
@@ -161,6 +165,7 @@ export function SectionPanels(
           <SidebarSectionsContext.Provider value={null}>
             {panels[section]}
           </SidebarSectionsContext.Provider>
+          {section === SidebarSection.Content && layout}
           {section === SidebarSection.Advanced && actions}
           {section === dependenciesSection && dependencies}
         </>

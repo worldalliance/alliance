@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { conversationExpertSchema } from "./expert-schema";
+import { formGroupSchema } from "./form-groups";
 import { formValueSchema } from "./form-value";
 import {
   categorizedOptionsShape,
@@ -35,6 +36,7 @@ const baseFieldSchema = z.object({
   width: widthSchema.optional(),
   output: fieldOutputConfigSchema.optional(),
   rowCondition: rowConditionSchema.optional(),
+  group: formGroupSchema.optional(),
 });
 
 const textFieldSchema = z.strictObject({
@@ -288,7 +290,11 @@ export type ListSubField = z.infer<typeof listSubFieldSchema>;
 const listFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("list"),
-  fields: z.array(listSubFieldSchema),
+  fields: z
+    .array(listSubFieldSchema)
+    .refine((fields) => fields.every((field) => field.group === undefined), {
+      message: "List sub-fields can't be in a group",
+    }),
   defaultNumber: z.number().optional(),
   min: z.number().optional(),
   max: z.number().optional(),

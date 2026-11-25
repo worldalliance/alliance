@@ -13,6 +13,7 @@ import {
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
+import { withFreshGroupIds } from "./formGroups";
 import { formSchemaIds } from "./formJson";
 
 export const createUniqueFormBuilderId = (
@@ -216,7 +217,7 @@ export const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
     ...copiedPage,
     id: copyPageId,
     title: copiedPage.title ? `${copiedPage.title} (Copy)` : "Copied page",
-    fields: assignCopiedElementIds(copiedPage.fields),
+    fields: withFreshGroupIds(assignCopiedElementIds(copiedPage.fields)),
   };
 
   return remapCopiedPageReferences(pageWithCopiedIds, idMap);

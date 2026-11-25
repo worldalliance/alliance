@@ -1,5 +1,6 @@
 import { conversationFieldErrors } from "./conversation";
 import type { DisplayBlock } from "./display-blocks";
+import { splitGroupRuns } from "./form-groups";
 import {
   collectFieldLookup,
   isQuestionField,
@@ -81,7 +82,14 @@ export function validateFormSchema(
         });
       }
     }
-    for (const item of page.fields ?? []) {
+    const fields = page.fields ?? [];
+    for (const { start } of splitGroupRuns(fields)) {
+      errors.push({
+        blockId: fields[start].id ?? "<unnamed>",
+        message: "Elements in a group must be next to each other",
+      });
+    }
+    for (const item of fields) {
       collectInputErrors(item, errors);
       collectDisplayContentErrors(item, undefined, errors);
       collectQuestionFieldIds(item, earlierFieldIds);
