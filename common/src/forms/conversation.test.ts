@@ -148,6 +148,16 @@ describe("an expert message block", () => {
     ).toEqual([]);
   });
 
+  it("needs text to save", () => {
+    const blank = {
+      ...message({ userId: 7, userName: "Dr Maria" }),
+      text: " ",
+    };
+    expect(
+      validateFormSchema(schema(blank)).map((error) => error.message),
+    ).toEqual(["Expert message has no text. Write what the expert says"]);
+  });
+
   it("credits the expert in display-only Markdown", () => {
     expect(
       displayOnlyMarkdown({

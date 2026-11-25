@@ -363,7 +363,11 @@ export default function RenderDisplayBlock({
     case "expertMessage":
       return (
         <ExpertBubble expert={block.expert} showName>
-          <FormMarkdownWrapper markdownContent={block.text} />
+          {block.text.trim() ? (
+            <FormMarkdownWrapper markdownContent={block.text} />
+          ) : (
+            <span className="text-zinc-600">The expert&apos;s message</span>
+          )}
         </ExpertBubble>
       );
 

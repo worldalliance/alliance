@@ -10,20 +10,31 @@ export function EditableExpertMessageBlock(
   return (
     <DisplayBlockWrapper {...props}>
       {({ block, onUpdate }) => (
-        <div className="space-y-3 bg-zinc-100 px-5 py-4">
-          <UserPicker
-            selected={block.expert}
-            onChange={(expert) => onUpdate({ expert })}
-          />
-          <VariableTextField
-            multiline
-            value={block.text}
-            onChange={(text) => onUpdate({ text })}
-            className="w-full text-gray-900 border-none outline-none !bg-transparent resize-none whitespace-pre-wrap"
-            placeholder="What the expert says (markdown)"
-            rows={Math.max(2, block.text.split("\n").length)}
-            style={{ resize: "vertical" }}
-          />
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <span className="block text-xs font-medium text-gray-700">
+              Expert
+            </span>
+            <UserPicker
+              placeholder="Search users by name or id"
+              ariaLabel="Expert"
+              selected={block.expert}
+              onChange={(expert) => onUpdate({ expert })}
+            />
+          </div>
+          <label className="block space-y-1">
+            <span className="block text-xs font-medium text-gray-700">
+              Message (markdown)
+            </span>
+            <VariableTextField
+              multiline
+              rows={Math.max(4, block.text.split("\n").length)}
+              value={block.text}
+              onChange={(text) => onUpdate({ text })}
+              className="w-full resize-y rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="What the expert says"
+            />
+          </label>
         </div>
       )}
     </DisplayBlockWrapper>

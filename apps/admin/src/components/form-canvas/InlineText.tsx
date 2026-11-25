@@ -54,7 +54,7 @@ const BLOCK_TEXT_LINES: Record<DisplayKind, TextLines | null> = {
   header: TextLines.Single,
   text: TextLines.Multiple,
   quote: TextLines.Multiple,
-  expertMessage: null,
+  expertMessage: TextLines.Multiple,
   label: TextLines.Single,
   divider: null,
   spacer: null,

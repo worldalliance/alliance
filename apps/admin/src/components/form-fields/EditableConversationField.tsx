@@ -60,6 +60,8 @@ export function EditableConversationField({
       <div className="space-y-1">
         <span className="block text-xs font-medium text-gray-700">Expert</span>
         <UserPicker
+          placeholder="Search users by name or id"
+          ariaLabel="Expert"
           selected={field.expert}
           onChange={(expert) => onUpdate({ expert })}
         />

@@ -265,6 +265,13 @@ function collectDisplayContentErrors(
 ): void {
   if (!("type" in item) || item.type !== "display") return;
   const blockId = item.id ?? "<unnamed>";
+  if (item.kind === "expertMessage" && item.text.trim() === "") {
+    errors.push({
+      viewId,
+      blockId,
+      message: "Expert message has no text. Write what the expert says",
+    });
+  }
   if (item.kind === "expertMessage" && item.expert === null) {
     errors.push({
       viewId,

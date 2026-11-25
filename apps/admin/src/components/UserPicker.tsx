@@ -14,9 +14,13 @@ type ShownUser = Pick<AdminUserListItemDto, "id" | "name" | "profilePicture">;
 export function UserPicker({
   selected,
   onChange,
+  placeholder = "(Optional) Select user by name or id",
+  ariaLabel,
 }: {
   selected: PickedUser | null;
   onChange: (user: PickedUser | null) => void;
+  placeholder?: string;
+  ariaLabel?: string;
 }) {
   const { data: users = [], isLoading: isLoadingUsers } = useUsersAdmin();
   const [query, setQuery] = useState("");
@@ -98,11 +102,8 @@ export function UserPicker({
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={
-              isLoadingUsers
-                ? "Loading users…"
-                : "(Optional) Select user by name or id"
-            }
+            aria-label={ariaLabel}
+            placeholder={isLoadingUsers ? "Loading users…" : placeholder}
             disabled={isLoadingUsers}
             className="w-full border border-zinc-300 rounded px-3 py-2 text-sm bg-white disabled:bg-zinc-50 disabled:text-zinc-500"
           />
