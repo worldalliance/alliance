@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import type React from "react";
 import { formatCount } from "../lib/formatNumber";
 import { cn } from "./cn";
@@ -50,17 +50,57 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 const BLEED_EDGES =
   "group-data-bleed/table:first:pl-page group-data-bleed/table:last:pr-page";
 
+/** Values are `aria-sort`'s. */
+export enum SortDirection {
+  Ascending = "ascending",
+  Descending = "descending",
+}
+
+const SORT_ICON: Record<SortDirection, typeof ArrowUp> = {
+  [SortDirection.Ascending]: ArrowUp,
+  [SortDirection.Descending]: ArrowDown,
+};
+
+function SortButton({
+  direction,
+  onSort,
+  children,
+}: {
+  direction: SortDirection | null;
+  onSort: () => void;
+  children: React.ReactNode;
+}) {
+  const Icon = direction === null ? null : SORT_ICON[direction];
+  return (
+    <button
+      type="button"
+      onClick={onSort}
+      className="-ml-1.5 inline-flex h-control-sm items-center gap-1 rounded-md px-1.5 font-medium focus-ring hover:bg-line hover:text-fg"
+    >
+      {children}
+      {/* Held when inactive, so the label stays put as the sort moves. */}
+      <span aria-hidden="true" className="size-3.5 shrink-0">
+        {Icon && <Icon className="size-3.5" />}
+      </span>
+    </button>
+  );
+}
+
 function TableHead({
   className,
   actions = false,
+  sort,
   children,
   ...props
 }: React.ComponentProps<"th"> & {
   /** The column of row actions: its name ("Actions") is for screen readers only. */
   actions?: boolean;
+  /** A sortable column: `direction` is `null` unless the table is sorted by it. */
+  sort?: { direction: SortDirection | null; onSort: () => void };
 }) {
   return (
     <th
+      aria-sort={sort ? (sort.direction ?? "none") : undefined}
       className={cn(
         zIndex.raised,
         "sticky top-0 h-th border-b border-line bg-surface-2 px-cell text-caption font-medium whitespace-nowrap text-fg-muted",
@@ -69,7 +109,15 @@ function TableHead({
       )}
       {...props}
     >
-      {actions ? <span className="sr-only">{children}</span> : children}
+      {actions ? (
+        <span className="sr-only">{children}</span>
+      ) : sort ? (
+        <SortButton direction={sort.direction} onSort={sort.onSort}>
+          {children}
+        </SortButton>
+      ) : (
+        children
+      )}
     </th>
   );
 }
