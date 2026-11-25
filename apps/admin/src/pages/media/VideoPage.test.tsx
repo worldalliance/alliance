@@ -4,6 +4,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
 import VideoPage from "./VideoPage";
 
@@ -85,7 +86,7 @@ it("shows the video's facts and the way back to the videos", async () => {
   expect(facts?.textContent).toContain("Original size2.0 KB");
   expect(facts?.textContent).toContain("Output size1.0 KB");
   expect(facts?.textContent).toContain("MIME typevideo/mp4");
-  expect(screen.getByText("1 segment · 1.0 KB total")).toBeTruthy();
+  expect(screen.getByText("1 file · 1.0 KB total")).toBeTruthy();
   expect(
     screen.getByRole("link", { name: "Videos" }).getAttribute("href"),
   ).toBe("/content/media?tab=videos");
@@ -104,6 +105,7 @@ it("says the video failed to load instead of not found", async () => {
   loadStatus = 500;
   renderPage();
   expect(await screen.findByText("Couldn't load this video")).toBeTruthy();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   expect(screen.queryByText("Video not found")).toBeNull();
 });
 
@@ -121,7 +123,7 @@ it("keeps the loaded video beside a refetch error", async () => {
   loadStatus = 500;
   await act(() => query.client.refetchQueries());
 
-  expect(await screen.findByText(/Couldn’t refresh this video/)).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh this video/)).toBeTruthy();
   expect(
     screen.getByRole("heading", { level: 1, name: "intro.mp4" }),
   ).toBeTruthy();
@@ -129,7 +131,7 @@ it("keeps the loaded video beside a refetch error", async () => {
 
 const replaceWith = async (names: string[]) => {
   await screen.findByRole("heading", { level: 1, name: "intro.mp4" });
-  fireEvent.change(screen.getByLabelText("HLS files"), {
+  fireEvent.change(screen.getByLabelText("Replacement files"), {
     target: { files: names.map((name) => new File(["x"], name)) },
   });
   fireEvent.click(
@@ -165,4 +167,5 @@ it("says a video with a malformed id is not found", async () => {
     queryWrapper(),
   );
   expect(await screen.findByText("Video not found")).toBeTruthy();
+  expect(requestedIds).toEqual([]);
 });

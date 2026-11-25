@@ -12,6 +12,7 @@ import {
 import { escapeRegExp } from "es-toolkit";
 import { MemoryRouter } from "react-router";
 import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import { ToastProvider } from "../../ui/ToastProvider";
 import { ReplaceVideoSection } from "./ReplaceVideoSection";
 
@@ -47,7 +48,7 @@ const renderForm = () => {
 };
 
 const choose = (names: string[]) =>
-  fireEvent.change(screen.getByLabelText("HLS files"), {
+  fireEvent.change(screen.getByLabelText("Replacement files"), {
     target: { files: names.map((name) => new File(["x"], name)) },
   });
 
@@ -89,7 +90,7 @@ it("refreshes the video only once the server accepts the replacement", async () 
 
   answer = () => Response.json({}, { status: 500 });
   await replace();
-  expect(await shown("Failed to replace video content")).toBeTruthy();
+  expect(await shown(SAVE_FAILED_FALLBACK)).toBeTruthy();
   expect(detailInvalidated()).toBe(false);
 
   answer = () => Response.json({ id: 7, key: "videos/7" });

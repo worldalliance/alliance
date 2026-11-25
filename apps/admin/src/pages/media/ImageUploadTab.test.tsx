@@ -4,11 +4,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { escapeRegExp } from "es-toolkit";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../../lib/sessionExpired";
-import MediaPlace from "../../places/MediaPlace";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import { ToastProvider } from "../../ui/ToastProvider";
+import MediaPage from "./MediaPage";
 
 let uploadRefusal: { status: number; message: string } | null;
 let uploads = 0;
+let restoreClipboard = () => {};
+afterEach(() => {
+  restoreClipboard();
+  restoreClipboard = () => {};
+});
 beforeEach(() => {
   uploadRefusal = { status: 400, message: "Image is too large" };
   uploads = 0;
@@ -29,7 +35,7 @@ const renderPage = () =>
   render(
     <MemoryRouter initialEntries={["/content/media"]}>
       <ToastProvider>
-        <MediaPlace />
+        <MediaPage />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -50,7 +56,7 @@ it("says why an upload was refused", async () => {
 });
 
 it.each([
-  [500, "Failed to upload image."],
+  [500, SAVE_FAILED_FALLBACK],
   [401, sessionExpiredMessage],
 ])(
   "shows its own text, not the server's, for a %i upload refusal",
@@ -82,10 +88,15 @@ it("asks for an image, sending nothing, when none is chosen", async () => {
 it("shows the uploaded image and its link, which it copies", async () => {
   uploadRefusal = null;
   const writeText = jest.fn().mockResolvedValue(undefined);
+  const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
   Object.defineProperty(navigator, "clipboard", {
     value: { writeText },
     configurable: true,
   });
+  restoreClipboard = () => {
+    if (clipboard) Object.defineProperty(navigator, "clipboard", clipboard);
+    else Reflect.deleteProperty(navigator, "clipboard");
+  };
   renderPage();
   choosePicture();
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));

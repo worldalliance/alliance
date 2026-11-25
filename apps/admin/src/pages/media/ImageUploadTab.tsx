@@ -2,10 +2,13 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import Button, { ButtonVariant } from "../../ui/Button";
+import { FileInput } from "../../ui/FileInput";
+import InlineError from "../../ui/InlineError";
 import { Input } from "../../ui/Input";
 import {
   Field,
   FormSection,
+  SAVE_FAILED_FALLBACK,
   SaveBar,
   SaveState,
   useFocusFirstInvalid,
@@ -14,21 +17,29 @@ import { PageBody } from "../../ui/templates/Page";
 import { useToast } from "../../ui/ToastProvider";
 import { useImageUpload } from "./useImageUpload";
 
+const STATE_TEXT = {
+  [SaveState.Saving]: "Uploading…",
+  [SaveState.Saved]: "Uploaded",
+  [SaveState.Failed]: "Couldn't upload",
+};
+
 export function ImageUploadTab() {
-  const { success, error: toastError } = useToast();
-  const [file, setFile] = useState<File | null>(null);
+  const { success } = useToast();
+  const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<{ file?: string }>({});
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [copyFailed, setCopyFailed] = useState(false);
   const upload = useImageUpload({
     onSuccess: (url) => {
       setUploadedUrl(url);
-      success("Image uploaded");
+      setCopyFailed(false);
     },
   });
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    const file = files[0];
     if (!file) {
       setErrors({ file: "Choose an image to upload" });
       focusFirstInvalid();
@@ -38,8 +49,9 @@ export function ImageUploadTab() {
   };
 
   const copyLink = async (url: string) => {
-    if (await copyToClipboard(url)) success("Copied link");
-    else toastError("Couldn't copy the link. Select it and copy it yourself.");
+    const copied = await copyToClipboard(url);
+    setCopyFailed(!copied);
+    if (copied) success("Copied link");
   };
 
   const state = upload.isPending
@@ -55,14 +67,14 @@ export function ImageUploadTab() {
       <form ref={formRef} onSubmit={submit} noValidate>
         <FormSection
           title="Upload an image"
-          description="Upload an image to get a link you can paste anywhere."
           footer={
             <SaveBar
               state={state}
               saveLabel="Upload"
+              stateText={STATE_TEXT}
               error={
                 upload.isError
-                  ? adminRefusalMessage(upload.error, "Failed to upload image.")
+                  ? adminRefusalMessage(upload.error, SAVE_FAILED_FALLBACK)
                   : null
               }
             />
@@ -70,13 +82,12 @@ export function ImageUploadTab() {
         >
           <Field label="Image" error={errors.file}>
             {(control) => (
-              <Input
+              <FileInput
                 {...control}
-                type="file"
                 accept="image/*"
-                className="py-1"
-                onChange={(event) => {
-                  setFile(event.target.files?.[0] ?? null);
+                value={files}
+                onChange={(chosen) => {
+                  setFiles(chosen);
                   setErrors({});
                   upload.reset();
                 }}
@@ -95,22 +106,31 @@ export function ImageUploadTab() {
           />
           <Field label="Link">
             {(control) => (
-              <div className="flex gap-2">
-                <Input
-                  {...control}
-                  readOnly
-                  value={uploadedUrl}
-                  className="font-mono text-xs"
-                  onFocus={(event) => event.target.select()}
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    {...control}
+                    readOnly
+                    value={uploadedUrl}
+                    className="font-mono text-xs"
+                    onFocus={(event) => event.target.select()}
+                  />
+                  <Button
+                    variant={ButtonVariant.Default}
+                    className="shrink-0"
+                    onClick={() => void copyLink(uploadedUrl)}
+                  >
+                    Copy link
+                  </Button>
+                </div>
+                <InlineError
+                  message={
+                    copyFailed
+                      ? "Couldn't copy the link. Select it and copy it yourself."
+                      : null
+                  }
                 />
-                <Button
-                  variant={ButtonVariant.Default}
-                  className="shrink-0"
-                  onClick={() => void copyLink(uploadedUrl)}
-                >
-                  Copy link
-                </Button>
-              </div>
+              </>
             )}
           </Field>
         </FormSection>

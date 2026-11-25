@@ -1,9 +1,10 @@
-import { withCount } from "@alliance/common/plural";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import VideoPlayer from "@alliance/sharedweb/forms/VideoPlayer";
+import { Fragment } from "react";
 import { useParams } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDateTime } from "../../lib/formatDate";
+import { countOf } from "../../lib/formatNumber";
 import { useVideoAdmin } from "../../lib/useVideosAdmin";
 import { RecordId } from "../../places";
 import Button, { ButtonVariant } from "../../ui/Button";
@@ -17,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { Banner, BannerTone } from "../../ui/templates/Banner";
 import { Panel } from "../../ui/templates/Overview";
 import { Page } from "../../ui/templates/Page";
 import {
@@ -26,16 +26,19 @@ import {
   RecordBody,
   SidePanelSection,
 } from "../../ui/templates/Record";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 import { formatSize, VIDEOS_HREF } from "./mediaRules";
 import { ReplaceVideoSection } from "./ReplaceVideoSection";
 
 export default function VideoPage() {
   const { videoId } = useParams();
   const id = Number(videoId);
-  // No video has an id that isn't a number, whatever the server answers.
   const validId = Number.isInteger(id);
-  const detail = useVideoAdmin(id);
+  const detail = useVideoAdmin(id, { enabled: validId });
   const video = detail.data;
   const notFound =
     !validId || (detail.isError && thrownStatus(detail.error) === 404);
@@ -45,25 +48,7 @@ export default function VideoPage() {
       record={RecordId.Video}
       title={video?.originalFilename}
       description={video ? `Video ID ${video.id}` : ""}
-      banner={
-        detail.isRefetchError && (
-          <Banner
-            tone={BannerTone.Danger}
-            action={
-              <Button
-                size="small"
-                variant={ButtonVariant.Ghost}
-                onClick={() => void detail.refetch()}
-              >
-                Try again
-              </Button>
-            }
-          >
-            Couldn’t refresh this video, so what is shown may be out of date.{" "}
-            {adminRefusalMessage(detail.error, LOAD_FAILED_FALLBACK)}
-          </Banner>
-        )
-      }
+      banner={<RefreshFailedBanner things="this video" query={detail} />}
     >
       <ContentState
         loading={validId && detail.isPending}
@@ -80,6 +65,7 @@ export default function VideoPage() {
         }
         errorTitle="Couldn't load this video"
         onRetry={() => void detail.refetch()}
+        retrying={detail.isFetching}
         empty={!video}
         emptyTitle="Video not found"
         emptyDescription="It may have been deleted."
@@ -99,7 +85,18 @@ export default function VideoPage() {
                     {formatSize(video.totalOutputSize)}
                   </Fact>
                   <Fact label="MIME type">
-                    <span className="min-w-0 break-all">{video.mime}</span>
+                    <span className="min-w-0 wrap-anywhere">
+                      {video.mime.split("/").map((part, index) => (
+                        <Fragment key={index}>
+                          {index > 0 && (
+                            <>
+                              /<wbr />
+                            </>
+                          )}
+                          {part}
+                        </Fragment>
+                      ))}
+                    </span>
                   </Fact>
                   <Fact label="Created">
                     {formatDateTime(video.dateCreated)}
@@ -114,20 +111,16 @@ export default function VideoPage() {
             <Panel title="Player">
               <VideoPlayer src="" videoId={video.id} />
             </Panel>
-            <ReplaceVideoSection
-              videoId={video.id}
-              filename={video.originalFilename}
-            />
             <Panel
-              title="HLS segments"
+              title="HLS files"
               description={
                 video.segments.length > 0 &&
-                `${withCount(video.segments.length, "segment")} · ${formatSize(video.totalOutputSize)} total`
+                `${countOf(video.segments.length, "file")} · ${formatSize(video.totalOutputSize)} total`
               }
               flush
             >
               {video.segments.length === 0 ? (
-                <EmptyState title="No segments found" />
+                <EmptyState title="No files found" />
               ) : (
                 <Table>
                   <TableHeader>
@@ -151,6 +144,10 @@ export default function VideoPage() {
                 </Table>
               )}
             </Panel>
+            <ReplaceVideoSection
+              videoId={video.id}
+              filename={video.originalFilename}
+            />
           </RecordBody>
         )}
       </ContentState>

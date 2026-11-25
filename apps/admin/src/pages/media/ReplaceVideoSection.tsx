@@ -1,13 +1,14 @@
-import { withCount } from "@alliance/common/plural";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { countOf } from "../../lib/formatNumber";
 import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
 import { useReplaceVideoAdmin } from "../../lib/useVideosAdmin";
-import { Input } from "../../ui/Input";
+import { FileInput } from "../../ui/FileInput";
 import {
   Field,
   FormSection,
+  SAVE_FAILED_FALLBACK,
   SaveBar,
   SaveState,
   useFocusFirstInvalid,
@@ -18,6 +19,12 @@ import { replacementFilesError } from "./mediaRules";
 const FFMPEG_COMMAND =
   "ffmpeg -i input.mp4 -c:v libx264 -preset fast -crf 28 -maxrate 2M -bufsize 4M -vf scale=-2:720 -c:a aac -b:a 128k -hls_time 6 -hls_list_size 0 -hls_segment_filename segment_%03d.ts output.m3u8";
 
+const STATE_TEXT = {
+  [SaveState.Saving]: "Replacing…",
+  [SaveState.Saved]: "Replaced",
+  [SaveState.Failed]: "Couldn't replace",
+};
+
 export function ReplaceVideoSection({
   videoId,
   filename,
@@ -27,33 +34,17 @@ export function ReplaceVideoSection({
 }) {
   const { success } = useToast();
   const confirm = useConfirmOnPage();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<{ files?: string }>({});
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
-  const [outcome, setOutcome] = useState<
-    { saved: true } | { saved: false; reason: string } | null
-  >(null);
 
   const replacement = useReplaceVideoAdmin({
     videoId,
     onSuccess: () => {
-      success("Video content replaced");
-      setOutcome({ saved: true });
+      success("Video content replaced", filename);
       setFiles([]);
-      if (inputRef.current) inputRef.current.value = "";
     },
-    onError: (error) => {
-      console.error("Failed to replace video", error);
-      setOutcome({
-        saved: false,
-        reason: thrownRefusalMessage({
-          error,
-          fallback: "Failed to replace video content",
-          sessionExpired: uploadSessionExpiredMessage,
-        }),
-      });
-    },
+    onError: (error) => console.error("Failed to replace video", error),
   });
 
   const submit = async (event: React.FormEvent) => {
@@ -66,20 +57,19 @@ export function ReplaceVideoSection({
     }
     const confirmed = await confirm({
       title: `Replace the content of “${filename}”?`,
-      message: `Everyone who plays video ${videoId} gets the ${withCount(files.length, "file")} you chose. Its current files are deleted and can't be restored.`,
+      message: `Everyone who plays video ${videoId} gets the ${countOf(files.length, "file")} you chose. Its current files are deleted and can't be restored.`,
       confirmLabel: "Replace content",
       destructive: true,
     });
     if (!confirmed) return;
-    setOutcome(null);
     replacement.mutate(files);
   };
 
   const state = replacement.isPending
     ? SaveState.Saving
-    : outcome?.saved === false
+    : replacement.isError
       ? SaveState.Failed
-      : outcome?.saved
+      : replacement.isSuccess
         ? SaveState.Saved
         : SaveState.Clean;
 
@@ -92,7 +82,16 @@ export function ReplaceVideoSection({
           <SaveBar
             state={state}
             saveLabel="Replace video content"
-            error={outcome?.saved === false ? outcome.reason : null}
+            stateText={STATE_TEXT}
+            error={
+              replacement.isError
+                ? thrownRefusalMessage({
+                    error: replacement.error,
+                    fallback: SAVE_FAILED_FALLBACK,
+                    sessionExpired: uploadSessionExpiredMessage,
+                  })
+                : null
+            }
           />
         }
       >
@@ -103,26 +102,24 @@ export function ReplaceVideoSection({
           </code>
         </div>
         <Field
-          label="HLS files"
+          label="Replacement files"
           help={
             files.length > 0
-              ? `${withCount(files.length, "file")} selected`
+              ? `${countOf(files.length, "file")} selected`
               : "The .m3u8 playlist and its .ts segments."
           }
           error={errors.files}
         >
           {(control) => (
-            <Input
+            <FileInput
               {...control}
-              ref={inputRef}
-              type="file"
               multiple
               accept=".m3u8,.ts"
-              className="py-1"
-              onChange={(event) => {
-                setFiles(Array.from(event.target.files ?? []));
+              value={files}
+              onChange={(chosen) => {
+                setFiles(chosen);
                 setErrors({});
-                setOutcome(null);
+                replacement.reset();
               }}
             />
           )}

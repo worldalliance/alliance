@@ -13,8 +13,9 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../../lib/sessionExpired";
-import MediaPlace from "../../places/MediaPlace";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
+import MediaPage from "./MediaPage";
 
 const video = (id: number, originalFilename: string) =>
   ({
@@ -74,7 +75,7 @@ const renderPage = (
   render(
     <MemoryRouter initialEntries={[url]}>
       <ToastProvider>
-        <MediaPlace />
+        <MediaPage />
       </ToastProvider>
     </MemoryRouter>,
     query,
@@ -82,7 +83,7 @@ const renderPage = (
 
 const deleteFirst = async () => {
   fireEvent.click(
-    await screen.findByRole("button", { name: "Delete: intro.mp4" }),
+    await screen.findByRole("button", { name: "Delete: intro.mp4, video 1" }),
   );
   fireEvent.click(await screen.findByRole("button", { name: "Delete video" }));
 };
@@ -105,7 +106,7 @@ it("links each video to its record", async () => {
 it("says what deleting a video leaves behind before deleting it", async () => {
   renderPage();
   fireEvent.click(
-    await screen.findByRole("button", { name: "Delete: intro.mp4" }),
+    await screen.findByRole("button", { name: "Delete: intro.mp4, video 1" }),
   );
 
   const dialog = within(await screen.findByRole("dialog"));
@@ -156,15 +157,36 @@ it("keeps the video and says so when the delete fails", async () => {
   renderPage();
   await deleteFirst();
 
-  // The banner stays until dismissed; the toast beside it goes on its own.
-  const dismiss = await screen.findByText("Dismiss", { selector: "button" });
-  const banner = dismiss.closest<HTMLElement>('[role="alert"]');
-  if (!banner) throw new Error("no banner");
-  expect(within(banner).getByText("Failed to delete video")).toBeTruthy();
+  const dismiss = await screen.findByRole("button", { name: "Dismiss" });
+  expect(screen.getAllByText("Couldn't delete video 1.")).toHaveLength(1);
   expect(screen.getByText("intro.mp4")).toBeTruthy();
 
   fireEvent.click(dismiss);
-  expect(screen.queryByText("Dismiss", { selector: "button" })).toBeNull();
+  expect(screen.queryByText("Couldn't delete video 1.")).toBeNull();
+});
+
+it("names the video and the server's reason when the delete is refused", async () => {
+  deleteStatus = 401;
+  renderPage();
+  await deleteFirst();
+
+  expect(
+    await screen.findByText(
+      `Couldn't delete video 1: ${sessionExpiredMessage}`,
+    ),
+  ).toBeTruthy();
+});
+
+it("moves focus to the next video's delete once a video is deleted", async () => {
+  renderPage();
+  await deleteFirst();
+
+  await waitForElementToBeRemoved(() => screen.queryByText("intro.mp4"));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Delete: outro.mp4, video 2" }),
+    ),
+  );
 });
 
 it("drops a video another admin already deleted", async () => {
@@ -208,6 +230,7 @@ it("says the videos failed to load instead of listing none", async () => {
   loadStatus = 500;
   renderPage();
   expect(await screen.findByText("Couldn't load videos")).toBeTruthy();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   expect(screen.queryByText("No videos yet")).toBeNull();
 });
@@ -226,6 +249,6 @@ it("keeps the loaded videos beside a refetch error", async () => {
   loadStatus = 500;
   await act(() => query.client.refetchQueries());
 
-  expect(await screen.findByText(/Couldn’t refresh the videos/)).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh videos/)).toBeTruthy();
   expect(screen.getByText("intro.mp4")).toBeTruthy();
 });

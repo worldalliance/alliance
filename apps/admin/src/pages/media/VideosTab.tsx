@@ -1,11 +1,9 @@
 import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
-import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
-import { formatCount } from "../../lib/formatNumber";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
-import { useRefusalToast } from "../../lib/useRefusalToast";
 import { useDeleteVideoAdmin, useVideosAdmin } from "../../lib/useVideosAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { nameLinkClass } from "../../ui/styles";
@@ -18,32 +16,26 @@ import {
   TableRow,
 } from "../../ui/Table";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
-import { FilterBar, ListContent, SearchField } from "../../ui/templates/List";
+import {
+  FilterBar,
+  ListContent,
+  listCount,
+  SearchField,
+  useListSearch,
+} from "../../ui/templates/List";
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
 import { formatSize, videoHref } from "./mediaRules";
 
-const DELETE_FAILED = "Failed to delete video";
+const SIZE_COLUMN = "text-right tabular-nums";
 
 export function VideosTab() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const q = searchParams.get("q") ?? "";
-  const setQ = (value: string) =>
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set("q", value);
-        else next.delete("q");
-        return next;
-      },
-      { replace: true },
-    );
-
+  const [q, setQ] = useListSearch();
   const confirm = useConfirmOnPage();
-  const refusalToast = useRefusalToast();
   const list = useVideosAdmin();
   const all = list.data;
   const rows = useMemo(() => {
@@ -53,11 +45,29 @@ export function VideosTab() {
     );
   }, [all, q]);
 
+  const tableRef = useRef<HTMLTableElement>(null);
+  // After a row's Delete removes the row, focus goes to the neighbouring
+  // row's Delete.
+  const [focusAfter, setFocusAfter] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusAfter === null) return;
+    const target = tableRef.current?.querySelector<HTMLElement>(
+      `[data-video="${focusAfter}"] button`,
+    );
+    if (!target) return;
+    target.focus();
+    setFocusAfter(null);
+  }, [focusAfter, rows]);
+
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deletion = useDeleteVideoAdmin({
-    onError: (error) => {
-      setDeleteError(adminRefusalMessage(error, DELETE_FAILED));
-      refusalToast(error, DELETE_FAILED);
+    onError: (error, id) => {
+      const reason = adminRefusalMessage(error, "");
+      setDeleteError(
+        reason
+          ? `Couldn't delete video ${id}: ${reason}`
+          : `Couldn't delete video ${id}.`,
+      );
     },
   });
 
@@ -70,11 +80,16 @@ export function VideosTab() {
     });
     if (!confirmed) return;
     setDeleteError(null);
-    deletion.mutate(video.id);
+    const index = rows.findIndex((row) => row.id === video.id);
+    const neighbour = rows[index + 1] ?? rows[index - 1];
+    deletion.mutate(video.id, {
+      onSuccess: () => setFocusAfter(neighbour?.id ?? null),
+    });
   };
 
   return (
     <>
+      <RefreshFailedBanner things="videos" query={list} />
       {deleteError && (
         <Banner
           tone={BannerTone.Danger}
@@ -91,37 +106,25 @@ export function VideosTab() {
           {deleteError}
         </Banner>
       )}
-      {list.isRefetchError && (
-        <Banner
-          tone={BannerTone.Danger}
-          action={
-            <Button
-              size="small"
-              variant={ButtonVariant.Ghost}
-              onClick={() => void list.refetch()}
-            >
-              Try again
-            </Button>
-          }
-        >
-          Couldn’t refresh the videos, so this list may be out of date.{" "}
-          {adminRefusalMessage(list.error, LOAD_FAILED_FALLBACK)}
-        </Banner>
-      )}
       <FilterBar
-        count={
-          all &&
-          (rows.length === all.length
-            ? `${formatCount(all.length)} ${all.length === 1 ? "video" : "videos"}`
-            : `${formatCount(rows.length)} of ${formatCount(all.length)} videos`)
-        }
+        count={listCount({
+          shown: rows.length,
+          total: all?.length,
+          noun: "video",
+        })}
       >
         <SearchField label="Filter videos" value={q} onChange={setQ} />
       </FilterBar>
       <ListContent>
         <ContentState
           loading={list.isPending}
-          skeleton={<TableSkeleton bleed columns={5} />}
+          skeleton={
+            <TableSkeleton
+              bleed
+              columns={5}
+              columnClassNames={[undefined, undefined, SIZE_COLUMN]}
+            />
+          }
           error={
             list.isLoadingError
               ? adminRefusalMessage(list.error, LOAD_FAILED_FALLBACK)
@@ -129,31 +132,27 @@ export function VideosTab() {
           }
           errorTitle="Couldn't load videos"
           onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
           empty={rows.length === 0}
           filtered={q !== ""}
           onClearFilters={() => setQ("")}
           emptyTitle="No videos yet"
-          emptyDescription="A video uploaded to a form's video block is listed here."
+          emptyDescription="A video uploaded in a video block is listed here."
         >
-          <Table bleed>
+          <Table bleed ref={tableRef}>
             <TableHeader>
               <TableRow>
                 <TableHead>Filename</TableHead>
                 <TableHead>ID</TableHead>
                 <TableHead className="text-right">Size</TableHead>
                 <TableHead>Created</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead actions>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((video) => (
-                <TableRow key={video.id}>
-                  <TableCell
-                    className="max-w-64 truncate"
-                    title={video.originalFilename}
-                  >
+                <TableRow key={video.id} data-video={video.id}>
+                  <TableCell truncate title={video.originalFilename}>
                     <Link to={videoHref(video.id)} className={nameLinkClass}>
                       {video.originalFilename}
                     </Link>
@@ -161,23 +160,21 @@ export function VideosTab() {
                   <TableCell className="font-mono text-xs text-fg-muted">
                     {video.id}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className={SIZE_COLUMN}>
                     {formatSize(video.size)}
                   </TableCell>
                   <TableCell>{formatDate(video.dateCreated)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      <Button
-                        size="small"
-                        aria-label={`Delete: ${video.originalFilename}`}
-                        busy={
-                          deletion.isPending && deletion.variables === video.id
-                        }
-                        onClick={() => void deleteVideo(video)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                  <TableCell actions>
+                    <Button
+                      size="small"
+                      aria-label={`Delete: ${video.originalFilename}, video ${video.id}`}
+                      busy={
+                        deletion.isPending && deletion.variables === video.id
+                      }
+                      onClick={() => void deleteVideo(video)}
+                    >
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
