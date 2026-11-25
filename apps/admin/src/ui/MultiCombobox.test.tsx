@@ -76,6 +76,15 @@ describe("MultiCombobox", () => {
     expect(document.activeElement).toBe(box);
   });
 
+  it("keeps its picks on Escape with the list closed", async () => {
+    render(<SuitesField initial={[1, 2]} />);
+    const box = input();
+    box.focus();
+    fireEvent.keyDown(box, { key: "Escape" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(values()).toBe("1,2");
+  });
+
   it("names a picked value missing from the options by its value", () => {
     render(<SuitesField initial={[9]} />);
     expect(screen.getByRole("button", { name: "Remove: 9" })).toBeDefined();

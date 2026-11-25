@@ -1,7 +1,7 @@
 import { Combobox as Primitive } from "@base-ui/react/combobox";
 import { Check, ChevronDown, LoaderCircle, X } from "lucide-react";
 import type React from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { cn } from "./cn";
 import { OptionText, optionClass, optionMatches } from "./option";
 import { controlClass, popupClass } from "./styles";
@@ -137,6 +137,8 @@ export function MultiCombobox<V extends string | number>({
     (value) => picked.current.get(value) ?? { value, label: String(value) },
   );
   const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const chipsRef = useRef<HTMLDivElement>(null);
   return (
     <Primitive.Root<ComboboxOption<V>, true>
       multiple
@@ -157,8 +159,10 @@ export function MultiCombobox<V extends string | number>({
       onInputValueChange={onQueryChange}
       autoHighlight
       disabled={disabled}
+      onOpenChange={setOpen}
     >
       <Primitive.Chips
+        ref={chipsRef}
         className={cn(
           controlClass,
           "flex h-15.5 flex-wrap content-start items-center gap-1 overflow-y-auto py-1 pl-1 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-accent",
@@ -186,6 +190,10 @@ export function MultiCombobox<V extends string | number>({
         <Primitive.Input
           {...inputProps}
           ref={inputRef}
+          onKeyDown={(event) => {
+            // Base UI clears every pick on Escape while the list is closed.
+            if (event.key === "Escape" && !open) event.preventBaseUIHandler();
+          }}
           placeholder={values.length === 0 ? placeholder : undefined}
           className="h-6 min-w-24 flex-1 bg-transparent px-1.5 outline-none placeholder:text-fg-muted disabled:cursor-not-allowed"
         />
@@ -194,7 +202,7 @@ export function MultiCombobox<V extends string | number>({
         emptyText={emptyText}
         loading={loading}
         loadError={loadError}
-        multiple
+        anchor={chipsRef}
       />
     </Primitive.Root>
   );
@@ -204,12 +212,13 @@ function ComboboxPopup<V extends string | number>({
   emptyText,
   loading,
   loadError,
-  multiple = false,
+  anchor,
 }: {
   emptyText: string;
   loading: boolean;
   loadError?: string | null;
-  multiple?: boolean;
+  /** Set for a multi-pick: the list hangs from this box, not the input, and ticks what is picked. */
+  anchor?: React.RefObject<HTMLDivElement | null>;
 }) {
   const status = loadError ? (
     <span className="text-danger">{loadError}</span>
@@ -222,6 +231,7 @@ function ComboboxPopup<V extends string | number>({
   return (
     <Primitive.Portal>
       <Primitive.Positioner
+        anchor={anchor}
         sideOffset={4}
         align="start"
         className={cn(zIndex.popover, "isolate")}
@@ -248,7 +258,7 @@ function ComboboxPopup<V extends string | number>({
                   value={option}
                   className={cn(optionClass, "data-selected:font-medium")}
                 >
-                  {multiple && (
+                  {anchor && (
                     <span className="flex size-4 shrink-0 items-center">
                       <Primitive.ItemIndicator>
                         <Check className="size-4 text-accent" aria-hidden />
