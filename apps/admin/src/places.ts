@@ -39,7 +39,7 @@ export enum PlaceId {
   Organizations = "organizations",
   OutreachPartnerships = "outreach-partnerships",
   AmbassadorProgram = "ambassador-program",
-  TaskUpdates = "task-updates",
+  ProjectUpdates = "project-updates",
   GeneralUpdates = "general-updates",
   ForumPosts = "forum-posts",
   Media = "media",
@@ -366,11 +366,11 @@ export const AREAS: readonly Area[] = [
     key: "c",
     places: [
       {
-        id: PlaceId.TaskUpdates,
+        id: PlaceId.ProjectUpdates,
         area: AreaId.Content,
-        label: "Task updates",
-        path: "/content/task-updates",
-        oldNames: ["Action updates"],
+        label: "Project updates",
+        path: "/content/project-updates",
+        oldNames: ["Action updates", "Task updates"],
       },
       {
         id: PlaceId.GeneralUpdates,
@@ -507,7 +507,7 @@ export const RECORD_TABS = {
   [RecordId.Project]: [
     { id: "tasks", label: "Tasks by suite" },
     { id: "timeline", label: "Timeline" },
-    { id: "task-updates", label: "Task updates" },
+    { id: "project-updates", label: "Project updates" },
   ],
   [RecordId.Form]: [
     { id: "builder", label: "Builder" },
@@ -547,7 +547,7 @@ export const RECORDS: readonly AdminRecord[] = [
   {
     id: RecordId.TaskUpdate,
     place: PlaceId.AllTasks,
-    label: "Task update",
+    label: "Project update",
     path: "/tasks/:actionId/updates/:updateId",
   },
   {

@@ -49,7 +49,7 @@ export default [
       route("/growth/partnerships", "pages/OutreachPartnershipsPage.tsx"),
       route("/growth/ambassadors", "pages/AmbassadorProgramPage.tsx"),
 
-      route("/content/task-updates", "pages/ActionUpdatesPage.tsx"),
+      route("/content/project-updates", "pages/ActionUpdatesPage.tsx"),
       route(
         "/content/general-updates",
         "pages/general-updates/GeneralUpdatesPage.tsx",

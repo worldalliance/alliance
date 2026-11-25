@@ -54,7 +54,7 @@ export const PLACE_ICONS: Record<PlaceId, LucideIcon> = {
   [PlaceId.Organizations]: Building2,
   [PlaceId.OutreachPartnerships]: Handshake,
   [PlaceId.AmbassadorProgram]: Award,
-  [PlaceId.TaskUpdates]: Megaphone,
+  [PlaceId.ProjectUpdates]: Megaphone,
   [PlaceId.GeneralUpdates]: Newspaper,
   [PlaceId.ForumPosts]: MessagesSquare,
   [PlaceId.Media]: Image,

@@ -49,7 +49,7 @@ const OLD_SIDEBAR: [label: string, to: string][] = [
   ["Friend Graph", "/members/friends"],
   ["Ambassador Program", "/growth/ambassadors"],
   ["Outreach Partnerships", "/growth/partnerships"],
-  ["Action Updates", "/content/task-updates"],
+  ["Action Updates", "/content/project-updates"],
   ["General Updates", "/content/general-updates"],
   ["Forum Posts", "/content/posts"],
   ["Image Upload", "/content/media"],
@@ -64,7 +64,7 @@ const OLD_FOLDERS: [label: string, to: string][] = [
   ["Waitlist", "/growth/waitlist"],
   ["Community", "/members"],
   ["Outreach", "/growth/partnerships"],
-  ["Content", "/content/task-updates"],
+  ["Content", "/content/project-updates"],
 ];
 
 /** Pages the old sidebar never listed, by the names staff knew them by. */

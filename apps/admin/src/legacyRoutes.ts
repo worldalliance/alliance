@@ -102,7 +102,8 @@ export const LEGACY_ROUTES: readonly LegacyRoute[] = [
   { from: "/outreach-partnerships", to: "/growth/partnerships" },
   { from: "/ambassador-program", to: "/growth/ambassadors" },
 
-  { from: "/action-updates", to: "/content/task-updates" },
+  { from: "/action-updates", to: "/content/project-updates" },
+  { from: "/content/task-updates", to: "/content/project-updates" },
   { from: "/general-updates", to: "/content/general-updates" },
   { from: "/general-updates/:id", to: "/content/general-updates/:id" },
   { from: "/posts/:postId?", to: FORUM_POST_PATH },
