@@ -1,3 +1,4 @@
+import { conversationNoteId } from "@alliance/common/forms/conversation";
 import {
   type AnyField,
   type FieldKind,
@@ -224,7 +225,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
           { label: "Option 1", value: "option1" },
           { label: "Option 2", value: "option2" },
         ],
-        noteId: `${id}_note`,
+        noteId: conversationNoteId(id),
       };
     default:
       throw new Error(`unknown field kind: ${kind satisfies never}`);

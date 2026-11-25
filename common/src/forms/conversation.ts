@@ -25,6 +25,10 @@ export function conversationNote(
   return chosenConversationOption(field, data[field.id])?.note;
 }
 
+/** The answer key the builder gives a conversation's note. */
+export const conversationNoteId = (fieldId: string): string =>
+  `${fieldId}_note`;
+
 /** Every key a field's answer is stored under: its id, and a conversation's note id. */
 export function fieldAnswerKeys(field: AnyField): string[] {
   return field.kind === "conversation" ? [field.id, field.noteId] : [field.id];
