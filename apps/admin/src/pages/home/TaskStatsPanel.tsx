@@ -1,4 +1,3 @@
-import { withCount } from "@alliance/common/plural";
 import { href, Link } from "react-router";
 import { formatDate } from "../../lib/formatDate";
 import { formatCount } from "../../lib/formatNumber";
@@ -13,6 +12,7 @@ import {
   TableRow,
 } from "../../ui/Table";
 import { Panel } from "../../ui/templates/Overview";
+import { countLabel } from "./homeRules";
 
 const NUMBER = "text-right tabular-nums";
 
@@ -32,7 +32,7 @@ export function TaskStatsPanel({
   return (
     <Panel
       title="Task stats"
-      description={withCount(tasks.length, "task")}
+      description={countLabel(tasks.length, "task")}
       flush
       className={className}
     >

@@ -1,19 +1,26 @@
 import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { minutesInHour } from "date-fns/constants";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatCount } from "../../lib/formatNumber";
+import { useActionStats } from "../../lib/useActionStats";
 import { useAggregateStatsAdmin } from "../../lib/useAggregateStatsAdmin";
+import { useContractStatusHistoryAdmin } from "../../lib/useContractStatusHistoryAdmin";
 import { Input } from "../../ui/Input";
 import { Skeleton } from "../../ui/Skeleton";
 import { Field } from "../../ui/templates/Form";
-import { OverviewGrid, Panel, StatTile } from "../../ui/templates/Overview";
+import {
+  OverviewGrid,
+  Panel,
+  PanelStat,
+  StatTile,
+} from "../../ui/templates/Overview";
 import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
-import { PanelStat } from "./chartParts";
 import {
   monthlyChurnRate as computeMonthlyChurnRate,
   type ParsedContractStatusPoint,
 } from "./contractStatusHistory";
+import { lastMonths } from "./homeRules";
 
 const EXPECTED_MINUTES_PER_WEEK = 15;
 const WEEKS_PER_YEAR = 52;
@@ -42,19 +49,42 @@ function allTimeChurn(history: ParsedContractStatusPoint[]) {
     : "0%";
 }
 
-/** The organization's headline numbers, and what members' time is worth. */
+/** What a tile whose number comes from another query says while that query loads or after it fails. */
+function dependentNote(query: {
+  isPending: boolean;
+  isError: boolean;
+}): ReactNode {
+  if (query.isError)
+    return <span className="text-danger">{"Couldn't load"}</span>;
+  if (query.isPending) return "Loading…";
+  return undefined;
+}
+
+/**
+ * The organization's headline numbers, and what members' time is worth. The
+ * churn tiles read their own history, so a range chosen on a chart below
+ * doesn't change them.
+ */
 export function KeyStats({
-  actionStats,
-  parsedContractStatusHistory,
+  stats,
 }: {
-  actionStats: ActionStatsWithOnboardingDto[];
-  parsedContractStatusHistory: ParsedContractStatusPoint[];
+  stats: ReturnType<typeof useActionStats>["stats"];
 }) {
   const aggregate = useAggregateStatsAdmin();
+  const [range] = useState(() => lastMonths(6));
+  const historyQuery = useContractStatusHistoryAdmin(range);
+  const history = useMemo<ParsedContractStatusPoint[]>(
+    () =>
+      (historyQuery.data ?? []).map((point) => ({
+        ...point,
+        parsedDate: new Date(point.date),
+      })),
+    [historyQuery.data],
+  );
   const [hourlyRate, setHourlyRate] = useState(15);
   const monthlyChurn = useMemo(
-    () => computeMonthlyChurnRate(parsedContractStatusHistory),
-    [parsedContractStatusHistory],
+    () => computeMonthlyChurnRate(history),
+    [history],
   );
   const members = aggregate.data?.signedUsers ?? 0;
   const weeklyHours = (members * EXPECTED_MINUTES_PER_WEEK) / minutesInHour;
@@ -89,12 +119,14 @@ export function KeyStats({
         <StatTile
           className={TILE}
           label="Completion reliability"
-          value={completionReliability(actionStats)}
+          value={completionReliability(stats.data ?? [])}
+          note={dependentNote(stats)}
         />
         <StatTile
           className={TILE}
           label="All-time churn"
-          value={allTimeChurn(parsedContractStatusHistory)}
+          value={allTimeChurn(history)}
+          note={dependentNote(historyQuery)}
         />
         <StatTile
           className={TILE}
@@ -102,6 +134,7 @@ export function KeyStats({
           value={
             monthlyChurn === null ? NO_VALUE : `${monthlyChurn.toFixed(1)}%`
           }
+          note={dependentNote(historyQuery)}
         />
         <Panel
           title="Expected member time"

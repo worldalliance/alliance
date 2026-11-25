@@ -6,16 +6,14 @@ import { recentInviteFunnelRange } from "../../lib/recentInviteFunnelRange";
 import { useInviteFunnelAdmin } from "../../lib/useInviteFunnelAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
-import { Panel } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { axisTextClass, chartColor, SERIES } from "../../ui/charts/chartColor";
 import {
-  axisTextClass,
-  chartColor,
-  ControlSlot,
   DateRangeFields,
+  Panel,
   PanelControls,
   PanelStack,
-} from "./chartParts";
+} from "../../ui/templates/Overview";
+import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 
 type Funnel = NonNullable<ReturnType<typeof useInviteFunnelAdmin>["data"]>;
 
@@ -64,7 +62,7 @@ function FunnelChart({ funnel }: { funnel: Funnel }) {
               dominantBaseline="middle"
               className={axisTextClass}
             >
-              {tick}
+              {formatCount(tick)}
             </text>
           </g>
         ))}
@@ -80,7 +78,7 @@ function FunnelChart({ funnel }: { funnel: Funnel }) {
               width={BAR_WIDTH}
               height={Math.max(0, yScale(0) - y)}
               rx={4}
-              fill={chartColor.primary}
+              fill={SERIES[0]}
             />
             <text
               x={x + BAR_WIDTH / 2}
@@ -125,9 +123,8 @@ export function InviteFunnelPanel({ className }: { className?: string }) {
   return (
     <Panel title="Invite conversion funnel" className={className}>
       <PanelStack>
-        <PanelControls>
-          <DateRangeFields range={range} onChange={setRange} />
-          <ControlSlot>
+        <PanelControls
+          actions={
             <Button
               variant={ButtonVariant.Default}
               size="small"
@@ -135,7 +132,9 @@ export function InviteFunnelPanel({ className }: { className?: string }) {
             >
               Last 7 days
             </Button>
-          </ControlSlot>
+          }
+        >
+          <DateRangeFields range={range} onChange={setRange} />
         </PanelControls>
         <ContentState
           loading={funnel.isPending}

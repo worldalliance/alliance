@@ -1,4 +1,3 @@
-import { withCount } from "@alliance/common/plural";
 import { useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
@@ -13,19 +12,23 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { Panel } from "../../ui/templates/Overview";
+import {
+  DateRangeFields,
+  Panel,
+  PanelControls,
+} from "../../ui/templates/Overview";
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
   TableSkeleton,
 } from "../../ui/templates/States";
-import { ControlSlot, DateRangeFields, PanelControls } from "./chartParts";
-import { invalidRangeMessage, lastDays } from "./homeRules";
+import { countLabel, invalidRangeMessage, lastDays } from "./homeRules";
 
+// Tasks completed and members signed are each day's running total, not that day's count.
 const COLUMNS = [
-  "Tasks completed",
+  "Tasks completed (total)",
   "Anonymous forms",
-  "Members signed",
+  "Members signed (total)",
   "Invites created",
   "Invites accepted",
   "Suspended",
@@ -60,7 +63,7 @@ export function DailyStatsPanel({ className }: { className?: string }) {
   return (
     <Panel
       title="Daily stats"
-      description={daily.data ? withCount(days.length, "day") : undefined}
+      description={daily.data ? countLabel(days.length, "day") : undefined}
       flush
       className={className}
     >
@@ -72,16 +75,9 @@ export function DailyStatsPanel({ className }: { className?: string }) {
           apply();
         }}
       >
-        <PanelControls>
-          <DateRangeFields
-            range={input}
-            onChange={setInput}
-            startLabel="Start date"
-            endLabel="End date"
-            error={rangeError}
-          />
-          <ControlSlot>
-            <div className="flex gap-2">
+        <PanelControls
+          actions={
+            <>
               <Button
                 type="submit"
                 variant={ButtonVariant.Default}
@@ -90,21 +86,29 @@ export function DailyStatsPanel({ className }: { className?: string }) {
                 Update
               </Button>
               <Button
-                variant={ButtonVariant.Ghost}
+                variant={ButtonVariant.Default}
                 size="small"
                 onClick={() => applyLast(7)}
               >
                 Last 7 days
               </Button>
               <Button
-                variant={ButtonVariant.Ghost}
+                variant={ButtonVariant.Default}
                 size="small"
                 onClick={() => applyLast(30)}
               >
                 Last 30 days
               </Button>
-            </div>
-          </ControlSlot>
+            </>
+          }
+        >
+          <DateRangeFields
+            range={input}
+            onChange={setInput}
+            startLabel="Start date"
+            endLabel="End date"
+            error={rangeError}
+          />
         </PanelControls>
       </form>
       <ContentState

@@ -40,11 +40,14 @@ describe("ReminderClickRatePanel", () => {
     if (!bar) throw new Error("no bar");
     fireEvent.mouseEnter(bar);
 
-    expect(screen.getByText("Channel").nextSibling?.textContent).toBe("Email");
-    expect(screen.getByText("Click rate").nextSibling?.textContent).toBe("25%");
-    expect(screen.getByText("Clicked / sent").nextSibling?.textContent).toBe(
-      "2/8",
-    );
+    const valueOf = (label: string) =>
+      screen
+        .getByText(label, { selector: "dt span" })
+        .closest("div")
+        ?.querySelector("dd")?.textContent;
+    expect(valueOf("Channel")).toBe("Email");
+    expect(valueOf("Click rate")).toBe("25%");
+    expect(valueOf("Clicked / sent")).toBe("2/8");
   });
 
   it("leaves out reminder groups sent before the chosen start date", async () => {

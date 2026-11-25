@@ -26,7 +26,7 @@ import { TenureCohortPanel } from "./TenureCohortPanel";
 import { TimeToChurnPanel } from "./TimeToChurnPanel";
 
 const FULL = "col-span-12";
-const NO_STATS: never[] = [];
+const HALF = "col-span-12 @4xl:col-span-6";
 
 function PlaceLink({ place, children }: { place: PlaceId; children: string }) {
   return (
@@ -55,31 +55,30 @@ export default function HomePage() {
       <PageBody>
         <NeedsYou counts={counts} />
         <Section title="Organization stats">
-          <KeyStats
-            actionStats={stats.data ?? NO_STATS}
-            parsedContractStatusHistory={history}
-          />
+          <KeyStats stats={stats} />
         </Section>
         <Section
           title="Members"
           action={<PlaceLink place={PlaceId.People}>All members</PlaceLink>}
         >
           <OverviewGrid>
-            <MissedTasksPanel className={FULL} />
             <MembersOverTimePanel
               className={FULL}
               history={history}
               loading={
-                contractStatus.isPending || contractStatus.isPlaceholderData
+                contractStatus.isPending ||
+                (contractStatus.isPlaceholderData && history.length === 0)
               }
+              updating={contractStatus.isPlaceholderData}
               error={contractStatus.error}
               onRetry={() => void contractStatus.refetch()}
               range={membersRange}
               onRangeChange={setMembersRange}
             />
-            <TimeToChurnPanel className={FULL} />
-            <TenureCohortPanel className={FULL} />
-            <MemberReliabilityPanel className={FULL} />
+            <TimeToChurnPanel className={HALF} />
+            <TenureCohortPanel className={HALF} />
+            <MissedTasksPanel className={HALF} />
+            <MemberReliabilityPanel className={HALF} />
             <CohortCompletionPanel className={FULL} />
           </OverviewGrid>
         </Section>

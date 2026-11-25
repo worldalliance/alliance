@@ -71,3 +71,24 @@ describe("CohortCompletionGrid", () => {
     expect(screen.queryByText("Week 0")).toBeNull();
   });
 });
+
+describe("CohortCompletionGrid keyboard", () => {
+  it("moves between cells with the arrow keys and details the focused one", () => {
+    render(
+      <CohortCompletionGrid
+        cohorts={[cohort("2026-01-05", [point(0, 0.5), point(1, 0.25)])]}
+        weekRange={{ min: 0, max: 20 }}
+      />,
+    );
+
+    const first = screen.getByText("50%");
+    expect(first.getAttribute("tabindex")).toBe("0");
+    fireEvent.focus(first);
+    expect(screen.getByText("Week 0")).toBeTruthy();
+    fireEvent.keyDown(first, { key: "ArrowRight" });
+    const next = screen.getByText("25%");
+    expect(next.getAttribute("tabindex")).toBe("0");
+    fireEvent.focus(next);
+    expect(screen.getByText("Week 1")).toBeTruthy();
+  });
+});

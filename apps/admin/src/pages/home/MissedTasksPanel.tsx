@@ -7,9 +7,8 @@ import Button, { ButtonVariant } from "../../ui/Button";
 import { cn } from "../../ui/cn";
 import { Skeleton } from "../../ui/Skeleton";
 import { linkClass } from "../../ui/styles";
-import { Panel } from "../../ui/templates/Overview";
+import { Panel, PanelNote } from "../../ui/templates/Overview";
 import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
-import { PanelNote } from "./chartParts";
 
 type Missed = NonNullable<ReturnType<typeof useMissedActionsAdmin>["data"]>;
 

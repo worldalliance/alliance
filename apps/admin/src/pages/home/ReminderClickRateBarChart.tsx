@@ -1,6 +1,11 @@
 import { scaleBand, scaleLinear } from "d3";
-import { useMemo } from "react";
-import { axisTextClass, chartColor, PanelNote } from "./chartParts";
+import { useState } from "react";
+import { formatCount } from "../../lib/formatNumber";
+import { YGrid } from "../../ui/charts/axes";
+import { axisTextClass, chartColor, SERIES } from "../../ui/charts/chartColor";
+import { ChartFrame, useChartCursor } from "../../ui/charts/ChartFrame";
+import { ChartTip, TipRow } from "../../ui/charts/ChartTip";
+import { PanelNote } from "../../ui/templates/Overview";
 import {
   ReminderChannel,
   type ReminderActionChannelBar,
@@ -14,24 +19,29 @@ export const REMINDER_CHANNEL: Record<
     label: "Email",
     title: "Email click rate (average by task)",
     emptyMessage: "No emailed reminder data in this range.",
-    fill: chartColor.email,
+    fill: SERIES[0],
   },
   [ReminderChannel.Text]: {
     label: "Text",
     title: "Text click rate (average by task)",
     emptyMessage: "No texted reminder data in this range.",
-    fill: chartColor.text,
+    fill: SERIES[1],
   },
 };
 
-const HEIGHT = 360;
+const HEIGHT = 300;
 const MARGIN = { top: 20, right: 24, bottom: 48, left: 64 };
 const NAME_LENGTH = 16;
-const MIN_WIDTH = 900;
-const BAR_SLOT = 64;
+const MIN_SLOT = 28;
+const LABEL_SLOT = 110;
+const percent = (rate: number) => `${Math.round(rate * 100)}%`;
 
-function geometryOf(bars: ReminderActionChannelBar[]) {
-  const width = Math.max(MIN_WIDTH, bars.length * BAR_SLOT + 120);
+function geometryOf(bars: ReminderActionChannelBar[], frameWidth: number) {
+  // Too many bars for the frame scroll sideways rather than thin to nothing.
+  const width = Math.max(
+    frameWidth,
+    MARGIN.left + MARGIN.right + bars.length * MIN_SLOT,
+  );
   const xScale = scaleBand<string>()
     .domain(bars.map((_, index) => String(index)))
     .range([MARGIN.left, width - MARGIN.right])
@@ -40,99 +50,133 @@ function geometryOf(bars: ReminderActionChannelBar[]) {
   const yScale = scaleLinear()
     .domain([0, 1])
     .range([HEIGHT - MARGIN.bottom, MARGIN.top]);
-  // Every other bar is named when the names would touch.
-  const step = bars.length * 110 > width ? 2 : 1;
-  const labelled = bars
-    .map((_, index) => index)
-    .filter((index) => index % step === 0);
-  return { width, xScale, yScale, labelled };
+  return {
+    width,
+    xScale,
+    yScale,
+    labelEvery: Math.max(1, Math.ceil(LABEL_SLOT / xScale.step())),
+  };
 }
 
 /** One channel's average click rate for each task. */
 export function ReminderClickRateBarChart({
   bars,
   channel,
-  onHoverBar,
 }: {
   bars: ReminderActionChannelBar[];
   channel: ReminderChannel;
-  onHoverBar: (bar: ReminderActionChannelBar | null) => void;
 }) {
-  const geometry = useMemo(() => geometryOf(bars), [bars]);
-  const { title, emptyMessage, fill } = REMINDER_CHANNEL[channel];
+  const cursor = useChartCursor(bars.length);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const { label, title, emptyMessage, fill } = REMINDER_CHANNEL[channel];
+  const hovered = cursor.index === null ? undefined : bars[cursor.index];
 
   return (
-    <section aria-label={title} className="flex flex-col gap-2">
+    <section aria-label={title} className="flex min-w-0 flex-col gap-2">
       <h4 className="font-semibold">{title}</h4>
       {bars.length === 0 ? (
         <PanelNote>{emptyMessage}</PanelNote>
       ) : (
-        <div className="overflow-x-auto">
-          <svg
-            viewBox={`0 0 ${geometry.width} ${HEIGHT}`}
-            className="w-full"
-            // Drawn at its own size, so labels stay legible; the box scrolls.
-            style={{ minWidth: geometry.width }}
-            role="img"
-            aria-label={title}
-            onMouseLeave={() => onHoverBar(null)}
-          >
-            {geometry.yScale.ticks(5).map((tick) => (
-              <g key={tick}>
-                <line
-                  x1={MARGIN.left}
-                  x2={geometry.width - MARGIN.right}
-                  y1={geometry.yScale(tick)}
-                  y2={geometry.yScale(tick)}
-                  stroke={chartColor.grid}
-                  strokeDasharray="4 6"
-                />
-                <text
-                  x={MARGIN.left - 12}
-                  y={geometry.yScale(tick)}
-                  textAnchor="end"
-                  dominantBaseline="middle"
-                  className={axisTextClass}
+        <ChartFrame
+          tip={(frameWidth) => {
+            if (!hovered || cursor.index === null) return null;
+            const { xScale, yScale } = geometryOf(bars, frameWidth);
+            return (
+              <ChartTip
+                title={hovered.actionName}
+                x={
+                  (xScale(String(cursor.index)) ?? 0) +
+                  xScale.bandwidth() / 2 -
+                  scrollLeft
+                }
+                y={yScale(Math.max(0, Math.min(1, hovered.averageRate)))}
+              >
+                <TipRow label="Channel" swatch={fill}>
+                  {label}
+                </TipRow>
+                <TipRow label="Click rate">
+                  {percent(hovered.averageRate)}
+                </TipRow>
+                <TipRow label="Reminder groups averaged">
+                  {formatCount(hovered.reminderGroupCount)}
+                </TipRow>
+                <TipRow label="Clicked / sent">
+                  {formatCount(hovered.clickedCount)}/
+                  {formatCount(hovered.sentCount)}
+                </TipRow>
+                <TipRow label="Task ID">{hovered.actionId}</TipRow>
+              </ChartTip>
+            );
+          }}
+        >
+          {(frameWidth) => {
+            const { width, xScale, yScale, labelEvery } = geometryOf(
+              bars,
+              frameWidth,
+            );
+            const band = xScale.bandwidth();
+            return (
+              <div
+                className="overflow-x-auto"
+                onScroll={(event) =>
+                  setScrollLeft(event.currentTarget.scrollLeft)
+                }
+              >
+                <svg
+                  width={width}
+                  height={HEIGHT}
+                  viewBox={`0 0 ${width} ${HEIGHT}`}
+                  role="img"
+                  aria-label={`${title}. Arrow keys read each task.`}
+                  {...cursor.markProps}
+                  onMouseLeave={() => cursor.setIndex(null)}
                 >
-                  {Math.round(tick * 100)}%
-                </text>
-              </g>
-            ))}
-            {bars.map((bar, index) => {
-              const x = geometry.xScale(String(index)) ?? 0;
-              const y = geometry.yScale(
-                Math.max(0, Math.min(1, bar.averageRate)),
-              );
-              const band = geometry.xScale.bandwidth();
-              return (
-                <g key={bar.actionId}>
-                  <rect
-                    data-bar=""
-                    x={x}
-                    y={y}
-                    width={band}
-                    height={Math.max(0, HEIGHT - MARGIN.bottom - y)}
-                    fill={fill}
-                    rx={3}
-                    onMouseEnter={() => onHoverBar(bar)}
+                  <YGrid
+                    ticks={yScale.ticks(5)}
+                    yScale={yScale}
+                    yAxisFormat={percent}
+                    width={width}
+                    margin={MARGIN}
                   />
-                  {geometry.labelled.includes(index) && (
-                    <text
-                      x={x + band / 2}
-                      y={HEIGHT - MARGIN.bottom + 24}
-                      textAnchor="middle"
-                      className={axisTextClass}
-                    >
-                      {bar.actionName.length > NAME_LENGTH
-                        ? `${bar.actionName.slice(0, NAME_LENGTH)}...`
-                        : bar.actionName}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
-        </div>
+                  {bars.map((bar, index) => {
+                    const x = xScale(String(index)) ?? 0;
+                    const y = yScale(Math.max(0, Math.min(1, bar.averageRate)));
+                    return (
+                      <g key={bar.actionId}>
+                        <rect
+                          data-bar=""
+                          x={x}
+                          y={y}
+                          width={band}
+                          height={Math.max(0, HEIGHT - MARGIN.bottom - y)}
+                          fill={fill}
+                          stroke={
+                            cursor.index === index ? chartColor.cursor : "none"
+                          }
+                          strokeWidth={2}
+                          rx={3}
+                          onMouseEnter={() => cursor.setIndex(index)}
+                        />
+                        {index % labelEvery === 0 && (
+                          <text
+                            x={x + band / 2}
+                            y={HEIGHT - MARGIN.bottom + 24}
+                            textAnchor="middle"
+                            className={axisTextClass}
+                          >
+                            {bar.actionName.length > NAME_LENGTH
+                              ? `${bar.actionName.slice(0, NAME_LENGTH)}...`
+                              : bar.actionName}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            );
+          }}
+        </ChartFrame>
       )}
     </section>
   );

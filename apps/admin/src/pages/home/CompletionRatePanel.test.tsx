@@ -51,7 +51,7 @@ describe("CompletionRatePanel", () => {
 
     for (const title of [
       "Cumulative completion rate",
-      "Non-cumulative completion rate (weekly)",
+      "Weekly completion rate",
     ]) {
       expect(
         within(screen.getByRole("region", { name: title })).getByText("100%"),
@@ -61,7 +61,7 @@ describe("CompletionRatePanel", () => {
 
   it("describes the hovered week, cutting long task names", async () => {
     render(<Panel />, queryWrapper());
-    const weekly = await chartIn("Non-cumulative completion rate (weekly)");
+    const weekly = await chartIn("Weekly completion rate");
 
     fireEvent.mouseMove(weekly, { clientX: 999 });
 

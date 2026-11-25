@@ -4,16 +4,15 @@ import { useAppliedQuery } from "../../lib/useAppliedQuery";
 import { useMemberReliabilityWindowAdmin } from "../../lib/useMemberReliabilityWindowAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
-import { Panel } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import {
-  ControlSlot,
   NumberField,
+  Panel,
   PanelControls,
   PanelNote,
   PanelStack,
   PanelStat,
-} from "./chartParts";
+} from "../../ui/templates/Overview";
+import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 
 type Rate = {
   completionRate: number;
@@ -73,15 +72,8 @@ export function MemberReliabilityPanel({ className }: { className?: string }) {
             view();
           }}
         >
-          <PanelControls>
-            <NumberField
-              label="Completed task weeks"
-              min={1}
-              value={weeksInput}
-              onChange={setWeeksInput}
-              error={weeksError}
-            />
-            <ControlSlot>
+          <PanelControls
+            actions={
               <Button
                 type="submit"
                 variant={ButtonVariant.Default}
@@ -90,7 +82,15 @@ export function MemberReliabilityPanel({ className }: { className?: string }) {
               >
                 View reliability
               </Button>
-            </ControlSlot>
+            }
+          >
+            <NumberField
+              label="Completed task weeks"
+              min={1}
+              value={weeksInput}
+              onChange={setWeeksInput}
+              error={weeksError}
+            />
           </PanelControls>
         </form>
         {!asked ? (

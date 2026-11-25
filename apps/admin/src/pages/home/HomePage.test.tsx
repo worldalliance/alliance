@@ -106,6 +106,9 @@ afterEach(() => {
   respondToPlatformTenureCohort = null;
 });
 
+/** A delayed skeleton holds its space hidden at first; this is whether the reader sees it yet. */
+const shown = (status: HTMLElement) => !status.classList.contains("invisible");
+
 const renderPage = () => {
   render(
     <MemoryRouter>
@@ -303,10 +306,33 @@ describe("HomePage members over time", () => {
     });
     await waitFor(() => expect(next).toHaveLength(1));
 
-    expect(within(section).getByRole("status")).toBeTruthy();
+    await waitFor(() => expect(shown(within(section).getByRole("status"))).toBe(true));
     expect(
       screen.queryByText("No contract status data in this date range"),
     ).toBeNull();
+  });
+
+  it("keeps the chart, marked as updating, while a range change loads", async () => {
+    respondToContractStatusHistory = async () =>
+      Response.json([
+        { date: "2026-01-01", activeCount: 10, churnedCount: 1, totalEverSigned: 11 },
+        { date: "2026-02-01", activeCount: 12, churnedCount: 2, totalEverSigned: 14 },
+      ]);
+    renderPage();
+    const section = await screen.findByRole("region", {
+      name: "Members over time",
+    });
+    await within(section).findByRole("img");
+    const next: Pending<Response>[] = [];
+    respondToContractStatusHistory = () => pending(next);
+
+    fireEvent.change(within(section).getByLabelText("From"), {
+      target: { value: "2025-01-01" },
+    });
+    await waitFor(() => expect(next).toHaveLength(1));
+
+    expect(within(section).getByText("Updating…")).toBeTruthy();
+    expect(within(section).getByRole("img")).toBeTruthy();
   });
 });
 
@@ -383,7 +409,8 @@ describe("HomePage platform tenure cohort", () => {
     viewCohort("4");
     await waitFor(() => expect(next).toHaveLength(1));
 
-    await within(cohortPanel()).findByRole("status");
+    const status = await within(cohortPanel()).findByRole("status");
+    await waitFor(() => expect(shown(status)).toBe(true));
     expect(screen.queryByText("Couldn't load this cohort")).toBeNull();
   });
 

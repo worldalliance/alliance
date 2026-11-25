@@ -5,16 +5,15 @@ import { useAppliedQuery } from "../../lib/useAppliedQuery";
 import { usePlatformTenureCohortAdmin } from "../../lib/usePlatformTenureCohortAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
-import { Panel } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import {
-  ControlSlot,
   NumberField,
+  Panel,
   PanelControls,
   PanelNote,
   PanelStack,
   PanelStat,
-} from "./chartParts";
+} from "../../ui/templates/Overview";
+import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 
 const SHOWN_TASKS = 12;
 const percent = (rate: number, digits: number) =>
@@ -23,6 +22,10 @@ const percent = (rate: number, digits: number) =>
 type Cohort = NonNullable<
   ReturnType<typeof usePlatformTenureCohortAdmin>["data"]
 >;
+
+/** An empty cohort has no rate, not a rate of zero. */
+const rateOf = (cohort: Cohort, rate: number) =>
+  cohort.cohortSize > 0 ? percent(rate, 1) : "—";
 
 function CohortTasks({ actions }: { actions: Cohort["actions"] }) {
   const mostAssigned = Math.max(
@@ -38,22 +41,24 @@ function CohortTasks({ actions }: { actions: Cohort["actions"] }) {
             ? (action.completedCount / action.assignedCount) * assigned
             : 0;
         return (
-          <li key={action.actionId} className="grid grid-cols-12 gap-3">
-            <span className="col-span-3 truncate">{action.actionName}</span>
+          <li key={action.actionId} className="flex items-center gap-3">
+            <span className="w-36 shrink-0 truncate" title={action.actionName}>
+              {action.actionName}
+            </span>
             <span
               aria-hidden="true"
-              className="relative col-span-7 h-5 overflow-hidden rounded-sm bg-surface-2"
+              className="relative h-5 min-w-16 flex-1 overflow-hidden rounded-sm bg-surface-2"
             >
               <span
                 className="absolute inset-y-0 left-0 bg-line-strong"
                 style={{ width: `${assigned}%` }}
               />
               <span
-                className="absolute inset-y-0 left-0 bg-success"
+                className="absolute inset-y-0 left-0 bg-chart-1"
                 style={{ width: `${completed}%` }}
               />
             </span>
-            <span className="col-span-2 text-right text-fg-muted tabular-nums">
+            <span className="shrink-0 text-right whitespace-nowrap text-fg-muted tabular-nums">
               {formatCount(action.completedCount)}/
               {formatCount(action.assignedCount)} (
               {percent(action.completionRate, 0)})
@@ -100,15 +105,8 @@ export function TenureCohortPanel({ className }: { className?: string }) {
             view();
           }}
         >
-          <PanelControls>
-            <NumberField
-              label="Weeks after joining"
-              min={0}
-              value={weeksInput}
-              onChange={setWeeksInput}
-              error={weeksError}
-            />
-            <ControlSlot>
+          <PanelControls
+            actions={
               <Button
                 type="submit"
                 variant={ButtonVariant.Default}
@@ -117,7 +115,15 @@ export function TenureCohortPanel({ className }: { className?: string }) {
               >
                 View cohort
               </Button>
-            </ControlSlot>
+            }
+          >
+            <NumberField
+              label="Weeks after joining"
+              min={0}
+              value={weeksInput}
+              onChange={setWeeksInput}
+              error={weeksError}
+            />
           </PanelControls>
         </form>
         {!asked ? (
@@ -134,18 +140,18 @@ export function TenureCohortPanel({ className }: { className?: string }) {
           >
             {cohort.data && (
               <>
-                <div className="grid grid-cols-3 gap-x-6 gap-y-4 @4xl:grid-cols-6">
+                <div className="grid grid-cols-3 gap-x-6 gap-y-4">
                   <PanelStat
                     label="Cohort size"
                     value={formatCount(cohort.data.cohortSize)}
                   />
                   <PanelStat
                     label="Task completion"
-                    value={percent(cohort.data.completionRate, 1)}
+                    value={rateOf(cohort.data, cohort.data.completionRate)}
                   />
                   <PanelStat
                     label="Churn rate"
-                    value={percent(cohort.data.churnRate, 1)}
+                    value={rateOf(cohort.data, cohort.data.churnRate)}
                   />
                   <PanelStat
                     label="Active / churned"

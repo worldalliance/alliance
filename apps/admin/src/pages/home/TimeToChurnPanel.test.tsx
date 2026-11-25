@@ -29,8 +29,8 @@ describe("TimeToChurnPanel", () => {
     render(<TimeToChurnPanel />, queryWrapper());
 
     await screen.findByText(/^3 churned members/);
-    expect(screen.getByText("0-1w: 2 members")).toBeTruthy();
-    expect(screen.getByText("1-2w: 1 members")).toBeTruthy();
+    expect(screen.getByText("0 to 1 weeks: 2 churned members")).toBeTruthy();
+    expect(screen.getByText("1 to 2 weeks: 1 churned member")).toBeTruthy();
   });
 
   it("says when no one has churned", async () => {
@@ -51,7 +51,7 @@ describe("TimeToChurnPanel", () => {
     samples = [{ daysToChurn: 2 }];
     const query = queryWrapper();
     render(<TimeToChurnPanel />, query);
-    await screen.findByText("0-1w: 1 members");
+    await screen.findByText("0 to 1 weeks: 1 churned member");
 
     status = 500;
     await act(() =>
@@ -61,7 +61,7 @@ describe("TimeToChurnPanel", () => {
     );
 
     await screen.findByText("Couldn't load time to churn");
-    expect(screen.queryByText("0-1w: 1 members")).toBeNull();
+    expect(screen.queryByText("0 to 1 weeks: 1 churned member")).toBeNull();
   });
 
   it("says why a refused load failed", async () => {

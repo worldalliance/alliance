@@ -72,14 +72,16 @@ describe("TaskCompletionBarsPanel", () => {
     if (!row) throw new Error("no row");
     fireEvent.mouseEnter(row);
 
-    expect(
-      screen.getByText("Withdrawn", { selector: "dt" }).nextSibling
-        ?.textContent,
-    ).toBe("1");
-    expect(screen.getByText("Rate").nextSibling?.textContent).toBe("75%");
+    const valueOf = (label: string) =>
+      screen
+        .getByText(label, { selector: "dt span" })
+        .closest("div")
+        ?.querySelector("dd")?.textContent;
+    expect(valueOf("Withdrawn")).toBe("1");
+    expect(valueOf("Completed of joined")).toBe("75%");
 
     fireEvent.mouseLeave(row);
-    expect(screen.queryByText("Rate")).toBeNull();
+    expect(screen.queryByText("Completed of joined")).toBeNull();
   });
 
   it("prompts a recalculation when there are no stats", async () => {

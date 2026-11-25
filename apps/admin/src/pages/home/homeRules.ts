@@ -1,6 +1,9 @@
+import { forCount } from "@alliance/common/plural";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
+import { formatCount } from "../../lib/formatNumber";
 import { CountId } from "../../places";
 import type { QueueCount } from "../../shell/useQueueCounts";
+import type { DateRange } from "../../ui/templates/Overview";
 
 const QUEUE_ORDER = [
   CountId.NeedsReply,
@@ -26,7 +29,9 @@ export function waitingQueues(
   return queues;
 }
 
-export type DateRange = { start: string; end: string };
+/** "1,204 members": the count with separators and its noun. */
+export const countLabel = (count: number, noun: string) =>
+  `${formatCount(count)} ${forCount(count, noun)}`;
 
 export const lastDays = (days: number, now = new Date()): DateRange => {
   const start = new Date(now);

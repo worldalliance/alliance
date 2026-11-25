@@ -1,162 +1,171 @@
 import { area, curveMonotoneX, extent, max, scaleLinear, scaleTime } from "d3";
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
 import { formatCount } from "../../lib/formatNumber";
-import { Skeleton } from "../../ui/Skeleton";
-import { Panel } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import {
-  axisTextClass,
-  chartColor,
-  ChartLegend,
+  Cursor,
+  CHART_MARGIN as MARGIN,
+  XTicks,
+  YGrid,
+} from "../../ui/charts/axes";
+import { SERIES } from "../../ui/charts/chartColor";
+import { ChartFrame, useChartCursor } from "../../ui/charts/ChartFrame";
+import { ChartLegend, LegendItem } from "../../ui/charts/ChartLegend";
+import { ChartTip, TipRow, TipSide } from "../../ui/charts/ChartTip";
+import { Skeleton } from "../../ui/Skeleton";
+import {
+  type DateRange,
   DateRangeFields,
-  LegendItem,
+  Panel,
   PanelControls,
   PanelStack,
-} from "./chartParts";
+} from "../../ui/templates/Overview";
+import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import type { ParsedContractStatusPoint } from "./contractStatusHistory";
-import type { DateRange } from "./homeRules";
 
-const WIDTH = 1000;
 const HEIGHT = 350;
-const MARGIN = { top: 28, right: 32, bottom: 40, left: 72 };
-const TIP = { width: 132, height: 48 };
+const [ACTIVE, CHURNED] = SERIES;
 
-function geometryOf(history: ParsedContractStatusPoint[]) {
+const churnShare = (point: ParsedContractStatusPoint) =>
+  point.totalEverSigned > 0
+    ? Math.round((point.churnedCount / point.totalEverSigned) * 100)
+    : 0;
+
+function geometryOf(history: ParsedContractStatusPoint[], width: number) {
   const [first, last] = extent(history, (d) => d.parsedDate);
   if (!first || !last) return null;
   const xScale = scaleTime()
     .domain([first, last])
-    .range([MARGIN.left, WIDTH - MARGIN.right]);
+    .range([MARGIN.left, width - MARGIN.right]);
   const yScale = scaleLinear()
     .domain([0, (max(history, (d) => d.totalEverSigned) ?? 10) * 1.1])
     .nice()
     .range([HEIGHT - MARGIN.bottom, MARGIN.top]);
-  const active = area<ParsedContractStatusPoint>()
-    .x((d) => xScale(d.parsedDate))
-    .y0(HEIGHT - MARGIN.bottom)
-    .y1((d) => yScale(d.activeCount))
-    .curve(curveMonotoneX);
-  const churned = area<ParsedContractStatusPoint>()
-    .x((d) => xScale(d.parsedDate))
-    .y0((d) => yScale(d.activeCount))
-    .y1((d) => yScale(d.activeCount + d.churnedCount))
-    .curve(curveMonotoneX);
+  const x = (d: ParsedContractStatusPoint) => xScale(d.parsedDate);
   return {
     xScale,
     yScale,
-    activePath: active(history) ?? "",
-    churnedPath: churned(history) ?? "",
+    x,
+    activePath:
+      area<ParsedContractStatusPoint>()
+        .x(x)
+        .y0(HEIGHT - MARGIN.bottom)
+        .y1((d) => yScale(d.activeCount))
+        .curve(curveMonotoneX)(history) ?? "",
+    churnedPath:
+      area<ParsedContractStatusPoint>()
+        .x(x)
+        .y0((d) => yScale(d.activeCount))
+        .y1((d) => yScale(d.activeCount + d.churnedCount))
+        .curve(curveMonotoneX)(history) ?? "",
   };
 }
 
-function Chart({ history }: { history: ParsedContractStatusPoint[] }) {
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const [hovered, setHovered] = useState<ParsedContractStatusPoint | null>(
-    null,
+function Chart({
+  history,
+  updating,
+}: {
+  history: ParsedContractStatusPoint[];
+  updating: boolean;
+}) {
+  const cursor = useChartCursor(history.length);
+  const hovered = cursor.index === null ? undefined : history[cursor.index];
+
+  return (
+    <ChartFrame
+      updating={updating}
+      tip={(width) => {
+        const geometry = geometryOf(history, width);
+        if (!hovered || !geometry) return null;
+        return (
+          <ChartTip
+            title={formatDate(hovered.parsedDate)}
+            side={TipSide.Beside}
+            x={geometry.x(hovered)}
+            y={MARGIN.top}
+          >
+            <TipRow label="Active members" swatch={ACTIVE}>
+              {formatCount(hovered.activeCount)}
+            </TipRow>
+            <TipRow label="Churned members" swatch={CHURNED}>
+              {formatCount(hovered.churnedCount)}
+            </TipRow>
+            <TipRow label="Churn">{churnShare(hovered)}%</TipRow>
+          </ChartTip>
+        );
+      }}
+    >
+      {(width) => (
+        <Areas
+          history={history}
+          width={width}
+          cursor={cursor}
+          hovered={hovered}
+        />
+      )}
+    </ChartFrame>
   );
-  const geometry = useMemo(() => geometryOf(history), [history]);
+}
+
+function Areas({
+  history,
+  width,
+  cursor,
+  hovered,
+}: {
+  history: ParsedContractStatusPoint[];
+  width: number;
+  cursor: ReturnType<typeof useChartCursor>;
+  hovered: ParsedContractStatusPoint | undefined;
+}) {
+  const geometry = useMemo(() => geometryOf(history, width), [history, width]);
   if (!geometry) return null;
-  const { xScale, yScale } = geometry;
 
   const hoverNearest = (event: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const relativeX = event.clientX - rect.left;
-    if (relativeX < 0) return;
-    const at = xScale.invert(relativeX * (WIDTH / rect.width)).getTime();
-    const distance = (point: ParsedContractStatusPoint) =>
-      Math.abs(at - point.parsedDate.getTime());
-    setHovered(
-      history.reduce((nearest, point) =>
-        distance(point) < distance(nearest) ? point : nearest,
-      ),
-    );
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const at = geometry.xScale
+      .invert((event.clientX - rect.left) * (width / rect.width))
+      .getTime();
+    let nearest = 0;
+    history.forEach((point, index) => {
+      if (
+        Math.abs(at - point.parsedDate.getTime()) <
+        Math.abs(at - history[nearest].parsedDate.getTime())
+      ) {
+        nearest = index;
+      }
+    });
+    cursor.setIndex(nearest);
   };
-
-  const hoveredX = hovered ? xScale(hovered.parsedDate) : 0;
-  const tipX = Math.min(hoveredX + 12, WIDTH - TIP.width - 12);
 
   return (
     <svg
-      ref={svgRef}
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      className="w-full"
+      width={width}
+      height={HEIGHT}
+      viewBox={`0 0 ${width} ${HEIGHT}`}
       role="img"
-      aria-label="Active and churned members over time"
+      aria-label="Active and churned members over time. Arrow keys read each date."
+      {...cursor.markProps}
       onMouseMove={hoverNearest}
-      onMouseLeave={() => setHovered(null)}
+      onMouseLeave={() => cursor.setIndex(null)}
     >
-      {yScale.ticks(6).map((tick) => (
-        <g key={tick}>
-          <line
-            x1={MARGIN.left}
-            x2={WIDTH - MARGIN.right}
-            y1={yScale(tick)}
-            y2={yScale(tick)}
-            stroke={chartColor.grid}
-            strokeDasharray="4 6"
-          />
-          <text
-            x={MARGIN.left - 12}
-            y={yScale(tick)}
-            textAnchor="end"
-            dominantBaseline="middle"
-            className={axisTextClass}
-          >
-            {formatCount(tick)}
-          </text>
-        </g>
-      ))}
-      {xScale.ticks(8).map((tick) => (
-        <text
-          key={tick.toISOString()}
-          x={xScale(tick)}
-          y={HEIGHT - MARGIN.bottom + 24}
-          textAnchor="middle"
-          className={axisTextClass}
-        >
-          {formatDate(tick)}
-        </text>
-      ))}
-      <path d={geometry.churnedPath} fill={chartColor.churned} />
-      <path d={geometry.activePath} fill={chartColor.completed} />
-      {hovered && (
-        <>
-          <line
-            x1={hoveredX}
-            x2={hoveredX}
-            y1={MARGIN.top}
-            y2={HEIGHT - MARGIN.bottom}
-            stroke={chartColor.cursor}
-            strokeDasharray="4 4"
-          />
-          <rect
-            x={tipX}
-            y={MARGIN.top + 12}
-            width={TIP.width}
-            height={TIP.height}
-            rx={6}
-            className="fill-surface stroke-line-strong"
-          />
-          <text
-            x={tipX + 12}
-            y={MARGIN.top + 31}
-            className="fill-fg text-sm font-semibold"
-          >
-            {hovered.totalEverSigned > 0
-              ? Math.round(
-                  (hovered.churnedCount / hovered.totalEverSigned) * 100,
-                )
-              : 0}
-            % churn
-          </text>
-          <text x={tipX + 12} y={MARGIN.top + 50} className={axisTextClass}>
-            {formatCount(hovered.activeCount)} members
-          </text>
-        </>
-      )}
+      <YGrid
+        ticks={geometry.yScale.ticks(6)}
+        yScale={geometry.yScale}
+        yAxisFormat={formatCount}
+        width={width}
+      />
+      <XTicks
+        ticks={geometry.xScale.ticks(Math.max(2, Math.floor(width / 120)))}
+        x={geometry.xScale}
+        label={(tick) => formatDate(tick)}
+        height={HEIGHT}
+      />
+      <path d={geometry.churnedPath} fill={CHURNED} />
+      <path d={geometry.activePath} fill={ACTIVE} />
+      {hovered && <Cursor x={geometry.x(hovered)} height={HEIGHT} />}
     </svg>
   );
 }
@@ -165,6 +174,7 @@ function Chart({ history }: { history: ParsedContractStatusPoint[] }) {
 export function MembersOverTimePanel({
   history,
   loading,
+  updating,
   error,
   onRetry,
   range,
@@ -172,8 +182,10 @@ export function MembersOverTimePanel({
   className,
 }: {
   history: ParsedContractStatusPoint[];
-  /** A first load, or a range change still loading. */
+  /** Nothing to show yet: the first load, or a range change from an empty range. */
   loading: boolean;
+  /** A range change is loading over the chart on screen. */
+  updating: boolean;
   error: Error | null;
   onRetry: () => void;
   range: DateRange;
@@ -188,7 +200,7 @@ export function MembersOverTimePanel({
         </PanelControls>
         <ContentState
           loading={loading}
-          skeleton={<Skeleton className="h-80 w-full" />}
+          skeleton={<Skeleton className="h-96 w-full" />}
           error={
             error ? adminRefusalMessage(error, LOAD_FAILED_FALLBACK) : null
           }
@@ -197,12 +209,10 @@ export function MembersOverTimePanel({
           empty={history.length === 0}
           emptyTitle="No contract status data in this date range"
         >
-          <Chart history={history} />
+          <Chart history={history} updating={updating} />
           <ChartLegend>
-            <LegendItem swatch={chartColor.completed}>
-              Active members
-            </LegendItem>
-            <LegendItem swatch={chartColor.churned}>Churned members</LegendItem>
+            <LegendItem swatch={ACTIVE}>Active members</LegendItem>
+            <LegendItem swatch={CHURNED}>Churned members</LegendItem>
           </ChartLegend>
         </ContentState>
       </PanelStack>
