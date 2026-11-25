@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Assert, Equal } from "../types";
+import { formGroupSchema } from "./form-groups";
 import { rowConditionSchema } from "./row-list-schema";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
@@ -219,6 +220,7 @@ const baseBlockFields = {
     .record(z.string(), manualDisplayBlockContentSchema)
     .optional(),
   rowCondition: rowConditionSchema.optional(),
+  group: formGroupSchema.optional(),
 };
 
 export const headerBlockSchema = z.strictObject({
@@ -319,13 +321,15 @@ export const chatTranscriptBlockSchema = z.strictObject({
 });
 export type ChatTranscriptBlock = z.infer<typeof chatTranscriptBlockSchema>;
 
-// Per-viewer fields are omitted rather than ignored, so a nested block cannot
-// carry a visibility rule or a per-user override that nothing evaluates.
+// Per-viewer fields and the group are omitted rather than ignored, so a nested
+// block cannot carry a visibility rule, a per-user override or a group that
+// nothing evaluates.
 const NESTED_OMITTED_FIELDS = {
   visibleIfFormula: true,
   manualPerUser: true,
   manualUserContent: true,
   rowCondition: true,
+  group: true,
 } as const;
 
 export const nestedDisplayBlockSchema = z.discriminatedUnion("kind", [

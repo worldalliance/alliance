@@ -1,3 +1,4 @@
+import { elementRuns } from "@alliance/common/forms/form-groups";
 import {
   isQuestionField,
   type AnyField,
@@ -25,7 +26,7 @@ export default function FormPage({
   fieldRef: (fieldId: string) => (element: HTMLDivElement | null) => void;
   renderField: (field: AnyField) => ReactNode;
 }) {
-  return elements.map((element, index) => {
+  const renderElement = (element: PageItem, index: number) => {
     if (isQuestionField(element)) {
       if (!isElementCurrentlyVisible(element)) {
         return null;
@@ -51,6 +52,23 @@ export default function FormPage({
         key={resolvedBlock.id ?? `block-${index}`}
         block={interpolateDisplayBlock(resolvedBlock, variableValues)}
       />
+    );
+  };
+
+  return elementRuns(elements).flatMap(({ group, start, end }) => {
+    const rendered = elements
+      .slice(start, end)
+      .map((element, offset) => renderElement(element, start + offset))
+      .filter((node) => node !== null);
+    if (group === undefined) return rendered;
+    if (rendered.length === 0) return [];
+    return (
+      <div
+        key={`group-${group}-${start}`}
+        className="space-y-6 rounded-lg bg-zinc-100 px-5 py-4"
+      >
+        {rendered}
+      </div>
     );
   });
 }
