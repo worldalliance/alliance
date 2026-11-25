@@ -8,6 +8,7 @@ import type {
 import { isValidRangeSelection } from "@alliance/common/forms/range";
 import { isValidRankingSelection } from "@alliance/common/forms/ranking";
 import { R, type Result } from "@alliance/common/result";
+import { isEqual } from "es-toolkit";
 import { z } from "zod";
 import { dropUnuploadedFileAnswers } from "./fileAnswers";
 import { dropUnknownOptionAnswers } from "./optionAnswers";
@@ -172,6 +173,22 @@ export function applyDefaultValues(
   }
 
   return base ? base : {};
+}
+
+/**
+ * The answers that differ from their default. A stored draft keeps only these,
+ * so restoring refills the rest from the default current then, such as the
+ * member's timezone, rather than a stale copy.
+ */
+export function answersToStore(
+  answers: Record<string, FormValue>,
+  defaults: Map<string, FormValue>,
+): Record<string, FormValue> {
+  return Object.fromEntries(
+    Object.entries(answers).filter(
+      ([id, value]) => !isEqual(defaults.get(id), value),
+    ),
+  );
 }
 
 export function filterAnswersByFieldIds(

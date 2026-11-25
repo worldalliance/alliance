@@ -1,6 +1,7 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import {
+  answersToStore,
   applyDefaultValues,
   clampPageIndex,
   readStoredFormDraft,
@@ -42,6 +43,21 @@ describe("restorableAnswers", () => {
     expect(applyDefaultValues(restored, new Map([["places", ["ny"]]]))).toEqual(
       { places: [] },
     );
+  });
+});
+
+describe("answersToStore", () => {
+  it("leaves out an answer equal to its default, arrays included", () => {
+    const defaults = new Map<string, FormValue>([
+      ["zone", "Europe/London"],
+      ["places", ["ny", "la"]],
+    ]);
+    expect(
+      answersToStore(
+        { zone: "Europe/London", places: ["ny", "la"], name: "Ada" },
+        defaults,
+      ),
+    ).toEqual({ name: "Ada" });
   });
 });
 
