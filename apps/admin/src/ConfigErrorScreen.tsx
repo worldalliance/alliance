@@ -1,30 +1,54 @@
-import { useEffect, useRef } from "react";
-import Button, { ButtonColor } from "./ui/Button";
+import { type ReactNode, useEffect, useRef } from "react";
+import Button, { ButtonVariant } from "./ui/Button";
 
-export function ConfigErrorScreen({ detail }: { detail: string }) {
+/** A whole-window failure with a reload, for when no shell could render. */
+export function FullScreenError({
+  title,
+  children,
+  detail,
+}: {
+  title: string;
+  children?: ReactNode;
+  detail?: string;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
-  // Replaces the loading screen, so focus moves here rather than staying on body.
+  // Replaces what was on screen, so focus moves here rather than staying on body.
   useEffect(() => heading.current?.focus(), []);
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen gap-4 p-4 text-center">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas p-6 text-center text-body text-fg">
       <h1
         ref={heading}
         tabIndex={-1}
-        className="text-xl font-semibold focus:outline-none"
+        className="text-title font-semibold focus:outline-none"
       >
-        The admin panel couldn&apos;t load its settings
+        {title}
       </h1>
-      <p>Reload the page. If this keeps happening, tell an engineer.</p>
+      {children}
       <Button
-        color={ButtonColor.Black}
+        variant={ButtonVariant.Primary}
         onClick={() => window.location.reload()}
       >
         Reload
       </Button>
-      <details className="max-w-xl text-sm text-gray-600">
-        <summary className="cursor-pointer">Details</summary>
-        <pre className="mt-2 text-left whitespace-pre-wrap">{detail}</pre>
-      </details>
+      {detail && (
+        <details className="max-w-xl text-caption text-fg-muted">
+          <summary className="cursor-pointer">Details</summary>
+          <pre className="mt-2 text-left whitespace-pre-wrap">{detail}</pre>
+        </details>
+      )}
     </main>
+  );
+}
+
+export function ConfigErrorScreen({ detail }: { detail: string }) {
+  return (
+    <FullScreenError
+      title="The admin panel couldn't load its settings"
+      detail={detail}
+    >
+      <p className="text-fg-muted">
+        Reload the page. If this keeps happening, tell an engineer.
+      </p>
+    </FullScreenError>
   );
 }
