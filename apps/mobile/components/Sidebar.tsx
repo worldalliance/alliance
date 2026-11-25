@@ -16,7 +16,7 @@ import { useAppDrawer } from "../lib/AppDrawerContext";
 import { isPathActive } from "../lib/isPathActive";
 import { Anchor, WalkthroughAnchor } from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
-import Text, { FontWeight } from "./system/Text";
+import Text, { FontFamily, FontWeight } from "./system/Text";
 
 type NavItem = {
   name: string;
@@ -107,8 +107,9 @@ export default function Sidebar() {
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleNavigate("/")}>
             <Text
-              className="uppercase text-xl"
-              style={{ fontFamily: "Berlingske" }}
+              className="text-xl"
+              family={FontFamily.Logotype}
+              style={{ letterSpacing: 0.4 }}
             >
               The Alliance
             </Text>

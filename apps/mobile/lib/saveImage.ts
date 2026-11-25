@@ -1,12 +1,48 @@
 import { imageSaveTarget } from "@alliance/common/image-src";
 import { R } from "@alliance/common/result";
+import { Directory, File, Paths } from "expo-file-system";
 import * as WebBrowser from "expo-web-browser";
-import { Alert } from "react-native";
+import { Alert, Platform, Share } from "react-native";
 import { getApiUrl } from "./config";
+import {
+  ImageSaveRoute,
+  type ImageSaveStep,
+  imageSaveStep,
+} from "./imageSaveStep";
 
-// The in-app browser saves the attachment. Android's `Share` carries only
-// text, and sharing a file to "Save Image" on iOS needs a Photos permission
-// this binary doesn't declare.
+let saves = 0;
+
+async function runSaveStep(step: ImageSaveStep): Promise<void> {
+  switch (step.route) {
+    case ImageSaveRoute.Browser:
+      await WebBrowser.openBrowserAsync(step.url);
+      return;
+    case ImageSaveRoute.ShareSheet: {
+      // In a shared directory, a second save of one name would fail as already
+      // existing, and the first save's cleanup would delete the file it shares.
+      const dir = new Directory(
+        Paths.cache,
+        `image-save-${Date.now()}-${++saves}`,
+      );
+      dir.create();
+      try {
+        const file = await File.downloadFileAsync(
+          step.url,
+          new File(dir, step.fileName),
+        );
+        await Share.share({ url: file.uri });
+      } finally {
+        dir.delete();
+      }
+      return;
+    }
+    default:
+      throw new Error(
+        `unknown image save step: ${JSON.stringify(step satisfies never)}`,
+      );
+  }
+}
+
 export async function saveImage({
   uri,
   name,
@@ -15,11 +51,13 @@ export async function saveImage({
   name?: string;
 }): Promise<void> {
   const target = imageSaveTarget({ src: uri, apiUrl: getApiUrl(), name });
-  const opened = target.ok
-    ? await R.fromPromise(WebBrowser.openBrowserAsync(target.value.url))
+  const saved = target.ok
+    ? await R.fromPromiseFn(() =>
+        runSaveStep(imageSaveStep({ os: Platform.OS, target: target.value })),
+      )
     : target;
-  if (!opened.ok) {
-    console.error("Failed to save image:", opened.error);
+  if (!saved.ok) {
+    console.error("Failed to save image:", saved.error);
     Alert.alert("Couldn't download the image");
   }
 }
