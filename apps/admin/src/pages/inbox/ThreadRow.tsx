@@ -33,7 +33,8 @@ export function ThreadRow({
       <Link
         to={{ pathname: threadHref(threadId), search }}
         aria-current={open ? "page" : undefined}
-        className="flex flex-col gap-0.5 border-b border-line px-card py-3 transition-colors duration-fast focus-ring not-aria-[current=page]:hover:bg-surface-2 aria-[current=page]:bg-accent-soft"
+        // Inset, since the scrolling pane would clip an outline outside the row.
+        className="flex flex-col gap-0.5 border-b border-line px-card py-3 transition-colors duration-fast not-aria-[current=page]:hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent aria-[current=page]:bg-accent-soft"
       >
         <span className="flex min-w-0 items-baseline gap-2">
           <span
@@ -49,11 +50,15 @@ export function ThreadRow({
             announce={false}
             className="self-center"
           />
-          <span className="ml-auto shrink-0 text-caption text-fg-muted tabular-nums">
+        </span>
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="min-w-0 flex-1 truncate text-fg-muted">
+            {preview}
+          </span>
+          <span className="shrink-0 text-caption text-fg-muted tabular-nums">
             {when}
           </span>
         </span>
-        <span className="truncate text-fg-muted">{preview}</span>
       </Link>
     </li>
   );

@@ -60,7 +60,10 @@ export default function InboxPage() {
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <TabsList aria-label="Queues" className="shrink-0 px-card">
+          <TabsList
+            aria-label="Queues"
+            className="h-14 shrink-0 items-end px-card"
+          >
             {tabs.items.map((tab) => (
               <TabsTab key={tab.id} value={tab.id}>
                 {tab.label}

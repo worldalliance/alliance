@@ -23,7 +23,7 @@ export function NeedsReplyTab() {
   return (
     <>
       <QueueBar>
-        <p role="status" className="text-fg-muted tabular-nums">
+        <p role="status" className="flex-1 text-fg-muted tabular-nums">
           {threads &&
             (threads.length > 0
               ? `${formatCount(threads.length)} waiting`

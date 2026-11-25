@@ -17,7 +17,8 @@ export function ThreadPeople({
 }) {
   return (
     <>
-      <PaneHeader title="On this number" />
+      {/* As tall as the tab row and the conversation's strip, so their dividers line up. */}
+      <PaneHeader title="On this number" className="min-h-14" />
       <div className="px-card py-3">
         {thread === null ? (
           <p className="text-fg-muted">
