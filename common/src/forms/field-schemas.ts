@@ -39,6 +39,8 @@ const baseFieldSchema = z.object({
   group: formGroupSchema.optional(),
 });
 
+// BACKCOMPAT(text-field): superseded by `textarea`. The builder's Duplicate and the form API still write it,
+// so block those, then migrate, and remove once no form snapshot holds a `text` input (ALL-2514).
 const textFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("text"),
