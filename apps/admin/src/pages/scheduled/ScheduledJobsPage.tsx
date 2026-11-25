@@ -49,7 +49,6 @@ export default function ScheduledJobsPage() {
       return next;
     });
   const count = listCount({
-    shown: jobs.length,
     total: plans.data && jobs.length,
     noun: "job",
   });

@@ -103,6 +103,10 @@ describe("listCount", () => {
       "1 of 1,200 groups",
     );
   });
+
+  it("counts all when the list has no search or filter", () => {
+    expect(listCount({ total: 5, noun: "job" })).toBe("5 jobs");
+  });
 });
 
 function Search() {

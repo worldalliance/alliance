@@ -80,15 +80,15 @@ export const listCount = ({
   total,
   noun,
 }: {
-  /** Rows after search and filters. */
-  shown: number;
+  /** Rows after search and filters. Omit for a list with neither. */
+  shown?: number;
   /** Every item, or where the server pages, its total; undefined until loaded. */
   total: number | undefined;
   /** Singular: "group". */
   noun: string;
 }): string | undefined => {
   if (!total) return undefined;
-  return shown === total
+  return shown === undefined || shown === total
     ? countOf(total, noun)
     : `${formatCount(shown)} of ${countOf(total, noun)}`;
 };
