@@ -1,4 +1,3 @@
-import { withConversationNoteFields } from "@alliance/common/forms/conversation";
 import {
   elementInternalDescriptor,
   FIELD_KIND_NAMES,
@@ -61,7 +60,7 @@ export function columnLabel(field: AnyField): {
 
 const dedupeById = (fields: AnyField[]): AnyField[] => {
   const seen = new Set<string>();
-  return withConversationNoteFields(fields).filter((field) => {
+  return fields.filter((field) => {
     if (seen.has(field.id)) return false;
     seen.add(field.id);
     return true;

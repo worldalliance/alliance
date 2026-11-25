@@ -104,7 +104,6 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   image: true,
   toggle: true,
   timePicker: true,
-  conversation: true,
   header: true,
   label: true,
   divider: true,
@@ -118,7 +117,6 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   previousAnswer: true,
   userLocation: true,
   chatTranscript: true,
-  expertMessage: true,
   accordion: true,
 } as const satisfies Record<FormElementKind, true>;
 

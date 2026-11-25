@@ -1,4 +1,3 @@
-import { withConversationNoteFields } from "@alliance/common/forms/conversation";
 import {
   displayBlockSchema,
   type DisplayBlock,
@@ -68,7 +67,7 @@ export const questionFieldsOf = (pages: ParsedPage[]): AnyField[] => {
       if (element.type === "question") push(element.field);
     }
   }
-  return withConversationNoteFields(fields);
+  return fields;
 };
 
 const renderDisplay = (block: DisplayBlock): string | null => {
@@ -91,15 +90,6 @@ const renderDisplay = (block: DisplayBlock): string | null => {
         [
           ["kind", "quote"],
           ["attribution", block.userName],
-        ],
-        escapeXml(block.text),
-      );
-    case "expertMessage":
-      return tag(
-        "display",
-        [
-          ["kind", "expertMessage"],
-          ["attribution", block.expert?.userName],
         ],
         escapeXml(block.text),
       );

@@ -191,7 +191,6 @@ function EqualsValue({
         />
       );
     case "radio":
-    case "conversation":
       return (
         <OptionValue
           options={controller.options}

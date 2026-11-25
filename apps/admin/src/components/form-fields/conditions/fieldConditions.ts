@@ -2,7 +2,6 @@ import type {
   AnyField,
   CheckboxField,
   ContractField,
-  ConversationField,
   CustomComponentField,
   EmailField,
   MultiSelectField,
@@ -33,7 +32,6 @@ export type ControllerField =
   | ToggleField
   | ContractField
   | RadioField
-  | ConversationField
   | SelectField
   | MultiSelectField
   | RangeField
@@ -80,7 +78,6 @@ export function isConditionalController(f: AnyField): f is ControllerField {
     f.kind === "toggle" ||
     f.kind === "contract" ||
     f.kind === "radio" ||
-    f.kind === "conversation" ||
     f.kind === "select" ||
     f.kind === "multiselect" ||
     f.kind === "range" ||
@@ -147,7 +144,6 @@ export function fieldComparisons(
       ];
     case "contract":
     case "radio":
-    case "conversation":
     case "select":
     case "range":
     case "number":
@@ -221,7 +217,6 @@ function defaultEqualsValue(
     case "range":
       return getRangeValues(controller)[0] ?? 1;
     case "radio":
-    case "conversation":
     case "select":
     case "multiselect":
       return controller.options?.[0]?.value ?? "";

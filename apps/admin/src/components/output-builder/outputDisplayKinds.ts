@@ -15,7 +15,6 @@ export const OUTPUT_BY_KIND = {
   copytext: false,
   previousAnswer: false,
   chatTranscript: false,
-  expertMessage: false,
   accordion: false,
 } as const satisfies Record<DisplayKind, boolean>;
 

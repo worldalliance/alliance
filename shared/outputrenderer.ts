@@ -65,8 +65,7 @@ export const formatOutputFieldValue = (
     case "toggle":
       return value ? "Yes" : "No";
     case "radio":
-    case "select":
-    case "conversation": {
+    case "select": {
       const stringValue = String(value);
       return (
         field.options?.find((option) => option.value === stringValue)?.label ??
@@ -201,7 +200,6 @@ export function plainAnswer(item: ResolvedOutputFieldItem): {
     case "custom":
     case "toggle":
     case "timePicker":
-    case "conversation":
       return asText;
     default:
       field satisfies never;

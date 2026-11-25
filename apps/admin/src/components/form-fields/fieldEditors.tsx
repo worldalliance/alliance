@@ -1,6 +1,5 @@
 import type { AnyField, FieldKind } from "@alliance/common/forms/form-schema";
 import { EditableContractField } from "./EditableContractField";
-import { EditableConversationField } from "./EditableConversationField";
 import { EditableCustomComponentField } from "./EditableCustomComponentField";
 import { EditableImageField } from "./EditableImageField";
 import { EditableListField } from "./EditableListField";
@@ -19,7 +18,6 @@ const FIELD_EDITORS: { [K in FieldKind]: FieldEditor<K> } = {
   image: EditableImageField,
   toggle: EditableToggleField,
   timePicker: EditableTimePickerField,
-  conversation: EditableConversationField,
 };
 
 function renderEditorOfKind<K extends FieldKind>(

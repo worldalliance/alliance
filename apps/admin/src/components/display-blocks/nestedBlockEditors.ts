@@ -3,7 +3,6 @@ import { EditableBigLinkBlock } from "./EditableBigLinkBlock";
 import { EditableChatTranscriptBlock } from "./EditableChatTranscriptBlock";
 import { EditableCopyTextBlock } from "./EditableCopyTextBlock";
 import { EditableDividerBlock } from "./EditableDividerBlock";
-import { EditableExpertMessageBlock } from "./EditableExpertMessageBlock";
 import { EditableHeaderBlock } from "./EditableHeaderBlock";
 import { EditableHtmlBlock } from "./EditableHtmlBlock";
 import { EditableImagesBlock } from "./EditableImagesBlock";
@@ -26,7 +25,6 @@ export const NESTED_BLOCK_EDITORS: {
   images: EditableImagesBlock,
   video: EditableVideoBlock,
   quote: EditableQuoteBlock,
-  expertMessage: EditableExpertMessageBlock,
   biglink: EditableBigLinkBlock,
   copytext: EditableCopyTextBlock,
   chatTranscript: EditableChatTranscriptBlock,

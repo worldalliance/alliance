@@ -32,7 +32,6 @@ export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
   contract: VariableInputMode.Boolean,
   radio: VariableInputMode.Choice,
   select: VariableInputMode.Choice,
-  conversation: VariableInputMode.Choice,
   multiselect: VariableInputMode.Choices,
   ranking: VariableInputMode.Choices,
   city: VariableInputMode.City,
