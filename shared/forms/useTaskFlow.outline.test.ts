@@ -1,7 +1,11 @@
 import { act } from "@testing-library/react";
 import { TaskFlowMode } from "./useTaskFlow";
 import { header, input, setup, text } from "./useTaskFlow.testing";
+import { type OutlineStep } from "./useTaskOutline";
 import { SourceHistoriesStatus } from "./useVariableSourceHistories";
+
+const headings = (outline: OutlineStep[] | null) =>
+  outline?.map(({ heading }) => heading) ?? null;
 
 describe("useTaskFlow outline", () => {
   it("lists the header of each visible page, skipping pages without one", () => {
@@ -17,7 +21,10 @@ describe("useTaskFlow outline", () => {
       },
       visiblePageIndices: [0, 1, 3],
     });
-    expect(hook.result.current.outline).toEqual(["Pick a date", "Confirm"]);
+    expect(headings(hook.result.current.outline)).toEqual([
+      "Pick a date",
+      "Confirm",
+    ]);
   });
 
   it("lists a header shared by several pages once, at its first page", () => {
@@ -32,7 +39,10 @@ describe("useTaskFlow outline", () => {
       },
       visiblePageIndices: [0, 1, 2],
     });
-    expect(hook.result.current.outline).toEqual(["Your story", "Pick a date"]);
+    expect(headings(hook.result.current.outline)).toEqual([
+      "Your story",
+      "Pick a date",
+    ]);
   });
 
   it("trims headers and skips blank ones", () => {
@@ -47,7 +57,7 @@ describe("useTaskFlow outline", () => {
       },
       visiblePageIndices: [0, 1, 2],
     });
-    expect(hook.result.current.outline).toEqual(["Your story"]);
+    expect(headings(hook.result.current.outline)).toEqual(["Your story"]);
   });
 
   it("is pending until visibility settles", () => {
@@ -137,11 +147,11 @@ describe("useTaskFlow outline", () => {
     ["the draft reloads", { draftSettled: false }],
   ])("keeps its steps once listed when %s", (_, failure) => {
     const { hook, params } = setup();
-    expect(hook.result.current.outline).toEqual(["h", "h2"]);
+    expect(headings(hook.result.current.outline)).toEqual(["h", "h2"]);
 
     params.form = { ...params.form, ...failure };
     act(() => hook.rerender());
-    expect(hook.result.current.outline).toEqual(["h", "h2"]);
+    expect(headings(hook.result.current.outline)).toEqual(["h", "h2"]);
   });
 
   it("follows the visible pages again once a failed input recovers", () => {
@@ -155,7 +165,7 @@ describe("useTaskFlow outline", () => {
       visiblePageIndices: [0, 1],
     };
     act(() => hook.rerender());
-    expect(hook.result.current.outline).toEqual(["h"]);
+    expect(headings(hook.result.current.outline)).toEqual(["h"]);
   });
 
   it("is empty when its variables fail", () => {
@@ -165,7 +175,7 @@ describe("useTaskFlow outline", () => {
 
   it("lists the steps in a staff preview", () => {
     const { hook } = setup({ mode: TaskFlowMode.Preview });
-    expect(hook.result.current.outline).toEqual(["h", "h2"]);
+    expect(headings(hook.result.current.outline)).toEqual(["h", "h2"]);
   });
 
   it("is empty for a read-only task", () => {

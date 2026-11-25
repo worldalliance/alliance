@@ -9,6 +9,8 @@ interface TimelineProps {
   dotColor?: string;
   className?: string;
   currentIdx?: number;
+  /** Steps shown green. */
+  doneIndices?: number[];
 }
 
 const Timeline: React.FC<TimelineProps> = ({
@@ -18,6 +20,7 @@ const Timeline: React.FC<TimelineProps> = ({
   lineColor = "var(--color-zinc-200)",
   className,
   currentIdx,
+  doneIndices = [],
 }) => {
   const halfDot = dotSize / 2;
   const items = React.Children.toArray(children);
@@ -54,7 +57,9 @@ const Timeline: React.FC<TimelineProps> = ({
               style={{ ...dotBaseStyle }}
               className={cn(
                 "absolute mt-1 flex items-center justify-center",
-                index === currentIdx ? "bg-green" : "bg-grey-1",
+                index === currentIdx || doneIndices.includes(index)
+                  ? "bg-green"
+                  : "bg-grey-1",
               )}
             ></div>
             {/* content */}

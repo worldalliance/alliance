@@ -362,6 +362,7 @@ export const taskFlow = {
   done: "Done",
   progress: "Task progress",
   outline: "Task steps",
+  stepDone: "done",
   complete: "Task complete!",
   completeUpdate:
     "We'll share a progress update on this project with all members in the coming weeks.",
