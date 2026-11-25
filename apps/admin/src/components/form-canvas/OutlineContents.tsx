@@ -49,6 +49,7 @@ const HOLDS_CHILDREN = {
   previousAnswer: false,
   userLocation: false,
   chatTranscript: false,
+  expertMessage: false,
   accordion: true,
 } as const satisfies Record<PageItem["kind"], boolean>;
 

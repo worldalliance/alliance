@@ -50,6 +50,7 @@ export const DISPLAY_KIND_NAMES = {
   previousAnswer: "Previous Answer Block",
   userLocation: "User Location Block",
   chatTranscript: "Chat Transcript Block",
+  expertMessage: "Expert Message Block",
   accordion: "Accordion Block",
 } as const satisfies Record<DisplayKind, string>;
 
@@ -93,6 +94,7 @@ export function displayBlockPreview(block: DisplayBlock): string {
     case "label":
     case "quote":
     case "biglink":
+    case "expertMessage":
       return block.text;
     case "copytext":
       return block.title || block.text;

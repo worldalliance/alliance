@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { conversationExpertSchema } from "./expert-schema";
 import { formValueSchema } from "./form-value";
 import {
   categorizedOptionsShape,
@@ -333,13 +334,6 @@ const timePickerFieldSchema = z.strictObject({
   autoExtractUserData: z.boolean().optional(),
 });
 export type TimePickerField = z.infer<typeof timePickerFieldSchema>;
-
-const conversationExpertSchema = z.strictObject({
-  userId: z.number(),
-  userName: z.string(),
-  userProfilePicture: z.string().nullable().optional(),
-});
-export type ConversationExpert = z.infer<typeof conversationExpertSchema>;
 
 const conversationOptionSchema = z.strictObject({
   ...optionSchema.shape,

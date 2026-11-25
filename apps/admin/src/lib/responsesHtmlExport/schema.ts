@@ -94,6 +94,15 @@ const renderDisplay = (block: DisplayBlock): string | null => {
         ],
         escapeXml(block.text),
       );
+    case "expertMessage":
+      return tag(
+        "display",
+        [
+          ["kind", "expertMessage"],
+          ["attribution", block.expert?.userName],
+        ],
+        escapeXml(block.text),
+      );
     case "html":
       return tag("display", [["kind", "html"]], escapeXml(block.html));
     case "images":

@@ -118,6 +118,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   previousAnswer: true,
   userLocation: true,
   chatTranscript: true,
+  expertMessage: true,
   accordion: true,
 } as const satisfies Record<FormElementKind, true>;
 

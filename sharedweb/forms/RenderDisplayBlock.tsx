@@ -32,6 +32,7 @@ import {
 } from "./accordionStyles";
 import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
+import { ExpertBubble } from "./ExpertBubble";
 import { headerClassName, headerLevel } from "./headerStyles";
 import { lazyFormPart } from "./lazyFormPart";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
@@ -357,6 +358,13 @@ export default function RenderDisplayBlock({
             <FormMarkdownWrapper markdownContent={block.text} />
           </div>
         </div>
+      );
+
+    case "expertMessage":
+      return (
+        <ExpertBubble expert={block.expert} showName>
+          <FormMarkdownWrapper markdownContent={block.text} />
+        </ExpertBubble>
       );
 
     case "biglink":

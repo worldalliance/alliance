@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Assert, Equal } from "../types";
+import { conversationExpertSchema } from "./expert-schema";
 import { rowConditionSchema } from "./row-list-schema";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
@@ -36,6 +37,12 @@ const quoteContentSchema = z.strictObject({
   userId: z.number().optional(),
   userName: z.string().optional(),
   userProfilePicture: z.string().nullable().optional(),
+});
+
+const expertMessageContentSchema = z.strictObject({
+  ...baseContentFields,
+  expert: conversationExpertSchema.nullable(),
+  text: z.string(),
 });
 
 const labelContentSchema = z.strictObject({
@@ -206,6 +213,7 @@ const manualDisplayBlockContentSchema = z.union([
   previousAnswerContentSchema,
   userLocationContentSchema,
   chatTranscriptContentSchema,
+  expertMessageContentSchema,
 ]);
 export type ManualDisplayBlockContent = z.infer<
   typeof manualDisplayBlockContentSchema
@@ -319,6 +327,13 @@ export const chatTranscriptBlockSchema = z.strictObject({
 });
 export type ChatTranscriptBlock = z.infer<typeof chatTranscriptBlockSchema>;
 
+export const expertMessageBlockSchema = z.strictObject({
+  ...baseBlockFields,
+  kind: z.literal("expertMessage"),
+  ...expertMessageContentSchema.shape,
+});
+export type ExpertMessageBlock = z.infer<typeof expertMessageBlockSchema>;
+
 // Per-viewer fields are omitted rather than ignored, so a nested block cannot
 // carry a visibility rule or a per-user override that nothing evaluates.
 const NESTED_OMITTED_FIELDS = {
@@ -341,6 +356,7 @@ export const nestedDisplayBlockSchema = z.discriminatedUnion("kind", [
   bigLinkBlockSchema.omit(NESTED_OMITTED_FIELDS),
   copyTextBlockSchema.omit(NESTED_OMITTED_FIELDS),
   chatTranscriptBlockSchema.omit(NESTED_OMITTED_FIELDS),
+  expertMessageBlockSchema.omit(NESTED_OMITTED_FIELDS),
 ]);
 export type NestedDisplayBlock = z.infer<typeof nestedDisplayBlockSchema>;
 export type NestedDisplayKind = NestedDisplayBlock["kind"];
@@ -380,6 +396,7 @@ export const displayBlockSchema = z.discriminatedUnion("kind", [
   previousAnswerBlockSchema,
   userLocationBlockSchema,
   chatTranscriptBlockSchema,
+  expertMessageBlockSchema,
   accordionBlockSchema,
 ]);
 export type DisplayBlock = z.infer<typeof displayBlockSchema>;
@@ -398,6 +415,7 @@ const _NESTABLE_BY_KIND = {
   biglink: true,
   copytext: true,
   chatTranscript: true,
+  expertMessage: true,
   previousAnswer: false,
   userLocation: false,
   accordion: false,
@@ -436,6 +454,7 @@ export const MANUAL_IMPORT_FIELD_BY_KIND: Record<
   previousAnswer: null,
   userLocation: null,
   chatTranscript: null,
+  expertMessage: "text",
   accordion: null,
 };
 

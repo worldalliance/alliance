@@ -1,3 +1,4 @@
+import { conversationFieldErrors } from "./conversation";
 import type { DisplayBlock } from "./display-blocks";
 import {
   collectFieldLookup,
@@ -11,7 +12,6 @@ import {
   type OutputViewSchema,
   type PageItem,
 } from "./form-schema";
-import { conversationFieldErrors } from "./conversation";
 import { pairedToggleErrors } from "./paired-toggles";
 import { getRangeOptionCount, isValidRangeSelection } from "./range";
 import { rowListErrors } from "./row-list";
@@ -265,6 +265,13 @@ function collectDisplayContentErrors(
 ): void {
   if (!("type" in item) || item.type !== "display") return;
   const blockId = item.id ?? "<unnamed>";
+  if (item.kind === "expertMessage" && item.expert === null) {
+    errors.push({
+      viewId,
+      blockId,
+      message: "Expert message has no expert. Pick one",
+    });
+  }
   if (item.kind === "images" && item.images.length === 0) {
     errors.push({
       viewId,

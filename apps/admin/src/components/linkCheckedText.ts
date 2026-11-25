@@ -25,6 +25,7 @@ const LINKED_DISPLAY_FIELDS: LinkedFields = {
   header: [],
   text: ["text"],
   quote: ["text"],
+  expertMessage: ["text"],
   label: [],
   divider: [],
   spacer: [],

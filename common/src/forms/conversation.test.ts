@@ -4,6 +4,8 @@ import {
   stripOrphanedNotes,
   withConversationNoteFields,
 } from "./conversation";
+import type { ExpertMessageBlock } from "./display-blocks";
+import { displayOnlyMarkdown } from "./display-only-markdown";
 import type { ConversationField, FormSchema } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
 import { stripHiddenAnswers } from "./visibility";
@@ -123,5 +125,35 @@ describe("validateFormSchema on a conversation", () => {
     expect(messages(conversation(), conversation({ id: "second" }))).toEqual([
       'Conversation\'s note id "aware_note" is already in use. Give it its own',
     ]);
+  });
+});
+
+describe("an expert message block", () => {
+  const message = (
+    expert: ExpertMessageBlock["expert"],
+  ): ExpertMessageBlock => ({
+    type: "display",
+    kind: "expertMessage",
+    id: "intro",
+    expert,
+    text: "I'm *Dr Maria*.",
+  });
+
+  it("needs an expert to save", () => {
+    expect(
+      validateFormSchema(schema(message(null))).map((error) => error.message),
+    ).toEqual(["Expert message has no expert. Pick one"]);
+    expect(
+      validateFormSchema(schema(message({ userId: 7, userName: "Dr Maria" }))),
+    ).toEqual([]);
+  });
+
+  it("credits the expert in display-only Markdown", () => {
+    expect(
+      displayOnlyMarkdown({
+        blocks: [message({ userId: 7, userName: "Dr Maria" })],
+        videoLink: "https://example.org/actions/1",
+      }),
+    ).toBe("> **Dr Maria**\n>\n> I'm *Dr Maria*.");
   });
 });

@@ -30,6 +30,7 @@ const INTERPOLATED_DISPLAY_FIELDS: Record<DisplayKind, readonly string[]> = {
   images: [],
   video: ["caption"],
   chatTranscript: ["leftName", "rightName"],
+  expertMessage: ["text"],
   previousAnswer: ["title", "emptyText"],
   userLocation: ["title", "emptyText"],
   divider: [],
