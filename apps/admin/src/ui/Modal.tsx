@@ -42,6 +42,11 @@ export type ModalProps = {
    * stealing the key from a control inside.
    */
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
+  /**
+   * The control that takes focus on open, such as a dialog's only field. By
+   * default the panel does, so opening never pre-arms an action.
+   */
+  initialFocus?: React.RefObject<HTMLElement | null>;
 };
 
 /**
@@ -209,6 +214,7 @@ const Modal: React.FC<ModalProps> = ({
   dismissOnEscape = true,
   showClose = true,
   dismissDisabled = false,
+  initialFocus,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   useAccessibleNameWarning(panelRef, open);
@@ -256,9 +262,7 @@ const Modal: React.FC<ModalProps> = ({
           <div className="flex min-h-full items-center justify-center">
             <Dialog.Popup
               ref={panelRef}
-              // Focus the panel rather than its first tabbable control, so
-              // opening a dialog never pre-arms a specific action.
-              initialFocus={panelRef}
+              initialFocus={initialFocus ?? panelRef}
               onKeyDown={onKeyDown}
               aria-label={ariaLabel}
               className={cn(

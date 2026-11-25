@@ -1,5 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
+import { useRef } from "react";
 import { MemoryRouter } from "react-router";
 import Button, { ButtonColor, ButtonVariant } from "./Button";
 import DateTimePicker from "./DateTimePicker";
@@ -142,6 +149,27 @@ describe("Modal", () => {
   it("has no close button with `showClose` off", () => {
     renderModal({ showClose: false });
     expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+  });
+  it("focuses the panel on open, or the control it names", async () => {
+    renderModal({});
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("dialog")),
+    );
+    cleanup();
+
+    function Named() {
+      const field = useRef<HTMLInputElement>(null);
+      return (
+        <Modal onClose={() => {}} initialFocus={field}>
+          <ModalTitle>Rename suite</ModalTitle>
+          <input ref={field} aria-label="Name" />
+        </Modal>
+      );
+    }
+    render(<Named />);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText("Name")),
+    );
   });
 });
 
