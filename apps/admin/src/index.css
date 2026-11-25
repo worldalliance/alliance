@@ -162,6 +162,9 @@
   --color-page: #fcfcfc;
   --color-greentext: hsl(95, 38%, 46%);
   --color-green: #62a124;
+  --color-grey-0: oklch(98% 0 0);
+  --color-grey-1: oklch(95.5% 0 0);
+  --color-navy: rgb(7, 30, 64);
   --color-ambassador: #bf5f45;
   --color-grouplead: #f2ae49;
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.05);

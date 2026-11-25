@@ -6,6 +6,7 @@ import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 import { MemberFormRenderer } from "./MemberFormRenderer";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
+import { TaskFlowPreview } from "./TaskFlowPreview";
 import { inputText } from "./VariableSamples";
 import { VisibilityProfilePicker } from "./VisibilityProfilePicker";
 
@@ -14,11 +15,17 @@ export function FormBuilderPreview({
   pageIndex,
   previewUserId,
   setPreviewUserId,
+  taskFlow,
 }: {
   schema: FormSchema;
   pageIndex: number;
   previewUserId: string;
   setPreviewUserId: (previewUserId: string) => void;
+  /** Set for an action's task form, which previews through the members' task flow. */
+  taskFlow: {
+    actionName: string | undefined;
+    panelContainer: HTMLElement | null;
+  } | null;
 }) {
   const previewUsersQuery = useUsersAdmin();
   const previewUsers = useMemo(
@@ -99,7 +106,16 @@ export function FormBuilderPreview({
           </select>
         </label>
       )}
-      {!memberUnavailable ? (
+      {!memberUnavailable && taskFlow ? (
+        <TaskFlowPreview
+          key={`${resolvedPreviewUserId}:${rowIndex}`}
+          schema={previewSchema}
+          user={resolvedPreviewUser}
+          previewUserId={resolvedPreviewUserId}
+          actionName={taskFlow.actionName}
+          panelContainer={taskFlow.panelContainer}
+        />
+      ) : !memberUnavailable ? (
         <MemberFormRenderer
           schema={previewSchema}
           previewUserId={resolvedPreviewUserId}

@@ -217,6 +217,7 @@ export function FormBuilder(props: FormBuilderProps) {
   );
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
   const builderRef = useRef<HTMLDivElement | null>(null);
+  const [previewArea, setPreviewArea] = useState<HTMLDivElement | null>(null);
 
   const { target: overrideTarget, override } = useOverrideTarget(selectionKey);
 
@@ -411,77 +412,90 @@ export function FormBuilder(props: FormBuilderProps) {
               />
 
               <div
-                className={cn(
-                  "flex-1 min-h-0",
-                  activeEditor === "form" && !isPreviewMode
-                    ? "flex"
-                    : "p-6 overflow-y-auto",
-                )}
+                ref={setPreviewArea}
+                className="relative flex flex-1 min-h-0 flex-col"
               >
-                {activeEditor === "shareable" ? (
-                  <ShareableTextBuilder
-                    schema={schema}
-                    onSchemaChange={updateSchema}
-                  />
-                ) : activeEditor === "outputs" ? (
-                  <OutputBuilder
-                    schema={schema}
-                    onSchemaChange={updateSchema}
-                    onUpdateBlockById={updateBlockById}
-                    editorsKey={schemaLoads}
-                    selectedViewId={outputViewId}
-                    onSelectView={setOutputViewId}
-                  />
-                ) : activeEditor === "aggregates" ? (
-                  <AggregateBuilder
-                    schema={schema}
-                    onSchemaChange={updateSchema}
-                  />
-                ) : activeEditor === "variables" ? (
-                  <VariableBuilder
-                    key={schemaLoads}
-                    schema={schema}
-                    onSchemaChange={updateSchema}
-                  />
-                ) : activeEditor === "rows" ? (
-                  <RowListBuilder
-                    key={schemaLoads}
-                    schema={schema}
-                    onSchemaChange={updateSchema}
-                  />
-                ) : isPreviewMode && displayOnly ? (
-                  <div className="max-w-3xl mx-auto p-6">
-                    <PreviewBoundary resetKeys={[schema]}>
-                      <DisplayOnlyPreview
-                        schema={schema}
-                        title={displayOnlyTitle}
-                      />
-                    </PreviewBoundary>
-                  </div>
-                ) : isPreviewMode ? (
-                  <FormBuilderPreview
-                    schema={schema}
-                    pageIndex={selectedPageIndex}
-                    previewUserId={previewUserId}
-                    setPreviewUserId={setPreviewUserId}
-                  />
-                ) : (
-                  <FormBuilderCanvas
-                    schema={schema}
-                    displayOnly={displayOnly}
-                    visibilityGroups={visibilityGroups}
-                    setGroups={setGroups}
-                    canvasGroups={canvasGroups}
-                    canvas={canvas}
-                    edits={edits}
-                    updateBlockById={updateBlockById}
-                    issueIndex={issueIndex}
-                    overrideTarget={overrideTarget}
-                    override={override}
-                    onEditJson={setJsonScope}
-                    taskFlow={taskFlow}
-                  />
-                )}
+                <div
+                  className={cn(
+                    "flex-1 min-h-0",
+                    activeEditor === "form" && !isPreviewMode
+                      ? "flex"
+                      : "p-6 overflow-y-auto",
+                  )}
+                >
+                  {activeEditor === "shareable" ? (
+                    <ShareableTextBuilder
+                      schema={schema}
+                      onSchemaChange={updateSchema}
+                    />
+                  ) : activeEditor === "outputs" ? (
+                    <OutputBuilder
+                      schema={schema}
+                      onSchemaChange={updateSchema}
+                      onUpdateBlockById={updateBlockById}
+                      editorsKey={schemaLoads}
+                      selectedViewId={outputViewId}
+                      onSelectView={setOutputViewId}
+                    />
+                  ) : activeEditor === "aggregates" ? (
+                    <AggregateBuilder
+                      schema={schema}
+                      onSchemaChange={updateSchema}
+                    />
+                  ) : activeEditor === "variables" ? (
+                    <VariableBuilder
+                      key={schemaLoads}
+                      schema={schema}
+                      onSchemaChange={updateSchema}
+                    />
+                  ) : activeEditor === "rows" ? (
+                    <RowListBuilder
+                      key={schemaLoads}
+                      schema={schema}
+                      onSchemaChange={updateSchema}
+                    />
+                  ) : isPreviewMode && displayOnly ? (
+                    <div className="max-w-3xl mx-auto p-6">
+                      <PreviewBoundary resetKeys={[schema]}>
+                        <DisplayOnlyPreview
+                          schema={schema}
+                          title={displayOnlyTitle}
+                        />
+                      </PreviewBoundary>
+                    </div>
+                  ) : isPreviewMode ? (
+                    <FormBuilderPreview
+                      schema={schema}
+                      pageIndex={selectedPageIndex}
+                      previewUserId={previewUserId}
+                      setPreviewUserId={setPreviewUserId}
+                      taskFlow={
+                        taskFlow
+                          ? {
+                              actionName: actionName ?? usedInAction?.name,
+                              panelContainer: previewArea,
+                            }
+                          : null
+                      }
+                    />
+                  ) : (
+                    <FormBuilderCanvas
+                      schema={schema}
+                      displayOnly={displayOnly}
+                      visibilityGroups={visibilityGroups}
+                      setGroups={setGroups}
+                      canvasGroups={canvasGroups}
+                      canvas={canvas}
+                      edits={edits}
+                      updateBlockById={updateBlockById}
+                      issueIndex={issueIndex}
+                      overrideTarget={overrideTarget}
+                      override={override}
+                      onEditJson={setJsonScope}
+                      taskFlow={taskFlow}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
