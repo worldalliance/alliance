@@ -94,14 +94,14 @@ export function MembersCheck({
           </TableHeader>
           <TableBody>
             {mixes.map((mix) => (
-              <TableRow key={mix.actionIds.join(",")} className="align-top">
+              <TableRow key={mix.actionIds.join(",")}>
                 <TableCell className="text-right tabular-nums">
                   {formatCount(mix.userIds.length)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Minutes minutes={mix.minutes} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2">
                   <ul>
                     {mix.actionIds.map((id) => (
                       <li key={id}>{actionsById.get(id)?.name}</li>

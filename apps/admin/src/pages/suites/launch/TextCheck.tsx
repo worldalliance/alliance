@@ -159,7 +159,8 @@ export function TextCheck({
     >
       <div className="flex items-center justify-between gap-4 border-b border-line px-card py-3">
         <p className="text-fg-muted">
-          Fix the text in the task, then re-run the checks.
+          Fix the text in {actions.length === 1 ? "the task" : "the tasks"},
+          then re-run the checks.
         </p>
         <Button size="small" variant={ButtonVariant.Default} onClick={onRecheck}>
           Re-run checks

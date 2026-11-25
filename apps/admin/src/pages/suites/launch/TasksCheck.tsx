@@ -156,8 +156,8 @@ export function TasksCheck({
           });
           return (
             <li key={action.id} className="flex flex-col gap-2 px-card py-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <p className="font-medium">
+              <div className="flex items-baseline justify-between gap-4">
+                <p className="min-w-0 font-medium">
                   {action.name}
                   <span className="ml-2 font-normal text-fg-muted">
                     {action.timeEstimate ?? "—"} min
