@@ -2,18 +2,37 @@ import type { WelcomeQueueDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as config from "@alliance/sharedweb/lib/config";
-import { act, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { ToastProvider } from "../../ui/ToastProvider";
 import WelcomeQueuePage from "./WelcomeQueuePage";
 
-const renderPage = (query = queryWrapper()) =>
+afterEach(cleanup);
+
+const renderPage = (query = queryWrapper(), url = "/members/welcome") => {
+  const router = createMemoryRouter(
+    [{ path: "/members/welcome", element: <WelcomeQueuePage /> }],
+    { initialEntries: [url] },
+  );
   render(
-    <MemoryRouter>
-      <WelcomeQueuePage />
-    </MemoryRouter>,
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
     query,
   );
+  return router;
+};
+
+const MEMBER_NAME = /^(First|Second) member$/;
 
 beforeEach(() => {
   jest.spyOn(config, "getBaseUrl").mockReturnValue("http://localhost:5573");
@@ -72,7 +91,7 @@ describe("onboarding welcome queue", () => {
     renderPage();
 
     const links = await screen.findAllByRole("link", {
-      name: "Leave welcome comment",
+      name: /^Leave welcome comment/,
     });
     expect(
       links.map((link) => new URL(link.getAttribute("href")!).pathname),
@@ -81,9 +100,60 @@ describe("onboarding welcome queue", () => {
     const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
     expect(
       rows.map(
-        (row) => within(row).getByRole("link", { name: /member/ }).textContent,
+        (row) =>
+          within(row).getByRole("link", { name: MEMBER_NAME }).textContent,
       ),
     ).toEqual(["Second member", "First member"]);
+  });
+});
+
+describe("staff liked filter", () => {
+  serveApi(
+    routes({
+      "GET /actions/welcome-queue": () => Response.json(queue),
+    }),
+  );
+
+  it("shows only completions a staff member liked, kept in the URL", async () => {
+    const router = renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Staff liked (1)" }),
+    );
+
+    expect(router.state.location.search).toBe("?show=staff-liked");
+    expect(
+      screen
+        .getAllByRole("link", { name: MEMBER_NAME })
+        .map((l) => l.textContent),
+    ).toEqual(["Second member"]);
+  });
+});
+
+describe("staff liked filter with no match", () => {
+  serveApi(
+    routes({
+      "GET /actions/welcome-queue": () =>
+        Response.json({
+          ...queue,
+          members: queue.members.map((m) => ({ ...m, staffLikeCount: 0 })),
+        }),
+    }),
+  );
+
+  it("says nothing matches and clears the filter", async () => {
+    const router = renderPage(
+      queryWrapper(),
+      "/members/welcome?show=staff-liked",
+    );
+
+    expect(await screen.findByText("No results")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(router.state.location.search).toBe("");
+    expect(
+      await screen.findByRole("link", { name: "First member" }),
+    ).toBeTruthy();
   });
 });
 
@@ -95,10 +165,20 @@ describe("empty welcome queue", () => {
     }),
   );
 
-  it("shows an empty queue", async () => {
+  it("says an empty queue is good news", async () => {
     renderPage();
-    expect(await screen.findByText("0 members need a welcome")).toBeTruthy();
-    expect(screen.getByText("No completions match this filter.")).toBeTruthy();
+    expect(
+      await screen.findByText("No one is waiting for a welcome"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("says so under the staff-liked filter too", async () => {
+    renderPage(queryWrapper(), "/members/welcome?show=staff-liked");
+    expect(
+      await screen.findByText("No one is waiting for a welcome"),
+    ).toBeTruthy();
+    expect(screen.queryByText("No results")).toBeNull();
   });
 });
 
@@ -113,12 +193,10 @@ describe("unconfigured welcome queue", () => {
   it("explains missing onboarding tasks without claiming nobody needs a welcome", async () => {
     renderPage();
     expect(
-      await screen.findByText(
-        "No active required onboarding tasks are configured.",
-      ),
+      await screen.findByText("No required onboarding tasks are open"),
     ).toBeTruthy();
-    expect(screen.queryByText("0 members need a welcome")).toBeNull();
-    expect(screen.queryByText("No completions match this filter.")).toBeNull();
+    expect(screen.queryByText("No one is waiting for a welcome")).toBeNull();
+    expect(screen.queryByText("No results")).toBeNull();
     expect(screen.queryByRole("table")).toBeNull();
   });
 });
@@ -142,10 +220,11 @@ for (const status of [401, 500, 503]) {
     it("shows a useful error without rendering the queue", async () => {
       renderPage();
       expect(
-        await screen.findByText(
-          status === 401
-            ? sessionExpiredMessage
-            : "Unable to load members who need welcomes.",
+        await screen.findByText("Couldn't load the welcome queue"),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          status === 401 ? sessionExpiredMessage : LOAD_FAILED_FALLBACK,
         ),
       ).toBeTruthy();
       expect(screen.queryByRole("table")).toBeNull();
@@ -165,8 +244,9 @@ describe("welcome queue unreachable", () => {
   it("shows the fallback without rendering the queue", async () => {
     renderPage();
     expect(
-      await screen.findByText("Unable to load members who need welcomes."),
+      await screen.findByText("Couldn't load the welcome queue"),
     ).toBeTruthy();
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
   });
 });
@@ -191,8 +271,9 @@ describe("welcome queue refetch failure", () => {
     await act(() => query.client.refetchQueries());
 
     expect(
-      await screen.findByText("Unable to load members who need welcomes."),
+      await screen.findByText(/Couldn't refresh the welcome queue\./),
     ).toBeTruthy();
+    expect(screen.queryByText("Couldn't load the welcome queue")).toBeNull();
     expect(screen.getByRole("link", { name: "Second member" })).toBeTruthy();
   });
 });

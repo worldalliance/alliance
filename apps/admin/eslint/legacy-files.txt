@@ -298,7 +298,6 @@ src/pages/TextThreadPage.tsx
 src/pages/TextsPage.tsx
 src/pages/WaitlistEmailsPage.tsx
 src/pages/WaitlistPage.tsx
-src/pages/WelcomeQueuePage.tsx
 src/pages/action-dashboard/ActionDashboardToolbar.tsx
 src/pages/action-dashboard/ActionEditor.tsx
 src/pages/action-dashboard/ActionOverviewTab.tsx
