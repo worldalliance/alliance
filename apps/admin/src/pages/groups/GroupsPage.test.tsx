@@ -96,9 +96,9 @@ const fillAndCreate = async (description?: string) => {
 it("lists the groups, showing unused capacity once they load", async () => {
   renderPage();
 
-  expect(screen.queryByText("Unused capacity")).toBeNull();
+  expect(screen.getByText("Unused capacity —")).toBeTruthy();
   expect(await screen.findByRole("link", { name: "North" })).toBeTruthy();
-  expect(screen.getByText("Unused capacity")).toBeTruthy();
+  expect(await screen.findByText(/^Unused capacity \d/)).toBeTruthy();
 });
 
 it("links each group to its record", async () => {
@@ -114,6 +114,7 @@ it("says when the groups failed to load", async () => {
   renderPage();
 
   expect(await screen.findByText("Couldn't load groups")).toBeTruthy();
+  expect(screen.getByText("The server didn't answer. Try again.")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
 });
 
@@ -162,7 +163,7 @@ it("keeps loading while offline rather than saying there are no groups", async (
 
   expect(await screen.findByRole("status", { name: "Loading" })).toBeTruthy();
   expect(screen.queryByText("No groups yet")).toBeNull();
-  expect(screen.queryByText("Unused capacity")).toBeNull();
+  expect(screen.getByText("Unused capacity —")).toBeTruthy();
 });
 
 it("creates a group without a description", async () => {
@@ -179,9 +180,7 @@ it("says when the members awaiting assignment failed to load", async () => {
   renderPage();
 
   expect(
-    await screen.findByText(
-      /Unable to load members awaiting group assignment\. Please try again\./,
-    ),
+    await screen.findByText(/Couldn't load the members awaiting a group\./),
   ).toBeTruthy();
 });
 
@@ -215,7 +214,13 @@ it("shows the selections awaiting confirmation against their group", async () =>
   );
   renderPage();
 
-  expect(await screen.findByText("+1 awaiting confirmation")).toBeTruthy();
+  const north = (await screen.findByRole("link", { name: "North" })).closest(
+    "tr",
+  );
+  const cells = [...(north?.querySelectorAll("td") ?? [])].map(
+    (cell) => cell.textContent,
+  );
+  expect(cells[5]).toBe("1");
 });
 
 it("says no one is awaiting a group once the last member is assigned", async () => {
@@ -227,7 +232,7 @@ it("says no one is awaiting a group once the last member is assigned", async () 
     target: { value: "4" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Confirm assignments" }));
-  fireEvent.click(screen.getByRole("button", { name: "Assign members" }));
+  fireEvent.click(screen.getByRole("button", { name: "Assign member" }));
 
   expect(await screen.findByText("No one is awaiting a group")).toBeTruthy();
 });

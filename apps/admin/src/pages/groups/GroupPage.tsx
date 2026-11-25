@@ -10,7 +10,6 @@ import {
 } from "../../lib/useCommunitiesAdmin";
 import { useCommunityMemberInfoAdmin } from "../../lib/useCommunityMemberInfoAdmin";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
-import { useRefusalToast } from "../../lib/useRefusalToast";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { RecordId } from "../../places";
 import Badge from "../../ui/Badge";
@@ -18,7 +17,13 @@ import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
 import { Page, PageBody } from "../../ui/templates/Page";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  FormSkeleton,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+  TableSkeleton,
+} from "../../ui/templates/States";
 import { useRecordTabs } from "../../ui/templates/usePlaceTabs";
 import { useToast } from "../../ui/ToastProvider";
 import { GroupMembersTab } from "./GroupMembersTab";
@@ -28,6 +33,27 @@ import { GroupSettingsTab } from "./GroupSettingsTab";
 const TABS = ["members", "progress", "settings"] as const;
 type Tab = (typeof TABS)[number];
 
+const panelSkeleton = (columns: number) => (
+  <PageBody>
+    <div className="overflow-hidden rounded-card border border-line bg-surface">
+      <div className="flex min-h-12 items-center border-b border-line px-card">
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <TableSkeleton columns={columns} rows={6} />
+    </div>
+  </PageBody>
+);
+
+const SKELETON: Record<Tab, ReactNode> = {
+  members: panelSkeleton(3),
+  progress: panelSkeleton(5),
+  settings: (
+    <PageBody width="form">
+      <FormSkeleton fields={5} />
+    </PageBody>
+  ),
+};
+
 export default function GroupPage() {
   const { id } = useParams();
   const groupId = Number(id);
@@ -36,7 +62,6 @@ export default function GroupPage() {
   const tabs = useRecordTabs(RecordId.Group, TABS);
   const confirm = useConfirmOnPage();
   const { success } = useToast();
-  const refusalToast = useRefusalToast();
 
   const groups = useCommunitiesAdmin();
   const group = groups.data?.find((candidate) => candidate.id === groupId);
@@ -44,9 +69,8 @@ export default function GroupPage() {
   // than say the group is missing.
   const loading =
     validId && (groups.isPending || (!group && groups.fetchStatus !== "idle"));
-  const loadError = !validId
-    ? "Invalid group id."
-    : groups.isError && !group
+  const loadError =
+    validId && groups.isError && !group
       ? adminRefusalMessage(groups.error, LOAD_FAILED_FALLBACK)
       : null;
   const memberInfo = useCommunityMemberInfoAdmin(validId ? groupId : null);
@@ -54,11 +78,8 @@ export default function GroupPage() {
 
   const [actionError, setActionError] = useState<string | null>(null);
   const reportError = useCallback(
-    (error: unknown, fallback: string) => {
-      setActionError(adminRefusalMessage(error, fallback));
-      refusalToast(error, fallback);
-    },
-    [refusalToast],
+    (message: string) => setActionError(message),
+    [],
   );
   const clearError = useCallback(() => setActionError(null), []);
 
@@ -67,7 +88,7 @@ export default function GroupPage() {
       if (group) success("Group deleted", group.name);
     },
     onError: (error) =>
-      reportError(error, "Unable to delete group. Please try again."),
+      reportError(adminRefusalMessage(error, "Couldn't delete the group.")),
   });
 
   const deleteGroup = async () => {
@@ -75,7 +96,7 @@ export default function GroupPage() {
     const confirmed = await confirm({
       title: `Delete the group “${group.name}”?`,
       message:
-        "All members and leaders will lose this group assignment. This can't be undone.",
+        "Its members and leaders lose the group. No one is notified. This can't be undone.",
       confirmLabel: "Delete group",
       destructive: true,
     });
@@ -139,35 +160,34 @@ export default function GroupPage() {
       }
       tabs={tabs}
       banner={
-        actionError && (
-          <Banner
-            tone={BannerTone.Danger}
-            action={
-              <Button
-                size="small"
-                variant={ButtonVariant.Ghost}
-                onClick={clearError}
-              >
-                Dismiss
-              </Button>
-            }
-          >
-            {actionError}
-          </Banner>
-        )
+        <>
+          <RefreshFailedBanner things="this group" query={groups} />
+          {actionError && (
+            <Banner
+              tone={BannerTone.Danger}
+              action={
+                <Button
+                  size="small"
+                  variant={ButtonVariant.Ghost}
+                  onClick={clearError}
+                >
+                  Dismiss
+                </Button>
+              }
+            >
+              {actionError}
+            </Banner>
+          )}
+        </>
       }
     >
       <ContentState
         loading={loading}
-        skeleton={
-          <PageBody>
-            <Skeleton className="h-64 w-full rounded-card" />
-            <Skeleton className="h-40 w-full rounded-card" />
-          </PageBody>
-        }
+        skeleton={SKELETON[tabs.value]}
         error={loadError}
         errorTitle="Couldn't load this group"
-        onRetry={validId ? () => void groups.refetch() : undefined}
+        onRetry={() => void groups.refetch()}
+        retrying={groups.isFetching}
         empty={!group}
         emptyTitle="Group not found"
         emptyDescription="It may have been deleted."

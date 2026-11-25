@@ -1,15 +1,21 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { formatCount } from "../../lib/formatNumber";
 import { useCommunitiesAdmin } from "../../lib/useCommunitiesAdmin";
 import { useGroupAssignmentMembersAdmin } from "../../lib/useGroupAssignmentAdmin";
-import { PlaceId } from "../../places";
+import { CountId, PlaceId } from "../../places";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
 import { Page } from "../../ui/templates/Page";
-import { usePlaceTabs } from "../../ui/templates/usePlaceTabs";
+import {
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
+import { usePlaceTabs, withQueueCounts } from "../../ui/templates/usePlaceTabs";
 import { AllGroupsTab } from "./AllGroupsTab";
 import { AwaitingTab } from "./AwaitingTab";
+import { unusedCapacity } from "./groupRules";
 import { NewGroupDialog } from "./NewGroupDialog";
 import { useGroupAssignment } from "./useGroupAssignment";
 
@@ -26,27 +32,41 @@ export default function GroupsPage() {
   });
   const [creating, setCreating] = useState(false);
   const awaitingCount = queue.data?.length;
+  // Free seats less the members waiting for one, so it needs both lists.
+  const capacity =
+    groups.data && awaitingCount !== undefined
+      ? formatCount(unusedCapacity(groups.data, awaitingCount))
+      : "—";
 
-  // Each tab names the part of the page that failed to load for the other,
-  // and what that does to what it shows.
+  // Each tab names the part of the page that failed to load for it, and
+  // what that does to what it shows; its own list's failure is its body.
   const banner: Record<Tab, ReactNode> = {
-    all: queue.isLoadingError && (
-      <Banner tone={BannerTone.Danger}>
-        {adminRefusalMessage(
-          queue.error,
-          "Unable to load members awaiting group assignment. Please try again.",
-        )}{" "}
-        Unused capacity leaves them out.
-      </Banner>
+    all: (
+      <>
+        {queue.isLoadingError && (
+          <Banner tone={BannerTone.Danger}>
+            Couldn't load the members awaiting a group.{" "}
+            {adminRefusalMessage(queue.error, LOAD_FAILED_FALLBACK)} Unused
+            capacity is unknown until they load.
+          </Banner>
+        )}
+        <RefreshFailedBanner things="groups" query={groups} />
+      </>
     ),
-    awaiting: groups.isLoadingError && (
-      <Banner tone={BannerTone.Danger}>
-        {adminRefusalMessage(
-          groups.error,
-          "Unable to load groups. Please try again.",
-        )}{" "}
-        There are no groups to assign to until they load.
-      </Banner>
+    awaiting: (
+      <>
+        {groups.isLoadingError && (
+          <Banner tone={BannerTone.Danger}>
+            Couldn't load groups.{" "}
+            {adminRefusalMessage(groups.error, LOAD_FAILED_FALLBACK)} There are
+            no groups to assign to until they load.
+          </Banner>
+        )}
+        <RefreshFailedBanner
+          things="the members awaiting a group"
+          query={queue}
+        />
+      </>
     ),
   };
 
@@ -54,7 +74,6 @@ export default function GroupsPage() {
     all: () => (
       <AllGroupsTab
         groups={groups}
-        awaitingCount={awaitingCount ?? 0}
         pendingByGroupId={assignment.pendingByGroupId}
         onNewGroup={() => setCreating(true)}
       />
@@ -68,7 +87,7 @@ export default function GroupsPage() {
     <Page
       fill
       place={PlaceId.Groups}
-      description="The groups members belong to, and the members waiting to be placed in one."
+      description={`Unused capacity ${capacity}`}
       actions={
         <Button
           // One primary action per view: on Awaiting assignment it is Confirm assignments.
@@ -80,14 +99,9 @@ export default function GroupsPage() {
           New group…
         </Button>
       }
-      tabs={{
-        ...tabs,
-        items: tabs.items.map((tab) =>
-          tab.id === "awaiting" && awaitingCount
-            ? { ...tab, count: awaitingCount }
-            : tab,
-        ),
-      }}
+      tabs={withQueueCounts(tabs, {
+        [CountId.AwaitingGroup]: queue.isLoadingError ? null : awaitingCount,
+      })}
       banner={banner[tabs.value]}
     >
       {body[tabs.value]()}

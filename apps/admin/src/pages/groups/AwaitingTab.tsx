@@ -1,17 +1,19 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
+import { forCount } from "@alliance/common/plural";
 import type { CommunityDto, UserDto } from "@alliance/shared/client/types.gen";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { countOf } from "../../lib/formatNumber";
+import { groupHref } from "../../lib/hrefs";
 import { useAssignGroupsAdmin } from "../../lib/useGroupAssignmentAdmin";
-import { AvatarProfile } from "../../ui/Avatar";
 import Button, { ButtonVariant } from "../../ui/Button";
-import { cn } from "../../ui/cn";
 import ConfirmDialog from "../../ui/ConfirmDialog";
+import InlineError from "../../ui/InlineError";
+import { PersonCell } from "../../ui/PersonCell";
 import { Select } from "../../ui/Select";
-import { linkClass, nameLinkClass } from "../../ui/styles";
+import { linkClass } from "../../ui/styles";
 import {
   Table,
   TableBody,
@@ -27,7 +29,6 @@ import {
   TableSkeleton,
 } from "../../ui/templates/States";
 import { useToast } from "../../ui/ToastProvider";
-import { groupHref, memberHref } from "./groupRules";
 import type {
   GroupAssignment,
   GroupAssignmentState,
@@ -89,10 +90,7 @@ export function AwaitingTab({
         },
         onError: (error) =>
           setProblem(
-            adminRefusalMessage(
-              error,
-              "Unable to confirm assignments. Please try again.",
-            ),
+            adminRefusalMessage(error, "Couldn't confirm the assignments."),
           ),
         onSettled: () => setConfirming(false),
       },
@@ -103,7 +101,9 @@ export function AwaitingTab({
     <>
       <FilterBar
         count={
-          queue.data && `${countOf(members.length, "member")} awaiting a group`
+          members.length > 0
+            ? `${countOf(members.length, "member")} awaiting a group`
+            : undefined
         }
         actions={
           <Button
@@ -115,11 +115,7 @@ export function AwaitingTab({
           </Button>
         }
       >
-        {problem && (
-          <p role="alert" className="text-danger">
-            {problem}
-          </p>
-        )}
+        <InlineError message={problem} />
       </FilterBar>
       <ListContent>
         <ContentState
@@ -132,6 +128,7 @@ export function AwaitingTab({
           }
           errorTitle="Couldn't load members awaiting a group"
           onRetry={() => void queue.refetch()}
+          retrying={queue.isFetching}
           empty={members.length === 0}
           emptyTitle="No one is awaiting a group"
         >
@@ -142,9 +139,7 @@ export function AwaitingTab({
                 <TableHead>Contact</TableHead>
                 <TableHead>Current groups</TableHead>
                 <TableHead>New group</TableHead>
-                <TableHead>
-                  <span className="sr-only">Selected group</span>
-                </TableHead>
+                <TableHead actions>Selected group</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -168,7 +163,7 @@ export function AwaitingTab({
         open={confirming}
         title={`Assign ${countOf(assignments.length, "member")}?`}
         message={assignmentSummary(assignments)}
-        confirmLabel="Assign members"
+        confirmLabel={`Assign ${forCount(assignments.length, "member")}`}
         busy={assignGroups.isPending}
         onConfirm={assign}
         onCancel={() => setConfirming(false)}
@@ -194,18 +189,13 @@ function AwaitingRow({
   const problemId = `awaiting-${member.id}-problem`;
   return (
     <TableRow>
-      <TableCell className="max-w-64">
-        <span className="flex items-center gap-2.5">
-          <AvatarProfile pfp={member.profilePicture} size="small" alt="" />
-          <Link
-            to={memberHref(member.id)}
-            className={cn(nameLinkClass, "truncate")}
-          >
-            {member.name}
-          </Link>
-        </span>
-      </TableCell>
-      <TableCell className="max-w-64 truncate text-fg-muted">
+      <PersonCell
+        userId={member.id}
+        name={member.name}
+        profilePicture={member.profilePicture}
+        firstColumn
+      />
+      <TableCell truncate className="text-fg-muted">
         {[
           member.email,
           member.phoneNumber && formatPhoneNumberForDisplay(member.phoneNumber),
@@ -213,13 +203,16 @@ function AwaitingRow({
           .filter(Boolean)
           .join(" · ") || "—"}
       </TableCell>
-      <TableCell className="max-w-64 truncate">
+      <TableCell
+        truncate
+        title={current.map((group) => group.name).join(", ") || undefined}
+      >
         {current.length === 0
           ? "—"
           : current.map((group, index) => (
               <span key={group.id}>
                 {index > 0 && ", "}
-                <Link to={groupHref(group)} className={linkClass}>
+                <Link to={groupHref(group.id)} className={linkClass}>
                   {group.name}
                 </Link>
               </span>
@@ -252,7 +245,7 @@ function AwaitingRow({
           </span>
         )}
         {picked && (
-          <Link to={groupHref(picked)} className={linkClass}>
+          <Link to={groupHref(picked.id)} className={linkClass}>
             View group
           </Link>
         )}

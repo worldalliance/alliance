@@ -1,19 +1,15 @@
-import { getMemberCount } from "@alliance/common/community";
 import type {
   CommunityDto,
   ProfileDto,
 } from "@alliance/shared/client/types.gen";
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { countOf } from "../../lib/formatNumber";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MembershipChange } from "../../lib/useCommunitiesAdmin";
 import type { useCommunityMemberInfoAdmin } from "../../lib/useCommunityMemberInfoAdmin";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
 import type { useUsersAdmin } from "../../lib/useUsersAdmin";
-import Badge from "../../ui/Badge";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
-import { nameLinkClass } from "../../ui/styles";
+import { PersonCell, personName } from "../../ui/PersonCell";
 import {
   Table,
   TableBody,
@@ -25,14 +21,14 @@ import {
 import { Panel } from "../../ui/templates/Overview";
 import { PageBody } from "../../ui/templates/Page";
 import { type AddChange, AddPersonDialog } from "./AddPersonDialog";
-import { byPersonName, memberHref } from "./groupRules";
+import { byPersonName } from "./groupRules";
 import {
   type GroupErrorReporting,
   useGroupMembership,
 } from "./useGroupMembership";
 
 const nameOf = (person: ProfileDto) =>
-  person.displayName ?? `User #${person.id}`;
+  personName({ userId: person.id, name: person.displayName });
 
 export function GroupMembersTab({
   group,
@@ -51,9 +47,13 @@ export function GroupMembersTab({
   const membership = useGroupMembership({
     group,
     refreshMemberInfo,
-    reportError,
     clearError,
   });
+  const tableRef = useRef<HTMLTableElement>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
+  // After a row's own button removes the row, focus goes to the next row's
+  // first button, or Add member when it was the last.
+  const [focusAfter, setFocusAfter] = useState<number | "add" | null>(null);
 
   const memberIds = useMemo(
     () => new Set(group.users.map((member) => member.id)),
@@ -74,57 +74,100 @@ export function GroupMembersTab({
     [group, leaderIds],
   );
 
+  useEffect(() => {
+    if (focusAfter === null) return;
+    const target =
+      focusAfter === "add"
+        ? addRef.current
+        : tableRef.current?.querySelector<HTMLElement>(
+            `[data-person="${focusAfter}"] button`,
+          );
+    if (!target) return;
+    target.focus();
+    setFocusAfter(null);
+  }, [focusAfter, people]);
+
+  const change = async (params: {
+    person: ProfileDto;
+    change: MembershipChange;
+    fallback: string;
+    removesRow: boolean;
+  }) => {
+    const { person, removesRow } = params;
+    const index = people.findIndex((candidate) => candidate.id === person.id);
+    const next = people[index + 1] ?? people[index - 1];
+    const result = await membership.apply({
+      change: params.change,
+      userId: person.id,
+      fallback: params.fallback,
+    });
+    if (!result.ok) {
+      reportError(result.error);
+      return;
+    }
+    if (removesRow) setFocusAfter(next ? next.id : "add");
+  };
+
   const makeLeader = async (person: ProfileDto) => {
     const confirmed = await confirm({
       title: `Make ${nameOf(person)} a leader of ${group.name}?`,
       confirmLabel: "Make leader",
     });
     if (!confirmed) return;
-    await membership.apply({
+    await change({
+      person,
       change: MembershipChange.AddLeader,
-      userId: person.id,
-      fallback: "Unable to promote leader. Please try again.",
+      fallback: "Couldn't make them a leader.",
+      removesRow: false,
     });
   };
 
+  // From the server's removeLeaderAdmin: it changes the leaders only and
+  // sends no notification.
   const removeLeader = async (person: ProfileDto) => {
     const confirmed = await confirm({
       title: `Remove ${nameOf(person)} as a leader of ${group.name}?`,
-      message: "They no longer lead this group.",
+      message:
+        "They no longer lead the group. Their membership doesn't change, and no one is notified.",
       confirmLabel: "Remove leader",
       destructive: true,
     });
     if (!confirmed) return;
-    await membership.apply({
+    await change({
+      person,
       change: MembershipChange.RemoveLeader,
-      userId: person.id,
-      fallback: "Unable to remove leader. Please try again.",
+      fallback: "Couldn't remove them as a leader.",
+      removesRow: !memberIds.has(person.id),
     });
   };
 
+  // From the server's removeUserFromCommunityAdmin: it removes them as a
+  // leader too, and notifies them and the group's remaining leaders.
   const removeMember = async (person: ProfileDto) => {
     const confirmed = await confirm({
       title: `Remove ${nameOf(person)} from ${group.name}?`,
-      message: "They are no longer a member of this group.",
-      confirmLabel: "Remove member",
+      message:
+        "They leave the group, and stop leading it if they lead it. They get a notification that staff removed them, and so do the group's other leaders.",
+      confirmLabel: "Remove from group",
       destructive: true,
     });
     if (!confirmed) return;
-    await membership.apply({
+    await change({
+      person,
       change: MembershipChange.RemoveMember,
-      userId: person.id,
-      fallback: "Unable to remove member. Please try again.",
+      fallback: "Couldn't remove them from the group.",
+      removesRow: true,
     });
   };
 
   return (
     <PageBody>
       <Panel
-        title="Members"
-        description={`${countOf(getMemberCount(group), "member")} · ${countOf(group.leaders.length, "leader")}`}
+        title="Leaders and members"
         action={
           <div className="flex gap-2">
             <Button
+              ref={addRef}
               size="small"
               variant={ButtonVariant.Default}
               onClick={() => setAdding(MembershipChange.AddMember)}
@@ -148,14 +191,12 @@ export function GroupMembersTab({
             description="Add a member or a leader to start the group."
           />
         ) : (
-          <Table>
+          <Table ref={tableRef}>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead actions>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,59 +204,53 @@ export function GroupMembersTab({
                 const name = nameOf(person);
                 const isLeader = leaderIds.has(person.id);
                 return (
-                  <TableRow key={person.id}>
-                    <TableCell className="max-w-64 truncate">
-                      <Link
-                        to={memberHref(person.id)}
-                        className={nameLinkClass}
-                      >
-                        {name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {isLeader ? <Badge>Leader</Badge> : "Member"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        {isLeader ? (
-                          <Button
-                            size="small"
-                            aria-label={`Remove leader: ${name}`}
-                            busy={membership.isPending(
-                              MembershipChange.RemoveLeader,
-                              person.id,
-                            )}
-                            onClick={() => void removeLeader(person)}
-                          >
-                            Remove leader
-                          </Button>
-                        ) : (
-                          <Button
-                            size="small"
-                            aria-label={`Make leader: ${name}`}
-                            busy={membership.isPending(
-                              MembershipChange.AddLeader,
-                              person.id,
-                            )}
-                            onClick={() => void makeLeader(person)}
-                          >
-                            Make leader
-                          </Button>
-                        )}
-                        {memberIds.has(person.id) && (
-                          <Button
-                            size="small"
-                            aria-label={`Remove: ${name}`}
-                            busy={membership.isPending(
-                              MembershipChange.RemoveMember,
-                              person.id,
-                            )}
-                            onClick={() => void removeMember(person)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
+                  <TableRow key={person.id} data-person={person.id}>
+                    <PersonCell
+                      userId={person.id}
+                      name={person.displayName}
+                      profilePicture={person.profilePicture}
+                      firstColumn
+                    />
+                    <TableCell>{isLeader ? "Leader" : "Member"}</TableCell>
+                    <TableCell actions>
+                      {isLeader ? (
+                        <Button
+                          size="small"
+                          aria-label={`Remove leader: ${name}`}
+                          busy={membership.isPending(
+                            MembershipChange.RemoveLeader,
+                            person.id,
+                          )}
+                          onClick={() => void removeLeader(person)}
+                        >
+                          Remove leader
+                        </Button>
+                      ) : (
+                        <Button
+                          size="small"
+                          aria-label={`Make leader: ${name}`}
+                          busy={membership.isPending(
+                            MembershipChange.AddLeader,
+                            person.id,
+                          )}
+                          onClick={() => void makeLeader(person)}
+                        >
+                          Make leader
+                        </Button>
+                      )}
+                      {memberIds.has(person.id) && (
+                        <Button
+                          size="small"
+                          aria-label={`Remove from group: ${name}`}
+                          busy={membership.isPending(
+                            MembershipChange.RemoveMember,
+                            person.id,
+                          )}
+                          onClick={() => void removeMember(person)}
+                        >
+                          Remove from group
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

@@ -3,14 +3,6 @@ import type {
   CommunityDto,
   ProfileDto,
 } from "@alliance/shared/client/types.gen";
-import { href } from "react-router";
-
-export const groupHref = (group: { id: number }) =>
-  href("/members/groups/:id", { id: group.id.toString() });
-
-export const memberHref = (userId: number) =>
-  href("/members/:userId", { userId: userId.toString() });
-
 export const byPersonName = (a: ProfileDto, b: ProfileDto) =>
   (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
     sensitivity: "base",
@@ -25,9 +17,9 @@ export const byGroupName = (a: CommunityDto, b: CommunityDto) =>
 export const takesStaffAssignments = (group: CommunityDto) =>
   group.allowStaffAssignments && group.maxCapacity !== null;
 
-/** Seats left once the selections waiting on the Awaiting assignment tab are counted; null without a cap. */
-export const openSeats = (group: CommunityDto, pending: number) =>
-  group.maxCapacity === null ? null : Math.max(0, freeSlots(group) - pending);
+/** Seats the group has free now; null without a cap. */
+export const openSeats = (group: CommunityDto) =>
+  group.maxCapacity === null ? null : Math.max(0, freeSlots(group));
 
 /**
  * Free seats over the capped groups, less the members still awaiting a group,

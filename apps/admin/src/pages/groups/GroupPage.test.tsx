@@ -162,7 +162,8 @@ const renderPage = (
   return query.client;
 };
 
-const members = () => within(screen.getByRole("region", { name: "Members" }));
+const members = () =>
+  within(screen.getByRole("region", { name: "Leaders and members" }));
 
 /** Presses a row's button, then the same-named button of the confirmation it opens. */
 const pressAndConfirm = async (row: string, confirm: string) => {
@@ -191,19 +192,26 @@ it("says when no group has that id", async () => {
   expect(await screen.findByText("Group not found")).toBeTruthy();
 });
 
-it("drops a removed member", async () => {
+it("drops a removed member and moves focus to the row beside it", async () => {
   renderPage();
 
-  await pressAndConfirm("Remove: Sam", "Remove member");
+  await pressAndConfirm("Remove from group: Sam", "Remove from group");
 
   await waitFor(() =>
     expect(members().queryByRole("link", { name: "Sam" })).toBeNull(),
+  );
+  await waitFor(() =>
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "Remove leader: Lee",
+    ),
   );
 });
 
 it("keeps a member whose removal is not confirmed", async () => {
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Remove: Sam" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Remove from group: Sam" }),
+  );
 
   fireEvent.click(
     within(await screen.findByRole("dialog")).getByRole("button", {
@@ -220,9 +228,9 @@ it("says why a removal was refused", async () => {
   removeStatus = 400;
   renderPage();
 
-  await pressAndConfirm("Remove: Sam", "Remove member");
+  await pressAndConfirm("Remove from group: Sam", "Remove from group");
 
-  expect(await screen.findAllByText("Sam leads this group")).toHaveLength(2);
+  expect(await screen.findByText("Sam leads this group")).toBeTruthy();
   expect(members().getByRole("link", { name: "Sam" })).toBeTruthy();
 });
 
@@ -341,14 +349,14 @@ it("drops a removed leader", async () => {
 it("says when the id is not a number", async () => {
   renderPage({ id: "abc" });
 
-  expect(await screen.findByText("Invalid group id.")).toBeTruthy();
+  expect(await screen.findByText("Group not found")).toBeTruthy();
 });
 
 it("says the id is not a number without waiting for the groups", async () => {
   onlineManager.setOnline(false);
   renderPage({ id: "abc" });
 
-  expect(await screen.findByText("Invalid group id.")).toBeTruthy();
+  expect(await screen.findByText("Group not found")).toBeTruthy();
 });
 
 it("keeps unsaved details when the group refetches with changes", async () => {
@@ -404,9 +412,7 @@ it("shows the action's fallback when a write never reaches the server", async ()
 
   await pressAndConfirm("Make leader: Sam", "Make leader");
 
-  expect(
-    await screen.findAllByText("Unable to promote leader. Please try again."),
-  ).toHaveLength(2);
+  expect(await screen.findByText("Couldn't make them a leader.")).toBeTruthy();
 });
 
 it("says why loading the group was refused", async () => {
@@ -426,7 +432,7 @@ it("says why saving the details was refused, keeping the edit", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
-  expect(await screen.findAllByText(/That name is taken/)).toHaveLength(2);
+  expect(await screen.findByText(/That name is taken/)).toBeTruthy();
   expect(screen.getByDisplayValue("South")).toBeTruthy();
 });
 
@@ -457,9 +463,7 @@ it("shows a failed add in its dialog alone", async () => {
     add: "Add leader",
   });
 
-  const refusal = await screen.findByText(
-    "Unable to add leader. Please try again.",
-  );
+  const refusal = await screen.findByText("Couldn't add the leader.");
   expect(screen.getByRole("dialog").contains(refusal)).toBe(true);
 });
 
@@ -469,7 +473,7 @@ it("says why a delete was refused and stays on the group", async () => {
 
   await deleteNorth();
 
-  expect(await screen.findAllByText("North still has members")).toHaveLength(2);
+  expect(await screen.findByText("North still has members")).toBeTruthy();
   expect(screen.queryByText("Groups list")).toBeNull();
 });
 
@@ -517,7 +521,7 @@ it("says why loading the members' contact info was refused", async () => {
   contactInfoStatus = 403;
   renderPage({ tab: "progress" });
 
-  expect(await screen.findByText("Contact info is private")).toBeTruthy();
+  expect(await screen.findByText(/Contact info is private/)).toBeTruthy();
 });
 
 it("loads the member details and users alongside the group", async () => {
@@ -532,10 +536,10 @@ it("loads the member details and users alongside the group", async () => {
 
 it("reloads the member details after a membership change", async () => {
   renderPage();
-  await screen.findByRole("button", { name: "Remove: Sam" });
+  await screen.findByRole("button", { name: "Remove from group: Sam" });
   await waitFor(() => expect(memberInfoRequests).toBe(1));
 
-  await pressAndConfirm("Remove: Sam", "Remove member");
+  await pressAndConfirm("Remove from group: Sam", "Remove from group");
 
   await waitFor(() => expect(memberInfoRequests).toBe(2));
 });

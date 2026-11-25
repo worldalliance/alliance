@@ -7,9 +7,9 @@ import { useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useUpdateCommunityAdmin } from "../../lib/useCommunitiesAdmin";
 import { useLeaveGuard } from "../../lib/useLeaveGuard";
-import { useRefusalToast } from "../../lib/useRefusalToast";
 import {
   FormSection,
+  SAVE_FAILED_FALLBACK,
   SaveBar,
   SaveState,
   useFocusFirstInvalid,
@@ -33,7 +33,6 @@ const settingsOf = (group: CommunityDto): CreateCommunityDto => ({
 
 export function GroupSettingsTab({ group }: { group: CommunityDto }) {
   const { success } = useToast();
-  const refusalToast = useRefusalToast();
   // A refetch reseeds the form only while it is untouched, so it brings in
   // newer settings without overwriting unsaved edits.
   const [seeded, setSeeded] = useState(() => ({
@@ -69,12 +68,10 @@ export function GroupSettingsTab({ group }: { group: CommunityDto }) {
       success("Group updated", updated.name);
     },
     onError: (error) => {
-      const fallback = "Unable to update group. Please try again.";
       setOutcome({
         saved: false,
-        reason: adminRefusalMessage(error, fallback),
+        reason: adminRefusalMessage(error, SAVE_FAILED_FALLBACK),
       });
-      refusalToast(error, fallback);
     },
   });
 

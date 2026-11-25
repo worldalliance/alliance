@@ -3,6 +3,7 @@ import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { groupHref } from "../../lib/hrefs";
 import { useCreateCommunityAdmin } from "../../lib/useCommunitiesAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import Modal, {
@@ -14,7 +15,6 @@ import Modal, {
 } from "../../ui/Modal";
 import { useFocusFirstInvalid } from "../../ui/templates/Form";
 import { useToast } from "../../ui/ToastProvider";
-import { groupHref } from "./groupRules";
 import {
   GroupSettingsFields,
   validateGroupSettings,
@@ -38,9 +38,7 @@ export function NewGroupDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateCommunityAdmin({
     onSuccess: () => {},
     onError: (error) =>
-      setRefusal(
-        adminRefusalMessage(error, "Unable to create group. Please try again."),
-      ),
+      setRefusal(adminRefusalMessage(error, "Couldn't create the group.")),
   });
 
   const submit = (event: React.FormEvent) => {
@@ -55,7 +53,7 @@ export function NewGroupDialog({ onClose }: { onClose: () => void }) {
     create.mutate(validated.value, {
       onSuccess: (created) => {
         success("Group created", created.name);
-        void navigate(groupHref(created));
+        void navigate(groupHref(created.id));
       },
     });
   };
@@ -76,12 +74,7 @@ export function NewGroupDialog({ onClose }: { onClose: () => void }) {
             }}
           />
         </ModalBody>
-        <ModalFooter className="flex flex-col gap-3">
-          {refusal && (
-            <p role="alert" className="text-danger">
-              {refusal}
-            </p>
-          )}
+        <ModalFooter error={refusal}>
           <ModalActions>
             <Button
               variant={ButtonVariant.Default}

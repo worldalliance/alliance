@@ -22,13 +22,13 @@ const COPY: Record<
     title: "Add a member",
     pick: "Member to add",
     submit: "Add member",
-    fallback: "Unable to add member. Please try again.",
+    fallback: "Couldn't add the member.",
   },
   [MembershipChange.AddLeader]: {
     title: "Add a leader",
     pick: "Leader to add",
     submit: "Add leader",
-    fallback: "Unable to add leader. Please try again.",
+    fallback: "Couldn't add the leader.",
   },
 };
 
@@ -51,7 +51,7 @@ export function AddPersonDialog({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (picked.length === 0) {
-      setProblem("Pick someone to add.");
+      setProblem("Pick someone to add");
       return;
     }
     setAdding(true);
@@ -59,7 +59,6 @@ export function AddPersonDialog({
       change,
       userId: picked[0],
       fallback: copy.fallback,
-      report: false,
     });
     setAdding(false);
     if (added.ok) onClose();
@@ -87,12 +86,7 @@ export function AddPersonDialog({
             single
           />
         </ModalBody>
-        <ModalFooter className="flex flex-col gap-3">
-          {problem && (
-            <p role="alert" className="text-danger">
-              {problem}
-            </p>
-          )}
+        <ModalFooter error={problem}>
           <ModalActions>
             <Button
               variant={ButtonVariant.Default}

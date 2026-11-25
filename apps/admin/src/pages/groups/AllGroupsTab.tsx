@@ -2,9 +2,10 @@ import { getMemberCount } from "@alliance/common/community";
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
-import { countOf, formatCount } from "../../lib/formatNumber";
+import { formatCount } from "../../lib/formatNumber";
+import { groupHref } from "../../lib/hrefs";
 import Badge from "../../ui/Badge";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { nameLinkClass } from "../../ui/styles";
@@ -16,44 +17,43 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { FilterBar, ListContent, SearchField } from "../../ui/templates/List";
+import {
+  FilterBar,
+  ListContent,
+  listCount,
+  SearchField,
+  useListSearch,
+} from "../../ui/templates/List";
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
   TableSkeleton,
 } from "../../ui/templates/States";
-import {
-  byGroupName,
-  groupHref,
-  openSeats,
-  unusedCapacity,
-} from "./groupRules";
+import { byGroupName, openSeats } from "./groupRules";
+
+const NUMBER = "text-right";
+const HEADS: readonly (readonly [string, string | undefined])[] = [
+  ["Group", undefined],
+  ["Description", undefined],
+  ["Visibility", undefined],
+  ["Leaders", NUMBER],
+  ["Members", NUMBER],
+  ["Picked, unconfirmed", NUMBER],
+  ["Capacity", NUMBER],
+  ["Open seats", NUMBER],
+];
 
 export function AllGroupsTab({
   groups,
-  awaitingCount,
   pendingByGroupId,
   onNewGroup,
 }: {
   groups: UseQueryResult<CommunityDto[]>;
-  /** Members awaiting a group, who are held against the unused capacity. */
-  awaitingCount: number;
   /** Selections waiting on the Awaiting assignment tab, by group. */
   pendingByGroupId: Record<number, number>;
   onNewGroup: () => void;
 }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const q = searchParams.get("q") ?? "";
-  const setQ = (value: string) =>
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set("q", value);
-        else next.delete("q");
-        return next;
-      },
-      { replace: true },
-    );
+  const [q, setQ] = useListSearch();
 
   const all = groups.data;
   const rows = useMemo(() => {
@@ -66,25 +66,24 @@ export function AllGroupsTab({
   return (
     <>
       <FilterBar
-        count={
-          all && (
-            <>
-              {rows.length === all.length
-                ? countOf(all.length, "group")
-                : `${formatCount(rows.length)} of ${formatCount(all.length)} groups`}
-              {" · "}
-              <span>Unused capacity</span>{" "}
-              {formatCount(unusedCapacity(all, awaitingCount))}
-            </>
-          )
-        }
+        count={listCount({
+          shown: rows.length,
+          total: all?.length,
+          noun: "group",
+        })}
       >
         <SearchField label="Filter groups" value={q} onChange={setQ} />
       </FilterBar>
       <ListContent>
         <ContentState
           loading={groups.isPending}
-          skeleton={<TableSkeleton bleed columns={7} />}
+          skeleton={
+            <TableSkeleton
+              bleed
+              columns={HEADS.length}
+              columnClassNames={HEADS.map(([, className]) => className)}
+            />
+          }
           error={
             groups.isLoadingError
               ? adminRefusalMessage(groups.error, LOAD_FAILED_FALLBACK)
@@ -92,6 +91,7 @@ export function AllGroupsTab({
           }
           errorTitle="Couldn't load groups"
           onRetry={() => void groups.refetch()}
+          retrying={groups.isFetching}
           empty={rows.length === 0}
           filtered={q !== ""}
           onClearFilters={() => setQ("")}
@@ -106,13 +106,11 @@ export function AllGroupsTab({
           <Table bleed>
             <TableHeader>
               <TableRow>
-                <TableHead>Group</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Visibility</TableHead>
-                <TableHead className="text-right">Leaders</TableHead>
-                <TableHead className="text-right">Members</TableHead>
-                <TableHead className="text-right">Capacity</TableHead>
-                <TableHead className="text-right">Open seats</TableHead>
+                {HEADS.map(([label, className]) => (
+                  <TableHead key={label} className={className}>
+                    {label}
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -138,18 +136,15 @@ function GroupRow({
   group: CommunityDto;
   pending: number;
 }) {
-  const seats = openSeats(group, pending);
+  const seats = openSeats(group);
   return (
     <TableRow>
-      <TableCell className="max-w-64 truncate">
-        <Link to={groupHref(group)} className={nameLinkClass}>
+      <TableCell truncate title={group.name}>
+        <Link to={groupHref(group.id)} className={nameLinkClass}>
           {group.name}
         </Link>
       </TableCell>
-      <TableCell
-        className="max-w-64 truncate text-fg-muted"
-        title={group.description || undefined}
-      >
+      <TableCell truncate className="text-fg-muted">
         {group.description || "—"}
       </TableCell>
       <TableCell>
@@ -159,12 +154,10 @@ function GroupRow({
         {formatCount(group.leaders.length)}
       </TableCell>
       <TableCell className="text-right tabular-nums">
-        {pending > 0 && (
-          <span className="mr-2 text-caption text-fg-muted">
-            +{formatCount(pending)} awaiting confirmation
-          </span>
-        )}
         {formatCount(getMemberCount(group))}
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        {pending > 0 ? formatCount(pending) : "—"}
       </TableCell>
       <TableCell className="text-right tabular-nums">
         {group.maxCapacity === null ? "—" : formatCount(group.maxCapacity)}

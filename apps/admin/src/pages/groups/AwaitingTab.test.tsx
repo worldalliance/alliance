@@ -78,7 +78,7 @@ const assignToNorth = async () => {
   fireEvent.click(screen.getByRole("button", { name: "Confirm assignments" }));
   fireEvent.click(
     within(screen.getByRole("dialog")).getByRole("button", {
-      name: "Assign members",
+      name: "Assign member",
     }),
   );
   return client;
@@ -120,9 +120,7 @@ it("says when the groups failed to load", async () => {
   listStatus = 500;
   renderTab();
 
-  expect(
-    await screen.findByText(/Unable to load groups\. Please try again\./),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Couldn't load groups\./)).toBeTruthy();
 });
 
 it("takes the assigned members off the queue and refreshes the groups", async () => {
@@ -142,7 +140,7 @@ it("says why an assignment was refused, keeping the members queued", async () =>
   const client = await assignToNorth();
 
   expect(await screen.findByText("North is full")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Assign members" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Assign member" })).toBeNull();
   await waitFor(() =>
     expect(
       client.getQueryData(queryKeys.groupAssignmentMembersAdmin()),
@@ -162,9 +160,7 @@ it("keeps the loaded groups when the refetch after an assignment fails", async (
   listStatus = 500;
 
   await waitFor(() => expect(listCalls).toBe(2));
-  expect(
-    screen.queryByText(/Unable to load groups\. Please try again\./),
-  ).toBeNull();
+  expect(screen.queryByText(/Couldn't load groups\./)).toBeNull();
   expect(
     client.getQueryData<CommunityDto[]>(queryKeys.communitiesAdmin())?.[0].name,
   ).toBe("North");
