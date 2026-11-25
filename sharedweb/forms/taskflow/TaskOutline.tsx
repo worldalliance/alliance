@@ -1,5 +1,5 @@
 import { taskFlow } from "@alliance/shared/lib/copy";
-import Timeline from "../system/Timeline";
+import Timeline from "@alliance/sharedweb/ui/Timeline";
 
 export default function TaskOutline({
   steps,

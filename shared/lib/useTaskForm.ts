@@ -12,6 +12,7 @@ import {
   tasksGetForm,
   tasksGetFormAdmin,
   tasksUpdateFormAdmin,
+  type AdminFormDto,
   type FormDto,
   type UpdateFormDto,
 } from "../client";
@@ -19,7 +20,12 @@ import { statusError } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 import { useInvalidateFormsAdmin } from "./useFormsAdmin";
 
-const readForm = async (get: typeof tasksGetForm, formId: number) => {
+const readForm = async <T>(
+  get: (options: {
+    path: { id: number };
+  }) => Promise<{ data?: T; error?: unknown; response: Response }>,
+  formId: number,
+): Promise<T> => {
   const response = await get({ path: { id: formId } });
   if (!response.data) {
     throw statusError(
@@ -30,14 +36,14 @@ const readForm = async (get: typeof tasksGetForm, formId: number) => {
   return response.data;
 };
 
-const formQuery = ({
+const formQuery = <T>({
   formId,
   queryKey,
   get,
 }: {
   formId: number | null | undefined;
   queryKey: readonly unknown[];
-  get: typeof tasksGetForm;
+  get: Parameters<typeof readForm<T>>[0];
 }) =>
   queryOptions({
     queryKey,
@@ -81,7 +87,7 @@ export function useAdminTaskFormActions() {
   // any screen fetch still in flight is cancelled, even one sent after it, so
   // the cache ends on this read.
   const fetchLatest = useCallback(
-    async (formId: number): Promise<Result<FormDto, unknown>> => {
+    async (formId: number): Promise<Result<AdminFormDto, unknown>> => {
       const read = await R.fromPromise(
         readForm(tasksGetFormAdmin, formId),
         (error) => error,
@@ -133,7 +139,7 @@ export function useAdminTaskFormActions() {
       if (!result.ok) return;
       queryClient.setQueryData(
         adminTaskFormQuery(formId).queryKey,
-        result.value,
+        (cached) => ({ ...result.value, usedInAction: cached?.usedInAction }),
       );
       // Not awaited, so refetching every open field list does not hold up
       // the save.

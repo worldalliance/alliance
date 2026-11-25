@@ -11,17 +11,17 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { CardMenuSlotContext } from "@alliance/sharedweb/forms/taskflow/CardMenuSlot";
+import FlowButton, {
+  FlowButtonKind,
+} from "@alliance/sharedweb/forms/taskflow/FlowButton";
+import { TASK_FLOW_ORIGIN } from "@alliance/sharedweb/forms/taskflow/useExpandingPanel";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { ArrowRight, Eye } from "lucide-react";
 import { useCallback, useEffect, useState, type RefObject } from "react";
 import { href, Link, useNavigate } from "react-router";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
-import { CardMenuSlotContext } from "../../components/taskflow/CardMenuSlot";
-import FlowButton, {
-  FlowButtonKind,
-} from "../../components/taskflow/FlowButton";
-import { TASK_FLOW_ORIGIN } from "../../components/taskflow/useExpandingPanel";
 import { useAuth } from "../../lib/AuthContext";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 import TaskTimeInfo from "./TaskTimeInfo";

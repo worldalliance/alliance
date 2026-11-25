@@ -5,6 +5,7 @@ import {
   withdrawFromAction,
 } from "@alliance/shared/lib/copy";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
+import { CardMenuSlotContext } from "@alliance/sharedweb/forms/taskflow/CardMenuSlot";
 import {
   act,
   fireEvent,
@@ -15,7 +16,6 @@ import {
 import { useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
-import { CardMenuSlotContext } from "./CardMenuSlot";
 import {
   action,
   CLOSE_TIMEOUT,

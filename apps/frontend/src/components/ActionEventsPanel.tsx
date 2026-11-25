@@ -5,8 +5,8 @@ import {
 } from "@alliance/shared/lib/actionEventsPanel";
 import { formatTime } from "@alliance/shared/lib/utils";
 import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
+import Timeline from "@alliance/sharedweb/ui/Timeline";
 import { Fragment } from "react";
-import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
 
 export interface ActionEventsPanelProps {

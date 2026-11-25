@@ -1,5 +1,6 @@
 import type { FormPlace } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormLinkedActionDto } from "@alliance/shared/client";
 import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -45,6 +46,7 @@ export function useSavedForm({
     initialSnapshotId,
   );
   const [conflict, setConflict] = useState<FormConflict | null>(null);
+  const [usedInAction, setUsedInAction] = useState<FormLinkedActionDto>();
   const [isLoading, setIsLoading] = useState(
     () => !displayOnly && Boolean(formId) && !initialSchema,
   );
@@ -93,6 +95,7 @@ export function useSavedForm({
           return;
         }
         const form = read.value;
+        setUsedInAction(form.usedInAction);
         if (form.schema) {
           const nextSchema = ensurePages(form.schema as FormSchema);
           loadSchema(nextSchema);
@@ -149,6 +152,8 @@ export function useSavedForm({
   );
 
   return {
+    /** The action whose task form, or task form variant, the loaded form is. */
+    usedInAction,
     lastSavedSchemaJSON,
     hasUnsavedChanges,
     baseFormSnapshotId,

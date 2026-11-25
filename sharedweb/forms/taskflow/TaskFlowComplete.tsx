@@ -10,7 +10,6 @@ import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import { ModalTitle } from "@alliance/sharedweb/ui/Modal";
 import { ListTodo, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ImmersiveTone } from "../../lib/NavbarOptionsContext";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import {
   flowMotion,
@@ -19,6 +18,7 @@ import {
   SUCCESS_HOLD_MS,
   transition,
 } from "./flowMotion";
+import { ImmersiveTone } from "./host";
 import TaskAnswersCard from "./TaskAnswersCard";
 import { FLOW_COLUMN } from "./TaskFlowScreen";
 
@@ -115,6 +115,7 @@ export default function TaskFlowComplete({
   schema,
   answers,
   user,
+  showsOwnLocation,
   phase,
   fading,
   leavesToTasks,
@@ -125,6 +126,7 @@ export default function TaskFlowComplete({
   schema: FormSchema;
   answers: Record<string, FormValue>;
   user: UserDto | undefined;
+  showsOwnLocation: boolean;
   phase: CompletionPhase;
   fading: boolean;
   /** Whether closing takes the member to the tasks homepage; a guest is sent elsewhere. */
@@ -200,6 +202,7 @@ export default function TaskFlowComplete({
               style={recolor}
               output={{ schema, answers }}
               user={user}
+              showsOwnLocation={showsOwnLocation}
               plain
               {...KEEPS_OPEN}
             />

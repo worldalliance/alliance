@@ -8,11 +8,14 @@ import { taskFlow } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { seedActions } from "@alliance/shared/lib/testing/seedActions";
+import {
+  flowMotion,
+  SUCCESS_HOLD_MS,
+} from "@alliance/sharedweb/forms/taskflow/flowMotion";
 import { QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { testAuthUser } from "../../stories/testData";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
-import { flowMotion, SUCCESS_HOLD_MS } from "./flowMotion";
 import {
   action,
   CLOSE_TIMEOUT,

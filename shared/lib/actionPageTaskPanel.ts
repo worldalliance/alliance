@@ -94,7 +94,7 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.ShowTask]: false,
 } as const satisfies Record<ActionPageTaskPanelState, boolean>;
 
-type HeaderBodyStyles = {
+export type HeaderBodyStyles = {
   header: CardStyle;
   body: CardStyle;
 };

@@ -177,6 +177,22 @@ export class FormLinkedActionDto extends PickType(Action, ["id", "name"]) {
   }
 }
 
+export type AdminForm = { form: Form; usedInAction: LinkedAction | null };
+
+export class AdminFormDto extends FormDto {
+  /** The action whose task form, or task form variant, this is. */
+  @ApiPropertyOptional({ type: () => FormLinkedActionDto })
+  usedInAction?: FormLinkedActionDto;
+
+  constructor(input: AdminForm) {
+    super(input.form);
+    this.usedInAction =
+      input.usedInAction === null
+        ? undefined
+        : new FormLinkedActionDto(input.usedInAction);
+  }
+}
+
 export type FormSchemaCounts = {
   pages: number;
   fields: number;

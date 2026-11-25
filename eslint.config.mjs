@@ -1,3 +1,4 @@
+import pluginReactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 import apiClientRules from "./eslint/api-client-rules.mjs";
 import sharedRules, {
@@ -35,6 +36,13 @@ export default tseslint.config([
         },
       ],
     },
+  },
+  {
+    files: [
+      "sharedweb/forms/taskflow/**/*.{ts,tsx}",
+      "sharedweb/ui/{ProgressBar,StackedCard,Timeline}.tsx",
+    ],
+    ...pluginReactHooks.configs["recommended-latest"],
   },
   ...apiClientRules.map((config) => ({
     ...config,

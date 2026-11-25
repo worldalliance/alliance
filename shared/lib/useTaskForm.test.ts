@@ -153,6 +153,19 @@ it("caches the saved form and invalidates the forms derived from it", async () =
   );
 });
 
+it("keeps the cached form's action across a save, which doesn't return it", async () => {
+  const { client, actions } = adminActions();
+  const usedInAction = { id: 3, name: "Call your MP" };
+  client.setQueryData(queryKeys.taskFormAdmin(7), { ...form, usedInAction });
+
+  await actions().updateForm({ formId: 7, body: { schema: {} } });
+
+  expect(client.getQueryData(queryKeys.taskFormAdmin(7))).toMatchObject({
+    formSnapshotId: 2,
+    usedInAction,
+  });
+});
+
 it("tells a conflicting save from a failed one, caching neither", async () => {
   const { client, actions } = adminActions();
   client.setQueryData(queryKeys.formsAdmin(), []);

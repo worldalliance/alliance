@@ -3,6 +3,11 @@ import {
   NAV_BAR_ICON_HEIGHT,
 } from "@alliance/shared/lib/constants";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  flowMotion,
+  REDUCED_MOTION,
+  transition,
+} from "@alliance/sharedweb/forms/taskflow/flowMotion";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { Menu, Search, X } from "lucide-react";
 import {
@@ -21,7 +26,6 @@ import {
 import NotificationsIcon from "./NotificationsIcon";
 import ProfileDropdown from "./ProfileDropdown";
 import SearchBar from "./SearchBar";
-import { flowMotion, REDUCED_MOTION, transition } from "./taskflow/flowMotion";
 
 const HEADER_STYLE = {
   transition: transition(flowMotion.recolor, "background-color", "box-shadow"),
