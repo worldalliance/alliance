@@ -13,6 +13,7 @@ const PHASE: Record<ActionStatus, { label: string; tone: BadgeTone }> = {
 };
 
 export const phaseLabel = (status: ActionStatus) => PHASE[status].label;
+export const phaseTone = (status: ActionStatus) => PHASE[status].tone;
 
 /** A task's or suite's phase: the same word and tone on every page. */
 export default function PhaseBadge({ status }: { status: ActionStatus }) {

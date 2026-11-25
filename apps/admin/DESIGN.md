@@ -341,7 +341,7 @@ Text is `text-fg` or `text-fg-muted`; dividers `border-line`, stronger edges `bo
 
 ## Status badges
 
-A status is always a badge with a word (`ui/Badge.tsx` with a `BadgeTone`). Never a dot, a coloured row, a coloured number or an icon alone (owner requirement, and WCAG use of colour); where there is no room for the word, drop the status from that spot. The same status has the same word and tone on every page: a task's or suite's phase is `<PhaseBadge status>` (`ui/PhaseBadge.tsx`; `phaseLabel` for the word alone). Don't use `ACTION_STATUS_LABELS` or `ACTION_STATUS_COLORS` in redesigned pages.
+A status is always a badge with a word (`ui/Badge.tsx` with a `BadgeTone`). Never a dot, a coloured row, a coloured number or an icon alone (owner requirement, and WCAG use of colour); where there is no room for the word, drop the status from that spot. The same status has the same word and tone on every page: a task's or suite's phase is `<PhaseBadge status>` (`ui/PhaseBadge.tsx`; `phaseLabel` for the word alone). Don't use `ACTION_STATUS_LABELS`, `ACTION_STATUS_COLORS`, `COUNT_COLORS` or `BADGE_TONE_CLASS` in redesigned pages: they keep pre-redesign pills on the tones until those pages are rewritten.
 
 Phase order everywhere (columns, legends, strips): Draft, Planned, Members taking action, Office taking action, Resolution, Completed, Failed, Abandoned. A status the data holds is shown, though no control sets it. A suite's badge is the phase of its two shared events; its tasks may be further along.
 

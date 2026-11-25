@@ -10,7 +10,8 @@ export enum BadgeTone {
   Info = "info",
 }
 
-const TONE: Record<BadgeTone, string> = {
+/** For a pre-redesign pill that can't render `Badge` yet. */
+export const BADGE_TONE_CLASS: Record<BadgeTone, string> = {
   [BadgeTone.Neutral]:
     "bg-surface-2 text-fg-muted inset-ring inset-ring-line-strong",
   [BadgeTone.Accent]: "bg-accent-soft text-accent",
@@ -34,7 +35,7 @@ const Badge: React.FC<BadgeProps> = ({
   <span
     className={cn(
       "inline-flex h-5 items-center gap-1 self-start rounded-full px-2 text-caption font-medium whitespace-nowrap",
-      TONE[tone],
+      BADGE_TONE_CLASS[tone],
       className,
     )}
   >
