@@ -97,6 +97,8 @@ export type Place = {
   /** `?view=`: other layouts of the same items. */
   views?: readonly PlaceTab[];
   oldNames?: readonly string[];
+  /** Other words search finds it by, such as an old folder that held it. */
+  keywords?: readonly string[];
   count?: CountId;
 };
 
@@ -151,7 +153,7 @@ export const AREAS: readonly Area[] = [
         area: AreaId.Tasks,
         label: "All tasks",
         path: "/tasks",
-        oldNames: ["Actions"],
+        keywords: ["Action planning"],
         views: [
           { id: "timeline", label: "Timeline" },
           { id: "list", label: "List", oldNames: ["Actions"] },
@@ -202,6 +204,7 @@ export const AREAS: readonly Area[] = [
         label: "People",
         path: "/members",
         oldNames: ["Members"],
+        keywords: ["Community"],
         tabs: [
           { id: "all", label: "All" },
           { id: "staff", label: "Staff", oldNames: ["Staff directory"] },
@@ -409,7 +412,8 @@ export const AREAS: readonly Area[] = [
         area: AreaId.Settings,
         label: "Settings",
         path: "/settings",
-        oldNames: ["Test push notification", "Developer tools"],
+        oldNames: ["Test push notification"],
+        keywords: ["Developer tools"],
       },
     ],
   },

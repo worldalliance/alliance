@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
-import AdminSearch from "../components/AdminSearch";
 import { useAuth } from "../lib/AuthContext";
 import { MmsThreadsLiveProvider } from "../lib/mmsThreadsLive";
+import Palette from "./Palette";
 import Sidebar from "./Sidebar";
 import { useQueueCounts } from "./useQueueCounts";
 import { useSidebarExpanded } from "./useSidebarExpanded";
@@ -50,7 +50,11 @@ function Shell() {
           <Outlet />
         </div>
       </main>
-      <AdminSearch open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <Palette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        counts={counts}
+      />
     </div>
   );
 }
