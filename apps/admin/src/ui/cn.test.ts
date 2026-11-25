@@ -44,4 +44,11 @@ describe("cn", () => {
       }
     },
   );
+
+  test("reads the chart and ramp colours as colours", () => {
+    expect(cn("bg-surface", "bg-heat-3")).toBe("bg-heat-3");
+    expect(cn("bg-heat-6 text-accent-fg", "text-fg")).toBe("bg-heat-6 text-fg");
+    expect(cn("text-caption", "text-chart-1")).toBe("text-caption text-chart-1");
+    expect(cn("bg-seq-1", "bg-seq-7")).toBe("bg-seq-7");
+  });
 });

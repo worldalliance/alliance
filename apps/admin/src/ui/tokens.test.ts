@@ -36,6 +36,8 @@ function contrast(foreground: string, background: string): number {
 }
 
 const categories = [1, 2, 3, 4, 5, 6];
+const rampSteps = [1, 2, 3, 4, 5, 6, 7];
+const HEAT_LIGHT_STEPS = 5;
 
 // WCAG 2.2 SC 1.4.3: 4.5:1 for text.
 const textPairs: [string, string][] = [
@@ -74,6 +76,10 @@ const textPairs: [string, string][] = [
   ["on-danger", "danger"],
   ["on-danger", "danger-hover"],
   ...categories.map((n): [string, string] => ["fg", `cat-${n}-soft`]),
+  ...rampSteps.map((n): [string, string] => [
+    n <= HEAT_LIGHT_STEPS ? "fg" : "accent-fg",
+    `heat-${n}`,
+  ]),
 ];
 
 // WCAG 2.2 SC 1.4.11: 3:1 for the boundary of a control and for graphics.
@@ -84,6 +90,8 @@ const nonTextPairs: [string, string][] = [
   ["accent", "surface"],
   ["accent", "canvas"],
   ...categories.map((n): [string, string] => [`cat-${n}`, "surface"]),
+  ...categories.map((n): [string, string] => [`chart-${n}`, "surface"]),
+  ...rampSteps.map((n): [string, string] => [`seq-${n}`, "surface"]),
 ];
 
 describe("admin colour tokens", () => {
