@@ -67,7 +67,7 @@ export default [
         "/content/general-updates/:id",
         "pages/general-updates/GeneralUpdatePage.tsx",
       ),
-      route(FORUM_POST_PATH, "pages/PostsManagement.tsx"),
+      route(FORUM_POST_PATH, "pages/posts/PostsPage.tsx"),
       route("/content/media", "pages/media/MediaPage.tsx"),
       route("/content/media/videos/:videoId", "pages/media/VideoPage.tsx"),
 

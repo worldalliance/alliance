@@ -249,7 +249,6 @@ src/pages/InvitesPage.tsx
 src/pages/NewActionSuitePage.tsx
 src/pages/OrganizationsPage.tsx
 src/pages/OutreachPartnershipsPage.tsx
-src/pages/PostsManagement.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/SuiteLaunchPage.tsx
