@@ -124,6 +124,62 @@ export function Field({
 }
 
 /**
+ * Several controls answering one question (checkboxes, radios, a pair of
+ * dates) under one legend, with the group's help and error tied to it.
+ * `disabled` disables every control inside.
+ */
+export function FieldGroup({
+  label,
+  mark,
+  help,
+  error,
+  disabled,
+  className,
+  children,
+}: {
+  label: string;
+  mark?: "optional" | "required";
+  help?: ReactNode;
+  error?: string | null;
+  disabled?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  const helpId = `${id}-help`;
+  const errorId = `${id}-error`;
+  const describedBy =
+    [help ? helpId : null, error ? errorId : null].filter(Boolean).join(" ") ||
+    undefined;
+  return (
+    <fieldset
+      disabled={disabled}
+      aria-describedby={describedBy}
+      aria-invalid={error ? true : undefined}
+      className={cn("min-w-0", className)}
+    >
+      <legend className="mb-1.5 font-medium">
+        {label}
+        {mark && <span className="font-normal text-fg-muted"> ({mark})</span>}
+      </legend>
+      <div className="flex flex-col gap-2">
+        {help && (
+          <p id={helpId} className="text-caption text-fg-muted">
+            {help}
+          </p>
+        )}
+        {children}
+        {error && (
+          <p id={errorId} role="alert" className="text-caption text-danger">
+            {error}
+          </p>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
+/**
  * A checkbox with its label beside it and its explanation under the label,
  * for a setting saved by the form's Save button.
  */
@@ -177,57 +233,91 @@ const STATE_TEXT: Record<SaveState, string> = {
   [SaveState.Failed]: "Couldn't save",
 };
 
+/** The reason to show for a failed save when the server gave none; the bar says "Couldn't save: " before it. */
+export const SAVE_FAILED_FALLBACK = "The server didn't answer. Try again.";
+
 /**
- * The foot of an explicit-save form. Always rendered, so becoming dirty moves
- * nothing. Save stays enabled: pressing it with errors reports them.
+ * The foot of an explicit-save form. Always rendered and always one height,
+ * so becoming dirty or failing moves nothing. Save stays enabled: pressing it
+ * with errors reports them.
  */
 export function SaveBar({
   state,
   error,
   note,
   saveLabel = "Save changes",
+  stateText,
   onSave,
   onDiscard,
 }: {
   state: SaveState;
-  /** Why the save failed. */
+  /** Why the save failed: the reason alone, since the bar leads with "Couldn't save: ". */
   error?: string | null;
-  /** What saving does beyond this page: "Members see this on their next load." */
+  /**
+   * What saving does beyond this page: "Members see this on their next load."
+   * It has its own line above the buttons; pass `""` when a form that has a
+   * note in some states has none now, so the line is held.
+   */
   note?: ReactNode;
   saveLabel?: string;
+  /**
+   * Words for a bar whose button does something other than save:
+   * `{ saving: "Uploading…", saved: "Uploaded", failed: "Couldn't upload" }`.
+   */
+  stateText?: Partial<Record<SaveState, string>>;
   /** Omit when the bar sits in a `<form>` and Save submits it. */
   onSave?: () => void;
   onDiscard?: () => void;
 }) {
   const saving = state === SaveState.Saving;
   const failed = state === SaveState.Failed;
+  const word = stateText?.[state] ?? STATE_TEXT[state];
+  const text = failed && error ? `${word}: ${error}` : word;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface-2 px-card py-3">
-      {onSave ? (
-        <Button variant={ButtonVariant.Primary} onClick={onSave} busy={saving}>
-          {saveLabel}
-        </Button>
-      ) : (
-        <Button variant={ButtonVariant.Primary} type="submit" busy={saving}>
-          {saveLabel}
-        </Button>
-      )}
-      {onDiscard && (
-        <Button
-          variant={ButtonVariant.Ghost}
-          onClick={onDiscard}
-          disabled={saving || state === SaveState.Clean}
+    <div className="flex flex-col gap-2 border-t border-line bg-surface-2 px-card py-3">
+      {note !== undefined && <p className="min-h-lh text-fg-muted">{note}</p>}
+      {/* Two lines tall, which a long reason needs, whatever the state says. */}
+      <div className="flex min-h-11 items-center gap-3">
+        {onSave ? (
+          <Button
+            variant={ButtonVariant.Primary}
+            onClick={onSave}
+            busy={saving}
+            className="shrink-0"
+          >
+            {saveLabel}
+          </Button>
+        ) : (
+          <Button
+            variant={ButtonVariant.Primary}
+            type="submit"
+            busy={saving}
+            className="shrink-0"
+          >
+            {saveLabel}
+          </Button>
+        )}
+        {onDiscard && (
+          <Button
+            variant={ButtonVariant.Ghost}
+            onClick={onDiscard}
+            disabled={saving || state === SaveState.Clean}
+            className="shrink-0"
+          >
+            Discard
+          </Button>
+        )}
+        <span
+          role={failed ? "alert" : "status"}
+          title={text || undefined}
+          className={cn(
+            "line-clamp-2 min-w-0",
+            failed ? "text-danger" : "text-fg-muted",
+          )}
         >
-          Discard
-        </Button>
-      )}
-      <span
-        role={failed ? "alert" : "status"}
-        className={cn("min-w-0", failed ? "text-danger" : "text-fg-muted")}
-      >
-        {failed && error ? `${STATE_TEXT[state]}: ${error}` : STATE_TEXT[state]}
-      </span>
-      {note && <span className="ml-auto text-fg-muted">{note}</span>}
+          {text}
+        </span>
+      </div>
     </div>
   );
 }

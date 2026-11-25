@@ -7,9 +7,11 @@ import {
   placeTrail,
   recordById,
   type RecordId,
+  tabHref,
 } from "../../places";
 import { cn } from "../cn";
 import { Tabs, TabsPanel } from "../Tabs";
+import { Banner } from "./Banner";
 import {
   PageHeader,
   type PageHeaderProps,
@@ -42,9 +44,17 @@ const headerOf = (
 ): { title: string; trail: readonly Crumb[] } => {
   if ("record" in page) {
     const record = recordById(page.record);
+    const place = placeById(record.place);
+    const tab = place.tabs?.find((candidate) => candidate.id === record.tab);
     return {
       title: page.title ?? record.label,
-      trail: [...placeTrail(record.place), ...(page.parents ?? [])],
+      trail: [
+        ...placeTrail(record.place),
+        ...(tab
+          ? [{ label: tab.label, to: tabHref(place, { tab: tab.id }) }]
+          : []),
+        ...(page.parents ?? []),
+      ],
     };
   }
   return {
@@ -59,8 +69,14 @@ export type PageProps<T extends string> = Pick<
 > & {
   /** From `usePlaceTabs` or `useRecordTabs`, so the tab is in the URL. */
   tabs?: PageTabsProps<T>;
-  /** A standing `Banner` between the tabs and the body. */
+  /** One `Banner` or several, between the tabs and the body. */
   banner?: ReactNode;
+  /**
+   * Holds one banner line while the record that decides the standing banner
+   * loads, so the body doesn't drop when it lands. For a record most of whose
+   * instances show the banner.
+   */
+  bannerPending?: boolean;
   /**
    * The page takes the frame's height and its body scrolls inside it, so the
    * header, tabs and filter bar stay put. For List and Workspace.
@@ -77,7 +93,7 @@ export type PageProps<T extends string> = Pick<
  * and a workspace run edge to edge.
  */
 export function Page<T extends string>(props: PageProps<T>) {
-  const { tabs, banner, fill = false, children } = props;
+  const { tabs, banner, bannerPending = false, fill = false, children } = props;
   const { badge, description, actions } = props;
   const rootClass = cn(
     "@container flex flex-col",
@@ -98,11 +114,24 @@ export function Page<T extends string>(props: PageProps<T>) {
     </>
   );
 
+  const banners = (
+    // Without tabs the banner would touch the header's last line.
+    <div className={cn("shrink-0 empty:hidden", !tabs && "pt-3")}>
+      {bannerPending ? (
+        <div aria-hidden="true" className="invisible">
+          <Banner>&nbsp;</Banner>
+        </div>
+      ) : (
+        banner
+      )}
+    </div>
+  );
+
   if (!tabs) {
     return (
       <div className={rootClass}>
         {head}
-        {banner}
+        {banners}
         <div className={bodyClass}>{children}</div>
       </div>
     );
@@ -120,7 +149,7 @@ export function Page<T extends string>(props: PageProps<T>) {
     >
       {head}
       <PageTabList tabs={tabs.items} />
-      {banner}
+      {banners}
       <TabsPanel value={tabs.value} className={bodyClass}>
         {children}
       </TabsPanel>

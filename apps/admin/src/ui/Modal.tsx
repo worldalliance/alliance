@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "./cn";
+import InlineError from "./InlineError";
 import { zIndex } from "./zIndex";
 
 export type ModalProps = {
@@ -132,6 +133,8 @@ export const ModalBody: React.FC<ModalBodyProps> = ({
 
 export type ModalFooterProps = {
   children: ReactNode;
+  /** A refusal or a failed write, above the buttons; the dialog stays open. */
+  error?: string | null;
   /**
    * Footer classes. Padding, borders and inner layout stay with the caller;
    * these merge over the shell's defaults.
@@ -141,9 +144,13 @@ export type ModalFooterProps = {
 
 export const ModalFooter: React.FC<ModalFooterProps> = ({
   children,
+  error,
   className,
 }) => (
-  <div className={cn("border-t border-line p-card", className)}>{children}</div>
+  <div className={cn("border-t border-line p-card", className)}>
+    <InlineError message={error} className="mb-3" />
+    {children}
+  </div>
 );
 
 export type ModalActionsProps = {

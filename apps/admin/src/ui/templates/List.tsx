@@ -1,6 +1,13 @@
 import { Search, X } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { formatCount } from "../../lib/formatNumber";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { useSearchParams } from "react-router";
+import { countOf, formatCount } from "../../lib/formatNumber";
 import { useShortcutInShell } from "../../shell/shortcuts";
 import Button, { ButtonVariant } from "../Button";
 import { cn } from "../cn";
@@ -38,6 +45,51 @@ export function FilterBar({
     </div>
   );
 }
+
+/**
+ * A list's search text, kept in `?q=`: `[q, setQ]` for `SearchField`. Typing
+ * replaces the history entry, and the other params stay.
+ */
+export function useListSearch(): [string, (value: string) => void] {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setQ = useCallback(
+    (value: string) =>
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value) next.set("q", value);
+          else next.delete("q");
+          return next;
+        },
+        { replace: true },
+      ),
+    [setSearchParams],
+  );
+  return [searchParams.get("q") ?? "", setQ];
+}
+
+/**
+ * `FilterBar`'s `count`: "12 groups", or "3 of 12 groups" when a search or
+ * filter hides some. Nothing while the list is loading or has no items, where
+ * the body already says so.
+ */
+export const listCount = ({
+  shown,
+  total,
+  noun,
+}: {
+  /** Rows after search and filters. */
+  shown: number;
+  /** Every item, or where the server pages, its total; undefined until loaded. */
+  total: number | undefined;
+  /** Singular: "group". */
+  noun: string;
+}): string | undefined => {
+  if (!total) return undefined;
+  return shown === total
+    ? countOf(total, noun)
+    : `${formatCount(shown)} of ${countOf(total, noun)}`;
+};
 
 /**
  * A list's search box, one to a page: in the shell, `/` focuses it from

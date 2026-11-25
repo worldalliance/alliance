@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router";
+import type { QueueCount } from "../../shell/useQueueCounts";
 import {
+  type CountId,
   type PlaceId,
   type PlaceTab,
   type RecordId,
@@ -12,7 +14,13 @@ import {
 
 /** What `Page`'s `tabs` and `ViewSwitch` take: spread or pass it whole. */
 export type UrlTabs<T extends string> = {
-  items: readonly { id: T; label: string }[];
+  items: readonly {
+    id: T;
+    label: string;
+    /** The queue `places.ts` says this tab counts. */
+    queue?: CountId;
+    count?: number | null;
+  }[];
   value: T;
   onChange: (id: T) => void;
 };
@@ -62,7 +70,11 @@ function useUrlTabs<T extends string>({
   );
 
   return {
-    items: ids.map((id, index) => ({ id, label: configured[index].label })),
+    items: ids.map((id, index) => ({
+      id,
+      label: configured[index].label,
+      queue: configured[index].count,
+    })),
     value,
     onChange,
   };
@@ -108,3 +120,19 @@ export const useRecordTabs = <T extends string>(
     ids,
     param: TabParam.Tab,
   });
+
+/**
+ * Shows each queue tab's count beside its label, as the sidebar shows it:
+ * hidden at zero and while loading, "!" when it couldn't load. Which tab counts
+ * which queue comes from `places.ts`; the page passes the sizes it has loaded.
+ */
+export const withQueueCounts = <T extends string>(
+  tabs: UrlTabs<T>,
+  counts: Partial<Record<CountId, QueueCount>>,
+): UrlTabs<T> => ({
+  ...tabs,
+  items: tabs.items.map((tab) => {
+    const count = tab.queue === undefined ? undefined : counts[tab.queue];
+    return count === undefined || count === 0 ? tab : { ...tab, count };
+  }),
+});

@@ -7,8 +7,8 @@ import { TabsList, TabsTab } from "../Tabs";
 export type PageTab<T extends string = string> = {
   id: T;
   label: string;
-  /** Only where today's page shows this count. */
-  count?: number;
+  /** Only where today's page shows this count. `null` when it couldn't load: the tab shows "!". */
+  count?: number | null;
 };
 
 export type PageHeaderProps = {
@@ -96,7 +96,14 @@ export function PageTabList({ tabs }: { tabs: readonly PageTab[] }) {
           {tab.label}
           {tab.count !== undefined && (
             <span className="text-caption text-fg-muted tabular-nums">
-              {formatCount(tab.count)}
+              {tab.count === null ? (
+                <>
+                  <span aria-hidden="true">!</span>
+                  <span className="sr-only">(count couldn't load)</span>
+                </>
+              ) : (
+                formatCount(tab.count)
+              )}
             </span>
           )}
         </TabsTab>

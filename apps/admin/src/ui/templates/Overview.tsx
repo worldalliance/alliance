@@ -1,5 +1,8 @@
-import { type ReactNode, useId } from "react";
+import { createContext, type ReactNode, useContext, useId } from "react";
 import { cn } from "../cn";
+
+/** A `Panel` under a `Section`'s `h2` titles itself with an `h3`. */
+const InSectionContext = createContext(false);
 
 /** A group of cards on an Overview, under a muted label. */
 export function Section({
@@ -18,7 +21,7 @@ export function Section({
         <h2 className="text-caption font-medium text-fg-muted">{title}</h2>
         {action}
       </div>
-      {children}
+      <InSectionContext value={true}>{children}</InSectionContext>
     </section>
   );
 }
@@ -50,6 +53,7 @@ export function Panel({
   children: ReactNode;
 }) {
   const titleId = useId();
+  const Title = useContext(InSectionContext) ? "h3" : "h2";
   return (
     <section
       aria-labelledby={titleId}
@@ -59,9 +63,9 @@ export function Panel({
       )}
     >
       <div className="flex min-h-12 items-center gap-2 border-b border-line px-card py-2">
-        <h3 id={titleId} className="font-semibold">
+        <Title id={titleId} className="text-heading font-semibold">
           {title}
-        </h3>
+        </Title>
         {description && (
           <span className="text-caption text-fg-muted">{description}</span>
         )}

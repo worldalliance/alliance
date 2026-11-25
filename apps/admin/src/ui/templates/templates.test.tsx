@@ -225,7 +225,7 @@ describe("ContentState", () => {
     emptyTitle: "No suites yet",
   };
 
-  it("holds the skeleton back until the delay passes", () => {
+  it("lays the skeleton out at once and shows it only after the delay", () => {
     jest.useFakeTimers();
     try {
       render(
@@ -233,11 +233,13 @@ describe("ContentState", () => {
           rows
         </ContentState>,
       );
-      expect(screen.queryByText("skeleton")).toBeNull();
+      const region = screen.getByRole("status");
+      expect(region.textContent).toBe("skeleton");
+      expect(region.className).toContain("invisible");
       act(() => {
         jest.advanceTimersByTime(SKELETON_DELAY_MS);
       });
-      expect(screen.getByText("skeleton")).toBeTruthy();
+      expect(region.className).not.toContain("invisible");
     } finally {
       jest.useRealTimers();
     }

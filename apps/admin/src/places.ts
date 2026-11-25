@@ -442,6 +442,8 @@ export type AdminRecord = {
   /** What one of these is called, for a breadcrumb or title with no name yet. */
   label: string;
   path: string;
+  /** The tab of its place that lists it, when that isn't the first: its breadcrumb goes back there. */
+  tab?: string;
   tabs?: readonly PlaceTab[];
   /** Renders without the sidebar, as it did before the redesign. */
   fullScreen?: boolean;
@@ -577,6 +579,7 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.Media,
     label: "Video",
     path: "/content/media/videos/:videoId",
+    tab: "videos",
   },
   {
     id: RecordId.KoraAssignment,
