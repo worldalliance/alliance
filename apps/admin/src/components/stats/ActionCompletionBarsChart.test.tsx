@@ -65,6 +65,7 @@ describe("ActionCompletionBarsChart", () => {
         usersCompleted: 3,
         usersJoined: 4,
         usersWithdrawn: 1,
+        completionRate: 0.75,
       }),
     ]);
 

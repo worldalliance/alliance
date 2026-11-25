@@ -5,12 +5,10 @@ import React, { useMemo, useState } from "react";
 import type { useActionStats } from "../../lib/useActionStats";
 import { secondaryButtonClass } from "../ui/controlStyles";
 import Section from "../ui/Section";
+import { completionPercent } from "./completionPercent";
 
-type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
-  usersWithdrawn?: number;
-};
 type HoveredActionBar = {
-  action: ActionStatsWithWithdrawals;
+  action: ActionStatsWithOnboardingDto;
   index: number;
 };
 
@@ -120,6 +118,8 @@ const ActionCompletionBarsChart: React.FC<{
     const centerY = y + actionBarsGeometry.barHeight / 2;
     return (centerY / actionBarsGeometry.height) * 100;
   }, [hoveredActionBar, actionBarsGeometry]);
+  const hoveredRate =
+    hoveredActionBar && completionPercent(hoveredActionBar.action);
 
   return (
     <Section
@@ -214,7 +214,7 @@ const ActionCompletionBarsChart: React.FC<{
               const y =
                 actionBarsGeometry.margin.top +
                 idx * (actionBarsGeometry.barHeight + actionBarsGeometry.gap);
-              const usersWithdrawn = action.usersWithdrawn ?? 0;
+              const usersWithdrawn = action.usersWithdrawn;
               const totalExpected = action.usersJoined + usersWithdrawn;
               const expectedWidth =
                 actionBarsGeometry.xScale(totalExpected) -
@@ -364,7 +364,7 @@ const ActionCompletionBarsChart: React.FC<{
               <div className="flex justify-between">
                 <span className="text-gray-600">Withdrawn:</span>
                 <span className="font-medium text-orange-600">
-                  {hoveredActionBar.action.usersWithdrawn ?? 0}
+                  {hoveredActionBar.action.usersWithdrawn}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -376,13 +376,7 @@ const ActionCompletionBarsChart: React.FC<{
               <div className="flex justify-between border-t pt-1 mt-1">
                 <span className="text-gray-600">Rate:</span>
                 <span className="font-semibold text-gray-900">
-                  {hoveredActionBar.action.usersJoined > 0
-                    ? `${Math.round(
-                        (hoveredActionBar.action.usersCompleted /
-                          hoveredActionBar.action.usersJoined) *
-                          100,
-                      )}%`
-                    : "N/A"}
+                  {hoveredRate === null ? "N/A" : `${hoveredRate}%`}
                 </span>
               </div>
             </div>

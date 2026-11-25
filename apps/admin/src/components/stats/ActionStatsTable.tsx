@@ -1,6 +1,7 @@
 import { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import React from "react";
 import Section from "../ui/Section";
+import { completionPercent } from "./completionPercent";
 
 const th = "px-3 py-2 text-left font-medium";
 
@@ -33,33 +34,38 @@ const ActionStatsTable: React.FC<{
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {actionStats.map((action) => (
-              <tr key={action.actionId}>
-                <td className="px-3 py-2 font-medium text-zinc-900">
-                  {action.actionName}
-                </td>
-                <td className="px-3 py-2 tabular-nums">
-                  {action.usersCompleted}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{action.usersJoined}</td>
-                <td className="px-3 py-2 tabular-nums">
-                  {action.usersJoined > 0 ? (
-                    <span className={rateClass(action.completionRate)}>
-                      {Math.round(action.completionRate * 100)}%
-                    </span>
-                  ) : (
-                    <span className="text-zinc-500">N/A</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
-                  {action.memberActionStartDate
-                    ? new Date(
-                        action.memberActionStartDate,
-                      ).toLocaleDateString()
-                    : "N/A"}
-                </td>
-              </tr>
-            ))}
+            {actionStats.map((action) => {
+              const percent = completionPercent(action);
+              return (
+                <tr key={action.actionId}>
+                  <td className="px-3 py-2 font-medium text-zinc-900">
+                    {action.actionName}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {action.usersCompleted}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {action.usersJoined}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {percent !== null ? (
+                      <span className={rateClass(action.completionRate)}>
+                        {percent}%
+                      </span>
+                    ) : (
+                      <span className="text-zinc-500">N/A</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-zinc-600">
+                    {action.memberActionStartDate
+                      ? new Date(
+                          action.memberActionStartDate,
+                        ).toLocaleDateString()
+                      : "N/A"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
