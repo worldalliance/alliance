@@ -36,7 +36,17 @@ export function useResponseSnapshotMigrationAdmin(formId: number | undefined) {
   const queryClient = useQueryClient();
   const query = useMemo(() => responseSnapshotMigrationQuery(formId), [formId]);
 
-  const { data, isLoading, isError } = useQuery(query);
+  const {
+    data,
+    isLoading,
+    isPending,
+    isError,
+    isLoadingError,
+    isRefetchError,
+    error,
+    isFetching,
+    refetch,
+  } = useQuery(query);
 
   const migrate = useMutation({
     mutationFn: (body: MigrateResponseSnapshotsDto) => {
@@ -51,7 +61,18 @@ export function useResponseSnapshotMigrationAdmin(formId: number | undefined) {
       queryClient.invalidateQueries({ queryKey: query.queryKey }),
   });
 
-  return { data, isLoading, isError, migrate };
+  return {
+    data,
+    isLoading,
+    isPending,
+    isError,
+    isLoadingError,
+    isRefetchError,
+    error,
+    isFetching,
+    refetch,
+    migrate,
+  };
 }
 
 const combineMigrations = (
