@@ -69,6 +69,11 @@ export function CohortCompletionGrid({
   if (weeks.length === 0) {
     return <PanelNote>No weeks in the selected range.</PanelNote>;
   }
+  // The grid's one tab stop stays inside it when the range or the cohorts shrink.
+  const tabCell = {
+    row: Math.min(focusCell.row, rows.length - 1),
+    col: Math.min(focusCell.col, weeks.length - 1),
+  };
 
   const show = (cell: Cell, element: HTMLElement) => {
     const box = boxRef.current?.getBoundingClientRect();
@@ -146,7 +151,7 @@ export function CohortCompletionGrid({
                       key={week}
                       data-cell={`${row}-${col}`}
                       tabIndex={
-                        focusCell.row === row && focusCell.col === col ? 0 : -1
+                        tabCell.row === row && tabCell.col === col ? 0 : -1
                       }
                       className={cn(
                         "h-10 border-b border-line text-center font-medium tabular-nums focus-ring",

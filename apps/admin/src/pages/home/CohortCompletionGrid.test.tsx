@@ -91,4 +91,20 @@ describe("CohortCompletionGrid keyboard", () => {
     fireEvent.focus(next);
     expect(screen.getByText("Week 1")).toBeTruthy();
   });
+
+  it("keeps its tab stop when the week range drops the focused cell", () => {
+    const cohorts = [cohort("2026-01-05", [point(0, 0.5), point(1, 0.25)])];
+    const { rerender } = render(
+      <CohortCompletionGrid
+        cohorts={cohorts}
+        weekRange={{ min: 0, max: 20 }}
+      />,
+    );
+    fireEvent.focus(screen.getByText("25%"));
+    rerender(
+      <CohortCompletionGrid cohorts={cohorts} weekRange={{ min: 0, max: 0 }} />,
+    );
+
+    expect(screen.getByText("50%").getAttribute("tabindex")).toBe("0");
+  });
 });
