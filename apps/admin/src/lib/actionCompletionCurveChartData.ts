@@ -210,7 +210,7 @@ export function buildActionCompletionCurveChartData({
 
   const averageSeries: MultiLineSeries = {
     key: AVERAGE_SERIES_KEY,
-    label: "Average of all tasks",
+    label: "Average",
     color: SERIES[0],
     data: averageData,
   };
