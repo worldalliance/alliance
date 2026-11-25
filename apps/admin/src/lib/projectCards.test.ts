@@ -42,6 +42,7 @@ const update = (visibleAt: string | null): ActionUpdateDto => ({
   actionId: 0,
   title: "Update",
   schemaSnapshotId: 0,
+  cardImage: null,
   date: visibleAt ?? day(0),
   visibleAt,
   shortNotifString: "",

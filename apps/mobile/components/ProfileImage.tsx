@@ -1,6 +1,7 @@
 import { thumbnailSrc } from "@alliance/common/image-src";
 import { cn } from "@alliance/shared/styles/util";
 import { User } from "lucide-react-native";
+import { useState } from "react";
 import { Image, View } from "react-native";
 import { getApiUrl, getImageSource } from "../lib/config";
 import { colors } from "../lib/style/colors";
@@ -109,11 +110,14 @@ export default function ProfileImage({
   };
 
   const source = pfp && usesThumbnail[size] ? thumbnailSrc(pfp) : pfp;
+  const uri = source ? resolveProfileImageUri(source) : null;
+  const [failedUri, setFailedUri] = useState<string | null>(null);
 
-  if (source && resolveProfileImageUri(source)) {
+  if (uri && uri !== failedUri) {
     return (
       <Image
-        source={{ uri: resolveProfileImageUri(source) }}
+        source={{ uri }}
+        onError={() => setFailedUri(uri)}
         resizeMode="cover"
         style={baseStyle}
         className={cn("bg-white shrink-0", className)}

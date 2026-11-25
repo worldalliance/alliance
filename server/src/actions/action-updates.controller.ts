@@ -29,6 +29,7 @@ import {
   CreateActionUpdateDto,
   UpdateActionUpdateDto,
 } from "./dto/action-update.dto";
+import type { ActionUpdate } from "./entities/action-update.entity";
 
 @Controller("actions")
 export class ActionUpdatesController {
@@ -167,7 +168,7 @@ export class ActionUpdatesController {
       undefined,
       req.user.sub,
     );
-    return updates.map((update) => new ActionUpdateDto(update));
+    return this.withParticipantPictures(updates);
   }
 
   @Get("updates")
@@ -181,6 +182,18 @@ export class ActionUpdatesController {
       limit ?? 20,
       req.user.sub,
     );
-    return updates.map((update) => new ActionUpdateDto(update));
+    return this.withParticipantPictures(updates);
+  }
+
+  private async withParticipantPictures(
+    updates: ActionUpdate[],
+  ): Promise<ActionUpdateDto[]> {
+    const pictures = await this.actionUpdates.participantPicturesByAction([
+      ...new Set(updates.map((update) => update.actionId)),
+    ]);
+    return updates.map(
+      (update) =>
+        new ActionUpdateDto(update, pictures.get(update.actionId) ?? []),
+    );
   }
 }

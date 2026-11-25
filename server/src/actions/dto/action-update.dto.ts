@@ -1,4 +1,5 @@
 import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import { isUploadKey } from "@alliance/common/image-src";
 import {
   ApiHideProperty,
   ApiProperty,
@@ -17,6 +18,7 @@ import {
   ValidateBy,
   ValidateIf,
 } from "class-validator";
+import { getImageSource } from "src/images/images.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { ActionUpdate } from "../entities/action-update.entity";
 
@@ -44,7 +46,28 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   @Allow()
   actionName?: string;
 
-  constructor(actionUpdate: ActionUpdate) {
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @Allow()
+  actionImage?: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  @IsOptional()
+  @Allow()
+  cardImage: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Allow()
+  actionUsersCompleted?: number;
+
+  /** Profile pictures of a few members who completed the update's project, most recent first. */
+  @ApiPropertyOptional({ type: String, isArray: true })
+  @IsOptional()
+  @Allow()
+  participantPictures?: string[];
+
+  constructor(actionUpdate: ActionUpdate, participantPictures?: string[]) {
     super();
     this.id = actionUpdate.id;
     this.title = actionUpdate.title;
@@ -64,6 +87,14 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
     });
     this.schemaSnapshotId = actionUpdate.schemaSnapshotId;
     this.actionName = actionUpdate.action?.name;
+    const actionImage = actionUpdate.action?.image;
+    this.actionImage = actionImage ? getImageSource(actionImage) : actionImage;
+    this.cardImage =
+      actionUpdate.cardImage === null
+        ? null
+        : getImageSource(actionUpdate.cardImage);
+    this.actionUsersCompleted = actionUpdate.action?.usersCompleted;
+    this.participantPictures = participantPictures?.map(getImageSource);
   }
 }
 
@@ -146,4 +177,21 @@ export class UpdateActionUpdateDto extends IntersectionType(
   @ValidateIf((dto: UpdateActionUpdateDto) => dto.schema !== undefined)
   @IsInt()
   expectedSchemaSnapshotId?: number;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "Upload key of the card image; null clears it.",
+  })
+  @IsOptional()
+  @ValidateBy(
+    {
+      name: "isUploadKey",
+      validator: {
+        validate: (value) => typeof value === "string" && isUploadKey(value),
+      },
+    },
+    { message: "cardImage must be the key of an uploaded image" },
+  )
+  cardImage?: string | null;
 }

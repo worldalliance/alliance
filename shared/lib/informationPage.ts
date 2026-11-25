@@ -9,7 +9,6 @@ export enum InfoEntryId {
   AboutGroups = "about-groups",
   AboutAmbassadors = "about-ambassadors",
   HowToDesignActions = "how-to-design-actions",
-  ActionUpdates = "action-updates",
   GeneralUpdates = "general-updates",
   Priorities = "priorities",
   Governance = "governance",
@@ -86,12 +85,6 @@ const INFO_RESOURCES = [
     title: "How to design actions",
     description: "A basic guide that the office uses to design actions.",
     path: "/action-design",
-  },
-  {
-    id: InfoEntryId.ActionUpdates,
-    title: "Action updates",
-    description: "Progress updates on our actions.",
-    path: "/action-updates",
   },
   {
     id: InfoEntryId.GeneralUpdates,

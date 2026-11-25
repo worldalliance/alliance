@@ -2181,6 +2181,10 @@ export type ActionUpdateDto = {
         [key: string]: unknown;
     };
     actionName?: string;
+    actionImage?: string | null;
+    cardImage: string | null;
+    actionUsersCompleted?: number;
+    participantPictures?: Array<string>;
 };
 
 export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed';
@@ -3358,6 +3362,10 @@ export type AdminActionUpdateDto = {
         [key: string]: unknown;
     };
     actionName?: string;
+    actionImage?: string | null;
+    cardImage: string | null;
+    actionUsersCompleted?: number;
+    participantPictures?: Array<string>;
     notificationMode: ActionUpdateNotificationMode;
     nonCompleterResult: string | null;
     recognitionPreparedAt: string | null;
@@ -3379,6 +3387,10 @@ export type UpdateActionUpdateDto = {
         [key: string]: unknown;
     };
     expectedSchemaSnapshotId?: number;
+    /**
+     * Upload key of the card image; null clears it.
+     */
+    cardImage?: string | null;
 };
 
 export type RecognitionPreviewAudienceDto = {

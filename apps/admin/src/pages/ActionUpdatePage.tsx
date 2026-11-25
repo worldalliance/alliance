@@ -10,6 +10,7 @@ import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { ActionUpdateCardImageField } from "../components/ActionUpdateCardImageField";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
 import {
   HiddenFromMembersBanner,
@@ -208,6 +209,18 @@ const ActionUpdatePage: React.FC = () => {
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+        />
+      </FormSection>
+
+      <FormSection
+        title="Card image"
+        description="The first photo on this update's card on members' tasks page, followed by the update's other images. Cropped to fit."
+      >
+        <ActionUpdateCardImageField
+          savedSrc={update.cardImage}
+          schema={storedSchema}
+          choice={form.cardImage}
+          onChange={(cardImage) => setForm({ ...form, cardImage })}
         />
       </FormSection>
 

@@ -1,31 +1,49 @@
-import { useAllActionUpdates } from "@alliance/shared/lib/useActionUpdates";
-import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
+import {
+  useActionUpdateNewState,
+  useAllActionUpdates,
+} from "@alliance/shared/lib/useActionUpdates";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import { useMemo } from "react";
+import HomeUpdateCard from "../../components/HomeUpdateCard";
+import { NOTIFICATIONS_PREVIEW_LIMIT } from "../../lib/useNotificationActions";
 
 const ActionUpdatesPage = () => {
-  const { data: updates = [], isError } = useAllActionUpdates();
+  const { data, isPending, isError } = useAllActionUpdates();
+  const { isNew, markOpened } = useActionUpdateNewState(
+    data,
+    NOTIFICATIONS_PREVIEW_LIMIT,
+  );
+  const updates = useMemo(
+    () =>
+      [...(data ?? [])].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      ),
+    [data],
+  );
 
   return (
     <CenterLayout>
       <div className="gap-y-4 flex flex-col">
-        <h1 className="text-title mb-3">Action updates</h1>
+        <h1 className="text-lg font-medium text-black">Project updates</h1>
 
-        <div className="flex flex-col gap-y-4 text-base">
-          {[...updates]
-            .sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-            )
-            .map((update) => (
-              <ActionUpdateCard
-                key={update.id}
+        {isPending && <p className="text-zinc-500">Loading updates…</p>}
+        {isError && (
+          <p className="text-zinc-500">Failed to load action updates</p>
+        )}
+        {!isPending && !isError && updates.length === 0 && (
+          <p className="text-zinc-500">No updates yet.</p>
+        )}
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {updates.map((update) => (
+            <li key={update.id}>
+              <HomeUpdateCard
                 update={update}
-                onActionPageTimeline={false}
+                isNew={isNew(update.id)}
+                onOpen={markOpened}
               />
-            ))}
-          {isError && (
-            <p className="text-zinc-500">Failed to load action updates</p>
-          )}
-        </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </CenterLayout>
   );

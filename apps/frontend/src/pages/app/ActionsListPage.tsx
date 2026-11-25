@@ -9,7 +9,6 @@ import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useMemo, useState } from "react";
-import { href, Link } from "react-router";
 import ActionItemCard from "../../components/ActionItemCard";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
 import LoadFailed from "../../components/LoadFailed";
@@ -58,12 +57,6 @@ const ActionsListPage = () => {
             onChange={([, mode]) => setUserFilterMode(mode)}
           />
         </div>
-        <Link
-          to={href("/action-updates")}
-          className="text-zinc-800 hover:underline rounded font-medium whitespace-nowrap"
-        >
-          Action updates
-        </Link>
       </div>
 
       <div className="w-full flex flex-col gap-y-2 *:bg-white">

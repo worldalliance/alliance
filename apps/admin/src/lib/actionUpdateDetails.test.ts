@@ -13,6 +13,7 @@ const update = (
   actionId: 2,
   title: "Hearing",
   schemaSnapshotId: 3,
+  cardImage: null,
   date: "2026-10-01T00:00:00.000Z",
   visibleAt: null,
   shortNotifString: "a hearing on the bill",
@@ -32,6 +33,18 @@ describe("detailsBody", () => {
     expect(
       detailsBody(formOf(update({ nonCompleterResult: "without you" }))),
     ).toMatchObject({ nonCompleterResult: "without you" });
+  });
+
+  it("sends the card image only when it changed", () => {
+    const form = formOf(update({}));
+    expect("cardImage" in detailsBody(form)).toBe(false);
+    expect(
+      detailsBody({ ...form, cardImage: { kind: "set", key: "a.webp" } })
+        .cardImage,
+    ).toBe("a.webp");
+    expect(
+      detailsBody({ ...form, cardImage: { kind: "cleared" } }).cardImage,
+    ).toBeNull();
   });
 
   it("sends no recognition fields for a legacy update", () => {

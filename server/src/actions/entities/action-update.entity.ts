@@ -74,6 +74,12 @@ export class ActionUpdate {
   @ApiProperty()
   title: string;
 
+  /** Upload key of the image the update's card shows; null leaves the card to its fallbacks. */
+  @Column({ type: "varchar", nullable: true })
+  @IsOptional()
+  @Allow()
+  cardImage: string | null;
+
   @Column()
   @ApiProperty()
   @Allow()
