@@ -86,6 +86,9 @@ export default defineConfig([
   {
     rules: {
       "react/react-in-jsx-scope": "off",
+      // The rule's default also forbids a straight apostrophe, which is how
+      // the admin's copy writes "Couldn't".
+      "react/no-unescaped-entities": ["error", { forbid: [">", "}", '"'] }],
       "no-restricted-imports": [
         "error",
         {
