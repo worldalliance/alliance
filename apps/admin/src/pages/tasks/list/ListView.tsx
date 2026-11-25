@@ -7,6 +7,7 @@ import { suiteHref, taskHref } from "../../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import Badge from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";
+import { cn } from "../../../ui/cn";
 import PhaseBadge from "../../../ui/PhaseBadge";
 import { nameLinkClass } from "../../../ui/styles";
 import {
@@ -111,16 +112,23 @@ export function ListView() {
                   const lastEvent = getLastPastEventDate(task);
                   return (
                     <TableRow key={task.id}>
-                      <TableCell>
+                      <TableCell
+                        className="w-full max-w-0 min-w-64"
+                        title={task.name}
+                      >
                         <span className="flex items-center gap-2">
                           <Link
                             to={taskHref(task.id)}
-                            className={nameLinkClass}
+                            className={cn(nameLinkClass, "truncate")}
                           >
                             {task.name}
                           </Link>
-                          {task.archived && <Badge>Archived</Badge>}
-                          {task.optional && <Badge>Optional</Badge>}
+                          {task.archived && (
+                            <Badge className="shrink-0">Archived</Badge>
+                          )}
+                          {task.optional && (
+                            <Badge className="shrink-0">Optional</Badge>
+                          )}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -133,7 +141,9 @@ export function ListView() {
                             })
                           : "—"}
                       </TableCell>
-                      <TableCell truncate>{task.shortDescription}</TableCell>
+                      <TableCell truncate className="max-w-48">
+                        {task.shortDescription}
+                      </TableCell>
                       <TableCell className="text-right whitespace-nowrap tabular-nums">
                         {completedOfJoined(task) ?? "—"}
                       </TableCell>
