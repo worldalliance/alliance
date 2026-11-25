@@ -1,16 +1,9 @@
 import {
   type AggregateViewSchema,
   type AggregateViewValue,
-  formSchema,
   FormSchema,
   type FormValue,
 } from "@alliance/common/forms/form-schema";
-import {
-  type FormSchemaValidationError,
-  validateFormSchema,
-} from "@alliance/common/forms/form-schema-validate";
-import { R, type Result } from "@alliance/common/result";
-import { issuePath } from "@alliance/common/zod-issues";
 import {
   BadRequestException,
   ConflictException,
@@ -50,10 +43,8 @@ import {
 } from "./form-snapshot-schema";
 import { CreateFormDto, type FormSummary, UpdateFormDto } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
-import {
-  findFormsReadingForm,
-  loadFormulaSourceForms,
-} from "./formula-source-forms";
+import { findFormsReadingForm } from "./formula-source-forms";
+import { parseFormSchemaOrThrow } from "./parse-form-schema";
 import { servedSchema } from "./served-schema";
 
 const STORED_PAGES = `snapshot.schema -> 'pages'`;
@@ -95,10 +86,11 @@ export class TasksService {
   ) {}
 
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
-    const schema = await this.parseSchemaOrThrow(
-      createFormDto.schema,
-      undefined,
-    );
+    const schema = await parseFormSchemaOrThrow({
+      formRepository: this.formRepository,
+      schema: createFormDto.schema,
+      formId: undefined,
+    });
     const snapshot = await this.formSnapshotService.findOrCreate(schema);
     const form = await this.formRepository.manager.transaction((em) =>
       insertForm(em, {
@@ -116,46 +108,6 @@ export class TasksService {
       snapshotId: snapshot.id,
     });
     return form;
-  }
-
-  private async validateSchema(
-    schema: unknown,
-    formId: number | undefined,
-  ): Promise<Result<FormSchema, FormSchemaValidationError[]>> {
-    const parsed = formSchema.safeParse(schema);
-    if (!parsed.success) {
-      return R.failure(
-        parsed.error.issues.map((issue) => ({
-          blockId: issuePath(issue),
-          message: issue.message,
-        })),
-      );
-    }
-    const errors = validateFormSchema(parsed.data, {
-      formId,
-      sourceForms: await loadFormulaSourceForms({
-        formRepository: this.formRepository,
-        schema: parsed.data,
-      }),
-    });
-    if (errors.length > 0) {
-      return R.failure(errors);
-    }
-    return R.success(parsed.data);
-  }
-
-  private async parseSchemaOrThrow(
-    schema: unknown,
-    formId: number | undefined,
-  ): Promise<FormSchema> {
-    const validated = await this.validateSchema(schema, formId);
-    if (!validated.ok) {
-      throw new BadRequestException({
-        message: "Invalid form schema",
-        errors: validated.error,
-      });
-    }
-    return validated.value;
   }
 
   async getForm(formId: number): Promise<Form> {
@@ -281,10 +233,11 @@ export class TasksService {
     let nextSnapshotId = form.formSnapshotId;
     let snapshotChanged = false;
     if (updateFormDto.schema) {
-      const schema = await this.parseSchemaOrThrow(
-        updateFormDto.schema,
+      const schema = await parseFormSchemaOrThrow({
+        formRepository: this.formRepository,
+        schema: updateFormDto.schema,
         formId,
-      );
+      });
       this.stripContractFromSchema(schema);
       const snapshot = await this.formSnapshotService.findOrCreate(schema);
       if (snapshot.id !== form.formSnapshotId) {
