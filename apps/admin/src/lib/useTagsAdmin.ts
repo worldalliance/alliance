@@ -49,6 +49,7 @@ export function useTagsAdmin(params?: {
     isLoading,
     isError,
     isLoadingError,
+    error,
     refetch,
   } = useQuery({
     queryKey: QUERY_KEY,
@@ -121,6 +122,7 @@ export function useTagsAdmin(params?: {
     isLoading,
     isError,
     isLoadingError,
+    error,
     refetch,
     summaries,
     createTag,
