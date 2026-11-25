@@ -31,6 +31,14 @@ const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
 
+const suitePartitionsAdminAll = () =>
+  ["suitePartitionsPartitionAdmin"] as const;
+
+const memberTextThreadsAdminAll = () => ["mmsThreadGetThreadAdmin"] as const;
+const numberTextThreadsAdminAll = () =>
+  ["mmsThreadGetNumberThreadAdmin"] as const;
+const textThreadsAdminAll = () => ["mmsThreadListThreadsAdmin"] as const;
+
 const actionAdminAll = () => ["actionsFindOneAdmin"] as const;
 
 /** Prefix over a group's member progress and contact info, so a membership
@@ -135,10 +143,25 @@ export const queryKeys = {
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,
+  koraBatchesAdmin: () => ["koraBatchesList"] as const,
+  koraConversationsAdmin: () => ["koraAdminConversations"] as const,
+  koraBatchEventsAdmin: () => ["koraBatchesEvents"] as const,
+  koraAssignmentExport: (assignmentId: string) =>
+    ["koraResultsAssignment", assignmentId] as const,
+  koraAnswersAdmin: () => ["koraResultsAnswers"] as const,
+  koraRandomTranscript: (batchId: string) =>
+    ["koraBatchesRandomTranscript", batchId] as const,
+  koraProject: () => ["koraProject"] as const,
+  koraProjectAdmin: () => ["koraAdminProject"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   koraParticipantCount: () => ["koraParticipantCount"] as const,
+  koraReview: () => ["koraReviewState"] as const,
+  koraActionReview: (actionId: number) =>
+    ["koraActionReviewState", actionId] as const,
+  koraHome: () => ["koraReviewHome"] as const,
   koraState: () => ["koraState"] as const,
+  webHandoff: () => ["webHandoffCreate"] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
@@ -209,6 +232,9 @@ export const queryKeys = {
   actionSuiteAdmin: (suiteId: number) =>
     ["actionSuitesSuiteAdmin", suiteId] as const,
   actionSuitesAdmin: () => ["actionSuitesSuitesAdmin"] as const,
+  suitePartitionsAdminAll,
+  suitePartitionAdmin: (suiteId: number) =>
+    [...suitePartitionsAdminAll(), suiteId] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,
@@ -249,6 +275,10 @@ export const queryKeys = {
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
   externalShareTargetsAdmin: () => ["externalShareTargetsAdmin"] as const,
   customLinksAdmin: () => ["customLinksAdmin"] as const,
+  formulasAdmin: () => ["formulasAdmin"] as const,
+  memberListsAdmin: () => ["memberListsAdmin"] as const,
+  formulaVersionsAdmin: (id: string, versionId: number) =>
+    ["formulasAdmin", "versions", id, versionId] as const,
   hostedDocsAdmin: () => ["hostedDocsAdmin"] as const,
   formsAdminAll,
   formResponsesAdmin: (formId: number | null) =>
@@ -289,7 +319,14 @@ export const queryKeys = {
     ["analyticsGetMemberCompletionRetentionAdmin"] as const,
   memberReliabilityWindowAdmin: (weeks: number | null) =>
     ["analyticsGetMemberReliabilityWindowAdmin", weeks] as const,
+  memberTextThreadsAdminAll,
+  memberTextThreadAdmin: (userId: number) =>
+    [...memberTextThreadsAdminAll(), userId] as const,
   missedActionsAdmin: () => ["analyticsGetMissedActionsAdmin"] as const,
+  needsReplyAdmin: () => ["mmsThreadNeedsReplyThreadsAdmin"] as const,
+  numberTextThreadsAdminAll,
+  numberTextThreadAdmin: (threadId: string) =>
+    [...numberTextThreadsAdminAll(), threadId] as const,
   onetimeInvitesAdminAll,
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,
@@ -332,6 +369,9 @@ export const queryKeys = {
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
   tagsAdmin: () => ["userTagGetTagsAdmin"] as const,
   tagSummariesAdmin: () => ["userTagGetTagSummariesAdmin"] as const,
+  textThreadsAdminAll,
+  textThreadsAdmin: (query: { page: number; search: string }) =>
+    [...textThreadsAdminAll(), query] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   timeToChurnSamplesAdmin: () =>

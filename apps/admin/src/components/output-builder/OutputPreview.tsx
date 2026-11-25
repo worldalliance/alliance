@@ -14,9 +14,11 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
   fields.forEach((field) => {
     switch (field.kind) {
       case "checkbox":
+      case "toggle":
         answers[field.id] = true;
         break;
       case "radio":
+      case "conversation":
       case "select":
         answers[field.id] = field.options?.[0]?.value ?? field.label;
         break;
@@ -37,6 +39,7 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
         answers[field.id] = "2024-01-01";
         break;
       case "time":
+      case "timePicker":
         answers[field.id] = "09:00";
         break;
       case "timezone":
@@ -52,6 +55,7 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
         };
         break;
       case "file":
+      case "image":
         answers[field.id] = "uploaded/file.pdf";
         break;
       case "email":

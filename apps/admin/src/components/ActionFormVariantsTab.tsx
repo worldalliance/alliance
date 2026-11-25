@@ -256,7 +256,7 @@ export default function ActionFormVariantsTab({
 
       {!action.taskFormId && (
         <Card style={CardStyle.Alert} className="p-4 text-sm">
-          Set the action&apos;s task form (in the &quot;Task Form&quot; tab)
+          Set the action&apos;s task form (in the &quot;Task form&quot; tab)
           before creating variants. Variants are seeded by cloning the existing
           form.
         </Card>

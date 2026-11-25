@@ -1,5 +1,5 @@
+import { Features } from "@alliance/common/features";
 import { describe, expect, it } from "bun:test";
-import { Features } from "./features";
 import { InfoEntryId, visibleInfoResources } from "./informationPage";
 
 const ids = (isFeatureEnabled: (feature: Features) => boolean) =>

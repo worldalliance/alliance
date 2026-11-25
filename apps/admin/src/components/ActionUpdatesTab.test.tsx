@@ -170,7 +170,13 @@ describe("ActionUpdatesTab", () => {
       name: "Create and write content",
     });
     expect(screen.getByText("Write at least one group's result.")).toBeTruthy();
-    expect(create).toHaveProperty("disabled", true);
+    fireEvent.click(create);
+    expect(
+      screen.getByText(
+        `Write at least one group's result. Or set the audience to "No notification".`,
+      ),
+    ).toBeTruthy();
+    expect(body).toBeUndefined();
 
     fireEvent.change(
       screen.getByRole("textbox", {
@@ -381,4 +387,89 @@ it("creates an update with no notification without notification text", async () 
   expect(create).toHaveProperty("disabled", false);
   fireEvent.click(create);
   await waitFor(() => expect(created).toBe(true));
+});
+
+it("asks for a title instead of creating, until one is typed", async () => {
+  let requests = 0;
+  answer = () => {
+    requests += 1;
+    return Response.json({ id: 9 }, { status: 201 });
+  };
+  renderTab();
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Create and write content" }),
+  );
+  expect(screen.getByText("Add a title.")).toBeTruthy();
+  expect(requests).toBe(0);
+
+  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+    target: { value: "Quiet update" },
+  });
+  expect(screen.queryByText("Add a title.")).toBeNull();
+});
+
+it("asks for the tag when the audience is a tag", () => {
+  renderTab();
+  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+    target: { value: "Tagged update" },
+  });
+  fireEvent.change(screen.getByDisplayValue("No notification"), {
+    target: { value: "tag" },
+  });
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: /^Notif text for people who didn't complete/,
+    }),
+    { target: { value: "a hearing on the bill" } },
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Create and write content" }),
+  );
+
+  expect(screen.getByText("Pick the tag to notify.")).toBeTruthy();
+});
+
+it("names every missing field at once", () => {
+  renderTab();
+  fireEvent.change(screen.getByDisplayValue("No notification"), {
+    target: { value: "tag" },
+  });
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: /^Notif text for people who didn't complete/,
+    }),
+    { target: { value: "a hearing on the bill" } },
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Create and write content" }),
+  );
+
+  expect(screen.getByText("Add a title. Pick the tag to notify.")).toBeTruthy();
+});
+
+it("asks for a date once the date is cleared", () => {
+  renderTab();
+  fireEvent.change(screen.getByPlaceholderText("Title..."), {
+    target: { value: "Undated update" },
+  });
+  fireEvent.change(document.querySelector('input[type="datetime-local"]')!, {
+    target: { value: "" },
+  });
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Create and write content" }),
+  );
+
+  expect(screen.getByText("Pick a date.")).toBeTruthy();
+});
+
+it("names each update's edit link after its update", () => {
+  renderTab([existing, { ...existing, id: 8, title: "Older news" }]);
+
+  expect(
+    screen.getByRole("link", { name: "Edit Older news" }).getAttribute("href"),
+  ).toBe("/actions/4/updates/8");
 });

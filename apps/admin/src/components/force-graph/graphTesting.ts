@@ -34,6 +34,7 @@ export const user = (
 ): UserDto => ({
   email: `${overrides.name}@example.com`,
   phoneNumber: null,
+  phoneNumberVerified: false,
   preferredReminderTime: null,
   timeZone: null,
   shareEmailWithCommunityLead: false,

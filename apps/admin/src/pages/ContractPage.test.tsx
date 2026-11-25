@@ -24,6 +24,8 @@ let servedDescription: ContractAdminDto["description"] = [];
 let findStatus = 200;
 let updateStatus = 200;
 let updateBody: unknown = null;
+let createBody: unknown = null;
+let writes = 0;
 
 serveApi(
   routes({
@@ -35,8 +37,13 @@ serveApi(
             description: servedDescription,
           })
         : Response.json({}, { status: findStatus }),
-    "POST /contract/create": () => Response.json(contract(2)),
+    "POST /contract/create": async ({ request }) => {
+      writes += 1;
+      createBody = await request.json();
+      return Response.json(contract(2));
+    },
     "PATCH /contract/update/:id": async ({ request, params }) => {
+      writes += 1;
       if (updateStatus !== 200)
         return Response.json({}, { status: updateStatus });
       const body: { name: string } = await request.json();
@@ -53,6 +60,8 @@ afterEach(() => {
   findStatus = 200;
   updateStatus = 200;
   updateBody = null;
+  createBody = null;
+  writes = 0;
 });
 
 const renderPage = (path: string) => {
@@ -169,4 +178,50 @@ it("loads and saves a point's admin notes", async () => {
       ],
     }),
   );
+});
+
+const submitForm = () =>
+  fireEvent.submit(screen.getByLabelText("Name").closest("form")!);
+
+it("asks before saving a name that mentions worldalliance, saving only on Save anyway", async () => {
+  renderPage("/contracts/1");
+  const name = await screen.findByLabelText("Name");
+  fireEvent.change(name, { target: { value: "See worldalliance.org" } });
+  submitForm();
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  fireEvent.change(name, { target: { value: "See worldalliance.org/b" } });
+  submitForm();
+  fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));
+  await waitFor(() =>
+    expect(updateBody).toMatchObject({ name: "See worldalliance.org/b" }),
+  );
+  expect(writes).toBe(1);
+});
+
+it("asks before creating a contract whose text links worldalliance, saving only on Save anyway", async () => {
+  renderPage("/contracts/new");
+  fireEvent.change(screen.getByLabelText("Name"), {
+    target: { value: "Pledge" },
+  });
+  const markdown = document.getElementById("markdown")!;
+  fireEvent.change(markdown, {
+    target: { value: "See https://worldalliance.org/x" },
+  });
+  submitForm();
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  fireEvent.change(markdown, {
+    target: { value: "See https://worldalliance.org/y" },
+  });
+  submitForm();
+  fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));
+  await waitFor(() =>
+    expect(createBody).toMatchObject({
+      markdown: "See https://worldalliance.org/y",
+    }),
+  );
+  expect(writes).toBe(1);
 });

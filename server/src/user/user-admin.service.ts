@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { updateLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -14,6 +15,7 @@ import { DataSource, type Repository } from "typeorm";
 import { ContractEvent } from "./entities/contract-event.entity";
 import { User } from "./entities/user.entity";
 import { findReferredByInvite } from "./user-soft-delete";
+import { type AdminRevokedPayload, UserEvents } from "./user.events";
 import { UserService } from "./user.service";
 
 @Injectable()
@@ -26,6 +28,7 @@ export class UserAdminService {
     private readonly contractEventRepository: Repository<ContractEvent>,
     private readonly userService: UserService,
     private readonly eventLogService: EventLogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -87,6 +90,11 @@ export class UserAdminService {
       if (!audit) return null;
       return this.eventLogService.sendMessageInTransaction(manager, audit);
     });
+    if (roles.admin === false) {
+      this.eventEmitter.emit(UserEvents.AdminRevoked, {
+        userId: id,
+      } satisfies AdminRevokedPayload);
+    }
     await forwardAudit?.();
 
     const user = await this.findAdminDetail(id);
@@ -133,10 +141,9 @@ export class UserAdminService {
     ]);
     if (target.admin === admin) return null;
 
-    const verb = admin ? "granted admin to" : "revoked admin from";
     return {
       type: EventType.AdminRoleChanged,
-      message: `${actor.name} ${verb} ${target.name} (${target.email}, id ${target.id})`,
+      payload: { actor, target, admin },
       userId: target.id,
       blob: {
         targetId: target.id,

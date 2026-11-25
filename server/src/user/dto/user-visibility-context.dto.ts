@@ -14,7 +14,6 @@ export class UserPropertyPresenceDto implements UserPropertyPresence {
   @ApiProperty() over18: boolean;
   @ApiProperty() clusterId: boolean;
   @ApiProperty() staffTitle: boolean;
-  @ApiProperty() switchedDomainAt: boolean;
   @ApiProperty() referredById: boolean;
   @ApiProperty() shareInfoPublicly: boolean;
 
@@ -31,7 +30,6 @@ export class UserPropertyPresenceDto implements UserPropertyPresence {
     this.over18 = input.over18;
     this.clusterId = input.clusterId;
     this.staffTitle = input.staffTitle;
-    this.switchedDomainAt = input.switchedDomainAt;
     this.referredById = input.referredById;
     this.shareInfoPublicly = input.shareInfoPublicly;
   }

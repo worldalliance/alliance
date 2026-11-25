@@ -33,6 +33,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useBlockResumeRestart } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import BottomSheetOptionPicker from "./BottomSheetOptionPicker";
 import Button, { ButtonColor } from "./system/Button";
@@ -64,6 +65,12 @@ export default function AwayRangesSection() {
   const [noteInput, setNoteInput] = useState("");
   const [selectedReason, setSelectedReason] =
     useState<UserAwayRangeReason | null>(null);
+  useBlockResumeRestart(
+    startDateInput !== "" ||
+      endDateInput !== "" ||
+      noteInput !== "" ||
+      selectedReason !== null,
+  );
   const noteRequired = isAwayRangeNoteRequired(selectedReason);
   const noteMissing = isAwayRangeNoteMissing({
     reason: selectedReason,

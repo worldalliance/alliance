@@ -2,6 +2,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, within } from "@testing-library/react";
+import { dragOverAt } from "../lib/testing/dragOverAt";
 import {
   canvasOrder,
   heading,
@@ -459,6 +460,26 @@ describe("the form canvas", () => {
     ]);
   });
 
+  it("offers no drop in the gap beside the dragged element", () => {
+    renderFormBuilder(schema);
+    const welcomeHandle = within(
+      button("Select Text Block: Welcome").parentElement!,
+    ).getByTitle("Drag to reorder");
+    const town = button("Select Text Field: Town").parentElement!;
+    fireEvent.dragStart(welcomeHandle, { dataTransfer: {} });
+    const pet = button("Select Radio Field: Pet").parentElement!;
+    const lines = () =>
+      screen
+        .getByRole("region", { name: "Form canvas" })
+        .querySelectorAll(".bg-blue-500");
+    expect(dragOverAt(pet, 1)).toBe(false);
+    expect(lines()).toHaveLength(1);
+    expect(dragOverAt(town, 1)).toBe(true);
+    expect(lines()).toHaveLength(0);
+    expect(dragOverAt(pet, -1)).toBe(true);
+    expect(lines()).toHaveLength(0);
+  });
+
   it("moves an element dropped in the gap where the drop line shows", () => {
     renderFormBuilder(schema);
     const townHandle = within(
@@ -564,7 +585,7 @@ describe("the form canvas in a narrow window", () => {
     });
     selectElement("Town");
     fireEvent.click(
-      settings().getByRole("button", { name: "Insert a variable" }),
+      settings().getByRole("button", { name: "Insert a formula" }),
     );
     expect(settings().getByRole("listbox")).toBeTruthy();
     fireEvent.keyDown(settings().getByPlaceholderText("Enter field label"), {

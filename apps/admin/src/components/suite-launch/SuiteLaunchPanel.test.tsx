@@ -84,6 +84,7 @@ it("lists each action's unfinished checklist items", async () => {
     ...api.served[2],
     body: "",
     taskFormId: null,
+    taskKind: "form",
     project: null,
   };
   renderPanel();
@@ -286,6 +287,28 @@ it("lists every instance of one misspelling as one finding, dismissed at once", 
   if (!dismiss) throw new Error("no dismiss button on the grouped finding");
   fireEvent.click(dismiss);
   expect(screen.queryByText(/text findings? to fix or dismiss/)).toBeNull();
+});
+
+it("marks an excerpt with … only on the side it cuts", async () => {
+  api.served[1] = {
+    ...api.served[1],
+    body: "Call teh office before the deadline arrives.",
+  };
+  api.served[2] = {
+    ...api.served[2],
+    body: "Please write to your representative about teh",
+  };
+  renderPanel();
+
+  await screen.findByText("Possible misspelling · 2 places");
+  const excerpt = (text: string) =>
+    screen.getByText((_, el) => el?.tagName === "P" && el.textContent === text);
+  expect(
+    excerpt("Call · Action page descriptionCall teh office before the d…"),
+  ).toBeTruthy();
+  expect(
+    excerpt("Write · Action page description…epresentative about teh"),
+  ).toBeTruthy();
 });
 
 it("states the schedule in Pacific time when asking to launch", async () => {

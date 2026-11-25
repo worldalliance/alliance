@@ -1,6 +1,8 @@
 locals {
   github_oidc         = "token.actions.githubusercontent.com"
-  github_repo         = "worldalliance/alliance"
+  github_owner        = "worldalliance"
+  github_repo_name    = "alliance"
+  github_repo         = "${local.github_owner}/${local.github_repo_name}"
   github_sub_prefix   = "repo:${local.github_repo}"
   github_repo_id      = "968852531"
   github_repo_owner   = "214721520"
@@ -25,6 +27,25 @@ locals {
       ])
       max_session_duration = 3600
     }
+    # DescribeParameters can't be limited by path, so the drift check's names
+    # and metadata stay off the review role, which any workflow on any branch
+    # can assume, agent jobs included. Any job on main or a pull request
+    # carries the same sub and ref, so this role is pinned to the workflow. A
+    # same-repo pull request that edits the workflow still assumes it, so
+    # grant it nothing a pull request author must not reach.
+    parameter-drift = {
+      test = "StringLike"
+      trust = {
+        "${local.github_sub_prefix}:ref:refs/heads/main" = ["refs/heads/main"]
+        "${local.github_sub_prefix}:pull_request"        = ["refs/pull/*/merge"]
+      }
+      workflows = {
+        "${local.github_sub_prefix}:ref:refs/heads/main" = ["${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/heads/main"]
+        "${local.github_sub_prefix}:pull_request"        = ["${local.github_repo}/.github/workflows/parameter-drift.yaml@refs/pull/*/merge"]
+      }
+      parameters           = []
+      max_session_duration = 3600
+    }
     # The PR screenshots post job's environment, kept apart from review
     # because review jobs run untrusted code that can assume their role.
     pr-screenshots = {
@@ -33,35 +54,10 @@ locals {
       parameters           = ["ci/pr-screenshots/PR_SCREENSHOTS_GH_TOKEN"]
       max_session_duration = 3600
     }
-    # The iOS visual regression job runs code from any dispatched ref, so its
-    # role holds only visual regression access. The production deploy's visual
-    # regression job uses it too, keeping the Expo token from the code it runs.
-    visual-regression = {
-      test = "StringEquals"
-      trust = {
-        "${local.github_sub_prefix}:ref:refs/heads/main"       = ["refs/heads/main"]
-        "${local.github_sub_prefix}:ref:refs/heads/production" = ["refs/heads/production"]
-      }
-      # Any other job on main or production that names no environment carries
-      # the same sub and ref, such as manual-review's agent.
-      workflows = {
-        "${local.github_sub_prefix}:ref:refs/heads/main"       = "${local.github_repo}/.github/workflows/mobile-visual-regression-ios.yaml@refs/heads/main"
-        "${local.github_sub_prefix}:ref:refs/heads/production" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production"
-      }
-      parameters = [
-        "ci/visual-regression/GEMINI_API_KEY",
-        "ci/visual-regression/ANTHROPIC_API_KEY",
-        "ci/visual-regression/SLACK_BOT_TOKEN",
-      ]
-      # The iOS job builds the app on its session before capturing and
-      # uploading screenshots.
-      max_session_duration = 10800
-    }
     staging = {
       test  = "StringEquals"
       trust = { "${local.github_sub_prefix}:environment:staging" = ["refs/heads/main"] }
       parameters = concat(local.ci_shared_parameters, local.ci_deploy_parameters, [
-        "ci/visual-regression/SLACK_BOT_TOKEN",
         "staging/ci/ASC_API_ISSUER_ID",
         "staging/ci/ASC_API_KEY_ID",
         "staging/ci/ASC_API_KEY_P8_BASE64",
@@ -72,23 +68,32 @@ locals {
     production = {
       test                 = "StringEquals"
       trust                = { "${local.github_sub_prefix}:environment:production" = ["refs/heads/main", "refs/heads/production"] }
-      parameters           = concat(local.ci_shared_parameters, local.ci_deploy_parameters, ["ci/visual-regression/SLACK_BOT_TOKEN"])
+      parameters           = concat(local.ci_shared_parameters, local.ci_deploy_parameters)
       max_session_duration = 3600
     }
-    # Run Command is a root shell on the host, so only deploy.yaml's jobs
-    # deploying to a host can assume these. run-on-host polls for over two
-    # hours on one session.
+    # Run Command is a root shell on the host, so only the jobs deploying to a
+    # host can assume these. run-on-host polls for over two hours on one
+    # session. BACKCOMPAT(deploy-lock): those jobs move from deploy.yaml to
+    # deploy-environment.yaml; drop deploy.yaml's entries 30 days after
+    # production first deployed a commit carrying deploy-environment.yaml,
+    # when no earlier Deploy run can be re-run.
     staging-hosts = {
-      test                 = "StringEquals"
-      trust                = { "${local.github_sub_prefix}:environment:staging-hosts" = ["refs/heads/main"] }
-      workflows            = { "${local.github_sub_prefix}:environment:staging-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main" }
+      test  = "StringEquals"
+      trust = { "${local.github_sub_prefix}:environment:staging-hosts" = ["refs/heads/main"] }
+      workflows = { "${local.github_sub_prefix}:environment:staging-hosts" = [
+        "${local.github_repo}/.github/workflows/deploy-environment.yaml@refs/heads/main",
+        "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/main",
+      ] }
       parameters           = []
       max_session_duration = 10800
     }
     production-hosts = {
-      test                 = "StringEquals"
-      trust                = { "${local.github_sub_prefix}:environment:production-hosts" = ["refs/heads/production"] }
-      workflows            = { "${local.github_sub_prefix}:environment:production-hosts" = "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production" }
+      test  = "StringEquals"
+      trust = { "${local.github_sub_prefix}:environment:production-hosts" = ["refs/heads/production"] }
+      workflows = { "${local.github_sub_prefix}:environment:production-hosts" = [
+        "${local.github_repo}/.github/workflows/deploy-environment.yaml@refs/heads/production",
+        "${local.github_repo}/.github/workflows/deploy.yaml@refs/heads/production",
+      ] }
       parameters           = []
       max_session_duration = 10800
     }
@@ -142,9 +147,9 @@ data "aws_iam_policy_document" "ci_assume" {
       dynamic "condition" {
         for_each = contains(keys(each.value), "workflows") ? [each.value.workflows[statement.key]] : []
         content {
-          test     = "StringEquals"
+          test     = each.value.test
           variable = "${local.github_oidc}:job_workflow_ref"
-          values   = [condition.value]
+          values   = condition.value
         }
       }
     }
@@ -177,32 +182,18 @@ resource "aws_iam_role_policy" "ci_parameters" {
   })
 }
 
-data "aws_iam_policy_document" "ci_visual_regression" {
-  source_policy_documents = [data.aws_iam_policy_document.ci_storage_policy.json]
+resource "aws_iam_role_policy" "ci_parameter_names" {
+  name = "ci-parameter-names"
+  role = aws_iam_role.ci["parameter-drift"].id
 
-  # The screenshot run's server uses the dev assets bucket.
-  statement {
-    sid       = "ScreenshotAssets"
-    effect    = "Allow"
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
-    resources = [aws_s3_bucket.dev_assets.arn, "${aws_s3_bucket.dev_assets.arn}/*"]
-  }
-}
-
-resource "aws_iam_role_policy" "ci_visual_regression" {
-  name   = "ci-visual-regression"
-  role   = aws_iam_role.ci["visual-regression"].id
-  policy = data.aws_iam_policy_document.ci_visual_regression.json
-}
-
-# Approving visual regression baselines is the environment roles' only use of
-# the CI storage bucket.
-resource "aws_iam_role_policy" "ci_storage" {
-  for_each = toset(["staging", "production"])
-
-  name   = "ci-storage"
-  role   = aws_iam_role.ci[each.key].id
-  policy = data.aws_iam_policy_document.ci_storage_policy.json
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = ["ssm:DescribeParameters"]
+      Effect   = "Allow"
+      Resource = "*"
+    }]
+  })
 }
 
 resource "aws_iam_role_policy" "ci_deploy" {

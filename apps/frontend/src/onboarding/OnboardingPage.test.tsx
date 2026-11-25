@@ -3,8 +3,20 @@ import { membershipAgreement } from "@alliance/shared/lib/copy";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router";
 import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { InviteSessionProvider } from "../site/invite/InviteSession";
@@ -13,6 +25,7 @@ import { testAuthUser } from "../stories/testData";
 import OnboardingPage from "./OnboardingPage";
 import * as onboardingPanelModule from "./OnboardingPanel";
 import { OnboardingStep } from "./flow";
+import { walkthroughStartHref } from "./walkthrough/steps";
 
 let contract: ContractDto | null;
 let signRefusal: { status: number; message: string } | null;
@@ -270,6 +283,146 @@ test("forgets the tab's invitation once email signup has used it", async () => {
   await waitFor(() =>
     expect(sessionStorage.getItem("alliance:invite")).toBeNull(),
   );
+});
+
+const agreementLink = `/onboarding?step=${OnboardingStep.Agreement}`;
+
+test("sends someone signed out from an agreement link to log in and back", async () => {
+  visit(agreementLink);
+
+  await waitFor(() => expect(pathname()).toBe("/login"));
+  expect(new URLSearchParams(search()).get("redirect")).toBe(agreementLink);
+});
+
+test("sends a member who has entered the agreement on from its link", async () => {
+  visit(agreementLink, member(true));
+
+  await waitFor(() => expect(pathname()).toBe("/tasks"));
+});
+
+// `/login` and `/onboarding` render the same module, so the page instance
+// survives the trip to log in and back.
+test("sends a member who has entered the agreement on after logging in from its link", async () => {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <InviteSessionProvider>
+            <Outlet />
+            <Search />
+          </InviteSessionProvider>
+        ),
+        children: [
+          { path: "/onboarding", Component: OnboardingPage },
+          { id: "login", path: "/login", Component: OnboardingPage },
+          { path: "/tasks", element: null },
+        ],
+      },
+    ],
+    { initialEntries: [agreementLink] },
+  );
+  const queryClient = new QueryClient();
+  const page = (user: UserDto | undefined) => (
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider value={authValue(user)}>
+        <RouterProvider router={router} />
+      </AuthContext.Provider>
+    </QueryClientProvider>
+  );
+  const { rerender } = render(page(undefined));
+  await waitFor(() => expect(pathname()).toBe("/login"));
+
+  rerender(page(member(true)));
+  await act(() => router.navigate(agreementLink));
+
+  await waitFor(() => expect(pathname()).toBe("/tasks"));
+});
+
+const withContract = () => {
+  contract = {
+    id: 1,
+    markdown: "",
+    description: [{ point: "Act together", subtext: "" }],
+  };
+};
+
+const enterAgreement = async () => {
+  fireEvent.change(await screen.findByLabelText("Sign your full name"), {
+    target: { value: "Sam Member" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Join" }));
+};
+
+test("starts a member joining for the first time on the walkthrough", async () => {
+  withContract();
+  visit(agreementLink, member(false));
+
+  await enterAgreement();
+
+  await waitFor(() =>
+    expect(pathname() + search()).toBe(walkthroughStartHref()),
+  );
+});
+
+// The app's data router commits Join's navigation after the page has seen the
+// agreement turn active, which `MemoryRouter` hides by committing at once.
+test("starts a first-time joiner on the walkthrough under the data router", async () => {
+  withContract();
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <InviteSessionProvider>
+            <Outlet />
+            <Search />
+          </InviteSessionProvider>
+        ),
+        children: [
+          { path: "/onboarding", Component: OnboardingPage },
+          { path: "/tasks", element: null },
+        ],
+      },
+    ],
+    { initialEntries: [agreementLink] },
+  );
+  const queryClient = new QueryClient();
+  const page = (user: UserDto) => (
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider
+        value={{
+          ...authValue(user),
+          onLogin: async () => rerender(page(member(true))),
+        }}
+      >
+        <RouterProvider router={router} />
+      </AuthContext.Provider>
+    </QueryClientProvider>
+  );
+  const { rerender } = render(page(member(false)));
+
+  await enterAgreement();
+
+  await waitFor(() =>
+    expect(pathname() + search()).toBe(walkthroughStartHref()),
+  );
+});
+
+test("returns a paused member who joins again to their tasks, without the walkthrough", async () => {
+  withContract();
+  visit(agreementLink, {
+    ...member(false),
+    lastContractEvent: {
+      type: "suspended",
+      date: "2026-03-01T12:00:00.000Z",
+      automatic: true,
+      contractId: 1,
+    },
+  });
+
+  await enterAgreement();
+
+  await waitFor(() => expect(pathname()).toBe("/tasks"));
+  expect(search()).toBe("");
 });
 
 const failToSign = async (expected: string) => {

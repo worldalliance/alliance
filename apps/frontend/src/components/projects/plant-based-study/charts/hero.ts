@@ -89,7 +89,7 @@ export function drawHero({
   T(svg, 884, py(BASE) + 4, "46 g", {
     "font-size": 11.5,
     fill: "var(--sub)",
-    "font-weight": 650,
+    "font-weight": 600,
     class: "t-mono",
   });
   E(
@@ -108,8 +108,8 @@ export function drawHero({
   );
   T(svg, 884, py(FINAL) + 4, "23 g", {
     "font-size": 11.5,
-    fill: "var(--reduction)",
-    "font-weight": 650,
+    fill: "var(--reduction-ink)",
+    "font-weight": 600,
     class: "t-mono",
   });
   T(
@@ -117,7 +117,7 @@ export function drawHero({
     60,
     py(FINAL) + 52,
     "reduction group’s two-week average · 23 g (dashed)",
-    { "font-size": 12.5, fill: "var(--reduction)" },
+    { "font-size": 12.5, fill: "var(--reduction-ink)" },
   );
 
   /* bands + lines */
@@ -159,13 +159,13 @@ export function drawHero({
   });
   T(svg, 94, py(C.days[0].m) - 36, "comparison group", {
     "font-size": 12.5,
-    "font-weight": 650,
+    "font-weight": 600,
     fill: "var(--comparison)",
   });
   T(svg, 94, py(R.days[0].m) + 34, "reduction group", {
     "font-size": 12.5,
-    "font-weight": 650,
-    fill: "var(--reduction)",
+    "font-weight": 600,
+    fill: "var(--reduction-ink)",
   });
 
   /* hover / keyboard */

@@ -1,13 +1,19 @@
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
-import { defineConfig } from "vite";
+import {
+  defineConfig,
+  type Plugin,
+  type PreviewServer,
+  type ViteDevServer,
+} from "vite";
 import {
   devPorts,
   devViteDefine,
   PortCaller,
 } from "../../common/src/dev-ports";
-import { webEnvPlugin } from "../../common/src/web-env-build";
+import { R } from "../../common/src/result";
+import { webRuntimeConfigFor } from "../../common/src/web-runtime-config";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -22,14 +28,29 @@ const commonPkg = path.resolve(monorepoRoot, "common");
 
 const ports = devPorts(PortCaller.Tooling);
 
+// A deploy installs config.json for nginx to serve; dev and preview answer for it.
+function serveRuntimeConfig(server: ViteDevServer | PreviewServer) {
+  const body = JSON.stringify(
+    R.expect(webRuntimeConfigFor(server.config.mode), "web runtime config"),
+  );
+  server.middlewares.use("/config.json", (_req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "no-cache");
+    res.end(body);
+  });
+}
+
+const devRuntimeConfig = {
+  name: "alliance-dev-runtime-config",
+  apply: "serve",
+  configureServer: serveRuntimeConfig,
+  configurePreviewServer: serveRuntimeConfig,
+} satisfies Plugin;
+
 // https://vite.dev/config/
 export default defineConfig({
   define: devViteDefine(),
-  plugins: [
-    !isStorybook && webEnvPlugin(),
-    !isStorybook && reactRouter(),
-    tailwindcss(),
-  ],
+  plugins: [devRuntimeConfig, !isStorybook && reactRouter(), tailwindcss()],
   optimizeDeps: {
     exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
     include: ["style-to-js", "hast-util-to-jsx-runtime", "debug"],

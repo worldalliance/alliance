@@ -52,6 +52,17 @@ export class ActionCohortDecision {
   @Column()
   included: boolean;
 
+  /**
+   * True when the member's part has the action as optional work. False
+   * and null leave the action's own flag in force, which the grid keeps false
+   * wherever a part requires the action. Null on rows of suites without a
+   * partition (BACKCOMPAT(partition-row-optional): until no suite without a partition is
+   * still read).
+   */
+  @ApiProperty({ type: Boolean, nullable: true })
+  @Column({ type: "boolean", nullable: true })
+  optional: boolean | null;
+
   @ApiProperty({ enum: CohortDecisionReason, enumName: "CohortDecisionReason" })
   @Column({ type: "enum", enum: CohortDecisionReason })
   reason: CohortDecisionReason;

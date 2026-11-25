@@ -8,7 +8,6 @@ import {
   devViteDefine,
   PortCaller,
 } from "../../common/src/dev-ports";
-import { webEnvPlugin } from "../../common/src/web-env-build";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -26,14 +25,14 @@ const ports = devPorts(PortCaller.Tooling);
 // https://vite.dev/config/
 export default defineConfig({
   define: devViteDefine(),
-  plugins: [
-    !isStorybook && webEnvPlugin(),
-    !isStorybook && reactRouter(),
-    tailwindcss(),
-    imagetools(),
-  ],
+  plugins: [!isStorybook && reactRouter(), tailwindcss(), imagetools()],
   optimizeDeps: {
-    exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
+    exclude: [
+      "@alliance/shared",
+      "@alliance/sharedweb",
+      "@alliance/common",
+      "@alliance/kora-review",
+    ],
   },
   build: {
     sourcemap: "hidden",
@@ -76,6 +75,7 @@ export default defineConfig({
       "@alliance/shared": sharedPkg,
       "@alliance/sharedweb": sharedWebPkg,
       "@alliance/common": path.join(commonPkg, "src"),
+      "@alliance/kora-review": path.join(monorepoRoot, "kora-review", "src"),
     },
   },
 });

@@ -24,6 +24,7 @@ import { useCallback, useState } from "react";
 import { Alert, Platform, Share, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyToClipboard } from "../lib/clipboard";
+import { useBlockResumeRestart } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
 import InviteGroupSelect from "./InviteGroupSelect";
@@ -53,6 +54,9 @@ export default function InviteShareLink() {
   const [labelDraft, setLabelDraft] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
+  useBlockResumeRestart(
+    labelDraft !== "" || newGroupName !== "" || newGroupDescription !== "",
+  );
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [openLinkId, setOpenLinkId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);

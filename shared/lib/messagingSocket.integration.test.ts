@@ -1,29 +1,25 @@
 import { R, type Result } from "@alliance/common/result";
 import { waitFor } from "@testing-library/dom";
-import { afterEach, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, expect, it, mock, spyOn } from "bun:test";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import { io } from "socket.io-client";
 import { connectMessagingSocket } from "./messagingSocket";
 
 const cleanups: (() => void | Promise<void>)[] = [];
+
+beforeEach(() => {
+  spyOn(console, "warn").mockImplementation(() => {});
+});
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
   mock.restore();
 });
 
-const messagingServer = async () => {
+const startServer = async () => {
   const http = createServer();
   const server = new Server(http);
-  const tokens: unknown[] = [];
-  server.use((socket, next) => {
-    tokens.push(socket.handshake.auth.token);
-    next(
-      socket.handshake.auth.token === "fresh"
-        ? undefined
-        : new Error("jwt expired"),
-    );
-  });
   await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
   cleanups.push(
     () =>
@@ -34,8 +30,23 @@ const messagingServer = async () => {
   );
   const address = http.address();
   if (!address || typeof address === "string") throw new Error("No test port");
+  return { server, url: `http://127.0.0.1:${address.port}` };
+};
+
+const messagingServer = async (params: { unavailable?: number } = {}) => {
+  let unavailable = params.unavailable ?? 0;
+  const { server, url } = await startServer();
+  const tokens: unknown[] = [];
+  server.use((socket, next) => {
+    tokens.push(socket.handshake.auth.token);
+    if (unavailable-- > 0) return next(new Error("Unavailable"));
+    next(
+      socket.handshake.auth.token === "fresh"
+        ? undefined
+        : new Error("jwt expired"),
+    );
+  });
   let token = "expired";
-  const url = `http://127.0.0.1:${address.port}`;
   return {
     connect: (onRefreshToken: () => Promise<Result<boolean, Error>>) => {
       const connection = connectMessagingSocket("/", {
@@ -65,6 +76,20 @@ it("connects after middleware rejects an expired token and refresh saves a new o
 
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(tokens).toEqual(["expired", "fresh"]);
+});
+
+it("retries a handshake the server couldn't check until it connects", async () => {
+  const { connect, tokens, saveToken } = await messagingServer({
+    unavailable: 1,
+  });
+  saveToken("fresh");
+  const refresh = mock(async () => R.success(true));
+  const { socket } = connect(refresh);
+
+  await waitFor(() => expect(socket.connected).toBe(true), { timeout: 2500 });
+
+  expect(refresh).not.toHaveBeenCalled();
+  expect(tokens).toEqual(["fresh", "fresh"]);
 });
 
 it.each([
@@ -133,4 +158,43 @@ it("cancels a scheduled refresh retry when its owner cleans up", async () => {
   expect(socket.connected).toBe(false);
   expect(socket.active).toBe(false);
   expect(log).toHaveBeenCalledTimes(1);
+});
+
+it("retries a refused cookie handshake with the refreshed cookie beside another socket", async () => {
+  const { server, url } = await startServer();
+  const cookies: unknown[] = [];
+  server.of("/cookie").use((socket, next) => {
+    cookies.push(socket.handshake.headers.cookie);
+    next(
+      socket.handshake.headers.cookie === "access=fresh"
+        ? undefined
+        : new Error("Unauthorized"),
+    );
+  });
+  server.of("/other");
+  const other = io(`${url}/other`, { transports: ["websocket"] });
+  cleanups.push(() => {
+    other.disconnect();
+  });
+  await waitFor(() => expect(other.connected).toBe(true));
+
+  const connection = connectMessagingSocket("/cookie", {
+    getWebSocketUrl: () => url,
+    onRefreshToken: async () => {
+      // Node has no cookie jar, so the refreshed cookie goes in as a header.
+      connection.socket.io.opts.extraHeaders = { cookie: "access=fresh" };
+      return R.success(true);
+    },
+  });
+  cleanups.push(connection.close);
+
+  await waitFor(() => expect(connection.socket.connected).toBe(true), {
+    timeout: 2500,
+  });
+  // Engine.io's Node transport sends an empty cookie header when its cookie
+  // jar is empty, where a browser sends none.
+  expect(cookies.map((cookie) => cookie || null)).toEqual([
+    null,
+    "access=fresh",
+  ]);
 });

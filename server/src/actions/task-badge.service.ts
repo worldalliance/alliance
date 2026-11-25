@@ -1,11 +1,11 @@
 import { countTaskBadge } from "@alliance/common/taskBadge";
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
-import { LOCK_KEYS } from "src/notifs/lock-keys";
-import { withPgAdvisoryLock } from "src/notifs/lock-utils";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { PushService } from "src/push/push.service";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import {
@@ -14,19 +14,11 @@ import {
 } from "src/user/user.events";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import {
-  DataSource,
-  In,
-  IsNull,
-  MoreThan,
-  Not,
-  type Repository,
-} from "typeorm";
+import { In, IsNull, MoreThan, Not, type Repository } from "typeorm";
 import { z } from "zod";
 import type { ActionActivityDto } from "./dto/action-activity.dto";
 import { MemberActionsService } from "./member-actions.service";
 
-const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.taskBadgeSweep;
 const SWEEP_INTERVAL_MS = milliseconds({ minutes: 1 });
 
 type SweepSnapshot = { openActionIds: number[]; startedAt: Date };
@@ -43,7 +35,7 @@ const claimedDeviceSchema = z.object({
  * edits, deadlines, new tasks) is caught by the per-minute sweep.
  */
 @Injectable()
-export class TaskBadgeService implements OnModuleDestroy {
+export class TaskBadgeService implements OnApplicationShutdown {
   private readonly logger = new Logger(TaskBadgeService.name);
   private readonly detachedWork = new DetachedWorkTracker();
 
@@ -57,7 +49,6 @@ export class TaskBadgeService implements OnModuleDestroy {
 
   constructor(
     private readonly eventEmitter: EventEmitter2,
-    private readonly dataSource: DataSource,
     private readonly memberActions: MemberActionsService,
     private readonly pushService: PushService,
     @InjectRepository(UserDevice)
@@ -70,7 +61,7 @@ export class TaskBadgeService implements OnModuleDestroy {
     );
   }
 
-  async onModuleDestroy() {
+  async onApplicationShutdown() {
     this.eventEmitter.off("action.activity", this.onActivity);
     this.eventEmitter.off(
       UserEvents.AwayRangesChanged,
@@ -80,34 +71,26 @@ export class TaskBadgeService implements OnModuleDestroy {
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
+  @WithoutOverlapping({ key: CronLease.TaskBadgeSweep })
   async sweep() {
     if (!notifDeliveryEnabled()) {
       return;
     }
-    const ran = await withPgAdvisoryLock(
-      this.dataSource,
-      LOCK_KEY1,
-      LOCK_KEY2,
-      async () => {
-        const startedAt = new Date();
-        const openActionIds = await this.memberActions.findOpenActionIds();
-        const userIds = await this.findUserIdsWithDevices();
-        for (const userId of userIds) {
-          await this.syncUserLoggingFailure(userId, {
-            openActionIds,
-            startedAt,
-          });
-        }
-        const elapsedMs = Date.now() - startedAt.getTime();
-        if (elapsedMs > SWEEP_INTERVAL_MS) {
-          this.logger.warn(
-            `task badge sweep of ${userIds.length} users took ${elapsedMs}ms, longer than its interval`,
-          );
-        }
-      },
-    );
-    if (ran === null) {
-      this.logger.log("task badge sweep skipped bc of lock");
+    const startedAt = new Date();
+    const openActionIds = await this.memberActions.findOpenActionIds();
+    const userIds = await this.findUserIdsWithDevices();
+    for (const userId of userIds) {
+      assertLeaseHeld();
+      await this.syncUserLoggingFailure(userId, {
+        openActionIds,
+        startedAt,
+      });
+    }
+    const elapsedMs = Date.now() - startedAt.getTime();
+    if (elapsedMs > SWEEP_INTERVAL_MS) {
+      this.logger.warn(
+        `task badge sweep of ${userIds.length} users took ${elapsedMs}ms, longer than its interval`,
+      );
     }
   }
 

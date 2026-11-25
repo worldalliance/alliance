@@ -3,10 +3,18 @@ import { type RouteConfig, layout, route } from "@react-router/dev/routes";
 export default [
   layout("adminlayout.tsx", [
     route("/invite-feed", "pages/InviteFeedPage.tsx"),
+    route(
+      "/kora-participants/preview/:batchId",
+      "pages/KoraTranscriptPreviewPage.tsx",
+    ),
     layout("sidebar.tsx", [
       route("/projects", "pages/ProjectsPage.tsx"),
       route("/projects/:projectId", "pages/ProjectDetailPage.tsx"),
       route("/kora-participants", "pages/KoraParticipantsPage.tsx"),
+      route(
+        "/kora-participants/assignments/:assignmentId",
+        "pages/KoraAssignmentExportPage.tsx",
+      ),
       route(
         "/projects/:projectId/action/:actionId",
         "pages/ProjectActionPage.tsx",
@@ -31,6 +39,10 @@ export default [
       route("/new-suite", "pages/NewActionSuitePage.tsx"),
       route("/", "pages/StatsPage.tsx"),
       route("/forms", "pages/FormsList.tsx"),
+      route("/formulas", "pages/FormulasPage.tsx"),
+      route("/formulas/:formulaId", "pages/FormulaPage.tsx"),
+      route("/member-lists", "pages/MemberListsPage.tsx"),
+      route("/member-lists/:listId", "pages/MemberListPage.tsx"),
       route("/forms/:formId/responses", "pages/FormResponses.tsx"),
       route("/forms/:formId/snapshots", "pages/FormSnapshotMigration.tsx"),
       route("/forms/:formId", "pages/FormBuilder.tsx"),
@@ -38,6 +50,9 @@ export default [
       route("/member/:userId", "pages/UserDetailView.tsx"),
       route("/test-push", "pages/TestPushNotification.tsx"),
       route("/members", "pages/UsersList.tsx"),
+      route("/needs-reply", "pages/NeedsReplyPage.tsx"),
+      route("/texts", "pages/TextsPage.tsx"),
+      route("/texts/:threadId", "pages/TextThreadPage.tsx"),
       route("/image", "pages/ImageUpload.tsx"),
       route("/videos", "pages/VideoManagement.tsx"),
       route("/videos/:videoId", "pages/VideoDetail.tsx"),

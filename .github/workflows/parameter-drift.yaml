@@ -1,0 +1,47 @@
+name: Parameter drift
+
+# Parameter Store is shared state, so the check runs where a change can cause
+# drift: PRs that change the schemas, the manifest or what they load, and every
+# push to main.
+# Dispatch it on main after a store edit.
+on:
+  pull_request:
+    branches: [main, production]
+    paths:
+      - common/package.json
+      - common/src/deployed-config.ts
+      - common/src/env.ts
+      - common/src/node-env.ts
+      - common/src/result.ts
+      - common/src/url.ts
+      - server/src/config/env.ts
+      - server/src/config/rds-us-west-2-bundle.pem
+      - server/tsconfig.json
+      - scripts/dev-secrets.json
+      - scripts/check-parameter-drift.ts
+      - .github/workflows/parameter-drift.yaml
+      - .github/actions/aws/**
+      - .github/ci.env
+      - bun.lock
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  parameter-drift:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/aws
+        with:
+          role: parameter-drift
+          export-credentials: "true"
+      - run: bun scripts/check-parameter-drift.ts

@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { R, type Result } from "../../../../../common/src/result";
+import { type AgentEvent, AgentEventKind } from "../../shared/agent-event";
 import { SessionListeners } from "./listeners";
 import {
   type AgentBackend,
-  type AgentEvent,
-  AgentEventKind,
   type AgentEventListener,
   type AgentMessage,
   type AgentSession,
@@ -22,6 +21,8 @@ export type FakeBackendParams = {
 
 class FakeSession implements AgentSession {
   readonly id: string;
+  readonly firstMessageRead: Promise<boolean>;
+  private readonly settleFirstMessageRead: (read: boolean) => void;
   private nextTurn: number;
   private turn: AbortController | undefined;
   private playing: Promise<void> = Promise.resolve();
@@ -39,7 +40,10 @@ class FakeSession implements AgentSession {
     this.onClosing = init.onClosing;
     this.id = init.resumes?.id ?? randomUUID();
     this.nextTurn = init.resumes?.nextTurn ?? 0;
-    this.listeners = new SessionListeners(this.id);
+    this.listeners = new SessionListeners(() => this.id);
+    const firstMessageRead = Promise.withResolvers<boolean>();
+    this.firstMessageRead = firstMessageRead.promise;
+    this.settleFirstMessageRead = firstMessageRead.resolve;
   }
 
   get turnRunning(): boolean {
@@ -50,6 +54,7 @@ class FakeSession implements AgentSession {
     if (this.turn)
       return R.failure(new Error(`session ${this.id} is mid-turn`));
     this.turn = new AbortController();
+    this.settleFirstMessageRead(true);
     this.playing = this.play(this.eventsFor(message), this.turn.signal);
     return R.success(undefined);
   }
@@ -71,19 +76,30 @@ class FakeSession implements AgentSession {
   }
 
   private async shutDown(): Promise<void> {
+    this.settleFirstMessageRead(false);
     this.turn?.abort();
     await this.playing;
   }
 
   private eventsFor(message: AgentMessage): readonly AgentEvent[] {
-    const error = (text: string): AgentEvent[] => [
-      { kind: AgentEventKind.Error, message: text },
-    ];
-    if (this.closing) return error(`The fake session ${this.id} is closed.`);
+    if (this.closing)
+      return [
+        {
+          kind: AgentEventKind.Error,
+          message: `The fake session ${this.id} is closed.`,
+          needsResume: true,
+        },
+      ];
     const turn = this.params.script[this.nextTurn++];
     return turn
       ? turn(message)
-      : error("The fake session's script has no more turns.");
+      : [
+          {
+            kind: AgentEventKind.Error,
+            message: "The fake session's script has no more turns.",
+            needsResume: false,
+          },
+        ];
   }
 
   private async play(
@@ -96,12 +112,11 @@ class FakeSession implements AgentSession {
       this.listeners.emit(event);
     }
     if (!signal.aborted) await setTimeout(this.params.stepDelayMs);
-    this.endTurn();
-  }
-
-  private endTurn(): void {
     this.turn = undefined;
-    this.listeners.emit({ kind: AgentEventKind.TurnEnded });
+    this.listeners.emit({
+      kind: AgentEventKind.TurnEnded,
+      interrupted: signal.aborted,
+    });
   }
 }
 
@@ -128,6 +143,7 @@ export function createFakeBackend(params: FakeBackendParams): AgentBackend {
       const resumed = live.get(sessionId);
       return resumed ? R.success(resumed) : open(ended);
     },
+    settled: () => Promise.resolve(),
   };
 }
 
@@ -179,6 +195,7 @@ export const demoScript: readonly FakeTurn[] = [
     {
       kind: AgentEventKind.Error,
       message: "API Error: 529 Overloaded. Try again in a moment.",
+      needsResume: false,
     },
   ],
 ];

@@ -1,3 +1,4 @@
+import { withConversationNoteFields } from "@alliance/common/forms/conversation";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
@@ -7,27 +8,34 @@ import {
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 
-const ANSWER_FIELD_KINDS = new Set<FieldKind>([
-  "text",
-  "textarea",
-  "email",
-  "number",
-  "range",
-  "phone",
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "ranking",
-  "date",
-  "time",
-  "timezone",
-  "city",
-  "file",
-]);
+const ANSWER_FIELD_KINDS: Record<FieldKind, boolean> = {
+  text: true,
+  textarea: true,
+  email: true,
+  phone: true,
+  number: true,
+  range: true,
+  checkbox: true,
+  radio: true,
+  select: true,
+  multiselect: true,
+  ranking: true,
+  date: true,
+  time: true,
+  timezone: true,
+  city: true,
+  file: true,
+  contract: false,
+  list: false,
+  custom: false,
+  image: true,
+  toggle: true,
+  timePicker: true,
+  conversation: true,
+};
 
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
-  isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
+  isQuestionField(node) && ANSWER_FIELD_KINDS[node.kind];
 
 /** Labels of the schema's answer fields, keyed by field id in page order. */
 export function answerFieldLabels(
@@ -37,7 +45,9 @@ export function answerFieldLabels(
   schema?.pages?.forEach((page) => {
     page.fields.forEach((field) => {
       if (!isAnswerField(field) || labels.has(field.id)) return;
-      labels.set(field.id, elementInternalDescriptor(field));
+      for (const answerField of withConversationNoteFields([field])) {
+        labels.set(answerField.id, elementInternalDescriptor(answerField));
+      }
     });
   });
   return labels;

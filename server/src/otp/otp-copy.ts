@@ -4,6 +4,7 @@ import { OTP_TTL_MS } from "./otp-limits";
 /** What a code is for. Each has its own wording and its own challenges. */
 export enum OtpPurpose {
   KoraSignIn = "kora_sign_in",
+  PhoneVerification = "phone_verification",
 }
 
 export enum OtpChannel {
@@ -13,7 +14,7 @@ export enum OtpChannel {
 
 type OtpCopy = {
   codeLabel: string;
-  /** Fills "Enter 123456 to {emailAction}." in the email body. */
+  /** Fills "Enter the code above to {emailAction}" in the email body. */
   emailAction: string;
 };
 
@@ -22,6 +23,10 @@ const OTP_COPY: Record<OtpPurpose, OtpCopy> = {
   [OtpPurpose.KoraSignIn]: {
     codeLabel: "sign-in code",
     emailAction: "continue to Safer Chatbots for Children",
+  },
+  [OtpPurpose.PhoneVerification]: {
+    codeLabel: "phone verification code",
+    emailAction: "confirm your phone number",
   },
 };
 
@@ -39,18 +44,17 @@ export function otpEmail(params: { purpose: OtpPurpose; code: string }): {
 }
 
 /**
- * The last line is the WebOTP format, which lets a browser on `webOtpHost`
- * offer the code for autofill.
+ * With a `webOtpHost`, the last line is the WebOTP format, which lets a
+ * browser on that host offer the code for autofill.
  */
 export function otpText(params: {
   purpose: OtpPurpose;
   code: string;
-  webOtpHost: string;
+  webOtpHost: string | null;
 }): string {
   const copy = OTP_COPY[params.purpose];
-  return [
-    `Your Alliance ${copy.codeLabel} is ${params.code}. It expires in ${EXPIRY}.`,
-    "",
-    `@${params.webOtpHost} #${params.code}`,
-  ].join("\n");
+  const text = `Your Alliance ${copy.codeLabel} is ${params.code}. It expires in ${EXPIRY}.`;
+  return params.webOtpHost
+    ? `${text}\n\n@${params.webOtpHost} #${params.code}`
+    : text;
 }

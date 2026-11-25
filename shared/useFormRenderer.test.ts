@@ -72,6 +72,7 @@ function renderVisibility(args: {
   randomizationKey?: string;
   visibilityValidatorResults?: Record<number, boolean>;
   visibilityInputsLoading?: boolean;
+  visibilityInputs?: typeof SETTLED_INPUTS;
 }) {
   const schema = args.schema ?? twoPageSchema;
   return renderHook(() =>
@@ -92,9 +93,12 @@ function renderVisibility(args: {
       userHasCity: false,
       firstContractSignedAt: null,
       completedActionCount: 0,
-      visibilityInputs: {
+      visibilityInputs: args.visibilityInputs ?? {
         ...SETTLED_INPUTS,
-        userLoading: args.visibilityInputsLoading ?? false,
+        pending: {
+          ...SETTLED_INPUTS.pending,
+          user: args.visibilityInputsLoading ?? false,
+        },
       },
     }),
   );
@@ -141,7 +145,21 @@ describe("useFormVisibility", () => {
 
     expect(moves).toEqual([]);
     expect(result.current.visibilitySettled).toBe(false);
+    expect(result.current.visibilityFailed).toBe(false);
   });
+
+  it.each(Object.keys(SETTLED_INPUTS.failed))(
+    "fails, and never settles, once its %s input fails",
+    (input) => {
+      const failed = { ...SETTLED_INPUTS.failed, [input]: true };
+      const { result } = renderVisibility({
+        formData: {},
+        visibilityInputs: { ...SETTLED_INPUTS, failed },
+      });
+      expect(result.current.visibilityFailed).toBe(true);
+      expect(result.current.visibilitySettled).toBe(false);
+    },
+  );
 
   it("recomputes a variable combining another form's answers with a local one as the local answer changes", () => {
     const schema: FormSchema = {

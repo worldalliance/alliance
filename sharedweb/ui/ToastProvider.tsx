@@ -15,7 +15,7 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
-enum ToastVariant {
+export enum ToastVariant {
   Info = "info",
   Success = "success",
   Error = "error",
@@ -104,11 +104,13 @@ type ConfirmOptions = {
   requiredText?: string;
   requiredTextLabel?: string;
   requiredTextPlaceholder?: string;
+  /** Aborting it closes the confirm, resolving `false`. */
+  signal?: AbortSignal;
 };
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
   variant?: ToastVariant;
-  durationMs?: number;
+  durationMs?: number | null;
 };
 
 type ToastConfirm = Omit<ToastBase, "variant"> & {
@@ -149,9 +151,16 @@ const toastRegion: Record<ToastVariant, ToastRegion> = {
 
 const toastColorClasses: Record<ToastVariant, string> = {
   [ToastVariant.Info]: "bg-slate-700 text-white",
-  [ToastVariant.Success]: "bg-emerald-600 text-white",
+  [ToastVariant.Success]: "bg-emerald-700 text-white",
   [ToastVariant.Warning]: "bg-amber-500 text-white",
   [ToastVariant.Error]: "bg-white text-red-500 border border-red-500",
+};
+
+const dismissColorClasses: Record<ToastVariant, string> = {
+  [ToastVariant.Info]: "text-slate-100/70 hover:text-white",
+  [ToastVariant.Success]: "text-slate-100/70 hover:text-white",
+  [ToastVariant.Warning]: "text-slate-100/70 hover:text-white",
+  [ToastVariant.Error]: "text-red-500 hover:text-red-700",
 };
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -202,10 +211,21 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
       requiredText,
       requiredTextLabel,
       requiredTextPlaceholder,
+      signal,
     }: ConfirmOptions): Promise<boolean> => {
+      if (signal?.aborted) return Promise.resolve(false);
       const id = ++idRef.current;
 
-      return new Promise<boolean>((resolve) => {
+      return new Promise<boolean>((settle) => {
+        const onAbort = () => {
+          settle(false);
+          removeToast(id);
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+        const resolve = (value: boolean) => {
+          signal?.removeEventListener("abort", onAbort);
+          settle(value);
+        };
         const toast: ToastConfirm = {
           id,
           variant: "confirm",
@@ -226,7 +246,7 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setToasts((prev) => [...prev, toast]);
       });
     },
-    [],
+    [removeToast],
   );
 
   const handleConfirm = useCallback(
@@ -331,7 +351,7 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
         <button
           type="button"
           aria-label="Dismiss"
-          className="ml-2 text-slate-100/70 hover:text-white"
+          className={cn("ml-2", dismissColorClasses[toast.variant])}
           onClick={() => onDismiss(toast.id)}
         >
           ✕

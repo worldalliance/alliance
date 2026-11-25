@@ -8,6 +8,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { findDisplayBlock } from "../lib/displayBlockById";
 import { selectElement } from "../lib/testing/formCanvas";
 import { FormBuilder } from "./FormBuilder";
+import LeaveGuard from "./LeaveGuard";
 import { OutputBuilder } from "./OutputBuilder";
 
 const renderIn = (element: ReactElement) =>
@@ -96,7 +97,11 @@ describe("FormBuilder hands a display block the addressed write", () => {
     const router = createMemoryRouter([
       {
         path: "/",
-        element: <FormBuilder initialSchema={schema} setFormId={() => {}} />,
+        element: (
+          <LeaveGuard>
+            <FormBuilder initialSchema={schema} setFormId={() => {}} />
+          </LeaveGuard>
+        ),
       },
     ]);
     renderIn(<RouterProvider router={router} />);

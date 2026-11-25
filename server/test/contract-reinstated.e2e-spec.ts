@@ -30,6 +30,7 @@ import {
   saveLiveCohortDecisions,
 } from "./cohort-decision-fixtures";
 import {
+  awaitCalls,
   closeTestApp,
   createFormWithSnapshot,
   createTestApp,
@@ -128,7 +129,7 @@ describe("Contract reinstated notifications (e2e)", () => {
       "deliver",
     );
     await sign();
-    await Promise.all(deliver.mock.results.map(({ value }) => value));
+    await awaitCalls(deliver);
     deliver.mockRestore();
   };
 

@@ -91,6 +91,33 @@ let submissions = 0;
 let submitStatus = 201;
 let draftSaveStatus = 200;
 let submitHeld = Promise.resolve();
+let visibilityContextHeld = Promise.resolve();
+let visibilityContextRequested = false;
+let visibilityContextStatus = 200;
+export enum DraftSource {
+  OtherDevice = "another device",
+  Guest = "a guest visit",
+}
+let heldDraft: {
+  source: DraftSource;
+  answers: Record<string, unknown>;
+  status?: number;
+  held: Promise<void>;
+  requested: boolean;
+} | null = null;
+
+const serveHeldDraft = async (
+  source: DraftSource,
+  draft: (answers: Record<string, unknown>) => unknown,
+) => {
+  if (heldDraft?.source !== source) return Response.json({});
+  heldDraft.requested = true;
+  await heldDraft.held;
+  if (heldDraft.status !== undefined) {
+    return Response.json({ message: "nope" }, { status: heldDraft.status });
+  }
+  return Response.json({ draft: draft(heldDraft.answers) });
+};
 
 /** Serves the flow's task form and action for every test in the calling file,
  * resetting the served schema and action, the submission count and the
@@ -105,8 +132,20 @@ export const serveTaskFlow = () => {
           formSnapshotId: 3,
           schema: servedSchema,
         }),
-      "GET /tasks/draft/:id": () => Response.json({}),
-      "GET /tasks/formDraft/:id": () => Response.json({}),
+      "GET /tasks/draft/:id": () =>
+        serveHeldDraft(DraftSource.Guest, (answers) =>
+          makeFormResponse({ answers }),
+        ),
+      "GET /tasks/formDraft/:id": () =>
+        serveHeldDraft(DraftSource.OtherDevice, (answers) => ({
+          formId: 9,
+          actionId: 1,
+          formSnapshotId: 3,
+          answers,
+          publicAnswers: {},
+          currentPageIndex: 0,
+          updatedAt: "2026-10-25T00:00:00.000Z",
+        })),
       "PUT /tasks/formDraft/:id": () =>
         draftSaveStatus === 200
           ? Response.json({ updatedAt: "2026-10-26T00:00:00.000Z" })
@@ -123,6 +162,23 @@ export const serveTaskFlow = () => {
         return Response.json(makeFormResponse(), { status: 201 });
       },
       "GET /user/mylocation": () => Response.json({ city: null }),
+      "GET /auth/me": () => Response.json({ user: testAuthUser }),
+      "GET /user/myvisibilitycontext": async () => {
+        visibilityContextRequested = true;
+        await visibilityContextHeld;
+        if (visibilityContextStatus !== 200) {
+          return Response.json(
+            { message: "nope" },
+            { status: visibilityContextStatus },
+          );
+        }
+        return Response.json({
+          userHasCity: true,
+          userPropertyHasValue: {},
+          firstContractSignedAt: null,
+          completedActionCount: 0,
+        });
+      },
       "GET /actions/slug/:id": () => Response.json(serverAction),
     }),
   );
@@ -133,6 +189,10 @@ export const serveTaskFlow = () => {
     submitStatus = 201;
     draftSaveStatus = 200;
     submitHeld = Promise.resolve();
+    visibilityContextHeld = Promise.resolve();
+    visibilityContextRequested = false;
+    visibilityContextStatus = 200;
+    heldDraft = null;
   });
 };
 
@@ -233,6 +293,9 @@ export const openFirstQuestionScreen = async () => {
 /** Long enough for the completion card's whole closing animation. */
 export const CLOSE_TIMEOUT = 3000;
 
+/** Long enough for a lazy form part, such as the phone input, to load and render. */
+export const LAZY_PART_TIMEOUT = 4000;
+
 export const submitFlow = async () => {
   await openFirstQuestionScreen();
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {
@@ -266,6 +329,47 @@ export const holdSubmit = () => {
   });
   return release;
 };
+
+/**
+ * Holds the visibility context's response until the returned release is
+ * called. It answers that the member has a city.
+ */
+export const holdVisibilityContext = () => {
+  let release = () => {};
+  visibilityContextHeld = new Promise((resolve) => {
+    release = resolve;
+  });
+  return release;
+};
+
+/** Refuses the visibility context until the next test. */
+export const refuseVisibilityContext = () => {
+  visibilityContextStatus = 403;
+};
+
+export const visibilityContextWasRequested = () => visibilityContextRequested;
+
+/**
+ * Serves a draft with these answers from the source's endpoint once the
+ * returned release is called, or fails with `status` when one is given.
+ */
+export const holdDraft = (params: {
+  source: DraftSource;
+  answers: Record<string, unknown>;
+  status?: number;
+}) => {
+  let release = () => {};
+  heldDraft = {
+    ...params,
+    held: new Promise((resolve) => {
+      release = resolve;
+    }),
+    requested: false,
+  };
+  return release;
+};
+
+export const draftWasRequested = () => heldDraft?.requested ?? false;
 
 /** Sets the task form's schema until the next test. */
 export const setServedSchema = (schema: unknown) => {

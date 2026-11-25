@@ -30,7 +30,9 @@ const SuiteEventList = ({
 
   return (
     <div>
-      <div className={cn("flex flex-row gap-4 items-center", className)}>
+      <div
+        className={cn("flex flex-row flex-wrap gap-4 items-center", className)}
+      >
         {(events ?? [])
           .slice()
           .sort((a, b) => a.date.localeCompare(b.date))
@@ -43,10 +45,11 @@ const SuiteEventList = ({
             />
           ))}
         <Button
-          color={ButtonColor.Grey}
+          color={ButtonColor.White}
           onClick={() => setEventFormOpen((prev) => !prev)}
+          aria-expanded={eventFormOpen}
         >
-          +
+          {eventFormOpen ? "Close" : "Add event"}
         </Button>
       </div>
       {eventFormOpen && (

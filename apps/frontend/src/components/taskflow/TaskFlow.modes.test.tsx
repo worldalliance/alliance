@@ -4,25 +4,155 @@ import {
   withdrawFromAction,
 } from "@alliance/shared/lib/copy";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { testAuthUser } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import ActionTaskPanelForm from "../ActionTaskPanelForm";
 import {
   action,
   CLOSE_TIMEOUT,
+  DraftSource,
+  draftWasRequested,
+  holdDraft,
+  holdVisibilityContext,
   openFirstQuestionScreen,
+  refuseVisibilityContext,
   renderFlow,
   serveTaskFlow,
+  setServedSchema,
   storedDraftKeys,
   submissionCount,
   submitFlow,
   taskSchema,
+  visibilityContextWasRequested,
 } from "./TaskFlow.testing";
 
 declare const happyDOM: { setURL: (url: string) => void };
 
 serveTaskFlow();
+
+const cityPageSchema = {
+  ...taskSchema,
+  pages: [
+    ...taskSchema.pages,
+    {
+      id: "p4",
+      visibleIfFormula: {
+        conditions: { c1: { kind: "userHasCity", userHasCity: true } },
+        formula: "c1",
+      },
+      fields: [
+        {
+          id: "h3",
+          type: "display",
+          kind: "header",
+          text: "Tell us about your city",
+        },
+      ],
+    },
+  ],
+};
+
+it("shows a live task's begin button, in place of a spinner, only once its outline of distinct page headers is ready above it", async () => {
+  setServedSchema(cityPageSchema);
+  const release = holdVisibilityContext();
+  renderFlow();
+  await waitFor(() => expect(visibilityContextWasRequested()).toBe(true));
+  expect(screen.queryByRole("button", { name: taskFlow.begin })).toBeNull();
+  expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
+  release();
+  const begin = await screen.findByRole("button", { name: taskFlow.begin });
+  expect(screen.queryByRole("status", { name: "Loading..." })).toBeNull();
+  const outline = screen.getByRole("group", { name: taskFlow.outline });
+  expect(
+    outline.compareDocumentPosition(begin) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(
+    within(outline)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual(["Rate the chatbot", "Tell us about your city"]);
+});
+
+it.each(Object.values(DraftSource))(
+  "shows a live task's outline and begin button only once a draft from %s is restored",
+  async (source) => {
+    setServedSchema({
+      ...taskSchema,
+      pages: [
+        ...taskSchema.pages,
+        {
+          id: "p4",
+          visibleIfFormula: {
+            conditions: { c1: { kind: "equals", when: "b", equals: "yes" } },
+            formula: "c1",
+          },
+          fields: [
+            { id: "h4", type: "display", kind: "header", text: "Follow-up" },
+          ],
+        },
+      ],
+    });
+    const release = holdDraft({ source, answers: { a: "fine", b: "yes" } });
+    renderFlow();
+    await waitFor(() => expect(draftWasRequested()).toBe(true));
+    // Lets every other request the card waits on land.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.queryByRole("button", { name: taskFlow.begin })).toBeNull();
+    expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
+    release();
+    await screen.findByRole("button", { name: taskFlow.begin });
+    expect(
+      within(screen.getByRole("group", { name: taskFlow.outline }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Rate the chatbot", "Follow-up"]);
+  },
+);
+
+it("loads a live task's other inputs alongside a guest draft rather than after it", async () => {
+  setServedSchema(cityPageSchema);
+  const release = holdDraft({ source: DraftSource.Guest, answers: {} });
+  renderFlow();
+  await waitFor(() => expect(visibilityContextWasRequested()).toBe(true));
+  expect(draftWasRequested()).toBe(true);
+  expect(screen.queryByRole("button", { name: taskFlow.begin })).toBeNull();
+  release();
+  await screen.findByRole("button", { name: taskFlow.begin });
+});
+
+it("shows a live task's begin button without an outline when its guest draft fails to load", async () => {
+  holdDraft({ source: DraftSource.Guest, answers: {}, status: 503 })();
+  renderFlow();
+  await screen.findByRole("button", { name: taskFlow.begin });
+  expect(screen.queryByRole("group", { name: taskFlow.outline })).toBeNull();
+});
+
+it("shows a live task's begin and withdraw controls without an outline when its visibility context fails", async () => {
+  setServedSchema(cityPageSchema);
+  refuseVisibilityContext();
+  renderFlow({
+    page: (
+      <ActionTaskPanelForm
+        taskFormId={9}
+        onCompleteAction={() => {}}
+        onAbandonAction={() => {}}
+        onFormStarted={() => {}}
+        onDeadlinePassed={() => {}}
+        action={action}
+      />
+    ),
+  });
+  await screen.findByRole("button", { name: taskFlow.begin });
+  expect(screen.getByRole("button", { name: withdrawFromAction })).toBeTruthy();
+  expect(screen.queryByRole("group", { name: taskFlow.outline })).toBeNull();
+});
 
 it("runs a staff preview through to the completion card without submitting or storing a draft", async () => {
   renderFlow({
@@ -68,6 +198,7 @@ it("walks a task the member can't submit read-only, closing from its last screen
   });
   const greyView = await screen.findByRole("button", { name: taskFlow.view });
   expect(greyView.className).toContain("bg-zinc-200");
+  expect(screen.queryByRole("group", { name: taskFlow.outline })).toBeNull();
   fireEvent.click(greyView);
   await screen.findByRole("heading", { name: taskFlowFallbackTitle.reading });
   expect(screen.queryByRole("button", { name: withdrawFromAction })).toBeNull();

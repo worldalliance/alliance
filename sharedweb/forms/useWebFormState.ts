@@ -5,6 +5,7 @@ import {
   type UserDto,
 } from "@alliance/shared/client";
 import { computeActiveUserKey } from "@alliance/shared/formrenderer";
+import { type DraftFetchState } from "@alliance/shared/forms/draftFetchState";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import { prefillListsFromPreviousAnswers } from "@alliance/shared/forms/listPrefill";
 import { useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
@@ -56,6 +57,8 @@ export type WebFormStateParams = {
   completedFormResponse?: FormResponseDto;
   /** Prefill form with these answers when there is no locally-persisted draft. Used to restore a guest's answers after signup. */
   draftFormResponse?: FormResponseDto | null;
+  /** The fetch of `draftFormResponse`, when it is fetched. */
+  guestDraftFetch?: DraftFetchState;
   /** Save progress to the member's account as well as this device, so the form can be finished elsewhere. */
   syncDraftToServer?: boolean;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
@@ -83,6 +86,7 @@ export function useWebFormState({
   renderFormAsCompleted,
   completedFormResponse,
   draftFormResponse,
+  guestDraftFetch,
   syncDraftToServer,
   adminPreviewUserId,
   loadCurrentUserLocation,
@@ -114,12 +118,18 @@ export function useWebFormState({
   const {
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
+  } = useFormSchemaMaps({
+    schema,
+    userDefaultPublic,
+    timeZone,
+    profilePhoneNumber: user?.phoneNumber,
+  });
 
   const {
     formData,
@@ -130,6 +140,8 @@ export function useWebFormState({
     setCurrentPageIndex,
     edited,
     markEdited,
+    draftSettled,
+    draftFailed,
     saveFailed,
     pauseSyncing,
     resumeSyncing,
@@ -142,10 +154,12 @@ export function useWebFormState({
     readOnly,
     completedFormResponse,
     draftFormResponse,
+    guestDraftFetch,
     initialPageIndex,
     userDefaultPublic,
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
@@ -202,6 +216,7 @@ export function useWebFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
   } = useFormVisibility({
     schema,
@@ -222,11 +237,16 @@ export function useWebFormState({
     firstContractSignedAt: visibilityContext.firstContractSignedAt,
     completedActionCount: visibilityContext.completedActionCount,
     visibilityInputs: {
-      visibilityContextLoading: visibilityContext.isLoading,
-      visibilityContextFailed: visibilityContext.failed,
-      visibilityValidatorsFailed: visibilityValidators.failed,
-      userLoading,
-      previousAnswersPending: previousAnswers.previousAnswersPending,
+      pending: {
+        visibilityContext: visibilityContext.isLoading,
+        user: userLoading,
+        previousAnswers: previousAnswers.previousAnswersPending,
+      },
+      failed: {
+        visibilityContext: visibilityContext.failed,
+        visibilityValidators: visibilityValidators.failed,
+        previousAnswers: previousAnswers.previousAnswersFailed,
+      },
     },
   });
 
@@ -250,6 +270,7 @@ export function useWebFormState({
     setFormData,
     fieldLookup,
     validateFieldValue,
+    isElementCurrentlyVisible,
     applyFieldErrorUpdates,
   });
   const { uploadingAny } = imageUpload;
@@ -303,6 +324,7 @@ export function useWebFormState({
 
   return {
     schema,
+    content: { formId: id, formSnapshotId, actionId },
     readOnly,
     user,
     activeUserKey,
@@ -320,6 +342,8 @@ export function useWebFormState({
     setPublicAnswer,
     currentPageIndex,
     setCurrentPageIndex,
+    draftSettled,
+    draftFailed,
     saveFailed,
     formTopRef,
     fieldRef,
@@ -333,6 +357,7 @@ export function useWebFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
     updateField,
     imageUpload,

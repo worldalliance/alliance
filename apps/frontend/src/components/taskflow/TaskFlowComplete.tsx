@@ -3,6 +3,7 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type UserDto } from "@alliance/shared/client";
+import { completionSubtitle } from "@alliance/shared/lib/completionSubtitle";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
@@ -192,13 +193,14 @@ export default function TaskFlowComplete({
               style={recolor}
               {...KEEPS_OPEN}
             >
-              {taskFlow.completeUpdate}
+              {completionSubtitle(schema)}
             </p>
             <TaskAnswersCard
               className={cn("mt-6 border", palette.card, REDUCED_MOTION)}
               style={recolor}
               output={{ schema, answers }}
               user={user}
+              plain
               {...KEEPS_OPEN}
             />
           </div>

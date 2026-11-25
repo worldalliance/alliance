@@ -1,10 +1,12 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService, type WaitlistEmailType } from "src/mail/mail.service";
 import {
+  waitlistOwnLink,
   waitlistShareLink,
   waitlistUnsubscribeLink,
 } from "src/search/approutes";
@@ -115,7 +117,7 @@ export class WaitlistMailService {
       case MailClaim.ClaimedLastOfDay:
         await this.eventLogService.sendMessage({
           type: EventType.WaitlistMailCapReached,
-          message: `Public waitlist email reached its daily cap of ${dailyCap}. Confirmation and link emails stop until 00:00 UTC.`,
+          payload: { dailyCap },
           blob: null,
           userId: null,
         });
@@ -129,6 +131,7 @@ export class WaitlistMailService {
       recipient,
       emailType,
       url: waitlistShareLink(entry.code),
+      ownUrl: waitlistOwnLink(entry.code),
       unsubscribeUrl: waitlistUnsubscribeLink(entry.unsubscribeToken),
     });
   }
@@ -139,10 +142,7 @@ export class WaitlistMailService {
    */
   private claim(email: string, dailyCap: number): Promise<MailClaim> {
     return this.dataSource.transaction(async (manager) => {
-      await manager.query(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-        ["waitlist-mail-allowance"],
-      );
+      await lockUntilCommit(manager, "waitlist-mail-allowance");
       const [row] = await manager.query(
         `SELECT
           EXISTS (

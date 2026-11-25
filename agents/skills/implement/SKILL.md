@@ -15,7 +15,7 @@ Read the requirements and trace the existing behavior from its entry points thro
 
 Before editing, give a short progress update naming the code to reuse or change, the consumers and contracts affected, and the checks that will establish success. For new logic, name the closest existing implementation and why it fits or needs to remain separate, or report that the search found none.
 
-Before writing code, ask the questions the request leaves open, such as a missing product decision or conflicting requirements, per **Open questions** in the root `AGENTS.md`. A request that leaves none open goes straight to implementation.
+Before writing code, ask the questions the request leaves open, such as a missing product decision or conflicting requirements, and the points of handed-over material, such as a Linear issue, that `provenance` leaves open, per **Open questions** in the root `AGENTS.md`. A request that leaves none open goes straight to implementation.
 
 ## Implement
 
@@ -41,7 +41,7 @@ Local checks are targeted; CI runs the full matrix against the branch merged int
 
 ### Typechecking
 
-Run typechecking for affected packages that provide a typecheck script, following the root `AGENTS.md` Typechecking rule.
+Run typechecking for affected packages that provide a typecheck script, following the root `AGENTS.md` Typechecking rule. `scripts/` and `agents/` have no package of their own: `common`'s `typecheck` covers them, tsc and eslint both, except `agents/desktop`, which typechecks itself.
 
 ### Testing
 
@@ -49,9 +49,13 @@ Run typechecking for affected packages that provide a typecheck script, followin
 
 A test that restores an env var it saved, which may have been unset, does so with `setEnv` from `@alliance/common/set-env`. From Bun 1.4, as in Node, assigning `undefined` to a `process.env` key stores the string `"undefined"`, which leaks into later test files.
 
+### Server e2e
+
+Skip it when the change touches nothing under `server/`, `common/` or `kora-review/` and leaves the root `bun.lock` alone. Otherwise run only the suites that cover the changed code, from `server/`: `bun test ./test/<suite>.e2e-spec.ts --timeout 50000`. A `bun.lock` change also runs the server typecheck and `health-db.e2e-spec.ts`, which catch a dependency bump that breaks the e2e test app's startup or the database connection; one used only by modules that test app leaves out needs the server started to check. Never the whole set (`bun run test:e2e`); CI runs it in parallel shards. A full local run takes each of ~200 suites through a schema rebuild, and several worktrees doing that at once overload the machine until suite setup passes its 50s timeout. Never raise `--timeout`. A setup timeout while the machine is loaded (high `uptime` load average, other worktrees running checks) is usually that load: rerun the suites it hit once it is quieter. One that recurs on a quiet machine, or that `health-db.e2e-spec.ts` hits too, is the change breaking the test app's startup: debug it.
+
 ### Duplication
 
-`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
+`bun run dupcheck` from the repo root after a change, alongside typecheck. It lists copied code, and text of five or more words repeated verbatim, that the working tree has and its merge-base with `origin/main` doesn't. Both scans cover only the TypeScript and JavaScript files under the paths in `.jscpd.json`, which leave out `agents/` and `*.test.*`/`*.spec.*` files, so repeated prose in Markdown goes unflagged. Matches are exact, so it errs both ways. Some hits look alike but should stay separate, or are an edit inside existing duplication; judge each. It misses the same rule or message written differently, so a clean run leaves the search for an existing implementation still yours to do.
 
 The purpose of deduplication is to put things that should change together in one place. Reducing repeated code is a useful side effect, not the goal. Deduplicate when a future change should naturally apply to all copies together; keep things separate when they are likely to evolve independently.
 
@@ -67,4 +71,4 @@ The purpose of deduplication is to put things that should change together in one
 
 `actionlint` from the repo root after editing `.github/workflows/`; CI and deploys fail on its findings. Without `shellcheck` on `PATH` it skips the shell in `run:` blocks and still passes; `brew install actionlint shellcheck`.
 
-`shellcheck .github/actions/*/*.sh .github/scripts/*.sh scripts/deploy_backend.sh scripts/secrets_run.sh` after editing any of them; actionlint skips those scripts, and CI and deploys run it too.
+`shellcheck` on the scripts the "Lint Shell Scripts" step in `.github/workflows/actionlint.yaml` names, with that step's command, after editing any of them; actionlint skips those scripts, and CI and deploys run it too.

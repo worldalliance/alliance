@@ -72,6 +72,14 @@ export const STAGING_SITE_URL = `https://staging.${ALLIANCE_DOMAIN}`;
 export const isLegacyAllianceHost = (host: string): boolean =>
   hostnameMatchesDomain(host.split(":")[0], ALLIANCE_LEGACY_DOMAIN);
 
+/** The first of `urls` off {@link ALLIANCE_LEGACY_DOMAIN}, for a link meant to outlive it. */
+export const preferNewDomain = (
+  urls: readonly (string | undefined)[],
+): string | undefined =>
+  urls.find(
+    (url) => url !== undefined && !isLegacyAllianceHost(new URL(url).host),
+  );
+
 /**
  * What `POST /auth/login` refuses a migrated member with when they sign in on
  * {@link ALLIANCE_LEGACY_DOMAIN} for a cookie session. The web login matches on

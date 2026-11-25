@@ -73,6 +73,21 @@ git -C "$creator" rev-parse --verify --quiet "$from^{commit}" >/dev/null ||
 
 branch="${branch:-$name}"
 valid_branch "$branch" || die "invalid branch name: $branch"
+
+# with-secrets.sh reads the listed secrets from Parameter Store and refuses its
+# static_keys, repeated here, so a copy would only be a stale plaintext one.
+# AGENT_CHATS_AWS_* held the alliance-agent-chats user's key, which nothing
+# reads now. A contributor's server/.env holds its own generated values for
+# some listed secrets, which the worktree needs.
+team_secret_keys="$(bun -e 'const m = await Bun.file(Bun.argv.at(-1)).json(); console.log([...new Set(Object.values(m).flatMap((c) => { if (!Array.isArray(c.secrets) || c.secrets.some((k) => typeof k !== "string" || !k)) throw new Error("a consumer lacks a secrets list"); return c.secrets; }))].join("|"))' "$repo_root/scripts/dev-secrets.json")|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|AGENT_CHATS_AWS_[A-Z_]+" ||
+  die "could not read the secret names in scripts/dev-secrets.json"
+# Read as with-secrets.sh reads it, from the repo root, so server/bunfig.toml's
+# preload does not run. Bun skips a missing env file.
+contributor="$(cd "$repo_root" && bun "--env-file=$main_root/server/.env"{,.development,.local,.development.local} --print 'process.env.ALLIANCE_WITHOUT_TEAM_SECRETS ?? ""')" ||
+  die "could not read ALLIANCE_WITHOUT_TEAM_SECRETS from server/.env or its siblings"
+[[ -z "$contributor" || "$contributor" =~ ^(0|false|1|true)$ ]] ||
+  die "ALLIANCE_WITHOUT_TEAM_SECRETS is $contributor; set it to 1 or 0"
+
 worktree_dir="$(worktree_dir_for "$name")"
 db_name="$(db_name_for "$name")"
 test_db_name="${db_name}_test"
@@ -225,6 +240,7 @@ test_db=$test_db_name
 branch=$branch
 branch_created=$branch_created
 slot=$slot
+created=0
 RECORD
 mv "$staging" "$instances/$new_id"
 id="$new_id"
@@ -307,18 +323,23 @@ mkdir -p "$worktree_dir/.worktree"
 
 echo "==> copying local (untracked) config"
 
-# Drop copied port overrides that would point back to the source checkout. grep
-# exits 1 when every line is removed. Every file below is dotenv, so they all
-# go through this.
-strip_port_overrides() {
-  grep -Ev '^[[:space:]]*(export[[:space:]]+)?(SERVER_PORT|PORT|FRONTEND_PORT|ADMIN_PORT|MOBILE_PORT|ALLIANCE_DEV_[A-Z_]+_URL|EXPO_PUBLIC_ALLIANCE_API_PORT)=' "$1" || true
-}
-
+# Port overrides would point back to the source checkout.
+port_keys='SERVER_PORT|PORT|FRONTEND_PORT|ADMIN_PORT|MOBILE_PORT|ALLIANCE_DEV_[A-Z_]+_URL|EXPO_PUBLIC_ALLIANCE_API_PORT'
 for f in .env.devtools server/.env apps/frontend/.env.local apps/admin/.env.local apps/mobile/.env; do
   if [[ -f "$main_root/$f" ]]; then
     mkdir -p "$worktree_dir/$(dirname "$f")"
-    strip_port_overrides "$main_root/$f" > "$worktree_dir/$f"
-    echo "    $f"
+    dropped="$port_keys"
+    note=""
+    if [[ "$f" != server/.env ]] ||
+      [[ ! "$contributor" =~ ^(1|true)$ ]]; then
+      dropped="$dropped|$team_secret_keys"
+      secrets="$(bun "$repo_root/scripts/env-without-keys.ts" "$main_root/$f" "$team_secret_keys" --names)" ||
+        die "could not read $f"
+      [[ -n "$secrets" ]] && note=" (left out secrets $secrets)"
+    fi
+    bun "$repo_root/scripts/env-without-keys.ts" "$main_root/$f" "$dropped" > "$worktree_dir/$f" ||
+      die "could not copy $f"
+    echo "    $f$note"
   fi
 done
 
@@ -408,6 +429,7 @@ set_env_key ADMIN_URL "http://localhost:$admin_port" "$worktree_env"
 echo "==> bun install"
 (cd "$worktree_dir" && bun install 9>&-)
 
+set_record_field "$id" created 1
 created=1
 
 echo

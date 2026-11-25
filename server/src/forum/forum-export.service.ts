@@ -15,7 +15,8 @@ import remarkHtml from "remark-html";
 import { getImageSource } from "src/images/images.service";
 import { postUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
-import { env, requireEnv } from "../config/env";
+import { env } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 import { type Comment, loadedCommentAuthor } from "./entities/comment.entity";
 import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
@@ -31,9 +32,6 @@ export type PostExport = {
 @Injectable()
 export class ForumExportService {
   private readonly logger = new Logger(ForumExportService.name);
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
 
   constructor(
     private readonly forumAdminService: ForumAdminService,
@@ -98,7 +96,7 @@ export class ForumExportService {
   /** The bytes as a data uri, so the page carries the image itself. */
   private async getAttachment(key: string): Promise<string> {
     const object = await this.s3.send(
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      new GetObjectCommand({ Bucket: assetsBucket(), Key: key }),
     );
     if (!object.Body) {
       throw new Error("no body in the S3 response");

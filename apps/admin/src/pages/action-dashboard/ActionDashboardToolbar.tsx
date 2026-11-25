@@ -15,6 +15,7 @@ type ActionDashboardToolbarProps = {
   action: ParsedActionDto;
   actionExport: ActionExport;
   imageUploading: boolean;
+  unsaved: boolean;
   onDuplicate: () => Promise<void>;
   onArchive: () => Promise<void>;
 };
@@ -34,6 +35,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
     handleExportAction,
   },
   imageUploading,
+  unsaved,
   onDuplicate,
   onArchive,
 }) => {
@@ -61,19 +63,24 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
           color={ButtonColor.White}
           className="!px-3 !text-sm gap-x-1"
         >
-          Open Suite
+          Open suite
         </Button>
       )}
       <Button
         onClick={() => onDuplicate()}
-        disabled={imageUploading}
+        disabled={imageUploading || unsaved}
         title={imageUploading ? imageUploadingMessage : undefined}
         color={ButtonColor.White}
         className="!px-3 !text-sm gap-x-1"
       >
         <Copy className="h-5 w-5" />
-        Duplicate Action
+        Duplicate action
       </Button>
+      {unsaved && (
+        <span className="self-center text-sm text-amber-800">
+          Save your changes on Action details to duplicate this action.
+        </span>
+      )}
       <div className="relative">
         <Button
           onClick={handleExportActionOpen}
@@ -94,7 +101,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
                 onChange={(checked) => setExportActionEvents(checked)}
               />
               <LargeCheckbox
-                label="Task Form"
+                label="Task form"
                 checked={exportActionTaskForm}
                 onChange={(checked) => setExportActionTaskForm(checked)}
               />
@@ -122,7 +129,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
         color={ButtonColor.RedOutline}
         className="!px-3 !text-sm gap-x-1 bg-white hover:bg-red-50"
       >
-        {action.archived ? "Unarchive Action" : "Archive Action"}
+        {action.archived ? "Unarchive action" : "Archive action"}
       </Button>
     </div>
   );

@@ -18,6 +18,7 @@ import {
   useHomePageActions,
 } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
+import { useInvalidateHomeActionUpdates } from "@alliance/shared/lib/useActionUpdates";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import useHomeFeed, {
@@ -70,6 +71,7 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 export default function HomeScreen() {
   const resetHomeFeed = useResetHomeFeed();
   const invalidateTaskForms = useInvalidateTaskForms();
+  const invalidateHomeActionUpdates = useInvalidateHomeActionUpdates();
   const [refreshing, setRefreshing] = useState(false);
   const actionsQuery = useActionsQuery();
   const {
@@ -168,11 +170,17 @@ export default function HomeScreen() {
         refetch(),
         refetchGeneralUpdates(),
         invalidateTaskForms(),
+        invalidateHomeActionUpdates(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, refetchGeneralUpdates, invalidateTaskForms]);
+  }, [
+    refetch,
+    refetchGeneralUpdates,
+    invalidateTaskForms,
+    invalidateHomeActionUpdates,
+  ]);
 
   const scrollPageTo = useCallback((y: number, animated = true) => {
     scrollViewRef.current?.scrollTo({ y, animated });

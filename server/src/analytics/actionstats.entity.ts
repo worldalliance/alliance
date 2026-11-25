@@ -52,6 +52,10 @@ export class ActionStatsRecord {
   @ApiProperty({ description: "When these stats were last calculated" })
   lastCalculatedAt: Date;
 
+  /** Orders recomputations; one lands only over an older one. */
+  @Column({ type: "bigint", update: false, generated: "increment" })
+  computation: string;
+
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({
     nullable: true,

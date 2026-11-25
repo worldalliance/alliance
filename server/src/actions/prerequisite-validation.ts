@@ -4,6 +4,7 @@ import {
 } from "@alliance/common/prerequisite";
 import { R, type Result } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { ArrayContains, In, Raw, type EntityManager } from "typeorm";
 import { Action } from "./entities/action.entity";
 
@@ -91,9 +92,7 @@ function findCycleThrough(
 // after its own writes; taking it before one would deadlock against a writer
 // holding that row and waiting here.
 const lockPrerequisiteGraph = (em: EntityManager) =>
-  em.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
-    "action-prerequisites",
-  ]);
+  lockUntilCommit(em, "action-prerequisites");
 
 /**
  * Run inside the transaction that changed prerequisites or schedules, after

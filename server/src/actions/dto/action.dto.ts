@@ -97,6 +97,7 @@ export class ActionDto extends PickType(Action, [
   "shortDescription",
   "timeEstimate",
   "taskFormId",
+  "taskKind",
   "createdAt",
   "updatedAt",
   "isContractSigningAction",
@@ -189,6 +190,7 @@ export class ActionDto extends PickType(Action, [
     this.shortDescription = action.shortDescription;
     this.timeEstimate = action.timeEstimate;
     this.taskFormId = action.taskFormId;
+    this.taskKind = action.taskKind;
     this.createdAt = action.createdAt;
     this.updatedAt = action.updatedAt;
     this.isContractSigningAction = action.isContractSigningAction;
@@ -226,7 +228,9 @@ export class ActionDto extends PickType(Action, [
     this.events =
       action.events?.map((event) => new ActionEventDto(event)) || [];
     this.updates =
-      action.updates?.map((update) => new ActionUpdateDto(update)) || [];
+      action.updates?.map(
+        (actionUpdate) => new ActionUpdateDto({ actionUpdate }),
+      ) || [];
     this.canParticipate = extra?.canParticipate;
     this.shouldParticipate = extra?.shouldParticipate;
     this.userRelation = extra?.userRelation;
@@ -267,6 +271,7 @@ export class CreateActionDto extends IntersectionType(
       "timeEstimate",
       "customStatLabel",
       "taskFormId",
+      "taskKind",
       "customStatGoal",
       "forumParticipationPostId",
       "forumParticipationIncludeChildren",
@@ -375,6 +380,7 @@ export class ExportActionDto extends OmitType(Action, [
   "memberActionPhase",
   "status",
   "usersJoined",
+  "usersJoinedComputation",
   "usersCompleted",
   "formVariants",
   "legacyReviewers",

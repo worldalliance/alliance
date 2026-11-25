@@ -1,10 +1,11 @@
 import type { ActionUpdateDto } from "@alliance/shared/client";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { useHomeActionUpdates } from "@alliance/shared/lib/useActionUpdates";
 import { cn } from "@alliance/shared/styles/util";
 import type { ReactNode } from "react";
 import { href, Link } from "react-router";
-import { NOTIFICATIONS_PREVIEW_LIMIT } from "../lib/useNotificationActions";
 import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
+import LoadFailed from "./LoadFailed";
 
 const NO_UPDATES: ActionUpdateDto[] = [];
 
@@ -20,12 +21,9 @@ export default function HomeUpdatesSection({
     markOpened: (updateId: number) => void;
   }) => ReactNode;
 }) {
-  const {
-    query: { data, isLoading, isError },
-    isNew,
-    markOpened,
-  } = useHomeActionUpdates(NOTIFICATIONS_PREVIEW_LIMIT);
-  const updates = data ?? NO_UPDATES;
+  const { query, isNew, markOpened } = useHomeActionUpdates();
+  const updates = query.data ?? NO_UPDATES;
+  const failed = failedToLoad(query);
 
   return (
     <section
@@ -43,11 +41,18 @@ export default function HomeUpdatesSection({
         </Link>
       </div>
 
-      {isLoading && <p className="text-xs text-zinc-400">Loading updates…</p>}
-      {isError && !isLoading && (
-        <p className="text-xs text-red-400">Could not load updates.</p>
+      {failed ? (
+        <LoadFailed
+          message="Couldn't load updates."
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
+        />
+      ) : (
+        query.isPending && (
+          <p className="text-xs text-zinc-400">Loading updates…</p>
+        )
       )}
-      {!isLoading && !isError && updates.length === 0 && (
+      {query.isSuccess && updates.length === 0 && (
         <p className="text-xs text-zinc-400">No recent updates yet.</p>
       )}
       {updates.length > 0 && children({ updates, isNew, markOpened })}

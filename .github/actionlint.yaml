@@ -1,0 +1,7 @@
+# TODO: drop this once an actionlint release knows concurrency's `queue` key
+# (https://github.com/rhysd/actionlint/issues/654), and bump the pin in
+# workflows/actionlint.yaml.
+paths:
+  .github/workflows/deploy.yaml:
+    ignore:
+      - 'unexpected key "queue" for "concurrency" section'

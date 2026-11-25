@@ -1,46 +1,38 @@
-import { ExceptionEvent } from "@alliance/common/analytics";
-import { R } from "@alliance/common/result";
-import { captureException } from "@alliance/shared/lib/analytics";
+import { useUnstableGlobalHref } from "expo-router";
 import * as Updates from "expo-updates";
 import { X } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, AppState, Pressable, View } from "react-native";
+import {
+  AccessibilityInfo,
+  AppState,
+  Pressable,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SPLASH_RELOAD_SCREEN } from "../constants/splash";
 import { startForegroundUpdateChecks } from "../lib/foregroundUpdateChecks";
 import { onAppForegrounded } from "../lib/onAppForegrounded";
-import { OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { downloadUpdateNow, OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { restartIntoUpdate } from "../lib/restartIntoUpdate";
+import { useResumeRestarts } from "../lib/resumeRestarts";
 import { colors } from "../lib/style/colors";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
+import { RESTART_FAILED_MESSAGE } from "./updateCopy";
 
 const READY_MESSAGE = "A new version of Alliance is ready.";
 
-async function downloadAvailableUpdate() {
-  const checked = await R.fromPromise(Updates.checkForUpdateAsync());
-  if (R.isFailure(checked)) {
-    captureException(ExceptionEvent.OtaForegroundUpdateFailed, checked.error, {
-      step: "check",
-    });
-    return;
-  }
-  if (!checked.value.isAvailable) return;
-  const fetched = await R.fromPromise(Updates.fetchUpdateAsync());
-  if (R.isFailure(fetched)) {
-    captureException(ExceptionEvent.OtaForegroundUpdateFailed, fetched.error, {
-      step: "download",
-    });
-  }
-}
-
 /**
- * Downloads updates published while the app is running and, once one is
- * ready, offers a restart into it. Without the tap it applies on the next cold
- * start.
+ * Offers a restart into a downloaded update, whether expo-updates fetched it at
+ * launch or a later check did while the app was running. Without the tap it
+ * applies on the next cold start, or sooner on a return from a long time in
+ * the background unless a screen reader is on, the member touches or presses
+ * something first, is typing, or is on a screen or request that blocks it.
  */
 const OtaUpdateBanner = () => {
   const { isUpdatePending } = Updates.useUpdates();
   const insets = useSafeAreaInsets();
+  const route = useUnstableGlobalHref();
   const [dismissed, setDismissed] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [restartFailed, setRestartFailed] = useState(false);
@@ -50,9 +42,23 @@ const OtaUpdateBanner = () => {
     if (!OTA_UPDATES_ENABLED) return;
     return startForegroundUpdateChecks({
       appState: AppState,
-      check: downloadAvailableUpdate,
+      check: downloadUpdateNow,
     });
   }, []);
+
+  useResumeRestarts({
+    enabled: OTA_UPDATES_ENABLED,
+    appState: AppState,
+    isUpdatePending,
+    route,
+    inputFocused: () => TextInput.State.currentlyFocusedInput() !== null,
+    // expo-updates queues a reload behind a check or download under way,
+    // with the screen still live, so the restart waits for one and decides
+    // again once it ends.
+    settle: () => downloadUpdateNow.current() ?? Promise.resolve(),
+    screenReaderEnabled: () => AccessibilityInfo.isScreenReaderEnabled(),
+    restart: (to) => void restartIntoUpdate(to),
+  });
 
   useEffect(() => onAppForegrounded(AppState, () => setDismissed(false)), []);
 
@@ -65,11 +71,7 @@ const OtaUpdateBanner = () => {
   const restart = async () => {
     setRestarting(true);
     setRestartFailed(false);
-    const result = await R.fromPromise(
-      Updates.reloadAsync({ reloadScreenOptions: SPLASH_RELOAD_SCREEN }),
-    );
-    if (R.isFailure(result)) {
-      captureException(ExceptionEvent.OtaRestartFailed, result.error);
+    if (!(await restartIntoUpdate(route))) {
       setRestarting(false);
       setRestartFailed(true);
     }
@@ -83,9 +85,7 @@ const OtaUpdateBanner = () => {
       <View className="flex-1">
         <Text weight={FontWeight.Medium}>{READY_MESSAGE}</Text>
         {restartFailed && (
-          <Text className="text-sm text-red-600">
-            Couldn’t restart. Close and reopen Alliance to update.
-          </Text>
+          <Text className="text-sm text-red-600">{RESTART_FAILED_MESSAGE}</Text>
         )}
       </View>
       <Button

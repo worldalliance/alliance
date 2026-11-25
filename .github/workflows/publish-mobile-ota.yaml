@@ -16,6 +16,14 @@ on:
         description: production or staging; names the EAS channel and the app variant
         type: string
         required: true
+      commit:
+        description: Full SHA of the commit to publish.
+        type: string
+        required: true
+      guard-attempt:
+        description: The run attempt in which deploy-guard judged the commit; any other attempt refuses to publish.
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       ref:
@@ -29,11 +37,17 @@ jobs:
     environment: ${{ inputs.environment || 'production' }}
     permissions:
       contents: read
-      actions: read
+      deployments: read
       id-token: write
     env:
       APP_VARIANT: ${{ inputs.environment || 'production' }}
     steps:
+      - name: Refuse a partial re-run
+        if: inputs.guard-attempt && inputs.guard-attempt != github.run_attempt
+        run: |
+          echo "::error::The guard last ran in attempt ${{ inputs.guard-attempt }}, so it hasn't judged whether this commit is stale. Use Re-run all jobs."
+          exit 1
+
       # release/ is the commit that ships; on dispatch the root is main, for its
       # actions and live fingerprint baseline.
       - name: Checkout Code
@@ -42,7 +56,7 @@ jobs:
       - name: Checkout Release
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.ref || inputs.commit }}
           path: release
 
       - name: Require a deployed production commit dispatched from main
@@ -59,7 +73,11 @@ jobs:
             echo "Dispatch from main, whose fingerprint baseline is live." >&2
             exit 1
           fi
-          live=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yaml/runs?branch=production&status=success&per_page=1" --jq '.workflow_runs[0].head_sha')
+          live=$(bash .github/actions/deploy-guard/live-commit.sh production)
+          if [ -z "$live" ]; then
+            echo "No successful production deploy is recorded in production-live." >&2
+            exit 1
+          fi
           status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$REF...$live" --jq .status)
           if [ "$status" != ahead ] && [ "$status" != identical ]; then
             echo "$REF is not in the last successful production deploy, $live (compare status: $status)." >&2

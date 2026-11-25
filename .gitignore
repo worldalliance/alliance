@@ -31,7 +31,6 @@ yarn-error.log*
 *storybook.log
 
 /terraform/.terraform/
-/terraform/.terraform.lock.hcl
 
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
@@ -51,7 +50,7 @@ uploads/
 
 .yarn/*
 **/tsconfig.tsbuildinfo
-/db_dumps/
+db_dumps/
 
 shared/tsconfig.tsbuildinfo
 

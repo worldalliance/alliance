@@ -1,5 +1,5 @@
-import { setEnv } from "@alliance/common/set-env";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { setTestWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { getSiteUrl } from "./config";
 
@@ -10,12 +10,12 @@ declare global {
 }
 
 describe("getSiteUrl", () => {
-  const priorAlt = process.env.VITE_ALT_APP_URL;
   beforeEach(() => {
-    process.env.VITE_ALT_APP_URL = "https://staging.thealliance.org";
+    setTestWebRuntimeConfig({
+      VITE_ALT_APP_URL: "https://staging.thealliance.org",
+    });
   });
   afterEach(() => {
-    setEnv("VITE_ALT_APP_URL", priorAlt);
     window.happyDOM.setURL("http://localhost:3000/");
   });
 
@@ -25,7 +25,7 @@ describe("getSiteUrl", () => {
     expect(getSiteUrl()).toBe("https://staging.thealliance.org");
   });
 
-  test("gives the build-time site on the legacy domain's admin", () => {
+  test("gives the configured site on the legacy domain's admin", () => {
     window.happyDOM.setURL("https://admin.staging.worldalliance.org/actions");
 
     expect(getSiteUrl()).not.toBe("https://staging.thealliance.org");

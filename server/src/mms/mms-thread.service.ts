@@ -1,0 +1,520 @@
+import { NodeEnv } from "@alliance/common/node-env";
+import { isCanonicalE164 } from "@alliance/common/phone";
+import { R, type Result } from "@alliance/common/result";
+import {
+  NON_MEMBER_REPLY_WINDOW_DAYS,
+  StaffTextConflict,
+} from "@alliance/common/staffText";
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { milliseconds } from "date-fns";
+import { env } from "src/config/env";
+import { OptOutSource } from "src/mms/opt-out-source";
+import { User } from "src/user/entities/user.entity";
+import { isAnonymizedPhoneNumber } from "src/utils/phone";
+import type { Repository } from "src/utils/Repository";
+import { In, MoreThan } from "typeorm";
+import {
+  MmsInboxService,
+  type NumberMark,
+  ReplyState,
+} from "./mms-inbox.service";
+import { MmsNumberService } from "./mms-number.service";
+import { MmsThread } from "./mms-thread.entity";
+import { MmsUnsubService } from "./mms-unsub.service";
+import { Mms, MmsDirection } from "./mms.entity";
+import { MmsService, type StaffSendFailure } from "./mms.service";
+
+export type MmsThreadView = {
+  threadId: string | null;
+  phoneNumber: string | null;
+  textable: boolean;
+  optedOut: boolean;
+  replyState: ReplyState;
+  messages: Mms[];
+  hasOlder: boolean;
+};
+
+export type NumberThread = {
+  thread: MmsThread;
+  members: User[];
+  textable: boolean;
+  optedOut: boolean;
+  replyWindowClosed: boolean;
+  replyState: ReplyState;
+  messages: Mms[];
+  hasOlder: boolean;
+};
+
+export const THREAD_PAGE_SIZE = 100;
+
+const THREAD_RELATIONS = {
+  sentBy: true,
+  media: true,
+  threadEvents: { markedBy: true },
+} as const;
+
+export enum ThreadRefusal {
+  MemberNotFound = "member_not_found",
+  TextNotInThread = "text_not_in_thread",
+  ThreadNotFound = "thread_not_found",
+}
+
+export type ThreadMark = { throughId: number; adminId: number };
+
+type StaffText = { body: string; adminId: number; afterId?: number | null };
+
+export enum StaffTextRefusal {
+  NoPhoneNumber = "no_phone_number",
+  InvalidNumber = "invalid_number",
+  OptedOut = "opted_out",
+  ReplyWindowClosed = "reply_window_closed",
+}
+
+/** Staging's anonymized numbers pass there, so staff texting can be tried on
+ * staging; in production they are unassigned 555 numbers no text would reach. */
+const ANONYMIZED_NUMBERS_TEXTABLE: Record<NodeEnv, boolean> = {
+  [NodeEnv.Production]: false,
+  [NodeEnv.Staging]: true,
+  [NodeEnv.Development]: true,
+  [NodeEnv.Test]: true,
+};
+
+const textableNumber = (phoneNumber: string): boolean =>
+  isCanonicalE164(phoneNumber) ||
+  (ANONYMIZED_NUMBERS_TEXTABLE[env("NODE_ENV")] &&
+    isAnonymizedPhoneNumber(phoneNumber));
+
+declare const textable: unique symbol;
+type TextableNumber = string & { readonly [textable]: true };
+declare const reachable: unique symbol;
+type ReachableNumber = TextableNumber & { readonly [reachable]: true };
+
+const checkTextable = (
+  phoneNumber: string,
+): Result<TextableNumber, StaffTextRefusal.InvalidNumber> =>
+  textableNumber(phoneNumber)
+    ? // Safe: textableNumber just checked it, and only here brands a number.
+      R.success(phoneNumber as TextableNumber)
+    : R.failure(StaffTextRefusal.InvalidNumber);
+
+const memberNumber = (
+  user: User,
+): Result<
+  TextableNumber,
+  StaffTextRefusal.NoPhoneNumber | StaffTextRefusal.InvalidNumber
+> =>
+  user.phoneNumber
+    ? checkTextable(user.phoneNumber)
+    : R.failure(StaffTextRefusal.NoPhoneNumber);
+
+@Injectable()
+export class MmsThreadService {
+  constructor(
+    @InjectRepository(Mms)
+    private readonly mmsRepository: Repository<Mms>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(MmsThread)
+    private readonly threadRepository: Repository<MmsThread>,
+    private readonly mmsService: MmsService,
+    private readonly mmsUnsubService: MmsUnsubService,
+    private readonly mmsNumberService: MmsNumberService,
+    private readonly mmsInboxService: MmsInboxService,
+  ) {}
+
+  /** The newest page of texts sent before the `before` text, oldest first. */
+  async getThread(params: {
+    userId: number;
+    before?: number;
+  }): Promise<Result<MmsThreadView, ThreadRefusal>> {
+    const user = await this.findMember(params.userId);
+    if (!user.ok) return user;
+    const { phoneNumber } = user.value;
+    const [page, thread, optedOut] = await Promise.all([
+      this.threadPage(phoneNumber, params.before),
+      phoneNumber ? this.threadRepository.findOneBy({ phoneNumber }) : null,
+      phoneNumber ? this.mmsNumberService.optedOut(phoneNumber) : false,
+    ]);
+    if (!page.ok) return page;
+    return R.success({
+      threadId: thread?.id ?? null,
+      phoneNumber,
+      textable: memberNumber(user.value).ok,
+      optedOut,
+      replyState: phoneNumber
+        ? await this.mmsInboxService.replyState(phoneNumber)
+        : ReplyState.Answered,
+      ...page.value,
+    });
+  }
+
+  private async inThread(phoneNumber: string | null, id: number) {
+    return (
+      phoneNumber !== null &&
+      this.mmsRepository.exists({
+        where: { id, memberPhoneNumber: phoneNumber },
+        withDeleted: true,
+      })
+    );
+  }
+
+  async getNumberThread(params: {
+    threadId: string;
+    before?: number;
+  }): Promise<Result<NumberThread, ThreadRefusal>> {
+    const thread = await this.findThread(params.threadId);
+    if (!thread.ok) return thread;
+    const { phoneNumber } = thread.value;
+    const [page, members, optedOut, replyState] = await Promise.all([
+      this.threadPage(phoneNumber, params.before),
+      this.membersOn(phoneNumber),
+      this.mmsNumberService.optedOut(phoneNumber),
+      this.mmsInboxService.replyState(phoneNumber),
+    ]);
+    if (!page.ok) return page;
+    return R.success({
+      thread: thread.value,
+      members,
+      textable: textableNumber(phoneNumber),
+      optedOut,
+      replyState,
+      replyWindowClosed: await this.replyWindowClosed({
+        phoneNumber,
+        members,
+      }),
+      ...page.value,
+    });
+  }
+
+  private async threadPage(
+    phoneNumber: string | null,
+    before: number | undefined,
+  ): Promise<
+    Result<
+      Pick<MmsThreadView, "messages" | "hasOlder">,
+      ThreadRefusal.TextNotInThread
+    >
+  > {
+    const beforeInThread =
+      before === undefined || (await this.inThread(phoneNumber, before));
+    if (!beforeInThread) return R.failure(ThreadRefusal.TextNotInThread);
+    if (!phoneNumber) return R.success({ messages: [], hasOlder: false });
+    const query = this.mmsRepository
+      .createQueryBuilder("mms")
+      .select("mms.id")
+      .where("mms.memberPhoneNumber = :phoneNumber", { phoneNumber })
+      .orderBy("mms.createdAt", "DESC")
+      .addOrderBy("mms.id", "DESC")
+      .limit(THREAD_PAGE_SIZE + 1);
+    if (before !== undefined) {
+      query.andWhere(
+        `(mms."createdAt", mms.id) < (SELECT "createdAt", id FROM mms WHERE id = :before)`,
+        { before },
+      );
+    }
+    const ids = (await query.getMany()).map((m) => m.id);
+    const messages = await this.mmsRepository.find({
+      where: { id: In(ids.slice(0, THREAD_PAGE_SIZE)) },
+      relations: THREAD_RELATIONS,
+      order: { createdAt: "ASC", id: "ASC", media: { id: "ASC" } },
+    });
+    return R.success({ messages, hasOlder: ids.length > THREAD_PAGE_SIZE });
+  }
+
+  /** A member's number can change while staff write, so `afterId` missing
+   * from their current thread means it did. */
+  async send(
+    params: StaffText & { userId: number },
+  ): Promise<
+    Result<
+      Mms,
+      | ThreadRefusal.MemberNotFound
+      | StaffTextRefusal
+      | StaffTextConflict
+      | StaffSendFailure
+    >
+  > {
+    const { userId, ...rest } = params;
+    const user = await this.findMember(userId);
+    if (!user.ok) return user;
+    return this.sendStaffText({
+      ...rest,
+      to: await this.staffTextable(memberNumber(user.value)),
+      notInThread: StaffTextConflict.NumberChanged,
+    });
+  }
+
+  async sendInThread(
+    params: StaffText & { threadId: string },
+  ): Promise<
+    Result<
+      Mms,
+      | ThreadRefusal.ThreadNotFound
+      | ThreadRefusal.TextNotInThread
+      | StaffTextRefusal
+      | StaffTextConflict.NewerTexts
+      | StaffSendFailure
+    >
+  > {
+    const { threadId, ...rest } = params;
+    const thread = await this.findThread(threadId);
+    if (!thread.ok) return thread;
+    return this.sendStaffText({
+      ...rest,
+      to: await this.replyableNumber(thread.value.phoneNumber),
+      notInThread: ThreadRefusal.TextNotInThread,
+    });
+  }
+
+  async markOptedOut(params: {
+    userId: number;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.MemberNotFound | StaffTextRefusal>> {
+    const user = await this.findMember(params.userId);
+    if (!user.ok) return user;
+    return this.markNumberOptedOut({
+      number: memberNumber(user.value),
+      adminId: params.adminId,
+    });
+  }
+
+  async markOptedOutInThread(params: {
+    threadId: string;
+    adminId: number;
+  }): Promise<Result<void, ThreadRefusal.ThreadNotFound | StaffTextRefusal>> {
+    const thread = await this.findThread(params.threadId);
+    if (!thread.ok) return thread;
+    return this.markNumberOptedOut({
+      number: checkTextable(thread.value.phoneNumber),
+      adminId: params.adminId,
+    });
+  }
+
+  /** Refuses the text when `afterId`, the newest text the sender saw, isn't
+   * in the thread, or when the thread has a text newer than it, or any text
+   * when it is null, other than the sender's own.
+   * BACKCOMPAT(staff-text-after-id): without `afterId` it sends regardless. */
+  private async sendStaffText<NotInThread>(
+    params: StaffText & {
+      to: Result<ReachableNumber, StaffTextRefusal>;
+      notInThread: NotInThread;
+    },
+  ): Promise<
+    Result<
+      Mms,
+      | StaffTextRefusal
+      | StaffTextConflict.NewerTexts
+      | NotInThread
+      | StaffSendFailure
+    >
+  > {
+    const { to, body, adminId, afterId } = params;
+    if (!to.ok) return to;
+    if (afterId !== undefined) {
+      if (afterId !== null && !(await this.inThread(to.value, afterId))) {
+        return R.failure(params.notInThread);
+      }
+      if (await this.newerText({ phoneNumber: to.value, afterId, adminId })) {
+        return R.failure(StaffTextConflict.NewerTexts);
+      }
+    }
+    const threadId = await this.mmsNumberService.ensureThread(to.value);
+    const sent = await this.mmsService.sendStaffText({
+      to: to.value,
+      threadId,
+      body,
+      sentById: adminId,
+    });
+    if (!sent.ok) return sent;
+    const mms = await this.mmsRepository.findOneOrFail({
+      where: { id: sent.value.id },
+      relations: THREAD_RELATIONS,
+    });
+    return R.success(mms);
+  }
+
+  /** Newer means inserted later: a staff text's createdAt is taken before its
+   * Twilio call, so a reply saved after `afterId` can sort before it. The
+   * sender's own texts aren't news to them, so a draft written while their
+   * last send was in flight isn't refused over it. */
+  private async newerText(params: {
+    phoneNumber: string;
+    afterId: number | null;
+    adminId: number;
+  }): Promise<boolean> {
+    const { phoneNumber, afterId, adminId } = params;
+    const query = this.mmsRepository
+      .createQueryBuilder("mms")
+      .where("mms.memberPhoneNumber = :phoneNumber", { phoneNumber })
+      .andWhere("mms.sentById IS DISTINCT FROM :adminId", { adminId });
+    if (afterId !== null) query.andWhere("mms.id > :afterId", { afterId });
+    return query.getExists();
+  }
+
+  private async markNumberOptedOut(params: {
+    number: Result<TextableNumber, StaffTextRefusal>;
+    adminId: number;
+  }): Promise<Result<void, StaffTextRefusal>> {
+    const to = await this.staffTextable(params.number);
+    if (!to.ok) return to;
+    await this.mmsUnsubService.unsubFromMms(to.value, {
+      kind: OptOutSource.Staff,
+      adminId: params.adminId,
+    });
+    return R.success(undefined);
+  }
+
+  async markHandled(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<void, ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.memberMark(params), (mark) =>
+      this.mmsInboxService.markHandled(mark),
+    );
+  }
+
+  async markNeedsReply(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<void, ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.memberMark(params), (mark) =>
+      this.mmsInboxService.markNeedsReply(mark),
+    );
+  }
+
+  async markHandledInThread(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<void, ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.threadMark(params), (mark) =>
+      this.mmsInboxService.markHandled(mark),
+    );
+  }
+
+  async markNeedsReplyInThread(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<void, ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread>
+  > {
+    return this.mark(await this.threadMark(params), (mark) =>
+      this.mmsInboxService.markNeedsReply(mark),
+    );
+  }
+
+  private async mark<E>(
+    mark: Result<NumberMark, E>,
+    apply: (mark: NumberMark) => Promise<void>,
+  ): Promise<Result<void, E>> {
+    if (!mark.ok) return mark;
+    await apply(mark.value);
+    return R.success(undefined);
+  }
+
+  private async memberMark(
+    params: ThreadMark & { userId: number },
+  ): Promise<
+    Result<
+      NumberMark,
+      ThreadRefusal.MemberNotFound | ThreadRefusal.TextNotInThread
+    >
+  > {
+    const { userId, ...mark } = params;
+    const user = await this.findMember(userId);
+    if (!user.ok) return user;
+    return this.markOn(user.value.phoneNumber, mark);
+  }
+
+  private async threadMark(
+    params: ThreadMark & { threadId: string },
+  ): Promise<
+    Result<
+      NumberMark,
+      ThreadRefusal.ThreadNotFound | ThreadRefusal.TextNotInThread
+    >
+  > {
+    const { threadId, ...mark } = params;
+    const thread = await this.findThread(threadId);
+    if (!thread.ok) return thread;
+    return this.markOn(thread.value.phoneNumber, mark);
+  }
+
+  private async markOn(
+    phoneNumber: string | null,
+    mark: ThreadMark,
+  ): Promise<Result<NumberMark, ThreadRefusal.TextNotInThread>> {
+    if (!phoneNumber || !(await this.inThread(phoneNumber, mark.throughId))) {
+      return R.failure(ThreadRefusal.TextNotInThread);
+    }
+    return R.success({ ...mark, phoneNumber });
+  }
+
+  private async staffTextable(
+    number: Result<TextableNumber, StaffTextRefusal>,
+  ): Promise<Result<ReachableNumber, StaffTextRefusal>> {
+    if (!number.ok) return number;
+    if (await this.mmsNumberService.optedOut(number.value)) {
+      return R.failure(StaffTextRefusal.OptedOut);
+    }
+    // Safe: the number just passed the opt-out check, and only here brands one.
+    return R.success(number.value as ReachableNumber);
+  }
+
+  /** A member's number, or a non-member's that texted within the window.
+   * Opt-out is checked first, since staff can't wait it out as they can the
+   * window. */
+  private async replyableNumber(
+    phoneNumber: string,
+  ): Promise<Result<ReachableNumber, StaffTextRefusal>> {
+    const number = await this.staffTextable(checkTextable(phoneNumber));
+    if (!number.ok) return number;
+    const members = await this.membersOn(phoneNumber);
+    if (await this.replyWindowClosed({ phoneNumber, members })) {
+      return R.failure(StaffTextRefusal.ReplyWindowClosed);
+    }
+    return number;
+  }
+
+  private async replyWindowClosed(params: {
+    phoneNumber: string;
+    members: User[];
+  }): Promise<boolean> {
+    const { phoneNumber, members } = params;
+    if (members.length > 0) return false;
+    const since = new Date(
+      Date.now() - milliseconds({ days: NON_MEMBER_REPLY_WINDOW_DAYS }),
+    );
+    return !(await this.mmsRepository.exists({
+      where: {
+        memberPhoneNumber: phoneNumber,
+        direction: MmsDirection.Inbound,
+        createdAt: MoreThan(since),
+      },
+    }));
+  }
+
+  private async membersOn(phoneNumber: string): Promise<User[]> {
+    return (
+      (await this.mmsInboxService.membersByNumber([phoneNumber])).get(
+        phoneNumber,
+      ) ?? []
+    );
+  }
+
+  private async findMember(
+    userId: number,
+  ): Promise<Result<User, ThreadRefusal.MemberNotFound>> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    return user ? R.success(user) : R.failure(ThreadRefusal.MemberNotFound);
+  }
+
+  private async findThread(
+    threadId: string,
+  ): Promise<Result<MmsThread, ThreadRefusal.ThreadNotFound>> {
+    const thread = await this.threadRepository.findOneBy({ id: threadId });
+    return thread ? R.success(thread) : R.failure(ThreadRefusal.ThreadNotFound);
+  }
+}

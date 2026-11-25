@@ -4,7 +4,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import {
-  resolveFormValue,
+  answerField,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { type FieldErrorUpdater } from "@alliance/shared/forms/useFormValidation";
@@ -19,6 +19,7 @@ export function useFormEditing({
   setFormData,
   fieldLookup,
   validateFieldValue,
+  isElementCurrentlyVisible,
   applyFieldErrorUpdates,
 }: {
   readOnly: boolean;
@@ -30,6 +31,7 @@ export function useFormEditing({
   ) => void;
   fieldLookup: Map<string, AnyField>;
   validateFieldValue: FormVisibility["validateFieldValue"];
+  isElementCurrentlyVisible: FormVisibility["isElementCurrentlyVisible"];
   applyFieldErrorUpdates: FieldErrorUpdater;
 }) {
   const ensureStarted = () => {
@@ -45,10 +47,15 @@ export function useFormEditing({
     if (readOnly) return;
     ensureStarted();
     setFormData((prev) => {
-      const next = {
-        ...prev,
-        [fieldId]: resolveFormValue(value, prev[fieldId]),
-      };
+      const { next, clearedErrors } = answerField({
+        prev,
+        fieldId,
+        value,
+        fields: fieldLookup.values(),
+        isVisible: isElementCurrentlyVisible,
+        validate: validateFieldValue,
+      });
+      applyFieldErrorUpdates(clearedErrors);
       const fieldDefinition = fieldLookup.get(fieldId);
       if (fieldDefinition) {
         const nextValue = next[fieldId];
@@ -59,9 +66,13 @@ export function useFormEditing({
               ? null
               : validateFieldValue(fieldDefinition, nextValue, next);
           applyFieldErrorUpdates({ [fieldId]: validationResult });
-        } else if (fieldDefinition.kind === "ranking") {
+        } else if (
+          fieldDefinition.kind === "ranking" ||
+          fieldDefinition.kind === "conversation"
+        ) {
           // Don't flag partial rankings while the user is still placing
-          // items; page validation on submit enforces completeness.
+          // items, or a required note before its box appears; page validation
+          // on submit enforces completeness.
           applyFieldErrorUpdates({ [fieldId]: null });
         } else {
           const requiredError = validateFieldValue(

@@ -1,4 +1,5 @@
 import type { Result } from "../../../../../common/src/result";
+import type { AgentEvent } from "../../shared/agent-event";
 
 export enum ImageMediaType {
   Png = "image/png",
@@ -17,42 +18,16 @@ export type AgentMessage = {
   images: readonly ImageInput[];
 };
 
-export enum AgentEventKind {
-  AssistantText = "assistant_text",
-  AssistantTextDelta = "assistant_text_delta",
-  ToolStarted = "tool_started",
-  ToolFinished = "tool_finished",
-  TurnEnded = "turn_ended",
-  Error = "error",
-}
-
-/** ToolStarted's name and input differ by CLI, so they are for generic display only. */
-export type AgentEvent =
-  | { kind: AgentEventKind.AssistantText; text: string }
-  | { kind: AgentEventKind.AssistantTextDelta; text: string }
-  | {
-      kind: AgentEventKind.ToolStarted;
-      toolCallId: string;
-      name: string;
-      input: unknown;
-    }
-  | {
-      kind: AgentEventKind.ToolFinished;
-      toolCallId: string;
-      output: string;
-      isError: boolean;
-    }
-  | { kind: AgentEventKind.TurnEnded }
-  | { kind: AgentEventKind.Error; message: string };
-
 export type AgentEventListener = (event: AgentEvent) => void;
 
-/** One conversation with a CLI in one worktree. Every turn ends with exactly one TurnEnded event, an interrupted or failed one included, and it closes any tool still open, since a ToolStarted can go without a ToolFinished. Every other event arrives during a turn, so a CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way; a caller recovers from any Error by resuming, which returns this same session while it is still live. A text block arrives as any number of AssistantTextDelta events, each extending it, then one AssistantText holding the whole block, which replaces those deltas. TurnEnded also closes a block left without its AssistantText, as an interrupted turn can do. */
+/** One conversation with a CLI in one worktree, whose turns emit AgentEvents. A CLI that exits between turns is reported on the next send, as Error then TurnEnded. A session whose CLI has exited is no longer live, and its sends keep reporting that way. Resume returns a new live session after an Error with needsResume, and this same session while it is still live. */
 export interface AgentSession {
   /** The CLI's own session id, unchanged by resume. */
   readonly id: string;
   /** True from a successful send until the turn's TurnEnded, whose listeners can already send again. */
   readonly turnRunning: boolean;
+  /** Resolves true once this session's CLI has read its first message, or false if the CLI exits before that. A started session's CLI keeps a transcript from that point; a resumed session's transcript already exists, so for it this says only whether its CLI read a message. */
+  readonly firstMessageRead: Promise<boolean>;
   /** Fails while a turn is running. Emits no event before returning. */
   send(message: AgentMessage): Result<void, Error>;
   /** Asks the running turn to stop. Emits no event before returning, and send fails until the turn's TurnEnded. The interrupt itself emits no Error. A no-op between turns. */
@@ -70,4 +45,6 @@ export interface AgentBackend {
     cwd: string;
     sessionId: string;
   }): Promise<Result<AgentSession, Error>>;
+  /** Resolves once each CLI whose session failed to open, and so was never returned, has exited, including one that fails while this waits. */
+  settled(): Promise<void>;
 }

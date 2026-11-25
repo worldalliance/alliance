@@ -141,6 +141,7 @@ const ActionFormFields: React.FC<
             value={(form as any)[f.name] ?? ""}
             onChange={onInputChange}
             rows={f.rows || 3}
+            required={f.required}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
         </div>
@@ -205,7 +206,7 @@ const ActionFormFields: React.FC<
         <label
           key={String(f.name)}
           className={cn(
-            "flex items-start justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors",
+            "relative flex items-start justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors",
             isChecked
               ? "border-blue-400 bg-blue-50"
               : "border-gray-200 hover:border-gray-300 bg-white",

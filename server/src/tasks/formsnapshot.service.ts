@@ -1,3 +1,4 @@
+import type { FormSchema } from "@alliance/common/forms/form-schema";
 import {
   memberSchema,
   type SchemaMember,
@@ -15,14 +16,28 @@ import {
   SNAPSHOT_HISTORY_OWNERS,
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
-import { memberSnapshot } from "./form-snapshot-schema";
-import { servedSchema, withServedVideoSources } from "./served-schema";
+import { formSchemaOf } from "./form-snapshot-schema";
+import {
+  servedSchema,
+  withImageUrls,
+  withServedVideoSources,
+} from "./served-schema";
 
 export function hashFormSchema(schema: Record<string, unknown>): string {
   return createHash("sha256")
     .update(jsonStableStringify(schema) ?? "")
     .digest("hex");
 }
+
+const servedShapes = (served: FormSchema): FormSchema[] => [
+  served,
+  withImageUrls(served),
+];
+
+const servedShapeHashes = (served: FormSchema, member: SchemaMember) =>
+  servedShapes(served).map((shape) =>
+    hashFormSchema(memberSchema(shape, member)),
+  );
 
 @Injectable()
 export class FormSnapshotService {
@@ -111,10 +126,11 @@ export class FormSnapshotService {
     }
     const echoed = withServedVideoSources(dto.schemaSnapshot);
     const served = loadedFormSnapshot(form);
+    const schema = formSchemaOf(served);
     const echoedHash = hashFormSchema(echoed);
     if (
-      echoedHash === hashFormSchema(served.schema) ||
-      echoedHash === hashFormSchema(memberSnapshot(served, member).schema)
+      servedShapes(schema).map(hashFormSchema).includes(echoedHash) ||
+      servedShapeHashes(schema, member).includes(echoedHash)
     ) {
       return served;
     }
@@ -125,15 +141,16 @@ export class FormSnapshotService {
     });
   }
 
-  // Snapshot rows never change, so a snapshot's served hash is computed once.
-  private readonly servedHashes = new Map<number, string>();
+  // Snapshot rows never change, so a snapshot's served hashes are computed once.
+  private readonly servedHashes = new Map<number, string[]>();
   // Snapshots whose served schema memberSchema changes, by row or per-member
   // content; a miss reloads only these to hash them as served to the member.
   private readonly memberDependent = new Set<number>();
 
   /** A legacy client echoes the schema getForm served, media rewrites
-   * included, instead of the stored one. The rewrites are today's, so a client
-   * that fetched a form before a rewrite changed gets a 400.
+   * included, instead of the stored one. The rewrites are today's, plus page
+   * images rendered as urls (`withImageUrls`), so a client that fetched a form
+   * before another rewrite changed gets a 400.
    * BACKCOMPAT(form-snapshot): a miss hashes the form's uncached history
    * versions and reloads its member-dependent ones, a cost that goes with the
    * schemaSnapshot branch. */
@@ -189,18 +206,20 @@ export class FormSnapshotService {
       })) {
         loaded.set(snapshot.id, snapshot);
         const served = servedSchema(snapshot);
-        const hashed = hashFormSchema(served);
+        const hashed = servedShapes(served).map(hashFormSchema);
         this.servedHashes.set(snapshot.id, hashed);
-        const unassigned = memberSchema(served, {
+        const unassigned = servedShapeHashes(served, {
           assignedRow: null,
           userId: null,
         });
-        if (hashFormSchema(unassigned) !== hashed) {
+        if (
+          unassigned.some((unassignedHash, i) => unassignedHash !== hashed[i])
+        ) {
           this.memberDependent.add(snapshot.id);
         }
       }
     }
-    const match = ids.find((id) => this.servedHashes.get(id) === hash);
+    const match = ids.find((id) => this.servedHashes.get(id)?.includes(hash));
     if (match !== undefined) {
       return this.snapshotRepository.findOneByOrFail({ id: match });
     }
@@ -216,9 +235,8 @@ export class FormSnapshotService {
         : []),
     ];
     return (
-      candidatesForMember.find(
-        (snapshot) =>
-          hashFormSchema(memberSchema(servedSchema(snapshot), member)) === hash,
+      candidatesForMember.find((snapshot) =>
+        servedShapeHashes(servedSchema(snapshot), member).includes(hash),
       ) ?? null
     );
   }

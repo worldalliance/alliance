@@ -5,6 +5,8 @@ import {
 } from "@alliance/common/forms/variable-interpolation";
 import { useCallback, useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
+import { linkCheckedText } from "./linkCheckedText";
+import { useContentConfirm } from "./useContentConfirm";
 
 function describeUnresolvedReferences(
   references: UnresolvedVariableReference[],
@@ -13,7 +15,7 @@ function describeUnresolvedReferences(
     ({ name, locations }) => `#{${name}} — in ${locations.join(", ")}`,
   );
   return [
-    "These references don't match any variable on this form, so respondents will see them exactly as written:",
+    "These references don't match any formula on this form, so respondents will see them exactly as written:",
     "",
     ...lines,
     "",
@@ -23,7 +25,8 @@ function describeUnresolvedReferences(
 
 /**
  * Save, unless `blocked`, which runs `onBlocked` instead. A schema with
- * unmatched variable references saves only once the dialog is confirmed.
+ * unmatched variable references, absolute links to the site or worldalliance
+ * text saves only once each dialog is confirmed.
  */
 export function useSaveGate({
   schema,
@@ -49,6 +52,11 @@ export function useSaveGate({
     [schema],
   );
 
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
+  const saveUnlessCancelled = useCallback(async () => {
+    if (await confirmSave(schema, linkCheckedText(schema))) await saveForm();
+  }, [confirmSave, saveForm, schema]);
+
   const handleSaveForm = useCallback(() => {
     if (blocked) {
       onBlocked();
@@ -58,21 +66,24 @@ export function useSaveGate({
       setConfirmUnresolvedVariables(true);
       return;
     }
-    void saveForm();
-  }, [blocked, onBlocked, saveForm, unresolvedVariableReferences]);
+    void saveUnlessCancelled();
+  }, [blocked, onBlocked, saveUnlessCancelled, unresolvedVariableReferences]);
 
   const dialog = (
-    <ConfirmDialog
-      isOpen={confirmUnresolvedVariables}
-      title="Save with unmatched variable references?"
-      message={describeUnresolvedReferences(unresolvedVariableReferences)}
-      isLoading={isSaving}
-      onCancel={() => setConfirmUnresolvedVariables(false)}
-      onConfirm={() => {
-        setConfirmUnresolvedVariables(false);
-        void saveForm();
-      }}
-    />
+    <>
+      <ConfirmDialog
+        isOpen={confirmUnresolvedVariables}
+        title="Save with unmatched formula references?"
+        message={describeUnresolvedReferences(unresolvedVariableReferences)}
+        isLoading={isSaving}
+        onCancel={() => setConfirmUnresolvedVariables(false)}
+        onConfirm={() => {
+          setConfirmUnresolvedVariables(false);
+          void saveUnlessCancelled();
+        }}
+      />
+      {contentDialog}
+    </>
   );
 
   return { handleSaveForm, dialog };

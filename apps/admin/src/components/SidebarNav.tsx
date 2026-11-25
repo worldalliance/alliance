@@ -1,3 +1,4 @@
+import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -20,12 +21,23 @@ const isOnPage = (pathname: string, to: string) =>
 const ROW =
   "flex items-center gap-2 text-[15px] text-gray-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded transition-colors";
 
-const NotifBadge = ({ count }: { count?: number }) =>
-  count ? (
-    <div className="font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-5 h-5">
-      {count}
-    </div>
+const NotifBadge = ({ count }: { count?: number | null }) => {
+  const label = count === null ? "!" : formatBadgeCount(count ?? 0);
+  return label ? (
+    <>
+      <span
+        aria-hidden
+        className="shrink-0 font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center min-w-5 h-5 px-1"
+      >
+        {label}
+      </span>
+      <span className="sr-only">
+        {" "}
+        ({count === null ? "count couldn't load" : label})
+      </span>
+    </>
   ) : null;
+};
 
 const NavLinkRow = ({ link, active }: { link: NavLink; active: boolean }) => (
   <Link
@@ -41,9 +53,11 @@ const NavLinkRow = ({ link, active }: { link: NavLink; active: boolean }) => (
 
 const SidebarNav = ({
   groupAssignmentCount,
+  needsReplyCount,
   pendingOutreachPartnershipCount,
 }: {
   groupAssignmentCount: number;
+  needsReplyCount: number | null;
   pendingOutreachPartnershipCount: number;
 }) => {
   const { pathname } = useLocation();
@@ -51,6 +65,7 @@ const SidebarNav = ({
 
   const entries = navEntries({
     groupAssignmentCount,
+    needsReplyCount,
     pendingOutreachPartnershipCount,
   });
 

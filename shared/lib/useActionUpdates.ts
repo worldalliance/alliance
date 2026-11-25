@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import {
   actionUpdatesAllUpdates,
@@ -8,6 +8,7 @@ import {
 } from "../client";
 import { queryKeys } from "./queryKeys";
 import {
+  NOTIFICATIONS_PREVIEW_LIMIT,
   useNotificationsCache,
   useNotificationsList,
 } from "./useNotificationsCache";
@@ -67,14 +68,15 @@ export function newestUpdateId(
  * Whether each update's card is tagged "New": the newest update always is,
  * and so is any update whose notification the member hasn't read.
  * `markOpened` marks an opened update's notification read.
- * `notificationsLimit` picks which cached notifications list to read, so pass
- * the one the app already loads.
+ * Reads only the newest `NOTIFICATIONS_PREVIEW_LIMIT` notifications, the list
+ * web's bell already loads, so an older unread one doesn't tag its update.
  */
 export function useActionUpdateNewState(
   updates: readonly ActionUpdateDto[] | undefined,
-  notificationsLimit?: number,
 ) {
-  const { data: notifications } = useNotificationsList(notificationsLimit);
+  const { data: notifications } = useNotificationsList(
+    NOTIFICATIONS_PREVIEW_LIMIT,
+  );
   const { markRead } = useNotificationsCache();
 
   const notificationsById = useMemo(
@@ -107,10 +109,18 @@ export function useActionUpdateNewState(
 }
 
 /** The home page's recent updates, with which of them are new. */
-export function useHomeActionUpdates(notificationsLimit?: number) {
+export function useHomeActionUpdates() {
   const query = useRecentActionUpdates(HOME_UPDATES_LIMIT);
-  return {
-    query,
-    ...useActionUpdateNewState(query.data, notificationsLimit),
-  };
+  return { query, ...useActionUpdateNewState(query.data) };
+}
+
+export function useInvalidateHomeActionUpdates(): () => Promise<void> {
+  const queryClient = useQueryClient();
+  return useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.actionUpdatesRecent(HOME_UPDATES_LIMIT),
+      }),
+    [queryClient],
+  );
 }

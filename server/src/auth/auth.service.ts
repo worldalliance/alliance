@@ -27,14 +27,11 @@ import type { Repository } from "src/utils/Repository";
 import { env } from "../config/env";
 import { MailService } from "../mail/mail.service";
 import { AccountEmailService } from "../user/account-email.service";
-import {
-  hasPassword,
-  ReferralSource,
-  User,
-} from "../user/entities/user.entity";
+import { ReferralSource, User } from "../user/entities/user.entity";
 import { FriendService } from "../user/friend.service";
 import { ReferralService } from "../user/referral.service";
 import { UserService } from "../user/user.service";
+import { hasPassword } from "../user/user.utils";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import type { OAuthProfile } from "./oauth/oauth-client";

@@ -1,6 +1,9 @@
 import { type FormValue } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto } from "@alliance/shared/client";
 import {
+  answersFromSync,
+  answersToStore,
+  answersToSync,
   applyDefaultValues,
   clampPageIndex,
   computeFormStorageKey,
@@ -10,6 +13,7 @@ import {
   restorablePublicAnswers,
   serializeStoredFormDraft,
 } from "@alliance/shared/forms/formDrafts";
+import { useDraftSettled } from "@alliance/shared/forms/useDraftSettled";
 import { useFormDraftSync } from "@alliance/shared/forms/useFormDraftSync";
 import { type useFormSchemaMaps } from "@alliance/shared/forms/useFormSchemaMaps";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -29,6 +33,7 @@ export function useFormDraftState({
   edited,
   fieldLookup,
   defaultValueMap,
+  profilePhoneDefaultMap,
   outputFieldDefaultPublic,
   outputFieldIds,
   maxPageIndex,
@@ -46,6 +51,7 @@ export function useFormDraftState({
   SchemaMaps,
   | "fieldLookup"
   | "defaultValueMap"
+  | "profilePhoneDefaultMap"
   | "outputFieldDefaultPublic"
   | "outputFieldIds"
   | "maxPageIndex"
@@ -150,18 +156,36 @@ export function useFormDraftState({
   const draftSyncEnabled =
     !!syncDraftToServer && !readOnly && !!persistKey && formSnapshotId !== null;
 
-  const { serverDraft, saveFailed, pauseSyncing, resumeSyncing } =
-    useFormDraftSync({
-      enabled: draftSyncEnabled,
-      formId,
-      actionId,
-      formSnapshotId,
-      answers: formData,
-      publicAnswers,
-      currentPageIndex,
-      edited,
-      onSaved: setSyncedUpdatedAt,
-    });
+  const storedAnswers = useMemo(
+    () => answersToStore(formData, defaultValueMap),
+    [formData, defaultValueMap],
+  );
+  const syncedAnswers = useMemo(
+    () => answersToSync(formData, profilePhoneDefaultMap),
+    [formData, profilePhoneDefaultMap],
+  );
+  const {
+    serverDraft,
+    settled: serverDraftSettled,
+    failed: draftFailed,
+    saveFailed,
+    pauseSyncing,
+    resumeSyncing,
+  } = useFormDraftSync({
+    enabled: draftSyncEnabled,
+    formId,
+    actionId,
+    formSnapshotId,
+    // BACKCOMPAT(sparse-synced-draft): every answer, since installed mobile
+    // builds keep their own value for an answer a synced draft leaves out;
+    // leave out answers at their default once every installed build resets
+    // them to it.
+    answers: syncedAnswers,
+    publicAnswers,
+    currentPageIndex,
+    edited,
+    onSaved: setSyncedUpdatedAt,
+  });
 
   useEffect(() => {
     if (!draftSyncEnabled || edited || !serverDraft) return;
@@ -176,7 +200,10 @@ export function useFormDraftState({
       fieldLookup,
     );
     setFormData((prev) =>
-      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
+      applyDefaultValues(
+        { ...prev, ...answersFromSync(answers, profilePhoneDefaultMap) },
+        defaultValueMap,
+      ),
     );
     setPublicAnswers((prev) => ({
       ...prev,
@@ -194,8 +221,15 @@ export function useFormDraftState({
     syncedUpdatedAt,
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     outputFieldIds,
   ]);
+
+  const draftSettled = useDraftSettled({
+    localDraftRead,
+    fetchEnabled: draftSyncEnabled,
+    fetchSettled: serverDraftSettled,
+  });
 
   useEffect(() => {
     if (readOnly || !persistKey || !draftLoaded.current) return;
@@ -204,7 +238,7 @@ export function useFormDraftState({
       AsyncStorage.setItem(
         storageKey,
         serializeStoredFormDraft({
-          formData,
+          formData: storedAnswers,
           publicAnswers,
           currentPageIndex,
           syncedUpdatedAt,
@@ -216,7 +250,7 @@ export function useFormDraftState({
 
     return () => clearTimeout(timeout);
   }, [
-    formData,
+    storedAnswers,
     publicAnswers,
     currentPageIndex,
     persistKey,
@@ -268,6 +302,10 @@ export function useFormDraftState({
     setPublicAnswers,
     currentPageIndex,
     setCurrentPageIndex,
+    /** Set once the draft stored on this device, and one synced from another, have been restored, found absent, or failed to load. */
+    draftSettled,
+    /** Set while the synced draft's fetch has failed or waits offline. */
+    draftFailed,
     saveFailed,
     pauseSyncing,
     resumeSyncing,

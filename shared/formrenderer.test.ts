@@ -6,7 +6,10 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import {
+  findUncompilableFormula,
   findUnknownConditionKind,
+  findUnknownFormElementKind,
+  findUnknownVariableInputKind,
   getFallbackVisiblePageIndex,
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
@@ -275,5 +278,84 @@ describe("findUnknownConditionKind", () => {
         }),
       ),
     ).toBe("somethingAddedLater");
+  });
+});
+
+describe("findUnknownFormElementKind", () => {
+  it("finds an unknown kind inside a list", () => {
+    const schema: FormSchema = JSON.parse(
+      '{ "pages": [{ "id": "p1", "fields": [{ "id": "l1", "type": "input", "kind": "list", "label": "Items", "fields": [{ "id": "s1", "type": "input", "kind": "hologram", "label": "S" }] }] }], "outputViews": [] }',
+    );
+    expect(findUnknownFormElementKind(schema)).toBe("hologram");
+  });
+});
+
+describe("findUnknownVariableInputKind", () => {
+  const schemaWith = (overrides: Partial<FormSchema>): FormSchema => ({
+    pages: [{ id: "p1", fields: [] }],
+    outputViews: [],
+    ...overrides,
+  });
+
+  it("is null when every input kind is known", () => {
+    expect(
+      findUnknownVariableInputKind(
+        schemaWith({
+          variables: [
+            { name: "n", inputs: { input1: { kind: "random" } }, formula: "1" },
+          ],
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("finds an unknown kind in a variable and in an options formula", () => {
+    const future = JSON.parse('{ "input1": { "kind": "telepathy" } }');
+    expect(
+      findUnknownVariableInputKind(
+        schemaWith({
+          variables: [{ name: "n", inputs: future, formula: "input1" }],
+        }),
+      ),
+    ).toBe("telepathy");
+    expect(
+      findUnknownVariableInputKind(
+        schemaWith({
+          pages: [
+            {
+              id: "p1",
+              fields: [
+                {
+                  id: "s1",
+                  type: "input",
+                  kind: "select",
+                  label: "Pick",
+                  options: [],
+                  optionsFormula: { inputs: future, formula: "input1" },
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).toBe("telepathy");
+  });
+});
+
+describe("findUncompilableFormula", () => {
+  const withVariable = (formula: string): FormSchema => ({
+    pages: [{ id: "p1", fields: [] }],
+    outputViews: [],
+    variables: [{ name: "n", inputs: {}, formula }],
+  });
+
+  it("is null when every formula compiles", () => {
+    expect(findUncompilableFormula(withVariable("1 + 1"))).toBeNull();
+  });
+
+  it("describes a formula this build can't compile", () => {
+    expect(findUncompilableFormula(withVariable("Math.sumPrecise(1)"))).toMatch(
+      /^formula syntax \(/,
+    );
   });
 });

@@ -1,8 +1,6 @@
 import {
   type CheckboxExtractionTarget,
-  type CheckboxField,
   type CityFieldValue,
-  type CustomComponentField,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { NodeEnv } from "@alliance/common/node-env";
@@ -10,20 +8,35 @@ import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { updateLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
+import { SmsFailureKind } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { ImagesService } from "src/images/images.service";
+import { MmsNumberService } from "src/mms/mms-number.service";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationSettingsService } from "src/notification-settings/notification-settings.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
+import { PhoneNumberTakenException } from "src/user/phone-number-taken.exception";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
+import { DataSource } from "typeorm";
 import { env } from "../config/env";
 
 function getFirstAutoExtractAnswer(
   schema: FormSchema,
   answers: Record<string, unknown>,
-  kind: "phone" | "time" | "timezone" | "city",
+  kind:
+    | "phone"
+    | "time"
+    | "timePicker"
+    | "timezone"
+    | "city"
+    | "textarea"
+    | "file"
+    | "image",
 ): string | null {
   for (const page of schema.pages ?? []) {
     if (!page.fields) {
@@ -78,11 +91,14 @@ function getCheckboxExtractionValue(
       continue;
     }
     for (const field of page.fields) {
-      if (field.kind !== "checkbox" && field.kind !== "custom") {
+      if (
+        field.kind !== "checkbox" &&
+        field.kind !== "toggle" &&
+        field.kind !== "custom"
+      ) {
         continue;
       }
-      const extractField = field as CheckboxField | CustomComponentField;
-      if (extractField.autoExtractUserData?.target !== target) {
+      if (field.autoExtractUserData?.target !== target) {
         continue;
       }
       const answer = answers[field.id];
@@ -98,8 +114,6 @@ function getCheckboxExtractionValue(
           return false;
         }
       }
-      // Field wasn't answered - don't overwrite existing user setting
-      return null;
     }
   }
 
@@ -112,13 +126,19 @@ export class FormProfileAnswersService {
   constructor(
     private userService: UserService,
     private mmsService: MmsService,
+    private mmsNumberService: MmsNumberService,
     private eventLogService: EventLogService,
+    private notificationSettingsService: NotificationSettingsService,
+    private imagesService: ImagesService,
+    private dataSource: DataSource,
   ) {}
 
   /**
-   * Copies auto-extract answers onto the member's profile, texting the welcome
-   * MMS to the extracted phone number if the member has not opted in. Throws
-   * on an invalid time zone before any side effect.
+   * Copies auto-extract answers onto the member's profile and notification
+   * defaults, texting the welcome MMS to the extracted phone number if the
+   * member has not opted in. A phone number another account holds is
+   * skipped, so the member finishes the form without it. Throws on an invalid
+   * time zone or an unusable photo before any other side effect.
    */
   async applyProfileAnswers({
     user,
@@ -130,18 +150,40 @@ export class FormProfileAnswersService {
     answers: Record<string, unknown>;
   }): Promise<void> {
     const phoneNumber = getFirstAutoExtractAnswer(schema, answers, "phone");
-    const preferredReminderTime = getFirstAutoExtractAnswer(
-      schema,
-      answers,
-      "time",
-    );
+    const preferredReminderTime =
+      getFirstAutoExtractAnswer(schema, answers, "timePicker") ??
+      getFirstAutoExtractAnswer(schema, answers, "time");
     const timeZone = getFirstAutoExtractAnswer(schema, answers, "timezone");
     // Before the phone number, whose opt-in MMS a rejection cannot take back.
     if (timeZone && !isTimeZoneIdentifier(timeZone)) {
       throw new BadRequestException(`Invalid time zone: ${timeZone}`);
     }
 
+    const photoKey =
+      getFirstAutoExtractAnswer(schema, answers, "image") ??
+      getFirstAutoExtractAnswer(schema, answers, "file");
+    if (photoKey) {
+      await updateLive(this.dataSource.manager, {
+        target: User,
+        id: user.id,
+        changes: {
+          profilePicture:
+            await this.imagesService.profileImageFromUpload(photoKey),
+        },
+      });
+    }
+
     const city = getFirstAutoExtractAnswer(schema, answers, "city");
+    const text = getCheckboxExtractionValue(
+      schema,
+      answers,
+      "textNotifications",
+    );
+    const profileDescription = getFirstAutoExtractAnswer(
+      schema,
+      answers,
+      "textarea",
+    );
 
     const userUpdates: Partial<UpdateProfileDto> = {};
 
@@ -151,12 +193,19 @@ export class FormProfileAnswersService {
 
       if (R.isFailure(parsed)) {
         this.logger.warn(`Could not parse phone number: ${phoneNumber}`);
-      } else {
+      } else if (await this.savePhoneNumber(user, parsed.value)) {
         const normalized = parsed.value;
         this.logger.log(`Valid phone number: ${normalized}`);
-        userUpdates.phoneNumber = normalized;
 
-        if (!user.optInMms) {
+        // A failed lookup falls through: sendMms repeats it and reports the failure.
+        if (
+          !user.optInMms &&
+          text !== false &&
+          !R.unwrapOr(
+            await R.fromPromise(this.mmsNumberService.optedOut(normalized)),
+            false,
+          )
+        ) {
           const mms = await this.mmsService.sendMms({
             to: normalized,
             userId: user.id,
@@ -170,7 +219,11 @@ export class FormProfileAnswersService {
             if (env("NODE_ENV") === NodeEnv.Production) {
               await this.eventLogService.sendMessage({
                 type: EventType.SmsFailure,
-                message: `Failed to send opt-in MMS to ${normalized}`,
+                payload: {
+                  kind: SmsFailureKind.OptInFailed,
+                  member: user,
+                  phoneNumber: normalized,
+                },
                 userId: user.id,
                 blob: { to: normalized },
               });
@@ -205,6 +258,10 @@ export class FormProfileAnswersService {
       userUpdates.timeZone = timeZone;
     }
 
+    if (profileDescription) {
+      userUpdates.profileDescription = profileDescription;
+    }
+
     const shareInfoPublicly = getCheckboxExtractionValue(
       schema,
       answers,
@@ -216,6 +273,42 @@ export class FormProfileAnswersService {
 
     if (Object.keys(userUpdates).length > 0) {
       await this.userService.update(user.id, userUpdates);
+    }
+
+    const email = getCheckboxExtractionValue(
+      schema,
+      answers,
+      "emailNotifications",
+    );
+    if (text !== null || email !== null) {
+      await this.notificationSettingsService.update(user.id, {
+        defaults: {
+          ...(text !== null && { text }),
+          ...(email !== null && { email }),
+        },
+      });
+    }
+  }
+
+  /**
+   * Saves the number as unverified when no code has confirmed it, by design.
+   * Saves first, so a number another live account holds, or takes
+   * mid-submission, is skipped before its welcome text goes out.
+   */
+  private async savePhoneNumber(
+    user: User,
+    phoneNumber: string,
+  ): Promise<boolean> {
+    if (phoneNumber === user.phoneNumber) return true;
+    try {
+      await this.userService.update(user.id, { phoneNumber });
+      return true;
+    } catch (error) {
+      if (!(error instanceof PhoneNumberTakenException)) throw error;
+      this.logger.warn(
+        `Not saving user ${user.id}'s phone number: another account holds it`,
+      );
+      return false;
     }
   }
 }

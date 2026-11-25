@@ -117,7 +117,7 @@ describe("Writers beside a deletion (e2e)", () => {
 
     await expect(
       lockForSave(ctx.dataSource.manager, { target: User, id: live.id }),
-    ).rejects.toThrow("row locks need an active transaction");
+    ).rejects.toThrow("locks need an active transaction");
   });
 
   it("leaves a guest unlinked from a deleted account", async () => {

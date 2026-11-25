@@ -9,7 +9,7 @@ import type { TestContext } from "./e2e-test-utils";
 let unique = 0;
 export const uniqueEmail = (): string =>
   `participant-${++unique}-${Math.random()}@example.com`;
-const AREA_CODES = ["415", "202", "312", "617", "646"];
+const AREA_CODES = ["510", "202", "312", "617", "646"];
 let phones = 0;
 /** 555-0100 to 555-0199, which no handset uses. */
 export const uniquePhone = (): string => {
@@ -23,12 +23,16 @@ export const wrongCode = (code: string): string =>
 export type SentCodes = {
   /** The code in the most recent message, by email or text. */
   lastCode: () => string;
+  count: () => number;
+  /** The most recent delivered text. */
+  lastText: () => string;
   failDelivery: () => void;
 };
 
 /** Stubs email and text delivery, keeping each code sent. */
 export function captureSentCodes(ctx: TestContext): SentCodes {
   const codes: string[] = [];
+  const texts: string[] = [];
   let failNext = false;
   const deliver = <T>(code: string, sent: T) => {
     if (failNext) {
@@ -47,14 +51,22 @@ export function captureSentCodes(ctx: TestContext): SentCodes {
     );
   jest
     .spyOn(ctx.app.get(MmsService), "sendUnrecordedText")
-    .mockImplementation(async ({ body }) =>
-      deliver(/#(\d{6})$/.exec(body)?.[1] ?? "", { sid: "sid" }),
-    );
+    .mockImplementation(async ({ body }) => {
+      const sent = deliver(/\d{6}/.exec(body)?.[0] ?? "", { sid: "sid" });
+      if (R.isSuccess(sent)) texts.push(body);
+      return sent;
+    });
   return {
     lastCode: () => {
       const code = codes.at(-1);
       if (!code) throw new Error("no code was sent");
       return code;
+    },
+    count: () => codes.length,
+    lastText: () => {
+      const text = texts.at(-1);
+      if (!text) throw new Error("no text was sent");
+      return text;
     },
     failDelivery: () => {
       failNext = true;

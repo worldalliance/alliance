@@ -6,11 +6,31 @@ set -euo pipefail
 
 umask 077
 
-source /home/ec2-user/db-sync.env
+# Runs itself again with its secrets loaded, so a run started by hand gets them
+# too. A failure to load alerts only through the missing healthcheck ping.
+SECRETS_PATH=/alliance/staging/db-sync/
+SYNC_KEYS=(SLACK_WEBHOOK_URL HEALTHCHECK_URL PROD_DB_HOST PROD_DB_USER
+  PROD_DB_PASSWORD PROD_ASSETS_BUCKET STAGING_PASSWORD_HASH)
+SERVER_KEYS=(DB_HOST DB_USERNAME DB_PASSWORD ASSETS_BUCKET)
+if [ -z "${SYNC_SECRETS_LOADED:-}" ]; then
+  exec /home/ec2-user/secrets_run.sh \
+    --path "$SECRETS_PATH" "${SYNC_KEYS[@]}" \
+    --path /alliance/staging/server/ "${SERVER_KEYS[@]}" \
+    -- env SYNC_SECRETS_LOADED=1 bash "$0" "$@"
+fi
+# The wrapper exports what it loads; a child gets only the logins passed to it.
+export -n "${SYNC_KEYS[@]}" "${SERVER_KEYS[@]}"
 
-# Checked ahead of the traps below, and of every other variable, because a trap
-# has no way to report its own failure without these two.
-: "${SLACK_WEBHOOK_URL:?missing in db-sync.env}"
+# curl reads these from a config line, where a quote, backslash or line break
+# would end the URL or add options.
+URL_PATTERN='^https?://[^"\[:space:]]+$'
+for key in SLACK_WEBHOOK_URL HEALTHCHECK_URL; do
+  if [[ ! ${!key} =~ $URL_PATTERN ]]; then
+    echo "${SECRETS_PATH}${key} is not an http(s) URL without quotes, \
+backslashes or whitespace." >&2
+    exit 1
+  fi
+done
 
 if ! command -v jq >/dev/null; then
   echo "jq is not installed; the sync needs it to post results to Slack." >&2
@@ -21,8 +41,7 @@ fi
 # process, so every child inherits them: an orphaned pg_dump would hold the sync
 # lock after a kill and skip every run that follows, and an orphaned migration
 # would hold ~/migrate.lock against the deploy. Anything that can outlive the
-# shell runs through here. Startup aborts that run before either lock exists
-# close fds nothing opened, which is a no-op.
+# shell runs through here.
 unlocked() {
   "$@" 200>&- 201>&-
 }
@@ -32,22 +51,17 @@ notify_slack() {
     --retry 3 --retry-connrefused \
     --header 'Content-Type: application/json' \
     --data "$(jq -nc --arg text "$1" '{text: $text}')" \
-    "$SLACK_WEBHOOK_URL" >/dev/null \
+    --config - <<<"url = \"${SLACK_WEBHOOK_URL}\"" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not post to Slack."
 }
 
 # A Slack message only reports a run that lived long enough to send it. A
 # SIGKILL, a dead host, or a timer that never fires sends nothing at all, so the
 # ping that never arrives has to be what raises the alarm.
-#
-# The startup trap fires above the HEALTHCHECK_URL check, so an unset variable
-# is a no-op here instead of a curl error about a URL with no host.
 ping_healthcheck() {
-  local base="${HEALTHCHECK_URL:-}"
-  [ -n "$base" ] || return 0
   unlocked curl --silent --show-error --fail --max-time 10 \
     --retry 3 --retry-connrefused --retry-max-time 30 \
-    "${base%/}${1:-}" >/dev/null \
+    --config - <<<"url = \"${HEALTHCHECK_URL%/}${1:-}\"" >/dev/null \
     || echo "[$(date)] ==> WARNING: could not ping the healthcheck."
 }
 
@@ -113,6 +127,7 @@ runs from overlapping."
 fi
 
 LOCK_FILE=/home/ec2-user/sync_prod_to_staging.lock
+MIGRATE_LOCK=/home/ec2-user/migrate.lock
 if ! true >>"$LOCK_FILE"; then
   abort_before_start "cannot write ${LOCK_FILE}; the sync needs it to stop two \
 runs from overlapping."
@@ -129,43 +144,80 @@ skipping this one."
   exit 0
 fi
 
-# cleanup reads paths built further down, so it can't be the trap yet. This one
-# reports a db-sync.env that loads but doesn't hold what the sync needs.
+# The deploy holds ~/migrate.lock while it replaces ~/nest-backend, which
+# deployed-db-name.ts and its node_modules come from. The anonymize scripts and
+# the RDS certificate bundle are read after this lock is released, so they are
+# copied out under it.
+SYNC_FILES=/home/ec2-user/sync_prod_to_staging.files
+RDS_BUNDLE=rds-us-west-2-bundle.pem
+if ! true >>"$MIGRATE_LOCK"; then
+  abort_before_start "cannot write ~/migrate.lock; the sync needs it to read \
+its database names and copy its files out of ~/nest-backend."
+fi
+db_name_of() {
+  unlocked /home/ec2-user/.bun/bin/bun \
+    /home/ec2-user/nest-backend/scripts/deployed-db-name.ts "$1"
+}
+{
+  if ! flock -w 900 201; then
+    abort_before_start "a backend deploy held ~/migrate.lock for 15 minutes, \
+so the sync could not read its database names or copy its files out of \
+~/nest-backend."
+  fi
+  if ! PROD_DB_NAME=$(db_name_of production) \
+    || ! STAGING_DB_NAME=$(db_name_of staging) \
+    || [ -z "$PROD_DB_NAME" ] || [ -z "$STAGING_DB_NAME" ]; then
+    abort_before_start "could not read both database names through \
+~/nest-backend/scripts/deployed-db-name.ts, which failed or printed an empty \
+name; the sync's journal on the staging host has any error."
+  fi
+  if ! rm -rf "$SYNC_FILES/anonymize" || ! mkdir -p "$SYNC_FILES" \
+    || ! cp -R /home/ec2-user/nest-backend/scripts/anonymize \
+      /home/ec2-user/nest-backend/server/src/config/$RDS_BUNDLE \
+      "$SYNC_FILES/"; then
+    abort_before_start "could not copy scripts/anonymize and the RDS \
+certificate bundle from ~/nest-backend to ${SYNC_FILES}."
+  fi
+} 201>>"$MIGRATE_LOCK"
+
+# cleanup reads paths built further down, so it can't be the trap yet.
 report_startup_failure() {
   notify_slack ":x: prod → staging: FAILED during startup, before the sync \
-began. Check db-sync.env on the staging host. Staging still holds the data from \
-its previous successful sync."
+began. Check its journal on the staging host and its parameters under \
+${SECRETS_PATH}. Staging still holds the data from its previous successful sync."
   ping_healthcheck /fail
   exit 1
 }
 trap report_startup_failure EXIT
 
-: "${PROD_DB_USER:?missing in db-sync.env}" \
-  "${PROD_DB_PASSWORD:?missing in db-sync.env}" \
-  "${PROD_DB_HOST:?missing in db-sync.env}" \
-  "${PROD_DB_NAME:?missing in db-sync.env}" \
-  "${STAGING_DB_USER:?missing in db-sync.env}" \
-  "${STAGING_DB_PASSWORD:?missing in db-sync.env}" \
-  "${STAGING_DB_HOST:?missing in db-sync.env}" \
-  "${STAGING_DB_NAME:?missing in db-sync.env}" \
-  "${STAGING_PASSWORD_HASH:?missing in db-sync.env}" \
-  "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
-  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}" \
-  "${HEALTHCHECK_URL:?missing in db-sync.env}"
-
+# shellcheck disable=SC2016 # a regex, not an expansion
 BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
 if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
-  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
-    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
+  echo "${SECRETS_PATH}STAGING_PASSWORD_HASH is not a bcrypt hash." >&2
   exit 1
 fi
 
-PROD_URL="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:5432/${PROD_DB_NAME}"
-
-STAGING_ADMIN_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/postgres"
-
+STAGING_DB_HOST=$DB_HOST
+STAGING_DB_USER=$DB_USERNAME
+STAGING_DB_PASSWORD=$DB_PASSWORD
+STAGING_ASSETS_BUCKET=$ASSETS_BUCKET
 SCRATCH_DB="${STAGING_DB_NAME}_sync"
-SCRATCH_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/${SCRATCH_DB}"
+
+# On Linux only the process's own user and root can read its environment, so
+# libpq takes the logins from there rather than argv or a password file on disk.
+prod_pg() {
+  PGHOST=$PROD_DB_HOST PGUSER=$PROD_DB_USER PGPASSWORD=$PROD_DB_PASSWORD \
+    PGDATABASE=$PROD_DB_NAME PGSSLMODE=verify-full \
+    PGSSLROOTCERT="$SYNC_FILES/$RDS_BUNDLE" "$@"
+}
+
+staging_pg() {
+  local database=$1
+  shift
+  PGHOST=$STAGING_DB_HOST PGUSER=$STAGING_DB_USER PGPASSWORD=$STAGING_DB_PASSWORD \
+    PGDATABASE=$database PGSSLMODE=verify-full \
+    PGSSLROOTCERT="$SYNC_FILES/$RDS_BUNDLE" "$@"
+}
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DUMP_FILE="/home/ec2-user/prod_dump_${TIMESTAMP}.pgcustom"
@@ -182,7 +234,7 @@ cleanup() {
   rm -f "$DUMP_FILE"
 
   if [ "$SWAP_STARTED" -eq 0 ]; then
-    unlocked psql "$STAGING_ADMIN_URL" -q \
+    unlocked staging_pg postgres psql -q \
       -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" \
       >/dev/null 2>&1 \
       || echo "[$(date)] ==> WARNING: could not drop ${SCRATCH_DB}; it may still" \
@@ -227,17 +279,16 @@ ping_healthcheck /start
 STAGE="dump"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
 
-unlocked pg_dump \
+unlocked prod_pg pg_dump \
   --format=custom \
   --no-owner \
   --no-privileges \
-  "$PROD_URL" \
   --file="$DUMP_FILE"
 
 STAGE="scratch database"
 echo "[$(date)] ==> Recreating scratch database ${SCRATCH_DB}..."
 
-unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked staging_pg postgres psql -v ON_ERROR_STOP=1 <<SQL
 DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);
 CREATE DATABASE ${SCRATCH_DB} WITH TEMPLATE=template0 ENCODING='UTF8';
 SQL
@@ -245,25 +296,31 @@ SQL
 STAGE="restore"
 echo "[$(date)] ==> Restoring dump into ${SCRATCH_DB}..."
 
-unlocked pg_restore \
+unlocked staging_pg "$SCRATCH_DB" pg_restore \
   --exit-on-error \
   --no-owner \
   --no-privileges \
-  --dbname="$SCRATCH_URL" \
+  --dbname="$SCRATCH_DB" \
   "$DUMP_FILE"
 
 STAGE="anonymize"
 echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
 
-unlocked psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
-  -v password_hash="$STAGING_PASSWORD_HASH" \
-  -f /home/ec2-user/nest-backend/scripts/anonymize/anonymize.sql
+# The hash goes in on stdin, where ps can't show it. BCRYPT_PATTERN admits no
+# quote or backslash, which is what keeps it inside the quotes.
+unlocked staging_pg "$SCRATCH_DB" psql -v ON_ERROR_STOP=1 --single-transaction \
+  -f - <<SQL
+\set password_hash '${STAGING_PASSWORD_HASH}'
+\set in_anonymize_dir
+\cd '${SYNC_FILES}/anonymize'
+\i anonymize.sql
+SQL
 
 # The backend deploy holds this lock from replacing ~/nest-backend until the new
 # code passes its health check or rolls back, so it can't migrate the database
 # the swap is about to drop.
 STAGE="migrate lock"
-exec 201>>/home/ec2-user/migrate.lock
+exec 201>>"$MIGRATE_LOCK"
 flock -w 900 201
 
 # Prod's schema lags the code deployed to staging by every migration that
@@ -272,12 +329,12 @@ flock -w 900 201
 STAGE="migrations"
 echo "[$(date)] ==> Running staging's migrations on ${SCRATCH_DB}..."
 
-unlocked env -C /home/ec2-user/nest-backend/server \
-  NODE_ENV=staging \
+NODE_ENV=staging \
   DB_HOST="$STAGING_DB_HOST" \
   DB_NAME="$SCRATCH_DB" \
   DB_USERNAME="$STAGING_DB_USER" \
   DB_PASSWORD="$STAGING_DB_PASSWORD" \
+  unlocked env -C /home/ec2-user/nest-backend/server \
   /home/ec2-user/.bun/bin/bunx typeorm-ts-node-commonjs \
   --dataSource src/datasources/dataSource.ts migration:run
 
@@ -285,7 +342,7 @@ STAGE="swap"
 echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
 
 SWAP_STARTED=1
-unlocked psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+unlocked staging_pg postgres psql -v ON_ERROR_STOP=1 <<SQL
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = '${SCRATCH_DB}'
@@ -302,6 +359,7 @@ echo "[$(date)] ==> S3 sync s3://$PROD_ASSETS_BUCKET -> s3://$STAGING_ASSETS_BUC
 unlocked aws s3 sync \
   "s3://${PROD_ASSETS_BUCKET}/" \
   "s3://${STAGING_ASSETS_BUCKET}/" \
+  --exclude 'mms-media/*' \
   --only-show-errors \
   --size-only
 

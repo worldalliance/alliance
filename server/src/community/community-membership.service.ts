@@ -8,7 +8,8 @@ import {
   NotifsService,
 } from "src/notifs/notifs.service";
 import { sqlUserHasActiveContractAt } from "src/user/entities/contract-event.entity";
-import { loadedUserCommunities, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
+import { loadedUserCommunities } from "src/user/user.utils";
 import { DeepPartial, In, IsNull, type Repository } from "typeorm";
 import { changeMembers } from "./change-members";
 import {

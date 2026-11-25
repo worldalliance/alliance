@@ -46,12 +46,12 @@ const renderPage = () =>
     { wrapper: queryWrapper().wrapper },
   );
 
-it("lists every update as a card, newest first, tagging the newest and unread ones new", async () => {
+it("lists every update as a card in the server's order, tagging the newest and unread ones new", async () => {
   updatesResponse = () =>
     Response.json([
-      makeUpdate(1, "2026-01-01T00:00:00.000Z"),
-      makeUpdate(2, "2026-02-01T00:00:00.000Z"),
       makeUpdate(3, "2026-03-01T00:00:00.000Z"),
+      makeUpdate(2, "2026-02-01T00:00:00.000Z"),
+      makeUpdate(1, "2026-01-01T00:00:00.000Z"),
     ]);
   renderPage();
 

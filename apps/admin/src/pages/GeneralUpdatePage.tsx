@@ -25,6 +25,7 @@ import {
   type GeneralUpdateForm,
 } from "../components/general-update/generalUpdateForm";
 import GeneralUpdateScheduleFields from "../components/general-update/GeneralUpdateScheduleFields";
+import { useContentConfirm } from "../components/useContentConfirm";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
@@ -63,6 +64,7 @@ const GeneralUpdatePage: React.FC = () => {
   const createUpdate = create.mutateAsync;
   const saveUpdate = updateMutation.mutateAsync;
   const [error, setError] = useState<string | null>(null);
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
 
   const [form, setForm] = useState<GeneralUpdateForm>(emptyForm);
   const [formUpdateId, setFormUpdateId] = useState<number | null>(null);
@@ -127,6 +129,7 @@ const GeneralUpdatePage: React.FC = () => {
           tagIds: form.tagIds,
           suiteIds: form.suiteIds,
         } satisfies UpdateGeneralUpdateDto;
+        if (!(await confirmSave(body))) return;
         if (isNew) {
           const created = await createUpdate(body);
           navigate(`/general-updates/${created.id}`);
@@ -138,7 +141,16 @@ const GeneralUpdatePage: React.FC = () => {
         console.error(err);
       }
     },
-    [isNew, update, form, hasSuites, navigate, createUpdate, saveUpdate],
+    [
+      isNew,
+      update,
+      form,
+      hasSuites,
+      navigate,
+      createUpdate,
+      saveUpdate,
+      confirmSave,
+    ],
   );
 
   const formContent = (
@@ -203,8 +215,8 @@ const GeneralUpdatePage: React.FC = () => {
               ? "Creating..."
               : "Saving..."
             : isNew
-              ? "Create General Update"
-              : "Save Changes"}
+              ? "Create general update"
+              : "Save changes"}
         </button>
       </div>
     </>
@@ -215,7 +227,7 @@ const GeneralUpdatePage: React.FC = () => {
   if (!formFilled && !query.isError) {
     return (
       <div className="p-8">
-        <title>General Update - Admin</title>
+        <title>General update - Admin</title>
         Loading general update...
       </div>
     );
@@ -224,7 +236,7 @@ const GeneralUpdatePage: React.FC = () => {
   if (!formFilled) {
     return (
       <div className="p-8">
-        <title>General Update - Admin</title>
+        <title>General update - Admin</title>
         <p className="text-red-500">
           {thrownStatus(query.error) === 404
             ? "General update not found"
@@ -241,8 +253,8 @@ const GeneralUpdatePage: React.FC = () => {
   }
 
   const pageTitle = isNew
-    ? "Create General Update"
-    : (update?.name ?? "General Update");
+    ? "Create general update"
+    : (update?.name ?? "General update");
 
   const renderContentTab = (generalUpdate: GeneralUpdateAdminDto) => {
     // Editing content this build can't parse would save back whatever the
@@ -277,13 +289,14 @@ const GeneralUpdatePage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <title>{pageTitle} - Admin</title>
+      {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
         <button
           onClick={() => navigate("/general-updates")}
           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
         >
-          ← Back to General Updates
+          ← Back to general updates
         </button>
       </div>
 
@@ -306,7 +319,7 @@ const GeneralUpdatePage: React.FC = () => {
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
                 )}
               >
-                General Update Details
+                General update details
               </button>
               <button
                 onClick={() => onTabChange("content")}

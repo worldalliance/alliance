@@ -43,9 +43,10 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import { loadedUserCommunities, User } from "./entities/user.entity";
+import { User } from "./entities/user.entity";
 import { inviteAcceptedSql } from "./invite-claim";
 import { UserService } from "./user.service";
+import { loadedUserCommunities } from "./user.utils";
 
 @Injectable()
 export class OnetimeInviteService {

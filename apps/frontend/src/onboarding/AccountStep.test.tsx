@@ -81,7 +81,6 @@ const onLogin = jest.fn(async () => {});
 window.happyDOM.setURL("https://test.alliance/login");
 
 beforeEach(() => {
-  // getBaseUrl reads build-time env the test process does not set.
   jest
     .spyOn(configModule, "getBaseUrl")
     .mockReturnValue("https://test.alliance");

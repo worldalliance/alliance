@@ -26,7 +26,7 @@ export default function UserFormSubmissionsSection({
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Invited Submissions ({sortedFormResponses.length})
       </h2>
-      {isRefetchError && <SectionRefreshError noun="form submissions" />}
+      <SectionRefreshError noun="form submissions" isError={isRefetchError} />
       {sortedFormResponses.length > 0 ? (
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {sortedFormResponses.map((response) => (

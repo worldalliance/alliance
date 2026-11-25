@@ -1,8 +1,12 @@
 import type { AnyField, FieldKind } from "@alliance/common/forms/form-schema";
 import { EditableContractField } from "./EditableContractField";
+import { EditableConversationField } from "./EditableConversationField";
 import { EditableCustomComponentField } from "./EditableCustomComponentField";
+import { EditableImageField } from "./EditableImageField";
 import { EditableListField } from "./EditableListField";
 import { EditableRankingField } from "./EditableRankingField";
+import { EditableTimePickerField } from "./EditableTimePickerField";
+import { EditableToggleField } from "./EditableToggleField";
 import { SUB_FIELD_EDITORS } from "./subFieldEditors";
 import type { BaseFieldProps, FieldEditor, FieldOfKind } from "./types";
 
@@ -12,6 +16,10 @@ const FIELD_EDITORS: { [K in FieldKind]: FieldEditor<K> } = {
   contract: EditableContractField,
   list: EditableListField,
   custom: EditableCustomComponentField,
+  image: EditableImageField,
+  toggle: EditableToggleField,
+  timePicker: EditableTimePickerField,
+  conversation: EditableConversationField,
 };
 
 function renderEditorOfKind<K extends FieldKind>(

@@ -5,22 +5,43 @@ import {
   type AnyField,
   type FormSchema,
   type FormValue,
+  type PageItem,
 } from "@alliance/common/forms/form-schema";
 import { useMemo } from "react";
 import {
+  findUncompilableFormula,
   findUnknownConditionKind,
   findUnknownFormElementKind,
+  findUnknownVariableInputKind,
 } from "../formrenderer";
 import { resolveFieldDefaultValue } from "./formDrafts";
+
+/** A phone question that fills the profile, which the member's number seeds. */
+const isProfilePhoneField = (element: PageItem): boolean =>
+  isQuestionField(element) &&
+  element.kind === "phone" &&
+  !!element.autoExtractUserData;
+
+/** Whether the form seeds answers from the member, so a host mounting it before the member loads would seed them without the member's values. */
+export const seedsFromMember = (schema: FormSchema): boolean =>
+  schema.pages.some((page) =>
+    page.fields.some(
+      (item) => item.kind === "timezone" || isProfilePhoneField(item),
+    ),
+  );
 
 export function useFormSchemaMaps(args: {
   schema: FormSchema;
   userDefaultPublic: boolean;
   /** Seeds every timezone field, whatever default the field names. */
   timeZone: string | undefined;
+  /** Seeds every phone field that fills the profile, over the field's default. */
+  profilePhoneNumber: string | null | undefined;
 }): {
   fieldLookup: Map<string, AnyField>;
   defaultValueMap: Map<string, FormValue>;
+  /** The phone questions prefilled with the member's number. */
+  profilePhoneDefaultMap: Map<string, FormValue>;
   unknownKind: string | null;
   hasUserLocationDisplayBlock: boolean;
   outputFieldDefaultPublic: Map<string, boolean>;
@@ -28,31 +49,45 @@ export function useFormSchemaMaps(args: {
   pageCount: number;
   maxPageIndex: number;
 } {
-  const { schema, userDefaultPublic, timeZone } = args;
+  const { schema, userDefaultPublic, timeZone, profilePhoneNumber } = args;
 
-  const { fieldLookup, defaultValueMap } = useMemo(() => {
-    const defaults = new Map<string, FormValue>();
+  const { fieldLookup, defaultValueMap, profilePhoneDefaultMap } =
+    useMemo(() => {
+      const defaults = new Map<string, FormValue>();
+      const profilePhoneDefaults = new Map<string, FormValue>();
 
-    for (const page of schema.pages) {
-      for (const element of page.fields) {
-        if (isQuestionField(element)) {
-          const defaultValue = resolveFieldDefaultValue(element, timeZone);
-          if (defaultValue !== undefined) {
-            defaults.set(element.id, defaultValue);
+      for (const page of schema.pages) {
+        for (const element of page.fields) {
+          if (isQuestionField(element)) {
+            const profilePhone =
+              isProfilePhoneField(element) && profilePhoneNumber
+                ? profilePhoneNumber
+                : undefined;
+            const defaultValue =
+              profilePhone ?? resolveFieldDefaultValue(element, timeZone);
+            if (defaultValue !== undefined) {
+              defaults.set(element.id, defaultValue);
+            }
+            if (profilePhone) {
+              profilePhoneDefaults.set(element.id, profilePhone);
+            }
           }
         }
       }
-    }
 
-    return {
-      fieldLookup: collectFieldLookup(schema.pages),
-      defaultValueMap: defaults,
-    };
-  }, [schema, timeZone]);
+      return {
+        fieldLookup: collectFieldLookup(schema.pages),
+        defaultValueMap: defaults,
+        profilePhoneDefaultMap: profilePhoneDefaults,
+      };
+    }, [schema, timeZone, profilePhoneNumber]);
 
   const unknownKind = useMemo(
     () =>
-      findUnknownFormElementKind(schema) ?? findUnknownConditionKind(schema),
+      findUnknownFormElementKind(schema) ??
+      findUnknownConditionKind(schema) ??
+      findUnknownVariableInputKind(schema) ??
+      findUncompilableFormula(schema),
     [schema],
   );
 
@@ -92,6 +127,7 @@ export function useFormSchemaMaps(args: {
   return {
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,

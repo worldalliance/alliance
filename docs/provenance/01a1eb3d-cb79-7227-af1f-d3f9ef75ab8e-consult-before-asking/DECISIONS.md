@@ -1,0 +1,16 @@
+# Decisions
+
+Evidence is in `EVIDENCE.md`.
+
+1. **Where it lives:** a `consult` skill, with a pointer in the root `AGENTS.md` skills list; the general principle sits in `AGENTS.md` itself because it applies when no question is being asked. Each lands in its own commit, all recorded here. Vendor guidance puts always-on rules in AGENTS.md and procedures in skills (EVIDENCE: vendor guidance).
+2. **Scope (user deferred):** questions in the root **Open questions** format, so permission asks and the `AskUserQuestion` interviews of meeting-notes and personas, kept fast by the user's choice, skip it; a round per new set of questions. A fact only the user knows is asked first without agents, since unanimous agents in one audited chat missed the user's workflow (EVIDENCE: audit).
+3. **Brainstorm size (user deferred):** "many varied ideas" with no fixed count; the user's original asked for 20+, and later deferred the count. A step-back brief is judged by the framings it opens, not idea volume (EVIDENCE: brainstorming research).
+4. **The researcher runs alongside the brainstormer, before drafting,** on the decision rather than drafted questions, so the draft can draw on both.
+5. **Disagreement** is shown to the user with the claim each side rests on; agents aren't spawned until they agree, which in one chat took 12 spawns and 28 minutes while research reversed itself twice (EVIDENCE: audit).
+6. **Failed agents** are named in the message and the questions still go out, since a login can lapse mid-task, as Codex's did while this task ran.
+7. **Linear ALL-2323**, filed to track bringing the brainstormer back after a review round cut it, is resolved by this change.
+8. **Source annotation** is written in words, not tags, since the user never sees the agents' reports a tag would point at.
+9. **Raising an alternative** happens before acting on it, not only before expanding the work as the requirement words it, since an alternative that replaces or drops the request needs the user's say as much as one that adds to it. Review round 12 found the gap.
+10. **The replacement brief keeps the earlier requirement** (task `01a188b0-…-agent-doc-references`) that renaming, moving or deleting a file or heading updates every reference, with the earlier-provenance exception from task `01a1ae3c-…-provenance-as-of`. It drops `SKILL-MECHANICS.md`, keeping its one fact still used, `disable-model-invocation: true` for skills only a person starts, in the brief, beside Codex's counterpart, `policy: allow_implicit_invocation: false` in the skill's `agents/openai.yaml`, which `action-ideation` already uses. "References behind pointers" means reference only some cases need, kept in a file the skill points to with a line saying when to read it. `keep-test.md` stays, since `trim-comments` and its hook still use it.
+11. **The brief is new text**, so no MIT notice is needed; the old guide was forked, unattributed, from Matt Pocock's `writing-for-agents` (https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md, MIT), credited here.
+12. **The skills follow-up issue is filed after the PR merges,** so it can point at the merged guide and skills on `main` (the user left the exact order open).

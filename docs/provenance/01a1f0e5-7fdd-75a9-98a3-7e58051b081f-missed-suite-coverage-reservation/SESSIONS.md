@@ -1,0 +1,8 @@
+- claude:3bf87c68-ecd4-406f-8b3c-0addd290ad39
+- claude:29a194fd-1280-4111-82c0-de5175177b50
+- claude:54fc227a-b19b-41b7-9807-b8dc82398033
+- claude:9dffd010-9d79-441a-be52-e42f3e80bae1
+- claude:22641b20-c330-4153-abfa-207fc1fa2747
+- claude:6c17d815-ee87-4684-84ae-e2c09b78678d
+- claude:65b25558-0912-49d7-9a57-2c9ad33e2992
+- claude:fbac5a87-8eaf-4c14-8b77-8c3e59aca554

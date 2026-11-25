@@ -144,7 +144,7 @@ describe("validateFormSchema with random inputs", () => {
     expect(
       messages(schemaOf({ pages: [{ id: "p1", fields: [field] }] })),
     ).toEqual([
-      'Options formula: Input "input1" picks a random number, which only a variable can use',
+      `Options formula: Input "input1" picks a random number, which an options formula can't use`,
     ]);
   });
 });
@@ -157,7 +157,7 @@ describe("evaluateOptionsFormula with a random input", () => {
     );
     expect(result).toEqual({
       ok: false,
-      error: "A random input works only in a variable",
+      error: "A random input doesn't work in an options formula",
     });
   });
 });

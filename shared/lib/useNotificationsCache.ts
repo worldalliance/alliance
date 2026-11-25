@@ -252,6 +252,8 @@ export function notificationsCache(queryClient: QueryClient) {
   };
 }
 
+export const NOTIFICATIONS_PREVIEW_LIMIT = 20;
+
 export function useNotificationsCache() {
   const queryClient = useQueryClient();
   return useMemo(() => notificationsCache(queryClient), [queryClient]);

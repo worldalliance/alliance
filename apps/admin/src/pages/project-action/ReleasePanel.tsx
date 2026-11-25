@@ -81,7 +81,7 @@ const ReleasePanel = (props: {
             to={`/actions/${props.action.id}?tab=events`}
             className="text-blue-600 underline"
           >
-            Event Management
+            Events
           </Link>
           .
         </p>

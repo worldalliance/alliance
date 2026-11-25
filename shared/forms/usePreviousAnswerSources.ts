@@ -91,6 +91,8 @@ export function usePreviousAnswerSources(args: {
    * judged by answers it lacks.
    */
   previousAnswersPending: boolean;
+  /** Set while any read's last load failed. */
+  previousAnswersFailed: boolean;
 } {
   const { schema, previewUserId, signedIn } = args;
 
@@ -142,6 +144,7 @@ export function usePreviousAnswerSources(args: {
         previousAnswerSchemas,
         previousAnswerData,
         previousAnswersPending: results.some((result) => !result.isSuccess),
+        previousAnswersFailed: results.some((result) => result.isError),
       };
     },
     [sourceFormIds],

@@ -73,11 +73,11 @@ it("says when the posts fail to load", async () => {
 
 it("lists a post's saved settings", async () => {
   renderPage();
-  fireEvent.click(await screen.findByLabelText("Enable Q&A Mode"));
-  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  fireEvent.click(await screen.findByLabelText("Enable Q&A mode"));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   expect(await screen.findByText("Settings saved successfully")).toBeTruthy();
-  expect(screen.getByText("Q&A Mode Active")).toBeTruthy();
+  expect(screen.getByText("Q&A mode active")).toBeTruthy();
 });
 
 it("says why a save was refused", async () => {
@@ -85,7 +85,7 @@ it("says why a save was refused", async () => {
     Response.json({ message: "Unknown expert" }, { status: 400 });
   jest.spyOn(console, "error").mockImplementation(() => {});
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Save Changes" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Save changes" }));
 
   expect(await screen.findByText("Unknown expert")).toBeTruthy();
 });
@@ -94,7 +94,7 @@ it("says the session expired when a save is refused for it", async () => {
   postSave = () => Response.json({}, { status: 401 });
   jest.spyOn(console, "error").mockImplementation(() => {});
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Save Changes" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Save changes" }));
 
   expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
 });

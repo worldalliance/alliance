@@ -10,7 +10,15 @@ import {
   __resetAnalyticsForTests,
   registerAnalytics,
 } from "@alliance/shared/lib/analytics";
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  spyOn,
+  type Mock,
+} from "bun:test";
 import { WebBrowserResultType } from "expo-web-browser/build/WebBrowser.types";
 import { FetchError } from "expo/src/winter/fetch/FetchErrors";
 import { AuthTabResultType } from "../modules/auth-tab/src/AuthTab.types";
@@ -35,10 +43,10 @@ import {
   type OAuthFailure,
 } from "./oauthResult";
 
-const consoleError = spyOn(console, "error").mockImplementation(() => {});
+let consoleError: Mock<typeof console.error>;
 
-afterEach(() => {
-  consoleError.mockClear();
+beforeEach(() => {
+  consoleError = spyOn(console, "error").mockImplementation(() => {});
 });
 
 describe("reportOAuthFailure", () => {
@@ -503,6 +511,12 @@ describe("providerFailureFor", () => {
     expect(
       message(OAuthProvider.Google, OAuthError.ProviderAlreadyConnected),
     ).not.toContain("Disconnect");
+  });
+
+  it("doesn't ask for a retry the server can't answer", () => {
+    expect(message(OAuthProvider.Google, OAuthError.NotConfigured)).toBe(
+      "Google sign-in isn't set up on this server.",
+    );
   });
 
   it("names the network", () => {

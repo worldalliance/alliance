@@ -167,7 +167,7 @@ export class TasksService {
       throw new NotFoundException("Form not found");
     }
 
-    return this.transformImageUrls(await this.transformContractFields(form));
+    return this.transformVideoSources(await this.transformContractFields(form));
   }
 
   /**
@@ -242,7 +242,7 @@ export class TasksService {
     }));
   }
 
-  async transformImageUrls(form: Form): Promise<Form> {
+  async transformVideoSources(form: Form): Promise<Form> {
     const snapshot = loadedFormSnapshot(form);
     form.formSnapshot = cloneFormSnapshotWithSchema(
       snapshot,
@@ -403,7 +403,7 @@ export class TasksService {
         .map((reader) => `"${reader.title || "Untitled"}" (#${reader.id})`)
         .join(", ");
       throw new ConflictException(
-        `Variables or options formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
+        `Formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
       );
     }
     await softDeleteCascade(this.formRepository.manager, {

@@ -93,23 +93,34 @@ export type FlowTitleFormState = Pick<
   "isElementCurrentlyVisible" | "variableValues"
 > & { activeUserKey: string | undefined };
 
+/** The screen's opening header text, or null when no header is showing. */
+export function flowScreenHeading(params: {
+  screen: FlowScreen;
+  form: FlowTitleFormState;
+}): string | null {
+  const { screen, form } = params;
+  const { activeUserKey, isElementCurrentlyVisible, variableValues } = form;
+  const heading =
+    screen.heading && resolveDisplayBlockForUser(screen.heading, activeUserKey);
+  return heading && isElementCurrentlyVisible(heading)
+    ? interpolateDisplayBlock(heading, variableValues).text
+    : null;
+}
+
 /** The screen's opening header, or a generic title when no header is showing. */
 export function flowScreenTitle(params: {
   screen: FlowScreen;
   form: FlowTitleFormState;
 }): string {
   const { screen, form } = params;
-  const { activeUserKey, isElementCurrentlyVisible, variableValues } = form;
-  const heading =
-    screen.heading && resolveDisplayBlockForUser(screen.heading, activeUserKey);
-  if (heading && isElementCurrentlyVisible(heading)) {
-    return interpolateDisplayBlock(heading, variableValues).text;
-  }
-  return fallbackFlowTitle(
-    screen.elements.some(
-      (element) =>
-        isQuestionField(element) && isElementCurrentlyVisible(element),
-    ),
+  return (
+    flowScreenHeading(params) ??
+    fallbackFlowTitle(
+      screen.elements.some(
+        (element) =>
+          isQuestionField(element) && form.isElementCurrentlyVisible(element),
+      ),
+    )
   );
 }
 

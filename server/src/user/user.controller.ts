@@ -17,7 +17,11 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse, ApiUnauthorizedResponse } from "@nestjs/swagger";
+import {
+  ApiConflictResponse,
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import { IsNotEmpty, IsString } from "class-validator";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtRequest } from "src/auth/tokens";
@@ -46,6 +50,7 @@ import {
   UpdateStaffDirectoryDto,
 } from "./dto/staff-directory.dto";
 import {
+  AdminUserListItemDto,
   DeleteUserAdminDto,
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
@@ -100,6 +105,9 @@ export class UserController {
   @Post("update")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ProfileDto })
+  @ApiConflictResponse({
+    description: "Another live account holds the phone number",
+  })
   async update(
     @Body() updateActionDto: UpdateProfileDto,
     @Request() req: JwtRequest,
@@ -107,14 +115,6 @@ export class UserController {
     return new ProfileDto(
       await this.userService.update(req.user.sub, updateActionDto),
     );
-  }
-
-  @Post("switch-domain")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ description: "Opted in to the new domain" })
-  @ApiUnauthorizedResponse()
-  async switchDomain(@Request() req: JwtRequest): Promise<void> {
-    await this.userService.markDomainSwitched(req.user.sub);
   }
 
   @Get("mylocation")
@@ -166,10 +166,10 @@ export class UserController {
 
   @Get("list")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: UserDto, isArray: true })
-  async listAdmin(): Promise<UserDto[]> {
+  @ApiOkResponse({ type: AdminUserListItemDto, isArray: true })
+  async listAdmin(): Promise<AdminUserListItemDto[]> {
     return (await this.userAdminService.findAllForAdminList()).map(
-      (user) => new UserDto(user),
+      (user) => new AdminUserListItemDto(user),
     );
   }
 

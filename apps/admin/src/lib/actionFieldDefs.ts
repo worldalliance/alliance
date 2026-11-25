@@ -1,4 +1,9 @@
-import { CreateActionDto, VisibilityMode } from "@alliance/shared/client";
+import {
+  ActionTaskKind,
+  CreateActionDto,
+  VisibilityMode,
+  type ActionSuiteDto,
+} from "@alliance/shared/client";
 import { tracksCustomStat } from "@alliance/shared/lib/customActionStat";
 import { suiteOptions } from "./suiteOptions";
 
@@ -39,12 +44,17 @@ export type ActionFieldDef = {
 
 const customStatTypeOptions = [
   { value: "none", label: "None" },
-  { value: "users_invited", label: "Users Invited" },
+  { value: "users_invited", label: "Users invited" },
+];
+
+const taskKindOptions: { value: ActionTaskKind; label: string }[] = [
+  { value: "form", label: "Form" },
+  { value: "kora_review", label: "Kora review" },
 ];
 
 const visibilityModeOptions: { value: VisibilityMode; label: string }[] = [
-  { value: "all_members", label: "All Members" },
-  { value: "participating_groups", label: "Participating Groups" },
+  { value: "all_members", label: "All members" },
+  { value: "participating_groups", label: "Participating groups" },
   { value: "public", label: "Public" },
 ];
 
@@ -53,6 +63,30 @@ export const ACTION_TEXT_FIELD_LABELS = {
   shortDescription: "Short description",
   body: "Action page description",
 } as const;
+
+/** Whether the action's suite decides its participants and optional work by parts. */
+export const inPartitionedSuite = (
+  suites: readonly Pick<ActionSuiteDto, "id" | "isPartitioned">[],
+  suiteId: number | null | undefined,
+) => suites.some((suite) => suite.id === suiteId && suite.isPartitioned);
+
+/** Whether the suites are still loading, or failed to, for an action in one. */
+export const suiteKindUnknown = (
+  params: { loading: boolean; failed: boolean },
+  suiteId: number | null | undefined,
+) => suiteId != null && (params.loading || params.failed);
+
+/** Whether the action's suite sets its optional flag, or may while the suites are unknown. */
+export const partsMaySetOptional = (
+  params: {
+    suites: readonly Pick<ActionSuiteDto, "id" | "isPartitioned">[];
+    loading: boolean;
+    failed: boolean;
+  },
+  suiteId: number | null | undefined,
+) =>
+  suiteKindUnknown(params, suiteId) ||
+  inPartitionedSuite(params.suites, suiteId);
 
 export function actionFieldDefs(
   params: Parameters<typeof suiteOptions>[0],
@@ -71,7 +105,6 @@ export function actionFieldDefs(
       label: ACTION_TEXT_FIELD_LABELS.shortDescription,
       type: "textarea",
       section: ActionFieldSection.Content,
-      required: true,
       rows: 2,
     },
     {
@@ -79,7 +112,6 @@ export function actionFieldDefs(
       label: ACTION_TEXT_FIELD_LABELS.body,
       type: "markdowntextarea",
       section: ActionFieldSection.Content,
-      required: true,
     },
     {
       name: "image",
@@ -89,14 +121,14 @@ export function actionFieldDefs(
     },
     {
       name: "squareThumbnailImage",
-      label: "Square Thumbnail URL",
+      label: "Square thumbnail URL",
       type: "text",
       section: ActionFieldSection.Content,
       gridCol: true,
     },
     {
       name: "squareThumbnailImageAlt",
-      label: "Thumbnail Alt Text",
+      label: "Thumbnail alt text",
       type: "text",
       section: ActionFieldSection.Content,
       gridCol: true,
@@ -121,15 +153,25 @@ export function actionFieldDefs(
     },
     {
       name: "visibilityMode",
-      label: "Visibility Mode",
+      label: "Visibility mode",
       type: "select",
       section: ActionFieldSection.Settings,
       options: visibilityModeOptions,
       gridCol: true,
     },
     {
+      name: "taskKind",
+      label: "Task",
+      type: "select",
+      section: ActionFieldSection.Settings,
+      options: taskKindOptions,
+      gridCol: true,
+      helpText:
+        "Kora review sends members to review chatbot transcripts; the action completes when they finish their first assignment.",
+    },
+    {
       name: "timeEstimate",
-      label: "Time Estimate (min)",
+      label: "Time estimate (min)",
       type: "number",
       section: ActionFieldSection.Settings,
       gridCol: true,
@@ -138,29 +180,29 @@ export function actionFieldDefs(
       name: "onboarding",
       label: "Onboarding",
       helpText:
-        "Prevent completion by members who signed their contracts before action",
+        "Members with a contract can complete it only if they signed their first one after the Member action event starts",
       type: "checkbox",
       section: ActionFieldSection.Audience,
       gridCol: true,
     },
     {
       name: "staffPreview",
-      label: "Staff Preview",
+      label: "Staff preview",
       type: "checkbox",
       section: ActionFieldSection.Settings,
       helpText:
-        "Staff see it on their home pages until the Member Action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
+        "Staff see it on their home pages until the Member action event starts, or indefinitely if none is scheduled. Until then, nobody can submit, complete, withdraw, dismiss, like, or comment.",
     },
     {
       name: "shouldCompleteAfterDeadline",
-      label: "Complete After Deadline",
+      label: "Complete after deadline",
       type: "checkbox",
       section: ActionFieldSection.Completion,
-      helpText: "Show in tasks view after deadline passes",
+      helpText: "Keeps it in the tasks view after the deadline passes",
     },
     {
       name: "preventCompletion",
-      label: "Prevent Completion",
+      label: "Prevent completion",
       type: "checkbox",
       section: ActionFieldSection.Completion,
       helpText:
@@ -168,7 +210,7 @@ export function actionFieldDefs(
     },
     {
       name: "customStatType",
-      label: "Custom Stat Type",
+      label: "Custom stat type",
       type: "select",
       section: ActionFieldSection.CustomStat,
       options: customStatTypeOptions,
@@ -177,7 +219,7 @@ export function actionFieldDefs(
     },
     {
       name: "customStatGoal",
-      label: "Custom Stat Goal",
+      label: "Custom stat goal",
       type: "number",
       section: ActionFieldSection.CustomStat,
       gridCol: true,
@@ -185,7 +227,7 @@ export function actionFieldDefs(
     },
     {
       name: "customStatLabel",
-      label: "Custom Stat Label",
+      label: "Custom stat label",
       type: "text",
       section: ActionFieldSection.CustomStat,
       gridCol: true,
@@ -193,7 +235,7 @@ export function actionFieldDefs(
     },
     {
       name: "publicOnly",
-      label: "Public Only",
+      label: "Public only",
       type: "checkbox",
       section: ActionFieldSection.Audience,
       helpText: "For actions completed by non-members and not by members",
@@ -203,19 +245,22 @@ export function actionFieldDefs(
       label: "Optional",
       type: "checkbox",
       section: ActionFieldSection.Completion,
-      helpText: "Shows prominent dismiss dialog above task card",
+      helpText: "Shows a prominent dismiss option above the task card",
+      // A suite's parts set optional work, and the server sets the flag of
+      // an action moved into one from them.
+      show: (f) => !partsMaySetOptional(params, f.suiteId),
     },
     {
       name: "isForumParticipationAction",
-      label: "Forum Participation Action",
+      label: "Forum participation action",
       type: "checkbox",
       section: ActionFieldSection.Forum,
       helpText:
-        "Autocomplete action for users who leave comment but dont hit complete",
+        "Completes the action for members who comment but don't press complete",
     },
     {
       name: "forumParticipationPostId",
-      label: "Forum Post ID (override)",
+      label: "Forum post ID (override)",
       type: "number",
       section: ActionFieldSection.Forum,
       gridCol: true,

@@ -14,6 +14,7 @@ import { Plus, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import FormTextarea from "../components/FormTextarea";
+import { useContentConfirm } from "../components/useContentConfirm";
 import { useContractAdmin } from "../lib/useContractAdmin";
 
 type DescriptionRow = {
@@ -90,6 +91,7 @@ const ContractPage: React.FC = () => {
   const saving = create.isPending || update.isPending;
   const createContract = create.mutateAsync;
   const updateContract = update.mutateAsync;
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
 
   if (contract && formContractId !== contract.id) {
     setFormContractId(contract.id);
@@ -111,6 +113,7 @@ const ContractPage: React.FC = () => {
               : null,
             endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
           };
+          if (!(await confirmSave(body))) return;
           const created = await createContract(body);
           navigate(`/contracts/${created.id}`);
         } else if (id != null) {
@@ -122,6 +125,7 @@ const ContractPage: React.FC = () => {
               : null,
             endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
           };
+          if (!(await confirmSave(body))) return;
           await updateContract(body);
           success("Contract updated successfully");
         }
@@ -130,7 +134,16 @@ const ContractPage: React.FC = () => {
         console.error(err);
       }
     },
-    [isNew, id, form, navigate, success, createContract, updateContract],
+    [
+      isNew,
+      id,
+      form,
+      navigate,
+      success,
+      createContract,
+      updateContract,
+      confirmSave,
+    ],
   );
 
   if (query.isLoading) {
@@ -162,7 +175,7 @@ const ContractPage: React.FC = () => {
   }
 
   const pageTitle = isNew
-    ? "Create Contract"
+    ? "Create contract"
     : contract
       ? contract.name?.trim() || `Contract #${contract.id}`
       : "Contract";
@@ -170,6 +183,7 @@ const ContractPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <title>{pageTitle} - Admin</title>
+      {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
         <button
@@ -368,7 +382,7 @@ const ContractPage: React.FC = () => {
                       htmlFor="startDate"
                       className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                      Start Date
+                      Start date
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -402,7 +416,7 @@ const ContractPage: React.FC = () => {
                       htmlFor="endDate"
                       className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                      End Date
+                      End date
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -455,8 +469,8 @@ const ContractPage: React.FC = () => {
                   ? "Creating..."
                   : "Saving..."
                 : isNew
-                  ? "Create Contract"
-                  : "Save Changes"}
+                  ? "Create contract"
+                  : "Save changes"}
             </button>
           </div>
         </form>

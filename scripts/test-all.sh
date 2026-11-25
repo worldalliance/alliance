@@ -5,10 +5,11 @@
 #
 # CI runs each package back through this script, so the skip rule below is the
 # same one locally and in CI. PACKAGES mirrors the test-unit matrices in
-# .github/workflows/ci.yaml and deploy.yaml, so a new directory with tests goes
-# in all three. The typecheck matrices in those two files list every package
-# here except scripts, .github, agents/hooks and agents/skills, which have no
-# tsconfig.
+# .github/workflows/ci.yaml and deploy-checks.yaml, so a new directory with
+# tests goes in all three. The typecheck matrices in those two files list
+# every package here except scripts, .github, agents/hooks, agents/skills and
+# agents/chats, which have no tsconfig; common's typecheck covers scripts and
+# agents.
 #
 # agents/desktop installs from its own lockfile, which those matrices never
 # install, so desktop.yaml runs its tests, and agents is listed here by
@@ -18,7 +19,7 @@
 #   scripts/test-all.sh apps/admin   # only the named packages
 set -u
 
-PACKAGES=(server common shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents/hooks agents/skills)
+PACKAGES=(server common kora-review shared sharedweb apps/frontend apps/admin apps/mobile scripts .github citesting agents/hooks agents/skills agents/chats)
 
 script_dir="$(cd "$(dirname "$0")" && pwd)" || exit 1
 cd "$script_dir/.." || exit 1

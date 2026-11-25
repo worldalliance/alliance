@@ -1,0 +1,226 @@
+/* Review header */
+.kora-review .rhead {
+  position: sticky;
+  top: calc(var(--kora-top-offset, 0px) + env(safe-area-inset-top, 0px));
+  z-index: calc(var(--kora-z-index, 0) + 20);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.kora-review .rrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  min-width: 0;
+}
+.kora-review .rrow .iconbtn:first-child {
+  margin-left: -10px;
+}
+.kora-review .rrow .chip {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.kora-review .pair-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font: 500 12px var(--f-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  margin-left: 2px;
+}
+.kora-review .pair-id-hash {
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  min-width: 24px;
+  min-height: 24px;
+  cursor: pointer;
+  opacity: 0.4;
+}
+.kora-review .pair-id-hash:hover,
+.kora-review .pair-id-hash[aria-expanded="true"] {
+  opacity: 1;
+}
+@media (max-width: 899px) {
+  .kora-review .pair-id {
+    display: none;
+  }
+}
+.kora-review .prog {
+  font: 700 18px var(--f-body);
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.kora-review .rules {
+  background: var(--accent-soft);
+  border-radius: var(--r);
+  padding: 7px 12px 8px;
+  margin: 0 0 8px;
+  font: 400 15px/1.3 var(--f-display);
+  color: var(--ink);
+}
+@media (max-width: 899px) {
+  .kora-review .rules {
+    max-height: 12em;
+    overflow: hidden;
+    transition:
+      max-height 0.2s ease,
+      opacity 0.2s ease,
+      padding 0.2s ease,
+      margin 0.2s ease;
+  }
+  .kora-review .rules.tucked {
+    max-height: 0;
+    opacity: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 899px) and (prefers-reduced-motion: reduce) {
+  .kora-review .rules {
+    transition: none;
+  }
+}
+.kora-review .rrow .cage {
+  font: 700 12px/1.2 var(--f-body);
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+/* The age chip opens a menu of the child's story and the scenario */
+.kora-review .story-wrap {
+  position: relative;
+}
+.kora-review .cage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  cursor: pointer;
+}
+.kora-review .cage-btn .ic {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.15s ease;
+}
+.kora-review .cage-btn[aria-expanded="true"] .ic {
+  transform: rotate(180deg);
+}
+.kora-review .cage-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.kora-review .story-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  animation: kora-fade-in 0.15s ease-out;
+}
+.kora-review .story-item {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  text-align: left;
+  font-size: 15px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.kora-review .story-item:hover,
+.kora-review .story-item:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.kora-review .story-dlg {
+  margin: auto;
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(80vh, 720px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.kora-review .story-dlg::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+.kora-review .story-top {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 8px 0;
+  background: var(--card);
+}
+.kora-review .story-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 0 24px 28px;
+}
+.kora-review .story h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 10px;
+  scroll-margin-top: 56px;
+}
+.kora-review .story h2:focus {
+  outline: none;
+}
+.kora-review .story p {
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+/* Full-screen category intro, shown when the category changes */
+.kora-review .intro-in {
+  margin: auto;
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: max(32px, env(safe-area-inset-top, 0px))
+    max(16px, env(safe-area-inset-right, 0px))
+    max(32px, env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+}
+.kora-review .intro-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font: 700 12px var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.kora-review .intro-q {
+  font-size: clamp(28px, 7.5vw, 40px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.kora-review .intro-hint {
+  font-size: 17px;
+  color: var(--muted);
+}

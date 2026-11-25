@@ -1,11 +1,8 @@
-import { addDays, addHours, addSeconds, subDays } from "date-fns";
+import { addDays, addSeconds } from "date-fns";
 import {
-  isLegacyDomain,
-  isSnoozed,
   newDomainUrl,
   redirectAlreadyTried,
   redirectToNewDomain,
-  snooze,
 } from "./domainMigration";
 
 declare global {
@@ -13,21 +10,6 @@ declare global {
     happyDOM: { setURL: (url: string) => void };
   }
 }
-
-describe("isLegacyDomain", () => {
-  test("accepts the bare domain and its subdomains", () => {
-    expect(isLegacyDomain("worldalliance.org")).toBe(true);
-    expect(isLegacyDomain("staging.worldalliance.org")).toBe(true);
-    expect(isLegacyDomain("www.worldalliance.org")).toBe(true);
-  });
-
-  test("rejects the new domain and lookalikes", () => {
-    expect(isLegacyDomain("thealliance.org")).toBe(false);
-    expect(isLegacyDomain("staging.thealliance.org")).toBe(false);
-    expect(isLegacyDomain("notworldalliance.org")).toBe(false);
-    expect(isLegacyDomain("localhost")).toBe(false);
-  });
-});
 
 describe("newDomainUrl", () => {
   test("swaps the domain, keeping path, query and hash", () => {
@@ -100,38 +82,5 @@ describe("redirectToNewDomain", () => {
     );
     expect(window.location.href).toBe("https://thealliance.org/actions");
     expect(redirectAlreadyTried(new Date())).toBe(false);
-  });
-});
-
-describe("snooze", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
-
-  test("is inactive until someone snoozes", () => {
-    expect(isSnoozed(new Date())).toBe(false);
-  });
-
-  test("covers the day after it is set", () => {
-    const now = new Date("2026-09-01T12:00:00Z");
-    snooze(now);
-    expect(isSnoozed(addHours(now, 23))).toBe(true);
-  });
-
-  test("expires after one day", () => {
-    const now = new Date("2026-09-01T12:00:00Z");
-    snooze(now);
-    expect(isSnoozed(addDays(now, 1))).toBe(false);
-  });
-
-  test("ignores a garbage value", () => {
-    window.localStorage.setItem("domain-migration-snoozed-at", "nonsense");
-    expect(isSnoozed(new Date())).toBe(false);
-  });
-
-  test("a stale snooze from before the window does not reactivate", () => {
-    const now = new Date("2026-09-01T12:00:00Z");
-    snooze(subDays(now, 30));
-    expect(isSnoozed(now)).toBe(false);
   });
 });

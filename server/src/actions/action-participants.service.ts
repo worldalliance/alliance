@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { startComputation } from "src/datasources/computation";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { User } from "src/user/entities/user.entity";
 import { computeIsAwayDuringWindow } from "src/utils/action-user";
@@ -199,36 +200,58 @@ export class ActionParticipantsService {
     await this.actionRepository.update(actionId, { usersCompleted });
   }
 
+  private startUsersJoinedComputation(): Promise<string> {
+    return startComputation({
+      manager: this.actionRepository.manager,
+      table: "action",
+      column: "usersJoinedComputation",
+    });
+  }
+
   async reloadAllActionUsersJoined(): Promise<void> {
+    const computation = await this.startUsersJoinedComputation();
     const actions = (
       await this.actionRepository.find({ relations: { events: true } })
     ).map(parseAction);
     const participantIds = await this.findParticipantIdsForActions(actions);
-    const changed = Map.groupBy(
-      actions.flatMap((action) => {
-        const usersJoined = participantIds.get(action.id)?.length ?? 0;
-        return usersJoined === action.usersJoined
-          ? []
-          : [{ id: action.id, read: action.usersJoined, usersJoined }];
-      }),
-      ({ read, usersJoined }) => `${read}:${usersJoined}`,
-    );
-    // Matching the count read skips a row a request rewrote during the sweep.
-    // A request that wrote back the read count is still overwritten, until
-    // the next sweep or recompute.
-    for (const group of changed.values()) {
-      const { read, usersJoined } = group[0];
-      await this.actionRepository.update(
-        { id: In(group.map((action) => action.id)), usersJoined: read },
-        { usersJoined },
-      );
-    }
+    await this.publishUsersJoined({
+      computation,
+      counts: actions.map((action) => ({
+        id: action.id,
+        usersJoined: participantIds.get(action.id)?.length ?? 0,
+      })),
+    });
   }
 
   async reloadUsersJoinedForAction(actionId: number): Promise<void> {
+    const computation = await this.startUsersJoinedComputation();
     const usersJoined = (await this.findParticipantIdsForActionById(actionId))
       .length;
-    await this.actionRepository.update(actionId, { usersJoined });
+    await this.publishUsersJoined({
+      computation,
+      counts: [{ id: actionId, usersJoined }],
+    });
+  }
+
+  /** Every count is written, changed or not, so it fences out older ones. */
+  private async publishUsersJoined(params: {
+    computation: string;
+    counts: { id: number; usersJoined: number }[];
+  }): Promise<void> {
+    const { computation, counts } = params;
+    await this.actionRepository.query(
+      `UPDATE action
+       SET "usersJoined" = counted."usersJoined",
+         "usersJoinedComputation" = $3::bigint
+       FROM unnest($1::int[], $2::int[]) AS counted(id, "usersJoined")
+       WHERE action.id = counted.id
+         AND action."usersJoinedComputation" < $3::bigint`,
+      [
+        counts.map((count) => count.id),
+        counts.map((count) => count.usersJoined),
+        computation,
+      ],
+    );
   }
 
   async findIncompleteUsersForAction(actionId: number): Promise<User[]> {

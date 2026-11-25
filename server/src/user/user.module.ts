@@ -10,6 +10,7 @@ import { EventLogModule } from "src/eventlog/eventlog.module";
 import { ImagesModule } from "src/images/images.module";
 import { MailModule } from "src/mail/mail.module";
 import { NotifsModule } from "src/notifs/notifs.module";
+import { OtpModule } from "src/otp/otp.module";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { Action } from "../actions/entities/action.entity";
@@ -33,6 +34,7 @@ import { User } from "./entities/user.entity";
 import { FriendService } from "./friend.service";
 import { GroupAssignmentService } from "./group-assignment.service";
 import { OnetimeInviteService } from "./onetime-invite.service";
+import { PhoneVerificationService } from "./phone-verification.service";
 import { ReferralService } from "./referral.service";
 import { TagService } from "./tag.service";
 import { UserAdminService } from "./user-admin.service";
@@ -44,6 +46,7 @@ import { UserDirectoryService } from "./user-directory.service";
 import { UserFriendController } from "./user-friend.controller";
 import { UserGroupAssignmentController } from "./user-group-assignment.controller";
 import { UserOnetimeInviteController } from "./user-onetime-invite.controller";
+import { UserPhoneController } from "./user-phone.controller";
 import { UserReferralController } from "./user-referral.controller";
 import { UserTagController } from "./user-tag.controller";
 import { UserVisibilityContextService } from "./user-visibility-context.service";
@@ -74,6 +77,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     JwtModule,
     ImagesModule,
     MailModule,
+    forwardRef(() => OtpModule),
     ShareUrlsModule,
     CampaignModule,
     forwardRef(() => PushModule),
@@ -90,6 +94,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserReferralController,
     UserFriendController,
     UserOnetimeInviteController,
+    UserPhoneController,
   ],
   providers: [
     UserService,
@@ -108,6 +113,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserAdminService,
     AccountEmailService,
     UserDirectoryService,
+    PhoneVerificationService,
     IsUserAlreadyExist,
   ],
   exports: [

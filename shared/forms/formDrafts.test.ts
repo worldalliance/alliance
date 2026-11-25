@@ -1,9 +1,11 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import {
+  answersToStore,
   applyDefaultValues,
   clampPageIndex,
   readStoredFormDraft,
+  resolveFieldDefaultValue,
   restorableAnswers,
   serializeStoredFormDraft,
 } from "./formDrafts";
@@ -42,6 +44,40 @@ describe("restorableAnswers", () => {
       { places: [] },
     );
   });
+
+  it("keeps a conversation's note, which has an answer key of its own", () => {
+    const aware: AnyField = {
+      id: "aware",
+      type: "input",
+      kind: "conversation",
+      label: "Aware",
+      expert: null,
+      message: "Were you aware?",
+      options: [{ label: "No", value: "no", note: {} }],
+      noteId: "aware_note",
+    };
+    expect(
+      restorableAnswers(
+        { aware: "no", aware_note: "Never heard of it", gone: "x" },
+        new Map([["aware", aware]]),
+      ),
+    ).toEqual({ aware: "no", aware_note: "Never heard of it" });
+  });
+});
+
+describe("answersToStore", () => {
+  it("leaves out an answer equal to its default, arrays included", () => {
+    const defaults = new Map<string, FormValue>([
+      ["zone", "Europe/London"],
+      ["places", ["ny", "la"]],
+    ]);
+    expect(
+      answersToStore(
+        { zone: "Europe/London", places: ["ny", "la"], name: "Ada" },
+        defaults,
+      ),
+    ).toEqual({ name: "Ada" });
+  });
 });
 
 describe("readStoredFormDraft", () => {
@@ -64,6 +100,7 @@ describe("readStoredFormDraft", () => {
       publicAnswers: { name: true, gone: false },
       currentPageIndex: 2,
       syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+      edited: true,
     });
     expect(read(raw)).toEqual(
       R.success({
@@ -71,6 +108,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: { name: true },
         currentPageIndex: 2,
         syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+        edited: true,
       }),
     );
   });
@@ -83,6 +121,7 @@ describe("readStoredFormDraft", () => {
           publicAnswers: { name: "yes" },
           currentPageIndex: "1",
           syncedUpdatedAt: null,
+          edited: "yes",
         }),
       ),
     ).toEqual(
@@ -91,6 +130,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: {},
         currentPageIndex: undefined,
         syncedUpdatedAt: undefined,
+        edited: false,
       }),
     );
   });
@@ -107,5 +147,51 @@ describe("clampPageIndex", () => {
     expect(clampPageIndex(-2, 3)).toBe(0);
     expect(clampPageIndex(9, 3)).toBe(3);
     expect(clampPageIndex(Number.NaN, 3)).toBe(0);
+  });
+});
+
+describe("resolveFieldDefaultValue", () => {
+  const toggle: AnyField = {
+    id: "email",
+    type: "input",
+    kind: "toggle",
+    label: "Email notifications",
+  };
+
+  it("answers a toggle off unless it is on by default", () => {
+    expect(resolveFieldDefaultValue(toggle, undefined)).toBe(false);
+    expect(
+      resolveFieldDefaultValue({ ...toggle, defaultValue: null }, undefined),
+    ).toBe(false);
+    expect(
+      resolveFieldDefaultValue({ ...toggle, defaultValue: true }, undefined),
+    ).toBe(true);
+  });
+
+  it("answers a checkbox for a notification setting, and leaves others unanswered", () => {
+    const checkbox: AnyField = { ...toggle, kind: "checkbox" };
+    expect(resolveFieldDefaultValue(checkbox, undefined)).toBeUndefined();
+    expect(
+      resolveFieldDefaultValue(
+        { ...checkbox, autoExtractUserData: { target: "textNotifications" } },
+        undefined,
+      ),
+    ).toBe(false);
+  });
+
+  it("starts a time picker at its default, or 9:00 AM", () => {
+    const picker: AnyField = {
+      id: "reminder",
+      type: "input",
+      kind: "timePicker",
+      label: "Reminder time",
+    };
+    expect(resolveFieldDefaultValue(picker, undefined)).toBe("09:00");
+    expect(
+      resolveFieldDefaultValue({ ...picker, defaultValue: "18:30" }, undefined),
+    ).toBe("18:30");
+    expect(
+      resolveFieldDefaultValue({ ...picker, defaultValue: "soon" }, undefined),
+    ).toBe("09:00");
   });
 });

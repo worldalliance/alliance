@@ -21,7 +21,7 @@ describe("ReloadUsersJoinedWorker (e2e)", () => {
     await closeTestApp(ctx.app);
   });
 
-  it("skips a run that starts while another holds the lock", async () => {
+  it("skips a run that starts while another holds the lease", async () => {
     const { promise: release, resolve: finish } = Promise.withResolvers<void>();
     const { promise: started, resolve: start } = Promise.withResolvers<void>();
     const reload = jest
@@ -30,10 +30,6 @@ describe("ReloadUsersJoinedWorker (e2e)", () => {
         start();
         await release;
       });
-    const log = jest
-      .spyOn(Logger.prototype, "log")
-      .mockImplementation(() => {});
-
     const first = worker.reloadAllActionUsersJoined();
     await started;
     await worker.reloadAllActionUsersJoined();
@@ -46,7 +42,6 @@ describe("ReloadUsersJoinedWorker (e2e)", () => {
       callsWhileHeld: 1,
       calls: 2,
     });
-    expect(log).toHaveBeenCalledWith("usersJoined reload skipped bc of lock");
   });
 
   it("logs a failed run instead of rejecting", async () => {

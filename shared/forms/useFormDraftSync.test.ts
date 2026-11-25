@@ -122,10 +122,13 @@ describe("useFormDraftSync", () => {
 
     await settle();
     expect(saves).toHaveLength(0);
+    expect(result.current.settled).toBe(false);
 
     landFetch(Response.json({ draft: storedDraft }));
     await settle();
 
+    expect(result.current.settled).toBe(true);
+    expect(result.current.failed).toBe(false);
     expect(result.current.serverDraft?.answers).toEqual(storedDraft.answers);
     expect(saves[0]?.answers).toEqual(typedOnPhone);
   });
@@ -134,7 +137,7 @@ describe("useFormDraftSync", () => {
     fetchDraft = async () =>
       Response.json({ message: "nope" }, { status: 500 });
 
-    renderHook(
+    const { result } = renderHook(
       () => useFormDraftSync(draftArgs(typedOnPhone)),
       cachingWrapper(),
     );
@@ -142,6 +145,38 @@ describe("useFormDraftSync", () => {
 
     expect(fetches).toBe(1);
     expect(saves).toHaveLength(0);
+    expect(result.current.settled).toBe(true);
+    expect(result.current.failed).toBe(true);
+  });
+
+  it("reports a fetch waiting offline at mount as failed, not settled", async () => {
+    onlineManager.setOnline(false);
+    const { result } = renderHook(
+      () => useFormDraftSync(draftArgs(typedOnPhone)),
+      cachingWrapper(),
+    );
+    await settle();
+
+    expect(fetches).toBe(0);
+    expect(result.current.settled).toBe(false);
+    expect(result.current.failed).toBe(true);
+
+    onlineManager.setOnline(true);
+    await settle();
+
+    expect(result.current.settled).toBe(true);
+    expect(result.current.failed).toBe(false);
+  });
+
+  it("is settled at once while disabled", () => {
+    const { result } = renderHook(
+      () => useFormDraftSync({ ...draftArgs(typedOnPhone), enabled: false }),
+      cachingWrapper(),
+    );
+
+    expect(result.current.settled).toBe(true);
+    expect(result.current.failed).toBe(false);
+    expect(fetches).toBe(0);
   });
 
   it("records each landed save's updatedAt, even one a later save overtook", async () => {

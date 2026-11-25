@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
@@ -19,6 +20,7 @@ import {
   loadedReminderGroupMemberActionEvent,
   ReminderGroup,
 } from "src/actions/entities/reminder-group.entity";
+import { CronLease } from "src/leases/cron-lease";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -70,6 +72,12 @@ export class AnalyticsService {
   ) {}
 
   @Cron("0 8,20 * * *")
+  @WithoutOverlapping({ key: CronLease.DailyStats })
+  async calculateDailyStatsOnSchedule() {
+    await this.calculateDailyStats();
+  }
+
+  /** Skips the lease; the schedule runs it through calculateDailyStatsOnSchedule. */
   async calculateDailyStats() {
     const now = new Date();
     const dayId = formatDateKey(now);
@@ -112,17 +120,21 @@ export class AnalyticsService {
       .where(inviteAcceptedSql("invite"))
       .getCount();
 
-    const record = await this.dailyStatsRepository.create({
-      dayId,
-      date: now,
-      signedMembers: signedUsers,
-      suspendedMembers: suspendedUsers,
-      actionsCompleted: completionActivities,
-      anonFormSubmissions: anonFormSubmissions,
-      invitesCreated: createdInvites,
-      invitesAccepted: acceptedInvites,
-    });
-    await this.dailyStatsRepository.save(record);
+    await this.dailyStatsRepository
+      .createQueryBuilder()
+      .insert()
+      .values({
+        dayId,
+        date: now,
+        signedMembers: signedUsers,
+        suspendedMembers: suspendedUsers,
+        actionsCompleted: completionActivities,
+        anonFormSubmissions: anonFormSubmissions,
+        invitesCreated: createdInvites,
+        invitesAccepted: acceptedInvites,
+      })
+      .orIgnore()
+      .execute();
   }
 
   async getDailyStats(
@@ -275,6 +287,7 @@ export class AnalyticsService {
           action,
           eventId: memberActionEvent.id,
         })),
+        requiredOnly: true,
       });
     const activeUsers = new Map<number, User>();
     const participantsByAction = new Map<number, Set<number>>();

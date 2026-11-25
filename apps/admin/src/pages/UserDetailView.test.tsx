@@ -317,7 +317,7 @@ it("keeps a cached member it could not refresh and says so", async () => {
 
   expect(
     await screen.findByText(
-      "Could not refresh this member. Reload to see their latest details.",
+      "Could not refresh this member. Reload to see the latest.",
     ),
   ).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Sam" })).toBeTruthy();
@@ -401,7 +401,7 @@ it("says it could not refresh the member after a tag change", async () => {
 
   expect(
     await screen.findByText(
-      "Could not refresh this member. Reload to see their latest details.",
+      "Could not refresh this member. Reload to see the latest.",
     ),
   ).toBeTruthy();
 });

@@ -1,11 +1,11 @@
 ---
 name: linear
-description: Read before touching Linear, our issue tracker, naming a branch for one of its issues, or writing a commit or PR that names one.
+description: Read before starting or continuing work on an issue in Linear, our issue tracker, touching Linear, naming a branch for one of its issues, or writing a commit or PR that names one.
 ---
 
 # Linear API
 
-OAuth client credentials live in `.env.devtools` as `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`. Load them with `source .env.devtools`.
+OAuth client credentials are `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`. Run your script through `scripts/with-secrets.sh devtools <command>`, which sets them in that command's environment only. Your own shell expands `$LINEAR_CLIENT_ID` in the wrapped command line before the wrapper runs, so it sends an empty value, which Linear rejects as `invalid_client`. Read the variables inside a `.scratch/` script instead, and send the secret in the request body, never on a command line, where `ps` shows it. Not logged in → `docs/local-secrets.md`.
 
 Linear accepts the `client_credentials` grant at `https://api.linear.app/oauth/token`, form-encoded.
 
@@ -13,7 +13,9 @@ Mint with at least `read` and `write`: `scope=read,write,...`
 
 There is one team, `ALL` / Alliance.
 
-To pull a label's issues, filter `issues` by `labels: {name: {eq: …}}`. Traversing `issueLabels` → `issues` exceeds Linear's query complexity limit.
+A project's `description` holds at most 255 characters; its body goes in `content`.
+
+A query may cost at most 10,000 complexity points, and each nested connection multiplies the cost by its page size, so a project's issues with their labels or relations can exceed it; a query that does gets under it with a small `first:` on each nested connection (`issues(first: 50) { nodes { labels(first: 10) { … } } }`). Page through with `pageInfo { hasNextPage endCursor }` rather than trusting one page to hold everything. For a label's issues, filter `issues` by `labels: {name: {eq: …}}` rather than traversing `issueLabels` → `issues`.
 
 ## Filing an issue
 
@@ -24,6 +26,10 @@ File it in the `Backlog` state.
 Label it `AI-generated`, plus labels from every label group as each group's description says, plus any other relevant labels. The groups and their labels' descriptions: `issueLabels(filter: {isGroup: {eq: true}}) { nodes { name description children { nodes { name description } } } }`.
 
 Write the description so the bug can be fixed from it alone, weeks later: repro, file paths with line numbers, and the branch and commit sha when the finding only exists on an unmerged branch.
+
+## Starting work on an issue
+
+Claim an issue before working on it, so two agents don't do the same work: move it to `In Progress` and comment your branch and session id (`claude:$CLAUDE_CODE_SESSION_ID` or `codex:$CODEX_THREAD_ID`). Every agent acts in Linear as the same `Alliance agent` user, so the session id is what tells claims apart, and it leads to the transcript of a session that stopped without a PR. A session continuing the claimant's work, through a handoff or as its subagent, works under that claim. When the issue already looks claimed by someone else, ask the user. If you drop the work without opening a PR, put the issue back as you found it.
 
 ## Linking work to an issue
 

@@ -16,13 +16,22 @@ const SCOPES = ["openid", "email", "profile"];
 export class GoogleOAuthClient implements OAuthClient {
   private oauth2Client: OAuth2Client | null = null;
 
-  private config(): GoogleConfig {
+  private settings(): GoogleConfig | null {
     const clientId = env("GOOGLE_CLIENT_ID");
     const clientSecret = env("GOOGLE_CLIENT_SECRET");
-    if (!clientId || !clientSecret) {
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
+  }
+
+  private config(): GoogleConfig {
+    const settings = this.settings();
+    if (!settings) {
       throw new ServiceUnavailableException("Google sign-in is not configured");
     }
-    return { clientId, clientSecret };
+    return settings;
+  }
+
+  isConfigured(): boolean {
+    return this.settings() !== null;
   }
 
   // The library caches Google's signing certs on the client, so a fresh one

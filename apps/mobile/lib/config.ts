@@ -1,5 +1,7 @@
 import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
 import { R } from "@alliance/common/result";
+import { ALLIANCE_DOMAIN } from "@alliance/common/url";
+import { urlProtocol } from "@alliance/common/url-safety";
 import { client } from "@alliance/shared/client/client.gen";
 import * as Application from "expo-application";
 import { NativeModules, Platform } from "react-native";
@@ -64,7 +66,7 @@ export const getBinaryApiUrl = (): string => {
 
 export const getBaseUrl = (): string => {
   const apiUrl = getApiUrl();
-  return apiUrl.replace(/\/api\/?$/, "") || "https://worldalliance.org";
+  return apiUrl.replace(/\/api\/?$/, "") || `https://${ALLIANCE_DOMAIN}`;
 };
 
 /**
@@ -81,6 +83,9 @@ export const getSiteUrl = (): string =>
 
 export const getSitePageUrl = (path: string): string =>
   `${getSiteUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
+
+export const browserUrlFor = (url: string): string =>
+  urlProtocol(url) !== null ? url : getSitePageUrl(url);
 
 export const getImageSource = (key: string) =>
   uploadSrc({ key, apiUrl: getApiUrl() });

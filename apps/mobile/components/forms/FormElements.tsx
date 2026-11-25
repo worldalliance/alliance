@@ -1,10 +1,13 @@
 import { type PageItem } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
+import { formUnrenderable } from "@alliance/common/forms/unrenderable";
 import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
+import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import { UnrenderableSubject } from "@alliance/shared/forms/unrenderable";
 import { type ReactElement } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { colors } from "../../lib/style/colors";
-import Text, { FontWeight } from "../system/Text";
+import UnrenderableNotice from "../UnrenderableNotice";
 import FormPage from "./FormPage";
 import OutputPublicToggle from "./OutputPublicToggle";
 import { RenderField } from "./RenderField";
@@ -19,17 +22,15 @@ export function formBlockedView(form: MobileFormState): ReactElement | null {
   });
   if (gate !== null) return gate;
 
-  if (form.unknownKind || form.variablesError !== null) {
+  const unrenderable = formUnrenderable(form);
+  if (unrenderable !== null) {
     return (
-      <View className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-        <Text weight={FontWeight.Medium} className="text-amber-800">
-          This form can&apos;t be displayed
-        </Text>
-        <Text className="text-sm text-amber-800 mt-1">
-          Restarting the app or downloading the latest version may fix the
-          issue.
-        </Text>
-      </View>
+      <UnrenderableNotice
+        subject={UnrenderableSubject.Form}
+        reason={unrenderable.reason}
+        detail={unrenderable.detail}
+        content={form.content}
+      />
     );
   }
 
@@ -79,6 +80,11 @@ export function FormElements({
             )}
             value={form.effectiveFormData[field.id]}
             onChange={(value) => form.handleFieldChange(field.id, value)}
+            {...(field.kind === "conversation" && {
+              noteValue: form.effectiveFormData[field.noteId],
+              onNoteChange: (value: FormValueUpdater) =>
+                form.handleFieldChange(field.noteId, value),
+            })}
             fileUpload={readOnly ? undefined : form.imageUpload}
             disabled={readOnly}
             error={fieldErrors[field.id]}

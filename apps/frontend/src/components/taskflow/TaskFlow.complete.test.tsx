@@ -220,7 +220,7 @@ it("hides the member's answers card on completion without an output view", async
   expect(screen.queryByText(testAuthUser.name)).toBeNull();
 });
 
-it("shows the member's answers card on completion from the output view", async () => {
+it("shows the member's answers on completion as plain text, without labels", async () => {
   setServedSchema({
     ...taskSchema,
     outputViews: [
@@ -234,7 +234,19 @@ it("shows the member's answers card on completion from the output view", async (
   renderFlow();
   await submitFlow();
   expect(screen.getByText(testAuthUser.name)).toBeTruthy();
-  expect(screen.getByText("First impression")).toBeTruthy();
+  expect(screen.getByText("Helpful")).toBeTruthy();
+  expect(screen.queryByText("First impression")).toBeNull();
+});
+
+it("shows the form's completion subtitle in place of the default", async () => {
+  setServedSchema({
+    ...taskSchema,
+    completionSubtitle: "Welcome to the Alliance!",
+  });
+  renderFlow();
+  await submitFlow();
+  expect(screen.getByText("Welcome to the Alliance!")).toBeTruthy();
+  expect(screen.queryByText(taskFlow.completeUpdate)).toBeNull();
 });
 
 it("closes the completion screen on a tap on its background, not its content", async () => {

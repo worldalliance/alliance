@@ -8,9 +8,10 @@ import type { Repository as TypedRepository } from "src/utils/Repository";
 import { DataSource, In, Not, type Repository } from "typeorm";
 import { UserCityCount } from "./dto/user.dto";
 import { Friend } from "./entities/friend.entity";
-import { loadedUserCommunities, User } from "./entities/user.entity";
+import { User } from "./entities/user.entity";
 import { acceptedFriendshipsOf, friendOf } from "./friendship";
 import { UserService } from "./user.service";
+import { loadedUserCommunities } from "./user.utils";
 
 @Injectable()
 export class UserDirectoryService {

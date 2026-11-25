@@ -19,17 +19,21 @@ import { CommunityModule } from "./community/community.module";
 import { env } from "./config/env";
 import { ContractModule } from "./contract/contract.module";
 import { CustomLinksModule } from "./custom-links/custom-links.module";
-import { connectionOptions } from "./datasources/dataSource";
+import { connectionOptions } from "./datasources/connection-options";
 import { EventLogModule } from "./eventlog/eventlog.module";
+import { FormulasModule } from "./formulas/formulas.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
+import { HealthModule } from "./health/health.module";
 import { HostedDocsModule } from "./hosted-docs/hosted-docs.module";
 import { ImagesModule } from "./images/images.module";
 import { KoraModule } from "./kora/kora.module";
+import { LeaseModule } from "./leases/lease.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
 import { LinkTrackingModule } from "./link-tracking/link-tracking.module";
 import { MailModule } from "./mail/mail.module";
+import { MemberListsModule } from "./member-lists/member-lists.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MmsModule } from "./mms/mms.module";
 import { NotifsModule } from "./notifs/notifs.module";
@@ -38,6 +42,7 @@ import { PushModule } from "./push/push.module";
 import { S3Module } from "./s3/s3.module";
 import { SearchModule } from "./search/search.module";
 import { ShareUrlsModule } from "./share-urls/share-urls.module";
+import { SuitePartitionsModule } from "./suite-partitions/suite-partitions.module";
 import { TasksModule } from "./tasks/tasks.module";
 import { ReferralSource } from "./user/entities/user.entity";
 import { UserModule } from "./user/user.module";
@@ -86,6 +91,8 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     ClusterModule,
     TypeOrmModule.forRoot({ ...connectionOptions(), autoLoadEntities: true }),
     ScheduleModule.forRoot(),
+    LeaseModule,
+    HealthModule,
     ActionsModule,
     ActionPartnershipsModule,
     ImagesModule,
@@ -100,6 +107,9 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     SearchModule,
     ShareUrlsModule,
     CustomLinksModule,
+    FormulasModule,
+    MemberListsModule,
+    SuitePartitionsModule,
     HostedDocsModule,
     CampaignModule,
     TasksModule,

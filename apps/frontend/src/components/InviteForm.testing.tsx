@@ -7,6 +7,7 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { setTestWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -117,17 +118,13 @@ export const serveInviteForm = () => {
   );
 
   beforeEach(() => {
-    process.env.VITE_ALT_APP_URL = "https://example.com";
+    setTestWebRuntimeConfig({ VITE_ALT_APP_URL: "https://example.com" });
     Object.assign(api, freshApi());
     jest
       .spyOn(navigator.clipboard, "write")
       .mockImplementation(async ([item]) => {
         api.copied.push(await (await item.getType("text/plain")).text());
       });
-  });
-
-  afterEach(() => {
-    delete process.env.VITE_ALT_APP_URL;
   });
 
   const renderForm = () => {

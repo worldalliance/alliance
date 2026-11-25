@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { hasTakenEffect } from "@alliance/common/actionEvent";
 import { Injectable, Logger } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
@@ -15,12 +16,32 @@ import {
   loadedActionEvents,
   parseAction,
 } from "src/actions/entities/action.entity";
+import { startComputation } from "src/datasources/computation";
+import { CronLease } from "src/leases/cron-lease";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
 import { ActionStatsWithOnboarding } from "./actionstats-with-onboarding.dto";
 import { ActionStatsRecord } from "./actionstats.entity";
 import { countsTowardMemberAnalytics } from "./member-analytics-action";
+
+type StatsRow = Omit<ActionStatsRecord, "id" | "deletedAt">;
+
+const STATS_COLUMNS = Object.keys({
+  actionId: true,
+  actionName: true,
+  usersCompleted: true,
+  usersJoined: true,
+  usersWithdrawn: true,
+  usersDismissed: true,
+  completionRate: true,
+  lastCalculatedAt: true,
+  actionCompletedAt: true,
+  showInChart: true,
+  memberActionStartDate: true,
+  memberActionEndDate: true,
+  computation: true,
+} satisfies Record<keyof StatsRow, true>);
 
 @Injectable()
 export class ActionStatsAnalyticsService {
@@ -55,9 +76,20 @@ export class ActionStatsAnalyticsService {
   }
 
   @Cron("0 9 * * *") // Daily at 9 AM
+  @WithoutOverlapping({ key: CronLease.ActionStatsAnalytics })
+  async calculateActionStatsOnSchedule() {
+    await this.calculateActionStats();
+  }
+
+  /** Skips the lease; the schedule runs it through calculateActionStatsOnSchedule. */
   async calculateActionStats() {
     this.logger.log("Starting action stats calculation");
 
+    const computation = await startComputation({
+      manager: this.actionStatsRepository.manager,
+      table: "action_stats_record",
+      column: "computation",
+    });
     const now = new Date();
 
     const actions = await this.actionRepository
@@ -107,6 +139,7 @@ export class ActionStatsAnalyticsService {
       }
     }
 
+    const records: StatsRow[] = [];
     for (const action of actions) {
       // Skip draft actions
       if (action.status === ActionStatus.Draft) {
@@ -134,43 +167,47 @@ export class ActionStatsAnalyticsService {
       const showInChart =
         countsTowardMemberAnalytics(action) && !!memberActionEvent;
 
-      const existingRecord = await this.actionStatsRepository.findOne({
-        where: { actionId: action.id },
+      records.push({
+        actionId: action.id,
+        actionName: action.name,
+        usersCompleted,
+        usersJoined,
+        usersWithdrawn,
+        usersDismissed,
+        completionRate,
+        lastCalculatedAt: now,
+        actionCompletedAt: completedDate,
+        showInChart,
+        memberActionStartDate,
+        memberActionEndDate,
+        computation,
       });
-
-      if (existingRecord) {
-        existingRecord.actionName = action.name;
-        existingRecord.usersCompleted = usersCompleted;
-        existingRecord.usersJoined = usersJoined;
-        existingRecord.usersWithdrawn = usersWithdrawn;
-        existingRecord.usersDismissed = usersDismissed;
-        existingRecord.completionRate = completionRate;
-        existingRecord.lastCalculatedAt = now;
-        existingRecord.actionCompletedAt = completedDate;
-        existingRecord.showInChart = showInChart;
-        existingRecord.memberActionStartDate = memberActionStartDate;
-        existingRecord.memberActionEndDate = memberActionEndDate;
-        await this.actionStatsRepository.save(existingRecord);
-      } else {
-        const newRecord = this.actionStatsRepository.create({
-          actionId: action.id,
-          actionName: action.name,
-          usersCompleted,
-          usersJoined,
-          usersWithdrawn,
-          usersDismissed,
-          completionRate,
-          lastCalculatedAt: now,
-          actionCompletedAt: completedDate,
-          showInChart,
-          memberActionStartDate,
-          memberActionEndDate,
-        });
-        await this.actionStatsRepository.save(newRecord);
-      }
     }
 
+    await this.publishActionStats(records);
     this.logger.log("Finished action stats calculation");
+  }
+
+  // The named column list keeps `computation`, which TypeORM leaves out of a
+  // Postgres insert that names no columns. Rows go in actionId order so
+  // overlapping runs lock them in one order and can't deadlock.
+  private async publishActionStats(records: StatsRow[]): Promise<void> {
+    if (records.length === 0) return;
+    await this.actionStatsRepository
+      .createQueryBuilder()
+      .insert()
+      .into(ActionStatsRecord, STATS_COLUMNS)
+      .values(records.toSorted((a, b) => a.actionId - b.actionId))
+      .orUpdate(
+        STATS_COLUMNS.filter((column) => column !== "actionId"),
+        ["actionId"],
+        {
+          overwriteCondition: {
+            where: `action_stats_record."computation" < EXCLUDED."computation"`,
+          },
+        },
+      )
+      .execute();
   }
 
   async getActionStats(): Promise<ActionStatsWithOnboarding[]> {

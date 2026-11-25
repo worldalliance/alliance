@@ -1,0 +1,147 @@
+# Grafana expands $NAME in provisioning files from its environment, so these
+# rules carry no $-templates.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: API database
+    folder: Alliance API
+    interval: 10s
+    rules:
+      - uid: alliance-db-pool-waiters
+        title: Requests are waiting for a database connection
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: alliance-prometheus
+            model:
+              refId: A
+              expr: max(db_pool_waiting_requests{job="app_server_api"})
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: The API's Postgres pool has had requests queued for a connection for a minute. See db_pool_* in Grafana.
+
+      - uid: alliance-db-pool-acquire-timeouts
+        title: Database connection checkouts are timing out
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: alliance-prometheus
+            model:
+              refId: A
+              expr: sum(increase(db_pool_acquire_timeouts_total{job="app_server_api"}[2m]))
+              instant: true
+          # increase() extrapolates from the samples inside the window, so
+          # three timeouts spread across it can read as about 2.3, and so can two.
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [2.5] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: About three or more API requests in two minutes gave up waiting for a Postgres connection.
+
+      - uid: alliance-api-scrape-down
+        title: Prometheus cannot scrape the API
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: alliance-prometheus
+            model:
+              refId: A
+              expr: min(up{job="app_server_api"})
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        for: 1m
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: The API's /metrics has not answered Prometheus for a minute. The API may be down or hung.
+
+      - uid: alliance-api-db-readiness
+        title: The API cannot reach its database
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: alliance-prometheus
+            model:
+              refId: A
+              # A probe's sample is stamped with its start but lands when it
+              # finishes, up to blackbox.yml's 5s timeout later, so the window
+              # ends 10s back to hold only finished probes. Prometheus 3 ranges
+              # are open at the start, so 30s holds two of the 15s probes. A
+              # window with one probe, or with a failed API scrape, lifts the
+              # result to 1 or more, and an empty window gives no data: a
+              # deploy's restart gap and other downtime are the scrape rules'
+              # to report.
+              expr: >-
+                min(max_over_time(probe_success{job="api_db_readiness"}[30s] offset 10s))
+                + (1 - min(min_over_time(up{job="app_server_api"}[30s] offset 10s)))
+                + (min(count_over_time(probe_success{job="api_db_readiness"}[30s] offset 10s)) < bool 2)
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: The API answers Prometheus, but GET /health/db failed twice in a row, so SELECT 1 through the API's pool did not succeed within 2 seconds.
+
+      - uid: alliance-api-db-readiness-probe-down
+        title: Prometheus cannot probe GET /health/db
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: alliance-prometheus
+            model:
+              refId: A
+              expr: min(up{job="api_db_readiness"})
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        for: 1m
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: The blackbox exporter has not answered Prometheus for a minute, so nothing checks whether the API can reach its database.

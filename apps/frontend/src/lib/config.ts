@@ -1,5 +1,4 @@
 import { adminOrigin } from "@alliance/common/url";
-import { Features, isEnabled } from "@alliance/shared/lib/features";
 import {
   getAdminUrl as getAdminUrlShared,
   getApiUrl as getApiUrlShared,
@@ -12,7 +11,7 @@ import { webEnv } from "@alliance/sharedweb/lib/env";
 // proxies /api and /socket.io on each. The auth cookie is SameSite=strict, so a
 // call aimed at the domain the user did not load carries no cookie. SSR has no
 // location and the dev server's API is on another port, so both keep the
-// build-time URL.
+// configured URL.
 const browserOrigin = (): string | null =>
   typeof window !== "undefined" && import.meta.env.MODE !== "development"
     ? window.location.origin
@@ -53,8 +52,4 @@ export const getSingleActionSSEUrl = (actionId: number) => {
 
 export const getBulkActionSSEUrl = (actionIds: number[]) => {
   return `${getApiUrl()}/actions/live-list?ids=${actionIds.join(",")}`;
-};
-
-export const isFeatureEnabled = (feature: Features) => {
-  return isEnabled(feature, import.meta.env.MODE);
 };

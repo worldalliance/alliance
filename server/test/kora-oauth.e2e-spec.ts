@@ -74,6 +74,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
       h.ctx.app.get(GoogleOAuthClient),
       h.ctx.app.get(AppleOAuthClient),
     ]) {
+      oauth.isConfigured = () => true;
       oauth.authorizationUrl = ({ state }) =>
         `https://consent.example.com/?state=${state}`;
       oauth.exchangeCode = () => Promise.resolve(R.success(profile));
@@ -100,6 +101,7 @@ describe("Kora OAuth sign-in (e2e)", () => {
     expect(participant).toEqual({
       id: expect.any(String),
       name: "Google Person",
+      maskedContact: expect.stringMatching(/^\w•••@example\.com$/),
     });
     expect(
       await participants().findOneByOrFail({ id: participant!.id }),

@@ -1,4 +1,4 @@
-import { hasPassword, loadedUserTags, User } from "./user.entity";
+import { User } from "./user.entity";
 
 describe("hashPassword", () => {
   it("leaves a null password null", async () => {
@@ -34,27 +34,5 @@ describe("checkPassword", () => {
     const user = new User({ password: "hunter2" });
     await user.hashPassword();
     expect(await user.checkPassword("hunter3")).toBe(false);
-  });
-});
-
-describe("hasPassword", () => {
-  it.each([
-    { password: "hunter2", expected: true },
-    { password: "", expected: false },
-    { password: null, expected: false },
-  ])("is $expected for password $password", ({ password, expected }) => {
-    expect(hasPassword({ password })).toBe(expected);
-  });
-});
-
-describe("loadedUserTags", () => {
-  it("returns the loaded tags", () => {
-    expect(loadedUserTags({ id: 3, tags: [] })).toEqual([]);
-  });
-
-  it("throws when the tags aren't loaded", () => {
-    expect(() => loadedUserTags({ id: 3, tags: undefined })).toThrow(
-      "tags of user 3 not loaded",
-    );
   });
 });

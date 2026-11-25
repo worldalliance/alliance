@@ -1,12 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import React, {
-  CSSProperties,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { CSSProperties, ReactNode } from "react";
 
 interface TimelineProps {
   children: ReactNode[];
@@ -26,29 +19,15 @@ const Timeline: React.FC<TimelineProps> = ({
   className,
   currentIdx,
 }) => {
-  const halfDot = useMemo(() => dotSize / 2, [dotSize]);
+  const halfDot = dotSize / 2;
+  const items = React.Children.toArray(children);
 
-  const bottomElementRef = useRef<HTMLLIElement>(null);
-
-  const [lineStyle, setLineStyle] = useState<CSSProperties>({
+  const lineStyle: CSSProperties = {
     width: lineWidth,
     backgroundColor: lineColor,
     top: halfDot,
-    bottom: bottomElementRef.current
-      ? bottomElementRef.current.clientHeight - halfDot
-      : 0,
-  });
-
-  useEffect(() => {
-    setLineStyle({
-      width: lineWidth,
-      backgroundColor: lineColor,
-      top: halfDot,
-      bottom: bottomElementRef.current
-        ? bottomElementRef.current.clientHeight - halfDot
-        : 0,
-    });
-  }, [bottomElementRef, lineWidth, lineColor, halfDot]);
+    bottom: -halfDot,
+  };
 
   const dotBaseStyle: CSSProperties = {
     width: dotSize + 6,
@@ -64,16 +43,12 @@ const Timeline: React.FC<TimelineProps> = ({
 
   return (
     <div className={cn("relative pl-2", className)}>
-      {/* vertical line */}
-      <div className="absolute top-0 bottom-0 -ml-[1px]" style={lineStyle} />
-
-      <ul className="space-y-4">
-        {React.Children.map(children, (child, index) => (
-          <li
-            className="relative"
-            key={index}
-            ref={index === children.length - 1 ? bottomElementRef : null}
-          >
+      <ul>
+        {items.map((child, index) => (
+          <li className="relative not-last:pb-4" key={index}>
+            {index < items.length - 1 ? (
+              <div className="absolute -ml-[1px]" style={lineStyle} />
+            ) : null}
             {/* timeline dot */}
             <div
               style={{ ...dotBaseStyle }}

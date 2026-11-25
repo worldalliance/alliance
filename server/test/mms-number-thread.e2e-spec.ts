@@ -1,0 +1,500 @@
+import { subDays } from "date-fns";
+import { MmsNumberService } from "src/mms/mms-number.service";
+import { MmsOptout } from "src/mms/mms-optout.entity";
+import { MmsThread } from "src/mms/mms-thread.entity";
+import { THREAD_PAGE_SIZE } from "src/mms/mms-thread.service";
+import { MmsDirection } from "src/mms/mms.entity";
+import supertest from "supertest";
+import { TWILIO_NUMBER } from "./mms-fixtures";
+import { mmsThreadApp } from "./mms-thread-app";
+
+const {
+  ctx,
+  mmsRepo,
+  userRepo,
+  server,
+  admin,
+  inbound,
+  thread,
+  send,
+  byId,
+  numberThread,
+  sendInThread,
+  threadIdFor,
+  createMember,
+  saveBroadcast,
+} = mmsThreadApp();
+
+const threadRow = (phoneNumber: string) =>
+  ctx().dataSource.getRepository(MmsThread).findOneBy({ phoneNumber });
+
+type NeedsReplyEntry = {
+  threadId: string;
+  phoneNumber: string;
+  members: { id: number }[];
+  lastMessageBody: string;
+};
+
+const needsReply = async (): Promise<NeedsReplyEntry[]> =>
+  (
+    await supertest(server())
+      .get("/mms-threads/needs-reply-threads")
+      .set("Authorization", admin())
+      .expect(200)
+  ).body;
+
+const waitingNumbers = async () =>
+  (await needsReply()).map((entry) => entry.phoneNumber);
+
+const post = (path: string) =>
+  supertest(server()).post(path).set("Authorization", admin());
+
+describe("Thread rows (e2e)", () => {
+  it("records a row for a number that texts in and for one staff text", async () => {
+    await inbound({ from: "+14155558740", body: "Hi" }).expect(201);
+    const member = await createMember("+14155558741");
+    await send(member.id, "Hello").expect(201);
+
+    expect(await threadRow("+14155558740")).not.toBeNull();
+    expect(await threadRow("+14155558741")).not.toBeNull();
+  });
+
+  it("returns a number's existing row and bumps it on an inbound text", async () => {
+    const numbers = ctx().app.get(MmsNumberService);
+    const row = () =>
+      ctx()
+        .dataSource.getRepository(MmsThread)
+        .findOneByOrFail({ phoneNumber: "+14155558742" });
+    const id = await numbers.ensureThread("+14155558742");
+    const created = await row();
+    await inbound({ from: "+14155558742", body: "Hi" }).expect(201);
+
+    expect(await numbers.ensureThread("+14155558742")).toBe(id);
+    expect((await row()).updatedAt.getTime()).toBeGreaterThan(
+      created.updatedAt.getTime(),
+    );
+  });
+
+  it("gives a waiting number without a row one when Needs reply lists it", async () => {
+    await inbound({ from: "+14155558739", body: "Hi" }).expect(201);
+    await ctx()
+      .dataSource.getRepository(MmsThread)
+      .delete({ phoneNumber: "+14155558739" });
+
+    const entry = (await needsReply()).find(
+      (e) => e.phoneNumber === "+14155558739",
+    );
+
+    expect(entry?.threadId).toBeDefined();
+    expect(entry?.threadId).toBe((await threadRow("+14155558739"))?.id);
+  });
+});
+
+describe("Number threads (e2e)", () => {
+  it("lists a number whose only member deleted their account, naming no one", async () => {
+    const member = await createMember("+14155558754");
+    await inbound({ from: "+14155558754", body: "Hi" });
+    await userRepo().softDelete(member.id);
+
+    expect(
+      (await needsReply()).find(
+        (entry) => entry.phoneNumber === "+14155558754",
+      ),
+    ).toMatchObject({ members: [] });
+  });
+
+  it("lists a non-member's text until staff reply in its thread", async () => {
+    await inbound({ from: "+14155558701", body: "Who is this?" });
+    const threadId = await threadIdFor("+14155558701");
+
+    expect(await needsReply()).toContainEqual(
+      expect.objectContaining({
+        threadId,
+        phoneNumber: "+14155558701",
+        members: [],
+        lastMessageBody: "Who is this?",
+      }),
+    );
+    expect((await numberThread(threadId).expect(200)).body).toMatchObject({
+      threadId,
+      members: [],
+      textable: true,
+      optedOut: false,
+      replyWindowClosed: false,
+      replyState: "needs_reply",
+      messages: [expect.objectContaining({ body: "Who is this?" })],
+    });
+
+    await sendInThread(threadId, "The Alliance").expect(201);
+    expect(await waitingNumbers()).not.toContain("+14155558701");
+    expect((await numberThread(threadId).expect(200)).body.replyState).toBe(
+      "answered",
+    );
+  });
+
+  it("leaves out a member's number staff marked handled", async () => {
+    const member = await createMember("+14155558755");
+    await inbound({ from: "+14155558755", body: "Thanks!" });
+    const { body } = await thread(member.id).expect(200);
+
+    await post(`/mms-threads/${member.id}/handled`)
+      .send({ throughId: body.messages.at(-1).id })
+      .expect(204);
+
+    expect(await waitingNumbers()).not.toContain("+14155558755");
+  });
+
+  it("leaves out a non-member's number marked handled by thread id until marked needs reply", async () => {
+    await inbound({ from: "+14155558757", body: "Who is this?" });
+    const threadId = await threadIdFor("+14155558757");
+    const { body } = await numberThread(threadId).expect(200);
+    const throughId = body.messages.at(-1).id;
+
+    await post(byId(threadId, "/handled")).send({ throughId }).expect(204);
+    expect(await waitingNumbers()).not.toContain("+14155558757");
+
+    await post(byId(threadId, "/needs-reply")).send({ throughId }).expect(204);
+    expect(await waitingNumbers()).toContain("+14155558757");
+  });
+
+  it("leaves out texts up to a number's launch cutoff, listing later ones", async () => {
+    await inbound({ from: "+14155558756", body: "Before launch" });
+    const cutoff = await mmsRepo().findOneByOrFail({
+      memberPhoneNumber: "+14155558756",
+    });
+    await ctx()
+      .dataSource.getRepository(MmsThread)
+      .update({ phoneNumber: "+14155558756" }, { launchCutoffId: cutoff.id });
+    const threadId = await threadIdFor("+14155558756");
+
+    expect(await waitingNumbers()).not.toContain("+14155558756");
+    expect((await numberThread(threadId).expect(200)).body.replyState).toBe(
+      "answered",
+    );
+
+    await inbound({ from: "+14155558756", body: "After launch" });
+    expect(await needsReply()).toContainEqual(
+      expect.objectContaining({
+        phoneNumber: "+14155558756",
+        lastMessageBody: "After launch",
+      }),
+    );
+    expect((await numberThread(threadId).expect(200)).body.replyState).toBe(
+      "needs_reply",
+    );
+  });
+
+  it("names the members on the number", async () => {
+    const member = await createMember("+14155558702");
+    await inbound({ from: "+14155558702", body: "Hi" });
+    const threadId = await threadIdFor("+14155558702");
+
+    expect((await numberThread(threadId).expect(200)).body.members).toEqual([
+      { id: member.id, name: member.name, timeZone: null },
+    ]);
+  });
+
+  it("returns the number's thread id with a member's thread", async () => {
+    const member = await createMember("+14155558716");
+    await inbound({ from: "+14155558716", body: "Hi" });
+    const threadId = await threadIdFor("+14155558716");
+
+    expect((await thread(member.id).expect(200)).body.threadId).toBe(threadId);
+  });
+
+  it("lets staff reply to a non-member who texted in the last 30 days", async () => {
+    await inbound({ from: "+14155558709", body: "Who is this?" });
+    const threadId = await threadIdFor("+14155558709");
+
+    expect((await numberThread(threadId).expect(200)).body).toMatchObject({
+      members: [],
+      replyWindowClosed: false,
+    });
+    await sendInThread(threadId, "The Alliance").expect(201);
+  });
+
+  it("refuses a reply to a non-member who hasn't texted in 30 days", async () => {
+    await inbound({ from: "+14155558703", body: "Old question" });
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558703" },
+      { createdAt: subDays(new Date(), 31) },
+    );
+    const threadId = await threadIdFor("+14155558703");
+
+    expect((await numberThread(threadId).expect(200)).body).toMatchObject({
+      replyWindowClosed: true,
+    });
+    const { body } = await sendInThread(threadId, "Sorry for the wait").expect(
+      409,
+    );
+    expect(body.message).toMatch(/hasn't texted in the last 30 days/);
+  });
+
+  it("refuses a reply to an opted-out non-member past the window as opted out", async () => {
+    await inbound({ from: "+14155558790", body: "Question?" });
+    await inbound({ from: "+14155558790", body: "STOP" });
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558790" },
+      { createdAt: subDays(new Date(), 31) },
+    );
+    const threadId = await threadIdFor("+14155558790");
+
+    const { body } = await sendInThread(threadId, "Hello").expect(409);
+    expect(body.message).toBe("This number has opted out of texts.");
+  });
+
+  it("keeps the window closed after a staff text, which only inbound texts open", async () => {
+    await inbound({ from: "+14155558750", body: "Old question" });
+    const threadId = await threadIdFor("+14155558750");
+    await sendInThread(threadId, "Thanks for asking").expect(201);
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558750", direction: MmsDirection.Inbound },
+      { createdAt: subDays(new Date(), 31) },
+    );
+
+    expect((await numberThread(threadId).expect(200)).body).toMatchObject({
+      replyWindowClosed: true,
+    });
+    await sendInThread(threadId, "Following up").expect(409);
+  });
+
+  it("lets staff reply to a member however long ago they texted", async () => {
+    await createMember("+14155558704");
+    await inbound({ from: "+14155558704", body: "Old question" });
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558704" },
+      { createdAt: subDays(new Date(), 90) },
+    );
+    const threadId = await threadIdFor("+14155558704");
+
+    expect((await numberThread(threadId).expect(200)).body).toMatchObject({
+      replyWindowClosed: false,
+    });
+    await sendInThread(threadId, "Sorry for the wait").expect(201);
+  });
+
+  it("holds a number whose only member deleted their account to the window", async () => {
+    const member = await createMember("+14155558714");
+    await inbound({ from: "+14155558714", body: "Old question" });
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558714" },
+      { createdAt: subDays(new Date(), 31) },
+    );
+    await userRepo().softDelete(member.id);
+    const threadId = await threadIdFor("+14155558714");
+
+    expect((await numberThread(threadId).expect(200)).body).toMatchObject({
+      members: [],
+      replyWindowClosed: true,
+    });
+    await sendInThread(threadId, "Sorry for the wait").expect(409);
+  });
+
+  it("opts out a non-member who texts STOP, refusing staff texts", async () => {
+    await inbound({ from: "+14155558706", body: "Question?" });
+    await inbound({ from: "+14155558706", body: "STOP" });
+    const threadId = await threadIdFor("+14155558706");
+
+    expect((await numberThread(threadId).expect(200)).body.optedOut).toBe(true);
+    expect(await waitingNumbers()).not.toContain("+14155558706");
+    await sendInThread(threadId, "Hello").expect(409);
+  });
+
+  it("records a staff opt-out of a non-member's number with no member", async () => {
+    await inbound({ from: "+14155558707", body: "Please stop texting me" });
+    const threadId = await threadIdFor("+14155558707");
+
+    await post(byId(threadId, "/opt-out")).expect(204);
+
+    expect((await numberThread(threadId).expect(200)).body.optedOut).toBe(true);
+    expect(
+      await ctx()
+        .dataSource.getRepository(MmsOptout)
+        .find({
+          where: { phoneNumber: "+14155558707" },
+          relations: { user: true },
+        }),
+    ).toEqual([
+      expect.objectContaining({
+        user: null,
+        reason: expect.stringMatching(/^marked_by_staff:/),
+      }),
+    ]);
+  });
+
+  it("records a staff opt-out of a non-member that hasn't texted in 30 days", async () => {
+    await inbound({ from: "+14155558751", body: "Old question" });
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558751" },
+      { createdAt: subDays(new Date(), 31) },
+    );
+    const threadId = await threadIdFor("+14155558751");
+
+    await post(byId(threadId, "/opt-out")).expect(204);
+
+    expect((await numberThread(threadId).expect(200)).body.optedOut).toBe(true);
+    await post(byId(threadId, "/opt-out")).expect(409);
+  });
+
+  it("treats a number as opted out while only a member's old flag says so", async () => {
+    const member = await createMember("+14155558708");
+    await userRepo().update(
+      { id: member.id },
+      { phoneNumberUnsubscribed: true },
+    );
+    await inbound({ from: "+14155558708", body: "Question?" });
+    const threadId = await threadIdFor("+14155558708");
+
+    expect((await numberThread(threadId).expect(200)).body.optedOut).toBe(true);
+    expect(await waitingNumbers()).not.toContain("+14155558708");
+    await sendInThread(threadId, "Hello").expect(409);
+  });
+
+  it("lists the number that has waited longest first", async () => {
+    await inbound({ from: "+14155558710", body: "Newer" });
+    await inbound({ from: "+14155558711", body: "Older" });
+    await mmsRepo().update(
+      { memberPhoneNumber: "+14155558711" },
+      { createdAt: subDays(new Date(), 2) },
+    );
+
+    const numbers = await waitingNumbers();
+
+    expect(numbers.indexOf("+14155558711")).toBeGreaterThanOrEqual(0);
+    expect(numbers.indexOf("+14155558711")).toBeLessThan(
+      numbers.indexOf("+14155558710"),
+    );
+  });
+
+  it("leaves non-member numbers out of the per-member Needs reply", async () => {
+    const member = await createMember("+14155558712");
+    await inbound({ from: "+14155558712", body: "Member" });
+    await inbound({ from: "+14155558713", body: "Stranger" });
+
+    const { body } = await supertest(server())
+      .get("/mms-threads/needs-reply")
+      .set("Authorization", admin())
+      .expect(200);
+
+    expect(body).toContainEqual(
+      expect.objectContaining({ userId: member.id, lastMessageBody: "Member" }),
+    );
+    expect(body).not.toContainEqual(
+      expect.objectContaining({ lastMessageBody: "Stranger" }),
+    );
+  });
+
+  it("answers 404 for an unknown thread and 400 for a malformed id", async () => {
+    const unknown = "00000000-0000-4000-8000-000000000000";
+    await numberThread(unknown).expect(404);
+    await sendInThread(unknown, "Hi").expect(404);
+    await post(byId(unknown, "/opt-out")).expect(404);
+    await numberThread("not-a-uuid").expect(400);
+  });
+
+  it("pages a number's thread back from the newest text", async () => {
+    await inbound({ from: "+14155558717", body: "First" }).expect(201);
+    await ctx().dataSource.query(
+      `INSERT INTO "mms" ("to", "from", "body", "status", "twilioSid")
+       SELECT $1, $2, 'text ' || n, 'sent', 'test-sid' FROM generate_series(1, $3) n`,
+      ["+14155558717", TWILIO_NUMBER, THREAD_PAGE_SIZE],
+    );
+    const threadId = await threadIdFor("+14155558717");
+
+    const newest = (await numberThread(threadId).expect(200)).body;
+    expect(newest.hasOlder).toBe(true);
+    const older = (
+      await numberThread(threadId)
+        .query({ before: newest.messages[0].id })
+        .expect(200)
+    ).body;
+    expect(older.hasOlder).toBe(false);
+    expect(older.messages.map((m: { body: string }) => m.body)).toEqual([
+      "First",
+    ]);
+
+    const elsewhere = await saveBroadcast("+14155558718");
+    await numberThread(threadId).query({ before: elsewhere.id }).expect(400);
+  });
+
+  it("refuses staff texts to a short code", async () => {
+    await inbound({ from: "72345", body: "Your code is 1234" });
+    const threadId = await threadIdFor("72345");
+
+    expect((await numberThread(threadId).expect(200)).body.textable).toBe(
+      false,
+    );
+    await sendInThread(threadId, "Hi").expect(400);
+    await post(byId(threadId, "/opt-out")).expect(400);
+  });
+});
+
+describe("Marking a number's thread (e2e)", () => {
+  const newestId = async (threadId: string): Promise<number> =>
+    (await numberThread(threadId).expect(200)).body.messages.at(-1).id;
+
+  const replyState = async (threadId: string): Promise<string> =>
+    (await numberThread(threadId).expect(200)).body.replyState;
+
+  const needsReplyIds = async (): Promise<number[]> =>
+    (
+      await supertest(server())
+        .get("/mms-threads/needs-reply")
+        .set("Authorization", admin())
+        .expect(200)
+    ).body.map((entry: { userId: number }) => entry.userId);
+
+  it("takes the number off Needs reply until marked needs reply", async () => {
+    const member = await createMember("+14155558760");
+    await inbound({ from: "+14155558760", body: "Thanks!" });
+    const threadId = await threadIdFor("+14155558760");
+    expect(await replyState(threadId)).toBe("needs_reply");
+
+    await post(byId(threadId, "/handled"))
+      .send({ throughId: await newestId(threadId) })
+      .expect(204);
+    expect(await replyState(threadId)).toBe("handled");
+    expect(await needsReplyIds()).not.toContain(member.id);
+
+    await post(byId(threadId, "/needs-reply"))
+      .send({ throughId: await newestId(threadId) })
+      .expect(204);
+    expect(await replyState(threadId)).toBe("needs_reply");
+    expect(await needsReplyIds()).toContain(member.id);
+  });
+
+  it("shows who marked a non-member's thread handled under the text they saw", async () => {
+    await inbound({ from: "+14155558761", body: "Who is this?" });
+    const threadId = await threadIdFor("+14155558761");
+    const throughId = await newestId(threadId);
+
+    await post(byId(threadId, "/handled")).send({ throughId }).expect(204);
+
+    const { body } = await numberThread(threadId).expect(200);
+    expect(body.messages.at(-1)).toMatchObject({
+      id: throughId,
+      events: [
+        expect.objectContaining({
+          kind: "marked_handled",
+          markedByName: expect.any(String),
+        }),
+      ],
+    });
+  });
+
+  it("refuses a text from another number's thread", async () => {
+    await inbound({ from: "+14155558762", body: "Hi" });
+    await inbound({ from: "+14155558763", body: "Hi" });
+    const other = await newestId(await threadIdFor("+14155558763"));
+
+    await post(byId(await threadIdFor("+14155558762"), "/handled"))
+      .send({ throughId: other })
+      .expect(400);
+  });
+
+  it("answers 404 for an unknown thread", async () => {
+    await post(byId(crypto.randomUUID(), "/needs-reply"))
+      .send({ throughId: 1 })
+      .expect(404);
+  });
+});

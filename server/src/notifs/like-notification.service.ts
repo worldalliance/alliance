@@ -1,6 +1,7 @@
 import type { FeedActionActivity } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { lockForSave, softDeleteCascade } from "src/datasources/soft-delete";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { ProfileDto } from "src/user/dto/user.dto";
@@ -306,10 +307,7 @@ export class LikeNotificationService {
     groupingKeys: string[],
   ): Promise<void> {
     for (const groupingKey of [...groupingKeys].sort()) {
-      await manager.query(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-        [groupingKey],
-      );
+      await lockUntilCommit(manager, groupingKey);
     }
   }
 

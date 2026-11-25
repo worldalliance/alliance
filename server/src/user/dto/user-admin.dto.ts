@@ -15,7 +15,8 @@ import {
   OnetimeInvite,
 } from "../entities/onetime-invite.entity";
 import { Tag } from "../entities/tag.entity";
-import { loadedUserTags, ReferralSource, User } from "../entities/user.entity";
+import { ReferralSource, User } from "../entities/user.entity";
+import { loadedUserTags } from "../user.utils";
 import { UserDto } from "./user.dto";
 
 export type UserAdminInvitedBy =
@@ -229,4 +230,19 @@ export class DeleteUserAdminDto {
   @IsString()
   @Transform(trimToNull)
   screenshotKey?: string | null;
+}
+
+export class AdminUserListItemDto extends UserDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "The profilePicture column itself: an upload key or an external url. `profilePicture` is that value rendered as a url.",
+  })
+  storedProfilePicture: string | null;
+
+  constructor(input: User) {
+    super(input);
+    this.storedProfilePicture = input.profilePicture;
+  }
 }

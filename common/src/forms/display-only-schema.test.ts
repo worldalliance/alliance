@@ -6,9 +6,11 @@ import {
   formSchemaToDisplayOnly,
   readDisplayOnlySchema,
   readDisplayOnlySchemaError,
+  readDisplayOnlySchemaForMember,
   type DisplayOnlySchema,
 } from "./display-only-schema";
 import type { FormSchema } from "./form-schema";
+import { UnrenderableReason } from "./unrenderable";
 
 const header = { type: "display", kind: "header", id: "b1", text: "Hi" };
 
@@ -119,6 +121,46 @@ describe("readDisplayOnlySchema", () => {
   it("rejects a value that isn't a display-only schema", () => {
     expect(readDisplayOnlySchema({ pages: [] })).toBeNull();
     expect(readDisplayOnlySchema(null)).toBeNull();
+  });
+});
+
+describe("readDisplayOnlySchemaForMember", () => {
+  it("returns the parsed schema", () => {
+    const stored = schemaWith(header);
+    expect(readDisplayOnlySchemaForMember(stored)).toEqual(
+      R.success(stored as DisplayOnlySchema),
+    );
+  });
+
+  it.each([
+    ["a block kind", schemaWith(header, { type: "display", kind: "carousel" })],
+    ["a property", schemaWith({ ...header, somethingNew: true })],
+    [
+      "a block kind inside an accordion",
+      schemaWith({
+        type: "display",
+        kind: "accordion",
+        id: "a1",
+        sections: [{ title: "More", blocks: [{ type: "display", kind: "x" }] }],
+      }),
+    ],
+    [
+      "an enum value",
+      schemaWith({ type: "display", kind: "divider", thickness: "huge" }),
+    ],
+    ["a literal union value", schemaWith({ ...header, level: 7 })],
+    ["a value of a type", schemaWith({ ...header, text: { rich: true } })],
+  ])("blames this build for %s it doesn't know", (_, stored) => {
+    expect(readDisplayOnlySchemaForMember(stored)).toMatchObject(
+      R.failure({ reason: UnrenderableReason.OutdatedClient }),
+    );
+  });
+
+  it("names the failing path in the detail", () => {
+    const read = readDisplayOnlySchemaForMember(
+      schemaWith({ ...header, text: 42 }),
+    );
+    expect(R.isFailure(read) && read.error.detail).toContain("blocks.0.text");
   });
 });
 

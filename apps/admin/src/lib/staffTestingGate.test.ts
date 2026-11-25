@@ -4,6 +4,7 @@ const ready = {
   shortDescription: "Short",
   body: "Body",
   taskFormId: 3,
+  taskKind: "form",
   cohortExpression: { type: "Staff" },
 };
 

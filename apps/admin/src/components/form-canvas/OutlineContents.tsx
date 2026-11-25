@@ -32,8 +32,12 @@ const HOLDS_CHILDREN = {
   contract: false,
   list: true,
   custom: false,
+  image: false,
+  toggle: false,
+  timePicker: false,
   header: false,
   label: false,
+  conversation: false,
   divider: false,
   spacer: false,
   html: false,
@@ -45,6 +49,7 @@ const HOLDS_CHILDREN = {
   previousAnswer: false,
   userLocation: false,
   chatTranscript: false,
+  expertMessage: false,
   accordion: true,
 } as const satisfies Record<PageItem["kind"], boolean>;
 

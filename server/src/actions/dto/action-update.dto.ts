@@ -22,6 +22,11 @@ import { getImageSource } from "src/images/images.service";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { ActionUpdate } from "../entities/action-update.entity";
 
+export type ActionUpdateDtoInput = {
+  actionUpdate: ActionUpdate;
+  participantPictures?: string[];
+};
+
 export class ActionUpdateDto extends PickType(ActionUpdate, [
   "id",
   "title",
@@ -67,7 +72,8 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   @Allow()
   participantPictures?: string[];
 
-  constructor(actionUpdate: ActionUpdate, participantPictures?: string[]) {
+  constructor(input: ActionUpdateDtoInput) {
+    const { actionUpdate, participantPictures } = input;
     super();
     this.id = actionUpdate.id;
     this.title = actionUpdate.title;

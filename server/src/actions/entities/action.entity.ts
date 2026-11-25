@@ -3,6 +3,7 @@ import {
   memberActionPhase,
   type MemberActionPhase,
 } from "@alliance/common/actionEvent";
+import { ActionTaskKind } from "@alliance/common/actionTask";
 import {
   cohortExpressionSchema,
   type CohortExpression,
@@ -170,6 +171,17 @@ export class Action {
   @Max(2_147_483_647)
   timeEstimate: number | null;
 
+  @Column({
+    type: "enum",
+    enum: ActionTaskKind,
+    enumName: "ActionTaskKind",
+    default: ActionTaskKind.Form,
+  })
+  @ApiProperty({ enum: ActionTaskKind, enumName: "ActionTaskKind" })
+  @IsOptional()
+  @IsEnum(ActionTaskKind)
+  taskKind: ActionTaskKind;
+
   @Column({ type: "int", nullable: true })
   @ApiProperty({
     type: Number,
@@ -230,10 +242,18 @@ export class Action {
   @IsDefined()
   visibilityMode: VisibilityMode;
 
-  @Column({ default: 0 })
+  /** ActionParticipantsService writes it; `update: false` keeps a
+   * whole-entity save from restoring a stale count. */
+  @Column({ default: 0, update: false })
   @ApiProperty()
   @Allow()
   usersJoined: number;
+
+  /** Orders recomputations of `usersJoined`; one lands only over an older one. */
+  @Column({ type: "bigint", update: false, generated: "increment" })
+  @IsOptional()
+  @IsEmpty()
+  usersJoinedComputation: string;
 
   @Column({ default: 0 })
   @ApiProperty({

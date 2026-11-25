@@ -1,6 +1,7 @@
 import {
   deployedConfigEnv,
   deployedConfigFor,
+  developmentEnv,
 } from "@alliance/common/deployed-config";
 import {
   envWithFallback,
@@ -13,7 +14,7 @@ import {
   httpUrl as url,
 } from "@alliance/common/env";
 import { isDeployed, NodeEnv } from "@alliance/common/node-env";
-import { type Result } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
@@ -23,6 +24,7 @@ const positiveInt = z.coerce.number().int().positive();
 
 const fields = {
   NODE_ENV: required(z.enum(NodeEnv)),
+  ALLIANCE_WITHOUT_TEAM_SECRETS: flag,
 
   DB_HOST: required(text),
   DB_PORT: optional(z.coerce.number().int().min(1).max(65535)).transform(
@@ -96,7 +98,16 @@ const rdsCaBundle = readFileSync(
   "utf8",
 );
 
-function committedEnv(nodeEnv: NodeEnv): Partial<Record<ServerEnvKey, string>> {
+// A plain annotation skips excess-key checks on a named object, so a
+// misspelled developmentEnv key would compile and be ignored.
+const developmentCommitted: {
+  [K in keyof typeof developmentEnv]: K extends ServerEnvKey ? string : never;
+} = developmentEnv;
+
+export function committedEnv(
+  nodeEnv: NodeEnv,
+): Partial<Record<ServerEnvKey, string>> {
+  if (nodeEnv === NodeEnv.Development) return developmentCommitted;
   const config = deployedConfigFor(nodeEnv);
   if (!config) return {};
   const { DOMAIN_NAME, ALT_DOMAIN_NAME, ...committed } =
@@ -129,8 +140,8 @@ const committedSource = (key: ServerEnvKey) =>
     fallback: { [key]: committedByEnv.get(process.env.NODE_ENV)?.[key] },
   });
 
-/** Reads `process.env` on every call, so a value a test sets is seen. In
- * staging and production, the committed config fills what it leaves unset. */
+/** Reads `process.env` on every call, so a value a test sets is seen. Outside
+ * tests, the committed config fills what it leaves unset. */
 export function env<K extends ServerEnvKey>(
   key: K,
 ): z.output<(typeof fields)[K]> {
@@ -160,8 +171,6 @@ export function twilioSignatureEnforcedFor(nodeEnv: NodeEnv): boolean {
   return isDeployed(nodeEnv);
 }
 
-// ADMIN_USER and ADMIN_PASSWORD are in Infisical but not in the server's
-// parameters, so deployed servers never seed an admin.
 const deployedSet = [
   "APPLE_BUNDLE_ID",
   "APPLE_KEY_ID",
@@ -190,9 +199,67 @@ const deployedSet = [
   "TWILIO_PHONE_NUMBER",
 ] as const satisfies ServerEnvKey[];
 
-// The keys the committed config or the environment's store sets (Infisical's
-// `alliance` project in development, Parameter Store when deployed), flags
-// aside; test has no store.
+// Which keys /alliance/staging/server/ and /alliance/prod/server/ may hold:
+// never committed config, NODE_ENV (secrets_run.sh refuses to override it), dev
+// and test keys, or keys whose schema defaults suffice; ADMIN_USER there would
+// seed an admin on staging.
+const inDeployedStore: Record<ServerEnvKey, boolean> = {
+  NODE_ENV: false,
+  ALLIANCE_WITHOUT_TEAM_SECRETS: false,
+  DB_HOST: true,
+  DB_PORT: false,
+  DB_USERNAME: true,
+  DB_PASSWORD: true,
+  DB_NAME: false,
+  TEST_DB_NAME: false,
+  DB_CA_CERT: false,
+  JWT_SECRET: true,
+  JWT_REFRESH_SECRET: true,
+  APP_URL: false,
+  ALT_APP_URL: false,
+  ADMIN_URL: false,
+  ALT_ADMIN_URL: false,
+  ADMIN_USER: false,
+  ADMIN_PASSWORD: false,
+  SEND_DEV_NOTIFS: false,
+  NOTIF_TEST_PHONE_NUMBER: true,
+  MAIL_FROM: false,
+  SMTP_HOST: true,
+  SMTP_USER: true,
+  SMTP_PASSWORD: true,
+  MAILGUN_SIGNING_KEY: true,
+  WAITLIST_PUBLIC_MAIL_DAILY_CAP: false,
+  TWILIO_ACCOUNT_SID: true,
+  TWILIO_AUTH_TOKEN: true,
+  TWILIO_PHONE_NUMBER: true,
+  EXPO_ACCESS_TOKEN: true,
+  SLACK_WEBHOOK_URL: true,
+  AWS_REGION: false,
+  ASSETS_BUCKET: true,
+  USE_CLOUDFRONT: false,
+  CLOUDFRONT_DOMAIN: false,
+  POSTHOG_KEY: false,
+  POSTHOG_QUERY_KEY: true,
+  POSTHOG_PROJECT_ID: false,
+  DEV_POSTHOG_ANALYTICS: false,
+  PANGRAM_API_KEY: true,
+  PANGRAM_API_URL: false,
+  USE_DEV_AI_DETECTION: false,
+  GOOGLE_CLIENT_ID: false,
+  GOOGLE_CLIENT_SECRET: true,
+  APPLE_TEAM_ID: false,
+  APPLE_KEY_ID: false,
+  APPLE_SERVICES_ID: false,
+  APPLE_BUNDLE_ID: false,
+  APPLE_PRIVATE_KEY_BASE64: true,
+};
+
+export const deployedStoreKeys = Object.entries(inDeployedStore).flatMap(
+  ([key, allowed]) => (allowed ? [key] : []),
+);
+
+// The keys the committed config, a checkout's own server/.env or Parameter
+// Store sets, flags aside; test has no store.
 const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
   [NodeEnv.Development]: [
     "ADMIN_PASSWORD",
@@ -205,7 +272,6 @@ const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
     "APPLE_SERVICES_ID",
     "APPLE_TEAM_ID",
     "ASSETS_BUCKET",
-    "AWS_REGION",
     "DB_PASSWORD",
     "DB_PORT",
     "EXPO_ACCESS_TOKEN",
@@ -214,7 +280,6 @@ const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
     "MAIL_FROM",
     "MAILGUN_SIGNING_KEY",
     "PANGRAM_API_KEY",
-    "PANGRAM_API_URL",
     "POSTHOG_KEY",
     "POSTHOG_PROJECT_ID",
     "POSTHOG_QUERY_KEY",
@@ -231,6 +296,48 @@ const setFor: Record<NodeEnv, readonly ServerEnvKey[]> = {
   [NodeEnv.Test]: [],
 };
 
+// What ALLIANCE_WITHOUT_TEAM_SECRETS stops development requiring: the keys in
+// /alliance/dev/server/ besides the JWT secrets and the seeded admin, which
+// scripts/setup-without-team-secrets.ts generates.
+export const teamOnlyKeys: ReadonlySet<ServerEnvKey> = new Set([
+  "APPLE_PRIVATE_KEY_BASE64",
+  "EXPO_ACCESS_TOKEN",
+  "GOOGLE_CLIENT_SECRET",
+  "MAILGUN_SIGNING_KEY",
+  "PANGRAM_API_KEY",
+  "POSTHOG_QUERY_KEY",
+  "SLACK_WEBHOOK_URL",
+  "SMTP_PASSWORD",
+  "SMTP_USER",
+  "TWILIO_ACCOUNT_SID",
+  "TWILIO_AUTH_TOKEN",
+  "TWILIO_PHONE_NUMBER",
+]);
+
+const allowsWithoutTeamSecrets: Record<NodeEnv, boolean> = {
+  [NodeEnv.Development]: true,
+  [NodeEnv.Staging]: false,
+  [NodeEnv.Production]: false,
+  [NodeEnv.Test]: false,
+};
+
+export function withoutTeamSecrets(
+  config: Partial<
+    Pick<ServerEnv, "NODE_ENV" | "ALLIANCE_WITHOUT_TEAM_SECRETS">
+  >,
+): boolean {
+  return (
+    config.NODE_ENV !== undefined &&
+    allowsWithoutTeamSecrets[config.NODE_ENV] &&
+    config.ALLIANCE_WITHOUT_TEAM_SECRETS === true
+  );
+}
+
+export function unsetTeamOnlyKeys(config: ServerEnv): ServerEnvKey[] {
+  if (!withoutTeamSecrets(config)) return [];
+  return [...teamOnlyKeys].filter((key) => config[key] === undefined).sort();
+}
+
 // An invalid NODE_ENV is reported on its own, and leaves what it would
 // require unknown.
 function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
@@ -239,8 +346,9 @@ function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
     : [];
   const nodeEnv = config.NODE_ENV;
   if (nodeEnv === undefined) return [...cloudfront];
+  const dropped = withoutTeamSecrets(config) ? teamOnlyKeys : new Set();
   return [
-    ...setFor[nodeEnv],
+    ...setFor[nodeEnv].filter((key) => !dropped.has(key)),
     // The committed config sets the URLs, and Parameter Store the bucket.
     ...(isDeployed(nodeEnv)
       ? ([
@@ -277,9 +385,18 @@ function conditionallyRequired(config: Partial<ServerEnv>): ServerEnvKey[] {
 export function validateServerEnv(
   source: Record<string, string | undefined> = process.env,
 ): Result<ServerEnv, string[]> {
-  return parseEnv({
-    fields,
-    source: withCommitted(source),
-    requiredKeys: conditionallyRequired,
-  });
+  return R.flatMap(
+    parseEnv({
+      fields,
+      source: withCommitted(source),
+      requiredKeys: conditionallyRequired,
+    }),
+    (config) =>
+      config.ALLIANCE_WITHOUT_TEAM_SECRETS &&
+      !allowsWithoutTeamSecrets[config.NODE_ENV]
+        ? R.failure([
+            `ALLIANCE_WITHOUT_TEAM_SECRETS: only for development, not ${config.NODE_ENV}`,
+          ])
+        : R.success(config),
+  );
 }

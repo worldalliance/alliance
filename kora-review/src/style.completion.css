@@ -1,0 +1,54 @@
+/* Finish */
+.kora-review .optout {
+  padding-block: 28px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.kora-review .finish {
+  padding-block: 28px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.kora-review .flist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kora-review .frow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 10px 12px;
+  min-width: 0;
+}
+.kora-review .frow .qi-meta {
+  flex-wrap: wrap;
+}
+/* Responses table (owner) */
+.kora-review table {
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 100%;
+}
+.kora-review th,
+.kora-review td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+.kora-review th {
+  font: 700 11px var(--f-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}

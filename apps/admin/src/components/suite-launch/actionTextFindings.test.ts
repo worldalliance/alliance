@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import {
-  actionTextFindings,
-  findingContext,
-  TextSource,
-} from "./actionTextFindings";
+import { textContext } from "../../lib/textContext";
+import { actionTextFindings, TextSource } from "./actionTextFindings";
 import { TextIssueKind } from "./textChecks";
 
 const action = {
@@ -53,7 +50,7 @@ describe("actionTextFindings", () => {
 
   it("shows the flagged text with surrounding context", () => {
     const [, body] = actionTextFindings({ action, taskFormSchema: null });
-    expect(findingContext(body)).toEqual({
+    expect(textContext(body)).toMatchObject({
       before: "xt on both sides of ",
       flagged: "the the",
       after: " issue here.",

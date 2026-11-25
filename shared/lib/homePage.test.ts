@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import { renderHook } from "@testing-library/react";
 import { addDays, subDays } from "date-fns";
 import type { UserActionStatusDto } from "../client/types.gen";
@@ -215,7 +216,7 @@ describe("interleaveActionsAndUpdates", () => {
     startDate: null,
     endDate: null,
     priority: 1,
-    schema: null,
+    schema: R.success({ blocks: [] }),
   };
   const required = makeAction({ id: 1, priority: 0 });
   const late = makeAction({

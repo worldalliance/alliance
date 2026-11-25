@@ -27,6 +27,15 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      # scripts/readiness-rule.test.ts downloads the pinned Prometheus release
+      # otherwise, and this workflow gates deploys.
+      - name: Cache promtool
+        if: inputs.package == 'scripts'
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/promtool
+          key: promtool-${{ runner.os }}-${{ hashFiles('deploy/monitoring/docker-compose.yml') }}
+
       # Runs through scripts/test-all.sh so the discovery/skip rule lives in one
       # place and `bun run test` locally behaves identically to CI.
       - name: Run Unit Tests

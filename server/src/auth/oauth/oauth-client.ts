@@ -10,6 +10,8 @@ export type OAuthProfile = {
 };
 
 export interface OAuthClient {
+  isConfigured(): boolean;
+
   authorizationUrl(params: { redirectUri: string; state: string }): string;
 
   /**

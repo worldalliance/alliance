@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 import sharedRules from "../../eslint/shared-rules.mjs";
 
 export default defineConfig([
-  { ignores: ["out/"] },
+  { ignores: ["out/", "test-results/", "test-results-packaged/"] },
   tseslint.configs.recommended,
   reactHooks.configs.flat["recommended-latest"],
   sharedRules,

@@ -5,12 +5,14 @@ import {
   type ReminderCohortType,
   type ReminderGroupTimingMode,
 } from "@alliance/shared/client";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useReminderTentativePlansAdmin } from "../../lib/useReminderTentativePlansAdmin";
+import { useContentConfirm } from "../useContentConfirm";
 import ReminderKeywordHelp from "./ReminderKeywordHelp";
 import ReminderMessageFields from "./ReminderMessageFields";
 import ReminderScheduleFields from "./ReminderScheduleFields";
@@ -92,7 +94,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   userTagsError = null,
   initialValues,
   submitting = false,
-  submitLabel = "Create Reminders",
+  submitLabel = "Create reminders",
   serverError = null,
   serverSuccess = null,
   disableEventSelection = false,
@@ -106,6 +108,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [draft, setDraft] = useState(() =>
     draftFromInitialValues(initialValues),
   );
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const updateDraft = (patch: Partial<ReminderGroupDraft>) =>
     setDraft((current) => ({ ...current, ...patch }));
   const {
@@ -226,7 +229,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       return;
     }
 
-    console.log(payload.value);
+    if (!(await confirmSave(payload.value))) return;
 
     await onSubmit(payload.value, tentativePlans?.length ?? null);
   };
@@ -242,7 +245,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Member Action Event
+          Member action event
         </label>
         <select
           value={selectedEventId ?? ""}
@@ -256,7 +259,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           {memberEvents.map((event) => (
             <option key={event.id} value={event.id}>
               {event.title || `Event #${event.id}`} —{" "}
-              {new Date(event.date).toLocaleString()}
+              {formatDateTimeWithZone(new Date(event.date))}
             </option>
           ))}
         </select>
@@ -431,6 +434,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           {submitting ? "Saving…" : submitLabel}
         </Button>
       </div>
+      {contentDialog}
     </form>
   );
 };

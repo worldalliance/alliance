@@ -5,21 +5,63 @@
 -- holds the original values it joins on.
 -- ============================================================================
 
-UPDATE "mms" m
-SET "to" = '+1555' || lpad(u.id::text, 7, '0')
-FROM "user" u
-WHERE m."to" = u."phoneNumber";
+-- One synthetic number per number a user holds or mms records: a member's from
+-- the lowest id holding it, and each other number its own, counting down from
+-- the top of the range, so staging keeps non-member threads apart and
+-- mms_thread's numbers stay unique. Thread rows for any other number are
+-- dropped, and member-less opt-outs for one get the shared placeholder. Users
+-- and their opt-outs map by user id, so a number two members share splits on
+-- staging.
+CREATE TEMP TABLE anon_number (
+  original  TEXT PRIMARY KEY,
+  synthetic TEXT NOT NULL UNIQUE
+) ON COMMIT DROP;
+
+INSERT INTO anon_number
+SELECT "phoneNumber", '+1555' || lpad(min(id)::text, 7, '0')
+FROM "user"
+WHERE "phoneNumber" IS NOT NULL
+GROUP BY "phoneNumber";
+
+INSERT INTO anon_number
+SELECT original,
+       '+1555' || lpad((9999999 - row_number() OVER (ORDER BY original))::text, 7, '0')
+FROM (SELECT DISTINCT "memberPhoneNumber" AS original FROM "mms") seen
+WHERE original NOT IN (SELECT original FROM anon_number);
 
 UPDATE "mms" m
-SET "from" = '+1555' || lpad(u.id::text, 7, '0')
-FROM "user" u
-WHERE m."from" = u."phoneNumber";
+SET "to" = a.synthetic
+FROM anon_number a
+WHERE m."to" = a.original;
 
--- Our own Twilio number, and any row whose member no longer exists.
+UPDATE "mms" m
+SET "from" = a.synthetic
+FROM anon_number a
+WHERE m."from" = a.original;
+
+-- Our own Twilio number.
 UPDATE "mms" SET "to"   = '+15550000000' WHERE "to"   NOT LIKE '+1555%';
 UPDATE "mms" SET "from" = '+15550000000' WHERE "from" NOT LIKE '+1555%';
 
+-- A snapshot from before prod gained the table has none.
+DO $$
+BEGIN
+  IF to_regclass('mms_thread') IS NOT NULL THEN
+    UPDATE "mms_thread" t
+    SET "phoneNumber" = a.synthetic
+    FROM anon_number a
+    WHERE t."phoneNumber" = a.original;
+
+    DELETE FROM "mms_thread" WHERE "phoneNumber" NOT LIKE '+1555%';
+  END IF;
+END $$;
+
 -- Opt-out records keep both the number and the text the member replied with.
+UPDATE "mms_optout" o
+SET "phoneNumber" = a.synthetic
+FROM anon_number a
+WHERE o."userId" IS NULL AND o."phoneNumber" = a.original;
+
 UPDATE "mms_optout" o
 SET "phoneNumber" = '+1555' || lpad(u.id::text, 7, '0')
 FROM "user" u
@@ -106,6 +148,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Staging's media cron would otherwise fetch and delete prod's Twilio media,
+-- whose files staging must not hold. 30 is MAX_COPY_ATTEMPTS, as
+-- server/src/mms/anonymize-media.spec.ts checks, so every copy reads as given
+-- up on. Prod gains the table only once the migration adding it ships there.
+DO $$
+BEGIN
+  IF to_regclass('mms_media') IS NOT NULL THEN
+    UPDATE "mms_media"
+    SET "copyAttempts" = 30,
+        "twilioDeletedAt" = coalesce("twilioDeletedAt", now());
+  END IF;
+END $$;
+
 UPDATE "waitlist_entry"
 SET "email" = 'waitlist'||id||'@example.com'
 WHERE "email" IS NOT NULL;
@@ -147,6 +202,7 @@ BEGIN
       ('onetime_invite', 'info', 'text'),
       ('waitlist_entry', 'reason', 'text'),
       ('waitlist_entry', 'nonprofitNominations', 'text'),
+      ('mms', 'body', 'text'),
       ('mms_optout', 'rawBody', 'text'),
       ('ambassador_program_interaction', 'text', 'text'),
       ('user_away_range', 'note', 'text'),
@@ -180,12 +236,21 @@ END $$;
 \set seed 1
 SELECT set_config('anonymize.seed', :'seed', true);
 
+-- \copy resolves a relative path against psql's working directory, not this
+-- file's folder as \ir does, so the sync \cd's into its copy of this folder
+-- and sets in_anonymize_dir.
+-- BACKCOMPAT(anonymize-cwd): a sync script from before the copy does neither.
+-- Remove once the staging host's ~/sync_prod_to_staging.sh sets it.
+\if :{?in_anonymize_dir}
+\else
+\cd /home/ec2-user/nest-backend/scripts/anonymize
+\endif
 CREATE TEMP TABLE first_name (id SERIAL PRIMARY KEY, name TEXT NOT NULL)
   ON COMMIT DROP;
 CREATE TEMP TABLE last_name (id SERIAL PRIMARY KEY, name TEXT NOT NULL)
   ON COMMIT DROP;
-\copy first_name (name) FROM '/home/ec2-user/nest-backend/scripts/anonymize/first_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
-\copy last_name (name) FROM '/home/ec2-user/nest-backend/scripts/anonymize/last_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy first_name (name) FROM 'first_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy last_name (name) FROM 'last_names.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
 
 UPDATE "user" u
 SET "name" = f.name || ' ' || l.name
@@ -201,7 +266,7 @@ CREATE TEMP TABLE dracula_sentence (
   words INT NOT NULL CHECK (words > 0),
   body  TEXT NOT NULL
 ) ON COMMIT DROP;
-\copy dracula_sentence (words, body) FROM '/home/ec2-user/nest-backend/scripts/anonymize/dracula_words.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
+\copy dracula_sentence (words, body) FROM 'dracula_words.txt' WITH (FORMAT csv, DELIMITER E'\t', QUOTE E'\x01')
 CREATE INDEX ON dracula_sentence (words);
 
 -- Sentences totalling the answer's word count, chained when no single sentence

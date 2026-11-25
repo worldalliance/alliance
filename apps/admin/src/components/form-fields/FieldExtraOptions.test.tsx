@@ -48,10 +48,31 @@ describe("FieldExtraOptions", () => {
   it("offers an extraction target for checkbox fields", () => {
     const handlers = renderOptions(checkbox);
     fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "shareInfoPublicly" },
+      target: { value: "textNotifications" },
     });
     expect(handlers.onCheckboxExtractionTargetChange).toHaveBeenCalledWith(
-      "shareInfoPublicly",
+      "textNotifications",
     );
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "None",
+      "Share info publicly",
+      "Text notifications",
+      "Email notifications",
+    ]);
+  });
+
+  it("offers a custom component only the targets it may extract into", () => {
+    renderOptions({
+      id: "share",
+      type: "input",
+      kind: "custom",
+      label: "Share",
+      componentId: "share-info-publicly",
+    });
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["None", "Share info publicly"]);
   });
 });

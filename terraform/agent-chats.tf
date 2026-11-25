@@ -43,39 +43,3 @@ resource "aws_s3_bucket_lifecycle_configuration" "agent_chats" {
     }
   }
 }
-
-resource "aws_iam_user" "agent_chats" {
-  name = "alliance-agent-chats"
-  tags = {
-    Purpose = "Agent chat transcript uploads and reads"
-  }
-}
-
-data "aws_iam_policy_document" "agent_chats" {
-  statement {
-    sid    = "AllowAgentChatsUploadDownload"
-    effect = "Allow"
-
-    actions = [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:ListBucket",
-      "s3:AbortMultipartUpload"
-    ]
-
-    resources = [
-      aws_s3_bucket.agent_chats.arn,
-      "${aws_s3_bucket.agent_chats.arn}/*"
-    ]
-  }
-}
-
-resource "aws_iam_user_policy" "agent_chats" {
-  name   = "alliance-agent-chats-s3"
-  user   = aws_iam_user.agent_chats.name
-  policy = data.aws_iam_policy_document.agent_chats.json
-}
-
-resource "aws_iam_access_key" "agent_chats" {
-  user = aws_iam_user.agent_chats.name
-}

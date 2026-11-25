@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
-import { type AgentEvent, AgentEventKind, type AgentMessage } from "../session";
+import { AgentEventKind, type TurnEvent } from "../../../shared/agent-event";
+import { describeError } from "../../describe-error";
+import { claudePackage, pinnedVersions } from "../cli-versions";
+import type { AgentMessage } from "../session";
 
-export const CLAUDE_CODE_VERSION = "2.1.322";
+export const CLAUDE_CODE_VERSION = pinnedVersions[claudePackage];
 
 export const claudeSessionArgs = [
   "-p",
@@ -18,14 +21,15 @@ export const claudeSessionArgs = [
 export enum ClaudeLineKind {
   Events = "events",
   TurnEnded = "turn_ended",
+  /** The CLI's init line, which it writes once it has read a turn's message. Claude Code keeps the session's transcript from then on. */
+  MessageRead = "message_read",
 }
-
-export type TurnEvent = Exclude<AgentEvent, { kind: AgentEventKind.TurnEnded }>;
 
 export type ClaudeLine =
   | { kind: ClaudeLineKind.Events; events: TurnEvent[] }
   /** error is unset for a turn that succeeded. An interrupted turn carries one too. */
-  | { kind: ClaudeLineKind.TurnEnded; error: string | undefined };
+  | { kind: ClaudeLineKind.TurnEnded; error: string | undefined }
+  | { kind: ClaudeLineKind.MessageRead };
 
 const typed = z.looseObject({ type: z.string() });
 const textBlock = z.object({ type: z.literal("text"), text: z.string() });
@@ -73,6 +77,7 @@ const user = z.object({
   ...fromMainConversation,
   message: z.object({ content: z.union([z.string(), z.array(typed)]) }),
 });
+const system = z.looseObject({ subtype: z.string().optional() });
 const result = z.object({
   subtype: z.string(),
   is_error: z.boolean(),
@@ -86,29 +91,28 @@ const events = (list: TurnEvent[]): ClaudeLine => ({
   events: list,
 });
 
-const describe = (error: unknown): string =>
-  error instanceof z.ZodError
-    ? z.prettifyError(error)
-    : R.toError(error).message;
-
 /** Lines of a type the adapter doesn't use map to no events, so a CLI that adds one keeps working. */
 export function parseClaudeLine(line: string): Result<ClaudeLine, Error> {
   return R.flatMap(
     R.fromThrowable(
       () => typed.parse(JSON.parse(line)),
-      (error) => new Error(`not a stream-json event: ${describe(error)}`),
+      (error) => new Error(`not a stream-json event: ${describeError(error)}`),
     ),
     (value) =>
       R.fromThrowable(
         () => toClaudeLine(value),
         (error) =>
-          new Error(`unexpected ${value.type} event: ${describe(error)}`),
+          new Error(`unexpected ${value.type} event: ${describeError(error)}`),
       ),
   );
 }
 
 function toClaudeLine(value: { type: string }): ClaudeLine {
   switch (value.type) {
+    case "system":
+      return system.parse(value).subtype === "init"
+        ? { kind: ClaudeLineKind.MessageRead }
+        : noEvents;
     case "stream_event": {
       const { parent_tool_use_id, event } = streamEvent.parse(value);
       if (parent_tool_use_id !== null || event.type !== "content_block_delta")

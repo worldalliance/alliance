@@ -8,16 +8,28 @@ export function SectionLoadState({
   isError: boolean;
 }) {
   return (
-    <p className={cn("text-sm", isError ? "text-red-500" : "text-zinc-500")}>
+    <p className={cn("text-sm", isError ? "text-red-600" : "text-zinc-500")}>
       {isError ? `Failed to load ${noun}` : `Loading ${noun}...`}
     </p>
   );
 }
 
-export function SectionRefreshError({ noun }: { noun: string }) {
+/** Stays mounted so screen readers announce the text when it appears. */
+export function SectionRefreshError({
+  noun,
+  isError,
+  className,
+}: {
+  noun: string;
+  isError: boolean;
+  className?: string;
+}) {
   return (
-    <p className="text-xs text-red-500 mb-2">
-      Could not refresh {noun}. Reload to see the latest.
+    <p
+      role="status"
+      className={cn("text-xs text-red-600", isError && "mb-2", className)}
+    >
+      {isError && `Could not refresh ${noun}. Reload to see the latest.`}
     </p>
   );
 }

@@ -1,0 +1,4 @@
+- The scenario marks the launch notification, review task, break and thank-you steps as unbuilt and gives them no route or component, because no branch had them as of 2026-11-09. The waitlist confirmation copy "We’ll notify you when the reviews are ready for your input." is in `KoraWelcome.tsx`. (reconstructed from existing code)
+- Notifications are email or SMS only, because participants are not members and have no app. (reconstructed from existing code)
+- The failure states are the existing one-time-code refusal messages in `server/src/otp/otp-refusal.ts`. Failure states of the unbuilt steps are left out, because the code doesn't have them yet. (agent decision)
+- The persona's goal, helping make chatbots safer for children like his own, is drawn from the user's description of him as a parent of a 2nd grader. (agent interpretation)

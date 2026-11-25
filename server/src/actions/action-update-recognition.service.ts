@@ -28,7 +28,8 @@ import { PushService } from "src/push/push.service";
 import { actionUrl } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import { textReachable } from "src/user/user.utils";
-import { DataSource, In, Raw, type EntityManager } from "typeorm";
+import { mailSendError, SendErrorKind } from "src/utils/send-error";
+import { Any, DataSource, In, type EntityManager } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import {
   findLatestCompletions,
@@ -53,8 +54,17 @@ import {
 
 const DELIVERY_BATCH = 200;
 
-const anyOf = (ids: readonly number[]) =>
-  Raw((column) => `${column} = ANY(:ids)`, { ids });
+const UNSENT_SINCE_STARTED = {
+  textStartedAt: `"mmsId" IS NULL AND "textFailedAt" IS NULL`,
+  emailStartedAt: `"mailId" IS NULL AND "emailFailedAt" IS NULL`,
+} as const;
+
+const PROVES_NOT_SENT: Record<SendErrorKind, boolean> = {
+  [SendErrorKind.NotHandedOver]: true,
+  [SendErrorKind.Refused]: true,
+  [SendErrorKind.RefusedForNow]: true,
+  [SendErrorKind.Unknown]: false,
+};
 
 @Injectable()
 export class ActionUpdateRecognitionService {
@@ -87,14 +97,14 @@ export class ActionUpdateRecognitionService {
     if (!results.ok) return results;
 
     const users = await em.find(User, {
-      where: { id: anyOf(userIds) },
+      where: { id: Any(userIds) },
       select: { id: true, name: true },
     });
     const terminal = await em.find(ActionActivity, {
       where: {
         actionId: update.actionId,
         type: In(TERMINAL_ACTIVITY_TYPES),
-        userId: anyOf(userIds),
+        userId: Any(userIds),
       },
     });
     const completedIds = new Set(
@@ -297,12 +307,10 @@ export class ActionUpdateRecognitionService {
     if (!claimed.length) return false;
 
     const exposures = await this.dataSource.manager.find(ActionUpdateExposure, {
-      where: { id: anyOf(claimed.map((row) => row.id)) },
+      where: { id: Any(claimed.map((row) => row.id)) },
       relations: {
         user: { contractEvents: true },
         actionUpdate: true,
-        mail: true,
-        mms: true,
       },
       order: { id: "ASC" },
     });
@@ -320,23 +328,28 @@ export class ActionUpdateRecognitionService {
     for (const exposure of exposures) {
       // A batch can outlast its 10-minute claim; skip a row another run retook
       // or a deletion marked since the claim.
-      const [renewed]: [unknown[], number] = await this.dataSource.query(
-        `
+      const [renewed]: [{ claimedAt: string }[], number] =
+        await this.dataSource.query(
+          `
         UPDATE action_update_exposure SET "deliveryClaimedAt" = now()
         WHERE id = $1 AND "deliveryClaimedAt" = $2::timestamptz
           AND "deletedAt" IS NULL
-        RETURNING id
+        RETURNING "deliveryClaimedAt"::text AS "claimedAt"
         `,
-        [exposure.id, claimed[0].claimedAt],
-      );
+          [exposure.id, claimed[0].claimedAt],
+        );
       if (!renewed.length) continue;
       // A failure stays claimed until the claim expires, then retries alone.
-      await this.deliver({ exposure, shownEntries, preferences }).catch(
-        (error: unknown) =>
-          this.logger.error(
-            `delivering action update exposure ${exposure.id} failed`,
-            error,
-          ),
+      await this.deliver({
+        exposure,
+        claimedAt: renewed[0].claimedAt,
+        shownEntries,
+        preferences,
+      }).catch((error: unknown) =>
+        this.logger.error(
+          `delivering action update exposure ${exposure.id} failed`,
+          error,
+        ),
       );
     }
     return claimed.length === DELIVERY_BATCH;
@@ -344,10 +357,11 @@ export class ActionUpdateRecognitionService {
 
   private async deliver(params: {
     exposure: ActionUpdateExposure;
+    claimedAt: string;
     shownEntries: ReadonlyMap<number, UnreadContent>;
     preferences: Preferences;
   }) {
-    const { exposure, shownEntries, preferences } = params;
+    const { exposure, claimedAt, shownEntries, preferences } = params;
     const { user, actionUpdate } = exposure;
     if (!user || !actionUpdate) {
       throw new Error(`exposure ${exposure.id} loaded without its relations`);
@@ -358,9 +372,37 @@ export class ActionUpdateRecognitionService {
       exposure.unreadContentId === null
         ? undefined
         : shownEntries.get(exposure.unreadContentId);
-    // A claim left by a crash is retaken; channels it already sent are skipped.
     const record = (sent: QueryDeepPartialEntity<ActionUpdateExposure>) =>
       this.dataSource.manager.update(ActionUpdateExposure, exposure.id, sent);
+    // Checks the row, not the exposure loaded with the batch, so a run that
+    // has lost its claim starts nothing and no channel starts twice.
+    const start = async (column: keyof typeof UNSENT_SINCE_STARTED) => {
+      const [started]: [unknown[], number] = await this.dataSource.query(
+        `
+        UPDATE action_update_exposure SET "${column}" = now()
+        WHERE id = $1 AND "deliveryClaimedAt" = $2::timestamptz
+          AND "deletedAt" IS NULL AND "${column}" IS NULL
+          AND ${UNSENT_SINCE_STARTED[column]}
+        RETURNING id
+        `,
+        [exposure.id, claimedAt],
+      );
+      if (started.length) return true;
+      const unresolved: unknown[] = await this.dataSource.query(
+        `
+        SELECT 1 FROM action_update_exposure
+        WHERE id = $1 AND "deliveryClaimedAt" = $2::timestamptz
+          AND "${column}" IS NOT NULL AND ${UNSENT_SINCE_STARTED[column]}
+        `,
+        [exposure.id, claimedAt],
+      );
+      if (unresolved.length) {
+        this.logger.warn(
+          `action update exposure ${exposure.id}: ${column} is set with no recorded outcome, so it isn't sent again`,
+        );
+      }
+      return false;
+    };
     if (entry && exposure.copy !== null) {
       const copy = recognitionCopySchema.parse(exposure.copy);
       const tracking: TrackedMessage = {
@@ -388,26 +430,26 @@ export class ActionUpdateRecognitionService {
           }),
         );
       }
-      // A failed text or email is final; a retaken claim doesn't resend it.
       if (
-        !exposure.mms &&
-        exposure.textFailedAt === null &&
         channels.includes(NotificationChannel.Text) &&
-        textReachable(user)
+        textReachable(user) &&
+        (await start("textStartedAt"))
       ) {
-        const mms = await this.mmsService.sendMms({
+        const text = await this.mmsService.sendMmsResult({
           to: user.phoneNumber,
           userId: user.id,
           body: copy.sms,
           mediaUrls: [],
           tracking,
         });
-        await record(mms ? { mms } : { textFailedAt: new Date() });
+        if (text.ok) await record({ mms: text.value });
+        else if (PROVES_NOT_SENT[text.error]) {
+          await record({ textFailedAt: new Date() });
+        }
       }
       if (
-        !exposure.mail &&
-        exposure.emailFailedAt === null &&
-        channels.includes(NotificationChannel.Email)
+        channels.includes(NotificationChannel.Email) &&
+        (await start("emailStartedAt"))
       ) {
         const mail = await R.fromPromise(
           this.mailService.sendCustomHtmlEmail({
@@ -424,13 +466,20 @@ export class ActionUpdateRecognitionService {
             `emailing action update exposure ${exposure.id} failed`,
             mail.error,
           );
-          await record({ emailFailedAt: new Date() });
+          if (PROVES_NOT_SENT[mailSendError(mail.error)]) {
+            await record({ emailFailedAt: new Date() });
+          }
         }
       }
     }
-    const deliveredAt = new Date();
-    await record(
-      entry ? { deliveredAt } : { deliveredAt, hiddenAt: deliveredAt },
+    await this.dataSource.query(
+      `
+      UPDATE action_update_exposure
+      SET "deliveredAt" = now(),
+        "hiddenAt" = CASE WHEN $3 THEN "hiddenAt" ELSE now() END
+      WHERE id = $1 AND "deliveryClaimedAt" = $2::timestamptz
+      `,
+      [exposure.id, claimedAt, entry !== undefined],
     );
   }
 }

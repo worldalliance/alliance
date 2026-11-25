@@ -1,0 +1,4 @@
+- Both actions live on rows of the existing Batches table on `/kora-participants` (`apps/admin/src/components/KoraBatches.tsx`), the only place batches are listed. (agent decision)
+- The retire confirmation names the batch by upload date and says that ratings are kept and the retire can be undone, so it matches the delete confirmation and states the consequences. (agent decision)
+- Whether retiring the last active batch warns first is left unspecified in the scenario, since the user wasn't asked. (agent decision)
+- Assumption: deleting a `KoraBatch` row today cascades to its transcripts and their assignment links (`onDelete: "CASCADE"` in `server/src/kora/entities/kora-transcript.entity.ts` and `kora-assignment-transcript.entity.ts`), so the delete the scenario describes fits the existing schema, while retire needs a new status. (reconstructed from existing code)

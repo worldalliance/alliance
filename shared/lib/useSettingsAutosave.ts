@@ -8,11 +8,14 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import type { UpdateProfileDto } from "../client";
 import {
+  enteredNumberRefusal,
+  phoneNumberRefusal,
   phoneNumberSettingsError,
   settingsAutosave,
   settingsSavedEditable,
   settingsSaveStatus,
   settingsSaveStatusText,
+  type PhoneNumberRefusal,
   type SettingsSaveStatus,
 } from "./settings";
 import { useSerializedAutosave } from "./useSerializedAutosave";
@@ -38,6 +41,12 @@ export type SettingsAutosaveState = {
    * number is reported as unsaved rather than as an error to fix.
    */
   setPhoneNumberEditing: (editing: boolean) => void;
+  /** The entered number, while the server refuses it because another account holds it. */
+  refusedPhoneNumber: string | null;
+  /** The number to offer a code for: the refused one, or the saved one while the field shows it. */
+  confirmablePhoneNumber: string | null;
+  /** Records a number confirmed by code, which saved it, so autosave neither resends nor reverts it. */
+  phoneNumberConfirmed: (phoneNumber: string) => void;
   saveStatus: SettingsSaveStatus;
   saveStatusText: string;
   saveError: string | null;
@@ -61,6 +70,7 @@ export function useSettingsAutosave(
   // Focus changes what the member is told, never the derived save plan, so
   // holding it in state cannot restart the autosave debounce.
   const [phoneNumberEditing, setPhoneNumberEditing] = useState(false);
+  const [refusal, setRefusal] = useState<PhoneNumberRefusal | null>(null);
 
   const country: CountryCode =
     selectedCountry ??
@@ -68,14 +78,27 @@ export function useSettingsAutosave(
     asCountryCode(cityCountryCode) ??
     DEFAULT_PHONE_COUNTRY;
 
+  const refused = useMemo(
+    () => enteredNumberRefusal(refusal, editableUser, country),
+    [refusal, editableUser, country],
+  );
+
   const autosave = useMemo(
-    () => settingsAutosave(editableUser, initialUser, country),
-    [editableUser, initialUser, country],
+    () =>
+      settingsAutosave(
+        refused && editableUser && initialUser
+          ? { ...editableUser, phoneNumber: initialUser.phoneNumber }
+          : editableUser,
+        initialUser,
+        country,
+      ),
+    [editableUser, initialUser, country, refused],
   );
 
   const phoneNumberError = useMemo(
-    () => phoneNumberSettingsError(editableUser, initialUser, country),
-    [editableUser, initialUser, country],
+    () =>
+      refused ?? phoneNumberSettingsError(editableUser, initialUser, country),
+    [editableUser, initialUser, country, refused],
   );
 
   const { saving, saveError, clearFailure, resetAutosave } =
@@ -86,7 +109,12 @@ export function useSettingsAutosave(
         await updateProfile(save.body);
       },
       onSaved: (save) => {
-        setInitialUser(save.savedState);
+        // A number confirmed while this save was on its way stays saved.
+        setInitialUser((previous) =>
+          "phoneNumber" in save.body || !previous
+            ? save.savedState
+            : { ...save.savedState, phoneNumber: previous.phoneNumber },
+        );
         setEditableUser((previous) =>
           settingsSavedEditable(
             previous,
@@ -96,7 +124,12 @@ export function useSettingsAutosave(
           ),
         );
       },
-      errorMessage: (error) => {
+      onSaveFailed: (error, save) => {
+        const refusal = phoneNumberRefusal(error, save.body);
+        if (refusal) {
+          setRefusal(refusal);
+          return null;
+        }
         console.error("Failed to save settings:", error);
         return errorMessage({
           error,
@@ -108,6 +141,8 @@ export function useSettingsAutosave(
   const updateEditableUser = useCallback(
     (updates: Partial<UpdateProfileDto>) => {
       clearFailure();
+      // The number may have been freed since, so re-entering it sends it again.
+      if ("phoneNumber" in updates) setRefusal(null);
       setEditableUser((previous) =>
         previous ? { ...previous, ...updates } : previous,
       );
@@ -122,12 +157,18 @@ export function useSettingsAutosave(
         | ((previous: UpdateProfileDto | null) => UpdateProfileDto),
     ) => {
       resetAutosave();
+      setRefusal(null);
       const next = typeof update === "function" ? update : () => update;
       setEditableUser(next);
       setInitialUser(next);
     },
     [resetAutosave],
   );
+
+  const phoneNumberConfirmed = useCallback((phoneNumber: string) => {
+    setRefusal(null);
+    setInitialUser((previous) => previous && { ...previous, phoneNumber });
+  }, []);
 
   const setPhoneNumberCountry = useCallback(
     (nextCountry: CountryCode) => {
@@ -136,6 +177,8 @@ export function useSettingsAutosave(
     },
     [clearFailure],
   );
+
+  const refusedPhoneNumber = refused ? (refusal?.phoneNumber ?? null) : null;
 
   const saveStatus = settingsSaveStatus({
     saving,
@@ -153,6 +196,14 @@ export function useSettingsAutosave(
     phoneNumberCountry: country,
     setPhoneNumberCountry,
     setPhoneNumberEditing,
+    refusedPhoneNumber,
+    confirmablePhoneNumber:
+      refusedPhoneNumber ??
+      (editableUser?.phoneNumber &&
+      editableUser.phoneNumber === initialUser?.phoneNumber
+        ? editableUser.phoneNumber
+        : null),
+    phoneNumberConfirmed,
     saveStatus,
     saveStatusText: settingsSaveStatusText(saveStatus),
     saveError,

@@ -5,6 +5,7 @@ import type {
   OAuthProvider,
   OtpChannel,
 } from "@alliance/shared/client";
+import { endOfDay, format, parseISO } from "date-fns";
 import Papa from "papaparse";
 
 const CHANNEL_LABEL: Record<OtpChannel, string> = {
@@ -123,3 +124,15 @@ export function buildKoraCsv(overview: KoraAdminOverviewDto): string {
     escapeFormulae: FORMULA_START,
   });
 }
+
+export const formatKoraDate = (iso: string) =>
+  format(new Date(iso), "MMM d, yyyy h:mm a");
+
+export const dateInputValue = (date: Date) => format(date, "yyyy-MM-dd");
+
+/** The end of a date input's day, in this browser's time zone. */
+export const closingInstant = (date: string) =>
+  endOfDay(parseISO(date)).toISOString();
+
+export const browserTimeZone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone;

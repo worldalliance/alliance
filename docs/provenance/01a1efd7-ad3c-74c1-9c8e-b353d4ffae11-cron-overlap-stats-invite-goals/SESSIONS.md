@@ -1,0 +1,3 @@
+- claude:0e3a47cc-b791-4c45-a1c0-6a82b374b60c
+- claude:9c9e6f00-6b48-4e3f-abc6-bcb448bc6650
+- claude:7a8d787c-104f-450c-8dc3-8d5b2890fb78

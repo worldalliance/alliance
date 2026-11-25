@@ -361,6 +361,7 @@ export const taskFlow = {
   submit: "Complete",
   done: "Done",
   progress: "Task progress",
+  outline: "Task steps",
   complete: "Task complete!",
   completeUpdate:
     "We'll share a progress update on this project with all members in the coming weeks.",
@@ -476,3 +477,6 @@ export const commentThreadLanding = ({
     : total > 0
       ? "Comments, none match the filter"
       : "Comments, none yet";
+
+/** Shown above an expert's reply, so members know it was written in advance. */
+export const autoResponseLabel = "Auto response";

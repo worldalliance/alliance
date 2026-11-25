@@ -104,7 +104,7 @@ export function drawDumbbell({
     T(g, 884, 4, (d >= 0 ? "+" : "−") + Math.abs(d), {
       "text-anchor": "middle",
       "font-size": 12.5,
-      "font-weight": 650,
+      "font-weight": 600,
       fill: d >= 0 ? "var(--ink)" : "var(--mut)",
       class: "t-mono",
     });
@@ -113,7 +113,6 @@ export function drawDumbbell({
         "text-anchor": "middle",
         "font-size": 12,
         fill: "var(--sub)",
-        "font-style": "italic",
       });
     }
     return { g, hit, r };

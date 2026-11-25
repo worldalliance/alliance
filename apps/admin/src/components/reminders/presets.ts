@@ -20,12 +20,12 @@ import { secondsInDay, secondsInHour } from "date-fns/constants";
 export const presetNames = [
   "Announcement",
   "Catch-up late joiners",
-  "Two Day Range",
-  "One Day Range",
-  "Three Hour",
-  "Missed Deadline",
-  "Group Leads 3 days",
-  "Group Leads 2 days",
+  "Two day range",
+  "One day range",
+  "Three hour",
+  "Missed deadline",
+  "Group leads 3 days",
+  "Group leads 2 days",
 ] as const;
 
 export type ReminderPresetName = (typeof presetNames)[number];
@@ -44,7 +44,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     timingMode: "event_launch",
     cohortType: "all_uncompleted",
     textMessage: defaultAnnouncementTextMessage,
-    name: "Member Action announcement",
+    name: "Member action announcement",
     emailMessage: defaultAnnouncementEmailContents,
     emailSubject: defaultAnnouncementEmailSubject,
     pushMessage: defaultAnnouncementPushMessage,
@@ -66,7 +66,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: false,
     excludePreviouslyNotified: true,
   },
-  "Two Day Range": {
+  "Two day range": {
     timingMode: "within_relative_range",
     relative_range_start_seconds_from_deadline: 48 * secondsInHour,
     relative_range_end_seconds_from_deadline: 24 * secondsInHour,
@@ -80,7 +80,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: false,
     excludePreviouslyNotified: false,
   },
-  "One Day Range": {
+  "One day range": {
     timingMode: "within_relative_range",
     relative_range_start_seconds_from_deadline: 24 * secondsInHour,
     relative_range_end_seconds_from_deadline: 6 * secondsInHour,
@@ -94,7 +94,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: false,
     excludePreviouslyNotified: false,
   },
-  "Three Hour": {
+  "Three hour": {
     timingMode: "from_deadline",
     sendAtSecondsFromDeadline: 3 * secondsInHour,
     cohortType: "all_uncompleted",
@@ -107,7 +107,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: false,
     excludePreviouslyNotified: false,
   },
-  "Missed Deadline": {
+  "Missed deadline": {
     timingMode: "from_deadline",
     sendAtSecondsFromDeadline: 0,
     cohortType: "all_uncompleted",
@@ -120,7 +120,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: true,
     excludePreviouslyNotified: false,
   },
-  "Group Leads 3 days": {
+  "Group leads 3 days": {
     timingMode: "within_relative_range",
     relative_range_start_seconds_from_deadline: 3 * secondsInDay,
     relative_range_end_seconds_from_deadline: 2 * secondsInDay,
@@ -134,7 +134,7 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: true,
     excludePreviouslyNotified: false,
   },
-  "Group Leads 2 days": {
+  "Group leads 2 days": {
     timingMode: "within_relative_range",
     relative_range_start_seconds_from_deadline: 2 * secondsInDay,
     relative_range_end_seconds_from_deadline: secondsInDay,
@@ -151,12 +151,12 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
 };
 
 const defaultDeadlinePresets: ReminderPresetName[] = [
-  "Two Day Range",
-  "One Day Range",
-  "Three Hour",
-  "Missed Deadline",
-  "Group Leads 3 days",
-  "Group Leads 2 days",
+  "Two day range",
+  "One day range",
+  "Three hour",
+  "Missed deadline",
+  "Group leads 3 days",
+  "Group leads 2 days",
 ];
 
 export const defaultReminderPresetNames = (

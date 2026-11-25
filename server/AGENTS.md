@@ -4,6 +4,7 @@ Read before the matching task:
 
 - Editing any `*.dto.ts` or `*.controller.ts` → `(root)/agents/skills/dto-return-types/SKILL.md`
 - Generating or writing a migration → `(root)/agents/skills/migrations/SKILL.md`
+- Adding or changing an automatic email → `server/src/mail/templates/README.md`
 
 ## Entities
 
@@ -33,4 +34,4 @@ Fetch-then-compute: DB reads up top, pure logic on the fetched data after. Keeps
 
 ## Tests
 
-End-to-end: `(cd server && bun run test:e2e)`
+End-to-end: which suites to run locally is under **Server e2e** in `(root)/agents/skills/implement/SKILL.md`.

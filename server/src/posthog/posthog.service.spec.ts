@@ -66,7 +66,7 @@ describe("PosthogService request attribution", () => {
         [SLACK_PROPERTY]: SEND_TO_SLACK[ExceptionEvent.MalformedListAnswer],
       });
     } finally {
-      await service.onModuleDestroy();
+      await service.onApplicationShutdown();
     }
   });
 });

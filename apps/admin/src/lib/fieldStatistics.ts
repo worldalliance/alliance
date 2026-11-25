@@ -6,6 +6,7 @@ import type {
 import { getRangeValues } from "@alliance/common/forms/range";
 import { FormResponseDto } from "@alliance/shared/client";
 import { normalizeBoolean } from "./answerValues";
+import { BOOLEAN_ANSWER_LABELS } from "./booleanAnswerLabels";
 import {
   buildNumberStats,
   type NumberSummary,
@@ -14,9 +15,11 @@ import {
 
 type StatsFieldKind =
   | "checkbox"
+  | "toggle"
   | "select"
   | "multiselect"
   | "radio"
+  | "conversation"
   | "range"
   | "number";
 
@@ -30,14 +33,31 @@ type FieldStats = {
   note?: string;
 };
 
-export const STAT_FIELD_KINDS = new Set<FieldKind>([
-  "checkbox",
-  "select",
-  "multiselect",
-  "radio",
-  "range",
-  "number",
-]);
+export const STAT_FIELD_KINDS: Record<FieldKind, boolean> = {
+  text: false,
+  textarea: false,
+  email: false,
+  phone: false,
+  number: true,
+  range: true,
+  checkbox: true,
+  radio: true,
+  select: true,
+  multiselect: true,
+  ranking: false,
+  date: false,
+  time: false,
+  timezone: false,
+  city: false,
+  file: false,
+  contract: false,
+  list: false,
+  custom: false,
+  image: false,
+  toggle: true,
+  timePicker: false,
+  conversation: true,
+};
 
 const toNumberValue = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -56,7 +76,8 @@ export const buildFieldStats = (
   totalResponses: number,
 ): FieldStats => {
   switch (field.kind) {
-    case "checkbox": {
+    case "checkbox":
+    case "toggle": {
       let checkedCount = 0;
       let uncheckedCount = 0;
       let noResponseCount = 0;
@@ -75,13 +96,13 @@ export const buildFieldStats = (
       const rows: StatRow[] = [
         {
           key: "checked",
-          label: "Checked",
+          label: BOOLEAN_ANSWER_LABELS[field.kind].on,
           count: checkedCount,
           filter: { fieldId: field.id, op: "equals", value: "true" },
         },
         {
           key: "unchecked",
-          label: "Not checked",
+          label: BOOLEAN_ANSWER_LABELS[field.kind].off,
           count: uncheckedCount,
           filter: { fieldId: field.id, op: "equals", value: "false" },
         },
@@ -104,6 +125,7 @@ export const buildFieldStats = (
       };
     }
     case "radio":
+    case "conversation":
     case "select": {
       const options = field.options ?? [];
       const counts = new Map(options.map((option) => [option.value, 0]));

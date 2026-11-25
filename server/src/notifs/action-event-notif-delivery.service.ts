@@ -1,14 +1,40 @@
 import { Injectable } from "@nestjs/common";
+import { loadedActionEventAction } from "src/actions/entities/action-event.entity";
+import { loadedReminderGroupMemberActionEvent } from "src/actions/entities/reminder-group.entity";
+import {
+  NOTIF_SOURCE,
+  reminderContext,
+} from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { EmailStatus } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { PushService } from "src/push/push.service";
 import type { User } from "src/user/entities/user.entity";
+import type { NotificationPlan } from "./dto/notification-plan.dto";
 import type { ActionEventNotif } from "./entities/action-event-notif.entity";
 import type { Notification } from "./entities/notification.entity";
 import type { ChannelTemplates } from "./missed-suite-notice";
 import { NotificationChannel } from "./notif-utils";
+
+export const reminderTracking = (
+  plan: NotificationPlan,
+  notif: ActionEventNotif,
+): TrackedMessage => ({
+  owner: { userId: plan.user.id },
+  source: NOTIF_SOURCE[notif.type],
+  context: reminderContext({
+    group: plan.group,
+    action: loadedActionEventAction(
+      loadedReminderGroupMemberActionEvent(plan.group),
+    ),
+    notifiedActionIds: notif.notifiedActionIds,
+    actionSuiteId: notif.actionSuite?.id ?? null,
+    missNumber: notif.missNumber,
+    missedSuiteCopy: notif.missedSuiteCopy,
+  }),
+  actionEventNotifId: notif.id,
+});
 
 @Injectable()
 export class ActionEventNotifDeliveryService {
@@ -18,8 +44,10 @@ export class ActionEventNotifDeliveryService {
     private readonly pushService: PushService,
   ) {}
 
-  /** Sends on each of `channels`; true if any was attempted. */
-  async deliver(params: {
+  /** Renders each of `channels` and resolves to a function that sends them,
+   * resolving true if any was attempted. Nothing reaches a provider before
+   * that function runs. */
+  async prepare(params: {
     notif: ActionEventNotif;
     user: User;
     channels: readonly NotificationChannel[];
@@ -31,49 +59,61 @@ export class ActionEventNotifDeliveryService {
       idempotencyKey: string;
       notification?: Notification;
     };
-  }): Promise<boolean> {
+  }): Promise<() => Promise<boolean>> {
     const { notif, user, channels, tracking, templates, render, push } = params;
-    if (channels.includes(NotificationChannel.Push)) {
-      const pushes = await this.pushService.getPushForAllUserDevices(user.id, {
-        userId: user.id,
-        body: await render(templates.pushMessage),
-        screen: push.screen,
-        idempotencyKey: push.idempotencyKey,
-        notification: push.notification,
-      });
+    const pushes = channels.includes(NotificationChannel.Push)
+      ? await this.pushService.getPushForAllUserDevices(user.id, {
+          userId: user.id,
+          body: await render(templates.pushMessage),
+          screen: push.screen,
+          idempotencyKey: push.idempotencyKey,
+          notification: push.notification,
+        })
+      : null;
+    const text = channels.includes(NotificationChannel.Text)
+      ? await render(templates.textMessage)
+      : null;
+    const email = channels.includes(NotificationChannel.Email)
+      ? {
+          subject: await render(templates.emailSubject),
+          message: await render(templates.emailMessage),
+        }
+      : null;
 
-      const result = await this.pushService.sendMessages(pushes);
-      notif.pushes = result;
-      if (result.length > 0) {
-        notif.sent = true;
+    return async () => {
+      if (pushes) {
+        const result = await this.pushService.sendMessages(pushes);
+        notif.pushes = result;
+        if (result.length > 0) {
+          notif.sent = true;
+        }
       }
-    }
-    if (channels.includes(NotificationChannel.Text)) {
-      const result = await this.mmsService.sendMms({
-        to: user.phoneNumber!,
-        userId: user.id,
-        body: await render(templates.textMessage),
-        mediaUrls: [],
-        tracking,
-      });
+      if (text !== null) {
+        const result = await this.mmsService.sendMms({
+          to: user.phoneNumber!,
+          userId: user.id,
+          body: text,
+          mediaUrls: [],
+          tracking,
+        });
 
-      if (result && !result.errorCode) {
-        notif.sent = true;
+        if (result && !result.errorCode) {
+          notif.sent = true;
+        }
+        notif.mms = result;
       }
-      notif.mms = result;
-    }
-    if (channels.includes(NotificationChannel.Email)) {
-      const result = await this.mailService.sendActionEventNotificationEmail({
-        subject: await render(templates.emailSubject),
-        message: await render(templates.emailMessage),
-        tracking,
-        recipient: user.email,
-      });
-      notif.mail = result;
-      if (result.status === EmailStatus.Sent) {
-        notif.sent = true;
+      if (email) {
+        const result = await this.mailService.sendActionEventNotificationEmail({
+          ...email,
+          tracking,
+          recipient: user.email,
+        });
+        notif.mail = result;
+        if (result.status === EmailStatus.Sent) {
+          notif.sent = true;
+        }
       }
-    }
-    return channels.length > 0;
+      return channels.length > 0;
+    };
   }
 }

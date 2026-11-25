@@ -27,9 +27,11 @@ export enum EventType {
   ActionOptOut = "action_opt_out",
   AccountDeletionRequested = "account_deletion_requested",
   AccountDeleted = "account_deleted",
+  // No longer written; kept so past rows stay readable.
   JoinRequest = "join_request",
   AdminRoleChanged = "admin_role_changed",
   WaitlistMailCapReached = "waitlist_mail_cap_reached",
+  PhoneNumberMoved = "phone_number_moved",
 }
 
 export const SEND_TO_SLACK: Record<EventType, boolean> = {
@@ -49,6 +51,7 @@ export const SEND_TO_SLACK: Record<EventType, boolean> = {
   [EventType.JoinRequest]: true,
   [EventType.AdminRoleChanged]: true,
   [EventType.WaitlistMailCapReached]: true,
+  [EventType.PhoneNumberMoved]: true,
 };
 
 @Entity()

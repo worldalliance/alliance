@@ -128,7 +128,7 @@ function resolve(
   return resolveUserActionStatus({
     action: makeAction(),
     user: makeUser(),
-    cohort: { admitted: true, eligible: true },
+    cohort: { admitted: true, eligible: true, optionalRow: false },
     activities: [],
     now: NOW,
     ...overrides,
@@ -170,15 +170,28 @@ describe("resolveUserActionStatus", () => {
     };
   });
 
+  it("is optional for the part when the member's decision row says so", () => {
+    const status = resolve({
+      cohort: { admitted: true, eligible: true, optionalRow: true },
+    });
+    expect(status.assigned).toBe(true);
+    expect(status.optional).toBe(true);
+    expect(status.optionalReason).toBe(ViewerOptionalReason.PartitionPart);
+  });
+
   it("is entirely unassigned outside the cohort", () => {
-    const status = resolve({ cohort: { admitted: false, eligible: false } });
+    const status = resolve({
+      cohort: { admitted: false, eligible: false, optionalRow: false },
+    });
     expect(status.assigned).toBe(false);
     expect(status.canComplete).toBe(false);
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
   });
 
   it("lets a member the decision left out complete without assigning it", () => {
-    const status = resolve({ cohort: { admitted: false, eligible: true } });
+    const status = resolve({
+      cohort: { admitted: false, eligible: true, optionalRow: false },
+    });
     expect(status.assigned).toBe(false);
     expect(status.canComplete).toBe(true);
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);

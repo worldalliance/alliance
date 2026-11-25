@@ -23,6 +23,7 @@ export function recordDelivery(
       id: notif.id,
       changes: {
         sent: notif.sent,
+        deliveryPending: false,
         mail: notif.mail ?? null,
         mms: notif.mms ?? null,
         ...(notif.notification && {

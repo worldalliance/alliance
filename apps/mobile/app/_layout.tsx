@@ -1,11 +1,9 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { useFonts } from "expo-font";
 import { setNotificationHandler } from "expo-notifications";
 import { Slot } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { AppState } from "react-native";
@@ -15,8 +13,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import DeviceRegistration from "../components/DeviceRegistration";
 import { KeyboardExtenderPortalProvider } from "../components/KeyboardExtenderPortal";
 import OtaUpdateBanner from "../components/OtaUpdateBanner";
-import OtaUpdateGate from "../components/OtaUpdateGate";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
+import ResumeAfterRestart from "../components/ResumeAfterRestart";
 import UpdateAvailableModal from "../components/UpdateAvailableModal";
 import "../global.css";
 import { AuthProvider } from "../lib/AuthContext";
@@ -25,17 +23,14 @@ import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
 import { notificationBehavior } from "../lib/notificationBehavior";
+import { checkForUpdateOnPush } from "../lib/otaUpdates";
 import { queryClient, refetchActions } from "../lib/queryClient";
+import {
+  blockResumeRestartDuringWrites,
+  memberActionHandlers,
+} from "../lib/resumeRestarts";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
-import { hideSplash } from "../lib/splash";
-
-// OtaUpdateGate decides when the app is ready to be seen, so the splash must
-// outlive the first render.
-void SplashScreen.preventAutoHideAsync().catch(() => {});
-
-const SPLASH_WATCHDOG_MS = milliseconds({ seconds: 30 });
-setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 
 registerErrorStatus(client);
 
@@ -44,6 +39,7 @@ setNotificationHandler({
     notificationBehavior({
       data: notification.request.content.data,
       onTaskBadgePush: refetchActions,
+      onShownPush: checkForUpdateOnPush,
     }),
 });
 
@@ -62,12 +58,14 @@ export default function RootLayout() {
   useEffect(() => {
     client.setConfig({
       baseUrl: getApiUrl(),
-      fetch: refreshingFetch({
-        // eslint-disable-next-line no-restricted-globals -- the generated client's transport
-        fetch: fetch.bind(globalThis),
-        getRefreshToken,
-        saveTokens: saveSessionTokens,
-      }),
+      fetch: blockResumeRestartDuringWrites(
+        refreshingFetch({
+          // eslint-disable-next-line no-restricted-globals -- the generated client's transport
+          fetch: fetch.bind(globalThis),
+          getRefreshToken,
+          saveTokens: saveSessionTokens,
+        }),
+      ),
       throwOnError: true,
     });
     return startLinkOpenings({
@@ -79,21 +77,20 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{ flex: 1 }} {...memberActionHandlers}>
           <KeyboardProvider>
             <PostHogProvider>
-              <OtaUpdateGate>
-                <AuthProvider>
-                  <KeyboardExtenderPortalProvider>
-                    <DeviceRegistration />
-                    <PushNotificationResponseHandler />
-                    <UpdateAvailableModal />
-                    <StatusBar style="dark" />
-                    <Slot />
-                    <OtaUpdateBanner />
-                  </KeyboardExtenderPortalProvider>
-                </AuthProvider>
-              </OtaUpdateGate>
+              <AuthProvider>
+                <KeyboardExtenderPortalProvider>
+                  <DeviceRegistration />
+                  <PushNotificationResponseHandler />
+                  <ResumeAfterRestart />
+                  <UpdateAvailableModal />
+                  <StatusBar style="dark" />
+                  <Slot />
+                  <OtaUpdateBanner />
+                </KeyboardExtenderPortalProvider>
+              </AuthProvider>
             </PostHogProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>

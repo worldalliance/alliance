@@ -6,6 +6,13 @@ on:
     paths:
       - agents/desktop/**
       - common/src/result.ts
+      - common/src/dev-ports.ts
+      - common/src/dev-ports-base.ts
+      - common/src/node-env.ts
+      - scripts/new-worktree.sh
+      - scripts/list-worktrees.ts
+      - scripts/lib/worktree-paths.sh
+      - scripts/lib/worktree-registry.sh
       - eslint/**
       - package.json
       - bun.lock
@@ -40,6 +47,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Check Codex Protocol Types
+        run: bun scripts/codex-protocol.ts check
+
       # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces
       # Electron's sandbox needs, so Electron would abort at launch.
       - name: Allow Electron's Sandbox
@@ -47,3 +57,6 @@ jobs:
 
       - name: Test
         run: xvfb-run --auto-servernum bun run test
+
+      - name: Test Packaged App
+        run: xvfb-run --auto-servernum bun run test:packaged

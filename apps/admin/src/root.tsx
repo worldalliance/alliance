@@ -20,12 +20,13 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
-import { AuthProvider } from "./lib/AuthContext";
-import { getApiUrl, getSiteUrl } from "./lib/config";
-
-client.setConfig({
-  baseUrl: getApiUrl(),
-});
+import {
+  boundaryNeedsStaffIdentity,
+  useAnalytics,
+  useBoundaryStaffIdentity,
+} from "./lib/analytics";
+import { AuthProvider, useAuth } from "./lib/AuthContext";
+import { getSiteUrl } from "./lib/config";
 
 registerErrorStatus(client);
 
@@ -42,6 +43,24 @@ export function HydrateFallback() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <>
+      {boundaryNeedsStaffIdentity() && (
+        <AuthProvider>
+          <StaffIdentity />
+        </AuthProvider>
+      )}
+      <ErrorDetails error={error} />
+    </>
+  );
+}
+
+function StaffIdentity() {
+  useBoundaryStaffIdentity(useAuth());
+  return null;
+}
+
+function ErrorDetails({ error }: { error: unknown }) {
   if (!import.meta.env.PROD) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -92,15 +111,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <SiteOriginLinkProvider origin={getSiteUrl()}>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
-                <ToastProvider>{children}</ToastProvider>
-              </ShareLinkViewerProvider>
-            </AuthProvider>
-          </QueryClientProvider>
-        </SiteOriginLinkProvider>
+        {children}
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -108,6 +119,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function Analytics() {
+  useAnalytics(useAuth());
+  return null;
+}
+
+// The providers read the runtime config, which entry.client loads before
+// hydrating, so they stay out of Layout, which the build prerenders.
 export default function Root() {
-  return <Outlet />;
+  return (
+    <SiteOriginLinkProvider origin={getSiteUrl()}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Analytics />
+          <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
+            <ToastProvider>
+              <Outlet />
+            </ToastProvider>
+          </ShareLinkViewerProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </SiteOriginLinkProvider>
+  );
 }

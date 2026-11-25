@@ -1,3 +1,5 @@
+import { NodeEnv } from "@alliance/common/node-env";
+import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import type { Preview } from "@storybook/react";
@@ -8,6 +10,8 @@ import {
   withRouter,
 } from "storybook-addon-remix-react-router";
 import "../src/index.css";
+
+setWebRuntimeConfig({ environment: NodeEnv.Development });
 
 const preview: Preview = {
   parameters: {

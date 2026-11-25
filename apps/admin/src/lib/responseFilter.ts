@@ -3,6 +3,7 @@ import type { AnyField, FieldKind } from "@alliance/common/forms/form-schema";
 import { fieldWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { isEmptyAnswer, normalizeBoolean } from "./answerValues";
+import { BOOLEAN_ANSWER_LABELS } from "./booleanAnswerLabels";
 import { getOptionLabel, getSelections } from "./questionAnswer";
 import { savedChoicesAcrossResponses } from "./savedChoices";
 
@@ -14,13 +15,31 @@ export type FormResponseFilter = {
   value?: string;
 };
 
-export const FILTERABLE_FIELD_KINDS = new Set<FieldKind>([
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "range",
-]);
+export const FILTERABLE_FIELD_KINDS: Record<FieldKind, boolean> = {
+  text: false,
+  textarea: false,
+  email: false,
+  phone: false,
+  number: false,
+  range: true,
+  checkbox: true,
+  radio: true,
+  select: true,
+  multiselect: true,
+  ranking: false,
+  date: false,
+  time: false,
+  timezone: false,
+  city: false,
+  file: false,
+  contract: false,
+  list: false,
+  custom: false,
+  image: false,
+  toggle: true,
+  timePicker: false,
+  conversation: true,
+};
 
 export const isResponseFilterOp = (
   value: string | null,
@@ -38,7 +57,8 @@ export const matchesResponseFilter = (
   }
 
   switch (field.kind) {
-    case "checkbox": {
+    case "checkbox":
+    case "toggle": {
       if (filter.op !== "equals") return false;
       const desired = normalizeBoolean(filter.value);
       const actual = normalizeBoolean(rawValue);
@@ -51,6 +71,7 @@ export const matchesResponseFilter = (
       return selections.includes(filter.value ?? "");
     }
     case "radio":
+    case "conversation":
     case "select":
     case "range": {
       if (filter.op !== "equals") return false;
@@ -80,13 +101,20 @@ export function filterDescription(params: {
   }
   const valueLabel = filter.value ?? "";
   switch (field.kind) {
-    case "checkbox": {
+    case "checkbox":
+    case "toggle": {
       const normalized = normalizeBoolean(filter.value);
       if (normalized === true) {
-        return { fieldLabel, description: "Checked" };
+        return {
+          fieldLabel,
+          description: BOOLEAN_ANSWER_LABELS[field.kind].on,
+        };
       }
       if (normalized === false) {
-        return { fieldLabel, description: "Not checked" };
+        return {
+          fieldLabel,
+          description: BOOLEAN_ANSWER_LABELS[field.kind].off,
+        };
       }
       return null;
     }
@@ -98,6 +126,7 @@ export function filterDescription(params: {
       };
     }
     case "radio":
+    case "conversation":
     case "select": {
       const optionLabel = getOptionLabel(field, filter.value);
       return { fieldLabel, description: optionLabel ?? valueLabel };

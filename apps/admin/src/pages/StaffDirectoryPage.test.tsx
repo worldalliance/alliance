@@ -2,7 +2,13 @@ import type { StaffDirectoryEntryDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import StaffDirectoryPage from "./StaffDirectoryPage";
@@ -21,6 +27,7 @@ let saved: StaffDirectoryEntryDto[] = [];
 let loadStatus = 200;
 let saveStatus = 200;
 const puts: unknown[] = [];
+let putRequests = 0;
 
 serveApi(
   routes({
@@ -31,6 +38,7 @@ serveApi(
       return Response.json(saved);
     },
     "PUT /user/staff-directory-admin": async ({ request }) => {
+      putRequests += 1;
       if (saveStatus !== 200) {
         return Response.json({}, { status: saveStatus });
       }
@@ -46,6 +54,7 @@ beforeEach(() => {
   loadStatus = 200;
   saveStatus = 200;
   puts.length = 0;
+  putRequests = 0;
 });
 
 const renderPage = (query = queryWrapper()) =>
@@ -154,4 +163,50 @@ it("says the session expired when the load is refused with a 401", async () => {
   loadStatus = 401;
   renderPage();
   expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
+});
+
+it.each([
+  { field: "staffTitle", placeholder: "Brief title" },
+  { field: "staffLink", placeholder: "About link (optional)" },
+])(
+  "asks before saving a worldalliance $field, saving only on Save anyway",
+  async ({ field, placeholder }) => {
+    renderPage();
+    const [first] = await screen.findAllByPlaceholderText(placeholder);
+    const saveAs = async (value: string, choice: string) => {
+      fireEvent.change(first, { target: { value } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(await screen.findByRole("button", { name: choice }));
+    };
+
+    await saveAs("https://worldalliance.org/about", "Cancel");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await saveAs("https://worldalliance.org/team", "Save anyway");
+    await waitFor(() =>
+      expect(puts).toMatchObject([
+        { items: [{ [field]: "https://worldalliance.org/team" }, {}] },
+      ]),
+    );
+    expect(putRequests).toBe(1);
+  },
+);
+
+it("asks before saving an absolute site link, not a site path or a title", async () => {
+  renderPage();
+  const [link] = await screen.findAllByPlaceholderText("About link (optional)");
+  const [title] = await screen.findAllByPlaceholderText("Brief title");
+
+  fireEvent.change(title, { target: { value: "https://thealliance.org/x" } });
+  fireEvent.change(link, { target: { value: "//thealliance.org/team" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(dialog.textContent).toContain("//thealliance.org/team");
+  expect(dialog.textContent).not.toContain("https://thealliance.org/x");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  fireEvent.change(link, { target: { value: "/team" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(putRequests).toBe(1));
+  expect(screen.queryByRole("dialog")).toBeNull();
 });

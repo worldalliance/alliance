@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   ContractEvents,
@@ -13,7 +13,7 @@ import { CohortDecisionService } from "./cohort-decision.service";
  * signature.
  */
 @Injectable()
-export class CohortDecisionListener implements OnModuleDestroy {
+export class CohortDecisionListener implements OnApplicationShutdown {
   private readonly logger = new Logger(CohortDecisionListener.name);
   private readonly detachedWork = new DetachedWorkTracker();
 
@@ -37,7 +37,7 @@ export class CohortDecisionListener implements OnModuleDestroy {
     this.eventEmitter.on(ContractEvents.Signed, this.onContractSigned);
   }
 
-  async onModuleDestroy() {
+  async onApplicationShutdown() {
     this.eventEmitter.off(ContractEvents.Signed, this.onContractSigned);
     await this.detachedWork.drain();
   }

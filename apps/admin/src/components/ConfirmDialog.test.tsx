@@ -31,6 +31,14 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it("never confirms a destructive step on Enter", () => {
+    const { onConfirm } = renderDialog({ destructive: true });
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Enter" });
+
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it("leaves Enter alone once focus is on a control inside", () => {
     const { onConfirm } = renderDialog();
 

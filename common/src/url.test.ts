@@ -2,6 +2,7 @@ import {
   adminOrigin,
   isAllianceAppHostname,
   isLegacyAllianceHost,
+  preferNewDomain,
   siteHref,
   urlMatchesDomain,
   withOrigin,
@@ -152,5 +153,35 @@ describe("adminOrigin", () => {
     ],
   ])("puts %s's panel on admin.", (app, admin) => {
     expect(adminOrigin(app)).toBe(admin);
+  });
+});
+
+describe("preferNewDomain", () => {
+  it("skips urls on the legacy domain, in either position", () => {
+    expect(
+      preferNewDomain([
+        "https://staging.worldalliance.org",
+        "https://staging.thealliance.org",
+      ]),
+    ).toBe("https://staging.thealliance.org");
+    expect(
+      preferNewDomain(["https://thealliance.org", "https://worldalliance.org"]),
+    ).toBe("https://thealliance.org");
+  });
+
+  it("keeps the order among urls off the legacy domain and skips missing ones", () => {
+    expect(
+      preferNewDomain([
+        undefined,
+        "https://alt.example.com",
+        "http://localhost:3000",
+      ]),
+    ).toBe("https://alt.example.com");
+  });
+
+  it("finds none when every url is legacy or missing", () => {
+    expect(
+      preferNewDomain([undefined, "https://worldalliance.org"]),
+    ).toBeUndefined();
   });
 });

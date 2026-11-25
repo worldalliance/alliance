@@ -1,7 +1,7 @@
 import { client } from "@alliance/shared/client/client.gen";
-import type { AnalyticsBackend } from "@alliance/shared/lib/analytics";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
+import * as Updates from "expo-updates";
 import {
   PostHogProviderProps,
   PostHogProvider as RNPostHogProvider,
@@ -10,6 +10,7 @@ import {
 import { type ReactNode, useEffect } from "react";
 import { releaseTarget } from "./config";
 import { linkOpeningSession } from "./linkOpenings";
+import { otaUpdateProperties } from "./otaUpdateProperties";
 import {
   posthogRequestContext,
   SESSION_IDLE_TIMEOUT_SECONDS,
@@ -31,6 +32,13 @@ const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
         host: releaseTarget().posthog.host,
         enableSessionReplay: true,
         captureAppLifecycleEvents: true,
+        // Set at init rather than with register() so the lifecycle events
+        // captured during init carry them too. PostHog types these properties
+        // as a closed set but sends every key on every event.
+        customAppProperties: (properties) => ({
+          ...properties,
+          ...otaUpdateProperties(Updates),
+        }),
         sessionExpirationTimeSeconds: SESSION_IDLE_TIMEOUT_SECONDS,
         sessionReplayConfig: {
           maskAllTextInputs: false,
@@ -46,12 +54,7 @@ function AnalyticsBridge() {
   useEffect(() => {
     if (posthog) {
       void posthog.ready().then(() => linkOpeningSession.register(posthog));
-      // AnalyticsBackend.flush is optional, so a posthog upgrade that dropped
-      // flush would typecheck and turn every flushAnalytics into a silent
-      // Unsupported. The pin makes that a build error instead.
-      registerAnalytics(
-        posthog satisfies Required<Pick<AnalyticsBackend, "flush">>,
-      );
+      registerAnalytics(posthog);
       return registerPosthogRequestContext({
         client,
         getContext: () => posthogRequestContext(posthog),

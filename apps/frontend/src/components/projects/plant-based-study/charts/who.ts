@@ -188,7 +188,7 @@ export function drawWho({
       const m = median(vals);
       T(rowFurniture, 4, cy - 4, gname, {
         "font-size": 13.5,
-        "font-weight": 650,
+        "font-weight": 600,
         fill: "var(--ink)",
       });
       T(rowFurniture, 4, cy + 13, `${vals.length} people`, {
@@ -211,7 +211,7 @@ export function drawWho({
       T(rowFurniture, x(m), cy + maxOff + 24, `typical: ${Math.round(m)}%`, {
         "text-anchor": "middle",
         "font-size": 12.5,
-        "font-weight": 650,
+        "font-weight": 600,
         fill: "var(--ink)",
       });
     });

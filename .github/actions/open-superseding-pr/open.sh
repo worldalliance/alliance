@@ -37,7 +37,7 @@ export AUTHOR
 superseded=$(gh pr list --state open --limit 1000 --json number,headRefName,author \
   | jq -r -f "$(dirname "$0")/superseded.jq")
 gh label create superseded --force --color ededed \
-  --description "Closed by the tzdb release watch in favor of a newer pull request"
+  --description "Closed by a release watch in favor of a newer pull request"
 for pr in $superseded; do
   # Unlabeled, a closed pull request reads as declined, so it stays open.
   if ! gh pr edit "$pr" --add-label superseded; then

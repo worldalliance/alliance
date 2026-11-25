@@ -37,15 +37,12 @@ import {
   ContractEvent,
   ContractEventType,
   findSuspensionEndedBy,
+  isContractActiveAt,
 } from "src/user/entities/contract-event.entity";
-import {
-  ReferralSource,
-  User,
-  loadedUserCommunities,
-} from "src/user/entities/user.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
 import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
-import { memberWithReferral } from "src/user/user.utils";
+import { loadedUserCommunities } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
 import {
   claimReinstatement,
@@ -382,7 +379,7 @@ export class ContractService {
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,
-        message: `${memberWithReferral(user)} signed their contract :)`,
+        payload: { member: user },
         userId: user.id,
         blob: null,
       }),
@@ -410,24 +407,40 @@ export class ContractService {
     const { userId, automatic = false, autoSuspendKey = null } = params;
 
     const user = await this.userService.findOneOrFail(userId, {
-      contractEvents: true,
       communities: { leaders: true, users: true },
       leaderOf: true,
       referredBy: true,
       referredByCampaign: true,
     });
-    if (!user.hasActiveContract) {
-      throw new BadRequestException("Member does not have an active contract.");
-    }
-    const contractEvent = this.contractEventRepository.create({
-      user,
-      type: ContractEventType.SUSPENDED,
-      date: new Date(),
-      automatic,
-      autoSuspendKey,
+    // Committed before any community removal or leader notice, so a
+    // concurrent suspension that loses here has sent nothing.
+    const contractEvent = await writeUnderLive(this.userRepository.manager, {
+      parents: [{ target: User, id: userId }],
+      write: async (em) => {
+        await em.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+          [`contract-suspension:${userId}`],
+        );
+        const date = new Date();
+        const events = await em.findBy(ContractEvent, { user: { id: userId } });
+        if (!isContractActiveAt(events, date)) {
+          throw new BadRequestException(
+            "Member does not have an active contract.",
+          );
+        }
+        return em.save(
+          this.contractEventRepository.create({
+            user,
+            type: ContractEventType.SUSPENDED,
+            date,
+            automatic,
+            autoSuspendKey,
+          }),
+        );
+      },
     });
 
-    const communitiesP = Promise.all(
+    await Promise.all(
       loadedUserCommunities(user).map((community: Community) =>
         this.communityMembershipService.removeUserFromCommunityAndRefreshConversation(
           {
@@ -453,18 +466,10 @@ export class ContractService {
       ),
     );
 
-    await Promise.all([
-      writeUnderLive(this.userRepository.manager, {
-        parents: [{ target: User, id: userId }],
-        write: (em) => em.save(contractEvent),
-      }),
-      communitiesP,
-    ]);
-
     if (!automatic) {
       await this.eventLogService.sendMessage({
         type: EventType.ContractSuspended,
-        message: `${memberWithReferral(user)} suspended their contract :(`,
+        payload: { member: user, automatic: false },
         userId: user.id,
         blob: null,
       });

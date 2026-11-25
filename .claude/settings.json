@@ -5,7 +5,7 @@
       "Bash(bun run gen-api)",
       "Bash(bun run test:*)"
     ],
-    "deny": ["Artifact", "Workflow"]
+    "deny": ["Agent", "Artifact", "Workflow"]
   },
   "autoMemoryEnabled": false,
   "idleCompaction": false,
@@ -46,24 +46,13 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|NotebookEdit|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/trim-comments-reminder.sh"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
-            "async": true
+            "timeout": 10
           }
         ]
       }
@@ -74,7 +63,7 @@
           {
             "type": "command",
             "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
-            "async": true
+            "timeout": 10
           }
         ]
       }
@@ -85,7 +74,7 @@
           {
             "type": "command",
             "command": "bun \"$CLAUDE_PROJECT_DIR\"/agents/chats/chats.ts upload claude",
-            "async": true
+            "timeout": 10
           }
         ]
       }

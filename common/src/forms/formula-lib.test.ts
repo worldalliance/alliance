@@ -1,10 +1,11 @@
 import {
+  MATH_BINARY_FUNCTIONS,
   MATH_FUNCTION_NAMES,
   type ArrayMethodName,
   type NumberMethodName,
   type StringMethodName,
 } from "./formula-allowlist";
-import { FORMULA_LIB, MATH_BINARY_FUNCTIONS } from "./formula-lib";
+import { FORMULA_LIB } from "./formula-lib";
 import { variableFormulaType } from "./variable-formula-check";
 
 const ARRAY_CALLS: Record<ArrayMethodName, string> = {
@@ -103,8 +104,8 @@ describe("declares nothing the evaluator cannot run", () => {
   });
 });
 
-// `variable-formula-check.ts` answers 2684, a `this` mismatch, with advice
-// about `join`.
+// `formula-messages.ts` answers 2684, a `this` mismatch, with advice about
+// `join`.
 it("gives only join a `this` type that can fail to match", () => {
   const thisTypes = [
     ...FORMULA_LIB.matchAll(/^\s*(\w+)[^(\n]*\(this: ([^,)]+)/gm),

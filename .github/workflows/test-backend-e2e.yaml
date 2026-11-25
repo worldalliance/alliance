@@ -9,8 +9,13 @@ on:
 
 jobs:
   test-backend-e2e:
+    name: test-backend-e2e (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:17
@@ -33,6 +38,12 @@ jobs:
         with:
           bun-version: 1.4.4
 
+      - name: Log Runner Environment
+        run: |
+          lscpu | grep 'Model name'
+          echo "Runner image: $ImageOS $ImageVersion"
+          echo "Bun: $(bun --version)"
+
       - name: Install Backend Dependencies
         run: bun install --frozen-lockfile
         working-directory: ./server
@@ -42,5 +53,12 @@ jobs:
         working-directory: ./common
 
       - name: Run E2E Tests
-        run: bun run test:e2e
+        run: bun run test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=junit --reporter-outfile=junit.xml
         working-directory: ./server
+
+      - name: Upload Per-File Timings
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-e2e-junit-${{ matrix.shard }}
+          path: server/junit.xml

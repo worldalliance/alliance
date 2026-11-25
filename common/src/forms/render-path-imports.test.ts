@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Form renderers must not import the several-megabyte TypeScript compiler. Only
-// the variable builder and schema validator need formula type-checking.
+// Form renderers and the expression interpreter and printer must not import the
+// several-megabyte TypeScript compiler. Only the variable builder, the schema
+// validator and the expression parser and save check need it.
 const RENDER_PATH_ENTRIES = [
   "./variables.ts",
   "./variable-evaluation.ts",
@@ -20,6 +21,8 @@ const RENDER_PATH_ENTRIES = [
   "./ranking.ts",
   "./element-descriptors.ts",
   "./display-only-schema.ts",
+  "../expression/evaluate.ts",
+  "../expression/print.ts",
 ];
 
 // Matches imports, re-exports, and side-effect imports.

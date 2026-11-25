@@ -25,7 +25,7 @@ export enum WaitlistEmailRecipientStatus {
   /** The mail server accepted it; delivery is not known. */
   Sent = "sent",
   Failed = "failed",
-  /** Sending stopped without an answer, so the email may have gone out. */
+  /** The outcome is unknown, so the email may have gone out. */
   Uncertain = "uncertain",
   Skipped = "skipped",
 }
@@ -85,6 +85,10 @@ export class WaitlistEmailRecipient {
 
   @Column({ type: "timestamptz", nullable: true })
   attemptedAt: Date | null;
+
+  /** The latest send's id, cleared by retry. Only that send's answer is recorded. */
+  @Column({ type: "uuid", nullable: true })
+  attemptId: string | null;
 
   @Column({ type: "timestamptz", nullable: true })
   acceptedAt: Date | null;

@@ -1,13 +1,10 @@
+import { setTestWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, renderHook, screen } from "@testing-library/react";
 import { useCopyInviteLink } from "./useCopyInviteLink";
 
 beforeEach(() => {
-  process.env.VITE_ALT_APP_URL = "https://example.com";
-});
-
-afterEach(() => {
-  delete process.env.VITE_ALT_APP_URL;
+  setTestWebRuntimeConfig({ VITE_ALT_APP_URL: "https://example.com" });
 });
 
 it.each([

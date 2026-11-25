@@ -3,6 +3,9 @@ import { R, type Result } from "./result";
 
 export type EnvSource = Record<string, unknown>;
 
+const missing = "missing";
+export const missingSuffix = `: ${missing}`;
+
 // A deploy expands a secret that was never set to an empty string.
 const unsetIfBlank = (value: unknown): unknown =>
   typeof value === "string" && !value.trim() ? undefined : value;
@@ -10,7 +13,7 @@ const unsetIfBlank = (value: unknown): unknown =>
 export const requiredEnv = <T extends z.ZodType>(schema: T) =>
   z
     .preprocess(unsetIfBlank, schema)
-    .refine((value) => presentValue(value) !== undefined, "missing");
+    .refine((value) => presentValue(value) !== undefined, missing);
 
 export const optionalEnv = <T extends z.ZodType>(schema: T) =>
   z.preprocess(unsetIfBlank, schema.optional());
@@ -28,7 +31,7 @@ function describe(params: {
   message: string;
 }): string {
   const raw = unsetIfBlank(params.source[params.key]);
-  return `${params.key}: ${raw === undefined ? "missing" : params.message}`;
+  return `${params.key}: ${raw === undefined ? missing : params.message}`;
 }
 
 type EnvFields = Record<string, z.ZodType>;
@@ -59,7 +62,7 @@ export function requireEnvKey<F extends EnvFields, K extends keyof F>(
 ): NonNullable<z.output<F[K]>> {
   const value = presentValue(readEnvKey(params));
   if (value === undefined) {
-    throw invalidEnv(`${params.key}: missing`);
+    throw invalidEnv(`${params.key}${missingSuffix}`);
   }
   return value;
 }
@@ -94,7 +97,7 @@ export function parseEnv<F extends EnvFields>(params: {
     if (!(key in config)) continue;
     const unset = unsetIfBlank(params.source[key]) === undefined;
     if (unset || presentValue(config[key]) === undefined) {
-      problems.push(`${key}: missing`);
+      problems.push(`${key}${missingSuffix}`);
     }
   }
   if (problems.length) return R.failure(problems);

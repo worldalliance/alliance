@@ -10,7 +10,12 @@ import {
 import { WaitlistMailAllowance } from "../src/waitlist/entities/waitlist-mail-allowance.entity";
 import { WaitlistMailService } from "../src/waitlist/waitlist-mail.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  awaitCalls,
+  closeTestApp,
+  createTestApp,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Waitlist mail (e2e)", () => {
   let ctx: TestContext;
@@ -47,16 +52,12 @@ describe("Waitlist mail (e2e)", () => {
       }),
     );
 
-  /** Waits for the background sends an entry or link request starts. */
-  const settled = () =>
-    Promise.all(sendShareLink.mock.results.map((result) => result.value));
-
   const sentTo = (email: string) =>
     sendLink.mock.calls.filter(([params]) => params.recipient === email);
 
   const join = async (email: string) => {
     const res = await submit(email).expect(200);
-    await settled();
+    await awaitCalls(sendShareLink);
     return res.body.shareCode as string;
   };
 
@@ -95,6 +96,9 @@ describe("Waitlist mail (e2e)", () => {
           emailType: EmailType.WaitlistConfirmation,
           url: expect.stringContaining(
             `/projects/democratic-grantmaking-26?ref=${code}`,
+          ),
+          ownUrl: expect.stringContaining(
+            `/projects/democratic-grantmaking-26?link=${code}`,
           ),
           unsubscribeUrl: expect.stringContaining(
             `/waitlist/unsubscribe?token=${entry.unsubscribeToken}`,
@@ -140,7 +144,7 @@ describe("Waitlist mail (e2e)", () => {
     sendLink.mockClear();
 
     await submit(email).expect(200);
-    await settled();
+    await awaitCalls(sendShareLink);
     expect(sendLink).not.toHaveBeenCalled();
   });
 
@@ -153,7 +157,7 @@ describe("Waitlist mail (e2e)", () => {
 
     await requestLink(email.toUpperCase()).expect(204);
     release();
-    await settled();
+    await awaitCalls(sendShareLink);
 
     expect(sentTo(email)).toEqual([
       [
@@ -161,6 +165,7 @@ describe("Waitlist mail (e2e)", () => {
           recipient: email,
           emailType: EmailType.WaitlistLink,
           url: expect.stringContaining(`?ref=${entry.code}`),
+          ownUrl: expect.stringContaining(`?link=${entry.code}`),
           unsubscribeUrl: expect.stringContaining(entry.unsubscribeToken),
         },
       ],
@@ -176,7 +181,7 @@ describe("Waitlist mail (e2e)", () => {
 
     await requestLink(uniqueEmail()).expect(204);
     await requestLink(unsubscribed).expect(204);
-    await settled();
+    await awaitCalls(sendShareLink);
 
     expect(sendShareLink).toHaveBeenCalledTimes(2);
     expect(sendLink).not.toHaveBeenCalled();
@@ -195,7 +200,7 @@ describe("Waitlist mail (e2e)", () => {
 
     await requestLink(suspected).expect(204);
     await requestLink(spam).expect(204);
-    await settled();
+    await awaitCalls(sendShareLink);
 
     expect(sendShareLink).toHaveBeenCalledTimes(3);
     expect(sendLink).not.toHaveBeenCalled();
@@ -208,7 +213,7 @@ describe("Waitlist mail (e2e)", () => {
       { spamStatus: WaitlistSpamStatus.NotSpam },
     );
     await requestLink(email).expect(204);
-    await settled();
+    await awaitCalls(sendShareLink);
     expect(sentTo(email)).toHaveLength(1);
   });
 
@@ -218,7 +223,7 @@ describe("Waitlist mail (e2e)", () => {
 
     await requestLink(email).expect(204);
     await requestLink(email).expect(204);
-    await settled();
+    await awaitCalls(sendShareLink);
     expect(sentTo(email)).toHaveLength(1);
 
     await allowanceRepo.update(
@@ -226,7 +231,7 @@ describe("Waitlist mail (e2e)", () => {
       { claimedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
     );
     await requestLink(email).expect(204);
-    await settled();
+    await awaitCalls(sendShareLink);
     expect(sentTo(email)).toHaveLength(2);
   });
 
@@ -256,7 +261,7 @@ describe("Waitlist mail (e2e)", () => {
 
     for (const email of emails) {
       await requestLink(email).expect(204);
-      await settled();
+      await awaitCalls(sendShareLink);
     }
 
     expect(sendLink).toHaveBeenCalledTimes(2);

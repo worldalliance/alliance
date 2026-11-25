@@ -1,0 +1,163 @@
+/* Reactions: each reply keeps a gutter in its left padding for a marker beside each line */
+.kora-review .bubble.reactable {
+  padding-left: 42px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+/* A long press reacts on a phone, so it must not start selecting text there */
+@media (hover: none) {
+  .kora-review .bubble.reactable {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+.kora-review .react-mark {
+  position: absolute;
+  left: 10px;
+  width: 24px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: kora-fade-in 0.2s ease-out;
+}
+.kora-review .react-mark .ic {
+  width: 18px;
+  height: 18px;
+}
+.kora-review .r-up {
+  color: var(--plus);
+}
+.kora-review .r-down {
+  color: var(--minus);
+}
+.kora-review .r-notable {
+  color: var(--accent);
+}
+/* Markers sit among the reply's blocks, so they opt out of the spacing between blocks */
+.kora-review .bubble.reactable > .react-mark,
+.kora-review .bubble.reactable > .line-focus {
+  margin: 0;
+}
+/* The focused line: a tint with a bar in the gutter, painted under the reply's text */
+.kora-review .bubble.reactable > :not(.react-mark, .line-focus) {
+  position: relative;
+  z-index: 1;
+}
+.kora-review .line-focus {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+  pointer-events: none;
+}
+.kora-review .react-picker {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  animation: kora-fade-in 0.15s ease-out;
+}
+.kora-review .rp-b {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.kora-review .rp-b .ic {
+  width: 22px;
+  height: 22px;
+}
+.kora-review .rp-b:hover {
+  background: var(--paper);
+}
+.kora-review .rp-b[aria-pressed="true"] {
+  background: var(--accent-soft);
+}
+.kora-review .rp-b:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+/* The list of reactions above the grading card */
+.kora-review .anns {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Each entry repeats the reply's paragraphs line for line: muted, with reacted lines tinted and marked in the gutter */
+.kora-review .ann-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.kora-review .ctx {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+}
+.kora-review .ctx-line {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+/* Each reacted line jumps back to the reply; 24px keeps it a usable target (WCAG 2.5.8) */
+.kora-review button.ctx-line {
+  min-height: 24px;
+  cursor: pointer;
+}
+.kora-review .ctx-icon {
+  flex: none;
+  width: 26px;
+  display: grid;
+  place-items: center;
+  padding-top: 2px;
+}
+.kora-review .ctx-icon .ic {
+  width: 15px;
+  height: 15px;
+}
+.kora-review .ctx-hl {
+  color: var(--ink);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.kora-review .ctx-hl.r-up {
+  background: var(--plus-tint);
+}
+.kora-review .ctx-hl.r-down {
+  background: var(--minus-tint);
+}
+.kora-review .ctx-hl.r-notable {
+  background: var(--accent-soft);
+}
+/* Reaction icons inside running text, such as the tip above the replies */
+/* Hosts' resets often make svg a block, which would break the sentence around the icon */
+.kora-review .inline-ic .ic {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.15em;
+}

@@ -1,3 +1,4 @@
+import { conversationNote } from "@alliance/common/forms/conversation";
 import {
   type AnyField,
   asCards,
@@ -66,7 +67,8 @@ export function validateFieldValue(
       }
       return null;
     }
-    case "time": {
+    case "time":
+    case "timePicker": {
       if (typeof valueToCheck === "string") {
         const minutes = parseTimeToMinutes(valueToCheck);
         if (minutes === null) {
@@ -160,14 +162,26 @@ export function validateFieldValue(
       return null;
     }
     case "checkbox":
+    case "toggle":
       if (!required) return null;
       return valueToCheck === true ? null : "This field is required.";
     case "radio":
       if (!required) return null;
       return valueToCheck ? null : "Please select an option.";
+    case "conversation": {
+      if (!valueToCheck) return required ? "Please select an option." : null;
+      const note = data[field.noteId];
+      const noted = typeof note === "string" && note.trim() !== "";
+      return conversationNote(field, data)?.required && !noted
+        ? "Please add a note."
+        : null;
+    }
     case "file":
       if (!required) return null;
       return valueToCheck ? null : "Please upload a file.";
+    case "image":
+      if (!required) return null;
+      return valueToCheck ? null : "Please upload an image.";
     case "list": {
       const listField = field as ListField;
       const listValTyped = asCards(valueToCheck) ?? [];

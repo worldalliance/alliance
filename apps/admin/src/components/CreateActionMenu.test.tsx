@@ -42,7 +42,7 @@ it("opens the pasted action", async () => {
   fireEvent.click(await screen.findByText("Paste JSON"));
 
   expect(await screen.findByText("Opened the pasted action")).toBeTruthy();
-  expect(screen.getByText("Action pasted successfully")).toBeTruthy();
+  expect(screen.getByText("Action pasted")).toBeTruthy();
 });
 
 it("shows the server's reason for refusing a paste", async () => {

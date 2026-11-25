@@ -10,7 +10,7 @@ Use these in every URL you curl, open, or point playwright at:
 
 Any other port answers from a different checkout, against its database. That is how two agents overwrite each other's data with nothing in either transcript to show it happened.
 
-Databases: `{{DB_NAME}}`, and `{{TEST_DB_NAME}}` for `bun run test:e2e`, which drops and rebuilds its schema. This worktree's `server/.env` names both, as `DB_NAME` and `TEST_DB_NAME`. Connect to those two names. They outrank any database the `local-db` skill names, which describes the main checkout.
+Databases: `{{DB_NAME}}`, and `{{TEST_DB_NAME}}` for server e2e suites, which drop and rebuild its schema. This worktree's `server/.env` names both, as `DB_NAME` and `TEST_DB_NAME`. Connect to those two names. They outrank any database the `local-db` skill names, which describes the main checkout.
 
 ```bash
 ./scripts/with-env.sh              # prints this worktree's ports and databases

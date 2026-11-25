@@ -5,21 +5,25 @@ import { milliseconds } from "date-fns";
 import type { Request } from "express";
 import "reflect-metadata";
 import { EventType } from "src/eventlog/event-log.entity";
-import { EventLogService } from "src/eventlog/eventlog.service";
+import { renderEvent } from "src/eventlog/event-messages";
+import {
+  type EventLogMessage,
+  EventLogService,
+} from "src/eventlog/eventlog.service";
 import { getExpectedTwilioSignature } from "twilio/lib/webhooks/webhooks";
 import { MmsController } from "./mms.controller";
 import {
   TwilioSignatureGuard,
   twilioSignatureEnforced,
   twilioWebhookUrl,
-  twilioWebhookUrls,
 } from "./twilio-signature.guard";
 
 // Nest's non-exported metadata key for @UseGuards.
 const GUARDS_METADATA = "__guards__";
 
 const AUTH_TOKEN = "test-auth-token";
-const APP_URL = "https://worldalliance.org";
+const APP_URL = "https://thealliance.org";
+const LEGACY_APP_URL = "https://worldalliance.org";
 const PUBLIC_URL = `${APP_URL}/api/mms/inbound`;
 const BODY = { From: "+14155559001", To: "+15555550100", Body: "STOP" };
 
@@ -89,8 +93,8 @@ describe("twilioWebhookUrl", () => {
   });
 
   it("follows APP_URL between environments", () => {
-    expect(urlFor("https://staging.worldalliance.org")).toBe(
-      "https://staging.worldalliance.org/api/mms/inbound",
+    expect(urlFor("https://staging.thealliance.org")).toBe(
+      "https://staging.thealliance.org/api/mms/inbound",
     );
   });
 
@@ -99,7 +103,7 @@ describe("twilioWebhookUrl", () => {
       `${APP_URL}/`,
       `${APP_URL}//`,
       `${APP_URL}?ref=console`,
-      "HTTPS://WorldAlliance.org",
+      "HTTPS://TheAlliance.org",
     ]) {
       expect(urlFor(written)).toBe(PUBLIC_URL);
     }
@@ -112,45 +116,11 @@ describe("twilioWebhookUrl", () => {
   });
 });
 
-describe("twilioWebhookUrls", () => {
-  const urlsFor = (env: Record<string, string | undefined>) =>
-    withEnv(env, () => twilioWebhookUrls());
-
-  it("adds the ALT_APP_URL one", () => {
-    expect(
-      urlsFor({ APP_URL: "https://thealliance.org", ALT_APP_URL: APP_URL }),
-    ).toEqual(["https://thealliance.org/api/mms/inbound", PUBLIC_URL]);
-  });
-
-  it("keeps only the APP_URL one without ALT_APP_URL", () => {
-    expect(
-      urlsFor({
-        NODE_ENV: "test",
-        APP_URL: "http://localhost:4005",
-        ALT_APP_URL: undefined,
-      }),
-    ).toEqual(["http://localhost:4005/api/mms/inbound"]);
-  });
-
-  it("takes both from a deployed environment's committed config", () => {
-    expect(
-      urlsFor({
-        NODE_ENV: "staging",
-        APP_URL: undefined,
-        ALT_APP_URL: undefined,
-      }),
-    ).toEqual([
-      "https://staging.worldalliance.org/api/mms/inbound",
-      "https://staging.thealliance.org/api/mms/inbound",
-    ]);
-  });
-});
-
 const enforcing = (env: Record<string, string | undefined> = {}) => ({
   NODE_ENV: "production",
   TWILIO_AUTH_TOKEN: AUTH_TOKEN,
   APP_URL,
-  ALT_APP_URL: "https://thealliance.org",
+  ALT_APP_URL: LEGACY_APP_URL,
   ...env,
 });
 
@@ -162,8 +132,8 @@ const alertingGuard = () => {
 };
 
 const alertMessage = (sendMessage: jest.Mock, nth = 0): string => {
-  const [event] = sendMessage.mock.calls[nth] as [{ message: string }];
-  return event.message;
+  const [event] = sendMessage.mock.calls[nth] as [EventLogMessage];
+  return renderEvent(event).message;
 };
 
 describe("TwilioSignatureGuard", () => {
@@ -195,20 +165,29 @@ describe("TwilioSignatureGuard", () => {
     });
   });
 
-  it("accepts a signature for either domain, before and after the cutover", () => {
-    const domains = [APP_URL, "https://thealliance.org"];
-    for (const [appUrl, altAppUrl] of [domains, domains.toReversed()]) {
-      withEnv(enforcing({ APP_URL: appUrl, ALT_APP_URL: altAppUrl }), () => {
-        for (const signedFor of [
-          PUBLIC_URL,
-          "https://thealliance.org/api/mms/inbound",
-        ]) {
-          expect(guard.canActivate(contextFor(signedRequest(signedFor)))).toBe(
-            true,
-          );
-        }
-      });
-    }
+  it("rejects a signature for the worldalliance.org URL", () => {
+    withEnv(enforcing(), () => {
+      const req = signedRequest(`${LEGACY_APP_URL}/api/mms/inbound`);
+
+      expect(() => guard.canActivate(contextFor(req))).toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  it("accepts staging's thealliance.org URL from its committed config", () => {
+    const staging = {
+      NODE_ENV: "staging",
+      APP_URL: undefined,
+      ALT_APP_URL: undefined,
+    };
+    withEnv(enforcing(staging), () => {
+      const req = signedRequest(
+        "https://staging.thealliance.org/api/mms/inbound",
+      );
+
+      expect(guard.canActivate(contextFor(req))).toBe(true);
+    });
   });
 
   it("rejects a signature for the other environment's URL", () => {
@@ -218,7 +197,7 @@ describe("TwilioSignatureGuard", () => {
       ALT_APP_URL: undefined,
     };
     withEnv(enforcing(staging), () => {
-      const req = signedRequest("https://thealliance.org/api/mms/inbound");
+      const req = signedRequest(PUBLIC_URL);
 
       expect(() => guard.canActivate(contextFor(req))).toThrow(
         ForbiddenException,
@@ -288,19 +267,16 @@ describe("TwilioSignatureGuard", () => {
       );
     };
 
-    it("raises an alert naming the URLs to check", () => {
+    it("raises an alert naming the URL to check", () => {
       const { guard, sendMessage } = alertingGuard();
 
       withEnv(enforcing(), () => reject(guard));
 
       expect(sendMessage).toHaveBeenCalledTimes(1);
-      const [[event]] = sendMessage.mock.calls as [
-        [{ type: EventType; message: string; blob: Record<string, unknown> }],
-      ];
+      const [[event]] = sendMessage.mock.calls as [[EventLogMessage]];
       expect(event.type).toBe(EventType.SmsFailure);
-      const urls = [PUBLIC_URL, "https://thealliance.org/api/mms/inbound"];
-      for (const url of urls) expect(event.message).toContain(url);
-      expect(event.blob.urls).toEqual(urls);
+      expect(alertMessage(sendMessage)).toContain(PUBLIC_URL);
+      expect(event.blob?.url).toBe(PUBLIC_URL);
     });
 
     it("alerts once per window, reporting what it stood for", () => {

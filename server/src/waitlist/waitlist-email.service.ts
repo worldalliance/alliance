@@ -419,7 +419,11 @@ export class WaitlistEmailService {
             : []),
         ]),
       },
-      { status: WaitlistEmailRecipientStatus.Pending, error: null },
+      {
+        status: WaitlistEmailRecipientStatus.Pending,
+        error: null,
+        attemptId: null,
+      },
     );
     void this.sender.run();
     return this.findSummary(params.id);

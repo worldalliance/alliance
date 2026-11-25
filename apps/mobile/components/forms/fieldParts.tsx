@@ -1,6 +1,7 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import { shownLabel } from "@alliance/shared/forms/shownLabel";
+import { cn } from "@alliance/shared/styles/util";
 import { View } from "react-native";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Text from "../system/Text";
@@ -43,19 +44,21 @@ export function RenderLabel({
   isOutputView,
   hideLabel,
   required,
+  className,
 }: {
   field: AnyField;
   isOutputView?: boolean;
   hideLabel?: boolean;
   /** Effective requiredness; defaults to the field's static `required` flag. */
   required?: boolean;
+  className?: string;
 }) {
   if (hideLabel) return null;
   const isRequired = required ?? !!field.required;
   const label = shownLabel(field);
-  if (label === null && isRequired) return null;
+  if (label === null && (isRequired || isOutputView)) return null;
   return (
-    <View className="mb-1">
+    <View className={cn("mb-1", className)}>
       {!isRequired && !isOutputView && <OptionalLabelPrefix />}
       {label !== null && (
         <View>

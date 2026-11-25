@@ -16,6 +16,7 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { City } from "src/geo/city.entity";
 import { ImagesService } from "src/images/images.service";
+import { moveNumberOptOut } from "src/mms/mms-number.service";
 import {
   NotificationPreference,
   PreferenceSource,
@@ -36,6 +37,7 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { isUniqueViolation } from "src/utils/db-errors";
 import type {
   Relations,
   Repository as TypedRepository,
@@ -46,7 +48,6 @@ import {
   type EntityManager,
   ILike,
   In,
-  IsNull,
   type Repository,
 } from "typeorm";
 import { UpdateProfileDto } from "./dto/user.dto";
@@ -59,9 +60,10 @@ import {
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
 import { UserAwayRange } from "./entities/user-away-range.entity";
-import { User } from "./entities/user.entity";
+import { PHONE_NUMBER_INDEX, User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
-import { memberWithReferral } from "./user.utils";
+import { PhoneNumberTakenException } from "./phone-number-taken.exception";
+import { lockPhoneNumber } from "./user.utils";
 
 @Injectable()
 export class UserService {
@@ -133,7 +135,7 @@ export class UserService {
     });
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
-      message: `${memberWithReferral(user)} created an account.`,
+      payload: { member: user },
       userId: user.id,
       blob: null,
     });
@@ -177,57 +179,61 @@ export class UserService {
   }
 
   async update(id: number, data: UpdateProfileDto): Promise<User> {
-    const user = await this.findOneOrFail(id);
+    const { cityId, profilePicture, ...updateData } = data;
 
-    if (data.cityId !== undefined) {
-      if (data.cityId === null) {
-        user.city = null;
-      } else {
-        const city =
-          (data.cityId
-            ? await this.cityRepository.findOne({
-                where: { id: data.cityId },
-              })
-            : undefined) ?? undefined;
-
-        if (data.cityId && !city) {
-          throw new BadRequestException("City not found");
-        }
-
-        user.city = city;
-      }
+    let city: City | null | undefined;
+    if (cityId === null) {
+      city = null;
+    } else if (cityId) {
+      city = await this.cityRepository.findOne({ where: { id: cityId } });
+      if (!city) throw new BadRequestException("City not found");
     }
-
-    const { cityId: _cityId, profilePicture, ...updateData } = data;
 
     const nextPicture =
       await this.imagesService.resolvePhotoUpdate(profilePicture);
 
-    Object.assign(user, updateData);
-    if (nextPicture !== undefined) {
-      user.profilePicture = nextPicture;
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        if (data.phoneNumber) await lockPhoneNumber(manager, data.phoneNumber);
+        await writeUnderLive(manager, {
+          saved: {
+            target: User,
+            id,
+            notFound: `User ${id} not found`,
+          },
+          write: async (em) => {
+            // Read under the row lock: a save writes back every column that
+            // differs, so a copy read earlier would undo a concurrent write.
+            const user = await em.findOneByOrFail(User, { id });
+            // A number saved without a code is unverified, by design.
+            if (
+              data.phoneNumber !== undefined &&
+              data.phoneNumber !== user.phoneNumber
+            ) {
+              user.phoneNumberVerifiedAt = null;
+              user.phoneNumberUnsubscribed = await moveNumberOptOut(em, {
+                from: user,
+                to: data.phoneNumber,
+              });
+            }
+            if (city !== undefined) user.city = city;
+            Object.assign(user, updateData);
+            if (nextPicture !== undefined) user.profilePicture = nextPicture;
+            return em.save(user);
+          },
+        });
+      });
+    } catch (error) {
+      if (isUniqueViolation(error, PHONE_NUMBER_INDEX)) {
+        throw new PhoneNumberTakenException();
+      }
+      throw error;
     }
-
-    await writeUnderLive(this.dataSource.manager, {
-      saved: {
-        target: User,
-        id,
-        notFound: `User ${id} not found`,
-      },
-      write: (manager) => manager.save(user),
-    });
 
     return this.findOneOrFail(id, {
       contractEvents: true,
       city: true,
     });
-  }
-
-  async markDomainSwitched(id: number): Promise<void> {
-    await this.userRepository.update(
-      { id, switchedDomainAt: IsNull(), deletedAt: IsNull() },
-      { switchedDomainAt: new Date() },
-    );
   }
 
   async setPassword(id: number, password: string): Promise<void> {

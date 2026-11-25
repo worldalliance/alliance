@@ -1,19 +1,25 @@
+import { KoraReviewStatus } from "@alliance/common/kora";
 import type { OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { OtpChannel } from "src/otp/otp-copy";
-import type { OtpContact } from "src/otp/otp.service";
 import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import type {
   KoraAdminAbandonedSignup,
+  KoraAdminCategory,
+  KoraAdminConversation,
   KoraAdminOverview,
 } from "./dto/kora-admin.dto";
 import { KoraAbandonedSignup } from "./entities/kora-abandoned-signup.entity";
 import { KoraParticipantOAuthIdentity } from "./entities/kora-participant-oauth-identity.entity";
 import { KoraParticipantSignup } from "./entities/kora-participant-signup.entity";
-import { KoraParticipant } from "./entities/kora-participant.entity";
+import {
+  KoraParticipant,
+  participantContact,
+} from "./entities/kora-participant.entity";
+import { COUNTED_REVIEWS, OPEN_BATCH } from "./kora-pool";
 
 export enum KoraAdminError {
   NotFound = "not_found",
@@ -31,23 +37,13 @@ function contactKey(channel: OtpChannel, destination: string): string {
   }
 }
 
-function contactOf(participant: KoraParticipant): OtpContact {
-  if (participant.email !== null) {
-    return { channel: OtpChannel.Email, destination: participant.email };
-  }
-  if (participant.phoneNumber !== null) {
-    return { channel: OtpChannel.Sms, destination: participant.phoneNumber };
-  }
-  throw new Error(`participant ${participant.id} has no contact`);
-}
-
 function markRecovered(
   participants: KoraParticipant[],
   signups: KoraAbandonedSignup[],
 ): KoraAdminAbandonedSignup[] {
   const contacts = new Set(
     participants.map((participant) => {
-      const { channel, destination } = contactOf(participant);
+      const { channel, destination } = participantContact(participant);
       return contactKey(channel, destination);
     }),
   );
@@ -94,6 +90,52 @@ export class KoraAdminService {
     };
   }
 
+  /** Categories in open batches, those needing the most reviews first. */
+  categories(): Promise<KoraAdminCategory[]> {
+    return this.dataSource.query(
+      `SELECT t."category",
+         COUNT(*)::int AS "pairs",
+         SUM(GREATEST(b."reviewsPerTranscript" - ${COUNTED_REVIEWS}, 0))::int AS "reviewsNeeded",
+         (SELECT COUNT(*)::int FROM "kora_reviewer" r
+           WHERE r."deletedAt" IS NULL AND t."category" = ANY(r."optOutCategories")
+         ) AS "optedOut"
+       FROM "kora_transcript" t
+       JOIN "kora_batch" b ON b."id" = t."batchId"
+       WHERE ${OPEN_BATCH}
+       GROUP BY t."category"
+       ORDER BY "reviewsNeeded" DESC, t."category"`,
+    );
+  }
+
+  /**
+   * Every conversation in every batch, newest batch first, with its finished
+   * reviews and the time they had it open.
+   */
+  conversations(): Promise<KoraAdminConversation[]> {
+    return this.dataSource.query(
+      `SELECT t."id", t."category", b."createdAt" AS "uploadedAt",
+         b."reviewsPerTranscript",
+         COUNT(r."timeMs")::int AS "reviews",
+         round(percentile_cont(0.5) WITHIN GROUP (ORDER BY r."timeMs"))::int AS "medianTimeMs",
+         MIN(r."timeMs") AS "minTimeMs",
+         MAX(r."timeMs") AS "maxTimeMs"
+       FROM "kora_transcript" t
+       JOIN "kora_batch" b ON b."id" = t."batchId"
+       LEFT JOIN LATERAL (
+         SELECT (result->>'timeMs')::int AS "timeMs"
+         FROM "kora_assignment_transcript" at
+         JOIN "kora_assignment" a ON a."id" = at."assignmentId"
+         CROSS JOIN jsonb_array_elements(a."export"->'results') result
+         WHERE at."transcriptId" = t."id"
+           AND at."status" = '${KoraReviewStatus.Done}'
+           AND a."deletedAt" IS NULL
+           AND result->>'transcriptId' = t."id"
+       ) r ON true
+       GROUP BY t."id", b."id"
+       ORDER BY b."createdAt" DESC, t."position"`,
+    );
+  }
+
   /**
    * Also deletes the contact's abandoned record and pending signups, since a
    * pending signup that ended later would record the contact again.
@@ -106,7 +148,7 @@ export class KoraAdminService {
       if (!participant) {
         return R.failure(KoraAdminError.NotFound);
       }
-      const contact = contactOf(participant);
+      const contact = participantContact(participant);
       await manager.delete(KoraParticipantSignup, contact);
       await manager.delete(KoraAbandonedSignup, contact);
       await manager.delete(KoraParticipant, { id });

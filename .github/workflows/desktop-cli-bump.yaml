@@ -1,0 +1,23 @@
+name: Desktop CLI bump
+
+on:
+  schedule:
+    - cron: "0 15 * * 2"
+  workflow_dispatch:
+
+# Overlapping runs would each close the other's pull request as superseded.
+concurrency: desktop-cli-bump
+
+jobs:
+  bump:
+    strategy:
+      fail-fast: false
+      matrix:
+        cli: [claude, codex]
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    uses: ./.github/workflows/desktop-cli-bump-run.yaml
+    with:
+      cli: ${{ matrix.cli }}

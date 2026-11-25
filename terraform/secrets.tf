@@ -1,5 +1,6 @@
 # Each backend reads only its own environment's parameters under
-# /alliance/<env>/server/, through scripts/secrets_run.sh. They are
+# /alliance/<env>/server/, through scripts/secrets_run.sh, and the staging host
+# also reads the prod → staging sync's under /alliance/staging/db-sync/. They are
 # SecureStrings under the AWS managed aws/ssm key, whose key policy lets SSM
 # decrypt for any caller in the account, so the roles need no KMS grant.
 # AWS's docs don't say whether GetParametersByPath is authorized against the
@@ -40,6 +41,8 @@ resource "aws_iam_role_policy" "ec2_secrets_policy_staging" {
       Resource = [
         "${local.ssm_parameter_arn}/alliance/staging/server",
         "${local.ssm_parameter_arn}/alliance/staging/server/*",
+        "${local.ssm_parameter_arn}/alliance/staging/db-sync",
+        "${local.ssm_parameter_arn}/alliance/staging/db-sync/*",
       ]
     }]
   })

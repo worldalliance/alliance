@@ -21,4 +21,26 @@ describe("participant sign-in copy", () => {
       "Your Alliance sign-in code is 012345. It expires in 10 minutes.\n\n@example.org #012345",
     );
   });
+
+  it("words a phone verification text for its purpose", () => {
+    expect(
+      otpText({
+        purpose: OtpPurpose.PhoneVerification,
+        code: "012345",
+        webOtpHost: null,
+      }),
+    ).toBe(
+      "Your Alliance phone verification code is 012345. It expires in 10 minutes.",
+    );
+  });
+
+  it("leaves the WebOTP line off a text with no site to autofill", () => {
+    expect(
+      otpText({
+        purpose: OtpPurpose.KoraSignIn,
+        code: "012345",
+        webOtpHost: null,
+      }),
+    ).toBe("Your Alliance sign-in code is 012345. It expires in 10 minutes.");
+  });
 });

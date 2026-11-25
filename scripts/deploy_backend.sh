@@ -42,6 +42,14 @@ migrate () {
   with_secrets bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
 }
 
+# After migrations, which create the table the first time; a release whose
+# catalog or check breaks a stored formula doesn't start. Where the old backend
+# stays up through migrating, it runs again once the new one is healthy, for
+# formulas the old one saved before the swap, and a failure then rolls back.
+check_formulas () {
+  with_secrets bun scripts/check-stored-formulas.ts
+}
+
 put_back_old_release () {
   cd ~/ || return 1
   [ -d nest-backend-deploy-backup ] || return 1
@@ -139,10 +147,12 @@ removal=$(trap - ERR; with_secrets bun scripts/streak-recognition-removal.ts sta
 case "$removal" in
   absent|applied)
     migrate || keep_old_release "Migrations failed."
+    check_formulas || keep_old_release "Re-checking stored formulas failed; the log above says why."
     trap rollback ERR
     start_backend
     pm2 save 9>&-
     health_check
+    check_formulas
     exit 0
     ;;
   pending) ;;
@@ -203,6 +213,7 @@ if ! stop_backend; then
 fi
 
 migrate || recover_by_record "Migrations failed"
+check_formulas || recover_by_record "Re-checking stored formulas failed"
 
 start_backend || recover_after_cleanup
 pm2 save 9>&- || recover_after_cleanup

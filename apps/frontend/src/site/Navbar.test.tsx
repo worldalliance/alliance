@@ -36,23 +36,16 @@ test("the navbar shows its primary links by default", () => {
 const siteNavHeight = () =>
   document.documentElement.style.getPropertyValue("--site-nav-height");
 
-const offsetHeight = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  "offsetHeight",
-);
+const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
 afterEach(() => {
-  if (offsetHeight) {
-    Object.defineProperty(HTMLElement.prototype, "offsetHeight", offsetHeight);
-  }
+  HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 });
 
 test("the navbar publishes its height for fixed overlays while mounted", () => {
-  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-    configurable: true,
-    get: () => 84,
-  });
+  HTMLElement.prototype.getBoundingClientRect = () =>
+    DOMRect.fromRect({ height: 63.75 });
   const { unmount } = renderNavbar(false);
-  expect(siteNavHeight()).toBe("84px");
+  expect(siteNavHeight()).toBe("63.75px");
 
   unmount();
   expect(siteNavHeight()).toBe("0px");

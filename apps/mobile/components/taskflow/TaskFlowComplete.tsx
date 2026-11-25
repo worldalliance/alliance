@@ -4,6 +4,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { type UserDto } from "@alliance/shared/client";
 import { FlowButtonKind } from "@alliance/shared/forms/flowStyle";
+import { completionSubtitle } from "@alliance/shared/lib/completionSubtitle";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { ListTodo, UserPlus } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
@@ -81,13 +82,14 @@ export default function TaskFlowComplete({
               {taskFlow.complete}
             </Text>
             <Text className="text-base text-white mt-3">
-              {taskFlow.completeUpdate}
+              {completionSubtitle(schema)}
             </Text>
           </View>
           <TaskAnswersCard
             className="mt-6"
             output={{ schema, answers }}
             user={user}
+            plain
             {...KEEPS_OPEN}
           />
         </ScrollView>

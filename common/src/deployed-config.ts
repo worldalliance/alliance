@@ -1,4 +1,5 @@
 import { NodeEnv } from "./node-env";
+import { ALLIANCE_LEGACY_DOMAIN, isLegacyAllianceHost } from "./url";
 
 type DeployedNodeEnv = NodeEnv.Staging | NodeEnv.Production;
 
@@ -40,8 +41,8 @@ const deployedConfig: {
 } = {
   [NodeEnv.Staging]: {
     ...shared,
-    DOMAIN_NAME: "staging.worldalliance.org",
-    ALT_DOMAIN_NAME: "staging.thealliance.org",
+    DOMAIN_NAME: "staging.thealliance.org",
+    ALT_DOMAIN_NAME: "staging.worldalliance.org",
     APPLE_BUNDLE_ID: [
       "com.alliancefoundation.alliancemobile",
       "com.alliancefoundation.alliancemobile.dev",
@@ -55,8 +56,8 @@ const deployedConfig: {
   },
   [NodeEnv.Production]: {
     ...shared,
-    DOMAIN_NAME: "worldalliance.org",
-    ALT_DOMAIN_NAME: "thealliance.org",
+    DOMAIN_NAME: "thealliance.org",
+    ALT_DOMAIN_NAME: "worldalliance.org",
     APPLE_BUNDLE_ID: [
       "com.alliancefoundation.alliancemobile",
       "com.alliancefoundation.alliancemobile.dev",
@@ -69,6 +70,36 @@ const deployedConfig: {
   },
   [NodeEnv.Development]: undefined,
   [NodeEnv.Test]: undefined,
+};
+
+/** `DOMAIN_NAME` is the new domain, which names the TLS certificate lineages and the API host. */
+export function domainMove(
+  config: Pick<DeployedConfig, "DOMAIN_NAME" | "ALT_DOMAIN_NAME">,
+): { legacyDomain: string; newDomain: string } {
+  const { DOMAIN_NAME, ALT_DOMAIN_NAME } = config;
+  if (
+    isLegacyAllianceHost(DOMAIN_NAME) ||
+    !isLegacyAllianceHost(ALT_DOMAIN_NAME)
+  ) {
+    throw new Error(
+      `ALT_DOMAIN_NAME ${ALT_DOMAIN_NAME} must be on ${ALLIANCE_LEGACY_DOMAIN} and DOMAIN_NAME ${DOMAIN_NAME} must not`,
+    );
+  }
+  return { legacyDomain: ALT_DOMAIN_NAME, newDomain: DOMAIN_NAME };
+}
+
+/** Non-secret development settings, which a non-blank environment variable overrides. */
+export const developmentEnv = {
+  APPLE_TEAM_ID: shared.APPLE_TEAM_ID,
+  APPLE_KEY_ID: shared.APPLE_KEY_ID,
+  APPLE_SERVICES_ID: shared.APPLE_SERVICES_ID,
+  APPLE_BUNDLE_ID: deployedConfig[NodeEnv.Production].APPLE_BUNDLE_ID.join(","),
+  GOOGLE_CLIENT_ID: shared.GOOGLE_CLIENT_ID,
+  MAIL_FROM: shared.MAIL_FROM,
+  SMTP_HOST: "smtp.mailgun.org",
+  POSTHOG_KEY: "phc_9SGaaNrCkymPO9uVEKnjgv6IAZkzg4Fhv4xC0CJACOR",
+  POSTHOG_PROJECT_ID: "188181",
+  ASSETS_BUCKET: "alliance-assets-dev-32a7c624",
 };
 
 export function deployedConfigFor<E extends NodeEnv>(

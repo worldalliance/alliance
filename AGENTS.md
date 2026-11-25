@@ -13,12 +13,17 @@ The project is the Alliance, and `alliance` is its identifier wherever a name ca
 - `sharedweb/`: shared by admin + frontend
 - `shared/`: shared by admin + frontend + mobile
 - `common/`: shared by all apps + server
+- `kora-review/`: KORA's transcript review tool, mounted by frontend; its schemas and converter are used by server
 - `agents/`: skills and hooks for the coding agents
 - `agents/desktop/`: Alliance agent, the desktop app employees work with coding agents through
 
 ## Nested AGENTS.md
 
 Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps/AGENTS.md`. Those are the only nested ones.
+
+## Local secrets
+
+Commands that need secrets go through `scripts/with-secrets.sh`, using the person's AWS login. Login or setup failure → `docs/local-secrets.md`.
 
 ## Worktree
 
@@ -34,17 +39,21 @@ Always read and apply:
 
 Read before the matching task:
 
+- Asking a question per **Open questions**, every set of them, before sending → `(root)/agents/skills/consult/SKILL.md`
 - Making a repository change intended to be kept, or determining the provenance of anything in the repository → `(root)/agents/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/agents/skills/implement/SKILL.md`
 - Verifying any change, including docs, skills, scripts, workflows, and reviews → **Checks** in `(root)/agents/skills/implement/SKILL.md`
-- Pulling PostHog session replays or other PostHog API data → `(root)/agents/skills/posthog/SKILL.md`
+- The user asks to spec or plan a change before building it → `(root)/agents/skills/spec/SKILL.md`
+- Investigating a bug or failing check whose cause you don't know yet → `(root)/agents/skills/debug/SKILL.md`
+- Pulling PostHog data from its API, such as production errors, slow queries, traffic, web vitals or session replays → `(root)/agents/skills/posthog/SKILL.md`
 - Querying the local Postgres db → `(root)/agents/skills/local-db/SKILL.md`
-- Using the Linear API, naming a branch for a Linear issue, or writing a commit or PR that names one → `(root)/agents/skills/linear/SKILL.md`
+- Creating demo staging data in the local db, never production: a demo action launched to every member → `(root)/agents/skills/demo-action/SKILL.md`; demo engagement on existing actions (members completing, withdrawing or dismissing, staff updates, closing old actions) → `(root)/agents/skills/demo-engagement/SKILL.md`
+- Starting or continuing work on a Linear issue, using the Linear API, naming a branch for a Linear issue, or writing a commit or PR that names one → `(root)/agents/skills/linear/SKILL.md`
 - Finishing a branch, once its work is done and its checks pass and before pushing or opening its PR, or when its PR's CI fails → `(root)/agents/skills/review-loop/SKILL.md`. Skip it when `REVIEW_LOOP_ROLE` is set.
+- The user asking to hand the task to a fresh agent, or to continue from a handoff → `(root)/agents/skills/handoff/SKILL.md`
 - Spawning a subagent, which goes through the `claude` or `codex` CLI in place of your harness's built-in agent tool → `(root)/agents/skills/subagents/SKILL.md`
-- Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/agents/skills/playwright/SKILL.md`
-- Designing or changing UI in `apps/`, `sharedweb/`, `shared/` or `agents/desktop`, or judging a UI's quality → `(root)/agents/skills/ux-guidelines/SKILL.md`
-- Changing a form, a native screen, keyboard shortcuts, loading or URL state, or choosing colour, type, spacing or motion values, in those folders, or judging a UI's quality → `(root)/agents/skills/ux-forms-platform/SKILL.md`
+- Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin or member → `(root)/agents/skills/playwright/SKILL.md`
+- Designing or changing UI in `apps/`, `sharedweb/`, `shared/` or `agents/desktop`, including forms, native screens, keyboard shortcuts, loading and URL state, and colour, type, spacing or motion values, or judging a UI's quality → `(root)/agents/skills/ux-guidelines/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/agents/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking
@@ -76,6 +85,8 @@ Change a shape by expand-migrate-contract when something depending on it can't s
 
 Each step starts once the previous one is live everywhere that depends on it, installed clients included (shown by a forced minimum version or by no traffic from older builds); consecutive steps may ship together only where they land atomically, and a database migration and the server deploy land at different times.
 
+Any change that must be live before another follows the same order. Merging to `main` deploys only staging; production deploys when someone pushes `main` to `production` (`docs/deploying.md`), every so often, taking everything merged since in one deploy. So a PR whose prerequisite must be live in production stays unmerged, its description saying what it waits for, until production runs the prerequisite, which can lag the `production` branch: `GITHUB_REPOSITORY=worldalliance/alliance bash .github/actions/deploy-guard/live-commit.sh production` prints the commit production runs. Pushing `production` releases everything on `main` to members, so leave it to the user, even where a skill waives asking before git writes.
+
 Mark a fallback awaiting its contract step `BACKCOMPAT(<tag>)` with the condition for removing it.
 
 ## Capitalisation
@@ -97,6 +108,10 @@ Ask before running a git command that writes. Read-only ones (`git diff`, `git s
 Follow the user's intended request in context. Requests to explain, evaluate, compare, or justify authorize investigation and an answer; they do not by themselves authorize changes. Requests to perform work authorize that work, including when phrased as questions. Asking about a recommendation neither rejects it nor approves an alternative.
 
 For example, after you suggest X, "Why X?" asks you to explain your reasoning. It does not mean the user is against X. Explain the recommendation and revise it only where the reasoning fails.
+
+## The problem behind the request
+
+Before building what was asked, name the problem it solves and look past the request: an alternative to it, making it automatic or unnecessary, the larger system that is actually broken. Raise a materially better alternative with the user before acting on it. Brief subagents, and write skills, with purpose, context and constraints, leaving the method to their judgement; spell out steps only where order or safety demands it. When uncertain or stuck, bring in a subagent or the user rather than pressing on alone.
 
 ## Open questions
 
@@ -149,7 +164,7 @@ Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
-This repository is open source, so anything written in it may become public: redact what shouldn't be public. Information anyone viewing the repository can already see needs none, such as contributors' names and handles on their commits, or identifying information deliberately used for authorship, credit, or project responsibility. Committing secrets or incidental personal information doesn't exempt them: they still get redacted, even in an earlier task's provenance. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
+This repository is open source, so anything written in it may become public: redact what shouldn't be public. Information anyone viewing the repository can already see needs none, such as contributors' names and handles on their commits, or identifying information deliberately used for authorship, credit, or project responsibility. Committing secrets or incidental personal information doesn't exempt them: they still get redacted, even in an earlier task's provenance. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. The session transcripts the `agents/chats/` hooks upload to their private bucket stay raw. Use synthetic data for fixtures and examples. Database dumps, staging's included, stay out of commits, in `.scratch/` or an ignored `db_dumps/`. Before handing off, check every file you created or changed for secrets and incidental personal information.
 
 ## Working files
 
@@ -165,7 +180,7 @@ Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second ca
 
 ## File size
 
-Aim for hand-written source files, tests included, well under 500 lines. The 500 is this repo's own threshold, not an external standard: agents read files whole, so a file should hold what one task needs. When your change adds to a file and would leave it past 500 non-blank lines with no waiver, or past the ceiling its waiver records, first ask a codex subagent (`(root)/agents/skills/subagents/SKILL.md`) with `-s read-only` in place of `--dangerously-bypass-approvals-and-sandbox`, naming only the file and not your change, for a few splits along cohesive boundaries. Apply the one you judge best, or keep the file whole when it is one cohesive unit, which any task touching it would read in full after a split too: put `/* alliance/max-lines <ceiling> -- <why it is one unit> */` at its top, or raise the ceiling in its waiver and revise the reason. The ceiling is the non-blank line count, waiver line included, rounded up to a multiple of 50, so small changes within that band leave the waiver alone. Where `/* */` isn't a comment, write the waiver in the language's own comment syntax. A `baseline:` reason marks a file that was past the limit before waivers existed, so growing it past its ceiling means a split or a real reason. The `alliance/max-lines` lint error, which each package's `typecheck` runs, enforces the ceiling on the TypeScript those lint runs cover; other hand-written files follow this rule without it.
+Aim for hand-written source files, tests included, well under 500 lines. The 500 is this repo's own threshold, not an external standard: agents read files whole, so a file should hold what one task needs. When your change adds to a file and would leave it past 500 non-blank lines with no waiver, or past the ceiling its waiver records, first ask a read-only codex subagent (`(root)/agents/skills/subagents/SKILL.md`, which says what runs where codex isn't set up), naming only the file and not your change, for a few splits along cohesive boundaries. Apply the one you judge best, or keep the file whole when it is one cohesive unit, which any task touching it would read in full after a split too: put `/* alliance/max-lines <ceiling> -- <why it is one unit> */` at its top, or raise the ceiling in its waiver and revise the reason. The ceiling is the non-blank line count, waiver line included, rounded up to a multiple of 50, so small changes within that band leave the waiver alone. Where `/* */` isn't a comment, write the waiver in the language's own comment syntax. A `baseline:` reason marks a file that was past the limit before waivers existed, so growing it past its ceiling means a split or a real reason. The `alliance/max-lines` lint error, which each package's `typecheck` runs, enforces the ceiling on the TypeScript those lint runs cover; other hand-written files follow this rule without it.
 
 Generated files, migrations, lockfiles, snapshots, fixture data, data files, workflow YAML, config, and docs other than agent instructions have no line limit. Name generated TypeScript `*.gen.ts`; the lint skips those and `migrations/`. Give any other such file the lint flags a waiver whose reason names its category, and raise its ceiling as the file grows, skipping the codex step.
 

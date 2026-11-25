@@ -1,6 +1,9 @@
 import type { DevUrl } from "@alliance/common/dev-ports";
-import { adminOrigin } from "@alliance/common/url";
+import { type Features, isEnabled } from "@alliance/common/features";
+import { NodeEnv } from "@alliance/common/node-env";
+import { adminOrigin, preferNewDomain } from "@alliance/common/url";
 import { requireWebEnv, webEnv } from "./env";
+import { webEnvironment } from "./runtimeConfig";
 
 const mode = import.meta.env.MODE;
 
@@ -27,13 +30,13 @@ export const getWebSocketUrl = (mode: string): string => {
   }
 };
 
-export const isProduction = (): boolean => {
-  return mode === "production";
-};
+export const isProduction = (): boolean =>
+  webEnvironment() === NodeEnv.Production;
 
-export const isStaging = (): boolean => {
-  return mode === "staging";
-};
+export const isStaging = (): boolean => webEnvironment() === NodeEnv.Staging;
+
+export const isFeatureEnabled = (feature: Features): boolean =>
+  isEnabled(feature, webEnvironment());
 
 export const getBaseUrl = (): string => {
   if (mode === "development") {
@@ -49,7 +52,7 @@ export const getAdminUrl = (): string =>
     : adminOrigin(prodUrl());
 
 export const getInviteBaseUrl = (): string =>
-  webEnv("VITE_ALT_APP_URL") ?? getBaseUrl();
+  preferNewDomain([webEnv("VITE_ALT_APP_URL"), getBaseUrl()]) ?? getBaseUrl();
 
 export const getApiUrl = (): string => {
   if (mode === "development") {

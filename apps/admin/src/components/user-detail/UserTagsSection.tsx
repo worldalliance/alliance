@@ -80,7 +80,7 @@ export default function UserTagsSection({
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Tags ({userTags.length})
       </h2>
-      {isRefetchError && <SectionRefreshError noun="tags" />}
+      <SectionRefreshError noun="tags" isError={isRefetchError} />
       {tagMutationError && (
         <p className="text-xs text-red-500 mb-2">{tagMutationError}</p>
       )}

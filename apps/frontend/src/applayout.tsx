@@ -6,7 +6,6 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { useEffect, useRef } from "react";
 import { href, Outlet, useNavigate, useNavigation } from "react-router";
-import DomainMigrationModal from "./components/DomainMigrationModal";
 import { useAuth } from "./lib/AuthContext";
 
 export function HydrateFallback() {
@@ -41,7 +40,7 @@ export default function AppLayout() {
 
   const navigate = useNavigate();
   const navigation = useNavigation();
-  // Each request refused after a failed refresh settles, or refused again on
+  // Each request refused after a refused refresh settles, or refused again on
   // retry, reports the session ended.
   const loggingOut = useRef(false);
 
@@ -88,7 +87,6 @@ export default function AppLayout() {
       <TaskFlowCompletionProvider>
         <Outlet />
       </TaskFlowCompletionProvider>
-      <DomainMigrationModal />
       {isStaging() && (
         <div
           className={cn(

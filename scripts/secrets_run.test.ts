@@ -22,13 +22,14 @@ beforeEach(() => {
     `#!/usr/bin/env bash
 echo "aws $*" >> "$LOG"
 [ "\${AWS_FAIL:-}" = 1 ] && { echo "AccessDeniedException" >&2; exit 254; }
-cat "$RESPONSE"
+while [ "$1" != --path ]; do shift; done
+python3 -c 'import json, sys; prefix = sys.argv[2]; print(json.dumps({"Parameters": [p for p in json.load(open(sys.argv[1]))["Parameters"] if p["Name"].startswith(prefix) and "/" not in p["Name"][len(prefix):]]}))' "$RESPONSE" "$2"
 `,
   );
   writeFileSync(
     join(dir, "backend"),
     `#!/usr/bin/env bash
-printf 'backend %s DB_PASSWORD=%s JWT_SECRET=%s\\n' "$*" "\${DB_PASSWORD-unset}" "\${JWT_SECRET-unset}" >> "$LOG"
+printf 'backend %s DB_PASSWORD=%s JWT_SECRET=%s HOOK=%s\\n' "$*" "\${DB_PASSWORD-unset}" "\${JWT_SECRET-unset}" "\${HOOK-unset}" >> "$LOG"
 `,
   );
   chmodSync(join(dir, "aws"), 0o755);
@@ -76,7 +77,7 @@ test.each([
     expect(exitCode).toBe(0);
     expect(log).toBe(
       `aws ssm get-parameters-by-path --region us-west-2 --path ${prefix} --with-decryption --output json\n` +
-        `backend src/main.ts DB_PASSWORD=${TRICKY} JWT_SECRET=jwt\n`,
+        `backend src/main.ts DB_PASSWORD=${TRICKY} JWT_SECRET=jwt HOOK=unset\n`,
     );
   },
 );
@@ -128,6 +129,73 @@ test("a parameter named like a variable already set runs nothing", () => {
 test("no command calls nothing", () => {
   const { exitCode, log, stderr } = run({ NODE_ENV: "staging" }, [], []);
   expect(exitCode).toBe(2);
+  expect(log).toBe("");
+  expect(stderr).toContain("usage: secrets_run.sh");
+});
+
+const SYNC_SOURCES = [
+  "--path",
+  "/alliance/staging/db-sync/",
+  "--path",
+  "/alliance/staging/server/",
+  "DB_PASSWORD",
+  "--",
+];
+
+const STAGING_PARAMETERS = [
+  { Name: "/alliance/staging/db-sync/HOOK", Value: "hook" },
+  { Name: "/alliance/staging/server/DB_PASSWORD", Value: TRICKY },
+  { Name: "/alliance/staging/server/JWT_SECRET", Value: "jwt" },
+];
+
+test("--path reads every path, without NODE_ENV, and only the names it lists", () => {
+  const { exitCode, log } = run({}, STAGING_PARAMETERS, [
+    ...SYNC_SOURCES,
+    "backend",
+    "sync",
+  ]);
+  expect(exitCode).toBe(0);
+  expect(log).toBe(
+    "aws ssm get-parameters-by-path --region us-west-2 --path /alliance/staging/db-sync/ --with-decryption --output json\n" +
+      "aws ssm get-parameters-by-path --region us-west-2 --path /alliance/staging/server/ --with-decryption --output json\n" +
+      `backend sync DB_PASSWORD=${TRICKY} JWT_SECRET=unset HOOK=hook\n`,
+  );
+});
+
+test("a listed name missing from its path runs nothing", () => {
+  const { exitCode, log, stderr } = run(
+    {},
+    STAGING_PARAMETERS.filter(({ Name }) => !Name.endsWith("DB_PASSWORD")),
+    [...SYNC_SOURCES, "backend"],
+  );
+  expect(exitCode).not.toBe(0);
+  expect(log).not.toContain("backend");
+  expect(stderr).toContain("/alliance/staging/server/ has no DB_PASSWORD");
+});
+
+test("a name two paths both set runs nothing", () => {
+  const { exitCode, log, stderr } = run(
+    {},
+    [
+      ...STAGING_PARAMETERS,
+      { Name: "/alliance/staging/db-sync/DB_PASSWORD", Value: "other" },
+    ],
+    [...SYNC_SOURCES, "backend"],
+  );
+  expect(exitCode).not.toBe(0);
+  expect(log).not.toContain("backend");
+  expect(stderr).toContain(
+    "DB_PASSWORD is under both /alliance/staging/db-sync/ and /alliance/staging/server/",
+  );
+});
+
+test.each([
+  [["--path", "/alliance/staging/db-sync/", "backend"]],
+  [["--path", "/alliance/staging/db-sync/", "--"]],
+  [["--path", "alliance/staging/db-sync", "--", "backend"]],
+])("malformed sources %p call nothing", (command) => {
+  const { exitCode, log, stderr } = run({}, STAGING_PARAMETERS, command);
+  expect(exitCode).not.toBe(0);
   expect(log).toBe("");
   expect(stderr).toContain("usage: secrets_run.sh");
 });

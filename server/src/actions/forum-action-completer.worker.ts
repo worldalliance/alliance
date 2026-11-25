@@ -6,15 +6,15 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { WithoutOverlapping } from "@nestjs/locks";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
+import { assertLeaseHeld, CronLease } from "src/leases/cron-lease";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
-import { LOCK_KEYS } from "src/notifs/lock-keys";
-import { withPgAdvisoryLock } from "src/notifs/lock-utils";
 import {
   CustomValidator,
   CustomValidatorType,
@@ -32,7 +32,10 @@ import {
   type Repository,
 } from "typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
-import { ActionActivityService } from "./action-activity.service";
+import {
+  ActionActivityService,
+  ActivityAlreadyExistsException,
+} from "./action-activity.service";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { ForumAutocompletePlan } from "./dto/scheduled-plans.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -43,8 +46,6 @@ import {
   type ParsedAction,
 } from "./entities/action.entity";
 
-const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
-  LOCK_KEYS.forumActionCompleter;
 const AUTOCOMPLETE_TARGET_OFFSET_MS = milliseconds({ minutes: 5 });
 const AUTOCOMPLETE_WINDOW_MS = milliseconds({ minutes: 5 });
 
@@ -72,58 +73,54 @@ export class ForumActionCompleterWorker {
   ) {}
 
   @Cron("*/5 * * * *")
+  @WithoutOverlapping({ key: CronLease.ForumAutocomplete })
   async autocompleteForumActions() {
-    const ran = await withPgAdvisoryLock(
-      this.dataSource,
-      PROCESS_ONE_LOCK_KEY1,
-      PROCESS_ONE_LOCK_KEY2,
-      async () => {
-        const now = new Date();
-        const targetDeadlineMs = now.getTime() + AUTOCOMPLETE_TARGET_OFFSET_MS;
-        const windowStartMs = targetDeadlineMs - AUTOCOMPLETE_WINDOW_MS;
-        const windowEndMs = targetDeadlineMs + AUTOCOMPLETE_WINDOW_MS;
+    await this.autocompleteDue();
+  }
 
-        const actions = await this.actionRepository
-          .find({
-            where: {
-              isForumParticipationAction: true,
-              computedAutocompleteAt: IsNull(),
-            },
-            relations: { events: true },
-          })
-          .then((rows) => rows.map(parseAction));
+  /** Skips the lease; production runs it through autocompleteForumActions. */
+  async autocompleteDue() {
+    const now = new Date();
+    const targetDeadlineMs = now.getTime() + AUTOCOMPLETE_TARGET_OFFSET_MS;
+    const windowStartMs = targetDeadlineMs - AUTOCOMPLETE_WINDOW_MS;
+    const windowEndMs = targetDeadlineMs + AUTOCOMPLETE_WINDOW_MS;
 
-        for (const action of actions) {
-          const { event: memberActionEvent, deadlineEvent } =
-            action.memberActionPhase;
+    const actions = await this.actionRepository
+      .find({
+        where: {
+          isForumParticipationAction: true,
+          computedAutocompleteAt: IsNull(),
+        },
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
 
-          // Only act while the action is currently mid-member-action: it has
-          // started and its closing event hasn't happened yet.
-          if (
-            !memberActionEvent ||
-            !hasTakenEffect(memberActionEvent.date, now) ||
-            !deadlineEvent ||
-            hasMemberActionDeadlinePassed(deadlineEvent.date, now)
-          ) {
-            continue;
-          }
+    for (const action of actions) {
+      assertLeaseHeld();
+      const { event: memberActionEvent, deadlineEvent } =
+        action.memberActionPhase;
 
-          const deadlineMs = deadlineEvent.date.getTime();
-          if (deadlineMs < windowStartMs || deadlineMs > windowEndMs) {
-            continue;
-          }
+      // Only act while the action is currently mid-member-action: it has
+      // started and its closing event hasn't happened yet.
+      if (
+        !memberActionEvent ||
+        !hasTakenEffect(memberActionEvent.date, now) ||
+        !deadlineEvent ||
+        hasMemberActionDeadlinePassed(deadlineEvent.date, now)
+      ) {
+        continue;
+      }
 
-          await this.processAction({
-            action,
-            memberActionEvent,
-            runAt: now,
-          });
-        }
-      },
-    );
+      const deadlineMs = deadlineEvent.date.getTime();
+      if (deadlineMs < windowStartMs || deadlineMs > windowEndMs) {
+        continue;
+      }
 
-    if (ran === null) {
-      this.logger.log("autocompleteForumActions skipped bc of lock");
+      await this.processAction({
+        action,
+        memberActionEvent,
+        runAt: now,
+      });
     }
   }
 
@@ -282,18 +279,27 @@ export class ForumActionCompleterWorker {
     const plannedUsers = baseUsers.filter((user) => toCompleteSet.has(user.id));
 
     if (shouldWrite) {
+      const plannedById = new Map(plannedUsers.map((user) => [user.id, user]));
       for (const userId of toComplete) {
+        const member = plannedById.get(userId);
+        if (!member) throw new Error(`responder ${userId} not planned`);
         try {
           await this.actionActivityService.completeAction(action.id, userId, {
             adminCreated: true,
           });
           await this.eventLogService.sendMessage({
             type: EventType.ForumActionAutocomplete,
-            message: `Automatically completing action ${action.id} for user ${userId} based on forum participation`,
+            payload: { member, action },
             userId: userId,
             blob: null,
           });
         } catch (error) {
+          if (error instanceof ActivityAlreadyExistsException) {
+            this.logger.log(
+              `Skipping completion for action ${action.id} user ${userId}, completed since the run loaded it`,
+            );
+            continue;
+          }
           if (error instanceof QueryFailedError) {
             this.logger.warn(
               `Skipping duplicate completion for action ${action.id} user ${userId}: ${error.message}`,

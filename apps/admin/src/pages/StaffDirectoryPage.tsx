@@ -6,6 +6,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { GripVertical } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { useContentConfirm } from "../components/useContentConfirm";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 import {
@@ -74,6 +75,7 @@ const StaffDirectoryPage: React.FC = () => {
     );
   };
 
+  const { confirmSave, dialog: contentDialog } = useContentConfirm();
   const save = useSaveStaffDirectoryAdmin({
     onSuccess: () => setEdits(null),
     onError: (err) => {
@@ -103,12 +105,25 @@ const StaffDirectoryPage: React.FC = () => {
   return (
     <div className="p-5 space-y-4 max-w-4xl">
       <title>Staff Directory - Admin</title>
+      {contentDialog}
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-bold text-lg">Staff directory</h1>
         <Button
           color={ButtonColor.Green}
           className="text-white !px-4 !py-2 rounded-md"
-          onClick={() => save.mutate(items)}
+          onClick={async () => {
+            const authored = items.map(({ staffTitle, staffLink }) => [
+              staffTitle,
+              staffLink,
+            ]);
+            if (
+              await confirmSave(authored, {
+                siteUrlsIn: items.map(({ staffLink }) => staffLink),
+              })
+            ) {
+              save.mutate(items);
+            }
+          }}
           disabled={save.isPending || !anyChanged}
         >
           {save.isPending

@@ -27,7 +27,7 @@ export default function UserActionsSection({ userId }: { userId: number }) {
 
   return (
     <section className="max-h-128 overflow-y-auto">
-      {isRefetchError && <SectionRefreshError noun="actions" />}
+      <SectionRefreshError noun="actions" isError={isRefetchError} />
       {actionSummaries.length ? (
         <div className="border border-zinc-200 rounded overflow-hidden">
           <table className="w-full text-sm">

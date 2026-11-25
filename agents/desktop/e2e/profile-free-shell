@@ -1,0 +1,4 @@
+#!/bin/sh
+# Stands in for the user's login shell in the e2e tests: runs the command it is given, its last argument, without reading any profile.
+for command; do :; done
+exec /bin/sh -c "$command"

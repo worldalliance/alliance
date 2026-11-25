@@ -109,7 +109,7 @@ function VariableCard({
       (other) => other.name === variable.name,
     );
     return duplicate.length > 1
-      ? "Another variable already uses this name."
+      ? "Another formula already uses this name."
       : null;
   }, [variable.name, allVariables]);
 
@@ -149,8 +149,8 @@ function VariableCard({
         <button
           type="button"
           onClick={onRemove}
-          title="Delete variable"
-          aria-label={`Delete variable ${variable.name}`}
+          title="Delete formula"
+          aria-label={`Delete formula ${variable.name}`}
           className="p-1 text-gray-400 hover:text-red-500"
         >
           <X size={16} />
@@ -225,9 +225,9 @@ export function VariableBuilder({
       <div className="bg-white rounded-lg border border-gray-200 p-6 mx-auto w-full max-w-4xl">
         <div className="mb-6 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">Variables</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Formulas</h2>
             <Button onClick={addVariable} color={ButtonColor.Blue}>
-              Add variable
+              Add formula
             </Button>
           </div>
           <p className="text-sm text-gray-600">
@@ -250,7 +250,7 @@ export function VariableBuilder({
         {unresolvedReferences.length > 0 && (
           <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 space-y-1">
             <p className="text-sm font-medium text-amber-900">
-              These references don&apos;t match any variable, and will show as
+              These references don&apos;t match any formula, and will show as
               written to respondents:
             </p>
             {unresolvedReferences.map(({ name, locations }) => (
@@ -268,7 +268,7 @@ export function VariableBuilder({
 
         {variables.length === 0 ? (
           <p className="text-sm text-gray-500">
-            No variables yet. Add one to reference a computed value in your
+            No formulas yet. Add one to reference a computed value in your
             form&apos;s text.
           </p>
         ) : (

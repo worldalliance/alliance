@@ -44,6 +44,7 @@ const selectionsOf = (value: unknown): string[] => {
 const renderPretty = (field: AnyField, value: unknown): string => {
   switch (field.kind) {
     case "radio":
+    case "conversation":
     case "select":
     case "checkbox":
       return escapeXml(optionLabel(field, stringify(value)));
@@ -104,9 +105,12 @@ const renderPretty = (field: AnyField, value: unknown): string => {
     case "range":
     case "date":
     case "time":
+    case "timePicker":
     case "timezone":
     case "contract":
     case "file":
+    case "image":
+    case "toggle":
     case "custom":
       return escapeXml(stringify(value));
     default:

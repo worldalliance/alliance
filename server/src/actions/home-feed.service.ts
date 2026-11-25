@@ -4,7 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
 import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { type ParsedFormResponse } from "src/tasks/entities/formresponse.entity";
-import { loadedUserCommunities } from "src/user/entities/user.entity";
+import { loadedUserCommunities } from "src/user/user.utils";
 import { In, LessThan, type Repository } from "typeorm";
 import { FriendService } from "../user/friend.service";
 import { UserService } from "../user/user.service";

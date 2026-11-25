@@ -3,6 +3,7 @@ import {
   InfoEntryId,
   visibleInfoResources,
 } from "@alliance/shared/lib/informationPage";
+import { isFeatureEnabled } from "@alliance/sharedweb/lib/config";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import {
   BookOpenText,
@@ -25,7 +26,6 @@ import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import InfoResourceCard, {
   type InfoResourceCardProps,
 } from "../../components/InfoResourceCard";
-import { isFeatureEnabled } from "../../lib/config";
 
 const ICONS: Record<InfoEntryId, LucideIcon> = {
   [InfoEntryId.Email]: Mail,

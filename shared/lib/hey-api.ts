@@ -1,4 +1,5 @@
-import { refusalMessage } from "@alliance/common/errorMessage";
+import { GENERIC_FAILURE, refusalMessage } from "@alliance/common/errorMessage";
+import { R, type Result } from "@alliance/common/result";
 import type { Client } from "@hey-api/client-fetch";
 import { z } from "zod";
 import { CreateClientConfig } from "../client/client.gen";
@@ -17,18 +18,25 @@ export const AuthEvents = {
   },
 };
 
-let refreshing: Promise<boolean> | null = null;
+let refreshing: Promise<Result<boolean, Error>> | null = null;
 
-const refreshSession = (): Promise<boolean> => {
-  refreshing ??= import("../client/sdk.gen")
-    .then(({ authRefreshTokens }) => authRefreshTokens())
-    .then((refreshRes) => {
-      if (!refreshRes.response.ok) AuthEvents.onUnauthorized();
-      return refreshRes.response.ok;
-    })
-    .finally(() => {
-      refreshing = null;
-    });
+/** R.success(false), after announcing `auth:unauthorized`, when the session is
+ * refused; R.failure when the refresh couldn't settle whether it is valid. */
+export const refreshSession = (): Promise<Result<boolean, Error>> => {
+  refreshing ??= R.fromPromise(
+    import("../client/sdk.gen")
+      .then(({ authRefreshTokens }) => authRefreshTokens())
+      .then(({ response }) => {
+        if (response.ok) return true;
+        if (response.status === 401) {
+          AuthEvents.onUnauthorized();
+          return false;
+        }
+        throw new Error(GENERIC_FAILURE, { cause: response.status });
+      }),
+  ).finally(() => {
+    refreshing = null;
+  });
   return refreshing;
 };
 
@@ -58,7 +66,7 @@ export const createClientConfig: CreateClientConfig = (config) => {
       return res;
     }
 
-    if (!(await refreshSession()) || retryReq === null) return res;
+    if (!R.unwrap(await refreshSession()) || retryReq === null) return res;
     const retryRes = await originalFetch(retryReq);
     if (retryRes.status !== 401) {
       return retryRes;
@@ -121,3 +129,17 @@ export const thrownRefusalMessage = (params: {
   if (status === undefined) return params.fallback;
   return refusalMessage({ ...params, status });
 };
+
+/** The server's copy for a refusal it named with one of `codes`, at any
+ * status, including the 503 of a failed delivery. */
+export const namedRefusalMessage = (
+  error: unknown,
+  codes: z.ZodType<string>,
+): string =>
+  z.object({ error: codes, message: z.string() }).safeParse(error).data
+    ?.message ??
+  thrownRefusalMessage({
+    error,
+    fallback: GENERIC_FAILURE,
+    sessionExpired: GENERIC_FAILURE,
+  });

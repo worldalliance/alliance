@@ -12,6 +12,10 @@ import {
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import {
+  assertNoPartitionLaunch,
+  followGrid,
+} from "src/suite-partitions/partition-guards";
 import { Form } from "src/tasks/entities/form.entity";
 import { User } from "src/user/entities/user.entity";
 import type {
@@ -54,14 +58,13 @@ import {
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
-import { GeneralUpdate } from "./entities/general-update.entity";
 import { FormSlugSequence, slugFormForAction } from "./form-slug";
 import { GeneralUpdatesService } from "./general-updates.service";
 import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
-import { shiftPrioritiesAfterInsertion } from "./priority-order";
+import { setPriorities, shiftPrioritiesAfterInsertion } from "./priority-order";
 import { renameSoleActionSuite } from "./sole-action-suite";
 
 const ACTION_PARENT_GONE = "That suite, author or form is gone";
@@ -77,8 +80,6 @@ export class ActionsService {
     private readonly actionReviewerRepository: Repository<ActionReviewer>,
     @InjectRepository(EditableContent)
     private readonly editableContentRepository: TypedRepository<EditableContent>,
-    @InjectRepository(GeneralUpdate)
-    private readonly generalUpdateRepository: Repository<GeneralUpdate>,
     private userService: UserService,
     private readonly cohortResolverService: CohortResolverService,
     private readonly cohortDecisionStaffService: CohortDecisionStaffService,
@@ -158,6 +159,11 @@ export class ActionsService {
       write: async (em) => {
         const inserted = await em.save(Action, action);
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
+        await followGrid(em, { actionIds: [inserted.id], entering: true });
+        // A partitioned suite's grid may have set the optional flag.
+        inserted.optional = (
+          await em.findOneByOrFail(Action, { id: inserted.id })
+        ).optional;
         if (rest.taskFormId != null) {
           await slugFormForAction(em, {
             formId: rest.taskFormId,
@@ -334,19 +340,8 @@ export class ActionsService {
     return action;
   }
 
-  async setPriorityOrder(dto: SetPriorityDto): Promise<void> {
-    await Promise.all([
-      ...dto.actionPriorities.map((actionPriority) =>
-        this.actionRepository.update(actionPriority.id, {
-          priority: actionPriority.priority,
-        }),
-      ),
-      ...dto.generalUpdatePriorities.map((generalUpdatePriority) =>
-        this.generalUpdateRepository.update(generalUpdatePriority.id, {
-          priority: generalUpdatePriority.priority,
-        }),
-      ),
-    ]);
+  setPriorityOrder(dto: SetPriorityDto): Promise<void> {
+    return setPriorities(this.actionRepository.manager, dto);
   }
 
   async update(
@@ -392,9 +387,7 @@ export class ActionsService {
       await this.formLinks.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
 
-    action.suite = {
-      id: suiteId ?? undefined,
-    };
+    action.suite = { id: suiteId ?? undefined };
 
     if (authorIds !== undefined) {
       action.authors = authorIds.length
@@ -406,11 +399,14 @@ export class ActionsService {
     const newName = rest.name === action.name ? undefined : rest.name;
     Object.assign(action, rest);
 
-    // Replacing reviewers soft-deletes the dropped ones before the save;
-    // without one transaction a failed save still drops them.
+    const suiteAfter = suiteId === undefined ? oldSuiteId : suiteId;
+    // One transaction keeps a failed save from dropping replaced reviewers.
+    // The suite is locked before the action, the order a partition save takes.
     await writeUnderLive(this.actionRepository.manager, {
       parents: [
-        ...(suiteId == null ? [] : [{ target: ActionSuite, id: suiteId }]),
+        ...(suiteAfter == null
+          ? []
+          : [{ target: ActionSuite, id: suiteAfter }]),
         ...(action.authors ?? []).flatMap((author) =>
           author.id === undefined ? [] : [{ target: User, id: author.id }],
         ),
@@ -433,6 +429,11 @@ export class ActionsService {
           });
         }
         await em.save(Action, action);
+        await followGrid(em, {
+          actionIds: [id],
+          entering: suiteId != null && suiteId !== oldSuiteId,
+        });
+        await assertNoPartitionLaunch(em, [id]);
         if (newName !== undefined && suiteId != null) {
           await renameSoleActionSuite(em, {
             suiteId,

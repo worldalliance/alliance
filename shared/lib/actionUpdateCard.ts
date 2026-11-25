@@ -3,6 +3,7 @@ import {
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
 import { echoesStoredKey } from "@alliance/common/image-src";
+import { uniqBy } from "es-toolkit";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toString } from "mdast-util-to-string";
 import { useMemo, useState } from "react";
@@ -21,15 +22,13 @@ export function updateCovers(params: {
     .flatMap((block) => (block.kind === "images" ? block.images : []))
     .filter(
       (image) =>
-        !cardImage ||
-        (image.src !== cardImage &&
-          !echoesStoredKey({ next: cardImage, stored: image.src })),
+        !cardImage || !echoesStoredKey({ next: cardImage, stored: image.src }),
     )
     .map((image) => ({ src: image.src, alt: image.alt ?? "" }));
-  const covers = [
-    ...(cardImage ? [{ src: cardImage, alt: "" }] : []),
-    ...bodyImages,
-  ];
+  const covers = uniqBy(
+    [...(cardImage ? [{ src: cardImage, alt: "" }] : []), ...bodyImages],
+    (cover) => cover.src,
+  );
   if (covers.length > 0) return covers;
   return params.actionImage ? [{ src: params.actionImage, alt: "" }] : [];
 }

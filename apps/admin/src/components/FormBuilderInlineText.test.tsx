@@ -116,7 +116,7 @@ describe("inline text on the canvas", () => {
     renderFormBuilder(schema);
     selectElement("Welcome");
     fireEvent.click(canvasButton("Edit text"));
-    const picker = canvasButton("Insert a variable");
+    const picker = canvasButton("Insert a formula");
     expect(fireEvent.keyDown(picker, { key: "Enter" })).toBe(true);
     expect(queryCanvasText("Text")).not.toBeNull();
   });
@@ -184,7 +184,7 @@ describe("inline text on the canvas", () => {
     renderFormBuilder(schema);
     fireEvent.click(canvasButton("Edit page title"));
     expect(
-      canvas().queryByRole("button", { name: "Insert a variable" }),
+      canvas().queryByRole("button", { name: "Insert a formula" }),
     ).toBeNull();
     fireEvent.change(canvasText("Page title"), { target: { value: "Start" } });
     expect(

@@ -28,6 +28,42 @@ export class CohortAdmissionService {
     return pending;
   }
 
+  /**
+   * The actions whose decision admits the member as optional work: a partition
+   * part's grid row can make an action optional for some members only.
+   */
+  loadOptionalRowActionIds(
+    userId: number,
+    session: CohortResolutionSession,
+  ): Promise<Set<number>> {
+    let pending = session.optionalRowActionIdsByUser.get(userId);
+    if (!pending) {
+      pending = this.decisionRepository
+        .find({
+          where: { userId, included: true, optional: true },
+          select: { actionId: true },
+        })
+        .then((rows) => new Set(rows.map((row) => row.actionId)));
+      session.optionalRowActionIdsByUser.set(userId, pending);
+    }
+    return pending;
+  }
+
+  /** Members each action admits as optional work, by action id. */
+  async loadOptionalRowMemberIds(
+    actionIds: number[],
+  ): Promise<Map<number, Set<number>>> {
+    const byAction = new Map(actionIds.map((id) => [id, new Set<number>()]));
+    if (actionIds.length === 0) return byAction;
+    const rows = await this.decisionRepository.find({
+      where: { actionId: In(actionIds), included: true, optional: true },
+      select: { actionId: true, userId: true },
+    });
+    for (const { actionId, userId } of rows)
+      byAction.get(actionId)?.add(userId);
+    return byAction;
+  }
+
   /** Fills `loadAdmittedActionIds` for every listed member with one query. */
   prefetchAdmittedActionIds(
     userIds: number[],

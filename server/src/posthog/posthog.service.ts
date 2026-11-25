@@ -4,7 +4,7 @@ import {
   SEND_TO_SLACK,
   SLACK_PROPERTY,
 } from "@alliance/common/analytics";
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, OnApplicationShutdown } from "@nestjs/common";
 import { captureEvent, captureException } from "../utils/posthog";
 import { posthogClientIfEnabled } from "./posthog-client";
 
@@ -14,7 +14,7 @@ import { posthogClientIfEnabled } from "./posthog-client";
  * shared `SEND_TO_SLACK` map). No-ops outside production so dev/test never emit.
  */
 @Injectable()
-export class PosthogService implements OnModuleDestroy {
+export class PosthogService implements OnApplicationShutdown {
   private readonly client = posthogClientIfEnabled();
 
   capture(params: {
@@ -55,7 +55,7 @@ export class PosthogService implements OnModuleDestroy {
     this.client.identify(params);
   }
 
-  async onModuleDestroy(): Promise<void> {
+  async onApplicationShutdown(): Promise<void> {
     await this.client?.shutdown();
   }
 }

@@ -1,4 +1,4 @@
-import { KoraError } from "@alliance/common/kora";
+import { KORA_SIGNUPS_CLOSED, KoraError } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import { R } from "@alliance/common/result";
 import {
@@ -19,6 +19,7 @@ import type { Request, Response } from "express";
 import { AllowedOriginGuard } from "src/auth/guards/allowed-origin.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import { Public } from "src/auth/public.decorator";
+import { clientIp } from "src/otp/client-ip";
 import { OtpChannel, OtpPurpose } from "src/otp/otp-copy";
 import { OTP_TTL_MS } from "src/otp/otp-limits";
 import { otpRefusalException } from "src/otp/otp-refusal";
@@ -35,8 +36,10 @@ import {
   StartKoraCodeDto,
   VerifyKoraCodeDto,
 } from "./dto/kora-participant.dto";
+import { KoraProjectDto } from "./dto/kora-project.dto";
 import { clearCookie, KoraCookie, setCookie } from "./kora-cookies";
 import { KoraParticipantService } from "./kora-participant.service";
+import { KoraProjectService } from "./kora-project.service";
 import { KoraSessionService } from "./kora-session.service";
 
 const PURPOSE = OtpPurpose.KoraSignIn;
@@ -51,8 +54,10 @@ function contactOf(dto: StartKoraCodeDto): OtpContact {
   throw new BadRequestException(INVALID_CONTACT);
 }
 
-function clientIp(req: Request): string {
-  return req.ip ?? "unknown";
+function signupsClosedException(): BadRequestException {
+  return new BadRequestException(KORA_SIGNUPS_CLOSED, {
+    description: KoraError.ProjectClosed,
+  });
 }
 
 function webOtpHost(req: Request): string {
@@ -69,6 +74,7 @@ export class KoraController {
     private readonly participantService: KoraParticipantService,
     private readonly sessionService: KoraSessionService,
     private readonly otpService: OtpService,
+    private readonly projectService: KoraProjectService,
   ) {}
 
   @Get("participants/count")
@@ -77,6 +83,14 @@ export class KoraController {
   @ApiOkResponse({ type: KoraParticipantCountDto })
   async participantCount(): Promise<KoraParticipantCountDto> {
     return new KoraParticipantCountDto(await this.participantService.count());
+  }
+
+  @Get("project")
+  @UseGuards(AuthOptionalGuard)
+  @Public()
+  @ApiOkResponse({ type: KoraProjectDto })
+  async project(): Promise<KoraProjectDto> {
+    return new KoraProjectDto(await this.projectService.project());
   }
 
   /** Everything the sign-in card needs to resume after a reload. */
@@ -91,7 +105,11 @@ export class KoraController {
     const [participant, pendingCode, signupPending] = await Promise.all([
       this.sessionService.current(req, res),
       codeToken
-        ? this.otpService.pending({ purpose: PURPOSE, browserToken: codeToken })
+        ? this.otpService.pending({
+            purpose: PURPOSE,
+            browserToken: codeToken,
+            userId: null,
+          })
         : null,
       signupToken ? this.participantService.signupPending(signupToken) : false,
     ]);
@@ -114,11 +132,12 @@ export class KoraController {
     const started = await this.otpService.start({
       purpose: PURPOSE,
       contact: contactOf(dto),
+      requester: null,
       ip: clientIp(req),
       webOtpHost: webOtpHost(req),
     });
     if (!started.ok) {
-      throw otpRefusalException(started.error);
+      throw otpRefusalException(started.error, PURPOSE);
     }
     setCookie({
       res,
@@ -153,7 +172,7 @@ export class KoraController {
   ): Promise<KoraCodeVerifiedDto> {
     const codeToken = readCookie(req, KoraCookie.Code);
     if (!codeToken) {
-      throw otpRefusalException({ error: OtpError.CodeInvalid });
+      throw otpRefusalException({ error: OtpError.CodeInvalid }, PURPOSE);
     }
     const verified = await this.participantService.verifyCode({
       codeToken,
@@ -162,7 +181,11 @@ export class KoraController {
       timeZone: dto.timeZone ?? null,
     });
     if (!verified.ok) {
-      throw otpRefusalException(verified.error);
+      if (verified.error.error === KoraError.ProjectClosed) {
+        clearCookie(res, KoraCookie.Code);
+        throw signupsClosedException();
+      }
+      throw otpRefusalException(verified.error, PURPOSE);
     }
     clearCookie(res, KoraCookie.Code);
     if ("participant" in verified.value) {
@@ -205,10 +228,17 @@ export class KoraController {
       : R.failure(KoraError.SignupExpired);
     clearCookie(res, KoraCookie.Signup);
     if (!completed.ok) {
-      throw new BadRequestException(
-        "Your verification has expired. Verify your contact again.",
-        { description: KoraError.SignupExpired },
-      );
+      switch (completed.error) {
+        case KoraError.SignupExpired:
+          throw new BadRequestException(
+            "Your verification has expired. Verify your contact again.",
+            { description: KoraError.SignupExpired },
+          );
+        case KoraError.ProjectClosed:
+          throw signupsClosedException();
+        default:
+          throw new Error(`unknown error: ${completed.error satisfies never}`);
+      }
     }
     const { participant, signedUp, method } = completed.value;
     await this.sessionService.begin({

@@ -45,11 +45,17 @@ export function Navbar({
   announcement,
   offerInvite = true,
   hideNavLinks = false,
+  brand,
+  account,
 }: {
   overPrimary?: boolean;
   /** Drops the People/Guide/Progress and Partner links and the phone menu, and moves the logotype to the left. */
   hideNavLinks?: boolean;
   announcement?: ReactNode;
+  /** Replaces the logotype's link home. */
+  brand?: ReactNode;
+  /** Replaces the account button. */
+  account?: ReactNode;
   /** Off where the page is itself the signup an invitation leads to. */
   offerInvite?: boolean;
   /**
@@ -75,7 +81,10 @@ export function Navbar({
     if (!header) return;
     const root = document.documentElement.style;
     const publish = () =>
-      root.setProperty("--site-nav-height", `${header.offsetHeight}px`);
+      root.setProperty(
+        "--site-nav-height",
+        `${header.getBoundingClientRect().height}px`,
+      );
     publish();
     const observer = new ResizeObserver(publish);
     observer.observe(header);
@@ -165,12 +174,14 @@ export function Navbar({
           </nav>
         )}
 
-        <Link
-          to={HOME_HREF}
-          className="inline-flex min-h-11 items-center text-xl"
-        >
-          <Logotype onDark={light} />
-        </Link>
+        {brand ?? (
+          <Link
+            to={HOME_HREF}
+            className="inline-flex min-h-11 items-center text-xl"
+          >
+            <Logotype onDark={light} />
+          </Link>
+        )}
 
         <div className="flex items-center justify-end gap-3 md:gap-6">
           {/* The cluster sheds parts as the bar narrows so the menu button always
@@ -198,29 +209,31 @@ export function Navbar({
                 {NAV_PARTNER}
               </Link>
             )}
-            <Link
-              to={accountHref}
-              className={cn(
-                SITE_BUTTON,
-                inviteSignupHref
-                  ? "max-[560px]:hidden"
-                  : showSignup
-                    ? "max-[420px]:hidden"
-                    : "max-[310px]:hidden",
-                light
-                  ? "bg-white text-black hover:bg-zinc-100"
-                  : SITE_BUTTON_DARK,
-              )}
-              style={SITE_BUTTON_STYLE}
-            >
-              {accountLabel}
-              <SiteArrow
+            {account ?? (
+              <Link
+                to={accountHref}
                 className={cn(
-                  "size-2.5",
-                  showSignup ? "max-[470px]:hidden" : "max-[344px]:hidden",
+                  SITE_BUTTON,
+                  inviteSignupHref
+                    ? "max-[560px]:hidden"
+                    : showSignup
+                      ? "max-[420px]:hidden"
+                      : "max-[310px]:hidden",
+                  light
+                    ? "bg-white text-black hover:bg-zinc-100"
+                    : SITE_BUTTON_DARK,
                 )}
-              />
-            </Link>
+                style={SITE_BUTTON_STYLE}
+              >
+                {accountLabel}
+                <SiteArrow
+                  className={cn(
+                    "size-2.5",
+                    showSignup ? "max-[470px]:hidden" : "max-[344px]:hidden",
+                  )}
+                />
+              </Link>
+            )}
             {showSignup && (
               <span className="inline-flex items-center gap-1">
                 <Link

@@ -36,7 +36,7 @@ function dotPoint(dot: SVGElement): { clientX: number; clientY: number } {
 
 function whoRowLabels(): string[] {
   return Array.from(
-    svgIn("chart-who").querySelectorAll('text[x="4"][font-weight="650"]'),
+    svgIn("chart-who").querySelectorAll('text[x="4"][font-weight="600"]'),
   ).map((t) => t.textContent ?? "");
 }
 

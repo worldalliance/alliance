@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
+import { CohortAdmissionService } from "src/actions/cohort-admission.service";
 import { CohortResolutionSession } from "src/actions/cohort-resolution-session";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import {
@@ -44,6 +45,7 @@ export class ActionEventRecipientService {
     private readonly userService: UserService,
     private readonly tagService: TagService,
     private readonly cohortResolverService: CohortResolverService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   /**
@@ -57,8 +59,10 @@ export class ActionEventRecipientService {
     /** Share loads across calls within one request; see CohortResolverService.resolveCohortMemberIds. */
     session?: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
+    /** Leaves out members a part's row assigns the action as optional. */
+    requiredOnly?: boolean;
   }): Promise<Map<number, User[]>> {
-    const { entries, includeSuspended } = params;
+    const { entries, includeSuspended, requiredOnly } = params;
     if (entries.length === 0) return new Map();
     const session = params.session ?? new CohortResolutionSession();
     const resolvingActionIds = params.resolvingActionIds ?? new Set<number>();
@@ -81,6 +85,11 @@ export class ActionEventRecipientService {
     }
     // Await all cohort resolutions in parallel
     await Promise.all(cohortByAction.values());
+    const optionalRows = requiredOnly
+      ? await this.cohortAdmissionService.loadOptionalRowMemberIds(
+          entries.map(({ action }) => action.id),
+        )
+      : new Map<number, Set<number>>();
 
     // 3. Per-action filtering
     const result = new Map<number, User[]>();
@@ -98,15 +107,18 @@ export class ActionEventRecipientService {
       const deadlineDate = action.memberActionPhase.deadlineEvent?.date ?? null;
       const cohortMemberIds = await cohortByAction.get(action.id)!;
 
-      const eligible = allUsers.filter((user) =>
-        computeIsAssignedAndPresent({
-          user,
-          eventDate: event.date,
-          deadlineDate,
-          cohortMemberIds,
-          onboarding: action.onboarding,
-          includeSuspended,
-        }),
+      const optional = optionalRows.get(action.id);
+      const eligible = allUsers.filter(
+        (user) =>
+          !optional?.has(user.id) &&
+          computeIsAssignedAndPresent({
+            user,
+            eventDate: event.date,
+            deadlineDate,
+            cohortMemberIds,
+            onboarding: action.onboarding,
+            includeSuspended,
+          }),
       );
 
       result.set(action.id, eligible);
@@ -203,6 +215,20 @@ export class ActionEventRecipientService {
       }),
     ]);
 
+    // A part's row can make an action optional for some members only.
+    const optionalRows = excludeOptionalActions
+      ? await this.cohortAdmissionService.loadOptionalRowMemberIds(
+          actions.map((action) => action.id),
+        )
+      : new Map<number, Set<number>>();
+    for (const entry of perActionCohortMemberIds) {
+      const optional = optionalRows.get(entry.actionId);
+      if (optional?.size) {
+        entry.memberIds = new Set(
+          [...entry.memberIds].filter((id) => !optional.has(id)),
+        );
+      }
+    }
     const cohortByActionId = new Map(
       perActionCohortMemberIds.map((r) => [r.actionId, r.memberIds]),
     );

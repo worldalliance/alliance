@@ -1,5 +1,5 @@
 import { R } from "@alliance/common/result";
-import { Logger } from "@nestjs/common";
+import { BadRequestException, Logger } from "@nestjs/common";
 import { milliseconds } from "date-fns";
 import { ContractSuspenderWorker } from "src/actions/contract-suspender.worker";
 import {
@@ -8,11 +8,17 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
+import { Community } from "src/community/entities/community.entity";
 import { ContractService } from "src/contract/contract.service";
+import { renderEvent } from "src/eventlog/event-messages";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { EmailType, Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
 import { NotificationKind } from "src/notification-settings/notification-kind";
+import {
+  Notification,
+  NotificationCategory,
+} from "src/notifs/entities/notification.entity";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { Push } from "src/push/push.entity";
@@ -23,6 +29,7 @@ import {
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
+import { EntityManager } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   closeTestApp,
@@ -31,6 +38,7 @@ import {
   stubExpoClient,
   TestContext,
 } from "./e2e-test-utils";
+import { rendezvous } from "./rendezvous";
 
 describe("ContractSuspenderWorker (e2e)", () => {
   let ctx: TestContext;
@@ -213,14 +221,14 @@ describe("ContractSuspenderWorker (e2e)", () => {
       kind: "automatic",
       suspend: () => ctx.app.get(ContractSuspenderWorker).processSuspensions(),
       message:
-        /^\[\w+\]: Suspending contract for Suspended Member \(invited by Inviting Member\)\. failure code /,
+        "Contract suspended automatically for Suspended Member (invited by Inviting Member): they missed 3 action suites in a row.",
     },
     {
       kind: "manual",
       suspend: (userId: number) =>
         ctx.app.get(ContractService).suspendContract({ userId }),
       message:
-        /^Suspended Member \(invited by Inviting Member\) suspended their contract :\($/,
+        "Suspended Member (invited by Inviting Member) suspended their contract.",
     },
   ])(
     "names who invited the member in the $kind suspension alert",
@@ -242,14 +250,104 @@ describe("ContractSuspenderWorker (e2e)", () => {
 
       await suspend(member.id);
 
-      expect(sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: member.id,
-          message: expect.stringMatching(message),
-        }),
-      );
+      const [[event]] = sendMessage.mock.calls;
+      expect(event).toMatchObject({ userId: member.id });
+      expect(renderEvent(event).message).toBe(message);
     },
   );
+
+  const memberWithLeader = async (label: string) => {
+    const { member } = await suspendable(label, false);
+    await ctx.dataSource
+      .getRepository(User)
+      .update(member.id, { emailByDefault: true });
+    const userRepo = ctx.dataSource.getRepository(User);
+    const leader = await userRepo.save(
+      userRepo.create({
+        name: "Overlap Leader",
+        email: `suspension-${label}-leader@example.com`,
+        password: "Password123!",
+      }),
+    );
+    const communityRepo = ctx.dataSource.getRepository(Community);
+    await communityRepo.save(
+      communityRepo.create({
+        name: "Overlap Community",
+        description: "Overlap",
+        leaders: [leader],
+        users: [leader, member],
+      }),
+    );
+    jest
+      .spyOn(ctx.app.get(EventLogService), "sendMessage")
+      .mockResolvedValue(R.success(undefined));
+    return { member, leader };
+  };
+
+  const suspensionsAndRemovalNotices = async (params: {
+    member: User;
+    leader: User;
+  }) => ({
+    suspensions: await ctx.dataSource.getRepository(ContractEvent).countBy({
+      user: { id: params.member.id },
+      type: ContractEventType.SUSPENDED,
+    }),
+    removalNotices: await ctx.dataSource.getRepository(Notification).countBy({
+      user: { id: params.leader.id },
+      category: NotificationCategory.MemberSuspendedRemovedFromCommunity,
+    }),
+  });
+
+  it("suspends and notifies once when two runs overlap", async () => {
+    const { member, leader } = await memberWithLeader("overlap");
+    jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+    const worker = ctx.app.get(ContractSuspenderWorker);
+
+    await Promise.all([worker.suspendDue(), worker.suspendDue()]);
+
+    expect(await suspensionsAndRemovalNotices({ member, leader })).toEqual({
+      suspensions: 1,
+      removalNotices: 1,
+    });
+    expect(
+      await ctx.dataSource.getRepository(Mail).countBy({
+        to: member.email,
+        emailType: EmailType.ContractSuspended,
+      }),
+    ).toBe(1);
+  });
+
+  it("suspends once when two manual suspensions race", async () => {
+    const { member, leader } = await memberWithLeader("manual-race");
+    const contractService = ctx.app.get(ContractService);
+    const findBy = EntityManager.prototype.findBy;
+    const bothRead = rendezvous({ parties: 2, timeoutMs: 500 });
+    const read = jest
+      .spyOn(EntityManager.prototype, "findBy")
+      .mockImplementation(async function (this: EntityManager, entity, where) {
+        const rows = await findBy.call(this, entity, where);
+        if (entity === ContractEvent) await bothRead();
+        return rows;
+      });
+
+    const results = await Promise.allSettled([
+      contractService.suspendContract({ userId: member.id }),
+      contractService.suspendContract({ userId: member.id }),
+    ]);
+    read.mockRestore();
+
+    expect(results.map((result) => result.status).sort()).toEqual([
+      "fulfilled",
+      "rejected",
+    ]);
+    expect(
+      results.find((result) => result.status === "rejected")?.reason,
+    ).toBeInstanceOf(BadRequestException);
+    expect(await suspensionsAndRemovalNotices({ member, leader })).toEqual({
+      suspensions: 1,
+      removalNotices: 1,
+    });
+  });
 
   it("logs suspended and failed members by id, not name", async () => {
     const suspended = await suspendable("logged", false);

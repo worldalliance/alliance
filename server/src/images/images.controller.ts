@@ -24,10 +24,10 @@ import { create as contentDisposition } from "content-disposition";
 import type { Request, Response } from "express";
 import { pipeS3Object } from "src/s3/pipe-s3-object";
 import { OnlyThrottle } from "src/utils/throttle";
-import { requireEnv } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 import { UploadImageDto, UploadImageResponseDto } from "./dto/image.dto";
 import { IMAGE_DOWNLOAD_THROTTLE } from "./image-download-throttle.config";
-import { getImageSource, ImagesService } from "./images.service";
+import { cloudfrontSrc, getImageSource, ImagesService } from "./images.service";
 
 @Controller("images")
 export class ImagesController {
@@ -36,19 +36,19 @@ export class ImagesController {
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
-
   @Get(":key")
   @ApiOkResponse({ type: StreamableFile })
   async getImage(
     @Param("key") key: string,
     @Res() res: Response,
   ): Promise<void> {
-    if (!key) throw new NotFoundException();
+    if (!isUploadKey(key)) throw new NotFoundException();
+    const cdn = cloudfrontSrc(key);
+    // Cached for a day rather than a year, since the CloudFront domain can change.
+    if (cdn)
+      return res.set("Cache-Control", "public, max-age=86400").redirect(cdn);
 
-    await pipeS3Object({ s3: this.s3, bucket: this.bucket, key, res });
+    await pipeS3Object({ s3: this.s3, bucket: assetsBucket(), key, res });
   }
 
   @Get(":key/download")

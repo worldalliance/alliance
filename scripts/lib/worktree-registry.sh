@@ -97,6 +97,7 @@ record_problem() {
   [[ "$(record_field "$id" branch_from)" =~ ^([0-9a-f]{40}|[0-9a-f]{64})?$ ]] || { echo "has an invalid branch_from"; return 0; }
   [[ "$(record_field "$id" dir_added)" =~ ^1?$ ]] || { echo "has an invalid dir_added"; return 0; }
   [[ "$(record_field "$id" slot)" =~ ^[0-9]+$ ]] || { echo "has an invalid slot"; return 0; }
+  [[ "$(record_field "$id" created)" =~ ^[01]?$ ]] || { echo "has an invalid created"; return 0; }
 }
 
 # The checkout a command acts for: the one holding the working directory when it

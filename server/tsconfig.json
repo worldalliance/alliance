@@ -12,7 +12,19 @@
     "baseUrl": "./",
     "paths": {
       "src/*": ["./src/*"],
-      "@alliance/common/*": ["../common/src/*"]
+      "@alliance/common/*": ["../common/src/*"],
+      "@alliance/kora-review/schemas": ["../kora-review/src/schemas.ts"],
+      "@alliance/kora-review/convert": ["../kora-review/src/convert.ts"],
+      // `module: commonjs` resolves without package.json "exports", which is
+      // the only place this subpath is declared.
+      "@nestjs/locks/testing": [
+        "../node_modules/@nestjs/locks/dist/testing/index.d.ts"
+      ],
+      "@alliance/kora-review/types": ["../kora-review/src/types.gen.ts"],
+      "@alliance/kora-review/highlights": ["../kora-review/src/highlights.ts"],
+      "@alliance/kora-review/sample-export": [
+        "../kora-review/src/sample-export.ts"
+      ]
     },
     "incremental": true,
     "skipLibCheck": true,

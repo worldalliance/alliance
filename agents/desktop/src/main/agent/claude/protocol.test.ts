@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
-import { AgentEventKind, ImageMediaType } from "../session";
+import { AgentEventKind } from "../../../shared/agent-event";
+import { ImageMediaType } from "../session";
 import {
   CLAUDE_CODE_VERSION,
   ClaudeLineKind,
@@ -220,6 +221,15 @@ describe("parseClaudeLine", () => {
         kind: ClaudeLineKind.TurnEnded,
         error: "Claude Code ended the turn with error_max_turns.",
       }),
+    );
+  });
+
+  test("maps the init line to MessageRead and other system lines to no events", () => {
+    expect(line({ type: "system", subtype: "init" })).toEqual(
+      R.success({ kind: ClaudeLineKind.MessageRead }),
+    );
+    expect(line({ type: "system", subtype: "hook_started" })).toEqual(
+      R.success({ kind: ClaudeLineKind.Events, events: [] }),
     );
   });
 

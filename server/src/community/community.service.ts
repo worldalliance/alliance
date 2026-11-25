@@ -15,7 +15,8 @@ import {
 import { ImagesService } from "src/images/images.service";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
-import { loadedUserCommunities, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
+import { loadedUserCommunities } from "src/user/user.utils";
 import type { Relations } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { canManageCommunity } from "./community-permissions";

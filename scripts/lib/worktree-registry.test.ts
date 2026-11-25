@@ -70,6 +70,8 @@ test.each([
   ["branch_added", "1"],
   ["branch_from", "a".repeat(40)],
   ["dir_added", "1"],
+  ["created", "0"],
+  ["created", "1"],
 ])("%s=%s passes", (field, value) => {
   expect(problemAfter(`set_record_field ${ID} ${field} '${value}'`)).toBe("");
 });
@@ -95,6 +97,7 @@ test.each([
   ["branch_from", "main", "has an invalid branch_from"],
   ["dir_added", "yes", "has an invalid dir_added"],
   ["slot", "x", "has an invalid slot"],
+  ["created", "yes", "has an invalid created"],
 ])("%s=%s is refused", (field, value, problem) => {
   expect(problemAfter(`set_record_field ${ID} ${field} '${value}'`)).toContain(
     problem,

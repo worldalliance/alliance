@@ -226,7 +226,9 @@ export class TimelineFeedItemDto {
         this.actionEvent = new ActionEventDto(input.actionEvent);
         break;
       case TimelineFeedItemType.ActionUpdate:
-        this.actionUpdate = new ActionUpdateDto(input.actionUpdate);
+        this.actionUpdate = new ActionUpdateDto({
+          actionUpdate: input.actionUpdate,
+        });
         break;
       default:
         input satisfies never;

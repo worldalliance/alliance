@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import request from "supertest";
 import type { Repository } from "typeorm";
 import { ActionActivityService } from "../src/actions/action-activity.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
@@ -202,52 +203,142 @@ describe("Action.usersJoined recomputation (e2e)", () => {
     expect(decisionFind.mock.calls.length).toBe(1);
   });
 
-  it("loads the user population once and writes only changed counts", async () => {
+  it("loads the user population once per sweep", async () => {
     const { open, notStarted, notStartedTwin } = await setUp();
     await ctx.dataSource.query(`UPDATE action SET "usersJoined" = -1`);
     const userService = ctx.app.get(UserService);
     const fullLoad = jest.spyOn(userService, "findActiveUsersWithTags");
     const rosterLoad = jest.spyOn(userService, "findActiveUsersForRoster");
-    const update = jest.spyOn(
-      ctx.app.get<Repository<Action>>(getRepositoryToken(Action)),
-      "update",
-    );
 
     await participants.reloadAllActionUsersJoined();
-    const firstRunUpdates = update.mock.calls.length;
     await participants.reloadAllActionUsersJoined();
 
     expect({
       fullLoads: fullLoad.mock.calls.length,
       rosterLoads: rosterLoad.mock.calls.length,
-      firstRunUpdates,
-      secondRunUpdates: update.mock.calls.length - firstRunUpdates,
       stored: await storedCounts(),
     }).toEqual({
       fullLoads: 0,
       rosterLoads: 2,
-      firstRunUpdates: 2,
-      secondRunUpdates: 0,
       stored: { [open.id]: 3, [notStarted.id]: 4, [notStartedTwin.id]: 4 },
     });
   });
 
-  it("keeps a count written while the sweep computes", async () => {
-    const { open } = await setUp();
-    await ctx.dataSource.query(`UPDATE action SET "usersJoined" = -1`);
+  /** Lands `usersJoined` from a computation that started after the one under
+   * test, while that one is reading its inputs. */
+  const publishNewerWhileComputing = (params: {
+    actionId: number;
+    usersJoined: number;
+  }) => {
     const activities = ctx.app.get<Repository<ActionActivity>>(
       getRepositoryToken(ActionActivity),
     );
     const find = activities.find.bind(activities);
     jest.spyOn(activities, "find").mockImplementationOnce(async (options) => {
-      await ctx.dataSource
-        .getRepository(Action)
-        .update(open.id, { usersJoined: 99 });
+      await ctx.dataSource.query(
+        `UPDATE action SET "usersJoined" = $2,
+           "usersJoinedComputation" =
+             nextval(pg_get_serial_sequence('action', 'usersJoinedComputation'))
+         WHERE id = $1`,
+        [params.actionId, params.usersJoined],
+      );
       return find(options);
     });
+  };
+
+  it("keeps a newer computation's count over the sweep's, even the count the sweep read", async () => {
+    const { open, notStarted } = await setUp();
+    await ctx.dataSource.query(`UPDATE action SET "usersJoined" = -1`);
+    publishNewerWhileComputing({ actionId: open.id, usersJoined: -1 });
 
     await participants.reloadAllActionUsersJoined();
 
+    const stored = await storedCounts();
+    expect([stored[open.id], stored[notStarted.id]]).toEqual([-1, 4]);
+  });
+
+  it("keeps a newer computation's count over a single action's", async () => {
+    const { open } = await setUp();
+    publishNewerWhileComputing({ actionId: open.id, usersJoined: 99 });
+
+    await participants.reloadUsersJoinedForAction(open.id);
+
     expect((await storedCounts())[open.id]).toBe(99);
+  });
+
+  it("keeps a newer sweep's count over a single action's, even when the sweep changed nothing", async () => {
+    const { open, expected } = await setUp();
+    await participants.reloadAllActionUsersJoined();
+    const activities = ctx.app.get<Repository<ActionActivity>>(
+      getRepositoryToken(ActionActivity),
+    );
+    const withdrawal = await activities.save({
+      actionId: open.id,
+      userId: expected[open.id][0].id,
+      type: ActionActivityType.USER_WONT_COMPLETE,
+    });
+    const find = activities.find.bind(activities);
+    jest.spyOn(activities, "find").mockImplementationOnce(async (options) => {
+      const seen = await find(options);
+      await activities.delete(withdrawal.id);
+      await participants.reloadAllActionUsersJoined();
+      return seen;
+    });
+
+    await participants.reloadUsersJoinedForAction(open.id);
+
+    expect((await storedCounts())[open.id]).toBe(3);
+  });
+
+  it("doesn't restore a stale count when an admin saves the action", async () => {
+    const { open } = await setUp();
+    const actions = ctx.app.get<Repository<Action>>(getRepositoryToken(Action));
+    const findOne = actions.findOne.bind(actions);
+    const stored = () => actions.findOneByOrFail({ id: open.id });
+    let reloaded: Action | undefined;
+    jest.spyOn(actions, "findOne").mockImplementationOnce(async (options) => {
+      const loaded = await findOne(options);
+      await participants.reloadUsersJoinedForAction(open.id);
+      reloaded = await stored();
+      return loaded;
+    });
+    await ctx.dataSource.query(`UPDATE action SET "usersJoined" = -1`);
+
+    await request(ctx.app.getHttpServer())
+      .patch(`/actions/${open.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ name: "Renamed" })
+      .expect(200);
+
+    const saved = await stored();
+    expect(saved.usersJoined).toBe(3);
+    expect(saved.usersJoinedComputation).toBe(reloaded?.usersJoinedComputation);
+  });
+
+  it("lets recomputations land on an imported action", async () => {
+    const { open } = await setUp();
+    await ctx.dataSource.query(
+      `UPDATE action SET "usersJoinedComputation" = 9000000000000 WHERE id = $1`,
+      [open.id],
+    );
+    const admin = (req: request.Test) =>
+      req.set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+    const exported = await admin(
+      request(ctx.app.getHttpServer()).get(`/actions/export/${open.id}`),
+    ).expect(200);
+
+    const imported = await admin(
+      request(ctx.app.getHttpServer()).post("/actions/pasteJson"),
+    )
+      .send({ body: JSON.stringify(exported.body) })
+      .expect(201);
+    await ctx.dataSource.query(
+      `UPDATE action SET "usersJoined" = -1 WHERE id = $1`,
+      [imported.body.id],
+    );
+
+    await participants.reloadUsersJoinedForAction(imported.body.id);
+
+    expect((await storedCounts())[imported.body.id]).toBe(0);
   });
 });

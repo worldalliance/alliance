@@ -28,6 +28,7 @@ export default function HomeGeneralUpdates({
           {sortedGeneralUpdates.map((generalUpdate) => (
             <LargeGeneralUpdateCard
               key={generalUpdate.id}
+              id={generalUpdate.id}
               title={generalUpdate.name}
               schema={generalUpdate.schema}
               onDismiss={() => onDismiss(generalUpdate.id)}

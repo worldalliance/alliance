@@ -28,4 +28,12 @@ describe("account email links", () => {
       "https://alt.example.org/resetpassword?token=tok",
     );
   });
+
+  it("links to whichever of the two URLs is off the legacy domain", () => {
+    process.env.APP_URL = "https://staging.thealliance.org";
+    process.env.ALT_APP_URL = "https://staging.worldalliance.org";
+    expect(verifyEmailUrl("tok")).toBe(
+      "https://staging.thealliance.org/verifyEmail?token=tok",
+    );
+  });
 });

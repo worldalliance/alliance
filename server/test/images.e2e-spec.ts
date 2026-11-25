@@ -65,6 +65,32 @@ describe("Images (e2e)", () => {
     expect(res.body).toBeInstanceOf(Buffer);
   });
 
+  it("redirects to CloudFront where the environment serves uploads there", async () => {
+    const original = { ...process.env };
+    Object.assign(process.env, {
+      NODE_ENV: "staging",
+      USE_CLOUDFRONT: "true",
+      CLOUDFRONT_DOMAIN: "cdn.example.org",
+    });
+    try {
+      await request(ctx.app.getHttpServer())
+        .get("/images/mock-file.webp")
+        .expect(302)
+        .expect("Location", "https://cdn.example.org/mock-file.webp")
+        .expect("Cache-Control", "public, max-age=86400");
+    } finally {
+      process.env = original;
+    }
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("refuses keys below the bucket root, such as members' MMS attachments", async () => {
+    await request(ctx.app.getHttpServer())
+      .get(`/images/${encodeURIComponent("mms-media/0b7f")}`)
+      .expect(404);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
   describe("GET /images/:key/download", () => {
     const key = "123.webp";
 

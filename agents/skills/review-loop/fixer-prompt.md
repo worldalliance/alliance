@@ -4,13 +4,15 @@ You are the Fixer in the role chart of `agents/skills/review-loop/SKILL.md`. Tha
 
 This is round {{ROUND}} of the review loop on branch `{{BRANCH}}`, in this checkout. The loop's base is `{{BASE}}`, where the branch meets `origin/main`. Never change that commit or any commit before it, and never push: the branch is pushed after the loop's last round.
 
-Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` (schema: `agents/skills/review-base/findings.schema.json`).
+Reviewers each reviewed one commit of `{{BASE}}..{{TIP}}` with `/review-base`; commits not due a review this round have no findings this round. Their findings are in `{{FINDINGS}}/<sha>.json` from a Claude reviewer and `{{FINDINGS}}/<sha>.codex.json` from a Codex reviewer, either or both (schema: `agents/skills/review-base/findings.schema.json`). The two reviewers rate severity differently, Codex far more often must-fix, so classify each finding on its merits.
 
 Read `agents/skills/review-base/SKILL.md`. You are applying fixes, so its **Applying fixes** governs your git writes: commit, amend, rebase, reorder and split without asking. Its limit on commits before the base commit means this loop's base here: every commit after `{{BASE}}` is yours to change.
 
+Before your first change to the repository, add your bullet to the task's provenance `SESSIONS.md` per `agents/skills/provenance/SKILL.md`.
+
 ## 1. Ledger and answers
 
-`{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists, and find earlier lines on the same work by their requirement or decision as well as their handle; a finding repeats one only when it describes the same defect. Don't re-file a follow-up, revive a dropped issue or restore cut work unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
+`{{LEDGER}}` records every issue from earlier rounds and its classification. Read it first if it exists, and find earlier lines on the same work by their requirement or decision as well as their handle; a finding repeats one only when it describes the same defect. Don't re-file a follow-up, revive a dropped or judgement issue or restore cut work unless this round's evidence shows the earlier call was wrong; if so, say so in the ledger.
 
 Questions asked so far, with the user's answers: {{ANSWERS}}. Apply each answer before anything else. An answer to a question asked this round overrides an earlier classification of this round; rewrite the ledger line of each classification it changes, giving the answer as its reason. "I don't know" or "I don't care" leaves the choice to you: take your recommendation and record it in the task's provenance `DECISIONS.md`; an answer that is a requirement goes in its `REQUIREMENTS.md`. Record both per `agents/skills/provenance/SKILL.md`, which says what a deferral must state.
 
@@ -23,6 +25,7 @@ Merge findings that describe the same defect, including across commits. Verify e
 - **fix-now**: anything this branch introduced or made worse that we would otherwise have to change later. No code we know is bad gets pushed.
 - **follow-up**: real but pre-existing, and this branch doesn't make it worse; or a finding that would otherwise be fix-now whose fix would add scope the user didn't ask for, once a follow-up issue was chosen for it by the user or by you on a choice that fell to you, unless the finding is a cut.
 - **drop**: incorrect. Give the reason.
+- **judgement**: correct, but about an agent doc whose reader settles the case by its own judgement, per **Agent docs** in `agents/skills/review/SKILL.md`. The text stays; give the reason.
 - **cut**: a finding that would otherwise be fix-now, on work the user made optional or conditional on its cost ("only if it's easy", or "I don't care" whether it gets done), per the task's provenance, once the ledger's requirement-or-decision column shows that work drew a fix-now finding in an earlier round. Remove the work instead of fixing it, record the cut in `DECISIONS.md`, and file a follow-up for it. Required work and a choice the user deferred ("I don't care how") are never cut.
 
 These classes judge the whole branch. A finding's `pre-existing` field compares one commit with its parent, so it only informs them, and its `follow-up` field says only which commit a fix belongs in.
@@ -39,13 +42,13 @@ Fix every fix-now issue. Follow `AGENTS.md` and the skills it names, especially 
 
 Every commit you made or rewrote must pass its checks on its own, and so must the tip. Run over each of them the `implement` skill's **Checks** that it touches, for example `git rebase --exec '<checks>' {{BASE}}`, in the background with a `timeout` that outlasts them. Finish with every change committed, nothing untracked, and `{{BRANCH}}` checked out.
 
-You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. A fix that would add scope the user didn't ask for, such as migrating other tasks' files or adding a new test harness, check or tool, is a question: ask it with a rough cost, recommending a follow-up issue. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report. A subject the user made conditional or said "I don't care" about is yours: decide its questions yourself, scope ones included, and record each choice in `DECISIONS.md`.
+You may change the task's provenance `DECISIONS.md` freely when a fix calls for it. A fix that would add scope the user didn't ask for, such as migrating other tasks' files or adding a new test harness, check or tool, is a question: ask it with a rough cost, recommending a follow-up issue. When a fix hinges on a choice the code can't answer (behavior, copy, scope, what the member sees: the kind of question `agents/skills/spec/SKILL.md` says to ask), don't guess. Fix everything that doesn't depend on the answer, then ask in your report. A subject the user made conditional or said "I don't care" about is yours: decide its questions yourself, scope ones included, and record each choice in `DECISIONS.md`. Once the ledger's requirement-or-decision column shows a choice the user deferred ("I don't care how") drew a fix-now finding in an earlier round, fix this round's findings on it by simplifying or narrowing that choice where that fixes them, shortening or removing the code or text they land in rather than adding a clause or case for each, and record the simpler choice in `DECISIONS.md`.
 
 ## 5. Report
 
-Your final message, once every commit is final:
+Once every commit is final, stop every background task, monitor and wakeup you started, since `claude -p` waits on them before it exits and the round waits on you. Then your final message:
 
-- how many issues you classified fix-now, follow-up, drop and cut;
+- how many issues you classified fix-now, follow-up, drop, judgement and cut;
 - the commits you changed, and the unchanged commits that need another review: those a change below them affects, and those with a fix-now finding that you or an earlier fixer of this round fixed without changing their diff, such as in another commit or by a reword;
 - each check you could not get to pass, naming the commit, the check and its log;
 - each follow-up you could not file, with the reason;

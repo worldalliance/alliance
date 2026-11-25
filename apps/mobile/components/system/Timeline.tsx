@@ -16,12 +16,14 @@ export default function Timeline({
   const childArray = Children.toArray(children);
 
   return (
-    <View className={cn("relative pl-2", className)} {...props}>
-      <View className="absolute left-[5px] top-2 bottom-4 w-0.5 bg-zinc-100" />
-
-      <View className="gap-y-4">
-        {childArray.map((child, index) => (
-          <View key={index} className="relative">
+    <View className={cn("pl-2", className)} {...props}>
+      {childArray.map((child, index) => {
+        const last = index === childArray.length - 1;
+        return (
+          <View key={index} className={cn("relative", !last && "pb-4")}>
+            {last ? null : (
+              <View className="absolute left-[-3px] top-2 -bottom-2 w-0.5 bg-zinc-100" />
+            )}
             <View
               className={cn(
                 "absolute left-[-11px] top-1 w-[18px] h-[18px] rounded-full border-[3px] border-white",
@@ -30,8 +32,8 @@ export default function Timeline({
             />
             <View className="pl-3">{child}</View>
           </View>
-        ))}
-      </View>
+        );
+      })}
     </View>
   );
 }

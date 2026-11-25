@@ -8,6 +8,7 @@ import { withCount } from "@alliance/common/plural";
 import { imageSrcFromKey } from "@alliance/sharedweb/lib/imageSrc";
 import { Check, Minus } from "lucide-react";
 import type { ReactNode } from "react";
+import { BOOLEAN_ANSWER_LABELS } from "../../lib/booleanAnswerLabels";
 
 export type CellContent = {
   /** Full text. Searched, sorted on, and shown once the row expands. */
@@ -97,6 +98,11 @@ const listEntryText = (params: {
     .join(" · ");
 };
 
+const singleOption: CellRenderer = ({ field, value }) => {
+  const [label] = optionLabels({ field, values: selectedValues(value) });
+  return label ? { text: label } : EMPTY_CELL;
+};
+
 const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
   text: plainText,
   textarea: plainText,
@@ -109,6 +115,13 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
   timezone: plainText,
   custom: plainText,
   checkbox: ({ value }) => booleanCell({ value, yes: "Yes", no: "No" }),
+  toggle: ({ value }) =>
+    booleanCell({
+      value,
+      yes: BOOLEAN_ANSWER_LABELS.toggle.on,
+      no: BOOLEAN_ANSWER_LABELS.toggle.off,
+    }),
+  timePicker: plainText,
   contract: forKind("contract", ({ field, value }) =>
     booleanCell({
       value,
@@ -116,14 +129,9 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
       no: field.noLabel.trim() || "Not signed",
     }),
   ),
-  radio: ({ field, value }) => {
-    const [label] = optionLabels({ field, values: selectedValues(value) });
-    return label ? { text: label } : EMPTY_CELL;
-  },
-  select: ({ field, value }) => {
-    const [label] = optionLabels({ field, values: selectedValues(value) });
-    return label ? { text: label } : EMPTY_CELL;
-  },
+  radio: singleOption,
+  conversation: singleOption,
+  select: singleOption,
   multiselect: ({ field, value }) => {
     const labels = optionLabels({ field, values: selectedValues(value) });
     return labels.length ? { text: labels.join(", ") } : EMPTY_CELL;
@@ -155,6 +163,7 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
       ),
     };
   },
+  image: (cell) => CELL_RENDERERS.file(cell),
   list: forKind("list", ({ field, value }) => {
     const cards = Array.isArray(value) ? value : [];
     const entries = cards.flatMap((card) =>

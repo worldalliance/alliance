@@ -114,7 +114,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
                 htmlFor="startDate"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Start Date
+                Start date
               </label>
               <input
                 type="datetime-local"
@@ -134,7 +134,7 @@ const GeneralUpdateScheduleFields: React.FC<Props> = ({
                 htmlFor="endDate"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                End Date
+                End date
               </label>
               <input
                 type="datetime-local"

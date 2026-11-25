@@ -7,7 +7,7 @@ description: Read before editing any *.dto.ts or *.controller.ts in server/.
 
 ## Return types
 
-A controller method declares an explicit return type: one DTO class, or `Promise<void>` for no-content. Never a primitive, a union, a nullable, or an inferred type.
+A controller method that answers with JSON declares an explicit return type: one DTO class, or `Promise<void>` for no-content. Never a primitive, a union, a nullable, or an inferred type.
 
 ```ts
 // ✅
@@ -22,7 +22,7 @@ async getThing() { ... }
 
 NestJS serializes a `null` return as a 200 with an empty body, not JSON `null`. The hey-api fetch client parses that as `{}` — truthy, so it survives `value ?? fallback` and callers expecting `null` get a malformed DTO that crashes downstream.
 
-Every endpoint also needs `@ApiOkResponse({ type })` (or `@ApiResponse`) naming that exact DTO — `type` omitted for void.
+Every such endpoint also needs `@ApiOkResponse({ type })` (or `@ApiResponse`) naming that exact DTO — `type` omitted for void. An endpoint that answers with something other than JSON, such as metrics text, a webhook's TwiML or a redirect, is outside these rules; document what it actually returns, such as a redirect's status with `@ApiResponse({ status })`.
 
 ```ts
 // ❌ — decorator says ThingDto, method returns OtherDto
@@ -49,6 +49,8 @@ class IsEligibleDto {
 ## Guards
 
 Every new endpoint needs `@UseGuards(X)` with a guard from `src/auth/guards/`.
+
+The exception is an infrastructure probe called without credentials or an `Origin` header, such as `GET /` by the backend deploy and `GET /health/db` by the monitoring host: it takes `@Public()` and no guard.
 
 ## DTO classes
 

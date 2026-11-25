@@ -1,0 +1,85 @@
+/* Banners */
+.kora-review .banner {
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-size: 15px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+}
+.kora-review .banner.coach {
+  border-color: var(--hl);
+  background: color-mix(in srgb, var(--hl) 22%, var(--card));
+}
+.kora-review .banner .grow {
+  min-width: 0;
+}
+.kora-review .banner .link {
+  min-height: 32px;
+}
+.kora-review .marks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+.kora-review .marks > .rank-h {
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+}
+.kora-review .marks > .back-btn {
+  flex: none;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 16px;
+}
+.kora-review .back-btn .ic {
+  width: 18px;
+  height: 18px;
+}
+.kora-review .rank {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.kora-review .rank-h {
+  font-size: 22px;
+  font-weight: 800;
+}
+.kora-review .sh-acts {
+  display: flex;
+  gap: 10px;
+}
+.kora-review .sh-note {
+  display: grid;
+  gap: 6px;
+  position: relative;
+}
+.kora-review .sh-note label {
+  font-weight: 600;
+  font-size: 15px;
+}
+.kora-review .sh-note textarea {
+  resize: none;
+  min-height: 64px;
+  line-height: 1.4;
+}
+@media (max-width: 520px) {
+  .kora-review .sh-note textarea {
+    min-height: 88px;
+  }
+}
+/* room for the whole placeholder on phones */
+.kora-review .cnt {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font: 700 11px var(--f-mono);
+  color: var(--muted);
+}
+.kora-review .big .ic.lg {
+  width: 30px;
+  height: 30px;
+}

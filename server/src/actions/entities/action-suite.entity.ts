@@ -6,12 +6,14 @@ import {
   DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
+import { SuitePartition } from "src/suite-partitions/entities/suite-partition.entity";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   ManyToMany,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { ActionEvent } from "./action-event.entity";
@@ -69,6 +71,12 @@ export class ActionSuite {
   @IsOptional()
   @Type(() => ReminderGroup)
   reminderGroups?: Relation<ReminderGroup>[];
+
+  /** Set when the suite's partition decides its actions' cohorts; null when they don't. */
+  @OneToOne(() => SuitePartition, (partition) => partition.suite)
+  @IsOptional()
+  @Allow()
+  partition?: Relation<SuitePartition> | null;
 
   // Methods
 

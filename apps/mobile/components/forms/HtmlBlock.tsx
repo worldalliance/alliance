@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
+import { getSitePageUrl } from "../../lib/config";
+import { loadsInHtmlBlock } from "../../lib/htmlBlockLoad";
 import { useHandleLinkPress } from "../../lib/linkPress";
 
 // Authored HTML brings its own <style>, so these only set defaults it can
@@ -50,12 +52,18 @@ function documentFor(html: string): string {
 export default function HtmlBlock({ html }: { html: string }) {
   const [height, setHeight] = useState(0);
   const handleLinkPress = useHandleLinkPress();
+  // A path on the site, so relative links resolve as in a browser, that no link
+  // targets, so a link to the home page isn't taken for the document itself.
+  const documentUrl = getSitePageUrl("/html-block");
 
   return (
     <View style={{ height }}>
       <WebView
-        source={{ html: documentFor(html) }}
+        source={{ html: documentFor(html), baseUrl: documentUrl }}
         originWhitelist={["*"]}
+        // Android blocks http images on the https base url unless this allows
+        // them.
+        mixedContentMode="compatibility"
         injectedJavaScript={REPORT_HEIGHT}
         onMessage={({ nativeEvent }) => {
           const reported = Number(nativeEvent.data);
@@ -64,9 +72,7 @@ export default function HtmlBlock({ html }: { html: string }) {
           }
         }}
         onShouldStartLoadWithRequest={({ url }) => {
-          // Everything but the initial in-memory document is a tapped link,
-          // which belongs in the browser or an in-app route.
-          if (url === "about:blank") return true;
+          if (loadsInHtmlBlock({ url, documentUrl })) return true;
           handleLinkPress(url);
           return false;
         }}

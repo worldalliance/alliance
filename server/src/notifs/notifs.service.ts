@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { chunk } from "es-toolkit";
 import { actionUpdateEntrySendTime } from "src/actions/action-update-visibility";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { Comment } from "src/forum/entities/comment.entity";
 import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
@@ -336,15 +337,42 @@ export class NotifsService {
     );
   }
 
-  async hasNotifWithGroupingKey(
-    userId: number,
-    groupingKey: string,
-  ): Promise<boolean> {
-    return (
-      (await this.notifsRepository.count({
-        where: { user: { id: userId }, groupingKey },
-      })) > 0
-    );
+  /** Saves the notification unless its recipient already has one with its
+   * grouping key, checking under that key's lock so overlapping callers save
+   * one. */
+  async sendNotifOnce(
+    notif: CreateNotifParams & { groupingKey: string },
+  ): Promise<void> {
+    // Building reads preferences on its own pool connection, so it stays
+    // outside the transaction.
+    const row = await this.createNotif(notif);
+    await this.notifsRepository.manager.transaction(async (manager) => {
+      await lockUntilCommit(manager, notif.groupingKey);
+      if (
+        !(await this.hasNotifWithGroupingKey({
+          userId: recipientId(notif.user),
+          groupingKey: notif.groupingKey,
+          manager,
+        }))
+      ) {
+        await manager.save(row);
+      }
+    });
+  }
+
+  async hasNotifWithGroupingKey(params: {
+    userId: number;
+    groupingKey: string;
+    manager?: EntityManager;
+  }): Promise<boolean> {
+    const {
+      userId,
+      groupingKey,
+      manager = this.notifsRepository.manager,
+    } = params;
+    return manager.exists(Notification, {
+      where: { user: { id: userId }, groupingKey },
+    });
   }
 
   private buildUnreadContent(

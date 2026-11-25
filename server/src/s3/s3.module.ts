@@ -8,7 +8,8 @@ import { env } from "../config/env";
       provide: "S3_CLIENT",
       useFactory: () =>
         new S3Client({
-          // credentials are picked up automatically from the instance profile
+          // Credentials come from the SDK's default chain: the instance role when
+          // deployed, the alliance-dev profile scripts/with-secrets.sh sets locally.
           region: env("AWS_REGION"),
         }),
     },

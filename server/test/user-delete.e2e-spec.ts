@@ -3,7 +3,12 @@ import { EventLogService } from "src/eventlog/eventlog.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { User } from "../src/user/entities/user.entity";
-import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  closeTestApp,
+  createTestApp,
+  signAccessToken,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Admin account deletion (e2e)", () => {
   let ctx: TestContext;
@@ -23,6 +28,22 @@ describe("Admin account deletion (e2e)", () => {
 
   afterAll(async () => {
     await closeTestApp(ctx.app);
+  });
+
+  it("logs a member's deletion request under their name", async () => {
+    const member = await createTarget("asks-to-leave@example.com");
+
+    await request(ctx.app.getHttpServer())
+      .post("/user/requestAccountDeletion")
+      .set("Authorization", `Bearer ${signAccessToken(ctx.jwtService, member)}`)
+      .expect(201);
+
+    const entry = await eventLogRepo.findOneOrFail({
+      where: { event: EventType.AccountDeletionRequested, userId: member.id },
+    });
+    expect(entry.message).toBe(
+      "Doomed Member asked to delete their account. Delete it from their admin page.",
+    );
   });
 
   it("deletes the account and everything keyed to it", async () => {

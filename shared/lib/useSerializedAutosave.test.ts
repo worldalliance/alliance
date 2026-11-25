@@ -33,7 +33,12 @@ type HarnessApi = SerializedAutosaveState & {
   acknowledged: number;
 };
 
-function mountAutosave(send: (candidate: SavePlan) => Promise<void>) {
+function mountAutosave(
+  send: (candidate: SavePlan) => Promise<void>,
+  onSaveFailed: (error: unknown, candidate: SavePlan) => string | null = (
+    error,
+  ) => (error instanceof Error ? error.message : "save failed"),
+) {
   return renderHook((): HarnessApi => {
     const [draft, setDraft] = useState(0);
     const [acknowledged, setAcknowledged] = useState(0);
@@ -47,8 +52,7 @@ function mountAutosave(send: (candidate: SavePlan) => Promise<void>) {
       candidate,
       save: send,
       onSaved: (saved) => setAcknowledged(saved.value),
-      errorMessage: (error) =>
-        error instanceof Error ? error.message : "save failed",
+      onSaveFailed,
       debounceMs: 1,
     });
 
@@ -185,6 +189,23 @@ describe("useSerializedAutosave", () => {
       requests[1]!.resolve();
       await requests[1]!.promise;
     });
+  });
+
+  it("holds a failure the caller handled without reporting it", async () => {
+    const send = jest.fn(() => Promise.reject(new Error("refused")));
+    const onSaveFailed = jest.fn(() => null);
+    const harness = mountAutosave(send, onSaveFailed);
+
+    act(() => harness.current.edit(1));
+    await letAutosaveRun();
+    await letAutosaveRun();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(onSaveFailed).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ value: 1 }),
+    );
+    expect(harness.current.saveError).toBeNull();
   });
 
   it("ignores a completion from before an authoritative reset", async () => {

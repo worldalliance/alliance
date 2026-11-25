@@ -37,7 +37,7 @@ const CreateActionMenu = () => {
     setPasteJsonLoading(false);
     if (result.ok) {
       navigate(`/actions/${result.value.id}`);
-      success("Action pasted successfully");
+      success("Action pasted");
     } else {
       error(result.error);
     }
@@ -45,19 +45,16 @@ const CreateActionMenu = () => {
 
   return (
     <Menu.Root>
-      <Menu.Trigger
-        aria-label="Create"
-        title="Create"
-        className="shrink-0 rounded border border-green bg-green p-1 text-white hover:bg-[#4d8c1d] cursor-pointer"
-      >
-        <Plus size={16} />
+      <Menu.Trigger className="flex shrink-0 items-center gap-1 rounded-md border border-green-700 bg-green-700 px-2 py-1 text-sm font-medium text-white hover:bg-green-800 cursor-pointer">
+        <Plus size={16} aria-hidden />
+        Create
       </Menu.Trigger>
       <DropdownMenuContent align="end" className="min-w-36">
         <DropdownMenuItem onClick={() => navigate("/actions/new")}>
-          New Action
+          New action
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate("/new-suite")}>
-          New Suite
+          New suite
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handlePasteJson} disabled={pasteJsonLoading}>
           Paste JSON

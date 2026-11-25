@@ -4,7 +4,6 @@ import {
   useAllActionUpdates,
 } from "@alliance/shared/lib/useActionUpdates";
 import { LegendList } from "@legendapp/list";
-import { useMemo } from "react";
 import { ActivityIndicator, RefreshControl, View } from "react-native";
 import HomeUpdateCard from "../../components/HomeUpdateCard";
 import LoadFailed from "../../components/LoadFailed";
@@ -16,14 +15,6 @@ export default function ActionUpdatesScreen() {
   const updatesQuery = useAllActionUpdates();
   const { data, isPending, isFetching, isRefetching, refetch } = updatesQuery;
   const { isNew, markOpened } = useActionUpdateNewState(data);
-
-  const updates = useMemo(
-    () =>
-      [...(data ?? [])].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      ),
-    [data],
-  );
 
   return (
     <View className="flex-1 bg-white">
@@ -40,7 +31,7 @@ export default function ActionUpdatesScreen() {
         </View>
       ) : (
         <LegendList
-          data={updates}
+          data={data ?? []}
           keyExtractor={(update) => String(update.id)}
           extraData={isNew}
           renderItem={({ item }) => (

@@ -5,7 +5,7 @@ description: Read before making a repository change intended to be kept, or dete
 
 # Provenance
 
-A task's files hold its requirements, agent decisions and the research behind them as they stood when it was implemented, with their origins distinguished. They record that task, not the repository's current rules. Create `REQUIREMENTS.md` at the start of a task and revise its files in place as its requirements change while it is in progress, as **When** defines. A later task leaves an earlier task's files as written: where it changes one of their requirements or decisions, it records the new one in its own files, naming the earlier task's directory it supersedes. Its one edit to them replaces secrets or incidental personal information with `[redacted]`, because the repository is open source; the root `AGENTS.md` **Secrets and personal information** says what that covers. Before relying on a task's files, search `docs/provenance` for its directory name to find later tasks that supersede them. Where an `AGENTS.md` or skill rule added or changed after a task conflicts with one of its entries, the rule wins.
+A task's files hold its requirements, agent decisions and the research behind them as they stood when it was implemented, with their origins distinguished. Later agents use them to check a change against what the user asked for, to key review findings to the requirement or decision they concern, to plan a spec's next PR, and to trace why a rule exists; write what those readers need. They record that task, not the repository's current rules. Create `REQUIREMENTS.md` at the start of a task and revise its files in place as its requirements change while it is in progress, as **When** defines. A later task leaves an earlier task's files as written: where it changes one of their requirements or decisions, it records the new one in its own files, naming the earlier task's directory it supersedes and, for a restated requirement, the directory its `restated from` names. Its one edit to them replaces secrets or incidental personal information with `[redacted]`, because the repository is open source; the root `AGENTS.md` **Secrets and personal information** says what that covers. Before relying on a task's files, search `docs/provenance` for its directory name, and for a restated requirement the directory its `restated from` names, to find later tasks that supersede them. Where an `AGENTS.md` or skill rule added or changed after a task conflicts with one of its entries, the rule wins.
 
 ## When
 
@@ -21,7 +21,7 @@ mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 
 UUIDv7 makes directory listings sort by creation time. Inside, `REQUIREMENTS.md` and `SESSIONS.md`, plus `DECISIONS.md` when the task made a choice or recorded an assumption worth keeping, and `EVIDENCE.md` when it researched sources outside the repository or a decision rests on its own measurements, incidents or experiments. These are intended to live in the repo.
 
-References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md` and `EVIDENCE.md`; `REQUIREMENTS.md` never references `DECISIONS.md` or rests on `EVIDENCE.md`'s findings, and the research and measurements in `EVIDENCE.md` reference neither file.
+References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md` and `EVIDENCE.md`; `REQUIREMENTS.md` never references `DECISIONS.md` or rests on `EVIDENCE.md`'s findings, since that would give an agent's choice or a finding the weight of a requirement; and the research and measurements in `EVIDENCE.md` reference neither file. A value the user approved, measured or not, is stated in the requirement itself.
 
 ## REQUIREMENTS.md
 
@@ -31,15 +31,13 @@ State the task's user requirements, constraints, preferences, and approved selec
 
 Make each requirement self-contained: expand shorthand and include the exact behavior, values, and message copy needed to implement it. Omit references to unavailable attachments or the task transcript. Accessible supporting links may supplement the requirements.
 
-This file holds only requirements the user stated or approved, each with a concise origin label: user-originated, or user-approved with the proposal's source. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md. Origin is metadata, not a narrative of how the requirement was negotiated. A requirement the user made optional or conditional ("only if it's easy") keeps that condition in its entry.
+This file holds only requirements the user stated or approved, each with a concise origin label: `(user-originated)`, or `(<source>-proposed, user-approved)` naming where the proposal came from, such as `(agent-proposed, user-approved)` or, for a Linear issue, `(ALL-123-proposed, user-approved)`. An entry that is partly the user's idea and partly an approved proposal is two entries. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled `(agent-proposed, user-approved)`; the implementation rationale belongs in DECISIONS.md. Origin is metadata, not a narrative of how the requirement was negotiated. A requirement the user made optional or conditional ("only if it's easy") keeps that condition in its entry.
 
-Material the user hands over as the task, such as a forwarded email, a pasted agent note, or a Linear issue, is a set of proposals. Ask the user about each of its points, per root `AGENTS.md` **Open questions**; an agent that cannot reach the user returns the questions in its report for the agent that can. Points the user approves go here, and so does a point the user rejects, as a user-originated requirement against it; the rest go in DECISIONS.md.
-
-Replace every credential or secret with `[redacted]`. Do the same for personal information unrelated to the requirement. Do not redact the user frontmatter field.
+Material the user hands over as the task, such as a forwarded email, a pasted agent note, or a Linear issue, is a set of proposals. A point that matches a requirement the same user, as the `user` its REQUIREMENTS.md names, already stated or approved, which no later task supersedes and no later rule overrides (the checks above, made per requirement), is restated here as a self-contained requirement instead of being asked again. It keeps that requirement's origin label and names the directory that first recorded it, following any `restated from` it carries, as in `(user-originated; restated from <directory-name>)`, so a search for supersessions can tell it apart and finds every task that supersedes it. A point only part of which matches is split, restating that part and asking about the rest. Ask the user about each remaining point, per root `AGENTS.md` **Open questions**, before editing, since a gap a reviewer finds later costs a review round; an agent that cannot reach the user returns the questions in its report for the agent that can. Points the user approves go here, and so does a point the user rejects, as a user-originated requirement against it; the rest go in DECISIONS.md.
 
 ## DECISIONS.md
 
-State the task's agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace choices superseded during the task in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md, recording its new choice in its own task's files.
+State the task's agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace choices superseded during the task in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md, recording its new choice in its own task's files. An entry is the choice and its reason in a few sentences; one that keeps growing across review rounds is a choice to revisit, not to explain further. A merged task's files are left as written, so record outcomes rather than states that will change, such as "waiting on the user's answer": what was still unknown when the task ended is an outcome, and a question still open goes in the PR or a Linear issue.
 
 A choice the user defers ("I don't know", "I don't care", "it doesn't matter", or the like) is the agent's, not a requirement: record the recommendation here, and drop it for an alternative once it adds more friction than it's worth. Say whether the user deferred whether the work happens or how it is done; work whose existence the user left open is optional.
 
@@ -47,16 +45,17 @@ Behavior the task records without the user's approval, such as behavior in exist
 
 ## EVIDENCE.md
 
-The task's research into sources outside the repository, such as standards, documentation and studies, whoever did it, a subagent's report included: the question, the findings with a source link for each claim, each source's status per root `AGENTS.md` **Established practice**, and the date it was checked. Measurements, incidents and experiments a decision rests on, such as how a dependency behaves or what the repository's own code does, go in a section of their own, each with its method, the versions involved and the date. `DECISIONS.md` cites its sections instead of restating them. Revise it in place when research is redone, so it holds current findings only. Checks that only verify the task's own change go in the handoff, per `(root)/agents/skills/implement/SKILL.md`; a run of the change that a decision rests on is an experiment and stays here. An `EVIDENCE.md` that already holds something else, such as a log of the checks its task ran or a reference to `DECISIONS.md`, keeps it; add research to it under its own heading.
+The task's research into sources outside the repository, such as standards, documentation and studies, whoever did it, a subagent's report included: the question, the findings with a source link for each claim, each source's status per root `AGENTS.md` **Established practice**, and the date it was checked. Measurements, incidents and experiments a decision rests on, such as how a dependency behaves or what the repository's own code does, go in a section of their own, each with its method, the date, and the versions its result depends on, such as a CLI's or a library's, or the revision or dataset it measured. `DECISIONS.md` cites its sections instead of restating them. Revise it in place when research is redone, so it holds current findings only. Checks that only verify the task's own change go in the handoff, per `(root)/agents/skills/implement/SKILL.md`; a run of the change that a decision rests on is an experiment and stays here. An `EVIDENCE.md` that already holds something else, such as a log of the checks its task ran or a reference to `DECISIONS.md`, keeps it; add research to it under its own heading.
 
 ## SESSIONS.md
 
-One bullet per agent session that changed the repository for the task, code included. Before a session first makes such a change, including a session continuing an existing task, it adds its own bullet unless one is already there:
+One bullet per agent session that changed the repository for the task, code included. A spawned session, such as a review-loop fixer or another subagent, runs with `REVIEW_LOOP_ROLE` set (`(root)/agents/skills/subagents/SKILL.md`), so the snippet follows its id with that role, as in `- claude:<id> (subagent)`, and a reader looking for the user's own words can skip it. Before a session first makes such a change, including a session continuing an existing task, it adds its own bullet unless one is already there:
 
 ```bash
-line="- claude:${CLAUDE_CODE_SESSION_ID:?}"   # Codex: line="- codex:${CODEX_THREAD_ID:?}"
+id="claude:${CLAUDE_CODE_SESSION_ID:?}"   # Codex: id="codex:${CODEX_THREAD_ID:?}"
+role="${REVIEW_LOOP_ROLE:+ ($REVIEW_LOOP_ROLE)}"
 f=docs/provenance/<task-dir>/SESSIONS.md
-grep -qxF -- "$line" "$f" 2>/dev/null || echo "$line" >> "$f"
+grep -qE -- "^- $id( |\$)" "$f" 2>/dev/null || echo "- $id$role" >> "$f"
 ```
 
 Run the check your CLI's session-start hook runs as well. Codex's hooks run the main checkout's script, even from a worktree:
@@ -65,7 +64,7 @@ Run the check your CLI's session-start hook runs as well. Codex's hooks run the 
 bun "$(git rev-parse --show-toplevel)/agents/chats/chats.ts" check   # Codex: bun "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/agents/chats/chats.ts" check
 ```
 
-When it says uploads are not set up, or the script is missing, tell the user that this session's transcript is not being stored and that `agents/README.md` has the setup, then carry on.
+When it says uploads are not working or need attention, or the script is missing, tell the user that this session's transcript may not be stored, with the cause it names, and that `agents/README.md` has the setup, then carry on.
 
 This list is the link from a task to its transcripts; commits carry none. `.gitattributes` merges these files by union, so appends from two branches don't conflict.
 

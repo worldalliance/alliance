@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { deployedConfigEnv, deployedConfigFor } from "./deployed-config";
+import {
+  deployedConfigEnv,
+  deployedConfigFor,
+  domainMove,
+} from "./deployed-config";
 import { isDeployed, NodeEnv } from "./node-env";
 
 describe("deployedConfigFor", () => {
@@ -38,5 +42,30 @@ describe("deployedConfigEnv", () => {
         WAITLIST_PUBLIC_MAIL_DAILY_CAP: undefined,
       }).WAITLIST_PUBLIC_MAIL_DAILY_CAP,
     ).toBeUndefined();
+  });
+});
+
+describe("domainMove", () => {
+  test("both environments have cut over", () => {
+    expect(domainMove(deployedConfigFor(NodeEnv.Staging))).toEqual({
+      legacyDomain: "staging.worldalliance.org",
+      newDomain: "staging.thealliance.org",
+    });
+    expect(domainMove(deployedConfigFor(NodeEnv.Production))).toEqual({
+      legacyDomain: "worldalliance.org",
+      newDomain: "thealliance.org",
+    });
+  });
+
+  test("throws unless ALT_DOMAIN_NAME alone is legacy", () => {
+    for (const [DOMAIN_NAME, ALT_DOMAIN_NAME] of [
+      ["worldalliance.org", "thealliance.org"],
+      ["thealliance.org", "staging.thealliance.org"],
+      ["worldalliance.org", "staging.worldalliance.org"],
+    ]) {
+      expect(() => domainMove({ DOMAIN_NAME, ALT_DOMAIN_NAME })).toThrow(
+        "must be on",
+      );
+    }
   });
 });

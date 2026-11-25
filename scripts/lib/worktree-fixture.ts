@@ -14,6 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { slotPorts } from "../../common/src/dev-ports-base";
 import { fixtureGit } from "./fixture-git";
 
 const SCRIPTS_DIR = join(import.meta.dir, "..");
@@ -89,6 +90,7 @@ type ScriptParams = {
   args: string[];
   cwd?: string;
   checkout?: string;
+  env?: Record<string, string>;
 };
 
 export class WorktreeFixture {
@@ -157,7 +159,7 @@ export class WorktreeFixture {
     const [command, ...args] = this.command(params);
     const result = spawnSync(command, args, {
       cwd: params.cwd ?? this.main,
-      env: this.env(),
+      env: { ...this.env(), ...params.env },
       encoding: "utf8",
     });
     return {
@@ -173,7 +175,7 @@ export class WorktreeFixture {
     const base = join(this.state, `spawn-${++this.spawned}`);
     const proc = Bun.spawn(this.command(params), {
       cwd: params.cwd ?? this.main,
-      env: this.env(),
+      env: { ...this.env(), ...params.env },
       stdout: Bun.file(`${base}.out`),
       stderr: Bun.file(`${base}.err`),
     });
@@ -199,12 +201,17 @@ export class WorktreeFixture {
 
   create(
     name: string,
-    params: { cwd?: string; args?: string[] } = {},
+    params: {
+      cwd?: string;
+      args?: string[];
+      env?: Record<string, string>;
+    } = {},
   ): RunResult {
     return this.run({
       script: "new-worktree.sh",
       args: [name, ...(params.args ?? [])],
       cwd: params.cwd,
+      env: params.env,
     });
   }
 
@@ -241,10 +248,7 @@ export class WorktreeFixture {
         JSON.stringify({
           name,
           slot,
-          server: 3005 + slot * 100,
-          frontend: 5173 + slot * 100,
-          admin: 5174 + slot * 100,
-          mobile: 8085 + slot * 100,
+          ...slotPorts(slot),
           database: `alliance_${name}`,
           testDatabase: `alliance_${name}_test`,
         }),

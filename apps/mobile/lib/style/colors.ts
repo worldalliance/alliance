@@ -41,6 +41,7 @@ export const colors = {
   // UI colors
   border: "#d6d3d1",
   borderLight: "#e4e4e7",
+  surfaceMuted: "#f4f4f5",
   error: "#ef4444",
   success: "#22c55e",
   warning: "#f59e0b",

@@ -14,6 +14,7 @@ import { ElementConditions } from "./conditions/VisibilityConditions";
 import { useCustomValidatorDrafts } from "./customValidatorDrafts";
 import { CustomValidatorSelect } from "./CustomValidatorSelect";
 import {
+  extractsIntoTarget,
   getExtractionLabel,
   hasExtractionEnabled,
   supportsExtraction,
@@ -146,11 +147,7 @@ export function FieldWrapper<T extends AnyField>({
   const handleCheckboxExtractionTargetChange = (
     target: CheckboxExtractionTarget | "",
   ) => {
-    if (
-      !isCurrentFormField ||
-      (field.kind !== "checkbox" && field.kind !== "custom")
-    )
-      return;
+    if (!isCurrentFormField || !extractsIntoTarget(field)) return;
     onUpdate({
       autoExtractUserData: target ? { target } : undefined,
     } as unknown as Partial<T>);

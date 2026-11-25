@@ -1,7 +1,11 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { isEqual } from "es-toolkit";
 import { useMemo } from "react";
-import type { ExpressionBuffer } from "../components/form-fields/conditions/expressionBuffers";
+import {
+  moveElementBuffers,
+  type ElementExpressionsMove,
+  type ExpressionBuffer,
+} from "../components/form-fields/conditions/expressionBuffers";
 import type { CustomValidatorDraft } from "../components/form-fields/customValidatorDrafts";
 import { mapCustomValidatorIds } from "./customValidatorIds";
 import { useDraftHistory } from "./useDraftHistory";
@@ -114,6 +118,11 @@ export function useFormDraft(initialSchema: () => FormSchema) {
             expressions: { ...draft.expressions, [key]: buffer },
           };
         }),
+      moveElementExpressions: (move: ElementExpressionsMove) =>
+        commit((draft) => ({
+          ...draft,
+          expressions: moveElementBuffers(draft.expressions, move),
+        })),
       /** Rewrites every step to the validators Save created. */
       resolveValidatorDrafts: (
         created: ReadonlyMap<number, CreatedValidator>,

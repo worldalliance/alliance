@@ -66,6 +66,8 @@ export type NotifPriority = 'low' | 'high';
  */
 export type ActionCategory = 'meta' | 'environment' | 'poverty' | 'democracy' | 'technology';
 
+export type ActionTaskKind = 'form' | 'kora_review';
+
 export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 export type CustomActionStat = 'none' | 'users_invited';
@@ -231,7 +233,7 @@ export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder
 
 export type EmailStatus = 'pending' | 'sent' | 'failed';
 
-export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code';
+export type EmailType = 'verification' | 'password_reset' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'forum_reply' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended' | 'contract_reinstated' | 'contract_reminder' | 'waitlist_confirmation' | 'waitlist_link' | 'waitlist_staff' | 'otp_code' | 'kora_launch' | 'kora_more_reviews';
 
 export type Mail = {
     id: number;
@@ -245,11 +247,15 @@ export type Mail = {
     clickedLink: boolean;
 };
 
+export type MmsDirection = 'inbound' | 'outbound';
+
 export type Mms = {
     id: number;
     to: string;
     from: string;
     body: string;
+    direction: MmsDirection;
+    memberPhoneNumber: string;
     status: string;
     twilioSid: string;
     errorCode: number | null;
@@ -417,6 +423,7 @@ export type Action = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -822,6 +829,7 @@ export type UserDto = {
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
+    phoneNumberVerified: boolean;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
     lastContractEvent?: ContractEventDto;
@@ -858,7 +866,7 @@ export type SessionTokensDto = {
     refresh_token: string;
 };
 
-export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired' | 'review_account';
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired' | 'review_account' | 'not_configured';
 
 export type MobileOAuthSignInDto = {
     session?: SessionTokensDto;
@@ -915,6 +923,13 @@ export type OAuthLinkDto = {
 export type MobileOAuthLinkHandoffDto = {
     handoff: string;
     proof: string;
+};
+
+export type WebHandoffDto = {
+    /**
+     * Single use, valid for 60 seconds
+     */
+    code: string;
 };
 
 export type ClusterSummaryDto = {
@@ -986,7 +1001,6 @@ export type UserPropertyPresenceDto = {
     over18: boolean;
     clusterId: boolean;
     staffTitle: boolean;
-    switchedDomainAt: boolean;
     referredById: boolean;
     shareInfoPublicly: boolean;
 };
@@ -996,6 +1010,46 @@ export type MyVisibilityContextDto = {
     userPropertyHasValue: UserPropertyPresenceDto;
     firstContractSignedAt?: string;
     completedActionCount: number;
+};
+
+export type AdminUserListItemDto = {
+    id: number;
+    name: string;
+    phoneNumber: string | null;
+    preferredReminderTime: string | null;
+    timeZone: string | null;
+    shareEmailWithCommunityLead: boolean;
+    sharePhoneNumberWithCommunityLead: boolean;
+    switchedDomainAt: string | null;
+    admin: boolean;
+    staff: boolean;
+    ambassador: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
+    referralCode: string;
+    customCityString: string | null;
+    anonymous: boolean;
+    shareInfoPublicly: boolean;
+    formDataPreference: PublicFormResponseDefault;
+    undergoingGroupAssignment: boolean;
+    referredById: number | null;
+    referralSource: ReferralSource;
+    referredByCampaignId: number | null;
+    tags?: Array<Tag>;
+    communities?: Array<Community>;
+    leaderOfIds: Array<number>;
+    clusterId: number | null;
+    email: string;
+    phoneNumberVerified: boolean;
+    hasActiveContract: boolean;
+    contractEvents?: Array<ContractEventDto>;
+    lastContractEvent?: ContractEventDto;
+    oauthAccounts?: Array<OAuthAccountDto>;
+    hasPassword: boolean;
+    /**
+     * The profilePicture column itself: an upload key or an external url. `profilePicture` is that value rendered as a url.
+     */
+    storedProfilePicture: string | null;
 };
 
 export type UserCityCountDto = {
@@ -1054,6 +1108,7 @@ export type UserAdminDetailDto = {
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
+    phoneNumberVerified: boolean;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
     lastContractEvent?: ContractEventDto;
@@ -1443,6 +1498,34 @@ export type OnetimeInviteEdgeDto = {
     invitedUserId: number;
 };
 
+export type StartPhoneCodeDto = {
+    /**
+     * E.164
+     */
+    phoneNumber: string;
+};
+
+export type PendingPhoneCodeDto = {
+    /**
+     * Send back with the code to verify it
+     */
+    challengeToken: string;
+    /**
+     * Where the code went, partly hidden
+     */
+    maskedDestination: string;
+    resendAvailableAt: string;
+    expiresAt: string;
+};
+
+export type VerifyPhoneCodeDto = {
+    /**
+     * From the response that sent the code
+     */
+    challengeToken: string;
+    code: string;
+};
+
 export type StreamableFile = {
     [key: string]: unknown;
 };
@@ -1464,6 +1547,211 @@ export type RecordLinkOpeningDto = {
     destination: string;
     platform: LinkOpeningPlatform;
     observedAt: string;
+};
+
+export type ThreadMemberDto = {
+    id: number;
+    name: string;
+    timeZone: string | null;
+};
+
+export type ThreadSummaryDto = {
+    threadId: string;
+    phoneNumber: string;
+    members: Array<ThreadMemberDto>;
+    /**
+     * The latest inbound or staff text
+     */
+    lastMessageBody: string;
+    lastMessageDirection: MmsDirection;
+    lastMessageAt: string;
+};
+
+export type ThreadListDto = {
+    /**
+     * Up to `limit` threads, latest text first
+     */
+    threads: Array<ThreadSummaryDto>;
+    hasMore: boolean;
+};
+
+export type NeedsReplyMemberDto = {
+    userId: number;
+    name: string;
+    /**
+     * The member's latest text that still needs a reply; STOP and START texts and handled texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the member's oldest text that no staff reply has followed and staff haven't marked handled arrived
+     */
+    waitingSince: string;
+};
+
+export type NeedsReplyThreadDto = {
+    threadId: string;
+    /**
+     * May be a short code or sender id
+     */
+    phoneNumber: string;
+    members: Array<ThreadMemberDto>;
+    /**
+     * The latest text that still needs a reply; STOP and START texts and handled texts are skipped
+     */
+    lastMessageBody: string;
+    /**
+     * When the oldest text that no staff reply has followed and staff haven't marked handled arrived
+     */
+    waitingSince: string;
+};
+
+/**
+ * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
+ */
+export type ReplyState = 'needs_reply' | 'handled' | 'answered';
+
+export type MmsThreadEventKind = 'marked_handled' | 'marked_needs_reply';
+
+export type MmsThreadEventDto = {
+    id: number;
+    kind: MmsThreadEventKind;
+    /**
+     * Null while that staff member is deleted
+     */
+    markedByName: string | null;
+    createdAt: string;
+};
+
+export type MmsMediaStatus = 'copying' | 'ready' | 'unavailable';
+
+export type MmsMediaDto = {
+    id: number;
+    contentType: string;
+    status: MmsMediaStatus;
+    /**
+     * Safe to render in an <img>
+     */
+    inline: boolean;
+};
+
+export type MmsMessageDto = {
+    id: number;
+    body: string;
+    direction: MmsDirection;
+    status: string;
+    errorCode: number | null;
+    errorMessage: string | null;
+    createdAt: string;
+    /**
+     * True for texts staff wrote, even once the sender is deleted; false for automated and inbound texts
+     */
+    sentByStaff: boolean;
+    sentByName: string | null;
+    /**
+     * Staff actions taken right after this text, oldest first
+     */
+    events: Array<MmsThreadEventDto>;
+    media: Array<MmsMediaDto>;
+};
+
+export type NumberThreadDto = {
+    threadId: string;
+    /**
+     * May be a short code or sender id
+     */
+    phoneNumber: string;
+    /**
+     * Non-deleted members with this number
+     */
+    members: Array<ThreadMemberDto>;
+    /**
+     * False for a number staff can't text, such as a short code; opt-out and the reply window are reported separately in optedOut and replyWindowClosed
+     */
+    textable: boolean;
+    optedOut: boolean;
+    /**
+     * True for a number with no member that sent no text in the last 30 days
+     */
+    replyWindowClosed: boolean;
+    /**
+     * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
+     */
+    replyState: ReplyState;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
+};
+
+export type SendStaffTextDto = {
+    body: string;
+    /**
+     * The newest text the sender saw, or null if they saw none. The send is refused with 409 and error `newer_texts` if the thread has a newer text not sent by the sender. If the thread doesn't contain this text, a member's send is refused with 409 and error `number_changed`, and a send by thread id with 400
+     */
+    afterId?: number | null;
+};
+
+export type MarkThreadDto = {
+    /**
+     * The newest text staff could see. The mark is shown after it, and marking handled leaves later texts needing a reply
+     */
+    throughId: number;
+};
+
+export type MmsThreadDto = {
+    /**
+     * Null when the member has no phone number or it has no thread row yet
+     */
+    threadId: string | null;
+    phoneNumber: string | null;
+    /**
+     * False when the member has no phone number or one staff can't text; opt-out is reported separately in optedOut
+     */
+    textable: boolean;
+    optedOut: boolean;
+    /**
+     * Whether the number's latest texts need a reply, were marked handled, or were answered (or there are none)
+     */
+    replyState: ReplyState;
+    /**
+     * Up to 100 texts, oldest first: the newest, or those sent before `before`
+     */
+    messages: Array<MmsMessageDto>;
+    /**
+     * Older texts can be loaded with `before`
+     */
+    hasOlder: boolean;
+};
+
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached' | 'phone_number_moved';
+
+export type EventLogUserDto = {
+    id: number;
+    displayName: string;
+};
+
+export type EventLogDto = {
+    id: string;
+    event: EventType;
+    message: string;
+    blob: {
+        [key: string]: unknown;
+    } | null;
+    createdAt: string;
+    userId: number | null;
+    user?: EventLogUserDto;
+};
+
+export type EventLogListDto = {
+    items: Array<EventLogDto>;
+    totalCount: number;
+    page: number;
+    limit: number;
+    totalPages: number;
 };
 
 export type GetShareLinkDto = {
@@ -1739,31 +2027,102 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted' | 'join_request' | 'admin_role_changed' | 'waitlist_mail_cap_reached';
-
-export type EventLogUserDto = {
-    id: number;
-    displayName: string;
+export type ChannelDefaultsDto = {
+    inApp: boolean;
+    push: boolean;
+    text: boolean;
+    email: boolean;
 };
 
-export type EventLogDto = {
-    id: string;
-    event: EventType;
-    message: string;
-    blob: {
-        [key: string]: unknown;
-    } | null;
-    createdAt: string;
-    userId: number | null;
-    user?: EventLogUserDto;
+export type NotificationKind = 'action_announced' | 'action_reminders' | 'missed_deadline' | 'action_updates' | 'group_members_with_uncompleted_tasks' | 'contract_suspended' | 'contract_reinstated' | 'comments_and_replies' | 'messages' | 'friend_requests' | 'friend_request_accepted' | 'likes' | 'group_member_joined' | 'member_joined_community' | 'community_assigned' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'new_member_referred' | 'recruiting_goals' | 'community_invite_created' | 'community_invite_accepted' | 'community_invite_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+
+export type NotificationSection = 'actions' | 'groups' | 'forum_and_messages' | 'friends_and_likes';
+
+export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
+
+export type NotificationCellDto = {
+    channel: NotificationChannel;
+    /**
+     * null follows the channel default
+     */
+    override: boolean | null;
+    /**
+     * Whether the member wants this cell now
+     */
+    enabled: boolean;
+    editable: boolean;
 };
 
-export type EventLogListDto = {
-    items: Array<EventLogDto>;
-    totalCount: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+export type KindSettingsDto = {
+    kind: NotificationKind;
+    label: string;
+    section: NotificationSection;
+    required: boolean;
+    /**
+     * What the kind says, with sample names
+     */
+    example: string;
+    cells: Array<NotificationCellDto>;
+};
+
+export type ChannelReachabilityDto = {
+    /**
+     * A valid phone number is on file
+     */
+    textablePhoneNumber: boolean;
+    /**
+     * The number replied STOP
+     */
+    textStopped: boolean;
+};
+
+export type NotificationSettingsDto = {
+    defaults: ChannelDefaultsDto;
+    kinds: Array<KindSettingsDto>;
+    reachability: ChannelReachabilityDto;
+};
+
+export type UpdateChannelDefaultsDto = {
+    inApp?: boolean;
+    push?: boolean;
+    text?: boolean;
+    email?: boolean;
+};
+
+export type UpdateNotificationCellDto = {
+    kind: NotificationKind;
+    channel: NotificationChannel;
+    /**
+     * null removes the override so the cell follows the default
+     */
+    override: boolean | null;
+};
+
+export type UpdateNotificationSettingsDto = {
+    defaults?: UpdateChannelDefaultsDto;
+    cells?: Array<UpdateNotificationCellDto>;
+};
+
+export type PreferenceSource = 'member' | 'migrated' | 'new_account';
+
+export type NotificationOverrideAdminDto = {
+    kind: NotificationKind;
+    label: string;
+    channel: NotificationChannel;
+    enabled: boolean;
+    source: PreferenceSource;
+    /**
+     * Whether the override decides a send; false on a kind the member can't set now, such as a leader-only kind for a member who leads no group
+     */
+    inEffect: boolean;
+};
+
+export type NotificationSettingsAdminDto = {
+    defaults: ChannelDefaultsDto;
+    /**
+     * Every stored override, including ones on kinds the member can't see now
+     */
+    overrides: Array<NotificationOverrideAdminDto>;
 };
 
 export type CreateCommunityDto = {
@@ -1926,104 +2285,6 @@ export type CreateMessageDto = {
     replyToId?: string;
 };
 
-export type ChannelDefaultsDto = {
-    inApp: boolean;
-    push: boolean;
-    text: boolean;
-    email: boolean;
-};
-
-export type NotificationKind = 'action_announced' | 'action_reminders' | 'missed_deadline' | 'action_updates' | 'group_members_with_uncompleted_tasks' | 'contract_suspended' | 'contract_reinstated' | 'comments_and_replies' | 'messages' | 'friend_requests' | 'friend_request_accepted' | 'likes' | 'group_member_joined' | 'member_joined_community' | 'community_assigned' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'new_member_referred' | 'recruiting_goals' | 'community_invite_created' | 'community_invite_accepted' | 'community_invite_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
-
-export type NotificationSection = 'actions' | 'groups' | 'forum_and_messages' | 'friends_and_likes';
-
-export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
-
-export type NotificationCellDto = {
-    channel: NotificationChannel;
-    /**
-     * null follows the channel default
-     */
-    override: boolean | null;
-    /**
-     * Whether the member wants this cell now
-     */
-    enabled: boolean;
-    editable: boolean;
-};
-
-export type KindSettingsDto = {
-    kind: NotificationKind;
-    label: string;
-    section: NotificationSection;
-    required: boolean;
-    /**
-     * What the kind says, with sample names
-     */
-    example: string;
-    cells: Array<NotificationCellDto>;
-};
-
-export type ChannelReachabilityDto = {
-    /**
-     * A valid phone number is on file
-     */
-    textablePhoneNumber: boolean;
-    /**
-     * The number replied STOP
-     */
-    textStopped: boolean;
-};
-
-export type NotificationSettingsDto = {
-    defaults: ChannelDefaultsDto;
-    kinds: Array<KindSettingsDto>;
-    reachability: ChannelReachabilityDto;
-};
-
-export type UpdateChannelDefaultsDto = {
-    inApp?: boolean;
-    push?: boolean;
-    text?: boolean;
-    email?: boolean;
-};
-
-export type UpdateNotificationCellDto = {
-    kind: NotificationKind;
-    channel: NotificationChannel;
-    /**
-     * null removes the override so the cell follows the default
-     */
-    override: boolean | null;
-};
-
-export type UpdateNotificationSettingsDto = {
-    defaults?: UpdateChannelDefaultsDto;
-    cells?: Array<UpdateNotificationCellDto>;
-};
-
-export type PreferenceSource = 'member' | 'migrated' | 'new_account';
-
-export type NotificationOverrideAdminDto = {
-    kind: NotificationKind;
-    label: string;
-    channel: NotificationChannel;
-    enabled: boolean;
-    source: PreferenceSource;
-    /**
-     * Whether the override decides a send; false on a kind the member can't set now, such as a leader-only kind for a member who leads no group
-     */
-    inEffect: boolean;
-};
-
-export type NotificationSettingsAdminDto = {
-    defaults: ChannelDefaultsDto;
-    /**
-     * Every stored override, including ones on kinds the member can't see now
-     */
-    overrides: Array<NotificationOverrideAdminDto>;
-};
-
 export type ContractDescriptionItem = {
     point: string;
     subtext: string;
@@ -2098,6 +2359,59 @@ export type ReassignAllClustersResultDto = {
 
 export type UpdateClusterDto = {
     displayName: string;
+};
+
+export type KoraReviewPhase = 'reviewing' | 'finished' | 'none_left' | 'not_active';
+
+export type KoraTranscriptPreviewDto = {
+    transcript: {
+        [key: string]: unknown;
+    };
+    contentHash: string;
+};
+
+export type KoraReviewAssignmentDto = {
+    /**
+     * The batchId the review tool echoes
+     */
+    id: string;
+    /**
+     * Requested after finishing an earlier one
+     */
+    extra: boolean;
+    /**
+     * How many transcripts the assignment asks for
+     */
+    size: number;
+    /**
+     * Those given so far; the next comes from the next endpoint
+     */
+    transcripts: Array<KoraTranscriptPreviewDto>;
+    savedExport: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type KoraReviewStateDto = {
+    phase: KoraReviewPhase;
+    /**
+     * Opaque; the only identity the tool sees
+     */
+    reviewerId: string;
+    collectProfile: boolean;
+    /**
+     * Categories the reviewer opted out of in any assignment
+     */
+    optOutCategories: Array<string>;
+    /**
+     * Has finished at least one assignment
+     */
+    reviewed: boolean;
+    /**
+     * Reviews finished in extra assignments
+     */
+    extraReviews: number;
+    assignment?: KoraReviewAssignmentDto;
 };
 
 export type ActionReviewerResponseDto = {
@@ -2191,7 +2505,7 @@ export type UserActionRelation = 'completed' | 'none' | 'declined' | 'dismissed'
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
-export type ViewerOptionalReason = 'contract_gap';
+export type ViewerOptionalReason = 'contract_gap' | 'partition_part';
 
 export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
 
@@ -2267,6 +2581,7 @@ export type ActionDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2429,6 +2744,7 @@ export type AdminActionListItemDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2600,6 +2916,7 @@ export type AdminActionDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2812,6 +3129,7 @@ export type CreateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number | null;
+    taskKind?: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -2910,6 +3228,7 @@ export type UpdateActionDto = {
      * Time estimate in minutes
      */
     timeEstimate?: number | null;
+    taskKind?: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -3089,6 +3408,7 @@ export type ExportActionDto = {
      * Time estimate in minutes
      */
     timeEstimate: number | null;
+    taskKind: ActionTaskKind;
     /**
      * Form associated with the action
      */
@@ -3525,6 +3845,10 @@ export type ActionSuiteDto = {
     events: Array<ActionEventDto>;
     reminderGroups: Array<ReminderGroupDto>;
     generalUpdates: Array<GeneralUpdateDto>;
+    /**
+     * Whether the suite is partitioned, so its partition decides its actions' participants and optional work.
+     */
+    isPartitioned: boolean;
 };
 
 export type CreateActionSuiteDto = {
@@ -3911,6 +4235,385 @@ export type UpdatePostSettingsDto = {
     tags?: UpdatePostTagsDto;
 };
 
+export type KoraParticipantCountDto = {
+    count: number;
+};
+
+export type KoraProjectStatus = 'pending' | 'active' | 'closed';
+
+export type KoraProjectDto = {
+    status: KoraProjectStatus;
+};
+
+export type KoraParticipantDto = {
+    id: string;
+    name: string;
+    /**
+     * The email or phone signed in with, partly hidden
+     */
+    maskedContact: string;
+};
+
+export type OtpChannel = 'email' | 'sms';
+
+export type PendingKoraCodeDto = {
+    channel: OtpChannel;
+    /**
+     * Where the code went, partly hidden
+     */
+    maskedDestination: string;
+    resendAvailableAt: string;
+    expiresAt: string;
+};
+
+export type KoraParticipantStateDto = {
+    participant: KoraParticipantDto | null;
+    /**
+     * A code this browser asked for and has not used
+     */
+    pendingCode: PendingKoraCodeDto | null;
+    /**
+     * A verified contact is waiting on a name
+     */
+    signupPending: boolean;
+};
+
+export type StartKoraCodeDto = {
+    /**
+     * Send this or `phoneNumber`
+     */
+    email?: string;
+    /**
+     * E.164; send this or `email`
+     */
+    phoneNumber?: string;
+};
+
+export type VerifyKoraCodeDto = {
+    /**
+     * The device's IANA timezone, when it could be detected
+     */
+    timeZone?: string | null;
+    code: string;
+};
+
+export type KoraCodeVerifiedDto = {
+    /**
+     * Null when the new participant still has to give a name
+     */
+    participant: KoraParticipantDto | null;
+};
+
+export type CompleteKoraSignupDto = {
+    /**
+     * The device's IANA timezone, when it could be detected
+     */
+    timeZone?: string | null;
+    name: string;
+};
+
+export type KoraAdminProjectDto = {
+    status: KoraProjectStatus;
+    /**
+     * Whether the project may be made active now
+     */
+    canActivate: boolean;
+    /**
+     * Participants not yet told the reviews are open
+     */
+    toNotify: number;
+    /**
+     * Reviewers who finished and haven't been told about the newest batch
+     */
+    moreToNotify: number;
+};
+
+export type UpdateKoraProjectDto = {
+    status: KoraProjectStatus;
+};
+
+export type KoraNotifyQueuedDto = {
+    /**
+     * Participants the launch message is being sent to
+     */
+    queued: number;
+};
+
+export type KoraAdminParticipantDto = {
+    id: string;
+    name: string;
+    email: string | null;
+    /**
+     * E.164
+     */
+    phoneNumber: string | null;
+    timeZone: string | null;
+    createdAt: string;
+    /**
+     * Providers connected besides the contact's own code
+     */
+    providers: Array<OAuthProvider>;
+};
+
+export type KoraAdminAbandonedSignupDto = {
+    id: string;
+    channel: OtpChannel;
+    /**
+     * The email address or E.164 mobile number
+     */
+    destination: string;
+    /**
+     * Set when a provider, not a code, verified the contact
+     */
+    provider: OAuthProvider | null;
+    verifiedAt: string;
+    /**
+     * The contact has since become a participant
+     */
+    recovered: boolean;
+};
+
+export type KoraAdminOverviewDto = {
+    participants: Array<KoraAdminParticipantDto>;
+    abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
+};
+
+export type KoraAdminCategoryDto = {
+    category: string;
+    /**
+     * Pairs in open batches
+     */
+    pairs: number;
+    /**
+     * Reviews its pairs still need to reach their targets
+     */
+    reviewsNeeded: number;
+    /**
+     * Reviewers who opted out of it
+     */
+    optedOut: number;
+};
+
+export type KoraAdminCategoriesDto = {
+    categories: Array<KoraAdminCategoryDto>;
+};
+
+export type KoraAdminConversationDto = {
+    id: string;
+    category: string;
+    /**
+     * When its batch was uploaded
+     */
+    uploadedAt: string;
+    /**
+     * Its batch's review target
+     */
+    reviewsPerTranscript: number;
+    /**
+     * Finished reviews
+     */
+    reviews: number;
+    /**
+     * Median time finished reviews had it open; null with none
+     */
+    medianTimeMs: number | null;
+    minTimeMs: number | null;
+    maxTimeMs: number | null;
+};
+
+export type KoraAdminConversationsDto = {
+    conversations: Array<KoraAdminConversationDto>;
+};
+
+export type KoraBatchDto = {
+    id: string;
+    transcriptsPerAssignment: number;
+    reviewsPerTranscript: number;
+    retiredAt: string | null;
+    closesAt: string | null;
+    createdAt: string;
+    transcriptCount: number;
+};
+
+export type KoraRejectedLineDto = {
+    line: number;
+    problems: Array<string>;
+};
+
+export type KoraUploadRejectedDto = {
+    message: string;
+    rejected: Array<KoraRejectedLineDto>;
+};
+
+export type KoraBatchEventKind = 'upload' | 'retire' | 'reactivate' | 'delete' | 'assignment_completed';
+
+export type KoraBatchEventDto = {
+    id: string;
+    kind: KoraBatchEventKind;
+    batchId: string | null;
+    batchUploadedAt: string | null;
+    transcriptCount: number | null;
+    ratingCount: number | null;
+    assignmentCount: number | null;
+    assignmentId: string | null;
+    reviewerId: string | null;
+    adminName: string | null;
+    createdAt: string;
+    /**
+     * The event names an assignment that no longer exists
+     */
+    assignmentDeleted: boolean;
+};
+
+export type SetKoraBatchClosesAtDto = {
+    /**
+     * Must be in the future
+     */
+    closesAt: string;
+};
+
+export type KoraDeletionImpactDto = {
+    transcriptCount: number;
+    ratingCount: number;
+    assignmentCount: number;
+};
+
+export type KoraUserBatchStatus = 'ready' | 'open' | 'done' | 'closed';
+
+export type KoraUserBatchDto = {
+    /**
+     * Null for an offer not yet started
+     */
+    id: string | null;
+    status: KoraUserBatchStatus;
+    releasedAt: string;
+    closesAt: string | null;
+    /**
+     * Pairs ranked or skipped
+     */
+    progress: number;
+    total: number;
+};
+
+export type KoraHomeDto = {
+    /**
+     * Pairs ranked, not counting skipped ones
+     */
+    totalRanked: number;
+    userBatches: Array<KoraUserBatchDto>;
+};
+
+export type SaveKoraExportDto = {
+    export: {
+        [key: string]: unknown;
+    };
+};
+
+export type KoraExportSavedDto = {
+    /**
+     * The assignment is finished
+     */
+    completed: boolean;
+    /**
+     * Transcripts no longer in the assignment whose results the save dropped; the tool removes them
+     */
+    removed: Array<string>;
+};
+
+export type KoraNextTranscriptDto = {
+    /**
+     * Null once the assignment is full or nothing is left to give
+     */
+    next: KoraTranscriptPreviewDto | null;
+};
+
+export type ReportKoraActiveTimeDto = {
+    /**
+     * Seconds of visible, recently used review time since the last report
+     */
+    seconds: number;
+};
+
+export type KoraExportsDto = {
+    /**
+     * Each export as stored, keyed by its opaque reviewer id, with koraBatches: the upload batches its transcripts come from, each { id, retired }
+     */
+    exports: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type KoraSpecExportDto = {
+    /**
+     * export_id, kind, generated_at, spec_version and row counts
+     */
+    export: {
+        [key: string]: unknown;
+    };
+    /**
+     * One per completed rating
+     */
+    ratings: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per highlighted passage
+     */
+    highlights: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per session started
+     */
+    sessions: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per conversation skipped
+     */
+    skips: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * One per reviewer
+     */
+    reviewers: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type KoraAnswerCountDto = {
+    value: string;
+    count: number;
+};
+
+export type KoraQuestionCountsDto = {
+    question: string;
+    answers: Array<KoraAnswerCountDto>;
+};
+
+export type KoraAnswerCountsDto = {
+    /**
+     * Reviewers who answered the profile
+     */
+    profiles: number;
+    profile: Array<KoraQuestionCountsDto>;
+    /**
+     * Exit surveys answered
+     */
+    exitSurveys: number;
+    exitSurvey: Array<KoraQuestionCountsDto>;
+};
+
+export type KoraAssignmentExportDto = {
+    id: string;
+    reviewerId: string;
+    completedAt: string | null;
+    export: {
+        [key: string]: unknown;
+    } | null;
+};
+
 export type CreateActionPartnershipResponseDto = {
     organizationName: string;
     organizationWebsite: string;
@@ -4060,6 +4763,314 @@ export type UpdateCustomLinkDto = {
 
 export type CustomLinkDestinationDto = {
     destination: string;
+};
+
+export type FormulaDto = {
+    id: string;
+    name: string;
+    /**
+     * The current version, printed.
+     */
+    text: string;
+    notes: string | null;
+    /**
+     * The current version's id.
+     */
+    versionId: number;
+    /**
+     * Ids of the formulas it reads.
+     */
+    reads: Array<string>;
+    updatedAt: string;
+};
+
+export type FormulaVersionDto = {
+    id: number;
+    name: string;
+    text: string;
+    notes: string | null;
+    savedByName: string | null;
+    createdAt: string;
+};
+
+export type FormulaEditDto = {
+    id: string;
+    /**
+     * The version edited; null for a new formula.
+     */
+    baseVersionId: number | null;
+    name: string;
+    /**
+     * Names in it mean the formulas that have them once this save is applied.
+     */
+    text: string;
+    notes: string | null;
+};
+
+export type FormulaDeletionDto = {
+    id: string;
+    baseVersionId: number;
+};
+
+export type ListDeletionDto = {
+    id: string;
+    /**
+     * The membership version the admin saw.
+     */
+    baseVersionId: number;
+};
+
+export type PartFallback = 'put_here' | 'continue';
+
+export type PartFixDto = {
+    suiteId: number;
+    /**
+     * The partition version the fix started from.
+     */
+    baseVersionId: number;
+    partId: string;
+    text: string;
+    fallback: PartFallback | null;
+};
+
+export type SaveFormulasDto = {
+    edits: Array<FormulaEditDto>;
+    deletions: Array<FormulaDeletionDto>;
+    /**
+     * Member lists to delete; refused, like a formula deletion, while a formula reads one.
+     */
+    deletedLists?: Array<ListDeletionDto>;
+    /**
+     * Part conditions fixed in the same save.
+     */
+    partFixes?: Array<PartFixDto>;
+};
+
+export type SaveProblemKind = 'name' | 'named' | 'dependent';
+
+export type FormulaDiagnosticDto = {
+    message: string;
+    /**
+     * Offset into the problem's text.
+     */
+    start: number;
+    end: number;
+};
+
+export type PartitionPartRefDto = {
+    suiteId: number;
+    suiteName: string;
+    /**
+     * The partition version a fix starts from.
+     */
+    versionId: number;
+    partId: string;
+    partName: string;
+    fallback: PartFallback | null;
+};
+
+export type FormulaProblemDto = {
+    kind: SaveProblemKind;
+    /**
+     * The formula's id, or the dependent's.
+     */
+    id: string;
+    /**
+     * Set for a name problem.
+     */
+    message?: string;
+    /**
+     * The text `diagnostics` are located in.
+     */
+    text?: string;
+    diagnostics?: Array<FormulaDiagnosticDto>;
+    /**
+     * Set when the dependent is a part's condition.
+     */
+    partition?: PartitionPartRefDto;
+};
+
+export type SaveFormulasResultDto = {
+    /**
+     * Why the save was refused; empty when it was saved.
+     */
+    problems: Array<FormulaProblemDto>;
+};
+
+export type MemberListDto = {
+    id: string;
+    name: string;
+    /**
+     * The current membership version's id.
+     */
+    versionId: number;
+    userIds: Array<number>;
+};
+
+export type SaveMemberListDto = {
+    /**
+     * What formulas call it, in quotes.
+     */
+    name: string;
+    userIds: Array<number>;
+};
+
+export type UpdateMemberListDto = {
+    /**
+     * What formulas call it, in quotes.
+     */
+    name: string;
+    userIds: Array<number>;
+    /**
+     * The membership version the admin edited.
+     */
+    baseVersionId: number;
+    /**
+     * The name the admin saw before editing.
+     */
+    baseName: string;
+};
+
+/**
+ * The kind of work the part had when ticked as intentionally without required work.
+ */
+export type PartWork = 'optional_only' | 'nothing';
+
+/**
+ * An action not listed is not assigned.
+ */
+export type CellAssignment = 'required' | 'optional';
+
+export type PartitionCellDto = {
+    actionId: number;
+    /**
+     * An action not listed is not assigned.
+     */
+    assignment: CellAssignment;
+};
+
+export type PartitionPartDto = {
+    id: string;
+    name: string;
+    text: string | null;
+    fallback: PartFallback | null;
+    /**
+     * The kind of work the part had when ticked as intentionally without required work.
+     */
+    noRequiredWorkTick: PartWork | null;
+    cells: Array<PartitionCellDto>;
+};
+
+export type PartitionActionDto = {
+    id: number;
+    name: string;
+};
+
+export type SuitePartitionDto = {
+    versionId: number;
+    parts: Array<PartitionPartDto>;
+    actions: Array<PartitionActionDto>;
+    /**
+     * Whether the partition has gone live.
+     */
+    launched: boolean;
+    launchFailedAt: string | null;
+    launchFailure: string | null;
+};
+
+export type PartitionPartDraftDto = {
+    id: string;
+    name: string;
+    /**
+     * The condition as text; null only for the last part, "Everyone else".
+     */
+    text: string | null;
+    fallback: PartFallback | null;
+    noRequiredWorkTick: boolean;
+    cells: Array<PartitionCellDto>;
+};
+
+export type SavePartitionDto = {
+    parts: Array<PartitionPartDraftDto>;
+    /**
+     * The partition version the admin edited.
+     */
+    baseVersionId: number;
+};
+
+export type PartitionProblemDto = {
+    /**
+     * The part it is about.
+     */
+    partId: string | null;
+    /**
+     * Set for a problem with no place in the text.
+     */
+    message?: string;
+    /**
+     * The text `diagnostics` are located in.
+     */
+    text?: string;
+    diagnostics?: Array<FormulaDiagnosticDto>;
+};
+
+export type PartitionWarningDto = {
+    partId: string;
+    message: string;
+};
+
+export type SavePartitionResultDto = {
+    problems: Array<PartitionProblemDto>;
+    warnings: Array<PartitionWarningDto>;
+    /**
+     * The partition as stored, unless the check refused the save.
+     */
+    partition: SuitePartitionDto | null;
+};
+
+export type PartitionPartsDto = {
+    parts: Array<PartitionPartDraftDto>;
+};
+
+export type PartCountDto = {
+    partId: string;
+    count: number;
+};
+
+export type WorkCountsDto = {
+    required: number;
+    optionalOnly: number;
+    nothing: number;
+};
+
+export type PreviewErrorDto = {
+    message: string;
+    count: number;
+};
+
+export type UntakenBranchDto = {
+    /**
+     * The part or formula it is in.
+     */
+    where: string;
+    text: string;
+};
+
+export type PartitionPreviewDto = {
+    population: number;
+    parts: Array<PartCountDto>;
+    byWork: WorkCountsDto;
+    couldNotDecide: number;
+    errors: Array<PreviewErrorDto>;
+    untakenBranches: Array<UntakenBranchDto>;
+};
+
+export type PartitionPreviewResultDto = {
+    /**
+     * Why the partition can't be previewed as it is; empty when `preview` is set.
+     */
+    problems: Array<PartitionProblemDto>;
+    preview?: PartitionPreviewDto;
 };
 
 export type HostedDocDto = {
@@ -5221,112 +6232,6 @@ export type SaveWaitlistEmailTemplateDto = {
     name: string;
 };
 
-export type KoraParticipantCountDto = {
-    count: number;
-};
-
-export type KoraParticipantDto = {
-    id: string;
-    name: string;
-};
-
-export type OtpChannel = 'email' | 'sms';
-
-export type PendingKoraCodeDto = {
-    channel: OtpChannel;
-    /**
-     * Where the code went, partly hidden
-     */
-    maskedDestination: string;
-    resendAvailableAt: string;
-    expiresAt: string;
-};
-
-export type KoraParticipantStateDto = {
-    participant: KoraParticipantDto | null;
-    /**
-     * A code this browser asked for and has not used
-     */
-    pendingCode: PendingKoraCodeDto | null;
-    /**
-     * A verified contact is waiting on a name
-     */
-    signupPending: boolean;
-};
-
-export type StartKoraCodeDto = {
-    /**
-     * Send this or `phoneNumber`
-     */
-    email?: string;
-    /**
-     * E.164; send this or `email`
-     */
-    phoneNumber?: string;
-};
-
-export type VerifyKoraCodeDto = {
-    /**
-     * The device's IANA timezone, when it could be detected
-     */
-    timeZone?: string | null;
-    code: string;
-};
-
-export type KoraCodeVerifiedDto = {
-    /**
-     * Null when the new participant still has to give a name
-     */
-    participant: KoraParticipantDto | null;
-};
-
-export type CompleteKoraSignupDto = {
-    /**
-     * The device's IANA timezone, when it could be detected
-     */
-    timeZone?: string | null;
-    name: string;
-};
-
-export type KoraAdminParticipantDto = {
-    id: string;
-    name: string;
-    email: string | null;
-    /**
-     * E.164
-     */
-    phoneNumber: string | null;
-    timeZone: string | null;
-    createdAt: string;
-    /**
-     * Providers connected besides the contact's own code
-     */
-    providers: Array<OAuthProvider>;
-};
-
-export type KoraAdminAbandonedSignupDto = {
-    id: string;
-    channel: OtpChannel;
-    /**
-     * The email address or E.164 mobile number
-     */
-    destination: string;
-    /**
-     * Set when a provider, not a code, verified the contact
-     */
-    provider: OAuthProvider | null;
-    verifiedAt: string;
-    /**
-     * The contact has since become a participant
-     */
-    recovered: boolean;
-};
-
-export type KoraAdminOverviewDto = {
-    participants: Array<KoraAdminParticipantDto>;
-    abandonedSignups: Array<KoraAdminAbandonedSignupDto>;
-};
-
 export type HeyApiError = {
     statusCode: number;
     message: string | Array<string>;
@@ -5901,6 +6806,56 @@ export type OAuthLinkRedeemHandoffResponses = {
 
 export type OAuthLinkRedeemHandoffResponse = OAuthLinkRedeemHandoffResponses[keyof OAuthLinkRedeemHandoffResponses];
 
+export type WebHandoffCreateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/web-handoff';
+};
+
+export type WebHandoffCreateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WebHandoffCreateError = WebHandoffCreateErrors[keyof WebHandoffCreateErrors];
+
+export type WebHandoffCreateResponses = {
+    200: WebHandoffDto;
+};
+
+export type WebHandoffCreateResponse = WebHandoffCreateResponses[keyof WebHandoffCreateResponses];
+
+export type WebHandoffRedeemData = {
+    body?: never;
+    path?: never;
+    query: {
+        code: string;
+        next?: string;
+    };
+    url: '/auth/web-handoff/redeem';
+};
+
+export type WebHandoffRedeemErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WebHandoffRedeemError = WebHandoffRedeemErrors[keyof WebHandoffRedeemErrors];
+
+export type WebHandoffRedeemResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WebHandoffRedeemResponse = WebHandoffRedeemResponses[keyof WebHandoffRedeemResponses];
+
 export type UserFindMeData = {
     body?: never;
     path?: never;
@@ -5929,9 +6884,9 @@ export type UserUpdateData = {
 
 export type UserUpdateErrors = {
     /**
-     * Default error response for hey-api
+     * Another live account holds the phone number
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type UserUpdateError = UserUpdateErrors[keyof UserUpdateErrors];
@@ -5941,30 +6896,6 @@ export type UserUpdateResponses = {
 };
 
 export type UserUpdateResponse = UserUpdateResponses[keyof UserUpdateResponses];
-
-export type UserSwitchDomainData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/switch-domain';
-};
-
-export type UserSwitchDomainErrors = {
-    401: HeyApiError;
-};
-
-export type UserSwitchDomainError = UserSwitchDomainErrors[keyof UserSwitchDomainErrors];
-
-export type UserSwitchDomainResponses = {
-    /**
-     * Opted in to the new domain
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserSwitchDomainResponse = UserSwitchDomainResponses[keyof UserSwitchDomainResponses];
 
 export type UserMyLocationData = {
     body?: never;
@@ -6073,7 +7004,7 @@ export type UserListAdminErrors = {
 export type UserListAdminError = UserListAdminErrors[keyof UserListAdminErrors];
 
 export type UserListAdminResponses = {
-    200: Array<UserDto>;
+    200: Array<AdminUserListItemDto>;
 };
 
 export type UserListAdminResponse = UserListAdminResponses[keyof UserListAdminResponses];
@@ -7754,6 +8685,52 @@ export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponses = {
 
 export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponse = UserOnetimeInviteGetOnetimeInvitesByRequesterResponses[keyof UserOnetimeInviteGetOnetimeInvitesByRequesterResponses];
 
+export type UserPhoneSendCodeData = {
+    body: StartPhoneCodeDto;
+    path?: never;
+    query?: never;
+    url: '/user/phone/code';
+};
+
+export type UserPhoneSendCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserPhoneSendCodeError = UserPhoneSendCodeErrors[keyof UserPhoneSendCodeErrors];
+
+export type UserPhoneSendCodeResponses = {
+    200: PendingPhoneCodeDto;
+};
+
+export type UserPhoneSendCodeResponse = UserPhoneSendCodeResponses[keyof UserPhoneSendCodeResponses];
+
+export type UserPhoneVerifyCodeData = {
+    body: VerifyPhoneCodeDto;
+    path?: never;
+    query?: never;
+    url: '/user/phone/code/verify';
+};
+
+export type UserPhoneVerifyCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserPhoneVerifyCodeError = UserPhoneVerifyCodeErrors[keyof UserPhoneVerifyCodeErrors];
+
+export type UserPhoneVerifyCodeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type UserPhoneVerifyCodeResponse = UserPhoneVerifyCodeResponses[keyof UserPhoneVerifyCodeResponses];
+
 export type ImagesGetImageData = {
     body?: never;
     path: {
@@ -7873,6 +8850,389 @@ export type LinkOpeningRecordResponses = {
 };
 
 export type LinkOpeningRecordResponse = LinkOpeningRecordResponses[keyof LinkOpeningRecordResponses];
+
+export type MmsHandleInboundMmsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms/inbound';
+};
+
+export type MmsHandleInboundMmsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type MmsHandleInboundMmsError = MmsHandleInboundMmsErrors[keyof MmsHandleInboundMmsErrors];
+
+export type MmsHandleInboundMmsResponses = {
+    200: string;
+};
+
+export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+
+export type MmsThreadListThreadsAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        /**
+         * Matches numbers containing these digits; must contain one
+         */
+        search?: string;
+    };
+    url: '/mms-threads';
+};
+
+export type MmsThreadListThreadsAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadListThreadsAdminError = MmsThreadListThreadsAdminErrors[keyof MmsThreadListThreadsAdminErrors];
+
+export type MmsThreadListThreadsAdminResponses = {
+    200: ThreadListDto;
+};
+
+export type MmsThreadListThreadsAdminResponse = MmsThreadListThreadsAdminResponses[keyof MmsThreadListThreadsAdminResponses];
+
+export type MmsThreadNeedsReplyAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply';
+};
+
+export type MmsThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyAdminError = MmsThreadNeedsReplyAdminErrors[keyof MmsThreadNeedsReplyAdminErrors];
+
+export type MmsThreadNeedsReplyAdminResponses = {
+    200: Array<NeedsReplyMemberDto>;
+};
+
+export type MmsThreadNeedsReplyAdminResponse = MmsThreadNeedsReplyAdminResponses[keyof MmsThreadNeedsReplyAdminResponses];
+
+export type MmsThreadNeedsReplyThreadsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mms-threads/needs-reply-threads';
+};
+
+export type MmsThreadNeedsReplyThreadsAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadNeedsReplyThreadsAdminError = MmsThreadNeedsReplyThreadsAdminErrors[keyof MmsThreadNeedsReplyThreadsAdminErrors];
+
+export type MmsThreadNeedsReplyThreadsAdminResponses = {
+    200: Array<NeedsReplyThreadDto>;
+};
+
+export type MmsThreadNeedsReplyThreadsAdminResponse = MmsThreadNeedsReplyThreadsAdminResponses[keyof MmsThreadNeedsReplyThreadsAdminResponses];
+
+export type MmsThreadGetNumberThreadAdminData = {
+    body?: never;
+    path: {
+        threadId: string;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/by-id/{threadId}';
+};
+
+export type MmsThreadGetNumberThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetNumberThreadAdminError = MmsThreadGetNumberThreadAdminErrors[keyof MmsThreadGetNumberThreadAdminErrors];
+
+export type MmsThreadGetNumberThreadAdminResponses = {
+    200: NumberThreadDto;
+};
+
+export type MmsThreadGetNumberThreadAdminResponse = MmsThreadGetNumberThreadAdminResponses[keyof MmsThreadGetNumberThreadAdminResponses];
+
+export type MmsThreadSendInThreadAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}';
+};
+
+export type MmsThreadSendInThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendInThreadAdminError = MmsThreadSendInThreadAdminErrors[keyof MmsThreadSendInThreadAdminErrors];
+
+export type MmsThreadSendInThreadAdminResponses = {
+    201: MmsMessageDto;
+};
+
+export type MmsThreadSendInThreadAdminResponse = MmsThreadSendInThreadAdminResponses[keyof MmsThreadSendInThreadAdminResponses];
+
+export type MmsThreadMarkThreadOptedOutAdminData = {
+    body?: never;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/opt-out';
+};
+
+export type MmsThreadMarkThreadOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadOptedOutAdminError = MmsThreadMarkThreadOptedOutAdminErrors[keyof MmsThreadMarkThreadOptedOutAdminErrors];
+
+export type MmsThreadMarkThreadOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadOptedOutAdminResponse = MmsThreadMarkThreadOptedOutAdminResponses[keyof MmsThreadMarkThreadOptedOutAdminResponses];
+
+export type MmsThreadMarkThreadHandledAdminData = {
+    body: MarkThreadDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/handled';
+};
+
+export type MmsThreadMarkThreadHandledAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadHandledAdminError = MmsThreadMarkThreadHandledAdminErrors[keyof MmsThreadMarkThreadHandledAdminErrors];
+
+export type MmsThreadMarkThreadHandledAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadHandledAdminResponse = MmsThreadMarkThreadHandledAdminResponses[keyof MmsThreadMarkThreadHandledAdminResponses];
+
+export type MmsThreadMarkThreadNeedsReplyAdminData = {
+    body: MarkThreadDto;
+    path: {
+        threadId: string;
+    };
+    query?: never;
+    url: '/mms-threads/by-id/{threadId}/needs-reply';
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminError = MmsThreadMarkThreadNeedsReplyAdminErrors[keyof MmsThreadMarkThreadNeedsReplyAdminErrors];
+
+export type MmsThreadMarkThreadNeedsReplyAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkThreadNeedsReplyAdminResponse = MmsThreadMarkThreadNeedsReplyAdminResponses[keyof MmsThreadMarkThreadNeedsReplyAdminResponses];
+
+export type MmsThreadMediaAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/mms-threads/media/{id}';
+};
+
+export type MmsThreadMediaAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMediaAdminError = MmsThreadMediaAdminErrors[keyof MmsThreadMediaAdminErrors];
+
+export type MmsThreadGetThreadAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: {
+        /**
+         * Return texts sent before the text with this id
+         */
+        before?: number;
+    };
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadGetThreadAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadGetThreadAdminError = MmsThreadGetThreadAdminErrors[keyof MmsThreadGetThreadAdminErrors];
+
+export type MmsThreadGetThreadAdminResponses = {
+    200: MmsThreadDto;
+};
+
+export type MmsThreadGetThreadAdminResponse = MmsThreadGetThreadAdminResponses[keyof MmsThreadGetThreadAdminResponses];
+
+export type MmsThreadSendTextAdminData = {
+    body: SendStaffTextDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}';
+};
+
+export type MmsThreadSendTextAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadSendTextAdminError = MmsThreadSendTextAdminErrors[keyof MmsThreadSendTextAdminErrors];
+
+export type MmsThreadSendTextAdminResponses = {
+    200: MmsMessageDto;
+};
+
+export type MmsThreadSendTextAdminResponse = MmsThreadSendTextAdminResponses[keyof MmsThreadSendTextAdminResponses];
+
+export type MmsThreadMarkOptedOutAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/opt-out';
+};
+
+export type MmsThreadMarkOptedOutAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkOptedOutAdminError = MmsThreadMarkOptedOutAdminErrors[keyof MmsThreadMarkOptedOutAdminErrors];
+
+export type MmsThreadMarkOptedOutAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkOptedOutAdminResponse = MmsThreadMarkOptedOutAdminResponses[keyof MmsThreadMarkOptedOutAdminResponses];
+
+export type MmsThreadMarkHandledAdminData = {
+    body: MarkThreadDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/handled';
+};
+
+export type MmsThreadMarkHandledAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkHandledAdminError = MmsThreadMarkHandledAdminErrors[keyof MmsThreadMarkHandledAdminErrors];
+
+export type MmsThreadMarkHandledAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkHandledAdminResponse = MmsThreadMarkHandledAdminResponses[keyof MmsThreadMarkHandledAdminResponses];
+
+export type MmsThreadMarkNeedsReplyAdminData = {
+    body: MarkThreadDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/mms-threads/{userId}/needs-reply';
+};
+
+export type MmsThreadMarkNeedsReplyAdminErrors = {
+    401: HeyApiError;
+};
+
+export type MmsThreadMarkNeedsReplyAdminError = MmsThreadMarkNeedsReplyAdminErrors[keyof MmsThreadMarkNeedsReplyAdminErrors];
+
+export type MmsThreadMarkNeedsReplyAdminResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type MmsThreadMarkNeedsReplyAdminResponse = MmsThreadMarkNeedsReplyAdminResponses[keyof MmsThreadMarkNeedsReplyAdminResponses];
+
+export type EventLogFindAllAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        eventType?: EventType;
+    };
+    url: '/eventlog';
+};
+
+export type EventLogFindAllAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type EventLogFindAllAdminError = EventLogFindAllAdminErrors[keyof EventLogFindAllAdminErrors];
+
+export type EventLogFindAllAdminResponses = {
+    200: EventLogListDto;
+};
+
+export type EventLogFindAllAdminResponse = EventLogFindAllAdminResponses[keyof EventLogFindAllAdminResponses];
+
+export type EventLogFindOneAdminData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/eventlog/{id}';
+};
+
+export type EventLogFindOneAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type EventLogFindOneAdminError = EventLogFindOneAdminErrors[keyof EventLogFindOneAdminErrors];
+
+export type EventLogFindOneAdminResponses = {
+    200: EventLogDto;
+};
+
+export type EventLogFindOneAdminResponse = EventLogFindOneAdminResponses[keyof EventLogFindOneAdminResponses];
 
 export type ShareUrlsGetShareLinkData = {
     body: GetShareLinkDto;
@@ -8612,77 +9972,73 @@ export type NotifsLinkClickResponses = {
 
 export type NotifsLinkClickResponse = NotifsLinkClickResponses[keyof NotifsLinkClickResponses];
 
-export type MmsHandleInboundMmsData = {
+export type NotificationSettingsGetData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/mms/inbound';
+    url: '/user/notification-settings';
 };
 
-export type MmsHandleInboundMmsErrors = {
+export type NotificationSettingsGetErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type MmsHandleInboundMmsError = MmsHandleInboundMmsErrors[keyof MmsHandleInboundMmsErrors];
+export type NotificationSettingsGetError = NotificationSettingsGetErrors[keyof NotificationSettingsGetErrors];
 
-export type MmsHandleInboundMmsResponses = {
-    200: string;
+export type NotificationSettingsGetResponses = {
+    200: NotificationSettingsDto;
 };
 
-export type MmsHandleInboundMmsResponse = MmsHandleInboundMmsResponses[keyof MmsHandleInboundMmsResponses];
+export type NotificationSettingsGetResponse = NotificationSettingsGetResponses[keyof NotificationSettingsGetResponses];
 
-export type EventLogFindAllAdminData = {
-    body?: never;
+export type NotificationSettingsUpdateData = {
+    body: UpdateNotificationSettingsDto;
     path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-        eventType?: EventType;
-    };
-    url: '/eventlog';
+    query?: never;
+    url: '/user/notification-settings';
 };
 
-export type EventLogFindAllAdminErrors = {
+export type NotificationSettingsUpdateErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type EventLogFindAllAdminError = EventLogFindAllAdminErrors[keyof EventLogFindAllAdminErrors];
+export type NotificationSettingsUpdateError = NotificationSettingsUpdateErrors[keyof NotificationSettingsUpdateErrors];
 
-export type EventLogFindAllAdminResponses = {
-    200: EventLogListDto;
+export type NotificationSettingsUpdateResponses = {
+    200: NotificationSettingsDto;
 };
 
-export type EventLogFindAllAdminResponse = EventLogFindAllAdminResponses[keyof EventLogFindAllAdminResponses];
+export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
 
-export type EventLogFindOneAdminData = {
+export type NotificationSettingsGetAdminData = {
     body?: never;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
-    url: '/eventlog/{id}';
+    url: '/user/userdetail/{id}/notification-settings';
 };
 
-export type EventLogFindOneAdminErrors = {
+export type NotificationSettingsGetAdminErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type EventLogFindOneAdminError = EventLogFindOneAdminErrors[keyof EventLogFindOneAdminErrors];
+export type NotificationSettingsGetAdminError = NotificationSettingsGetAdminErrors[keyof NotificationSettingsGetAdminErrors];
 
-export type EventLogFindOneAdminResponses = {
-    200: EventLogDto;
+export type NotificationSettingsGetAdminResponses = {
+    200: NotificationSettingsAdminDto;
 };
 
-export type EventLogFindOneAdminResponse = EventLogFindOneAdminResponses[keyof EventLogFindOneAdminResponses];
+export type NotificationSettingsGetAdminResponse = NotificationSettingsGetAdminResponses[keyof NotificationSettingsGetAdminResponses];
 
 export type CommunityCreateCommunityAdminData = {
     body: CreateCommunityDto;
@@ -9755,74 +11111,6 @@ export type MessageGetMessagesResponses = {
 
 export type MessageGetMessagesResponse = MessageGetMessagesResponses[keyof MessageGetMessagesResponses];
 
-export type NotificationSettingsGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/notification-settings';
-};
-
-export type NotificationSettingsGetErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type NotificationSettingsGetError = NotificationSettingsGetErrors[keyof NotificationSettingsGetErrors];
-
-export type NotificationSettingsGetResponses = {
-    200: NotificationSettingsDto;
-};
-
-export type NotificationSettingsGetResponse = NotificationSettingsGetResponses[keyof NotificationSettingsGetResponses];
-
-export type NotificationSettingsUpdateData = {
-    body: UpdateNotificationSettingsDto;
-    path?: never;
-    query?: never;
-    url: '/user/notification-settings';
-};
-
-export type NotificationSettingsUpdateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type NotificationSettingsUpdateError = NotificationSettingsUpdateErrors[keyof NotificationSettingsUpdateErrors];
-
-export type NotificationSettingsUpdateResponses = {
-    200: NotificationSettingsDto;
-};
-
-export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
-
-export type NotificationSettingsGetAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/userdetail/{id}/notification-settings';
-};
-
-export type NotificationSettingsGetAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type NotificationSettingsGetAdminError = NotificationSettingsGetAdminErrors[keyof NotificationSettingsGetAdminErrors];
-
-export type NotificationSettingsGetAdminResponses = {
-    200: NotificationSettingsAdminDto;
-};
-
-export type NotificationSettingsGetAdminResponse = NotificationSettingsGetAdminResponses[keyof NotificationSettingsGetAdminResponses];
-
 export type ContractGetCurrentData = {
     body?: never;
     path?: never;
@@ -10098,6 +11386,49 @@ export type ClusterUpdateAdminResponses = {
 };
 
 export type ClusterUpdateAdminResponse = ClusterUpdateAdminResponses[keyof ClusterUpdateAdminResponses];
+
+export type HealthDbData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/health/db';
+};
+
+export type HealthDbErrors = {
+    503: HeyApiError;
+};
+
+export type HealthDbError = HealthDbErrors[keyof HealthDbErrors];
+
+export type HealthDbResponses = {
+    200: HealthCheckDto;
+};
+
+export type HealthDbResponse = HealthDbResponses[keyof HealthDbResponses];
+
+export type KoraActionReviewStateData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/kora-review';
+};
+
+export type KoraActionReviewStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraActionReviewStateError = KoraActionReviewStateErrors[keyof KoraActionReviewStateErrors];
+
+export type KoraActionReviewStateResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraActionReviewStateResponse = KoraActionReviewStateResponses[keyof KoraActionReviewStateResponses];
 
 export type ActionsFindAllLoggedInData = {
     body?: never;
@@ -13113,6 +14444,932 @@ export type ForumPinCommentAdminResponses = {
 
 export type ForumPinCommentAdminResponse = ForumPinCommentAdminResponses[keyof ForumPinCommentAdminResponses];
 
+export type KoraParticipantCountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/participants/count';
+};
+
+export type KoraParticipantCountErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraParticipantCountError = KoraParticipantCountErrors[keyof KoraParticipantCountErrors];
+
+export type KoraParticipantCountResponses = {
+    200: KoraParticipantCountDto;
+};
+
+export type KoraParticipantCountResponse = KoraParticipantCountResponses[keyof KoraParticipantCountResponses];
+
+export type KoraProjectData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/project';
+};
+
+export type KoraProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraProjectError = KoraProjectErrors[keyof KoraProjectErrors];
+
+export type KoraProjectResponses = {
+    200: KoraProjectDto;
+};
+
+export type KoraProjectResponse = KoraProjectResponses[keyof KoraProjectResponses];
+
+export type KoraStateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/me';
+};
+
+export type KoraStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraStateError = KoraStateErrors[keyof KoraStateErrors];
+
+export type KoraStateResponses = {
+    200: KoraParticipantStateDto;
+};
+
+export type KoraStateResponse = KoraStateResponses[keyof KoraStateResponses];
+
+export type KoraAbandonCodeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/code';
+};
+
+export type KoraAbandonCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAbandonCodeError = KoraAbandonCodeErrors[keyof KoraAbandonCodeErrors];
+
+export type KoraAbandonCodeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAbandonCodeResponse = KoraAbandonCodeResponses[keyof KoraAbandonCodeResponses];
+
+export type KoraSendCodeData = {
+    body: StartKoraCodeDto;
+    path?: never;
+    query?: never;
+    url: '/kora/code';
+};
+
+export type KoraSendCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraSendCodeError = KoraSendCodeErrors[keyof KoraSendCodeErrors];
+
+export type KoraSendCodeResponses = {
+    200: PendingKoraCodeDto;
+};
+
+export type KoraSendCodeResponse = KoraSendCodeResponses[keyof KoraSendCodeResponses];
+
+export type KoraVerifyCodeData = {
+    body: VerifyKoraCodeDto;
+    path?: never;
+    query?: never;
+    url: '/kora/code/verify';
+};
+
+export type KoraVerifyCodeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraVerifyCodeError = KoraVerifyCodeErrors[keyof KoraVerifyCodeErrors];
+
+export type KoraVerifyCodeResponses = {
+    200: KoraCodeVerifiedDto;
+};
+
+export type KoraVerifyCodeResponse = KoraVerifyCodeResponses[keyof KoraVerifyCodeResponses];
+
+export type KoraCompleteSignupData = {
+    body: CompleteKoraSignupDto;
+    path?: never;
+    query?: never;
+    url: '/kora/signup';
+};
+
+export type KoraCompleteSignupErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraCompleteSignupError = KoraCompleteSignupErrors[keyof KoraCompleteSignupErrors];
+
+export type KoraCompleteSignupResponses = {
+    200: KoraParticipantDto;
+};
+
+export type KoraCompleteSignupResponse = KoraCompleteSignupResponses[keyof KoraCompleteSignupResponses];
+
+export type KoraSignOutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/sign-out';
+};
+
+export type KoraSignOutErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraSignOutError = KoraSignOutErrors[keyof KoraSignOutErrors];
+
+export type KoraSignOutResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraSignOutResponse = KoraSignOutResponses[keyof KoraSignOutResponses];
+
+export type KoraOAuthStartData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query: {
+        returnTo: string;
+        timeZone?: string;
+        posthogSessionId?: string;
+        posthogDistinctId?: string;
+    };
+    url: '/kora/{provider}/start';
+};
+
+export type KoraOAuthStartErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthStartError = KoraOAuthStartErrors[keyof KoraOAuthStartErrors];
+
+export type KoraOAuthStartResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthStartResponse = KoraOAuthStartResponses[keyof KoraOAuthStartResponses];
+
+export type KoraOAuthCallbackData = {
+    body?: never;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+        /**
+         * JSON Apple posts on the first authorization, holding the name.
+         */
+        user?: string;
+    };
+    url: '/kora/{provider}/callback';
+};
+
+export type KoraOAuthCallbackErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackError = KoraOAuthCallbackErrors[keyof KoraOAuthCallbackErrors];
+
+export type KoraOAuthCallbackResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackResponse = KoraOAuthCallbackResponses[keyof KoraOAuthCallbackResponses];
+
+export type KoraOAuthCallbackFormData = {
+    body: OAuthCallbackDto;
+    path: {
+        provider: OAuthProvider;
+    };
+    query?: never;
+    url: '/kora/{provider}/callback';
+};
+
+export type KoraOAuthCallbackFormErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackFormError = KoraOAuthCallbackFormErrors[keyof KoraOAuthCallbackFormErrors];
+
+export type KoraOAuthCallbackFormResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
+
+export type KoraAdminProjectData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/project';
+};
+
+export type KoraAdminProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminProjectError = KoraAdminProjectErrors[keyof KoraAdminProjectErrors];
+
+export type KoraAdminProjectResponses = {
+    200: KoraAdminProjectDto;
+};
+
+export type KoraAdminProjectResponse = KoraAdminProjectResponses[keyof KoraAdminProjectResponses];
+
+export type KoraAdminUpdateProjectData = {
+    body: UpdateKoraProjectDto;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/project';
+};
+
+export type KoraAdminUpdateProjectErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminUpdateProjectError = KoraAdminUpdateProjectErrors[keyof KoraAdminUpdateProjectErrors];
+
+export type KoraAdminUpdateProjectResponses = {
+    200: KoraAdminProjectDto;
+};
+
+export type KoraAdminUpdateProjectResponse = KoraAdminUpdateProjectResponses[keyof KoraAdminUpdateProjectResponses];
+
+export type KoraAdminNotifyWaitlistData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/notify-waitlist';
+};
+
+export type KoraAdminNotifyWaitlistErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminNotifyWaitlistError = KoraAdminNotifyWaitlistErrors[keyof KoraAdminNotifyWaitlistErrors];
+
+export type KoraAdminNotifyWaitlistResponses = {
+    200: KoraNotifyQueuedDto;
+};
+
+export type KoraAdminNotifyWaitlistResponse = KoraAdminNotifyWaitlistResponses[keyof KoraAdminNotifyWaitlistResponses];
+
+export type KoraAdminNotifyMoreData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/notify-more';
+};
+
+export type KoraAdminNotifyMoreErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminNotifyMoreError = KoraAdminNotifyMoreErrors[keyof KoraAdminNotifyMoreErrors];
+
+export type KoraAdminNotifyMoreResponses = {
+    200: KoraNotifyQueuedDto;
+};
+
+export type KoraAdminNotifyMoreResponse = KoraAdminNotifyMoreResponses[keyof KoraAdminNotifyMoreResponses];
+
+export type KoraAdminOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/participants';
+};
+
+export type KoraAdminOverviewErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminOverviewError = KoraAdminOverviewErrors[keyof KoraAdminOverviewErrors];
+
+export type KoraAdminOverviewResponses = {
+    200: KoraAdminOverviewDto;
+};
+
+export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
+
+export type KoraAdminCategoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/categories';
+};
+
+export type KoraAdminCategoriesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminCategoriesError = KoraAdminCategoriesErrors[keyof KoraAdminCategoriesErrors];
+
+export type KoraAdminCategoriesResponses = {
+    200: KoraAdminCategoriesDto;
+};
+
+export type KoraAdminCategoriesResponse = KoraAdminCategoriesResponses[keyof KoraAdminCategoriesResponses];
+
+export type KoraAdminConversationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/conversations';
+};
+
+export type KoraAdminConversationsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminConversationsError = KoraAdminConversationsErrors[keyof KoraAdminConversationsErrors];
+
+export type KoraAdminConversationsResponses = {
+    200: KoraAdminConversationsDto;
+};
+
+export type KoraAdminConversationsResponse = KoraAdminConversationsResponses[keyof KoraAdminConversationsResponses];
+
+export type KoraAdminDeleteParticipantData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/participants/{id}';
+};
+
+export type KoraAdminDeleteParticipantErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminDeleteParticipantError = KoraAdminDeleteParticipantErrors[keyof KoraAdminDeleteParticipantErrors];
+
+export type KoraAdminDeleteParticipantResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAdminDeleteParticipantResponse = KoraAdminDeleteParticipantResponses[keyof KoraAdminDeleteParticipantResponses];
+
+export type KoraAdminDeleteAbandonedSignupData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/abandoned-signups/{id}';
+};
+
+export type KoraAdminDeleteAbandonedSignupErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraAdminDeleteAbandonedSignupError = KoraAdminDeleteAbandonedSignupErrors[keyof KoraAdminDeleteAbandonedSignupErrors];
+
+export type KoraAdminDeleteAbandonedSignupResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraAdminDeleteAbandonedSignupResponse = KoraAdminDeleteAbandonedSignupResponses[keyof KoraAdminDeleteAbandonedSignupResponses];
+
+export type KoraBatchesListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches';
+};
+
+export type KoraBatchesListErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesListError = KoraBatchesListErrors[keyof KoraBatchesListErrors];
+
+export type KoraBatchesListResponses = {
+    200: Array<KoraBatchDto>;
+};
+
+export type KoraBatchesListResponse = KoraBatchesListResponses[keyof KoraBatchesListResponses];
+
+export type KoraBatchesUploadData = {
+    body: {
+        transcripts: Blob | File;
+        transcriptsPerAssignment: number;
+        reviewsPerTranscript: number;
+        closesAt: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches';
+};
+
+export type KoraBatchesUploadErrors = {
+    400: KoraUploadRejectedDto;
+};
+
+export type KoraBatchesUploadError = KoraBatchesUploadErrors[keyof KoraBatchesUploadErrors];
+
+export type KoraBatchesUploadResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesUploadResponse = KoraBatchesUploadResponses[keyof KoraBatchesUploadResponses];
+
+export type KoraBatchesRandomTranscriptData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/random-transcript';
+};
+
+export type KoraBatchesRandomTranscriptErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesRandomTranscriptError = KoraBatchesRandomTranscriptErrors[keyof KoraBatchesRandomTranscriptErrors];
+
+export type KoraBatchesRandomTranscriptResponses = {
+    200: KoraTranscriptPreviewDto;
+};
+
+export type KoraBatchesRandomTranscriptResponse = KoraBatchesRandomTranscriptResponses[keyof KoraBatchesRandomTranscriptResponses];
+
+export type KoraBatchesEventsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/batches/events';
+};
+
+export type KoraBatchesEventsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesEventsError = KoraBatchesEventsErrors[keyof KoraBatchesEventsErrors];
+
+export type KoraBatchesEventsResponses = {
+    200: Array<KoraBatchEventDto>;
+};
+
+export type KoraBatchesEventsResponse = KoraBatchesEventsResponses[keyof KoraBatchesEventsResponses];
+
+export type KoraBatchesRetireData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/retire';
+};
+
+export type KoraBatchesRetireErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesRetireError = KoraBatchesRetireErrors[keyof KoraBatchesRetireErrors];
+
+export type KoraBatchesRetireResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesRetireResponse = KoraBatchesRetireResponses[keyof KoraBatchesRetireResponses];
+
+export type KoraBatchesReactivateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/reactivate';
+};
+
+export type KoraBatchesReactivateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesReactivateError = KoraBatchesReactivateErrors[keyof KoraBatchesReactivateErrors];
+
+export type KoraBatchesReactivateResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesReactivateResponse = KoraBatchesReactivateResponses[keyof KoraBatchesReactivateResponses];
+
+export type KoraBatchesSetClosesAtData = {
+    body: SetKoraBatchClosesAtDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/closes-at';
+};
+
+export type KoraBatchesSetClosesAtErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesSetClosesAtError = KoraBatchesSetClosesAtErrors[keyof KoraBatchesSetClosesAtErrors];
+
+export type KoraBatchesSetClosesAtResponses = {
+    200: KoraBatchDto;
+};
+
+export type KoraBatchesSetClosesAtResponse = KoraBatchesSetClosesAtResponses[keyof KoraBatchesSetClosesAtResponses];
+
+export type KoraBatchesDeletionImpactData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}/deletion-impact';
+};
+
+export type KoraBatchesDeletionImpactErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesDeletionImpactError = KoraBatchesDeletionImpactErrors[keyof KoraBatchesDeletionImpactErrors];
+
+export type KoraBatchesDeletionImpactResponses = {
+    200: KoraDeletionImpactDto;
+};
+
+export type KoraBatchesDeletionImpactResponse = KoraBatchesDeletionImpactResponses[keyof KoraBatchesDeletionImpactResponses];
+
+export type KoraBatchesDeleteData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/batches/{id}';
+};
+
+export type KoraBatchesDeleteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraBatchesDeleteError = KoraBatchesDeleteErrors[keyof KoraBatchesDeleteErrors];
+
+export type KoraBatchesDeleteResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraBatchesDeleteResponse = KoraBatchesDeleteResponses[keyof KoraBatchesDeleteResponses];
+
+export type KoraReviewStateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review';
+};
+
+export type KoraReviewStateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewStateError = KoraReviewStateErrors[keyof KoraReviewStateErrors];
+
+export type KoraReviewStateResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraReviewStateResponse = KoraReviewStateResponses[keyof KoraReviewStateResponses];
+
+export type KoraReviewHomeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review/home';
+};
+
+export type KoraReviewHomeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewHomeError = KoraReviewHomeErrors[keyof KoraReviewHomeErrors];
+
+export type KoraReviewHomeResponses = {
+    200: KoraHomeDto;
+};
+
+export type KoraReviewHomeResponse = KoraReviewHomeResponses[keyof KoraReviewHomeResponses];
+
+export type KoraReviewMoreData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/review/more';
+};
+
+export type KoraReviewMoreErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewMoreError = KoraReviewMoreErrors[keyof KoraReviewMoreErrors];
+
+export type KoraReviewMoreResponses = {
+    200: KoraReviewStateDto;
+};
+
+export type KoraReviewMoreResponse = KoraReviewMoreResponses[keyof KoraReviewMoreResponses];
+
+export type KoraReviewSaveData = {
+    body: SaveKoraExportDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/export';
+};
+
+export type KoraReviewSaveErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewSaveError = KoraReviewSaveErrors[keyof KoraReviewSaveErrors];
+
+export type KoraReviewSaveResponses = {
+    200: KoraExportSavedDto;
+};
+
+export type KoraReviewSaveResponse = KoraReviewSaveResponses[keyof KoraReviewSaveResponses];
+
+export type KoraReviewNextData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/next';
+};
+
+export type KoraReviewNextErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewNextError = KoraReviewNextErrors[keyof KoraReviewNextErrors];
+
+export type KoraReviewNextResponses = {
+    200: KoraNextTranscriptDto;
+};
+
+export type KoraReviewNextResponse = KoraReviewNextResponses[keyof KoraReviewNextResponses];
+
+export type KoraReviewReportActiveTimeData = {
+    body: ReportKoraActiveTimeDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/review/assignments/{id}/active-time';
+};
+
+export type KoraReviewReportActiveTimeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraReviewReportActiveTimeError = KoraReviewReportActiveTimeErrors[keyof KoraReviewReportActiveTimeErrors];
+
+export type KoraReviewReportActiveTimeResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type KoraReviewReportActiveTimeResponse = KoraReviewReportActiveTimeResponses[keyof KoraReviewReportActiveTimeResponses];
+
+export type KoraResultsExportsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/results/exports';
+};
+
+export type KoraResultsExportsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsExportsError = KoraResultsExportsErrors[keyof KoraResultsExportsErrors];
+
+export type KoraResultsExportsResponses = {
+    200: KoraExportsDto;
+};
+
+export type KoraResultsExportsResponse = KoraResultsExportsResponses[keyof KoraResultsExportsResponses];
+
+export type KoraResultsKoraExportData = {
+    body?: never;
+    path?: never;
+    query?: {
+        kind?: 'rolling' | 'final';
+    };
+    url: '/kora/admin/results/kora-export';
+};
+
+export type KoraResultsKoraExportErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsKoraExportError = KoraResultsKoraExportErrors[keyof KoraResultsKoraExportErrors];
+
+export type KoraResultsKoraExportResponses = {
+    200: KoraSpecExportDto;
+};
+
+export type KoraResultsKoraExportResponse = KoraResultsKoraExportResponses[keyof KoraResultsKoraExportResponses];
+
+export type KoraResultsAnswersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/kora/admin/results/answers';
+};
+
+export type KoraResultsAnswersErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsAnswersError = KoraResultsAnswersErrors[keyof KoraResultsAnswersErrors];
+
+export type KoraResultsAnswersResponses = {
+    200: KoraAnswerCountsDto;
+};
+
+export type KoraResultsAnswersResponse = KoraResultsAnswersResponses[keyof KoraResultsAnswersResponses];
+
+export type KoraResultsAssignmentData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/kora/admin/results/assignments/{id}';
+};
+
+export type KoraResultsAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type KoraResultsAssignmentError = KoraResultsAssignmentErrors[keyof KoraResultsAssignmentErrors];
+
+export type KoraResultsAssignmentResponses = {
+    200: KoraAssignmentExportDto;
+};
+
+export type KoraResultsAssignmentResponse = KoraResultsAssignmentResponses[keyof KoraResultsAssignmentResponses];
+
 export type ActionPartnershipsFindAllResponsesAdminData = {
     body?: never;
     path?: never;
@@ -13674,6 +15931,250 @@ export type CustomLinksResolveResponses = {
 };
 
 export type CustomLinksResolveResponse = CustomLinksResolveResponses[keyof CustomLinksResolveResponses];
+
+export type FormulasListAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/formulas';
+};
+
+export type FormulasListAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type FormulasListAdminError = FormulasListAdminErrors[keyof FormulasListAdminErrors];
+
+export type FormulasListAdminResponses = {
+    200: Array<FormulaDto>;
+};
+
+export type FormulasListAdminResponse = FormulasListAdminResponses[keyof FormulasListAdminResponses];
+
+export type FormulasVersionsAdminData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/formulas/{id}/versions';
+};
+
+export type FormulasVersionsAdminErrors = {
+    /**
+     * No formula has this id.
+     */
+    404: HeyApiError;
+};
+
+export type FormulasVersionsAdminError = FormulasVersionsAdminErrors[keyof FormulasVersionsAdminErrors];
+
+export type FormulasVersionsAdminResponses = {
+    200: Array<FormulaVersionDto>;
+};
+
+export type FormulasVersionsAdminResponse = FormulasVersionsAdminResponses[keyof FormulasVersionsAdminResponses];
+
+export type FormulasSaveAdminData = {
+    body: SaveFormulasDto;
+    path?: never;
+    query?: never;
+    url: '/formulas/save';
+};
+
+export type FormulasSaveAdminErrors = {
+    /**
+     * A formula, list or partition changed since the admin opened it.
+     */
+    409: HeyApiError;
+};
+
+export type FormulasSaveAdminError = FormulasSaveAdminErrors[keyof FormulasSaveAdminErrors];
+
+export type FormulasSaveAdminResponses = {
+    200: SaveFormulasResultDto;
+};
+
+export type FormulasSaveAdminResponse = FormulasSaveAdminResponses[keyof FormulasSaveAdminResponses];
+
+export type MemberListsListAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/member-lists';
+};
+
+export type MemberListsListAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type MemberListsListAdminError = MemberListsListAdminErrors[keyof MemberListsListAdminErrors];
+
+export type MemberListsListAdminResponses = {
+    200: Array<MemberListDto>;
+};
+
+export type MemberListsListAdminResponse = MemberListsListAdminResponses[keyof MemberListsListAdminResponses];
+
+export type MemberListsCreateAdminData = {
+    body: SaveMemberListDto;
+    path?: never;
+    query?: never;
+    url: '/member-lists';
+};
+
+export type MemberListsCreateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type MemberListsCreateAdminError = MemberListsCreateAdminErrors[keyof MemberListsCreateAdminErrors];
+
+export type MemberListsCreateAdminResponses = {
+    200: MemberListDto;
+};
+
+export type MemberListsCreateAdminResponse = MemberListsCreateAdminResponses[keyof MemberListsCreateAdminResponses];
+
+export type MemberListsUpdateAdminData = {
+    body: UpdateMemberListDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/member-lists/{id}';
+};
+
+export type MemberListsUpdateAdminErrors = {
+    /**
+     * No list has this id.
+     */
+    404: HeyApiError;
+    /**
+     * The list changed since the admin opened it.
+     */
+    409: HeyApiError;
+};
+
+export type MemberListsUpdateAdminError = MemberListsUpdateAdminErrors[keyof MemberListsUpdateAdminErrors];
+
+export type MemberListsUpdateAdminResponses = {
+    200: MemberListDto;
+};
+
+export type MemberListsUpdateAdminResponse = MemberListsUpdateAdminResponses[keyof MemberListsUpdateAdminResponses];
+
+export type SuitePartitionsPartitionAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/partition';
+};
+
+export type SuitePartitionsPartitionAdminErrors = {
+    /**
+     * The suite doesn't use parts.
+     */
+    404: HeyApiError;
+};
+
+export type SuitePartitionsPartitionAdminError = SuitePartitionsPartitionAdminErrors[keyof SuitePartitionsPartitionAdminErrors];
+
+export type SuitePartitionsPartitionAdminResponses = {
+    200: SuitePartitionDto;
+};
+
+export type SuitePartitionsPartitionAdminResponse = SuitePartitionsPartitionAdminResponses[keyof SuitePartitionsPartitionAdminResponses];
+
+export type SuitePartitionsConvertToPartitionAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/partition';
+};
+
+export type SuitePartitionsConvertToPartitionAdminErrors = {
+    /**
+     * An action still has its own participants or prerequisites.
+     */
+    400: HeyApiError;
+    /**
+     * Partitioning is off here.
+     */
+    404: HeyApiError;
+    /**
+     * The suite already uses parts or is scheduled.
+     */
+    409: HeyApiError;
+};
+
+export type SuitePartitionsConvertToPartitionAdminError = SuitePartitionsConvertToPartitionAdminErrors[keyof SuitePartitionsConvertToPartitionAdminErrors];
+
+export type SuitePartitionsConvertToPartitionAdminResponses = {
+    200: SuitePartitionDto;
+};
+
+export type SuitePartitionsConvertToPartitionAdminResponse = SuitePartitionsConvertToPartitionAdminResponses[keyof SuitePartitionsConvertToPartitionAdminResponses];
+
+export type SuitePartitionsSavePartitionAdminData = {
+    body: SavePartitionDto;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/partition/save';
+};
+
+export type SuitePartitionsSavePartitionAdminErrors = {
+    /**
+     * The partition or the suite's actions changed since the admin opened them.
+     */
+    409: HeyApiError;
+};
+
+export type SuitePartitionsSavePartitionAdminError = SuitePartitionsSavePartitionAdminErrors[keyof SuitePartitionsSavePartitionAdminErrors];
+
+export type SuitePartitionsSavePartitionAdminResponses = {
+    200: SavePartitionResultDto;
+};
+
+export type SuitePartitionsSavePartitionAdminResponse = SuitePartitionsSavePartitionAdminResponses[keyof SuitePartitionsSavePartitionAdminResponses];
+
+export type SuitePartitionsPreviewPartitionAdminData = {
+    body: PartitionPartsDto;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/partition/preview';
+};
+
+export type SuitePartitionsPreviewPartitionAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type SuitePartitionsPreviewPartitionAdminError = SuitePartitionsPreviewPartitionAdminErrors[keyof SuitePartitionsPreviewPartitionAdminErrors];
+
+export type SuitePartitionsPreviewPartitionAdminResponses = {
+    200: PartitionPreviewResultDto;
+};
+
+export type SuitePartitionsPreviewPartitionAdminResponse = SuitePartitionsPreviewPartitionAdminResponses[keyof SuitePartitionsPreviewPartitionAdminResponses];
 
 export type HostedDocsFindAllAdminData = {
     body?: never;
@@ -14430,7 +16931,7 @@ export type TasksDeleteFormAdminData = {
 
 export type TasksDeleteFormAdminErrors = {
     /**
-     * Another form's current version has a variable or options formula reading this form's answers.
+     * Another form's current version has a formula reading this form's answers.
      */
     409: HeyApiError;
 };
@@ -15952,332 +18453,6 @@ export type WaitlistEmailAdminUpdateTemplateAdminResponses = {
 };
 
 export type WaitlistEmailAdminUpdateTemplateAdminResponse = WaitlistEmailAdminUpdateTemplateAdminResponses[keyof WaitlistEmailAdminUpdateTemplateAdminResponses];
-
-export type KoraParticipantCountData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/participants/count';
-};
-
-export type KoraParticipantCountErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraParticipantCountError = KoraParticipantCountErrors[keyof KoraParticipantCountErrors];
-
-export type KoraParticipantCountResponses = {
-    200: KoraParticipantCountDto;
-};
-
-export type KoraParticipantCountResponse = KoraParticipantCountResponses[keyof KoraParticipantCountResponses];
-
-export type KoraStateData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/me';
-};
-
-export type KoraStateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraStateError = KoraStateErrors[keyof KoraStateErrors];
-
-export type KoraStateResponses = {
-    200: KoraParticipantStateDto;
-};
-
-export type KoraStateResponse = KoraStateResponses[keyof KoraStateResponses];
-
-export type KoraAbandonCodeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/code';
-};
-
-export type KoraAbandonCodeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAbandonCodeError = KoraAbandonCodeErrors[keyof KoraAbandonCodeErrors];
-
-export type KoraAbandonCodeResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraAbandonCodeResponse = KoraAbandonCodeResponses[keyof KoraAbandonCodeResponses];
-
-export type KoraSendCodeData = {
-    body: StartKoraCodeDto;
-    path?: never;
-    query?: never;
-    url: '/kora/code';
-};
-
-export type KoraSendCodeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraSendCodeError = KoraSendCodeErrors[keyof KoraSendCodeErrors];
-
-export type KoraSendCodeResponses = {
-    200: PendingKoraCodeDto;
-};
-
-export type KoraSendCodeResponse = KoraSendCodeResponses[keyof KoraSendCodeResponses];
-
-export type KoraVerifyCodeData = {
-    body: VerifyKoraCodeDto;
-    path?: never;
-    query?: never;
-    url: '/kora/code/verify';
-};
-
-export type KoraVerifyCodeErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraVerifyCodeError = KoraVerifyCodeErrors[keyof KoraVerifyCodeErrors];
-
-export type KoraVerifyCodeResponses = {
-    200: KoraCodeVerifiedDto;
-};
-
-export type KoraVerifyCodeResponse = KoraVerifyCodeResponses[keyof KoraVerifyCodeResponses];
-
-export type KoraCompleteSignupData = {
-    body: CompleteKoraSignupDto;
-    path?: never;
-    query?: never;
-    url: '/kora/signup';
-};
-
-export type KoraCompleteSignupErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraCompleteSignupError = KoraCompleteSignupErrors[keyof KoraCompleteSignupErrors];
-
-export type KoraCompleteSignupResponses = {
-    200: KoraParticipantDto;
-};
-
-export type KoraCompleteSignupResponse = KoraCompleteSignupResponses[keyof KoraCompleteSignupResponses];
-
-export type KoraSignOutData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/sign-out';
-};
-
-export type KoraSignOutErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraSignOutError = KoraSignOutErrors[keyof KoraSignOutErrors];
-
-export type KoraSignOutResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraSignOutResponse = KoraSignOutResponses[keyof KoraSignOutResponses];
-
-export type KoraOAuthStartData = {
-    body?: never;
-    path: {
-        provider: OAuthProvider;
-    };
-    query: {
-        returnTo: string;
-        timeZone?: string;
-        posthogSessionId?: string;
-        posthogDistinctId?: string;
-    };
-    url: '/kora/{provider}/start';
-};
-
-export type KoraOAuthStartErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthStartError = KoraOAuthStartErrors[keyof KoraOAuthStartErrors];
-
-export type KoraOAuthStartResponses = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthStartResponse = KoraOAuthStartResponses[keyof KoraOAuthStartResponses];
-
-export type KoraOAuthCallbackData = {
-    body?: never;
-    path: {
-        provider: OAuthProvider;
-    };
-    query?: {
-        code?: string;
-        state?: string;
-        error?: string;
-        /**
-         * JSON Apple posts on the first authorization, holding the name.
-         */
-        user?: string;
-    };
-    url: '/kora/{provider}/callback';
-};
-
-export type KoraOAuthCallbackErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackError = KoraOAuthCallbackErrors[keyof KoraOAuthCallbackErrors];
-
-export type KoraOAuthCallbackResponses = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackResponse = KoraOAuthCallbackResponses[keyof KoraOAuthCallbackResponses];
-
-export type KoraOAuthCallbackFormData = {
-    body: OAuthCallbackDto;
-    path: {
-        provider: OAuthProvider;
-    };
-    query?: never;
-    url: '/kora/{provider}/callback';
-};
-
-export type KoraOAuthCallbackFormErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackFormError = KoraOAuthCallbackFormErrors[keyof KoraOAuthCallbackFormErrors];
-
-export type KoraOAuthCallbackFormResponses = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraOAuthCallbackFormResponse = KoraOAuthCallbackFormResponses[keyof KoraOAuthCallbackFormResponses];
-
-export type KoraAdminOverviewData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/kora/admin/participants';
-};
-
-export type KoraAdminOverviewErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminOverviewError = KoraAdminOverviewErrors[keyof KoraAdminOverviewErrors];
-
-export type KoraAdminOverviewResponses = {
-    200: KoraAdminOverviewDto;
-};
-
-export type KoraAdminOverviewResponse = KoraAdminOverviewResponses[keyof KoraAdminOverviewResponses];
-
-export type KoraAdminDeleteParticipantData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/participants/{id}';
-};
-
-export type KoraAdminDeleteParticipantErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminDeleteParticipantError = KoraAdminDeleteParticipantErrors[keyof KoraAdminDeleteParticipantErrors];
-
-export type KoraAdminDeleteParticipantResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraAdminDeleteParticipantResponse = KoraAdminDeleteParticipantResponses[keyof KoraAdminDeleteParticipantResponses];
-
-export type KoraAdminDeleteAbandonedSignupData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/kora/admin/abandoned-signups/{id}';
-};
-
-export type KoraAdminDeleteAbandonedSignupErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type KoraAdminDeleteAbandonedSignupError = KoraAdminDeleteAbandonedSignupErrors[keyof KoraAdminDeleteAbandonedSignupErrors];
-
-export type KoraAdminDeleteAbandonedSignupResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type KoraAdminDeleteAbandonedSignupResponse = KoraAdminDeleteAbandonedSignupResponses[keyof KoraAdminDeleteAbandonedSignupResponses];
 
 export type ClientOptions = {
     baseUrl: string;

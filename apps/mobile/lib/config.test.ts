@@ -2,6 +2,7 @@ import { setEnv } from "@alliance/common/set-env";
 import { client } from "@alliance/shared/client/client.gen";
 import { afterAll, afterEach, beforeAll, expect, it } from "bun:test";
 import {
+  browserUrlFor,
   getApiUrl,
   getSiteUrl,
   getWebSocketUrl,
@@ -31,7 +32,7 @@ it("points every deployment URL at staging during a review session", () => {
   expect(getApiUrl()).toBe(STAGING.apiUrl);
   expect(client.getConfig().baseUrl).toBe(STAGING.apiUrl);
   expect(getSiteUrl()).toBe(STAGING.siteUrl);
-  expect(getWebSocketUrl()).toBe("wss://staging.worldalliance.org");
+  expect(getWebSocketUrl()).toBe("wss://staging.thealliance.org");
 });
 
 it("returns to the binary's deployment once the review session ends", () => {
@@ -43,3 +44,18 @@ it("returns to the binary's deployment once the review session ends", () => {
   expect(getSiteUrl()).toBe("http://localhost:4005");
   expect(getWebSocketUrl()).toBe("ws://localhost:4005");
 });
+
+it.each([
+  ["faq?t=10:30", "http://localhost:4005/faq?t=10:30"],
+  ["/about#step:2", "http://localhost:4005/about#step:2"],
+  ["/faq", "http://localhost:4005/faq"],
+])("opens relative link %p on the site", (url, expected) => {
+  expect(browserUrlFor(url)).toBe(expected);
+});
+
+it.each(["https://example.org/a:b", "mailto:hi@example.org", "tel:123"])(
+  "opens %p as it is",
+  (url) => {
+    expect(browserUrlFor(url)).toBe(url);
+  },
+);

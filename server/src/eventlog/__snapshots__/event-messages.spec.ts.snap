@@ -1,0 +1,176 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`renderEvent renders every event type 1`] = `
+[
+  {
+    "message": "Jane Doe (invited by Sam Lee) created an account.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> (invited by <https://admin.example.org/member/6|Sam Lee>) created an account.",
+    "type": "account_created",
+  },
+  {
+    "message": "Jane Doe (via the Spring drive campaign) created an account.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> (via the Spring drive campaign) created an account.",
+    "type": "account_created",
+  },
+  {
+    "message": "Jane Doe created an account.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> created an account.",
+    "type": "account_created",
+  },
+  {
+    "message": "Jane Doe (invited by Sam Lee) signed their contract.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> (invited by <https://admin.example.org/member/6|Sam Lee>) signed their contract.",
+    "type": "contract_signed",
+  },
+  {
+    "message": "Contract suspended automatically for Jane Doe: they missed 3 action suites in a row.",
+    "slack": "Contract suspended automatically for <https://admin.example.org/member/5|Jane Doe>: they missed 3 action suites in a row.",
+    "type": "contract_suspended",
+  },
+  {
+    "message": "Jane Doe suspended their contract.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> suspended their contract.",
+    "type": "contract_suspended",
+  },
+  {
+    "message": "Jane Doe opted out of texts by replying “Stop”.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> opted out of texts by replying “Stop”.",
+    "type": "sms_unsubscribe",
+  },
+  {
+    "message": "Sam Lee marked Jane Doe as opted out of texts.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> marked <https://admin.example.org/member/5|Jane Doe> as opted out of texts.",
+    "type": "sms_unsubscribe",
+  },
+  {
+    "message": "+15555550100 opted out of texts, but no member has that number.",
+    "slack": "+15555550100 opted out of texts, but no member has that number.",
+    "type": "sms_unsubscribe",
+  },
+  {
+    "message": "Sam Lee marked +15555550100 as opted out of texts. No member has that number.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> marked +15555550100 as opted out of texts. No member has that number.",
+    "type": "sms_unsubscribe",
+  },
+  {
+    "message": "Jane Doe opted back in to texts by replying “START”.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> opted back in to texts by replying “START”.",
+    "type": "sms_resubscribe",
+  },
+  {
+    "message": "+15555550100 replied “START” to opt back in to texts, but no member has that number.",
+    "slack": "+15555550100 replied “START” to opt back in to texts, but no member has that number.",
+    "type": "sms_resubscribe",
+  },
+  {
+    "message": "Jane Doe texted: “Who is this?” Reply in the thread on Texts.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” Reply in <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|the thread on Texts>.",
+    "type": "sms_inbound",
+  },
+  {
+    "message": "Jane Doe texted: “Who is this?” The number has opted out of texts.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> texted: “Who is this?” The number has opted out of texts.",
+    "type": "sms_inbound",
+  },
+  {
+    "message": "+15555550100, which no member has, texted: “Who is this?” Reply in the thread on Texts.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” Reply in <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|the thread on Texts>.",
+    "type": "sms_inbound",
+  },
+  {
+    "message": "+15555550100, which no member has, texted: “Who is this?” The number has opted out of texts.",
+    "slack": "+15555550100, which no member has, texted: “Who is this?” The number has opted out of texts.",
+    "type": "sms_inbound",
+  },
+  {
+    "message": "Couldn't send a text to +15555550100: timed out after 10000ms",
+    "slack": "Couldn't send a text to <https://admin.example.org/member/5|+15555550100>: timed out after 10000ms",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Couldn't send a staff text to +15555550100: timed out after 10000ms",
+    "slack": "Couldn't send a staff text to <https://admin.example.org/texts/0193a9b2-7c4d-7e8f-9a0b-1c2d3e4f5a6b|+15555550100>: timed out after 10000ms",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Twilio reported error 30003 for a text to +15555550100.",
+    "slack": "Twilio reported error <https://www.twilio.com/docs/api/errors/30003|30003> for a text to +15555550100.",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Couldn't send the texting opt-in message to Jane Doe at +15555550100.",
+    "slack": "Couldn't send the texting opt-in message to <https://admin.example.org/member/5|Jane Doe> at +15555550100.",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Twilio's inbound webhook is being rejected: its signature didn't match. Members' STOP and START replies aren't being honoured until this is fixed. Check that the webhook URL in the Twilio console is exactly https://api.example.org/mms/inbound.",
+    "slack": "Twilio's inbound webhook is being rejected: its signature didn't match. Members' STOP and START replies aren't being honoured until this is fixed. Check that the webhook URL in the Twilio console is exactly https://api.example.org/mms/inbound.",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Twilio's inbound webhook is being rejected: its signature didn't match (4 rejections since the last alert). Members' STOP and START replies aren't being honoured until this is fixed. Check that the webhook URL in the Twilio console is exactly https://api.example.org/mms/inbound.",
+    "slack": "Twilio's inbound webhook is being rejected: its signature didn't match (4 rejections since the last alert). Members' STOP and START replies aren't being honoured until this is fixed. Check that the webhook URL in the Twilio console is exactly https://api.example.org/mms/inbound.",
+    "type": "sms_failure",
+  },
+  {
+    "message": "Jane Doe completed Call your representative automatically by replying in its forum.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> completed <https://admin.example.org/actions/42|Call your representative> automatically by replying in its forum.",
+    "type": "forum_action_autocomplete",
+  },
+  {
+    "message": "Jane Doe commented on Call your representative.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> commented on <https://app.example.org/actions/42#comment-7|Call your representative>.",
+    "type": "action_comment",
+  },
+  {
+    "message": "Jane Doe wasn't told about a reply on Welcome thread: they have text and email notifications off.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> wasn't told about a reply on <https://app.example.org/forum/post/9|Welcome thread>: they have text and email notifications off.",
+    "type": "forum_reply_notif_failure",
+  },
+  {
+    "message": "Jane Doe opted out of Call your representative: Moral objection — “Not for me”.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> opted out of <https://admin.example.org/actions/42|Call your representative>: Moral objection — “Not for me”.",
+    "type": "action_opt_out",
+  },
+  {
+    "message": "An admin recorded that Jane Doe opted out of Call your representative.",
+    "slack": "An admin recorded that <https://admin.example.org/member/5|Jane Doe> opted out of <https://admin.example.org/actions/42|Call your representative>.",
+    "type": "action_opt_out",
+  },
+  {
+    "message": "Jane Doe asked to delete their account. Delete it from their admin page.",
+    "slack": "<https://admin.example.org/member/5|Jane Doe> asked to delete their account. Delete it from their admin page.",
+    "type": "account_deletion_requested",
+  },
+  {
+    "message": "Sam Lee deleted Jane Doe's account (jane@example.com). Reason: “Duplicate account” — screenshot: https://images.example.org/screenshot.png",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> deleted Jane Doe's account (jane@example.com). Reason: “Duplicate account” — screenshot: <https://images.example.org/screenshot.png|https://images.example.org/screenshot.png>",
+    "type": "account_deleted",
+  },
+  {
+    "message": "Sam Lee deleted Jane Doe's account (jane@example.com). Reason: “Asked by email.”",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> deleted Jane Doe's account (jane@example.com). Reason: “Asked by email.”",
+    "type": "account_deleted",
+  },
+  {
+    "message": "Sam Lee granted admin to Jane Doe.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> granted admin to <https://admin.example.org/member/5|Jane Doe>.",
+    "type": "admin_role_changed",
+  },
+  {
+    "message": "Sam Lee revoked admin from Jane Doe.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> revoked admin from <https://admin.example.org/member/5|Jane Doe>.",
+    "type": "admin_role_changed",
+  },
+  {
+    "message": "Waitlist emails hit their daily cap of 500. Confirmation and link emails are paused until 00:00 UTC; raise WAITLIST_PUBLIC_MAIL_DAILY_CAP to send more.",
+    "slack": "Waitlist emails hit their daily cap of 500. Confirmation and link emails are paused until 00:00 UTC; raise WAITLIST_PUBLIC_MAIL_DAILY_CAP to send more.",
+    "type": "waitlist_mail_cap_reached",
+  },
+  {
+    "message": "Sam Lee verified +15555550100, so it was taken off Jane Doe's account.",
+    "slack": "<https://admin.example.org/member/6|Sam Lee> verified +15555550100, so it was taken off <https://admin.example.org/member/5|Jane Doe>'s account.",
+    "type": "phone_number_moved",
+  },
+]
+`;

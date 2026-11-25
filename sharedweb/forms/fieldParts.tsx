@@ -55,6 +55,7 @@ export function RenderLabel({
   isOutputView,
   hideLabel,
   required,
+  className,
 }: {
   field: AnyField;
   labelId?: string;
@@ -64,10 +65,14 @@ export function RenderLabel({
   hideLabel?: boolean;
   /** Effective requiredness; defaults to the field's static `required` flag. */
   required?: boolean;
+  className?: string;
 }) {
   if (hideLabel && !labelId) return null;
   const hasError = Boolean(error);
   const isRequired = required ?? !!field.required;
+  const visible =
+    !hideLabel &&
+    (shownLabel(field) !== null || (!isRequired && !isOutputView));
   return (
     <>
       {!hideLabel && !isRequired && !isOutputView && <OptionalLabelPrefix />}
@@ -76,6 +81,7 @@ export function RenderLabel({
           hideLabel ? "sr-only" : "block",
           hasError ? "text-red-600" : "text-zinc-700",
           labelRightAddon && "flex items-start justify-between gap-3",
+          visible && className,
         )}
       >
         <span id={labelId}>

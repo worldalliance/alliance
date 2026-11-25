@@ -62,6 +62,7 @@ import {
   onboardingColors,
   useOnboardingScale,
 } from "../../lib/onboarding/scale";
+import { useBlockResumeRestart } from "../../lib/resumeRestarts";
 import { passwordLoginFailure } from "../../lib/session";
 import { getDeviceTimeZone } from "../../lib/timeZone";
 
@@ -100,6 +101,7 @@ const OnboardingScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signedName, setSignedName] = useState("");
+  useBlockResumeRestart(email !== "" || password !== "" || signedName !== "");
   const [submitting, setSubmitting] = useState(false);
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
     null,

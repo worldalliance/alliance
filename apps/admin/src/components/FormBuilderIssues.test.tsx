@@ -279,7 +279,7 @@ describe("FormBuilder issues", () => {
     ).toBe("Detail");
   });
 
-  it("opens a group's shared rule, or Variables, from the list", () => {
+  it("opens a group's shared rule, or Formulas, from the list", () => {
     const shared: VisibleIfFormula = { conditions: {}, formula: "c1" };
     renderFormBuilder({
       ...twoPages([]),
@@ -302,7 +302,7 @@ describe("FormBuilder issues", () => {
     );
 
     fireEvent.click(issueButton()!);
-    fireEvent.click(issueList().getByRole("button", { name: /^Variables/ }));
+    fireEvent.click(issueList().getByRole("button", { name: /^Formulas/ }));
     expect(screen.queryByRole("region", { name: "Form canvas" })).toBeNull();
     expect(screen.getByDisplayValue("bad name")).toBeTruthy();
   });
@@ -390,7 +390,7 @@ describe("FormBuilder issues", () => {
     await act(async () => {
       fireEvent.click(confirm);
     });
-    fireEvent.click(screen.getByRole("button", { name: /^Variables/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Formulas/ }));
     fireEvent.change(screen.getByLabelText("Sample answer for input1"), {
       target: { value: "Oslo" },
     });

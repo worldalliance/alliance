@@ -33,6 +33,7 @@ import {
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
 import { ContractInputField } from "./ContractInputField";
+import { ConversationInputField } from "./ConversationInputField";
 import {
   fieldInputClassName,
   RenderLabel,
@@ -41,6 +42,7 @@ import {
   ValidationMessage,
 } from "./fieldParts";
 import { FileInputField } from "./FileInputField";
+import { ImageUploadField } from "./ImageUploadField";
 import { LazyRankingFieldInput } from "./lazyFieldInputs";
 import {
   ListAddButton,
@@ -55,12 +57,17 @@ import {
   TextareaInputField,
 } from "./TextFields";
 import { TimeInputField } from "./TimeInputField";
+import { TimeWheelField } from "./TimeWheelField";
 import TimeZoneSelect from "./TimeZoneSelect";
+import { ToggleInputField } from "./ToggleInputField";
 
 export type RenderFieldProps = {
   field: AnyField;
   value?: FormValue;
   onChange?: (value: FormValueUpdater) => void;
+  /** A conversation's note answer, stored under its `noteId`. */
+  noteValue?: FormValue;
+  onNoteChange?: (value: FormValueUpdater) => void;
   disabled?: boolean;
   fileUpload?: FileUploadSlots;
   fileUploadSlot?: FileUploadSlot;
@@ -81,6 +88,8 @@ export function RenderField({
   field,
   value,
   onChange,
+  noteValue,
+  onNoteChange,
   disabled,
   fileUpload,
   fileUploadSlot,
@@ -170,6 +179,22 @@ export function RenderField({
     case "checkbox":
       return <CheckboxInputField {...inputProps} field={field} />;
 
+    case "toggle":
+      return <ToggleInputField {...inputProps} field={field} />;
+
+    case "timePicker":
+      return <TimeWheelField {...inputProps} field={field} />;
+
+    case "image":
+      return (
+        <ImageUploadField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
+      );
+
     case "radio":
       return (
         <RadioInputField
@@ -177,6 +202,20 @@ export function RenderField({
           field={field}
           randomizationKey={randomizationKey}
           disableOptionRandomization={disableOptionRandomization}
+        />
+      );
+
+    case "conversation":
+      return (
+        <ConversationInputField
+          field={field}
+          value={value}
+          onChange={onChange}
+          noteValue={noteValue}
+          onNoteChange={onNoteChange}
+          disabled={disabled}
+          errorMessage={errorMessage}
+          required={required}
         />
       );
 

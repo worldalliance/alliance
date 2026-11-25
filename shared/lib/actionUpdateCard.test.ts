@@ -50,6 +50,21 @@ it("lists the card image, then the update's other images, else its project's ima
   ).toEqual([]);
 });
 
+it("lists an image the update repeats once", () => {
+  const repeated: DisplayOnlySchema = {
+    blocks: [
+      { type: "display", kind: "images", images: [{ src: "a.jpg" }] },
+      { type: "display", kind: "images", images: [{ src: "a.jpg" }] },
+    ],
+  };
+  expect(
+    updateCovers({ cardImage: "a.jpg", schema: repeated, actionImage: null }),
+  ).toEqual([{ src: "a.jpg", alt: "" }]);
+  expect(
+    updateCovers({ cardImage: null, schema: repeated, actionImage: null }),
+  ).toEqual([{ src: "a.jpg", alt: "" }]);
+});
+
 it("doesn't repeat a body image chosen as the card image", () => {
   const withKey: DisplayOnlySchema = {
     blocks: [

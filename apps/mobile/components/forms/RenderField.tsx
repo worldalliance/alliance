@@ -36,6 +36,7 @@ import {
 } from "./ChoiceFields";
 import CityAutosuggest from "./CityAutosuggest";
 import { ContractInputField } from "./ContractInputField";
+import { ConversationInputField } from "./ConversationInputField";
 import { getCustomComponentById } from "./customComponentRegistry";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
 import {
@@ -44,6 +45,7 @@ import {
   renderValidationMessage,
 } from "./fieldParts";
 import { FileInputField } from "./FileInputField";
+import { ImageUploadField } from "./ImageUploadField";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { PhoneInputField } from "./PhoneInputField";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -53,12 +55,17 @@ import {
   TextareaInputField,
 } from "./TextFields";
 import { TimeInputField } from "./TimeInputField";
+import { TimeWheelField } from "./TimeWheelField";
 import TimeZoneSelect from "./TimeZoneSelect";
+import { ToggleInputField } from "./ToggleInputField";
 
 export type RenderFieldProps = {
   field: AnyField;
   value?: FormValue;
   onChange?: (value: FormValueUpdater) => void;
+  /** A conversation's note answer, stored under its `noteId`. */
+  noteValue?: FormValue;
+  onNoteChange?: (value: FormValueUpdater) => void;
   onFocus?: () => void;
   disabled?: boolean;
   fileUpload?: FileUploadSlots;
@@ -78,6 +85,8 @@ export function RenderField({
   field,
   value,
   onChange,
+  noteValue,
+  onNoteChange,
   onFocus,
   disabled,
   fileUpload,
@@ -167,6 +176,19 @@ export function RenderField({
         />
       );
 
+    case "conversation":
+      return (
+        <ConversationInputField
+          field={field}
+          value={value}
+          onChange={onChange}
+          noteValue={noteValue}
+          onNoteChange={onNoteChange}
+          disabled={disabled}
+          errorMessage={errorMessage}
+        />
+      );
+
     case "select":
       return (
         <SelectInputField
@@ -238,6 +260,22 @@ export function RenderField({
         </View>
       );
     }
+
+    case "toggle":
+      return <ToggleInputField {...inputProps} field={field} />;
+
+    case "timePicker":
+      return <TimeWheelField {...inputProps} field={field} />;
+
+    case "image":
+      return (
+        <ImageUploadField
+          {...inputProps}
+          field={field}
+          fileUpload={fileUpload}
+          fileUploadSlot={fileUploadSlot}
+        />
+      );
 
     case "file":
       return (

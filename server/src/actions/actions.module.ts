@@ -8,6 +8,7 @@ import { Comment } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumModule } from "src/forum/forum.module";
+import { KoraModule } from "src/kora/kora.module";
 import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
@@ -25,6 +26,7 @@ import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
+import { PartitionPlacementModule } from "src/suite-partitions/partition-placement.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -66,6 +68,7 @@ import { ActivityOutputService } from "./activity-output.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortDecisionStore } from "./cohort-decision.store";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
 import { CohortDecisionsController } from "./cohort-decisions.controller";
 import { CohortDivergenceService } from "./cohort-divergence.service";
@@ -73,6 +76,7 @@ import { CohortResolverService } from "./cohort-resolver.service";
 import { ContractReinstatedListener } from "./contract-reinstated.listener";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
+import { DecidingCohortService } from "./deciding-cohort.service";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
@@ -96,6 +100,8 @@ import { GeneralUpdatesController } from "./general-updates.controller";
 import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
+import { KoraActionReviewController } from "./kora-action-review.controller";
+import { KoraActionListener } from "./kora-action.listener";
 import { MemberActionsService } from "./member-actions.service";
 import { ProjectActionsController } from "./project-actions.controller";
 import { ProjectActionsService } from "./project-actions.service";
@@ -154,9 +160,12 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     FacepileModule,
     EventLogModule,
     FormSnapshotModule,
+    PartitionPlacementModule,
     forwardRef(() => ShareUrlsModule),
+    KoraModule,
   ],
   controllers: [
+    KoraActionReviewController,
     ActionsController,
     GeneralUpdatesController,
     ActionUpdatesController,
@@ -170,6 +179,7 @@ import { WelcomeQueueService } from "./welcome-queue.service";
   ],
   providers: [
     ActionsService,
+    KoraActionListener,
     ActionResponseCountsService,
     ProjectsService,
     ProjectActionsService,
@@ -194,6 +204,8 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     ActionStatsService,
     CohortDecisionListener,
     CohortDecisionService,
+    CohortDecisionStore,
+    DecidingCohortService,
     CohortDecisionStaffService,
     CohortDecisionWorker,
     TaskBadgeService,

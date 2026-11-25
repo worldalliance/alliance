@@ -1,0 +1,10 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Slack event log
+    receivers:
+      - uid: alliance-slack-event-log
+        type: slack
+        settings:
+          url: $SLACK_WEBHOOK_URL

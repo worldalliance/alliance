@@ -18,6 +18,7 @@ export const INTERACTIVE_ON_CANVAS: Record<
   header: false,
   text: false,
   quote: false,
+  expertMessage: false,
   label: false,
   divider: false,
   spacer: false,

@@ -22,7 +22,9 @@ import { queryKeys } from "./queryKeys";
 import { currentSession } from "./sessionStores";
 import { useInvalidateAllianceMemberCount } from "./useAllianceMemberCount";
 import { useResetHomeFeed } from "./useHomeFeed";
+import { meCache, meQuery } from "./useMe";
 import { myLocationCache } from "./useMyLocation";
+import { userQueryKeys } from "./user";
 import { useInvalidateTaskFormAggregateViews } from "./useTaskFormAggregateViews";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
@@ -80,8 +82,19 @@ export function useTaskFormSubmission() {
           invalidateVisibilityContext();
           // A form with a contract field can add a signed member.
           invalidateMemberCount();
-          // Answers the form auto-extracts can set the member's city.
+          // Answers the form auto-extracts can change the member's profile
+          // and notification defaults.
           void myLocationCache(queryClient).invalidate();
+          void meCache(queryClient).refresh();
+          const memberId = queryClient.getQueryData(meQuery.queryKey)?.user.id;
+          if (memberId !== undefined) {
+            void queryClient.invalidateQueries({
+              queryKey: userQueryKeys.profile(memberId),
+            });
+          }
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.notificationSettings(),
+          });
           if (!deferCompletion)
             recordRelation({
               actionId: body.actionId,

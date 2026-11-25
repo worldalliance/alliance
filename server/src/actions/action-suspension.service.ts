@@ -12,6 +12,7 @@ import { findLeast } from "src/utils/filter";
 import { In, type Repository } from "typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
 import { ActionsService } from "./actions.service";
+import { CohortAdmissionService } from "./cohort-admission.service";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import { SuspensionPlan } from "./dto/scheduled-plans.dto";
@@ -35,7 +36,11 @@ type SuspendPlanContext = {
  * failure streak that triggered it. `ContractEvent`'s `(user, autoSuspendKey)`
  * unique constraint dedupes on it, so it is never absent for a candidate.
  */
-export type SuspensionCandidate = { user: User; reasonKey: string };
+export type SuspensionCandidate = {
+  user: User;
+  reasonKey: string;
+  missedSuites: number;
+};
 
 @Injectable()
 export class ActionSuspensionService {
@@ -44,6 +49,7 @@ export class ActionSuspensionService {
     private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly actionsService: ActionsService,
     private readonly cohortResolverService: CohortResolverService,
+    private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
   private async buildSuspendPlanContext(
@@ -117,6 +123,10 @@ export class ActionSuspensionService {
       ),
     );
 
+    // A part's row can make an action optional for some members only.
+    const optionalRows =
+      await this.cohortAdmissionService.loadOptionalRowMemberIds(actionIds);
+
     const lastSignedDateByUser = new Map(
       activeUsers.map((user) => [
         user.id,
@@ -138,7 +148,9 @@ export class ActionSuspensionService {
         if (!event) continue;
         const cohortMemberIds = cohortByAction.get(action.id)!;
         for (const user of activeUsers) {
+          // Optional work neither misses the suite nor satisfies it.
           if (
+            optionalRows.get(action.id)?.has(user.id) ||
             lastSignedDateByUser.get(user.id)! >= event.date ||
             !computeIsAssignedAndPresent({
               eventDate: event.date,
@@ -190,7 +202,13 @@ export class ActionSuspensionService {
       if (!user.hasActiveContract) return [];
       const run = trailingMissedSuiteIds(closedSuites, user.id);
       return run.length >= SUSPENSION_MISSED_SUITE_COUNT
-        ? [{ user, reasonKey: suspensionReasonKey(run) }]
+        ? [
+            {
+              user,
+              reasonKey: suspensionReasonKey(run),
+              missedSuites: run.length,
+            },
+          ]
         : [];
     });
   }

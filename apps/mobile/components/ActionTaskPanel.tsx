@@ -7,6 +7,7 @@ import { captureEvent } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
 import { useCallback } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
+import KoraActionTask from "./KoraActionTask";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   onAlreadySubmitted: () => void;
@@ -38,6 +39,15 @@ const ActionTaskPanel = ({
       actionName: action.name,
     });
   }, [action]);
+
+  switch (action.taskKind) {
+    case "kora_review":
+      return <KoraActionTask action={action} onReturn={onAlreadySubmitted} />;
+    case "form":
+      break;
+    default:
+      action.taskKind satisfies never;
+  }
 
   if ((disabled || formResponse) && action.taskFormId !== null) {
     return (

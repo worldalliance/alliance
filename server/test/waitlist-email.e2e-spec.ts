@@ -1,4 +1,4 @@
-/* alliance/max-lines 1100 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 1050 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import request from "supertest";
 import { In, IsNull, Not, type Repository } from "typeorm";
@@ -7,7 +7,7 @@ import {
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
 import { Community } from "../src/community/entities/community.entity";
-import { EmailStatus, Mail } from "../src/mail/mail.entity";
+import { EmailStatus } from "../src/mail/mail.entity";
 import { MailService } from "../src/mail/mail.service";
 import {
   OnetimeInvite,
@@ -31,11 +31,17 @@ import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
 import {
+  awaitCalls,
   closeTestApp,
   createTestApp,
   TestContext,
   waitForLockWait,
 } from "./e2e-test-utils";
+import {
+  mailWith,
+  postWaitlistEmail,
+  saveWaitlistEntry,
+} from "./waitlist-email-fixtures";
 
 describe("Waitlist email admin (e2e)", () => {
   let ctx: TestContext;
@@ -74,16 +80,7 @@ describe("Waitlist email admin (e2e)", () => {
     );
 
   const saveEntry = (fields: Partial<WaitlistEntry> = {}) =>
-    entryRepo.save(
-      entryRepo.create({
-        name: "Test Person",
-        email: `person-${Math.random()}@example.com`,
-        code: `code-${Math.random()}`,
-        committedAt: new Date(),
-        reason: "I want to help",
-        ...fields,
-      }),
-    );
+    saveWaitlistEntry(ctx, fields);
 
   const claimInvite = async (entry: WaitlistEntry) => {
     const invite = await inviteRepo.save(
@@ -115,25 +112,9 @@ describe("Waitlist email admin (e2e)", () => {
       ...body,
     });
 
-  const mailWith = (status: EmailStatus) =>
-    Object.assign(new Mail(), { status });
-
-  /** Waits for the sending runs requests started. */
-  const settled = () =>
-    Promise.all(run.mock.results.map((result) => result.value));
-
   const send = async (body: Record<string, unknown>) => {
-    const res = await asAdmin(request(server()).post("/waitlist/admin/emails"))
-      .send({
-        subject: "Hi #{name}",
-        body: "Welcome",
-        includeClaimed: false,
-        mobilize: false,
-        requestId: crypto.randomUUID(),
-        ...body,
-      })
-      .expect(201);
-    await settled();
+    const res = await postWaitlistEmail(ctx, body);
+    await awaitCalls(run);
     return res.body;
   };
 
@@ -748,7 +729,9 @@ describe("Waitlist email admin (e2e)", () => {
       sendStaff.mockReset();
       sendStaff.mockResolvedValue(mailWith(EmailStatus.Sent));
       const resend = (includeUncertain: boolean) =>
-        retry(batch.id, { includeUncertain }).expect(200).then(settled);
+        retry(batch.id, { includeUncertain })
+          .expect(200)
+          .then(() => awaitCalls(run));
 
       await resend(false);
       expect(sentTo(timedOut.email)).toHaveLength(0);
@@ -778,7 +761,7 @@ describe("Waitlist email admin (e2e)", () => {
 
       await retry(batch.id, { includeUncertain: false })
         .expect(200)
-        .then(settled);
+        .then(() => awaitCalls(run));
 
       expect(await recipientsOf(batch.id)).toEqual([
         expect.objectContaining({
@@ -903,25 +886,6 @@ describe("Waitlist email admin (e2e)", () => {
       } finally {
         renderStaff.mockRestore();
       }
-    });
-
-    it("marks a recipient left sending by an interrupted run uncertain", async () => {
-      const entry = await saveEntry();
-      run.mockImplementationOnce(async () => {});
-      const batch = await send({ entryIds: [entry.id] });
-      await recipientRepo.update(
-        { batchId: batch.id },
-        { status: WaitlistEmailRecipientStatus.Sending },
-      );
-
-      await ctx.app.get(WaitlistEmailSender).run();
-
-      expect(await recipientsOf(batch.id)).toEqual([
-        expect.objectContaining({
-          status: WaitlistEmailRecipientStatus.Uncertain,
-        }),
-      ]);
-      expect(sendStaff).not.toHaveBeenCalled();
     });
 
     it("lists emails with their counts and shows one's recipients", async () => {

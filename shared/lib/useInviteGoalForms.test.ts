@@ -211,3 +211,48 @@ describe("editing the current goal", () => {
     expect(updateGoal).not.toHaveBeenCalled();
   });
 });
+
+describe("newGoalDirty", () => {
+  afterEach(() => jest.setSystemTime());
+
+  test("holds while the new goal form has a target or a picked date", () => {
+    const { hook } = render({ currentGoal: ended });
+    const initialStart = hook.result.current.goalStartDate;
+    expect(hook.result.current.newGoalDirty).toBe(false);
+
+    act(() => hook.result.current.setGoalTarget("3"));
+    expect(hook.result.current.newGoalDirty).toBe(true);
+    act(() => hook.result.current.setGoalTarget(""));
+    expect(hook.result.current.newGoalDirty).toBe(false);
+
+    act(() => hook.result.current.setGoalStartDate("2099-01-02"));
+    expect(hook.result.current.newGoalDirty).toBe(true);
+    act(() => hook.result.current.setGoalStartDate(initialStart));
+    expect(hook.result.current.newGoalDirty).toBe(false);
+
+    act(() => hook.result.current.setGoalDueDate("2099-01-02"));
+    expect(hook.result.current.newGoalDirty).toBe(true);
+  });
+
+  test("clears once the goal is created, so a later form starts clean", async () => {
+    jest.setSystemTime(new Date(2026, 2, 10, 12));
+    const { hook } = render({ currentGoal: ended });
+    act(() => {
+      hook.result.current.setGoalTarget("3");
+      hook.result.current.setGoalStartDate("2026-03-12");
+      hook.result.current.setGoalDueDate("2099-01-02");
+    });
+    jest.setSystemTime(new Date(2026, 2, 11, 12));
+    act(() => void hook.result.current.submitNewGoal());
+
+    await waitFor(() => expect(hook.result.current.goalTarget).toBe(""));
+    expect(hook.result.current.goalStartDate).toBe("2026-03-11");
+    expect(hook.result.current.newGoalDirty).toBe(false);
+  });
+
+  test("is false while the current goal hides the form", () => {
+    const { hook } = render({ currentGoal: ongoing });
+    act(() => hook.result.current.setGoalDueDate("2099-01-02"));
+    expect(hook.result.current.newGoalDirty).toBe(false);
+  });
+});

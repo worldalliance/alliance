@@ -40,6 +40,7 @@ export enum OAuthError {
   ProviderAlreadyConnected = "provider_already_connected",
   Expired = "expired",
   ReviewAccount = "review_account",
+  NotConfigured = "not_configured",
 }
 
 export const MOBILE_OAUTH_RETURN_URL = "alliance://oauth-callback";
@@ -72,6 +73,8 @@ export const OAUTH_ERROR_MESSAGE: Record<
   [OAuthError.Expired]: () => "That took too long. Please try again.",
   [OAuthError.ReviewAccount]: () =>
     "Use your review account's email and password to sign in.",
+  [OAuthError.NotConfigured]: (label) =>
+    `${label} sign-in isn't set up on this server.`,
 };
 
 export function oauthErrorMessage(

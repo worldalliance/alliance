@@ -11,7 +11,7 @@ import { computeActiveUserKey } from "@alliance/shared/formrenderer";
 import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
 import { completedFormSchema } from "@alliance/shared/forms/formulaChoices";
 import {
-  resolveFormValue,
+  answerField,
   type SetFieldValue,
 } from "@alliance/shared/forms/formValueUpdater";
 import { useCurrentUserLocation } from "@alliance/shared/forms/useCurrentUserLocation";
@@ -121,15 +121,25 @@ export function useMobileFormState({
   const {
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
+  } = useFormSchemaMaps({
+    schema,
+    userDefaultPublic,
+    timeZone,
+    profilePhoneNumber: user?.phoneNumber,
+  });
 
-  const { previousAnswerSchemas, previousAnswerData, previousAnswersPending } =
-    usePreviousAnswerSources({ schema, signedIn: !!user });
+  const {
+    previousAnswerSchemas,
+    previousAnswerData,
+    previousAnswersPending,
+    previousAnswersFailed,
+  } = usePreviousAnswerSources({ schema, signedIn: !!user });
 
   const sourceHistories = useVariableSourceHistories({
     schema,
@@ -181,6 +191,8 @@ export function useMobileFormState({
     setPublicAnswers,
     currentPageIndex,
     setCurrentPageIndex,
+    draftSettled,
+    draftFailed,
     saveFailed,
     pauseSyncing,
     resumeSyncing,
@@ -197,6 +209,7 @@ export function useMobileFormState({
     edited: hasEmittedStart,
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
@@ -214,6 +227,7 @@ export function useMobileFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
   } = useFormVisibility({
     schema,
@@ -234,11 +248,16 @@ export function useMobileFormState({
     firstContractSignedAt,
     completedActionCount,
     visibilityInputs: {
-      visibilityContextLoading,
-      visibilityContextFailed,
-      visibilityValidatorsFailed,
-      userLoading,
-      previousAnswersPending,
+      pending: {
+        visibilityContext: visibilityContextLoading,
+        user: userLoading,
+        previousAnswers: previousAnswersPending,
+      },
+      failed: {
+        visibilityContext: visibilityContextFailed,
+        visibilityValidators: visibilityValidatorsFailed,
+        previousAnswers: previousAnswersFailed,
+      },
     },
   });
 
@@ -261,10 +280,18 @@ export function useMobileFormState({
 
   const handleFieldChange: SetFieldValue = (fieldId, value) => {
     if (readOnly) return;
-    setFormData((prev) => ({
-      ...prev,
-      [fieldId]: resolveFormValue(value, prev[fieldId]),
-    }));
+    setFormData((prev) => {
+      const { next, clearedErrors } = answerField({
+        prev,
+        fieldId,
+        value,
+        fields: fieldLookup.values(),
+        isVisible: isElementCurrentlyVisible,
+        validate: validateFieldValue,
+      });
+      applyFieldErrorUpdates(clearedErrors);
+      return next;
+    });
     applyFieldErrorUpdates(
       { [fieldId]: null },
       fieldLookup.get(fieldId)?.kind === "list" ? fieldId : undefined,
@@ -310,6 +337,7 @@ export function useMobileFormState({
 
   return {
     schema,
+    content: { formId: id, formSnapshotId, actionId },
     readOnly,
     user,
     activeUserKey,
@@ -327,6 +355,8 @@ export function useMobileFormState({
     publicAnswers,
     currentPageIndex,
     setCurrentPageIndex,
+    draftSettled,
+    draftFailed,
     saveFailed,
     fieldErrors,
     effectiveFormData,
@@ -338,6 +368,7 @@ export function useMobileFormState({
     nextVisiblePageIndex,
     previousVisiblePageIndex,
     visibilitySettled,
+    visibilityFailed,
     validateFieldValue,
     validatePage,
     validateScreenFields,

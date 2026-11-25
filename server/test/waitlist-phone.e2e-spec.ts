@@ -23,7 +23,12 @@ import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistMailService } from "../src/waitlist/waitlist-mail.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { closeTestApp, createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  awaitCalls,
+  closeTestApp,
+  createTestApp,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("Waitlist phone contact (e2e)", () => {
   let ctx: TestContext;
@@ -415,7 +420,7 @@ describe("Waitlist phone contact (e2e)", () => {
       await send([phone.id]).expect(400);
 
       const batch = await send([phone.id, email.id]).expect(201);
-      await Promise.all(run.mock.results.map((result) => result.value));
+      await awaitCalls(run);
 
       const recipients = await ctx.dataSource
         .getRepository(WaitlistEmailRecipient)

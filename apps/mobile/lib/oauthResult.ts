@@ -74,6 +74,7 @@ const FAILURE_TONE: Record<OAuthFailure, FailureTone> = {
   [OAuthError.ProviderAlreadyConnected]: FailureTone.Error,
   [OAuthError.Expired]: FailureTone.Error,
   [OAuthError.ReviewAccount]: FailureTone.Error,
+  [OAuthError.NotConfigured]: FailureTone.Error,
   [ClientFailure.Network]: FailureTone.Error,
 };
 

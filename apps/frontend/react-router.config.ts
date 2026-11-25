@@ -4,7 +4,4 @@ export default {
   appDirectory: "src",
   ssr: true,
   routeDiscovery: { mode: "initial" },
-  async prerender() {
-    return ["/", "/guide"];
-  },
 } satisfies Config;

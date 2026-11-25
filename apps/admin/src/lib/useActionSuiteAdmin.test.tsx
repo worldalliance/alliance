@@ -22,6 +22,7 @@ const suite = (titles: string[]): ActionSuiteDto => ({
   events: titles.map((title, i) => makeEvent({ id: i + 1, title })),
   reminderGroups: [],
   generalUpdates: [],
+  isPartitioned: false,
 });
 
 let loadStatus = 200;

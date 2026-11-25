@@ -1,3 +1,4 @@
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { useHomeActionUpdates } from "@alliance/shared/lib/useActionUpdates";
 import { router } from "expo-router";
 import { startTransition, useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { colors } from "../lib/style/colors";
 import HomeUpdateCard from "./HomeUpdateCard";
+import LoadFailed from "./LoadFailed";
 import Text, { FontWeight } from "./system/Text";
 
 const DOT_SIZE = 8;
@@ -58,12 +60,9 @@ function Dot({
 }
 
 export default function HomeUpdatesCarousel() {
-  const {
-    query: { data, isLoading, isError },
-    isNew,
-    markOpened,
-  } = useHomeActionUpdates();
-  const updates = data ?? [];
+  const { query, isNew, markOpened } = useHomeActionUpdates();
+  const updates = query.data ?? [];
+  const failed = failedToLoad(query);
   const reduceMotion = useReducedMotion();
 
   const scrollRef = useRef<ScrollView>(null);
@@ -105,15 +104,18 @@ export default function HomeUpdatesCarousel() {
         </Pressable>
       </View>
 
-      {isLoading && (
-        <Text className="px-4 text-sm text-zinc-400">Loading updates…</Text>
+      {failed ? (
+        <LoadFailed
+          message="Couldn't load updates."
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
+        />
+      ) : (
+        query.isPending && (
+          <Text className="px-4 text-sm text-zinc-400">Loading updates…</Text>
+        )
       )}
-      {isError && !isLoading && (
-        <Text className="px-4 text-sm text-red-400">
-          Could not load updates.
-        </Text>
-      )}
-      {!isLoading && !isError && updates.length === 0 && (
+      {query.isSuccess && updates.length === 0 && (
         <Text className="px-4 text-sm text-zinc-400">
           No recent updates yet.
         </Text>

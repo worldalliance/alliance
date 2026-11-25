@@ -2,8 +2,19 @@ import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
+import { S3Module } from "src/s3/s3.module";
 import { User } from "src/user/entities/user.entity";
+import { MmsInboundService } from "./mms-inbound.service";
+import { MmsInboxService } from "./mms-inbox.service";
+import { MmsMedia } from "./mms-media.entity";
+import { MmsMediaService } from "./mms-media.service";
+import { MmsNumberService } from "./mms-number.service";
 import { MmsOptout } from "./mms-optout.entity";
+import { MmsThreadEvent } from "./mms-thread-event.entity";
+import { MmsThreadController } from "./mms-thread.controller";
+import { MmsThread } from "./mms-thread.entity";
+import { MmsThreadGateway } from "./mms-thread.gateway";
+import { MmsThreadService } from "./mms-thread.service";
 import { MmsUnsubService } from "./mms-unsub.service";
 import { MmsController } from "./mms.controller";
 import { Mms } from "./mms.entity";
@@ -12,12 +23,30 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Mms, MmsOptout, User]),
+    TypeOrmModule.forFeature([
+      Mms,
+      MmsMedia,
+      MmsOptout,
+      MmsThread,
+      MmsThreadEvent,
+      User,
+    ]),
     forwardRef(() => EventLogModule),
     LinkTrackingModule,
+    S3Module,
   ],
-  providers: [MmsService, TwilioStatusWorker, MmsUnsubService],
-  controllers: [MmsController],
-  exports: [MmsService],
+  providers: [
+    MmsService,
+    TwilioStatusWorker,
+    MmsUnsubService,
+    MmsThreadService,
+    MmsInboundService,
+    MmsMediaService,
+    MmsNumberService,
+    MmsInboxService,
+    MmsThreadGateway,
+  ],
+  controllers: [MmsController, MmsThreadController],
+  exports: [MmsService, MmsNumberService],
 })
 export class MmsModule {}

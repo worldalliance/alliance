@@ -5,12 +5,19 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { max } from "date-fns";
 import { randomUUID } from "node:crypto";
+import { lockUntilCommit } from "src/datasources/advisory-lock";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { hashToken, randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
-import { DataSource, type EntityManager, LessThan, MoreThan } from "typeorm";
+import {
+  DataSource,
+  type EntityManager,
+  IsNull,
+  LessThan,
+  MoreThan,
+} from "typeorm";
 import { OtpChallenge } from "./otp-challenge.entity";
 import {
   generateOtpCode,
@@ -25,13 +32,22 @@ import {
   OTP_RESEND_AFTER_MS,
   OTP_TTL_MS,
   type RateLimit,
+  SEND_LIMITS_PER_ACCOUNT,
   SEND_LIMITS_PER_CONTACT,
   SEND_LIMITS_PER_IP,
   VERIFY_LIMITS_PER_IP,
 } from "./otp-limits";
 import { OtpRateEvent } from "./otp-rate-event.entity";
+import { isTestPhone, TEST_PHONE_CODE } from "./test-phone";
 
 export type OtpContact = { channel: OtpChannel; destination: string };
+
+/** A signed-in account asking for a code, which alone can use it. */
+export type OtpRequester = {
+  userId: number;
+  /** Skips the contact's limit, so others' sends can't keep it from its own contact. */
+  holdsContact: boolean;
+};
 
 export type PendingOtp = OtpContact & {
   expiresAt: Date;
@@ -39,6 +55,8 @@ export type PendingOtp = OtpContact & {
 };
 
 type Throttled = { error: OtpError.Throttled; retryAt: Date };
+
+export type StartedOtp = { browserToken: string; pending: PendingOtp };
 
 export type OtpStartRefusal = Throttled | { error: OtpError.DeliveryFailed };
 
@@ -55,6 +73,51 @@ const throttled = (retryAt: Date): Throttled => ({
 });
 
 const later = (date: Date, ms: number): Date => new Date(date.getTime() + ms);
+
+const ownedBy = (userId: number | null) => userId ?? IsNull();
+
+/**
+ * A signed-in requester counts against its own limit and, unless it already
+ * holds the contact, the contact's limit for this purpose alone, so no one
+ * else can spend the limits it needs. Without one, the contact's limit is
+ * shared by every request.
+ */
+function sendBuckets(params: {
+  purpose: OtpPurpose;
+  destination: string;
+  requester: OtpRequester | null;
+  ip: string;
+}): LimitedBucket[] {
+  const { purpose, requester, ip } = params;
+  const destination = params.destination.toLowerCase();
+  const perIp = {
+    bucket: otpRateBucket(["send-ip", ipRateKey(ip)]),
+    limits: SEND_LIMITS_PER_IP,
+  };
+  if (!requester) {
+    return [
+      {
+        bucket: otpRateBucket(["send-contact", destination]),
+        limits: SEND_LIMITS_PER_CONTACT,
+      },
+      perIp,
+    ];
+  }
+  const perAccount = {
+    bucket: otpRateBucket(["send-account", String(requester.userId)]),
+    limits: SEND_LIMITS_PER_ACCOUNT,
+  };
+  return requester.holdsContact
+    ? [perAccount, perIp]
+    : [
+        perAccount,
+        {
+          bucket: otpRateBucket(["send-contact", purpose, destination]),
+          limits: SEND_LIMITS_PER_CONTACT,
+        },
+        perIp,
+      ];
+}
 
 function pendingOf(challenge: OtpChallenge): PendingOtp {
   return {
@@ -81,24 +144,31 @@ export class OtpService {
     private readonly mmsService: MmsService,
   ) {}
 
-  /** Replaces any earlier code for the same purpose and destination, in every browser. */
+  /**
+   * Replaces the requester's earlier code for the same purpose and
+   * destination, in every browser.
+   */
   async start(params: {
     purpose: OtpPurpose;
     contact: OtpContact;
+    requester: OtpRequester | null;
     ip: string;
-    webOtpHost: string;
-  }): Promise<
-    Result<{ browserToken: string; pending: PendingOtp }, OtpStartRefusal>
-  > {
-    const { purpose, contact, ip, webOtpHost } = params;
+    webOtpHost: string | null;
+  }): Promise<Result<StartedOtp, OtpStartRefusal>> {
+    const { purpose, contact, requester, ip, webOtpHost } = params;
+    const userId = requester?.userId ?? null;
     const now = new Date();
     const browserToken = randomToken(32);
-    const code = generateOtpCode();
+    const testPhone = isTestPhone(contact);
+    const code = testPhone ? TEST_PHONE_CODE : generateOtpCode();
     const id = randomUUID();
-    const challenge = this.challenges.create({
+    // Without the `user` relation: insert's deep-partial type over it walks
+    // all of User, which CI's typecheck rejects.
+    const challenge: Omit<OtpChallenge, "user"> = {
       id,
       purpose,
       ...contact,
+      userId,
       browserTokenHash: hashToken(browserToken),
       codeDigest: otpCodeDigest({
         challengeId: id,
@@ -108,40 +178,37 @@ export class OtpService {
       wrongAttempts: 0,
       expiresAt: later(now, OTP_TTL_MS),
       createdAt: now,
-    });
-    const limited: LimitedBucket[] = [
-      {
-        bucket: otpRateBucket([
-          "send-contact",
-          contact.destination.toLowerCase(),
-        ]),
-        limits: SEND_LIMITS_PER_CONTACT,
-      },
-      {
-        bucket: otpRateBucket(["send-ip", ipRateKey(ip)]),
-        limits: SEND_LIMITS_PER_IP,
-      },
-    ];
+    };
+    const limited = testPhone
+      ? []
+      : sendBuckets({
+          purpose,
+          destination: contact.destination,
+          requester,
+          ip,
+        });
+    const scope = {
+      purpose,
+      destination: contact.destination,
+      userId: ownedBy(userId),
+    };
 
     const claimed = await this.dataSource.transaction(
       async (manager): Promise<Result<void, Throttled>> => {
         await lockBuckets(manager, limited);
         const latest = await manager.findOne(OtpChallenge, {
-          where: { purpose, destination: contact.destination },
+          where: scope,
           order: { createdAt: "DESC" },
         });
         const resendAt = latest && later(latest.createdAt, OTP_RESEND_AFTER_MS);
-        if (resendAt && resendAt > now) {
+        if (!testPhone && resendAt && resendAt > now) {
           return R.failure(throttled(resendAt));
         }
         const retryAt = await claimRateEvents({ manager, limited, now });
         if (retryAt) {
           return R.failure(throttled(retryAt));
         }
-        await manager.delete(OtpChallenge, {
-          purpose,
-          destination: contact.destination,
-        });
+        await manager.delete(OtpChallenge, scope);
         await manager.insert(OtpChallenge, challenge);
         return R.success(undefined);
       },
@@ -150,7 +217,10 @@ export class OtpService {
       return claimed;
     }
 
-    if (!(await this.deliver({ purpose, contact, code, webOtpHost }))) {
+    if (
+      !testPhone &&
+      !(await this.deliver({ purpose, contact, code, webOtpHost }))
+    ) {
       await this.challenges.delete({ id });
       return R.failure({ error: OtpError.DeliveryFailed });
     }
@@ -164,10 +234,11 @@ export class OtpService {
   async verify(params: {
     purpose: OtpPurpose;
     browserToken: string;
+    userId: number | null;
     code: string;
     ip: string;
   }): Promise<Result<OtpContact, OtpVerifyRefusal>> {
-    const { purpose, browserToken, code, ip } = params;
+    const { purpose, browserToken, userId, code, ip } = params;
     const now = new Date();
     const limited: LimitedBucket[] = [
       {
@@ -175,19 +246,21 @@ export class OtpService {
         limits: VERIFY_LIMITS_PER_IP,
       },
     ];
-    const retryAt = await this.dataSource.transaction(async (manager) => {
-      await lockBuckets(manager, limited);
-      return claimRateEvents({ manager, limited, now });
-    });
-    if (retryAt) {
-      return R.failure(throttled(retryAt));
-    }
-
     const challenge = await this.usableChallenge({
       purpose,
       browserToken,
+      userId,
       now,
     });
+    if (!challenge || !isTestPhone(challenge)) {
+      const retryAt = await this.dataSource.transaction(async (manager) => {
+        await lockBuckets(manager, limited);
+        return claimRateEvents({ manager, limited, now });
+      });
+      if (retryAt) {
+        return R.failure(throttled(retryAt));
+      }
+    }
     if (!challenge) {
       return R.failure({ error: OtpError.CodeInvalid });
     }
@@ -233,6 +306,7 @@ export class OtpService {
   async pending(params: {
     purpose: OtpPurpose;
     browserToken: string;
+    userId: number | null;
   }): Promise<PendingOtp | null> {
     const challenge = await this.usableChallenge({
       ...params,
@@ -263,11 +337,13 @@ export class OtpService {
   private async usableChallenge(params: {
     purpose: OtpPurpose;
     browserToken: string;
+    userId: number | null;
     now: Date;
   }): Promise<OtpChallenge | null> {
     const challenge = await this.challenges.findOneBy({
       purpose: params.purpose,
       browserTokenHash: hashToken(params.browserToken),
+      userId: ownedBy(params.userId),
       expiresAt: MoreThan(params.now),
     });
     return challenge && challenge.wrongAttempts < OTP_MAX_WRONG_ATTEMPTS
@@ -279,7 +355,7 @@ export class OtpService {
     purpose: OtpPurpose;
     contact: OtpContact;
     code: string;
-    webOtpHost: string;
+    webOtpHost: string | null;
   }): Promise<boolean> {
     const { purpose, contact, code, webOtpHost } = params;
     switch (contact.channel) {
@@ -312,10 +388,7 @@ async function lockBuckets(
 ): Promise<void> {
   // Sorted, so two requests sharing buckets cannot deadlock.
   for (const bucket of limited.map((l) => l.bucket).sort()) {
-    await manager.query(
-      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-      [bucket],
-    );
+    await lockUntilCommit(manager, bucket);
   }
 }
 

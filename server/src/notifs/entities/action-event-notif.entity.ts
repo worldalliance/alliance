@@ -189,6 +189,17 @@ export class ActionEventNotif {
   })
   sent: boolean;
 
+  /**
+   * True from a reminder's or missed-suite notice's reservation until its
+   * delivery settles. Coverage counts a pending row as sent, so a sibling
+   * group in an overlapping run skips the tasks it names. A failure thrown
+   * before sending releases it; one left pending by a throw while sending, or
+   * by the process dying any time after the reservation, stays counted, as a
+   * send that may have reached the member.
+   */
+  @Column({ default: false })
+  deliveryPending: boolean;
+
   @Column({ type: "text", nullable: true })
   @ApiProperty({ type: String, nullable: true })
   idempotency_key: string | null;

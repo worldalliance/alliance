@@ -1,0 +1,2 @@
+- "Highlight and note any negative text areas" is read as any −1 mark on the lower-rated chatbot, with or without a written note, since the tool calls every mark a note and the quote it shows comes from the mark alone. Agent interpretation.
+- While the question is hidden, `q2_turn` is the AI turn of the lower-rated chatbot's first −1 mark, the value the tool already pre-filled. A turn the reviewer picked before adding such a mark gives way to it. Agent decision.

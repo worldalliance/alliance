@@ -1,0 +1,14 @@
+# Decisions
+
+All agent decisions.
+
+- The pair being worked on is numbered reviewed + 1, because only unreviewed pairs open. This supersedes the "N of M reviewed" progress line in `01a1e5e6-6462-7000-bbd9-b6b5f9f15606-kora-review-header-and-marks` and the 0.1.0-alpha.0 changelog.
+- The same text appears in the review header, the intro, the content warning and the save and skip announcements, so all of them show the current pair. Once every pair is reviewed (the finish screen and the last save's announcement) it stays "M of M reviewed", since no pair is being worked on.
+- The 50px is the visible gap: the rules' 8px bottom margin, the thread's 18px top padding, and a 24px top margin on the opener, so it applies only when the pair has an opener. Measured in the browser at 50px.
+- The `#` goes straight after the age chip with a 2px left margin, so the row's 6px gap separates it from the chip; the ID text still opens to its right.
+- The icon is Lucide's `arrow-up`, inlined like the package's other icons since kora-review draws its own SVGs. The button uses the existing outlined `big ghost` style at 44px tall and content width, so it reads as a secondary action under "Your marks".
+- The button scrolls the tool's root to the top (its `scroll-margin-top` is the host's `--kora-top-offset`), then focuses the first reply without scrolling, so keyboard users can still start marking straight away.
+- The example banner scrolls with the page instead of sticking under the nav. The tool pins its header at `--kora-top-offset`, which its wrapper sets to the nav height, so a second sticky bar at that height covered it. Measuring the banner (which wraps on narrow screens) into the offset would keep it pinned but needs a resize observer; the review header is what reviewers need in view. Supersedes the sticky banner in `01a1d62b-2424-7000-b61c-6b4880e75750-kora-active-home-base`, where it was an agent choice.
+- The letter is the lower-rated chatbot's, the same one the turn question names, since the quoted mark is always taken from that chatbot.
+- The pre-fill note shows only while the slider holds the marks' answer (no saved `q1`), disappears once the reviewer moves it, and is the slider's `aria-describedby`. It uses the existing `q-hint` style. The two "Taken on its own" questions are pre-filled from the marks too but get no note, since only the slider was asked about.
+- `kora-review/test/mount.test.ts` went past the 500-line limit with this change's tests, so it is split by feature, following a read-only codex subagent's suggestion: `mount-persistence.test.ts` (saving, resuming, browser storage), `mount-review.test.ts` (marks and ranking) and `mount-flow.test.ts` (intro, advancing, warnings, surveys, completion). They share `mount-harness.ts`, whose `useMountHarness()` each file calls to register the setup and cleanup hooks.

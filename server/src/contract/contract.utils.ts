@@ -13,11 +13,8 @@ import {
 } from "src/notifs/notification-content";
 import type { CreateNotifParams } from "src/notifs/notifs.service";
 import { profileUrl } from "src/search/approutes";
-import {
-  loadedUserCommunities,
-  ReferralSource,
-  User,
-} from "src/user/entities/user.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
+import { loadedUserCommunities } from "src/user/user.utils";
 
 /**
  * Ordering only: prefer the leader's roomiest group. An uncapped group sorts

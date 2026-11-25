@@ -1,0 +1,37 @@
+name: Deploy guard
+description: >-
+  Run under the environment's deploy lock. Decide whether this run's commit
+  still deploys, and if so open a GitHub deployment for it in the
+  `<environment>-live` record environment, whose newest success is the
+  commit live there. Staging skips when a deploy of a strictly newer commit
+  has already started, whether or not it succeeded; production skips when
+  the commit is no longer the `production` branch's tip. The job needs `deployments: write` and `contents: read`.
+
+inputs:
+  environment:
+    description: staging or production
+    required: true
+  commit:
+    description: Full SHA of the commit this run deploys.
+    required: true
+  details:
+    description: JSON object recorded as the deployment's payload.
+    default: "{}"
+
+outputs:
+  deployment_id:
+    description: The opened deployment's id, empty when the run doesn't deploy.
+    value: ${{ steps.guard.outputs.deployment_id }}
+
+runs:
+  using: composite
+  steps:
+    - id: guard
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMMIT: ${{ inputs.commit }}
+        DETAILS: ${{ inputs.details }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+      run: bash "$GITHUB_ACTION_PATH/guard.sh"

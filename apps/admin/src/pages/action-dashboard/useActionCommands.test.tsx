@@ -2,11 +2,13 @@ import type { CreateActionDto } from "@alliance/shared/client";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { testActions } from "../../lib/testData";
+import { makeParsedAction } from "../../lib/testing/parsedAction";
 import { useActionCommands } from "./useActionCommands";
 
 let getFormStatus: number;
@@ -39,7 +41,10 @@ beforeEach(() => {
 
 const notCalled = () => Promise.reject(new Error("not called"));
 
-function renderCommands() {
+function renderCommands(
+  form: CreateActionDto = { ...testActions[0], taskFormId: 3 },
+  action: ParsedActionDto | null = null,
+) {
   const { wrapper: QueryWrapper } = queryWrapper();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryWrapper>
@@ -52,7 +57,7 @@ function renderCommands() {
     () =>
       useActionCommands({
         admin: {
-          action: null,
+          action,
           createAction: (body: CreateActionDto) => {
             created.push(body);
             return Promise.resolve({
@@ -68,12 +73,11 @@ function renderCommands() {
               followUpForms: [],
             });
           },
-          removeAction: notCalled,
           archiveAction: notCalled,
           unarchiveAction: notCalled,
         },
         actionId: 1,
-        form: { ...testActions[0], taskFormId: 3 },
+        form,
         imageKey: null,
         imageUploading: false,
         setError: (error) => errors.push(error),
@@ -91,6 +95,18 @@ test("duplicating an action points the copy at a clone of its task form", async 
     name: `${testActions[0].name} (Copy)`,
     taskFormId: 9,
   });
+  expect(await screen.findByText("Action duplicated")).toBeTruthy();
+});
+
+test("duplicating a Kora review action keeps its task kind", async () => {
+  const view = renderCommands({
+    ...testActions[0],
+    taskFormId: undefined,
+    taskKind: "kora_review",
+  });
+  await view.result.current.handleDuplicate();
+  expect(errors).toEqual([]);
+  expect(created[0]).toMatchObject({ taskKind: "kora_review" });
 });
 
 test("a task form that fails to clone stops the duplicate", async () => {
@@ -108,3 +124,15 @@ test("a task form that fails to load stops the duplicate", async () => {
   expect(created).toEqual([]);
   expect(errors).toEqual(["Form 3 is gone"]);
 });
+
+test.each([
+  [false, "Only admins can open it."],
+  [true, "Its public page stays open to anyone with the link."],
+])(
+  "archiving an action with publicOnly %s says who can still open it",
+  async (publicOnly, consequence) => {
+    const view = renderCommands(undefined, makeParsedAction({ publicOnly }));
+    act(() => void view.result.current.handleArchive());
+    expect(await screen.findByText(new RegExp(`^${consequence}`))).toBeTruthy();
+  },
+);

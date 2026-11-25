@@ -1,5 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import { milliseconds } from "date-fns";
 import { CreateActionDto } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
@@ -9,6 +9,7 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
+import { getImageSource } from "src/images/images.service";
 import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { TasksModule } from "src/tasks/tasks.module";
@@ -83,6 +84,17 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
 
     return action;
   };
+
+  const contractField = (): AnyField => ({
+    id: "contract",
+    type: "input",
+    kind: "contract",
+    label: null,
+    contractId: ctx.defaultContractId,
+    signQuestion: "Sign?",
+    yesLabel: "Yes",
+    noLabel: "No",
+  });
 
   const videoSchema = (description: string): FormSchema => ({
     description,
@@ -218,6 +230,63 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
     await submit(echoed).expect(201);
   });
 
+  describe("image sources", () => {
+    const KEY = "1762925939234.webp";
+    const STORED_URL = "https://cdn.example.org/1762925939000.webp";
+    const imagesForm = (
+      name: string,
+      {
+        rowList,
+        withContract = false,
+      }: { rowList?: FormSchema["rowList"]; withContract?: boolean } = {},
+    ) =>
+      openForm(name, {
+        rowList,
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "hero",
+                type: "display",
+                kind: "images",
+                images: [{ src: KEY }, { src: STORED_URL }],
+              },
+              ...(withContract ? [contractField()] : []),
+            ],
+          },
+        ],
+        outputViews: [],
+      });
+
+    it("serves them as stored and accepts that echo", async () => {
+      const { served, submit } = await imagesForm("Images as stored");
+      expect(served.pages[0].fields[0].images).toEqual([
+        { src: KEY },
+        { src: STORED_URL },
+      ]);
+      await submit().expect(201);
+    });
+
+    it.each([
+      ["whole", {}],
+      [
+        "narrowed to the member",
+        { rowList: { rows: [{ team: "A" }], keyFields: ["team"] } },
+      ],
+      // Only the current form matches: history doesn't fill in contracts.
+      ["beside a contract", { withContract: true }],
+    ])(
+      "accepts a legacy echo of keys served as urls, %s",
+      async (_, options) => {
+        const { served, submit } = await imagesForm("Images as urls", options);
+        const echoed = structuredClone(served);
+        echoed.pages[0].fields[0].images[0].src = getImageSource(KEY);
+        await submit(echoed).expect(201);
+      },
+    );
+  });
+
   it("accepts a legacy submission echoing the contract the form was served with", async () => {
     const form = await request(ctx.app.getHttpServer())
       .post("/tasks/createForm")
@@ -228,18 +297,7 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
           pages: [
             {
               id: "page-1",
-              fields: [
-                {
-                  id: "contract",
-                  type: "input",
-                  kind: "contract",
-                  label: null,
-                  contractId: ctx.defaultContractId,
-                  signQuestion: "Sign?",
-                  yesLabel: "Yes",
-                  noLabel: "No",
-                },
-              ],
+              fields: [contractField()],
             },
           ],
           outputViews: [],
@@ -265,53 +323,67 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
       .expect(201);
   });
 
-  it("accepts a legacy submission echoing an earlier version's served images", async () => {
-    const schema = (description: string): FormSchema => ({
-      description,
-      pages: [
-        {
-          id: "page-1",
-          fields: [
-            {
-              id: "hero",
-              type: "display",
-              kind: "images",
-              images: [{ src: "legacy-image-key", alt: "Hero" }],
-            },
-          ],
-        },
-      ],
-      outputViews: [],
-    });
-    const form = await request(ctx.app.getHttpServer())
-      .post("/tasks/createForm")
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({ title: "Legacy image form", schema: schema("Opened") })
-      .expect(201);
-    const action = await createAction("Legacy image form");
-    await actionRepo.update(action.id, { taskFormId: form.body.id });
-    const served = await request(ctx.app.getHttpServer())
-      .get(`/tasks/slug/${form.body.id}`)
-      .set("Authorization", `Bearer ${ctx.accessToken}`)
-      .expect(200);
-    await request(ctx.app.getHttpServer())
-      .put(`/tasks/updateForm/${form.body.id}`)
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({ title: "Legacy image form", schema: schema("Edited") })
-      .expect(200);
+  it.each([
+    ["whole", undefined],
+    ["narrowed to the member", { rows: [{ team: "A" }], keyFields: ["team"] }],
+  ])(
+    "accepts a legacy submission echoing an earlier version's images as stored or as urls, %s",
+    async (_, rowList) => {
+      const schema = (description: string): FormSchema => ({
+        description,
+        rowList,
+        pages: [
+          {
+            id: "page-1",
+            fields: [
+              {
+                id: "hero",
+                type: "display",
+                kind: "images",
+                images: [{ src: "legacy-image-key", alt: "Hero" }],
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      });
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Legacy image form", schema: schema("Opened") })
+        .expect(201);
+      const action = await createAction("Legacy image form");
+      await actionRepo.update(action.id, { taskFormId: form.body.id });
+      const served = await request(ctx.app.getHttpServer())
+        .get(`/tasks/slug/${form.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${form.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Legacy image form", schema: schema("Edited") })
+        .expect(200);
 
-    const submitted = await request(ctx.app.getHttpServer())
-      .post(`/tasks/submitForm/${form.body.id}`)
-      .set("Authorization", `Bearer ${ctx.accessToken}`)
-      .send({
-        answers: {},
-        schemaSnapshot: served.body.schema,
-        actionId: action.id,
-        deviceType: "desktop" as const,
-      })
-      .expect(201);
-    expect(submitted.body.formSnapshotId).toBe(form.body.formSnapshotId);
-  });
+      const asUrls = structuredClone(served.body.schema);
+      asUrls.pages[0].fields[0].images[0].src =
+        getImageSource("legacy-image-key");
+      // The first url echo hashes the history cold, the second reads the cache.
+      for (const schemaSnapshot of [asUrls, asUrls, served.body.schema]) {
+        const submitted = await request(ctx.app.getHttpServer())
+          .post(`/tasks/submitForm/${form.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            answers: {},
+            schemaSnapshot,
+            actionId: action.id,
+            deviceType: "desktop" as const,
+          })
+          .expect(201);
+        expect(submitted.body.formSnapshotId).toBe(form.body.formSnapshotId);
+        await actionRepo.query("DELETE FROM form_response");
+      }
+    },
+  );
 
   it("refuses a legacy submission whose schema matches nothing served", async () => {
     const form = await request(ctx.app.getHttpServer())
@@ -421,18 +493,7 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
           pages: [
             {
               id: "page-1",
-              fields: [
-                {
-                  id: "contract",
-                  type: "input",
-                  kind: "contract",
-                  label: null,
-                  contractId: ctx.defaultContractId,
-                  signQuestion: "Sign?",
-                  yesLabel: "Yes",
-                  noLabel: "No",
-                },
-              ],
+              fields: [contractField()],
             },
           ],
           outputViews: [],

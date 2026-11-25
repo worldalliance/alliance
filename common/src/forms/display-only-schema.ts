@@ -8,6 +8,7 @@ import {
   chatTranscriptBlockSchema,
   copyTextBlockSchema,
   dividerBlockSchema,
+  expertMessageBlockSchema,
   headerBlockSchema,
   htmlBlockSchema,
   imagesBlockSchema,
@@ -19,6 +20,7 @@ import {
   type DisplayKind,
 } from "./display-blocks";
 import type { FormSchema } from "./form-schema";
+import { UnrenderableReason, type Unrenderable } from "./unrenderable";
 
 // Omitting only optional properties preserves assignability to DisplayBlock.
 const PER_VIEWER_FIELDS = {
@@ -41,6 +43,7 @@ const DISPLAY_ONLY_SCHEMA_BY_KIND = {
   biglink: bigLinkBlockSchema.omit(PER_VIEWER_FIELDS),
   copytext: copyTextBlockSchema.omit(PER_VIEWER_FIELDS),
   chatTranscript: chatTranscriptBlockSchema.omit(PER_VIEWER_FIELDS),
+  expertMessage: expertMessageBlockSchema.omit(PER_VIEWER_FIELDS),
   accordion: accordionBlockSchema.omit(PER_VIEWER_FIELDS),
   previousAnswer: null,
   userLocation: null,
@@ -59,6 +62,7 @@ export const displayOnlyBlockSchema = z.discriminatedUnion("kind", [
   DISPLAY_ONLY_SCHEMA_BY_KIND.biglink,
   DISPLAY_ONLY_SCHEMA_BY_KIND.copytext,
   DISPLAY_ONLY_SCHEMA_BY_KIND.chatTranscript,
+  DISPLAY_ONLY_SCHEMA_BY_KIND.expertMessage,
   DISPLAY_ONLY_SCHEMA_BY_KIND.accordion,
 ]);
 export type DisplayOnlyBlock = z.infer<typeof displayOnlyBlockSchema>;
@@ -167,4 +171,17 @@ export function readDisplayOnlySchema(
 ): DisplayOnlySchema | null {
   const parsed = displayOnlySchema.safeParse(value);
   return parsed.success ? parsed.data : null;
+}
+
+export function readDisplayOnlySchemaForMember(
+  value: unknown,
+): Result<DisplayOnlySchema, Unrenderable> {
+  const parsed = displayOnlySchema.safeParse(value);
+  if (parsed.success) return R.success(parsed.data);
+  // The server serves only schemas its own build parses, so one this build
+  // rejects was written by a newer build.
+  return R.failure({
+    reason: UnrenderableReason.OutdatedClient,
+    detail: describeSchemaIssues(parsed.error).join("; "),
+  });
 }

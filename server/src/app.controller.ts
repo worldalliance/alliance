@@ -9,6 +9,8 @@ import { register } from "./metrics";
 export class AppController {
   constructor() {}
 
+  // The backend deploy decides from this route whether a release came up, so it
+  // never touches the database: a starved pool must not fail a deploy.
   @Public()
   @Get("/")
   @HttpCode(HttpStatus.OK)

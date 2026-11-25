@@ -1,6 +1,7 @@
 /* alliance/max-lines 700 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { type ZodError, z } from "zod";
 import { R, type Result } from "../result";
+import { fieldAnswerKeys, stripOrphanedNotes } from "./conversation";
 import type { DeviceVisibilityTarget } from "./device";
 import type { DisplayBlock } from "./display-blocks";
 import {
@@ -13,6 +14,7 @@ import {
   collectFieldLookup,
   isQuestionField,
 } from "./form-schema";
+import { pairedToggleRequired } from "./paired-toggles";
 import {
   type UserPropertyPresence,
   emptyUserPropertyPresence,
@@ -412,12 +414,14 @@ export function isVisibleInSavedResponse(
  *
  * A `requiredIfFormula` replaces `required` rather than adding to it, so it can
  * make a statically-required field optional as well as the other way round.
+ * A toggle's `atLeastOneOnWith` partner not being on makes it required either way.
  */
 export function isFieldConditionallyRequired(
   field: AnyField,
   data: Record<string, FormValue>,
   extras: ConditionExtras,
 ): boolean {
+  if (pairedToggleRequired(field, data)) return true;
   if (hasEvaluableFormula(field.requiredIfFormula)) {
     return evaluateVisibleIfFormula(field.requiredIfFormula, data, extras);
   }
@@ -524,9 +528,9 @@ export function isPageCurrentlyVisible(
  *
  * Runs to a fixpoint, since removing a stale answer can hide further pages and
  * fields (or, with negated conditions, reveal fields — those stay stripped,
- * because the user never answered them in a visible state). Keys that don't
- * belong to any question field are left untouched. Returns `answers` itself
- * when nothing is stripped.
+ * because the user never answered them in a visible state). A conversation's
+ * note goes with its field, or when its option shows no note box. Other keys
+ * are left untouched. Returns `answers` itself when nothing is stripped.
  */
 export function stripHiddenAnswers(
   pages: Page[],
@@ -547,14 +551,13 @@ export function stripHiddenAnswers(
     };
     const hiddenAnsweredIds = pages.flatMap((page) => {
       const pageVisible = isPageCurrentlyVisible(page, data, passExtras);
-      return page.fields
-        .filter(isQuestionField)
-        .filter((field) => field.id in data)
-        .filter(
-          (field) =>
-            !pageVisible || !isElementCurrentlyVisible(field, data, passExtras),
-        )
-        .map((field) => field.id);
+      return page.fields.filter(isQuestionField).flatMap((field) => {
+        const answered = fieldAnswerKeys(field).filter((key) => key in data);
+        if (answered.length === 0) return [];
+        const visible =
+          pageVisible && isElementCurrentlyVisible(field, data, passExtras);
+        return visible ? [] : answered;
+      });
     });
     if (hiddenAnsweredIds.length > 0) {
       data = { ...data };
@@ -573,7 +576,7 @@ export function stripHiddenAnswers(
         }),
     });
     if (withoutHiddenCells === data) {
-      return data;
+      return stripOrphanedNotes(fieldLookup.values(), data);
     }
     data = withoutHiddenCells;
   }

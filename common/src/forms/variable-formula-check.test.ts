@@ -82,6 +82,7 @@ describe("rejects what TypeScript rejects", () => {
     ["Math.round(choice)", "not assignable to parameter of type 'number'"],
     ["choices.map()", "Expected 1 arguments, but got 0"],
     ["choice.lable", "Property 'lable' does not exist"],
+    ["[[2]].concat([1])", "Type 'number' is not assignable to type 'number[]'"],
   ])("%s", (formula, message) => {
     expect(errorFor(formula)).toContain(message);
   });
@@ -297,6 +298,9 @@ describe("infers the type a formula produces", () => {
     ["[[1, [2]]].flat()", "(number | number[])[]"],
     ["[[1, [2]]].flat(2)", "number[]"],
     ["choices.flatMap(item => [item.label])", "string[]"],
+    ["[1].concat([2], 3)", "number[]"],
+    ["[[1]].concat([[2]])", "number[][]"],
+    ["[1, [2]].concat([3], [[4]])", "(number | number[])[]"],
   ])("%s is %s", (formula, expected) => {
     expect(typeOf(formula)).toBe(expected);
   });

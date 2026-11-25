@@ -35,16 +35,6 @@ output "dev_assets_bucket_name" {
   value       = aws_s3_bucket.dev_assets.bucket
 }
 
-output "dev_access_key_id" {
-  value = aws_iam_access_key.dev.id
-  sensitive   = true
-}
-
-output "dev_secret_access_key" {
-  value       = aws_iam_access_key.dev.secret
-  sensitive   = true
-}
-
 output "app_server_private_ip" {
   value = aws_instance.app_server.private_ip
 }
@@ -93,24 +83,9 @@ output "metrics_server_ip" {
     value = aws_eip.monitoring_eip.public_ip
 }
 
-output "ci_storage_bucket_name" {
-  description = "S3 bucket used for CI storage (visual regression baselines, etc.)"
-  value       = aws_s3_bucket.ci_storage.bucket
-}
-
 output "agent_chats_bucket_name" {
   description = "S3 bucket holding Claude Code and Codex session transcripts"
   value       = aws_s3_bucket.agent_chats.bucket
-}
-
-output "agent_chats_access_key_id" {
-  value     = aws_iam_access_key.agent_chats.id
-  sensitive = true
-}
-
-output "agent_chats_secret_access_key" {
-  value     = aws_iam_access_key.agent_chats.secret
-  sensitive = true
 }
 
 output "deploy_artifacts_bucket_name" {

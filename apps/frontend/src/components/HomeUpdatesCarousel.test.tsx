@@ -91,8 +91,9 @@ it("lists the recent updates", async () => {
   expect(await screen.findByText("Halfway there")).toBeTruthy();
 });
 
-it("reports a failed load", async () => {
+it("reports a failed load with a retry", async () => {
   updatesResponse = () => Response.json({ message: "down" }, { status: 500 });
   renderRow();
-  expect(await screen.findByText("Could not load updates.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load updates.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
 });

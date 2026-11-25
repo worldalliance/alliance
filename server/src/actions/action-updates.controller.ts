@@ -157,7 +157,7 @@ export class ActionUpdatesController {
   @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
   async allUpdatesAdmin(): Promise<ActionUpdateDto[]> {
     const updates = await this.actionUpdates.getAllActionUpdatesAdmin();
-    return updates.map((update) => new ActionUpdateDto(update));
+    return updates.map((actionUpdate) => new ActionUpdateDto({ actionUpdate }));
   }
 
   @Get("allUpdates")
@@ -193,7 +193,10 @@ export class ActionUpdatesController {
     ]);
     return updates.map(
       (update) =>
-        new ActionUpdateDto(update, pictures.get(update.actionId) ?? []),
+        new ActionUpdateDto({
+          actionUpdate: update,
+          participantPictures: pictures.get(update.actionId) ?? [],
+        }),
     );
   }
 }

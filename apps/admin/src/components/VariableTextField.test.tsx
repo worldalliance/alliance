@@ -36,7 +36,7 @@ const renderField = (initial: string) => {
     input,
     type: (value: string) => fireEvent.change(input, { target: { value } }),
     openPicker: () =>
-      fireEvent.click(screen.getByLabelText("Insert a variable")),
+      fireEvent.click(screen.getByLabelText("Insert a formula")),
     pickTotal: () => fireEvent.click(screen.getByRole("option")),
   };
 };
@@ -81,3 +81,23 @@ describe("VariableTextField picker", () => {
     expect(onChange).toHaveBeenLastCalledWith("Saved #{total}");
   });
 });
+
+it.each([false, true])(
+  "takes its accessible description from aria-describedby, multiline=%p",
+  (multiline) => {
+    render(
+      <FormVariablesProvider variables={[]}>
+        <VariableTextField
+          value=""
+          onChange={() => {}}
+          multiline={multiline}
+          aria-describedby="hint"
+        />
+        <p id="hint">Some hint</p>
+      </FormVariablesProvider>,
+    );
+    expect(
+      screen.getByRole("textbox", { description: "Some hint" }),
+    ).toBeTruthy();
+  },
+);

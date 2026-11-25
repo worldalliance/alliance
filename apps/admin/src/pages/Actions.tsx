@@ -3,18 +3,19 @@ import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router";
+import React, { useMemo, useRef } from "react";
+import { Link, useSearchParams } from "react-router";
 import ActionListCard from "../components/ActionListCard";
 import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
 import ActionTimeline from "../components/ActionTimeline";
 import CreateActionMenu from "../components/CreateActionMenu";
+import { readBuckets, writeBuckets } from "../lib/actionListBuckets";
+import { actionsLoadError } from "../lib/actionsLoadError";
 import {
   ACTION_STATUS_BUCKET_LABELS,
   ActionStatusBucket,
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
-import { actionsLoadError } from "../lib/actionsLoadError";
 import { inProgressSuites } from "../lib/inProgressSuites";
 import { useActionParticipants } from "../lib/useActionParticipants";
 
@@ -33,24 +34,36 @@ type ActionSuiteGroup = {
   isArchivedOnly: boolean;
 };
 
+const NO_STATUS_MATCH = "No actions match the selected statuses.";
+const ALL_ARCHIVED = "Every action is archived.";
+
 const ActionsList: React.FC = () => {
   const list = useActionsAdmin();
-  const actions = useMemo(
-    () => (list.data ?? []).filter((action) => !action.archived),
-    [list.data],
-  );
   const error = list.isError ? actionsLoadError(list.error) : null;
-  const [shownBuckets, setShownBuckets] = useState<
-    ReadonlySet<ActionStatusBucket>
-  >(
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setParam = (key: string, value: string | null) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === null) next.delete(key);
+      else next.set(key, value);
+      return next;
+    });
+  const shownBuckets = readBuckets(searchParams.get("status"));
+  const setShownBuckets = (buckets: ReadonlySet<ActionStatusBucket>) =>
+    setParam("status", writeBuckets(buckets));
+  const showArchived = searchParams.get("archived") === "1";
+  const archivedToggle = useRef<HTMLInputElement>(null);
+  const setShowArchived = (show: boolean) =>
+    setParam("archived", show ? "1" : null);
+  const actions = useMemo(
     () =>
-      new Set([
-        ActionStatusBucket.Active,
-        ActionStatusBucket.Pending,
-        ActionStatusBucket.Draft,
-      ]),
+      (list.data ?? []).filter((action) => showArchived || !action.archived),
+    [list.data, showArchived],
   );
 
+  const timelineActions = actions.filter((action) =>
+    shownBuckets.has(actionStatusBucket(action)),
+  );
   const participantsById = useActionParticipants(actions);
 
   const suitesInProgress = useMemo(() => inProgressSuites(actions), [actions]);
@@ -124,46 +137,107 @@ const ActionsList: React.FC = () => {
       });
   }, [actions]);
 
+  const title = <title>Actions - Admin</title>;
+  const errorNote = error && (
+    <p role="alert" className="flex-shrink-0 text-red-600">
+      {error}
+    </p>
+  );
+
+  // Mounted from the first render, before any message, so screen readers
+  // announce the message when it arrives.
+  const withStatus = (page: React.ReactNode) => (
+    <>
+      <p role="status" className="sr-only">
+        {!list.data?.length
+          ? ""
+          : groupedActions.length === 0
+            ? ALL_ARCHIVED
+            : timelineActions.length === 0
+              ? NO_STATUS_MATCH
+              : ""}
+      </p>
+      {page}
+    </>
+  );
+
   if (list.isPending) {
-    return <p>Loading actions...</p>;
-  }
-
-  if (error && !list.data) {
-    return <p className="text-red-500">{error}</p>;
-  }
-
-  if (actions.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="font-bold ml-2">Actions</p>
-          <CreateActionMenu />
-        </div>
-        {error && <p className="text-red-500">{error}</p>}
-        <p>No actions found.</p>
-      </div>
+    return withStatus(
+      <p className="p-5">
+        {title}
+        Loading actions...
+      </p>,
     );
   }
 
-  return (
+  if (error && !list.data) {
+    return withStatus(
+      <div className="p-5">
+        {title}
+        {errorNote}
+      </div>,
+    );
+  }
+
+  if (!list.data?.length) {
+    return withStatus(
+      <div className="space-y-4 p-5">
+        {title}
+        <div className="flex justify-between items-center">
+          <h1 className="font-bold">Actions</h1>
+          <CreateActionMenu />
+        </div>
+        {errorNote}
+        <p>No actions yet. Create one to get started.</p>
+      </div>,
+    );
+  }
+
+  return withStatus(
     <div className="flex flex-col p-5 gap-y-3">
-      <title>Admin panel</title>
-      {error && <p className="text-red-500 flex-shrink-0">{error}</p>}
+      {title}
+      {errorNote}
       <ActionTimeline
-        actions={actions.filter((action) =>
-          shownBuckets.has(actionStatusBucket(action)),
-        )}
+        actions={timelineActions}
         header={
           <div className="flex h-full items-center gap-x-2">
             <ActionStatusBucketFilter
               selected={shownBuckets}
               onChange={setShownBuckets}
             />
+            <label className="flex shrink-0 items-center gap-x-1 text-xs text-zinc-700">
+              <input
+                ref={archivedToggle}
+                type="checkbox"
+                checked={showArchived}
+                onChange={(event) => setShowArchived(event.target.checked)}
+              />
+              Show archived
+            </label>
             <CreateActionMenu />
           </div>
         }
         latestLaunchFirst
         participantsById={participantsById}
+        emptyMessage={
+          groupedActions.length === 0 ? (
+            <>
+              {ALL_ARCHIVED}{" "}
+              <button
+                type="button"
+                className="text-blue-600 underline"
+                onClick={() => {
+                  setShowArchived(true);
+                  archivedToggle.current?.focus();
+                }}
+              >
+                Show archived actions
+              </button>
+            </>
+          ) : timelineActions.length === 0 ? (
+            NO_STATUS_MATCH
+          ) : undefined
+        }
         className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
       />
       {suitesInProgress.length > 0 && (
@@ -222,39 +296,45 @@ const ActionsList: React.FC = () => {
           </div>
         </section>
       )}
-      <p className="text-sm text-zinc-500 flex-shrink-0">
-        Grouped by suite and ordered by latest event (most recent first)
-      </p>
+      {groupedActions.length > 0 && (
+        <>
+          <p className="text-sm text-zinc-500 flex-shrink-0">
+            Grouped by suite and ordered by latest event (most recent first)
+            {showArchived &&
+              ", with suites whose actions are all archived last"}
+          </p>
 
-      <div className="space-y-5 rounded-lg border border-zinc-200 bg-white p-5">
-        {groupedActions.map((suite) => (
-          <div
-            key={suite.id ?? "suite-unspecified"}
-            className="border border-zinc-200 rounded-lg overflow-hidden"
-          >
-            <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-100">
-              {suite.id ? (
-                <Link
-                  to={`/suites/${suite.id}`}
-                  className="text-sm font-semibold text-black hover:text-green"
-                >
-                  {suite.name}
-                </Link>
-              ) : (
-                <p className="text-sm font-semibold text-black ">
-                  {suite.name}
-                </p>
-              )}
-            </div>
-            <div className="divide-y divide-zinc-200">
-              {suite.actions.map((action) => (
-                <ActionListCard key={action.id} action={action} />
-              ))}
-            </div>
+          <div className="space-y-5 rounded-lg border border-zinc-200 bg-white p-5">
+            {groupedActions.map((suite) => (
+              <div
+                key={suite.id ?? "suite-unspecified"}
+                className="border border-zinc-200 rounded-lg overflow-hidden"
+              >
+                <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-100">
+                  {suite.id ? (
+                    <Link
+                      to={`/suites/${suite.id}`}
+                      className="text-sm font-semibold text-black hover:text-green"
+                    >
+                      {suite.name}
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-semibold text-black ">
+                      {suite.name}
+                    </p>
+                  )}
+                </div>
+                <div className="divide-y divide-zinc-200">
+                  {suite.actions.map((action) => (
+                    <ActionListCard key={action.id} action={action} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
+        </>
+      )}
+    </div>,
   );
 };
 

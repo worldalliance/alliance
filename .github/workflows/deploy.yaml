@@ -8,433 +8,59 @@ env:
   AWS_REGION: us-west-2
   env_name: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_name == 'production' && 'production' || 'staging' }}
-
 jobs:
-  dirty-check:
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+  # A production push deploys what its commit's fully green staging run
+  # built, and otherwise checks and builds the commit itself.
+  promote:
+    if: github.ref_name == 'production'
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/dirty-check
-        with:
-          check: ${{ github.ref_name == 'production' && 'empty' || 'exists' }}
-
-  # An artifact, not job outputs: Actions drops a job output that matches any
-  # secret's value.
-  deployed-config:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-      - run: bun install --frozen-lockfile
-      - run: bun scripts/deployed-config.ts "$env_name" > deployed-config.env
-      - uses: actions/upload-artifact@v4
-        with:
-          name: deployed-config
-          path: deployed-config.env
-
-  test-backend-e2e:
-    uses: ./.github/workflows/test-backend-e2e.yaml
-    with:
-      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
-
-  test-unit:
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          [
-            server,
-            common,
-            shared,
-            sharedweb,
-            apps/frontend,
-            apps/admin,
-            apps/mobile,
-            scripts,
-            .github,
-            citesting,
-            agents/hooks,
-            agents/skills,
-          ]
-    uses: ./.github/workflows/test-unit.yaml
-    with:
-      package: ${{ matrix.package }}
-      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
-
-  build-react-app:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Generate React Router Types
-        run: bunx react-router typegen
-        working-directory: ./apps/frontend
-
-      - name: Typecheck
-        run: bun typecheck
-        working-directory: ./apps/frontend
-
-      - name: Build React App
-        run: bun run --cwd apps/frontend build -- --mode "$env_name"
-        env:
-          VITE_APP_GIT_SHA: ${{ github.sha }}
-          VITE_APP_VERSION: ${{ github.ref_name }}
-
-      - name: Install PostHog CLI
-        continue-on-error: true
-        uses: ./.github/actions/posthog-cli
-
-      - name: Inject source map ids
-        continue-on-error: true
-        run: posthog-cli sourcemap inject --directory ./apps/frontend/build/client/assets/
-
-      - name: Upload Assets For Source Maps
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: react-assets
-          path: apps/frontend/build/client/assets/
-
-      - name: create output folder
-        run: |
-          rm -rf output
-          mkdir output
-          mv build output/build
-          cp server.js output/server.js
-          cp package.json output/package.json
-          # Strip workspace:* deps and generate a standalone lockfile
-          cd output
-          sed -i '/workspace:\*/d' package.json
-          bun install --lockfile-only
-        working-directory: ./apps/frontend
-
-      - name: Zip client + server
-        run: |
-          zip -r react-build.zip output
-        working-directory: ./apps/frontend
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: react-build
-          path: apps/frontend/react-build.zip
-
-  # Apart from build-react-app, so the frontend's build dependencies never
-  # run where id-token: write reaches the environment role's Expo token. It
-  # never fails the run, which publish-mobile-ota would read as not live.
-  upload-react-sourcemaps:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    needs:
-      - deployed-config
-      - build-react-app
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    timeout-minutes: 10
     permissions:
+      actions: read
       contents: read
-      id-token: write
+    outputs:
+      run-id: ${{ steps.promote.outputs.run-id }}
+      artifact-ids: ${{ steps.promote.outputs.artifact-ids }}
+      details: ${{ steps.promote.outputs.details }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
-
-      - name: Read CI secrets
-        id: aws
-        uses: ./.github/actions/aws
+      - uses: actions/checkout@v4
         with:
-          role: ${{ env.env_name }}
-          parameters: ci/deploy/POSTHOG_SOURCEMAP_KEY
+          sparse-checkout: .github/actions
 
-      - name: Download Assets
-        uses: actions/download-artifact@v4
+      - id: promote
+        uses: ./.github/actions/promote
         with:
-          name: react-assets
-          path: react-assets
+          commit: ${{ github.sha }}
 
-      - name: Install PostHog CLI
-        uses: ./.github/actions/posthog-cli
-
-      - name: Upload source maps to PostHog
-        env:
-          POSTHOG_CLI_ENV_ID: ${{ steps.config.outputs.POSTHOG_PROJECT_ID }}
-          POSTHOG_CLI_TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').POSTHOG_SOURCEMAP_KEY }}
-        run: posthog-cli sourcemap upload --directory react-assets
-
-  build-admin-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build React App
-        run: bun run --cwd apps/admin build -- --mode "$env_name"
-
-      - name: Zip Build Output
-        run: zip -r admin-build.zip build/client
-        working-directory: ./apps/admin
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin-build
-          path: apps/admin/admin-build.zip
-
-  actionlint:
-    uses: ./.github/workflows/actionlint.yaml
-
-  format-check:
-    uses: ./.github/workflows/format-check.yaml
-
-  gitignore-check:
-    uses: ./.github/workflows/gitignore-check.yaml
-
-  typecheck:
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          [
-            server,
-            common,
-            shared,
-            sharedweb,
-            apps/frontend,
-            apps/admin,
-            apps/mobile,
-            citesting,
-          ]
-    uses: ./.github/workflows/typecheck.yaml
-    with:
-      package: ${{ matrix.package }}
-
-  # The deploy jobs gate on this one job, so a check added here gates all of
-  # them and they cannot drift apart.
   checks:
-    runs-on: ubuntu-latest
-    needs:
-      - dirty-check
-      - build-react-app
-      - build-admin-frontend
-      - test-backend-e2e
-      - test-unit
-      - migrations-drift-check
-      - typecheck
-      - format-check
-      - gitignore-check
-      - actionlint
-      - mobile-bundle-check
-    steps:
-      - run: echo "all checks passed"
+    needs: promote
+    if: ${{ !cancelled() && (github.ref_name != 'production' || (needs.promote.result == 'success' && !needs.promote.outputs.run-id)) }}
+    uses: ./.github/workflows/deploy-checks.yaml
+    with:
+      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
 
-  deploy-react-app:
-    runs-on: ubuntu-latest
+  # Checks run outside the lock. The group name is fixed, not built from
+  # github.workflow, so other workflows deploying an environment can share it.
+  deploy:
     needs:
-      - deployed-config
+      - promote
       - checks
-      - deploy-nest-backend
-    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
+    if: ${{ !cancelled() && (needs.checks.result == 'success' || needs.promote.outputs.run-id) }}
+    concurrency:
+      group: deploy-${{ github.ref_name == 'production' && 'production' || 'staging' }}
+      queue: max
+    uses: ./.github/workflows/deploy-environment.yaml
     permissions:
+      actions: read
       contents: read
+      deployments: write
       id-token: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
-
-      - name: Download React Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: react-build
-
-      - name: Deploy frontend SSR on EC2
-        uses: ./.github/actions/run-on-host
-        with:
-          environment: ${{ env.env_name }}
-          files: |
-            deploy/nginx/alliance.conf
-            react-build.zip
-          script: |
-            df -h ~
-            df -hi ~
-            avail_kb=$(df --output=avail -k ~ | tail -1)
-            [ "$avail_kb" -ge 3145728 ] || { echo "::error::Under 3G free on the EC2 host; the unzip and install would fail. Free space there before deploying."; exit 1; }
-            avail_inodes=$(df --output=iavail ~ | tail -1)
-            [ "$avail_inodes" -ge 100000 ] || { echo "::error::Under 100k free inodes on the EC2 host; the unzip and install would fail. Free inodes there before deploying."; exit 1; }
-
-            sudo yum install -y unzip nginx
-
-            # Install Bun
-            BUN_VERSION=1.4.4
-            export BUN_INSTALL="$HOME/.bun"
-            export PATH="$BUN_INSTALL/bin:$PATH"
-            if [ "$(bun --version 2>/dev/null)" != "$BUN_VERSION" ]; then
-              curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
-            fi
-            bun --version | grep -qx "$BUN_VERSION" || { echo "bun $BUN_VERSION required, got $(bun --version 2>/dev/null || echo none)"; exit 1; }
-
-            # Node is needed for pm2.
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] || { echo "nvm missing ($NVM_DIR/nvm.sh) — provision node on this host before deploying"; exit 1; }
-            \. "$NVM_DIR/nvm.sh"
-            nvm install 22
-            nvm use 22
-            nvm alias default 22
-            command -v node &> /dev/null || { echo "node missing after nvm setup"; exit 1; }
-            command -v pm2 &> /dev/null || bun add -g pm2
-
-            cd ~/
-
-            unzip -o -DD ~/react-build.zip
-
-            cd ~/output
-            # node_modules isn't in the zip; clear it so the frozen install
-            # builds a clean tree
-            rm -rf node_modules
-            # The script runs without `set -e`; make it fatal explicitly.
-            bun install --frozen-lockfile --production || { echo "bun install failed"; exit 1; }
-            # Installs hardlink out of the cache, so node_modules survives this.
-            bun pm cache rm || echo "::warning::bun pm cache rm failed; the disk fills up unless the Bun cache is cleared"
-
-            pm2 delete client-ssr || true
-            pm2 start "NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }} node server.js" --name client-ssr
-            pm2 save
-            pm2 jlist | grep -q '"name":"pm2-logrotate"' || pm2 install pm2-logrotate || echo "::warning::pm2-logrotate install failed; pm2 logs grow unbounded"
-
-            # unzip -o keeps earlier builds' hashed files, and -DD dates this
-            # build's to now. Keeping a week of them serves old chunks to pages
-            # loaded before this deploy, when deploys are under a week apart.
-            find ~/output/build -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/output/build"
-
-            # Source of truth is deploy/nginx/alliance.conf, uploaded to
-            # ~/alliance.conf; substitute the per-environment domains into
-            # server_name + cert paths.
-            DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
-            sudo mkdir -p /var/www/certbot
-            # nginx creates the video cache directory, owned by its workers,
-            # only inside a parent that exists.
-            sudo mkdir -p /var/cache/nginx
-            # alliance.conf owns the port 80 default, so clearing the packaged
-            # default.conf belongs with it, not with the admin panel.
-            sudo rm -f /etc/nginx/conf.d/default.conf
-            # nginx serves /assets/ off disk under this directory, so it needs
-            # to traverse it.
-            chmod o+x /home/ec2-user
-            sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" ~/alliance.conf \
-              | sudo tee /etc/nginx/conf.d/alliance.conf > /dev/null
-            sudo nginx -t || { echo "nginx config invalid"; exit 1; }
-            sudo systemctl reload nginx
-
-  deploy-admin-app:
-    runs-on: ubuntu-latest
-    needs:
-      - deployed-config
-      - checks
-      - deploy-nest-backend
-      - deploy-react-app
-    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
-
-      - name: Download Admin Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: admin-build
-
-      - name: Deploy admin on EC2
-        uses: ./.github/actions/run-on-host
-        with:
-          environment: ${{ env.env_name }}
-          files: |
-            deploy/nginx/alliance_admin.conf
-            deploy/nginx/alliance_admin_http.conf
-            admin-build.zip
-          script: |
-            sudo yum install -y unzip nginx
-
-            unzip -o -DD ~/admin-build.zip -d ~/admin-app
-            # Same pruning as the frontend deploy's ~/output/build.
-            find ~/admin-app -type f -mtime +7 -delete || echo "::warning::could not prune old build files from ~/admin-app"
-
-            chmod o+x /home/ec2-user
-
-            DOMAIN='${{ steps.config.outputs.DOMAIN_NAME }}'
-            ALT_DOMAIN='${{ steps.config.outputs.ALT_DOMAIN_NAME }}'
-            sudo mkdir -p /var/www/certbot
-
-            render () {
-              sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__ALT_DOMAIN__/$ALT_DOMAIN/g" "$HOME/$1" \
-                | sudo tee "/etc/nginx/conf.d/$1" > /dev/null
-            }
-
-            reload () {
-              sudo nginx -t || { echo "nginx config invalid"; exit 1; }
-              sudo systemctl reload nginx
-            }
-
-            # The port 80 vhost lands first and unconditionally: it serves the
-            # ACME challenge, so the cert below cannot be issued until it is
-            # live. admin.conf is its predecessor and would claim the same
-            # server_name.
-            render alliance_admin_http.conf
-            sudo rm -f /etc/nginx/conf.d/admin.conf
-            reload
-
-            # A vhost pointing at a missing cert fails every later `nginx -t`,
-            # the frontend deploy's included, and one whose cert omits a
-            # server_name deploys clean then fails TLS in the browser.
-            CERT="/etc/letsencrypt/live/admin.$DOMAIN/fullchain.pem"
-            for name in "admin.$DOMAIN" "admin.$ALT_DOMAIN"; do
-              if ! sudo openssl x509 -noout -ext subjectAltName -in "$CERT" 2>/dev/null | grep -qF "DNS:$name"; then
-                echo "$CERT is missing or does not cover $name. The challenge is now served for both names; issue the cert on this box, then re-run this job:"
-                echo "  sudo certbot certonly --webroot -w /var/www/certbot --cert-name admin.$DOMAIN --expand -d admin.$DOMAIN -d admin.$ALT_DOMAIN"
-                exit 1
-              fi
-            done
-
-            render alliance_admin.conf
-            reload
-
-  migrations-drift-check:
-    uses: ./.github/workflows/migrations-drift-check.yaml
-
-  mobile-bundle-check:
-    uses: ./.github/workflows/mobile-bundle-check.yaml
+    with:
+      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+      commit: ${{ github.sha }}
+      artifacts-run-id: ${{ needs.promote.outputs.run-id }}
+      artifact-ids: ${{ needs.promote.outputs.artifact-ids || '{}' }}
+      details: ${{ needs.promote.outputs.details || '{}' }}
 
   mobile-fingerprint-check:
     uses: ./.github/workflows/mobile-fingerprint-check.yaml
@@ -442,233 +68,17 @@ jobs:
       contents: read
       id-token: write
 
-  deploy-nest-backend:
-    runs-on: ubuntu-latest
-    needs: checks
-    environment: ${{ github.ref_name == 'production' && 'production-hosts' || 'staging-hosts' }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Zip backend deploy workspace
-        run: |
-          rm -f nest-build.zip
-          zip -r nest-build.zip \
-            package.json \
-            bun.lock \
-            bunfig.toml \
-            tsconfig.base.json \
-            server/package.json \
-            server/bunfig.toml \
-            server/tsconfig.json \
-            server/src \
-            server/migrations \
-            server/scripts \
-            scripts/deploy_backend.sh \
-            scripts/secrets_run.sh \
-            scripts/sync_prod_to_staging.sh \
-            scripts/anonymize \
-            deploy/systemd \
-            common/package.json \
-            common/tsconfig.json \
-            common/src \
-            apps/admin/package.json \
-            apps/frontend/package.json \
-            apps/mobile/package.json \
-            citesting/package.json \
-            shared/package.json \
-            sharedweb/package.json
-
-      - name: Deploy Backend on EC2
-        uses: ./.github/actions/run-on-host
-        with:
-          environment: ${{ env.env_name }}
-          files: nest-build.zip
-          timeout-minutes: 45
-          script: |
-            set -Euo pipefail
-
-            sudo yum install -y unzip
-            command -v unzip >/dev/null || { echo "unzip is required; yum install failed"; exit 1; }
-
-            # Install Bun
-            BUN_VERSION=1.4.4
-            export BUN_INSTALL="$HOME/.bun"
-            export PATH="$BUN_INSTALL/bin:$PATH"
-            if [ "$(bun --version 2>/dev/null)" != "$BUN_VERSION" ]; then
-              curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
-            fi
-            bun --version | grep -qx "$BUN_VERSION" || { echo "bun $BUN_VERSION required, got $(bun --version 2>/dev/null || echo none)"; exit 1; }
-
-            # Node is needed for pm2.
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] || { echo "nvm missing ($NVM_DIR/nvm.sh) — provision node on this host before deploying"; exit 1; }
-            \. "$NVM_DIR/nvm.sh"
-            command -v node &> /dev/null || { echo "node missing after nvm setup"; exit 1; }
-            command -v pm2 &> /dev/null || bun add -g pm2
-
-            cd ~/
-
-            export NODE_ENV=${{ github.ref_name == 'production' && 'production' || 'staging' }}
-
-            deploy_backend=$(unzip -p ~/nest-build.zip scripts/deploy_backend.sh) || { echo "could not extract deploy_backend.sh"; exit 1; }
-            bash -c "$deploy_backend" || exit 1
-
-            # The prod → staging sync runs from this box, outside the app, so
-            # ship its script and schedule with the deploy. Staging only. Never
-            # fails the deploy
-            if [ "${{ github.ref_name }}" != 'production' ]; then
-              install -m 755 ~/nest-backend/scripts/sync_prod_to_staging.sh \
-                ~/sync_prod_to_staging.sh.new \
-                && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
-                && echo "installed ~/sync_prod_to_staging.sh" \
-                || echo "WARNING: could not install sync_prod_to_staging.sh"
-
-              # No restart: on the host's systemd, restarting the timer runs
-              # the sync at once if a scheduled time passed since the timer's
-              # previous start. daemon-reload applies edited units.
-              sudo install -m 644 ~/nest-backend/deploy/systemd/alliance-prod-to-staging-sync.{service,timer} \
-                /etc/systemd/system/ \
-                && sudo systemctl daemon-reload \
-                && sudo systemctl enable --now alliance-prod-to-staging-sync.timer \
-                && echo "installed alliance-prod-to-staging-sync.timer" \
-                || echo "::warning::could not install alliance-prod-to-staging-sync.timer"
-            fi
-
-  verify-deployment:
-    needs:
-      - deployed-config
-      - deploy-nest-backend
-      - deploy-react-app
-      - deploy-admin-app
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/actions/deployed-config
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
-
-      - name: Check main app
-        run: |
-          echo "Checking main app..."
-          curl --fail --silent --show-error http://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
-          echo "main app is reachable"
-
-      - name: Check main app on alt domain
-        run: |
-          echo "Checking main app on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
-          curl --fail --silent --show-error http://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "main app is reachable on the alt domain"
-
-      - name: Check admin app
-        run: |
-          echo "Checking admin app..."
-          curl --fail --silent --show-error http://admin.${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
-          echo "admin app is reachable"
-  verify-https:
-    needs:
-      - deployed-config
-      - deploy-nest-backend
-      - deploy-react-app
-      - deploy-admin-app
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/actions/deployed-config
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
-
-      - name: Check main app
-        run: |
-          echo "Checking main app..."
-          curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
-          echo "main app https ok"
-
-      - name: Check main app https on alt domain
-        run: |
-          echo "Checking main app https on ${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
-          curl --fail --silent --show-error https://${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "alt domain https ok"
-
-      - name: Check Android app links file
-        run: |
-          for host in ${{ steps.config.outputs.DOMAIN_NAME }} ${{ steps.config.outputs.ALT_DOMAIN_NAME }}; do
-            echo "Checking assetlinks.json on $host..."
-            curl --fail --silent --show-error https://$host/.well-known/assetlinks.json > /dev/null
-          done
-          echo "assetlinks.json ok"
-
-      - name: Check admin app
-        run: |
-          echo "Checking admin app..."
-          curl --fail --silent --show-error https://admin.${{ steps.config.outputs.DOMAIN_NAME }} > /dev/null
-          echo "admin app https ok"
-
-      - name: Check admin app on alt domain
-        run: |
-          echo "Checking admin app on admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }}..."
-          curl --fail --silent --show-error https://admin.${{ steps.config.outputs.ALT_DOMAIN_NAME }} > /dev/null
-          echo "admin alt domain https ok"
-
-      # nginx -t can pass while every /events/ request fails, e.g. on PostHog's
-      # certificate. Last, so a PostHog outage doesn't skip the checks above.
-      - name: Check PostHog proxy
-        run: |
-          echo "Checking PostHog proxy..."
-          curl --fail --silent --show-error --max-time 30 https://${{ steps.config.outputs.DOMAIN_NAME }}/events/static/array.js > /dev/null
-          echo "PostHog proxy https ok"
-
-  verify-api:
-    needs:
-      - deployed-config
-      - deploy-nest-backend
-      - deploy-react-app
-      - deploy-admin-app
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/actions/deployed-config
-
-      - name: Read deployed config
-        id: config
-        uses: ./.github/actions/deployed-config
-
-      - name: Check API health
-        run: |
-          echo "Checking API health..."
-          curl --fail --silent --show-error https://${{ steps.config.outputs.DOMAIN_NAME }}/api/ > /dev/null
-          echo "API health ok"
-
   notify:
     runs-on: ubuntu-latest
     needs:
-      - deployed-config
-      - deploy-nest-backend
-      - verify-deployment
-      - verify-https
-      - verify-api
+      - deploy
       - mobile-fingerprint-check
-      - publish-mobile-ota
     if: >-
-      ${{ always() && (needs.deployed-config.result != 'success'
-      || needs.deploy-nest-backend.result != 'success'
-      || needs.verify-deployment.result != 'success'
-      || needs.verify-https.result != 'success'
-      || needs.verify-api.result != 'success'
-      || needs.mobile-fingerprint-check.result != 'success'
-      || needs.publish-mobile-ota.result != 'success') }}
+      ${{ always() && (needs.deploy.result != 'success'
+      || needs.mobile-fingerprint-check.result != 'success') }}
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -694,24 +104,13 @@ jobs:
           MENTION: ${{ steps.slack_mention.outputs.mention }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           . .github/scripts/slack.sh
           SUBJECT=$(slack_commit_subject "$COMMIT_MESSAGE")
-          FAILED=$(jq -r '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key] | join(", ")' <<<"$NEEDS")
+          FAILED=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "cancelled") | .name' | paste -sd, - | sed 's/,/, /g') \
+            || FAILED='failed jobs unknown'
           slack_post "$WEBHOOK" \
             "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>"
-
-  # Runs after the backend is live so the OTA bundle never talks to an API
-  # older than itself.
-  publish-mobile-ota:
-    needs:
-      - deploy-nest-backend
-    uses: ./.github/workflows/publish-mobile-ota.yaml
-    permissions:
-      contents: read
-      actions: read
-      id-token: write
-    with:
-      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}

@@ -1,112 +1,25 @@
-import { run } from "@alliance/common/run";
-import type {
-  MobileFingerprintsDto,
-  MobilePlatformFingerprintDto,
-} from "@alliance/shared/client";
-// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
-import { appGetMobileFingerprints } from "@alliance/shared/client";
-import * as Application from "expo-application";
-import * as Updates from "expo-updates";
 import { useEffect, useState } from "react";
-import { Linking, Modal, Platform, View } from "react-native";
-import { OTA_UPDATES_ENABLED } from "../lib/otaUpdates";
+import { Linking, Modal, View } from "react-native";
+import { STORE, storeHasNewerBuild } from "../lib/storeUpdate";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
 
 const CHECK_DELAY_MS = 1500;
 
-function storeBuildFor(
-  data: MobileFingerprintsDto,
-): MobilePlatformFingerprintDto | null {
-  const platform = Platform.OS;
-  switch (platform) {
-    case "ios":
-      return data.ios;
-    case "android":
-      return data.android;
-    case "macos":
-    case "web":
-    case "windows":
-      // No store builds for other platforms — nothing to compare against.
-      return null;
-    default:
-      platform satisfies never;
-      return null;
-  }
-}
-
-// Strictly greater, e.g. isNewerVersion("1.3.0", "1.2.9") === true. Malformed
-// input yields NaN parts, every comparison against NaN is false, and the
-// function returns false — i.e. fails safe to "don't prompt".
-function isNewerVersion(a: string, b: string): boolean {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const ai = pa[i] ?? 0;
-    const bi = pb[i] ?? 0;
-    if (ai > bi) return true;
-    if (ai < bi) return false;
-  }
-  return false;
-}
-
-const STORE_URL = run(() => {
-  const platform = Platform.OS;
-  switch (platform) {
-    case "ios":
-      return "https://apps.apple.com/app/id6760088194";
-    case "android":
-      return Application.applicationId
-        ? `https://play.google.com/store/apps/details?id=${Application.applicationId}`
-        : null;
-    case "macos":
-    case "web":
-    case "windows":
-      // No store builds for other platforms — the modal never shows there.
-      return null;
-    default:
-      platform satisfies never;
-      return null;
-  }
-});
-
-/**
- * After launch, compares this build's EAS Update runtime fingerprint against
- * the store-build fingerprint reported by the server. A mismatch means a
- * store build exists that this install can't reach over OTA — but
- * fingerprints are unordered hashes, so a mismatch alone can't distinguish
- * "this install is behind the store" from "the server's baseline hasn't
- * caught up to this build yet" (the deploy window right after a release).
- * The store build's semver breaks the tie: we only prompt when it is
- * strictly newer than this install's own version.
- */
+/** After launch, prompts once when the store has a build newer than this install. */
 const UpdateAvailableModal = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!OTA_UPDATES_ENABLED || Updates.channel !== "production") return;
-
     const timer = setTimeout(async () => {
-      try {
-        const { data } = await appGetMobileFingerprints();
-        const storeBuild = data ? storeBuildFor(data) : null;
-        const installed = Updates.runtimeVersion;
-        // The native app version (not OTA-updatable), so it always describes
-        // the installed store build.
-        const installedVersion = Application.nativeApplicationVersion;
-        if (!storeBuild?.fingerprint || !installed || !installedVersion) {
-          return;
-        }
-        if (storeBuild.fingerprint === installed) return;
-        if (!isNewerVersion(storeBuild.version, installedVersion)) return;
-        setVisible(true);
-      } catch {
-        // Offline or server unreachable — check again next launch.
-      }
+      // Offline or server unreachable — check again next launch.
+      const newer = await storeHasNewerBuild();
+      if (newer.ok && newer.value) setVisible(true);
     }, CHECK_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
 
+  const store = STORE;
   if (!visible) return null;
 
   return (
@@ -126,11 +39,11 @@ const UpdateAvailableModal = () => {
               color={ButtonColor.Light}
               onPress={() => setVisible(false)}
             />
-            {STORE_URL && (
+            {store && (
               <Button
                 title="Update"
                 color={ButtonColor.Green}
-                onPress={() => Linking.openURL(STORE_URL)}
+                onPress={() => Linking.openURL(store.url)}
               />
             )}
           </View>

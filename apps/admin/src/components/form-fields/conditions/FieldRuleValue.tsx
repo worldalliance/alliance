@@ -152,6 +152,14 @@ function EqualsValue({
           onChange={onChange}
         />
       );
+    case "toggle":
+      return (
+        <BooleanValue
+          labels={{ true: "On", false: "Off" }}
+          value={value === true}
+          onChange={onChange}
+        />
+      );
     case "contract":
       return (
         <BooleanValue
@@ -183,6 +191,7 @@ function EqualsValue({
         />
       );
     case "radio":
+    case "conversation":
       return (
         <OptionValue
           options={controller.options}

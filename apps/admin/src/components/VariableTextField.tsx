@@ -65,6 +65,7 @@ export type VariableTextFieldProps = {
   style?: TextareaAutosizeProps["style"];
   spellCheck?: boolean;
   "aria-label"?: string;
+  "aria-describedby"?: string;
 };
 
 export function VariableTextField({
@@ -79,6 +80,7 @@ export function VariableTextField({
   style,
   spellCheck,
   "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
 }: VariableTextFieldProps) {
   const variables = useFormVariables();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -211,6 +213,7 @@ export function VariableTextField({
     // and an opaque input hides the highlight painted behind it.
     style: segments ? { backgroundColor: "transparent", ...style } : style,
     "aria-label": ariaLabel,
+    "aria-describedby": ariaDescribedBy,
     className: cn(sharedClassName, "relative"),
     onKeyDown: handleKeyDown,
     onSelect: syncCaret,
@@ -270,8 +273,8 @@ export function VariableTextField({
         {showPicker && (
           <button
             type="button"
-            title="Insert a variable"
-            aria-label="Insert a variable"
+            title="Insert a formula"
+            aria-label="Insert a formula"
             onMouseDown={(event) => event.preventDefault()}
             onClick={openPicker}
             className="absolute right-1 top-1 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -316,7 +319,7 @@ export function VariableTextField({
 
       {unknownReferences.length > 0 && (
         <p className="mt-0.5 text-xs text-red-600">
-          No such variable: {unknownReferences.join(", ")}
+          No such formula: {unknownReferences.join(", ")}
         </p>
       )}
     </div>

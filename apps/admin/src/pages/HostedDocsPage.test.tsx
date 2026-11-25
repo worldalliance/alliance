@@ -1,7 +1,7 @@
-import { setEnv } from "@alliance/common/set-env";
 import type { HostedDocDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { setTestWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
@@ -182,24 +182,21 @@ test("rejects an invalid ID without sending it", async () => {
 });
 
 test("copies the URL on this environment's site", async () => {
-  const priorAlt = process.env.VITE_ALT_APP_URL;
-  process.env.VITE_ALT_APP_URL = "https://staging.thealliance.org";
+  setTestWebRuntimeConfig({
+    VITE_ALT_APP_URL: "https://staging.thealliance.org",
+  });
   const writeText = jest.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText },
   });
   renderPage();
-  try {
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Copy link to 2026-Pilot.pdf",
-      }),
-    );
-    await screen.findByText("Link copied.");
-  } finally {
-    setEnv("VITE_ALT_APP_URL", priorAlt);
-  }
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Copy link to 2026-Pilot.pdf",
+    }),
+  );
+  await screen.findByText("Link copied.");
   expect(writeText).toHaveBeenCalledWith(
     "https://staging.thealliance.org/docs/2026-Pilot.pdf",
   );

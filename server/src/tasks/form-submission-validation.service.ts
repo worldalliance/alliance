@@ -1,3 +1,4 @@
+import { conversationNote } from "@alliance/common/forms/conversation";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import { forEachCondition } from "@alliance/common/forms/form-conditions";
 import {
@@ -101,7 +102,7 @@ export class FormSubmissionValidationService {
     if (field.kind === "number" || field.kind === "range") {
       return typeof value === "number" && Number.isFinite(value);
     }
-    if (field.kind === "checkbox") {
+    if (field.kind === "checkbox" || field.kind === "toggle") {
       return value === true;
     }
     if (typeof value === "string") {
@@ -206,6 +207,16 @@ export class FormSubmissionValidationService {
                 `Field ${elementInternalDescriptor(field)} is required`,
               );
             }
+          }
+          if (
+            field.kind === "conversation" &&
+            conversationNote(field, effectiveAnswers)?.required &&
+            !this.hasRequiredValue(field, effectiveAnswers[field.noteId]) &&
+            isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
+          ) {
+            throw new BadRequestException(
+              `Field ${elementInternalDescriptor(field)} requires a note.`,
+            );
           }
           const maxSelections =
             field.kind === "multiselect" ? getMaxSelections(field) : undefined;

@@ -1,9 +1,10 @@
-import type { AgentEvent, AgentEventListener } from "./session";
+import type { AgentEvent } from "../../shared/agent-event";
+import type { AgentEventListener } from "./session";
 
 export class SessionListeners {
   private readonly subscriptions = new Set<{ listener: AgentEventListener }>();
 
-  constructor(private readonly sessionId: string) {}
+  constructor(private readonly sessionId: () => string) {}
 
   subscribe(listener: AgentEventListener): () => void {
     const subscription = { listener };
@@ -18,7 +19,7 @@ export class SessionListeners {
         subscription.listener(event);
       } catch (error) {
         console.error(
-          `session ${this.sessionId} listener threw on ${event.kind}`,
+          `session ${this.sessionId()} listener threw on ${event.kind}`,
           error,
         );
       }

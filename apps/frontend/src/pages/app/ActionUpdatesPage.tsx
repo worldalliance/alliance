@@ -3,23 +3,11 @@ import {
   useAllActionUpdates,
 } from "@alliance/shared/lib/useActionUpdates";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import { useMemo } from "react";
 import HomeUpdateCard from "../../components/HomeUpdateCard";
-import { NOTIFICATIONS_PREVIEW_LIMIT } from "../../lib/useNotificationActions";
 
 const ActionUpdatesPage = () => {
-  const { data, isPending, isError } = useAllActionUpdates();
-  const { isNew, markOpened } = useActionUpdateNewState(
-    data,
-    NOTIFICATIONS_PREVIEW_LIMIT,
-  );
-  const updates = useMemo(
-    () =>
-      [...(data ?? [])].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      ),
-    [data],
-  );
+  const { data: updates = [], isPending, isError } = useAllActionUpdates();
+  const { isNew, markOpened } = useActionUpdateNewState(updates);
 
   return (
     <CenterLayout>

@@ -34,6 +34,13 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
   @Allow()
   generalUpdates: GeneralUpdateDto[];
 
+  @ApiProperty({
+    description:
+      "Whether the suite is partitioned, so its partition decides its actions' participants and optional work.",
+  })
+  @Allow()
+  isPartitioned: boolean;
+
   constructor(suite: ActionSuite, actions: ParsedAction[]) {
     super();
     this.id = suite.id;
@@ -51,5 +58,9 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
       suite.reminderGroups?.map((group) => new ReminderGroupDto(group)) ?? [];
     this.generalUpdates =
       suite.generalUpdates?.map((update) => new GeneralUpdateDto(update)) ?? [];
+    if (suite.partition === undefined) {
+      throw new Error(`partition of action suite ${suite.id} not loaded`);
+    }
+    this.isPartitioned = suite.partition !== null;
   }
 }

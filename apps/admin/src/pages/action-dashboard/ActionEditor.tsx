@@ -28,7 +28,6 @@ type ActionEditorMode =
   | {
       isNew: false;
       cohortParseFailed: boolean;
-      onDelete: () => void;
       checklist: React.ReactNode;
       hideStaffPreview?: boolean;
     };
@@ -83,6 +82,7 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
     return (
       <div className="p-5">
         <ActionForm {...formProps} isNew={true} onCancel={mode.onCancel} />
+        {editor.contentDialog}
       </div>
     );
   }
@@ -103,10 +103,10 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
         saveDisabled={mode.cohortParseFailed}
         isNew={false}
         actionId={action?.id}
-        onDelete={mode.onDelete}
         baseUrl={getApiUrl()}
         hideStaffPreview={mode.hideStaffPreview}
       />
+      {editor.contentDialog}
     </div>
   );
 };

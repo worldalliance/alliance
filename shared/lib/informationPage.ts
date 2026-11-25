@@ -1,4 +1,4 @@
-import { Features } from "./features";
+import { Features } from "@alliance/common/features";
 
 export enum InfoEntryId {
   Email = "email",

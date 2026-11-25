@@ -4,7 +4,7 @@ import {
   OAuthIntent,
   OAuthProvider,
 } from "@alliance/common/oauth";
-import { R } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import {
   BadRequestException,
   Body,
@@ -50,7 +50,11 @@ import { OAuthCallbackService } from "./oauth-callback.service";
 import { OAuthClients } from "./oauth-clients";
 import { addProof, mintProof } from "./oauth-proof";
 import { OAuthSessionService } from "./oauth-session.service";
-import { oauthRedirectUri, resolveReturnTo } from "./oauth-urls";
+import {
+  oauthRedirectUri,
+  resolveReturnTo,
+  returnUrlWithError,
+} from "./oauth-urls";
 import {
   MobileIdentityTokenDto,
   MobileOAuthBrowserSessionDto,
@@ -86,7 +90,8 @@ export class OAuthController {
   @Get("start")
   @ApiResponse({
     status: 302,
-    description: "Redirects to the provider's consent screen",
+    description:
+      "Redirects to the provider's consent screen, or back to returnTo with the error when the provider isn't configured",
   })
   async redirectToProvider(
     @ProviderParam() provider: OAuthProvider,
@@ -101,20 +106,25 @@ export class OAuthController {
       input: query,
       proofHash,
     });
+    if (!consentUrl.ok) {
+      res.redirect(consentUrl.error);
+      return;
+    }
 
     setProofCookie(
       res,
       addProof({ proof, presented: extractOAuthStateFromCookie(req) }),
     );
-    res.redirect(consentUrl);
+    res.redirect(consentUrl.value);
   }
 
+  /** Fails with the URL that takes the browser back to `returnTo` with the error. */
   private async beginFlow(params: {
     provider: OAuthProvider;
     req: ExpressRequest;
     input: OAuthStartDto;
     proofHash: string;
-  }): Promise<string> {
+  }): Promise<Result<string, string>> {
     const { provider, req, input } = params;
 
     let userId: number | undefined;
@@ -141,6 +151,16 @@ export class OAuthController {
       distinctId: input.posthogDistinctId,
     });
     const returnTo = resolveReturnTo(input.returnTo);
+    const client = this.clients.get(provider);
+    if (!client.isConfigured()) {
+      return R.failure(
+        returnUrlWithError({
+          returnTo: returnTo.toString(),
+          provider,
+          error: OAuthError.NotConfigured,
+        }),
+      );
+    }
     const redirectUri = oauthRedirectUri({ req, provider, returnTo });
     const state = await this.oauth.signState({
       provider,
@@ -154,7 +174,7 @@ export class OAuthController {
       userId,
     });
 
-    return this.clients.get(provider).authorizationUrl({ redirectUri, state });
+    return R.success(client.authorizationUrl({ redirectUri, state }));
   }
 
   @Public()
@@ -167,12 +187,12 @@ export class OAuthController {
     @ProviderParam() provider: OAuthProvider,
     @Body() body: MobileIdentityTokenDto,
   ): Promise<MobileOAuthSignInDto> {
-    const profile = await this.clients
-      .get(provider)
-      .verifyIdentityToken(body.identityToken);
+    const profile = await this.clients.verifyIdentityToken({
+      provider,
+      identityToken: body.identityToken,
+    });
     if (!profile.ok) {
-      console.error("oauth identity token rejected", profile.error);
-      return new MobileOAuthSignInDto(R.failure(OAuthError.Failed));
+      return new MobileOAuthSignInDto(profile);
     }
     const signedIn = await this.oauth.signIn(profile.value);
     if (!signedIn.ok) {

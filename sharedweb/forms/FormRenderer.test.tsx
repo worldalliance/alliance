@@ -123,25 +123,37 @@ const noteMarkedOptional = () =>
     );
 
 describe("FormRenderer preview", () => {
-  it("won't draw a form whose variable fails", () => {
+  it("offers a reload for a variable this build can't compile", () => {
     renderPreview({
       ...form,
       variables: [{ name: "total", inputs: {}, formula: "this" }],
     });
 
-    expect(screen.getByText("This form can't be displayed")).toBeTruthy();
     expect(
-      screen.getByText("Refreshing the page may fix the issue."),
+      screen.getByText("This form needs the latest version of Alliance"),
     ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeTruthy();
   });
 
-  it("names the failing variable when asked to", () => {
+  it("shows staff why a draft's formula fails, with no reload", () => {
     renderPreview(
       { ...form, variables: [{ name: "total", inputs: {}, formula: "this" }] },
-      { showVariableError: true },
+      { showDetail: true, draft: true },
     );
 
+    expect(screen.getByText("This form can't be displayed")).toBeTruthy();
     expect(screen.getByText('#{total}: "this" is not allowed.')).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reload page" })).toBeNull();
+  });
+
+  it("offers staff a reload for a saved formula this build can't compile", () => {
+    renderPreview(
+      { ...form, variables: [{ name: "total", inputs: {}, formula: "this" }] },
+      { showDetail: true },
+    );
+
+    expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeTruthy();
   });
 
   it("waits for the previewed member's answers from another form, offering a retry when they fail", async () => {
@@ -261,7 +273,9 @@ describe("FormRenderer preview", () => {
 
     await act(async () => {});
     expect(screen.getByRole("status")).toBeTruthy();
-    expect(screen.queryByText("This form can't be displayed")).toBeNull();
+    expect(
+      screen.queryByText(/needs the latest version|problem with this form/),
+    ).toBeNull();
     expect(requests).toEqual([]);
   });
 
@@ -361,7 +375,10 @@ describe("FormRenderer preview", () => {
       ],
     });
 
-    expect(screen.getByText("This form can't be displayed")).toBeTruthy();
+    expect(
+      screen.getByText("This form needs the latest version of Alliance"),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeTruthy();
   });
 
   it("validates every page, going back to the first invalid one", async () => {

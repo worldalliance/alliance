@@ -2,6 +2,7 @@ import type {
   AnyField,
   CheckboxField,
   ContractField,
+  ConversationField,
   CustomComponentField,
   EmailField,
   MultiSelectField,
@@ -12,6 +13,7 @@ import type {
   SelectField,
   TextareaField,
   TextField,
+  ToggleField,
 } from "@alliance/common/forms/form-schema";
 import { getRangeValues } from "@alliance/common/forms/range";
 import {
@@ -28,8 +30,10 @@ type PresenceControllerField =
 
 export type ControllerField =
   | CheckboxField
+  | ToggleField
   | ContractField
   | RadioField
+  | ConversationField
   | SelectField
   | MultiSelectField
   | RangeField
@@ -73,8 +77,10 @@ function isPresenceController(f: AnyField): f is PresenceControllerField {
 export function isConditionalController(f: AnyField): f is ControllerField {
   return (
     f.kind === "checkbox" ||
+    f.kind === "toggle" ||
     f.kind === "contract" ||
     f.kind === "radio" ||
+    f.kind === "conversation" ||
     f.kind === "select" ||
     f.kind === "multiselect" ||
     f.kind === "range" ||
@@ -129,6 +135,7 @@ export function fieldComparisons(
   }
   switch (controller.kind) {
     case "checkbox":
+    case "toggle":
       return [FieldComparison.Is];
     case "multiselect":
       return [
@@ -140,6 +147,7 @@ export function fieldComparisons(
       ];
     case "contract":
     case "radio":
+    case "conversation":
     case "select":
     case "range":
     case "number":
@@ -205,6 +213,7 @@ function defaultEqualsValue(
 ): string | number | boolean {
   switch (controller.kind) {
     case "checkbox":
+    case "toggle":
     case "contract":
       return true;
     case "number":
@@ -212,6 +221,7 @@ function defaultEqualsValue(
     case "range":
       return getRangeValues(controller)[0] ?? 1;
     case "radio":
+    case "conversation":
     case "select":
     case "multiselect":
       return controller.options?.[0]?.value ?? "";

@@ -6,9 +6,10 @@ import {
   thumbnailKey,
   uploadKeyInUrl,
 } from "@alliance/common/image-src";
-import { NodeEnv } from "@alliance/common/node-env";
+import { isDeployed } from "@alliance/common/node-env";
 import {
   GetObjectCommand,
+  NoSuchKey,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -28,6 +29,7 @@ import convert from "heic-convert";
 import sharp from "sharp";
 import { AsyncSemaphore } from "src/utils/async-semaphore";
 import { env, requireEnv } from "../config/env";
+import { assetsBucket } from "../s3/assets-bucket";
 
 // A 108 MP phone photo fits; a small file with huge dimensions doesn't.
 const DOWNLOAD_MAX_PIXELS = 120_000_000;
@@ -43,11 +45,6 @@ export class ImagesService {
   private readonly logger = new Logger(ImagesService.name);
 
   constructor(@Inject("S3_CLIENT") private readonly s3: S3Client) {}
-
-  // TODO: separate dev bucket
-  private get bucket() {
-    return requireEnv("ASSETS_BUCKET");
-  }
 
   /**
    * The timestamp keeps keys roughly ordered; the uuid is what makes them
@@ -80,7 +77,7 @@ export class ImagesService {
   private async putImage(key: string, body: Buffer): Promise<void> {
     await this.s3.send(
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: assetsBucket(),
         Key: key,
         Body: body,
         ContentType: "image/webp",
@@ -131,9 +128,10 @@ export class ImagesService {
   }
 
   private async toJpeg(key: string): Promise<Buffer> {
+    const bucket = assetsBucket();
     try {
       const object = await this.s3.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
       );
       if (!object.Body) throw new NotFoundException();
       const bytes = await object.Body.transformToByteArray();
@@ -158,7 +156,34 @@ export class ImagesService {
   }
 
   async processAndUploadProfileImage(image: string): Promise<string> {
-    const imgBuffer = await this.normalizeToSharpBuffer(image);
+    return this.uploadProfileImage(await this.normalizeToSharpBuffer(image));
+  }
+
+  async profileImageFromUpload(key: string): Promise<string> {
+    if (!isUploadKey(key)) {
+      throw new BadRequestException("The photo is not an uploaded image");
+    }
+    const object = await this.s3
+      .send(new GetObjectCommand({ Bucket: assetsBucket(), Key: key }))
+      .catch((err: unknown) => {
+        if (err instanceof NoSuchKey) return undefined;
+        throw err;
+      });
+    if (!object?.Body) {
+      throw new BadRequestException("The uploaded photo could not be found");
+    }
+    const bytes = Buffer.from(await object.Body.transformToByteArray());
+    await sharp(bytes)
+      .metadata()
+      .catch(() => {
+        throw new BadRequestException(
+          "The uploaded photo is not an image - try a standard image format",
+        );
+      });
+    return this.uploadProfileImage(bytes);
+  }
+
+  private async uploadProfileImage(imgBuffer: Buffer): Promise<string> {
     const [processed, thumbnail] = await Promise.all([
       sharp(imgBuffer)
         .rotate()
@@ -206,6 +231,8 @@ export class ImagesService {
     file: string,
     resize?: { width: number; height: number },
   ): Promise<string> {
+    // Raises the 503 before the catch below turns any failure into a 400.
+    assetsBucket();
     const imgBuffer = await this.normalizeToSharpBuffer(file);
     let processed = await sharp(imgBuffer).rotate().webp({ effort: 3 });
 
@@ -237,17 +264,18 @@ export function getImageSource(string: string) {
     return string;
   }
 
-  if (
-    env("NODE_ENV") === NodeEnv.Production ||
-    env("NODE_ENV") === NodeEnv.Staging
-  ) {
-    if (env("USE_CLOUDFRONT")) {
-      return `https://${requireEnv("CLOUDFRONT_DOMAIN")}/${string}`;
-    }
-    return `${env("APP_URL")}/api/images/${string}`;
+  if (isDeployed(env("NODE_ENV"))) {
+    return cloudfrontSrc(string) ?? `${env("APP_URL")}/api/images/${string}`;
   } else {
     return `http://localhost:${devPorts(PortCaller.Server).server}/images/${string}`;
   }
+}
+
+/** Where CloudFront serves an upload key, in a deployed environment that uses it. */
+export function cloudfrontSrc(key: string): string | undefined {
+  return isDeployed(env("NODE_ENV")) && env("USE_CLOUDFRONT")
+    ? `https://${requireEnv("CLOUDFRONT_DOMAIN")}/${key}`
+    : undefined;
 }
 
 /**

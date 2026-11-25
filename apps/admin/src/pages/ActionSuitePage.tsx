@@ -1,4 +1,7 @@
+import { Features } from "@alliance/common/features";
+import { PARTITION_LAUNCH_REFUSED } from "@alliance/common/suite-partition";
 import { UpdateActionEventDto } from "@alliance/shared/client";
+import { isFeatureEnabled } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { milliseconds } from "date-fns";
@@ -12,6 +15,7 @@ import {
   existingLaunchEvent,
   hasLaunched,
 } from "../components/suite-launch/launchBlockers";
+import SuitePartitionSection from "../components/suite-partition/SuitePartitionSection";
 import SuiteEventList from "../components/SuiteEventList";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -81,7 +85,8 @@ const ActionSuitePage = () => {
   if (suite.actions.length === 0) {
     return (
       <div className="p-6 flex flex-col gap-6 items-center justify-center h-screen">
-        <p>Suite: {suite.name}</p>
+        <title>{`${suite.name} - Admin`}</title>
+        <h1 className="font-bold">{suite.name}</h1>
         <p className="text-sm text-zinc-500">No actions yet</p>
         <Button
           color={ButtonColor.Black}
@@ -99,6 +104,7 @@ const ActionSuitePage = () => {
   const launchRefusal = existingLaunchEvent(suite.events);
   return (
     <div className="p-6 flex flex-col gap-6">
+      <title>{`${suite.name} - Admin`}</title>
       <ActionTimeline
         actions={suite?.actions ?? []}
         title={suite.name}
@@ -107,7 +113,9 @@ const ActionSuitePage = () => {
         onReminderClick={handleHighlightReminder}
       />
       {!launched &&
-        (launchRefusal ? (
+        (suite.isPartitioned ? (
+          <p className="text-sm text-zinc-500">{PARTITION_LAUNCH_REFUSED}</p>
+        ) : launchRefusal ? (
           <p className="text-sm text-zinc-500">{launchRefusal}</p>
         ) : (
           <Button
@@ -119,6 +127,18 @@ const ActionSuitePage = () => {
             Begin launch process
           </Button>
         ))}
+      <SuitePartitionSection
+        key={suiteId}
+        suiteId={suiteId}
+        isPartitioned={suite.isPartitioned}
+        scheduled={launched}
+        canPartition={isFeatureEnabled(Features.SuitePartitioning)}
+      />
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}
         events={suite.events}
@@ -151,7 +171,6 @@ const ActionSuitePage = () => {
           </p>
         )}
       </Card>
-      {error && <p className="text-red-500">{error}</p>}
       <div className="space-y-5 flex-1 overflow-y-auto pt-0">
         <p className="text-sm text-gray-500">Actions ordered by priority</p>
         {suite?.actions
