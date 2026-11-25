@@ -22,7 +22,7 @@ export default function TaskOutline({
       accessibilityLabel={`${taskFlow.outline}: ${spoken.join(", ")}`}
     >
       {steps.map(({ heading }, index) => (
-        <Text key={index} className="text-zinc-600">
+        <Text key={index} className="leading-[26px] text-zinc-600">
           {heading}
         </Text>
       ))}

@@ -32,7 +32,6 @@ import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import AllianceSignupPitch from "../../components/AllianceSignupPitch";
 import { useAuth } from "../../lib/AuthContext";
-import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { useSidFromParams } from "../../lib/utils";
@@ -96,7 +95,6 @@ export default function ActionPage() {
   const { sharePreview } = useLoaderData() as Awaited<
     ReturnType<typeof loader>
   >;
-  useNavbarOptions({ whiteBackground: true });
   const actionId = parseInt(idParam!);
 
   const { isAuthenticated, user, loading: userLoading } = useAuth();
@@ -259,7 +257,7 @@ export default function ActionPage() {
           </ModalBody>
         </Modal>
       )}
-      <div className="w-full flex flex-row justify-between py-10 px-4 md:px-8 xl:px-16 bg-white min-h-[calc(100vh-var(--navbar-top-bar-height))]">
+      <div className="w-full flex flex-row justify-between py-10 px-4 md:px-8 xl:px-16 bg-page min-h-[calc(100vh-var(--navbar-top-bar-height))]">
         <div className="flex flex-col md:pr-4 xl:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
           <Outlet
             context={

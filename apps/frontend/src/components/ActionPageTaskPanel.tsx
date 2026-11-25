@@ -1,7 +1,6 @@
 import { FormResponseDto, UserActionRelation } from "@alliance/shared/client";
 import {
   ActionPageTaskPanelState,
-  cardStylesForState,
   getActionPageTaskPanelState,
   isFormDisabledByState,
   shouldLoadCompletedTaskFormByState,
@@ -17,8 +16,10 @@ import {
   taskHeaders,
   type TitledCopy,
 } from "@alliance/shared/lib/copy";
+import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
@@ -29,10 +30,12 @@ import { Route } from "../../.react-router/types/src/components/+types/ActionPag
 import { useAuth } from "../lib/AuthContext";
 import { useCopyActionShareText } from "../lib/actionShare";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
+import TaskTimeInfo from "../pages/app/TaskTimeInfo";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
 import ShareButton from "./ShareButton";
 import StackedCard from "./system/StackedCard";
+import { CardMenuSlotContext } from "./taskflow/CardMenuSlot";
 import { TASK_FLOW_ORIGIN } from "./taskflow/useExpandingPanel";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
@@ -235,7 +238,7 @@ const ActionPageTaskPanel = () => {
   } else if (isNonmemberPublicReferralAction) {
     taskPanelHeader = null;
   }
-  const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
+  const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -266,7 +269,7 @@ const ActionPageTaskPanel = () => {
     <div className={cn("relative", TASK_FLOW_ORIGIN)}>
       <StackedCard
         top={taskPanelHeader}
-        topCardStyle={headerStyle}
+        topCardStyle={CardStyle.White}
         bottom={
           <>
             {isNonmemberPublicReferralAction &&
@@ -305,11 +308,31 @@ const ActionPageTaskPanel = () => {
                   </div>
                 </div>
               )}
-            {bottom}
+            {action.publicOnly ? (
+              bottom
+            ) : (
+              <>
+                <div className="mb-4 flex items-start justify-between gap-x-4">
+                  <TaskTimeInfo
+                    action={action}
+                    nextEvent={getNextEvent(action)}
+                    absoluteDeadline
+                  />
+                  <div ref={setMenuSlot} className="empty:hidden" />
+                </div>
+                <CardMenuSlotContext.Provider value={menuSlot}>
+                  {bottom}
+                </CardMenuSlotContext.Provider>
+              </>
+            )}
           </>
         }
-        bottomCardStyle={bodyStyle}
-        bottomCardClassName={bodyPaddingClasses}
+        bottomCardStyle={CardStyle.White}
+        bottomCardClassName={cn(
+          bodyPaddingClasses,
+          taskPanelHeader &&
+            "border-solid border-x-0 border-b-0 border-t border-zinc-100",
+        )}
       />
     </div>
   );

@@ -2,7 +2,6 @@ import { ActionReviewerIcon } from "@alliance/shared/client";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
 import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useInvalidateActions } from "@alliance/shared/lib/actionsListPage";
-import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import useActivities, {
   ActivityList,
@@ -34,7 +33,6 @@ import Text, {
   FontFamily,
   FontWeight,
 } from "../../../../components/system/Text";
-import TaskTimeInfo from "../../../../components/TaskTimeInfo";
 import UserActivityCard from "../../../../components/UserActivityCard";
 import { colors } from "../../../../lib/style/colors";
 
@@ -174,8 +172,6 @@ export default function ActionDetailScreen() {
     );
   }
 
-  const nextEvent = getNextEvent(action);
-
   const renderTabContent = () => {
     switch (activeTab) {
       case "task":
@@ -183,22 +179,13 @@ export default function ActionDetailScreen() {
           <View>
             {showActionPageTaskSection(action) ? (
               <View>
-                <View className="mb-4 flex flex-col gap-1 w-full">
-                  <Text
-                    className="text-xl text-zinc-900"
-                    weight={FontWeight.Semibold}
-                  >
-                    Task
-                  </Text>
-
-                  <TaskTimeInfo
-                    action={action}
-                    nextEvent={nextEvent}
-                    absoluteDeadline={true}
-                    className="flex-row gap-x-1 items-start"
-                    filled={true}
-                  />
-                </View>
+                <Text
+                  className="mb-4 text-xl text-zinc-900"
+                  weight={FontWeight.Semibold}
+                  accessibilityRole="header"
+                >
+                  Task
+                </Text>
                 <ActionPageTaskPanel
                   action={action}
                   onCompleteAction={onCompleteAction}
