@@ -153,7 +153,7 @@ describe("launchSuite", () => {
     });
 
     expect(!result.ok && result.error).toStartWith(
-      "Created the member action event, but not the office action event",
+      "Created the members taking action event, but not the office taking action event",
     );
     expect(createReminders).not.toHaveBeenCalled();
   });
@@ -173,7 +173,7 @@ describe("launchSuite", () => {
       "Created both events, but not all default reminders",
     );
     expect(!result.ok && result.error).toEndWith(
-      "Add the missing ones in Reminders on the suite page.",
+      "Add the missing ones on the suite's Reminders tab.",
     );
   });
 

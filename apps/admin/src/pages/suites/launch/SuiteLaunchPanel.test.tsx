@@ -94,7 +94,7 @@ it("lists each action's unfinished checklist items", async () => {
       "Unfinished: Full body content, Part of a project, Task form linked, Task form has an output view, for the completion card",
     ),
   ).toBeTruthy();
-  expect(screen.queryByText(/Failed to load the task form/)).toBeNull();
+  expect(screen.queryByText(/Couldn't load the task form/)).toBeNull();
   await resolveEveryCheck();
   expect(
     screen.getByText("1 task has unfinished checklist items."),
