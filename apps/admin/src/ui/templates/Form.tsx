@@ -1,7 +1,15 @@
-import { useId, type ReactNode } from "react";
+import type React from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Button, { ButtonVariant } from "../Button";
+import { Checkbox } from "../Checkbox";
 import { cn } from "../cn";
-import Spinner from "../Spinner";
 
 /**
  * One independently saved form on a Settings page or a Record: a heading, an
@@ -19,16 +27,42 @@ export function FormSection({
   footer?: ReactNode;
   children: ReactNode;
 }) {
+  const titleId = useId();
   return (
-    <section className="flex flex-col overflow-hidden rounded-card border border-line bg-surface">
+    <section
+      aria-labelledby={titleId}
+      className="flex flex-col overflow-hidden rounded-card border border-line bg-surface"
+    >
       <div className="flex flex-col gap-0.5 px-card pt-card">
-        <h2 className="text-heading font-semibold">{title}</h2>
+        <h2 id={titleId} className="text-heading font-semibold">
+          {title}
+        </h2>
         {description && <p className="text-fg-muted">{description}</p>}
       </div>
       <div className="flex flex-col gap-4 p-card">{children}</div>
       {footer}
     </section>
   );
+}
+
+/**
+ * Lands a failed submit on what to fix: `formRef` goes on the `<form>`, and
+ * `focusFirstInvalid()`, called where the submit sets its errors, focuses the
+ * first control marked invalid once they render. Errors set on blur never
+ * move focus.
+ */
+export function useFocusFirstInvalid() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [failedSubmits, setFailedSubmits] = useState(0);
+  useEffect(() => {
+    if (failedSubmits === 0) return;
+    formRef.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+  }, [failedSubmits]);
+  const focusFirstInvalid = useCallback(
+    () => setFailedSubmits((count) => count + 1),
+    [],
+  );
+  return { formRef, focusFirstInvalid };
 }
 
 export type FieldControlProps = {
@@ -89,6 +123,44 @@ export function Field({
   );
 }
 
+/**
+ * A checkbox with its label beside it and its explanation under the label,
+ * for a setting saved by the form's Save button.
+ */
+export function CheckboxField({
+  label,
+  help,
+  className,
+  ...checkbox
+}: Omit<React.ComponentProps<typeof Checkbox>, "id" | "aria-describedby"> & {
+  label: string;
+  /** What the setting does. Also the place to say why it is disabled. */
+  help?: ReactNode;
+}) {
+  const id = useId();
+  const helpId = `${id}-help`;
+  return (
+    <div className={cn("flex items-start gap-2.5", className)}>
+      <Checkbox
+        {...checkbox}
+        id={id}
+        aria-describedby={help ? helpId : undefined}
+        className="mt-0.5"
+      />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <label htmlFor={id} className="font-medium">
+          {label}
+        </label>
+        {help && (
+          <p id={helpId} className="text-caption text-fg-muted">
+            {help}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export enum SaveState {
   Clean = "clean",
   Dirty = "dirty",
@@ -132,17 +204,11 @@ export function SaveBar({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface-2 px-card py-3">
       {onSave ? (
-        <Button
-          variant={ButtonVariant.Primary}
-          onClick={onSave}
-          disabled={saving}
-        >
-          {saving && <Spinner size="small" />}
+        <Button variant={ButtonVariant.Primary} onClick={onSave} busy={saving}>
           {saveLabel}
         </Button>
       ) : (
-        <Button variant={ButtonVariant.Primary} type="submit" disabled={saving}>
-          {saving && <Spinner size="small" />}
+        <Button variant={ButtonVariant.Primary} type="submit" busy={saving}>
           {saveLabel}
         </Button>
       )}

@@ -1,5 +1,6 @@
 import { Search, X } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { formatCount } from "../../lib/formatNumber";
 import { useShortcutInShell } from "../../shell/shortcuts";
 import Button, { ButtonVariant } from "../Button";
 import { cn } from "../cn";
@@ -22,7 +23,9 @@ export function FilterBar({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-page py-bar">
+    // The minimum holds a full-height control, so the bar is one height on
+    // every tab whatever it holds and the list under it never moves.
+    <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b border-line px-page py-bar">
       {children}
       <div className="ml-auto flex items-center gap-3">
         {count !== undefined && (
@@ -36,7 +39,10 @@ export function FilterBar({
   );
 }
 
-/** A list's search box. In the shell, `/` focuses it from outside a text field. */
+/**
+ * A list's search box, one to a page: in the shell, `/` focuses it from
+ * outside a text field, and a shortcut has one owner.
+ */
 export function SearchField({
   label,
   value,
@@ -55,6 +61,14 @@ export function SearchField({
     label,
     run: () => ref.current?.focus(),
   });
+  // While the reader is in the box it shows their own text, not `value`: a
+  // value kept in the URL comes back a render or more after each keystroke,
+  // and a box bound to it drops the letters typed in between. Out of the box
+  // it follows `value`, which Clear filters and Back change.
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setDraft(value);
+  }, [value]);
 
   return (
     <div className={cn("relative w-60", className)}>
@@ -67,8 +81,13 @@ export function SearchField({
         type="search"
         aria-label={label}
         placeholder={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        value={draft}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft(next);
+          onChange(next);
+        }}
+        onBlur={() => setDraft(value)}
         className="h-control-sm pl-8"
       />
     </div>
@@ -202,7 +221,7 @@ export function BulkBar({
         className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-card bg-surface py-1.5 pr-1.5 pl-4 whitespace-nowrap shadow-pop"
       >
         <span className="mr-2 font-semibold tabular-nums" aria-live="polite">
-          {count.toLocaleString("en-US")} selected
+          {formatCount(count)} selected
         </span>
         {children}
         <Button variant={ButtonVariant.Ghost} size="small" onClick={onClear}>

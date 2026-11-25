@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { cn } from "../cn";
 
 /** A group of cards on an Overview, under a muted label. */
@@ -49,15 +49,19 @@ export function Panel({
   className?: string;
   children: ReactNode;
 }) {
+  const titleId = useId();
   return (
     <section
+      aria-labelledby={titleId}
       className={cn(
         "flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface",
         className,
       )}
     >
       <div className="flex min-h-12 items-center gap-2 border-b border-line px-card py-2">
-        <h3 className="font-semibold">{title}</h3>
+        <h3 id={titleId} className="font-semibold">
+          {title}
+        </h3>
         {description && (
           <span className="text-caption text-fg-muted">{description}</span>
         )}

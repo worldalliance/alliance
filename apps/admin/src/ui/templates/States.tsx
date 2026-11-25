@@ -12,6 +12,9 @@ import {
 } from "../Table";
 import { useDelayedFlag } from "./useDelayedFlag";
 
+/** The reason to show for a failed load when the server gave none. */
+export const LOAD_FAILED_FALLBACK = "Check your connection and try again.";
+
 /** A load that failed, in the place the content would be. Stays until it is retried. */
 export function ErrorState({
   title,
@@ -44,7 +47,16 @@ export function ErrorState({
   );
 }
 
-const WIDTHS = ["w-40", "w-24", "w-28", "w-20", "w-32", "w-16"] as const;
+// Caps, not widths: the bars share the table's width, so a skeleton of many
+// columns is never wider than the table it stands in for.
+const WIDTHS = [
+  "max-w-40",
+  "max-w-24",
+  "max-w-28",
+  "max-w-20",
+  "max-w-32",
+  "max-w-16",
+] as const;
 
 /** Rows in the shape of a `Table`, with its row and header heights. */
 export function TableSkeleton({
@@ -63,7 +75,7 @@ export function TableSkeleton({
         <TableRow>
           {cols.map((col) => (
             <TableHead key={col}>
-              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-full max-w-16" />
             </TableHead>
           ))}
         </TableRow>
@@ -74,7 +86,7 @@ export function TableSkeleton({
             {cols.map((col) => (
               <TableCell key={col}>
                 <Skeleton
-                  className={`h-3.5 ${WIDTHS[(row + col) % WIDTHS.length]}`}
+                  className={`h-3.5 w-full ${WIDTHS[(row + col) % WIDTHS.length]}`}
                 />
               </TableCell>
             ))}

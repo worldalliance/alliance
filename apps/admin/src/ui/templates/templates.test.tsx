@@ -4,13 +4,21 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest, spyOn } from "bun:test";
+import { useState } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 import { PlaceId, RecordId } from "../../places";
 import { ShortcutsProvider } from "../../shell/shortcuts";
 import { Input } from "../Input";
-import { Field, SaveBar, SaveState } from "./Form";
+import {
+  CheckboxField,
+  Field,
+  SaveBar,
+  SaveState,
+  useFocusFirstInvalid,
+} from "./Form";
 import { BulkBar, SearchField, ViewSwitch } from "./List";
 import { Page } from "./Page";
 import { ContentState } from "./States";
@@ -294,6 +302,161 @@ describe("SearchField", () => {
     other.blur();
     fireEvent.keyDown(document.body, { key: "/" });
     expect(document.activeElement).toBe(search);
+  });
+});
+
+describe("SearchField with a value that comes back late", () => {
+  function LateSearch() {
+    const [value, setValue] = useState("");
+    return (
+      <>
+        <SearchField
+          label="Filter groups"
+          value={value}
+          onChange={(next) => setTimeout(() => setValue(next), 5)}
+        />
+        <button type="button" onClick={() => setValue("")}>
+          Clear filters
+        </button>
+        <output>{value}</output>
+      </>
+    );
+  }
+
+  it("keeps every letter typed before the value catches up", async () => {
+    render(<LateSearch />);
+    const search = screen.getByRole<HTMLInputElement>("searchbox");
+    search.focus();
+
+    fireEvent.change(search, { target: { value: "n" } });
+    expect(search.value).toBe("n");
+    fireEvent.change(search, { target: { value: "no" } });
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toBe("no"),
+    );
+
+    expect(search.value).toBe("no");
+  });
+
+  it("keeps the text when it is typed back to an earlier one on the way", () => {
+    let setValue: (value: string) => void = () => {};
+    const sent: string[] = [];
+    function Echoed() {
+      const [value, set] = useState("");
+      setValue = set;
+      return (
+        <SearchField
+          label="Filter groups"
+          value={value}
+          onChange={(next) => sent.push(next)}
+        />
+      );
+    }
+    render(<Echoed />);
+    const search = screen.getByRole<HTMLInputElement>("searchbox");
+    search.focus();
+
+    for (const typed of ["a", "ab", "a"]) {
+      fireEvent.change(search, { target: { value: typed } });
+    }
+    for (const echo of sent) {
+      act(() => setValue(echo));
+      expect(search.value).toBe("a");
+    }
+  });
+
+  it("takes the value once the reader has left it, as Clear filters sets", async () => {
+    render(<LateSearch />);
+    const search = screen.getByRole<HTMLInputElement>("searchbox");
+    search.focus();
+    fireEvent.change(search, { target: { value: "no" } });
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toBe("no"),
+    );
+
+    const clear = screen.getByRole("button", { name: "Clear filters" });
+    clear.focus();
+    fireEvent.click(clear);
+
+    expect(search.value).toBe("");
+  });
+});
+
+describe("Page header's description", () => {
+  it("holds its line when empty, so a record's facts landing move nothing", () => {
+    renderAt(
+      "/members/groups/4",
+      <Page record={RecordId.Group} description="">
+        <p>Body</p>
+      </Page>,
+    );
+    expect(screen.getByRole("banner").lastElementChild?.className).toContain(
+      "min-h-lh",
+    );
+  });
+});
+
+describe("CheckboxField", () => {
+  it("names the checkbox by its label and describes it by its help", () => {
+    render(
+      <CheckboxField
+        label="Let anyone join"
+        help="No approval needed."
+        checked
+        onChange={() => {}}
+      />,
+    );
+    const box = screen.getByRole("checkbox", { name: "Let anyone join" });
+    expect(
+      document.getElementById(box.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toBe("No approval needed.");
+  });
+});
+
+describe("useFocusFirstInvalid", () => {
+  function TwoFields() {
+    const [errors, setErrors] = useState<{ name?: string; city?: string }>({});
+    const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+    return (
+      <form
+        ref={formRef}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setErrors({ city: "Enter a city." });
+          focusFirstInvalid();
+        }}
+      >
+        <Field label="Name" error={errors.name}>
+          {(control) => (
+            <Input
+              {...control}
+              onBlur={() => setErrors({ name: "Enter a name." })}
+            />
+          )}
+        </Field>
+        <Field label="City" error={errors.city}>
+          {(control) => <Input {...control} />}
+        </Field>
+        <button type="submit">Save</button>
+      </form>
+    );
+  }
+
+  it("focuses the first invalid control on a failed submit, not on an error set on blur", () => {
+    render(<TwoFields />);
+    const name = screen.getByRole("textbox", { name: "Name" });
+    const save = screen.getByRole("button", { name: "Save" });
+
+    name.focus();
+    act(() => save.focus());
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(save);
+
+    fireEvent.click(save);
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: "City" }),
+    );
   });
 });
 

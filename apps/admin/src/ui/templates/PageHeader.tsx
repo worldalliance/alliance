@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { formatCount } from "../../lib/formatNumber";
 import type { Crumb } from "../../places";
 import { TabsList, TabsTab } from "../Tabs";
 
@@ -17,7 +18,10 @@ export type PageHeaderProps = {
   title: string;
   /** The record's status badge, directly after the title. */
   badge?: ReactNode;
-  /** One muted line under the title: a count, or a record's facts. */
+  /**
+   * One muted line under the title: a count, or a record's facts. Pass `""`
+   * while the record loads, which holds the line so nothing below moves.
+   */
   description?: ReactNode;
   /** At most one primary button, then secondary ones, then a "More" menu. */
   actions?: ReactNode;
@@ -76,7 +80,9 @@ export function PageHeader({
           <div className="flex shrink-0 items-center gap-2">{actions}</div>
         )}
       </div>
-      {description && <div className="text-fg-muted">{description}</div>}
+      {description !== undefined && (
+        <div className="min-h-lh text-fg-muted">{description}</div>
+      )}
     </header>
   );
 }
@@ -90,7 +96,7 @@ export function PageTabList({ tabs }: { tabs: readonly PageTab[] }) {
           {tab.label}
           {tab.count !== undefined && (
             <span className="text-caption text-fg-muted tabular-nums">
-              {tab.count.toLocaleString("en-US")}
+              {formatCount(tab.count)}
             </span>
           )}
         </TabsTab>
