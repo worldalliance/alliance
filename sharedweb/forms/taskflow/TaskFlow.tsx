@@ -74,7 +74,8 @@ type TaskFlowProps = {
   schema: FormSchema;
   formId: number;
   taskFormId: number;
-  formSnapshotId: number;
+  /** Null for a schema that isn't saved yet. */
+  formSnapshotId: number | null;
   draftFormResponse: FormResponseDto | null | undefined;
   guestDraftFetch?: DraftFetchState;
   phDistinctId: string;
@@ -114,10 +115,17 @@ export default function TaskFlow({
   onAbandonAction,
   signupHref,
 }: TaskFlowProps) {
-  const { user, isAuthenticated, isImpersonation, userLoading } = viewer;
+  const { user, isAuthenticated, isImpersonation, userLoading, previewUserId } =
+    viewer;
+  const signedInAsUser = previewUserId === undefined;
   const menuSlot = useContext(CardMenuSlotContext);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
+  if (records && (!signedInAsUser || formSnapshotId === null)) {
+    throw new Error(
+      "A staff preview or an unsaved form runs only in a mode that records nothing",
+    );
+  }
   const withdraw = withdraws && !publicAction ? onAbandonAction : undefined;
   const { useResume, useChrome, useCompletionExits } = host;
 
@@ -160,10 +168,11 @@ export default function TaskFlow({
     formSnapshotId,
     actionId: action.id,
     persistKey: records ? String(taskFormId) : null,
-    userId: user?.id,
+    userId: previewUserId ?? user?.id,
+    adminPreviewUserId: previewUserId,
     user,
     userLoading,
-    loadCurrentUserLocation: !!user && isAuthenticated,
+    loadCurrentUserLocation: !!user && isAuthenticated && signedInAsUser,
     syncDraftToServer: records && isAuthenticated && !publicAction,
     draftFormResponse: records ? draftFormResponse : undefined,
     guestDraftFetch: records ? guestDraftFetch : undefined,
@@ -178,7 +187,7 @@ export default function TaskFlow({
   });
   const position = useFlowPosition({
     taskFormId,
-    formSnapshotId,
+    formSnapshotId: formSnapshotId ?? 0,
     storage: localFlowStorage,
   });
   const flow = useTaskFlow({
@@ -255,7 +264,10 @@ export default function TaskFlow({
       }
     : null;
 
-  const blocked = formBlockedView(form);
+  const blocked = formBlockedView(form, {
+    showDetail: !signedInAsUser,
+    draft: formSnapshotId === null,
+  });
   const renderStage = () => {
     if (blocked !== null && flow.stage !== FlowStage.Complete) {
       return (
@@ -290,6 +302,7 @@ export default function TaskFlow({
             schema={form.schema}
             answers={flow.submittedAnswers ?? {}}
             user={user}
+            showsOwnLocation={signedInAsUser}
             phase={completionPhase}
             fading={recoloring}
             leavesToTasks={leavesToTasks}
@@ -351,6 +364,7 @@ export default function TaskFlow({
             submitterId: user?.id,
           }}
           user={user}
+          showsOwnLocation={signedInAsUser}
         />
       ) : null}
       <Dialog.Root

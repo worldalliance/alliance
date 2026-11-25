@@ -18,6 +18,8 @@ export type TaskFlowViewer = {
   isAuthenticated: boolean;
   userLoading: boolean;
   isImpersonation: boolean;
+  /** Set when staff preview the flow as this member, or as the sample member, instead of as themselves. */
+  previewUserId?: number | "preview";
 };
 
 /**

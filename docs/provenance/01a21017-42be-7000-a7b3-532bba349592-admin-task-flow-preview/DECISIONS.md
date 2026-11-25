@@ -12,3 +12,4 @@
 ## The admin's task flow preview
 
 - The admin form endpoint (`GET /tasks/adminForm/:id`) answers with `AdminFormDto`, which adds `usedInAction`, the action resolved by the existing `ActionFormLinksService.findActionsByFormIds` (task form first, then variant), as the forms index already reports. `FormDto` itself is left alone, because members' form endpoints serve it too. (agent decision)
+- `TaskFlowViewer.previewUserId` marks a staff preview. The flow then passes it to the form state as `adminPreviewUserId`, which is what the admin's existing preview passed to `FormRenderer`. It also stops the flow from loading the signed-in viewer's own city: `TaskAnswersCard`'s `showsOwnLocation` is false, so it shows the previewed member's stored city string, not the staff member's location. The flow throws when a staff preview or an unsaved schema runs in a mode that records answers, so a preview can never save or submit under the staff member's account. (agent decision)

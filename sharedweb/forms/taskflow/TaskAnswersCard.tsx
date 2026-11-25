@@ -14,19 +14,22 @@ import { type ComponentProps } from "react";
 export default function TaskAnswersCard({
   output,
   user,
+  showsOwnLocation,
   plain = false,
   className,
   ...props
 }: ComponentProps<"div"> & {
   output: Omit<OutputSource, "ownView">;
   user: UserDto | undefined;
+  /** Whether `user` is the signed-in viewer, so their located city loads; otherwise their stored city shows. */
+  showsOwnLocation: boolean;
   /** The completion screen's look: a larger photo and answers as bare text. */
   plain?: boolean;
 }) {
   const source = { ...output, ownView: true };
   const outputItems = useOutputItems(source);
   const { userLocationDisplayValue } = useCurrentUserLocation({
-    enabled: !!user && outputItems.length > 0,
+    enabled: showsOwnLocation && !!user && outputItems.length > 0,
     user,
   });
   const location = formatUserLocationDisplayValue(userLocationDisplayValue);
