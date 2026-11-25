@@ -2,13 +2,11 @@ import { useId, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { countOf } from "../../lib/formatNumber";
-import { memberHref, taskHref } from "../../lib/hrefs";
+import { taskHref } from "../../lib/hrefs";
 import { useScheduledPlansAdmin } from "../../lib/useScheduledPlansAdmin";
 import { PlaceId } from "../../places";
-import { AvatarProfile } from "../../ui/Avatar";
 import Badge from "../../ui/Badge";
-import { cn } from "../../ui/cn";
-import { personName } from "../../ui/PersonCell";
+import { PersonChip } from "../../ui/PersonCell";
 import { linkClass } from "../../ui/styles";
 import {
   ExpandToggle,
@@ -155,28 +153,16 @@ function JobRows({
             aria-label={`Members: ${kind}, ${when.text}`}
             className="grid grid-cols-2 gap-x-6 gap-y-2 @4xl:grid-cols-3 @7xl:grid-cols-4"
           >
-            {job.users.map((user) => {
-              const name = personName({
-                userId: user.id,
-                name: user.displayName,
-              });
-              return (
-                <li key={user.id} className="flex min-w-0 items-center gap-2">
-                  <AvatarProfile
-                    pfp={user.profilePicture}
-                    size="small"
-                    alt=""
-                  />
-                  <Link
-                    to={memberHref(user.id)}
-                    title={name}
-                    className={cn(linkClass, "truncate")}
-                  >
-                    {name}
-                  </Link>
-                </li>
-              );
-            })}
+            {job.users.map((user) => (
+              <li key={user.id} className="flex min-w-0">
+                <PersonChip
+                  userId={user.id}
+                  name={user.displayName}
+                  profilePicture={user.profilePicture}
+                  link
+                />
+              </li>
+            ))}
           </ul>
         </TableDetailRow>
       )}

@@ -68,6 +68,27 @@ describe("PersonChip", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
+  it("links the name to the member when asked", () => {
+    render(
+      <MemoryRouter>
+        <PersonChip
+          userId={12}
+          name="Ada Lovelace"
+          profilePicture={null}
+          link
+        />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole<HTMLAnchorElement>("link", {
+      name: "Ada Lovelace",
+    });
+    expect(link.getAttribute("href")).toBe("/members/12");
+    expect(link.title).toBe("Ada Lovelace");
+    expect(link.className.split(" ")).toEqual(
+      expect.arrayContaining([...linkClass.split(" "), "truncate"]),
+    );
+  });
+
   it("falls back to the member's number", () => {
     render(<PersonChip userId={12} name={undefined} profilePicture={null} />);
     expect(screen.getByText("User #12")).toBeTruthy();

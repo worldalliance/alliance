@@ -47,13 +47,17 @@ export function PersonCell({
   );
 }
 
-/** A member named in a sentence or as a picked value: avatar and name, no link. */
+/**
+ * A member named outside a table cell: in a sentence, a list, a fact or as a
+ * picked value. Avatar and name; `link` makes the name a link to their record.
+ */
 export function PersonChip({
   userId,
   name,
   profilePicture,
+  link = false,
   className,
-}: Person & { className?: string }) {
+}: Person & { link?: boolean; className?: string }) {
   const shown = personName({ userId, name });
   return (
     <span
@@ -63,9 +67,19 @@ export function PersonChip({
       )}
     >
       <AvatarProfile pfp={profilePicture} size="mini" alt="" />
-      <span className="truncate font-medium" title={shown}>
-        {shown}
-      </span>
+      {link ? (
+        <Link
+          to={memberHref(userId)}
+          title={shown}
+          className={cn(linkClass, "truncate")}
+        >
+          {shown}
+        </Link>
+      ) : (
+        <span className="truncate font-medium" title={shown}>
+          {shown}
+        </span>
+      )}
     </span>
   );
 }
