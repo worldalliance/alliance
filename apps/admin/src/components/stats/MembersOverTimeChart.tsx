@@ -1,6 +1,8 @@
 import { area, curveMonotoneX, extent, max, scaleLinear, scaleTime } from "d3";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { fullDateFormatter } from "../TimeSeriesChart";
+import ChartData from "../ui/ChartData";
 import DateRangeInputs, { type DateRange } from "../ui/DateRangeInputs";
 import Section from "../ui/Section";
 import type { ParsedContractStatusPoint } from "./contractStatusHistory";
@@ -307,6 +309,17 @@ const MembersOverTimeChart: React.FC<{
           <span className="text-sm text-gray-600">Churned members</span>
         </div>
       </div>
+      {parsedContractStatusHistory.length > 0 && (
+        <ChartData
+          caption="Members over time"
+          columns={["Date", "Active members", "Churned members"]}
+          rows={parsedContractStatusHistory.map((point) => [
+            fullDateFormatter.format(point.parsedDate),
+            String(point.activeCount),
+            String(point.churnedCount),
+          ])}
+        />
+      )}
     </Section>
   );
 };

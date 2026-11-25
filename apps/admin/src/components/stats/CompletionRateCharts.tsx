@@ -114,6 +114,7 @@ const CompletionRateCharts: React.FC<{
         areaColor="rgba(21, 128, 61, 0.14)"
         yDomain={cumulativeCompletionYDomain}
         yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        valueFormat={formatRatioAsPct}
         showHoverOnlyOnHover
         yTickLabelDedup
         dateRange={completionRateRange}
@@ -138,12 +139,14 @@ const CompletionRateCharts: React.FC<{
 
       <TimeSeriesChart
         title="Non-cumulative completion rate (weekly)"
+        xAxisLabel="Week of"
         data={weeklyCompletionData}
         series={completionRateSeries}
         loading={actionStatsLoading}
         emptyMessage="No completed actions in this date range."
         yDomain={completionRateYDomain}
         yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        valueFormat={formatRatioAsPct}
         showHoverOnlyOnHover
         yTickLabelDedup
         dateRange={completionRateRange}

@@ -2,6 +2,7 @@ import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { openChartData } from "../../lib/testing/chartData";
 import { useActionStats } from "../../lib/useActionStats";
 import ActionCompletionBarsChart from "./ActionCompletionBarsChart";
 import { actionStat } from "./actionStatFixture";
@@ -143,5 +144,31 @@ describe("ActionCompletionBarsChart", () => {
     fireEvent.click(screen.getByRole("button", { name: "Recalculate" }));
 
     await screen.findByText("Unable to recalculate action stats.");
+  });
+
+  it("lists each charted action's counts in its data table", async () => {
+    renderChart([
+      actionStat({
+        actionId: 1,
+        actionName: "Call a rep",
+        usersCompleted: 3,
+        usersJoined: 4,
+        usersWithdrawn: 1,
+        completionRate: 0.75,
+        memberActionEndDate: "2999-01-01T00:00:00Z",
+      }),
+      actionStat({
+        actionId: 2,
+        actionName: "Nobody yet",
+        usersCompleted: 0,
+        usersJoined: 0,
+        usersWithdrawn: 1,
+      }),
+    ]);
+
+    expect(await openChartData("Action completion stats")).toEqual([
+      ["Call a rep", "3", "4", "1", "75%", "Yes"],
+      ["Nobody yet", "0", "0", "1", "—", "No"],
+    ]);
   });
 });

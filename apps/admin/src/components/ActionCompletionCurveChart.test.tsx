@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { openChartData } from "../lib/testing/chartData";
 import ActionCompletionCurveChart from "./ActionCompletionCurveChart";
 
 const curve = (actionId: number, actionName: string) =>
@@ -20,7 +21,7 @@ const curve = (actionId: number, actionName: string) =>
     bucketDays: 1,
     dayOffsets: [0, 1],
     completedCounts: [1, 2],
-    completionFractions: [0.1, 0.2],
+    completionFractions: [0.1234, 0.2],
   }) satisfies ActionCompletionCurveDto;
 
 const dailyCurves = [curve(1, "Alpha"), curve(2, "Beta")];
@@ -73,6 +74,12 @@ describe("ActionCompletionCurveChart", () => {
 
     await act(async () => releaseDaily());
     expect(select.value).toBe("2");
+  });
+
+  it("shows the hundredths its hover shows in the data table", async () => {
+    renderChart();
+    const rows = await openChartData("Completions throughout week");
+    expect(rows[1]).toEqual(["1h", "12.34%", "12.34%", "12.34%"]);
   });
 
   it("says the load failed instead of showing the empty message", async () => {

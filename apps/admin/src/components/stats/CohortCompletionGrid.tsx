@@ -3,7 +3,13 @@ import chroma from "chroma-js";
 import { max, range } from "d3";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { fullDateFormatter } from "../TimeSeriesChart";
+import ChartData from "../ui/ChartData";
 import Section from "../ui/Section";
+
+const cohortLabel = (cohortStart: string) =>
+  `Week of ${fullDateFormatter.format(new Date(`${cohortStart}T00:00:00Z`))}`;
+
+const cellRate = (rate: number) => `${Math.round(rate * 100)}%`;
 
 type RetentionGridRow = {
   cohort: MemberCompletionRetentionCohortDto;
@@ -159,9 +165,6 @@ const CohortCompletionGrid: React.FC<{
                   </div>
                 ))}
                 {retentionGridData.rows.map((row) => {
-                  const cohortDate = new Date(
-                    `${row.cohort.cohortStart}T00:00:00Z`,
-                  );
                   return (
                     <React.Fragment
                       key={`retention-grid-row-${row.cohort.cohortStart}`}
@@ -171,7 +174,7 @@ const CohortCompletionGrid: React.FC<{
                         style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                       >
                         <div className="text-xs font-semibold text-zinc-700 leading-tight">
-                          Week of {fullDateFormatter.format(cohortDate)}
+                          {cohortLabel(row.cohort.cohortStart)}
                         </div>
                         <div className="text-xs text-zinc-500 leading-tight">
                           {row.cohort.cohortSize} members
@@ -182,9 +185,7 @@ const CohortCompletionGrid: React.FC<{
                         const value = point?.weekCompletionRate;
                         const hasValue =
                           typeof value === "number" && Number.isFinite(value);
-                        const displayValue = hasValue
-                          ? `${Math.round(value * 100)}%`
-                          : "";
+                        const displayValue = hasValue ? cellRate(value) : "";
                         const fill = hasValue
                           ? retentionHeatmapScale(value).hex()
                           : "#f8fafc";
@@ -282,6 +283,28 @@ const CohortCompletionGrid: React.FC<{
             </div>
           </div>
         )}
+      {!retentionLoading && retentionGridData.weeks.length > 0 && (
+        <ChartData
+          caption="Cohort completion grid"
+          columns={["Cohort", "Week", "Completion rate", "Completed", "Joined"]}
+          rows={retentionGridData.rows.flatMap((row) =>
+            retentionGridData.weeks.flatMap((week) => {
+              const point = row.pointsByWeek.get(week);
+              return point && Number.isFinite(point.weekCompletionRate)
+                ? [
+                    [
+                      cohortLabel(row.cohort.cohortStart),
+                      `W${week}`,
+                      cellRate(point.weekCompletionRate),
+                      String(point.weekCompletedCount),
+                      String(point.weekJoinedCount),
+                    ],
+                  ]
+                : [];
+            }),
+          )}
+        />
+      )}
     </Section>
   );
 };

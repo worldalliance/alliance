@@ -2,7 +2,11 @@ import { bin, max, range, scaleLinear } from "d3";
 import React, { useMemo } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useTimeToChurnSamplesAdmin } from "../../lib/useTimeToChurnSamplesAdmin";
+import ChartData from "../ui/ChartData";
 import Section from "../ui/Section";
+
+const weekRange = ({ x0 = 0, x1 }: { x0?: number; x1?: number }) =>
+  `${Math.round(x0)}–${Math.round(x1 ?? x0)}`;
 
 const TimeToChurnCard: React.FC = () => {
   const {
@@ -175,8 +179,6 @@ const TimeToChurnCard: React.FC = () => {
                 churnHistogramGeometry.yScale(bin.length);
               const x = churnHistogramGeometry.xScale(x0) + 1;
               const y = churnHistogramGeometry.yScale(bin.length);
-              const labelStart = Math.round(x0);
-              const labelEnd = Math.round(x1);
 
               return (
                 <g key={`churn-bin-${index}`}>
@@ -188,7 +190,7 @@ const TimeToChurnCard: React.FC = () => {
                     fill="rgba(239, 68, 68, 0.75)"
                     rx={4}
                   >
-                    <title>{`${labelStart}-${labelEnd}w: ${bin.length} members`}</title>
+                    <title>{`${weekRange(bin)}w: ${bin.length} members`}</title>
                   </rect>
                 </g>
               );
@@ -211,6 +213,16 @@ const TimeToChurnCard: React.FC = () => {
           </svg>
         )}
       </div>
+      {churnHistogramGeometry && (
+        <ChartData
+          caption="Time to churn"
+          columns={["Weeks since signing", "Churned members"]}
+          rows={churnHistogramGeometry.bins.map((bin) => [
+            weekRange(bin),
+            String(bin.length),
+          ])}
+        />
+      )}
     </Section>
   );
 };

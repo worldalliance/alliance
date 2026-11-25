@@ -3,9 +3,14 @@ import { cn } from "@alliance/shared/styles/util";
 import { max, scaleLinear } from "d3";
 import React, { useMemo, useState } from "react";
 import type { useActionStats } from "../../lib/useActionStats";
+import ChartData from "../ui/ChartData";
 import { secondaryButtonClass } from "../ui/controlStyles";
 import Section from "../ui/Section";
 import { completionPercent } from "./completionPercent";
+
+const isInProgress = (action: ActionStatsWithOnboardingDto) =>
+  action.memberActionEndDate !== null &&
+  new Date(action.memberActionEndDate) > new Date();
 
 type HoveredActionBar = {
   action: ActionStatsWithOnboardingDto;
@@ -276,8 +281,7 @@ const ActionCompletionBarsChart: React.FC<{
                     height={actionBarsGeometry.barHeight}
                     rx={4}
                     fill={
-                      action.memberActionEndDate &&
-                      new Date(action.memberActionEndDate) > new Date()
+                      isInProgress(action)
                         ? isHovered
                           ? "url(#in-progress-stripes-hover)"
                           : "url(#in-progress-stripes)"
@@ -416,6 +420,30 @@ const ActionCompletionBarsChart: React.FC<{
           <span className="text-sm text-gray-600">In progress</span>
         </div>
       </div>
+      {chartActionStats.length > 0 && (
+        <ChartData
+          caption="Action completion stats"
+          columns={[
+            "Action",
+            "Completed",
+            "Joined",
+            "Withdrawn",
+            "Completion rate",
+            "In progress",
+          ]}
+          rows={chartActionStats.map((action) => {
+            const rate = completionPercent(action);
+            return [
+              action.actionName,
+              String(action.usersCompleted),
+              String(action.usersJoined),
+              String(action.usersWithdrawn),
+              rate !== null ? `${rate}%` : "—",
+              isInProgress(action) ? "Yes" : "No",
+            ];
+          })}
+        />
+      )}
     </Section>
   );
 };

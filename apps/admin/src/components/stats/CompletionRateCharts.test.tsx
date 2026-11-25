@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { millisecondsInDay } from "date-fns/constants";
+import { openChartData } from "../../lib/testing/chartData";
 import { actionStat } from "./actionStatFixture";
 import CompletionRateCharts from "./CompletionRateCharts";
 
@@ -85,5 +86,42 @@ describe("CompletionRateCharts", () => {
     expect(screen.getByText("Total actions").nextSibling?.textContent).toBe(
       "2",
     );
+  });
+
+  it("gives rates to hundredths in the data table", async () => {
+    render(
+      <CompletionRateCharts
+        actionStats={[
+          actionStat({
+            actionId: 1,
+            memberActionEndDate: daysAgo(10),
+            usersCompleted: 1,
+            usersJoined: 8,
+            completionRate: 0.12345,
+          }),
+        ]}
+        actionStatsLoading={false}
+      />,
+    );
+    const rows = await openChartData("Cumulative completion rate");
+    expect(rows.map((row) => row[1])).toEqual(["12.35%"]);
+  });
+
+  it("heads the weekly table's dates as the weeks they start", async () => {
+    render(
+      <CompletionRateCharts
+        actionStats={[
+          actionStat({ actionId: 1, memberActionEndDate: daysAgo(10) }),
+        ]}
+        actionStatsLoading={false}
+      />,
+    );
+    const title = "Non-cumulative completion rate (weekly)";
+    await openChartData(title);
+    expect(
+      within(screen.getByRole("table", { name: title }))
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Week of", "Weekly rate"]);
   });
 });

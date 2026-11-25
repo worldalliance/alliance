@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { recentInviteFunnelRange } from "../../lib/recentInviteFunnelRange";
 import { useInviteFunnelAdmin } from "../../lib/useInviteFunnelAdmin";
+import ChartData from "../ui/ChartData";
 import { secondaryButtonClass } from "../ui/controlStyles";
 import DateRangeInputs from "../ui/DateRangeInputs";
 import Section from "../ui/Section";
@@ -21,7 +22,7 @@ const InviteFunnelCard: React.FC = () => {
   const inviteFunnelGeometry = useMemo(() => {
     if (!inviteFunnel) return null;
 
-    const bars = [
+    const steps = [
       {
         label: "Invites created",
         value: inviteFunnel.invitesCreated,
@@ -43,6 +44,15 @@ const InviteFunnelCard: React.FC = () => {
         color: "#c084fc",
       },
     ];
+    const bars = steps.map((step, index) => {
+      const previous = steps[index - 1]?.value;
+      return {
+        ...step,
+        ofPrevious: previous
+          ? `${Math.round((step.value / previous) * 100)}%`
+          : null,
+      };
+    });
 
     const width = 600;
     const height = 300;
@@ -164,18 +174,14 @@ const InviteFunnelCard: React.FC = () => {
                   >
                     {bar.value}
                   </text>
-                  {idx > 0 && inviteFunnelGeometry.bars[idx - 1].value > 0 && (
+                  {bar.ofPrevious && (
                     <text
                       x={x + inviteFunnelGeometry.barWidth / 2}
                       y={y - 18}
                       textAnchor="middle"
                       className="fill-gray-400 text-[10px]"
                     >
-                      {Math.round(
-                        (bar.value / inviteFunnelGeometry.bars[idx - 1].value) *
-                          100,
-                      )}
-                      %
+                      {bar.ofPrevious}
                     </text>
                   )}
                   <text
@@ -196,6 +202,17 @@ const InviteFunnelCard: React.FC = () => {
           </svg>
         )}
       </div>
+      {inviteFunnelGeometry && (
+        <ChartData
+          caption="Invite conversion funnel"
+          columns={["Step", "Count", "Of previous step"]}
+          rows={inviteFunnelGeometry.bars.map((bar) => [
+            bar.label,
+            String(bar.value),
+            bar.ofPrevious ?? "—",
+          ])}
+        />
+      )}
     </Section>
   );
 };

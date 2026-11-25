@@ -3,6 +3,7 @@ import type {
   MemberCompletionRetentionPointDto,
 } from "@alliance/shared/client/types.gen";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { openChartData } from "../../lib/testing/chartData";
 import { fullDateFormatter } from "../TimeSeriesChart";
 import CohortCompletionGrid from "./CohortCompletionGrid";
 
@@ -55,6 +56,25 @@ describe("CohortCompletionGrid", () => {
     expect(rows).toEqual([weekOf("2026-01-12"), weekOf("2026-01-05")]);
     expect(screen.queryByText("100%")).toBeNull();
     expect(screen.getByText("50%")).toBeTruthy();
+  });
+
+  it("lists each cell's rate and counts in its data table", async () => {
+    render(
+      <CohortCompletionGrid
+        filteredRetentionCohorts={[
+          cohort("2026-01-05", [point(1, 0.5), point(2, 0.25)]),
+          cohort("2026-01-12", [point(1, 0.75)]),
+        ]}
+        weekRange={{ min: 1, max: 20 }}
+        retentionLoading={false}
+      />,
+    );
+
+    expect(await openChartData("Cohort completion grid")).toEqual([
+      [weekOf("2026-01-12"), "W1", "75%", "3", "4"],
+      [weekOf("2026-01-05"), "W1", "50%", "2", "4"],
+      [weekOf("2026-01-05"), "W2", "25%", "1", "4"],
+    ]);
   });
 
   it("details the hovered cell", () => {

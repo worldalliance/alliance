@@ -6,6 +6,7 @@ import type {
   NumericAxisProps,
   TimeSeriesChartProps,
 } from "./time-series-chart/types";
+import ChartData from "./ui/ChartData";
 import { inputClass } from "./ui/controlStyles";
 import DateRangeInputs from "./ui/DateRangeInputs";
 import Section from "./ui/Section";
@@ -26,6 +27,46 @@ function isNumericAxis(props: TimeSeriesChartProps): props is NumericAxisProps {
   return props.xType === "number";
 }
 
+export const chartTable = (
+  props: TimeSeriesChartProps,
+): { columns: string[]; rows: string[][] } => {
+  const formatY = props.valueFormat ?? props.yAxisFormat ?? String;
+  if (!isNumericAxis(props)) {
+    return {
+      columns: [
+        props.xAxisLabel ?? "Date",
+        ...props.series.map((series) => series.label),
+      ],
+      rows: props.data.map((point) => [
+        point.date ? fullDateFormatter.format(point.date) : "—",
+        ...props.series.map((series) => formatY(series.getValue(point))),
+      ]),
+    };
+  }
+  const { xRange, getXValue, getYValue } = props;
+  const formatX = props.xAxisFormat ?? String;
+  const valuesByX = props.multiLineData.map(
+    (series) =>
+      new Map(series.data.map((point) => [getXValue(point), getYValue(point)])),
+  );
+  const xs = [...new Set(valuesByX.flatMap((values) => [...values.keys()]))]
+    .filter((x) => !xRange || (x >= xRange.min && x <= xRange.max))
+    .sort((a, b) => a - b);
+  return {
+    columns: [
+      props.xAxisLabel,
+      ...props.multiLineData.map((series) => series.label),
+    ],
+    rows: xs.map((x) => [
+      formatX(x),
+      ...valuesByX.map((values) => {
+        const y = values.get(x);
+        return y === undefined ? "—" : formatY(y);
+      }),
+    ]),
+  };
+};
+
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
   const {
     title,
@@ -45,7 +86,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
     props.onXRangeChange && (
       <>
         <label className="flex items-center gap-2 text-sm text-zinc-600">
-          {props.xAxisLabel ?? "Min"}
+          {props.xAxisLabel}
           <input
             type="number"
             value={props.xRange.min}
@@ -119,6 +160,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           <span>{props.legendLabels.right}</span>
         </div>
       )}
+
+      {hasData && <ChartData caption={title} {...chartTable(props)} />}
     </Section>
   );
 };

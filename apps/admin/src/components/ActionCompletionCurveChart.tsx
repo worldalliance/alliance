@@ -165,6 +165,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       xAxisFormat={(v) =>
         isHourly ? formatHourLabel(Math.round(v)) : `${Math.round(v)}d`
       }
+      xAxisLabel="Since launch"
       xRange={{ min: 0, max: actionCompletionCurveChartData.maxX }}
       showDataPoints={!isHourly}
       getHoverXLabel={
@@ -172,6 +173,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       }
       yDomain={actionCompletionCurveChartData.yDomain}
       yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+      valueFormat={formatRatioAsPct}
       height={360}
       headerContent={
         <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600">

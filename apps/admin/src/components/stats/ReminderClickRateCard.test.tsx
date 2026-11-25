@@ -3,6 +3,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { millisecondsInDay } from "date-fns/constants";
+import { openChartData } from "../../lib/testing/chartData";
 import ReminderClickRateCard from "./ReminderClickRateCard";
 
 serveApi(
@@ -64,5 +65,15 @@ describe("ReminderClickRateCard", () => {
     });
 
     await screen.findByText(/No sent reminder groups with email\/text link/);
+  });
+
+  it("lists each action's click rate in its data table", async () => {
+    const { wrapper } = queryWrapper();
+    render(<ReminderClickRateCard />, { wrapper });
+    await screen.findByText("Email click rate (average by action)");
+
+    expect(await openChartData("Email click rate (average by action)")).toEqual(
+      [["Call a rep", "25%", "2", "8", "1"]],
+    );
   });
 });

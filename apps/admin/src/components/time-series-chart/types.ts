@@ -39,6 +39,8 @@ type BaseChartProps = {
   areaSeriesKey?: string;
   areaColor?: string;
   yAxisFormat?: (value: number) => string;
+  /** Formats the data table's values; defaults to `yAxisFormat`. */
+  valueFormat?: (value: number) => string;
   yDomain?: [number, number];
   height?: number;
   headerContent?: React.ReactNode;
@@ -48,6 +50,8 @@ type BaseChartProps = {
 
 export type DateAxisProps = BaseChartProps & {
   xType?: "date";
+  /** Heads the data table's date column; "Date" when unset. */
+  xAxisLabel?: string;
   data: DataPoint[];
   series: ChartSeries[];
   dateRange?: DateRange;
@@ -58,7 +62,8 @@ export type DateAxisProps = BaseChartProps & {
 export type NumericAxisProps = BaseChartProps & {
   xType: "number";
   xAxisFormat?: (value: number) => string;
-  xAxisLabel?: string;
+  /** Names the x values: the data table's first column and the minimum range input. */
+  xAxisLabel: string;
   xRange?: NumericRange;
   onXRangeChange?: (range: NumericRange) => void;
   getXValue: (d: DataPoint) => number;
