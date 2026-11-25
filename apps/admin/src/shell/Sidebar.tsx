@@ -211,7 +211,7 @@ export default function Sidebar({
     <aside
       aria-label="Sidebar"
       className={cn(
-        "flex h-full shrink-0 flex-col overflow-hidden border-r border-line bg-surface-2 transition-[width] duration-slow ease-standard",
+        "flex h-full shrink-0 flex-col overflow-hidden border-r border-line bg-surface-2 transition-width duration-slow ease-standard",
         expanded ? "w-60" : "w-14",
       )}
     >

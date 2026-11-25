@@ -389,4 +389,3 @@ src/pages/project-action/ReleasePanel.tsx
 src/pages/project-action/ScheduleReleaseForm.tsx
 src/pages/project-action/ScheduledReleaseEditor.tsx
 src/root.tsx
-src/shell/Sidebar.tsx

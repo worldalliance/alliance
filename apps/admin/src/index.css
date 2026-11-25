@@ -286,6 +286,10 @@
   transition-duration: var(--duration-slow);
 }
 
+@utility transition-width {
+  transition-property: width;
+}
+
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--color-accent);
