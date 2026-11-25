@@ -225,6 +225,15 @@ export const fetchNumberThread = (params: {
     throwOnError: true,
   }).then((r) => r.data);
 
+/** A thread as last fetched, for what sits beside its conversation; the
+ * conversation's `useNumberThreadAdmin` keeps it fresh. */
+export function useNumberThreadData(threadId: string | undefined) {
+  return useQuery({
+    ...numberThreadQuery(threadId ?? ""),
+    enabled: threadId !== undefined,
+  });
+}
+
 export function useNumberThreadAdmin(threadId: string) {
   const thread = useQuery({
     ...numberThreadQuery(threadId),

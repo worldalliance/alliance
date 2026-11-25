@@ -12,8 +12,9 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { MemoryRouter } from "react-router";
-import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
-import NeedsReplyPage from "./NeedsReplyPage";
+import { MmsThreadsLiveContext, OFFLINE } from "../../lib/mmsThreadsLive";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { NeedsReplyTab } from "./NeedsReplyTab";
 
 let threads: NeedsReplyThreadDto[];
 
@@ -56,7 +57,7 @@ const renderPage = (live = OFFLINE) => {
     <Wrapper>
       <MmsThreadsLiveContext.Provider value={live}>
         <MemoryRouter>
-          <NeedsReplyPage />
+          <NeedsReplyTab />
         </MemoryRouter>
       </MmsThreadsLiveContext.Provider>
     </Wrapper>,
@@ -140,7 +141,7 @@ it("names an admin replying to a waiting number on its row, member or not", asyn
 it("says when nothing is waiting", async () => {
   renderPage();
   expect(
-    await screen.findByText("No texts are waiting for a reply."),
+    await screen.findByText("No texts are waiting for a reply"),
   ).toBeTruthy();
   expect(statusTexts()).toContain("None waiting");
 });
@@ -149,8 +150,9 @@ it("says when the list failed to load", async () => {
   status = 500;
   renderPage();
   expect(
-    await screen.findByText("Couldn't load texts needing a reply."),
+    await screen.findByText("Couldn't load texts needing a reply"),
   ).toBeTruthy();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
 });
 
 it("keeps how long each number has waited current", () => {
@@ -169,7 +171,7 @@ it("keeps how long each number has waited current", () => {
     render(
       <Wrapper>
         <MemoryRouter>
-          <NeedsReplyPage />
+          <NeedsReplyTab />
         </MemoryRouter>
       </Wrapper>,
     );
@@ -201,17 +203,13 @@ it("keeps a loaded list, and its place, when a later poll fails", async () => {
     .catch(() => {});
 
   const error = await screen.findByText(
-    /Could not refresh texts needing a reply/,
+    /Couldn't refresh texts needing a reply/,
   );
-  const heading = screen.getByRole("heading", { name: "Needs reply" });
-  expect(heading.parentElement?.contains(error)).toBe(true);
+  const list = screen.getByRole("list", { name: "Needs reply" });
+  expect(
+    error.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.getByRole("link", { name: /Sam/ })).toBeTruthy();
-});
-
-it("names the browser tab", () => {
-  renderPage();
-
-  expect(document.title).toBe("Needs reply - Admin");
 });
 
 describe("while staff point at or focus the list", () => {
@@ -319,7 +317,7 @@ describe("while staff point at or focus the list", () => {
     setHidden(true);
     threads = [];
     await poll(client);
-    await screen.findByText("No texts are waiting for a reply.");
+    await screen.findByText("No texts are waiting for a reply");
     setHidden(false);
     threads = [thread(8, "Kim")];
     await poll(client);
@@ -356,7 +354,7 @@ describe("while staff point at or focus the list", () => {
     threads = [];
     await poll(client);
     fireEvent.pointerLeave(
-      await screen.findByText("No texts are waiting for a reply."),
+      await screen.findByText("No texts are waiting for a reply"),
     );
     setHidden(false);
     threads = [thread(8, "Kim")];

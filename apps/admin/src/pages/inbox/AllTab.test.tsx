@@ -12,8 +12,8 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
-import TextsPage from "./TextsPage";
+import { MmsThreadsLiveContext, OFFLINE } from "../../lib/mmsThreadsLive";
+import { AllTab } from "./AllTab";
 
 const summary = (n: number, overrides: Partial<ThreadSummaryDto> = {}) => ({
   threadId: `00000000-0000-4000-8000-00000000000${n}`,
@@ -68,10 +68,9 @@ beforeEach(() => {
 
 const renderPage = (path = "/inbox?tab=all", live = OFFLINE) => {
   const { wrapper: Wrapper } = queryWrapper();
-  const router = createMemoryRouter(
-    [{ path: "/inbox", element: <TextsPage /> }],
-    { initialEntries: [path] },
-  );
+  const router = createMemoryRouter([{ path: "/inbox", element: <AllTab /> }], {
+    initialEntries: [path],
+  });
   render(
     <MmsThreadsLiveContext.Provider value={live}>
       <Wrapper>
@@ -102,7 +101,7 @@ it("lists threads by member name or number, linking to each", async () => {
 
   const sam = await screen.findByRole("link", { name: /Sam/ });
   expect(sam.getAttribute("href")).toBe(
-    "/inbox/00000000-0000-4000-8000-000000000001",
+    "/inbox/00000000-0000-4000-8000-000000000001?tab=all",
   );
   expect(sam.textContent).toContain("(415) 555-0101");
   expect(sam.textContent).toContain("Staff: See you there");
@@ -115,13 +114,12 @@ it("lists threads by member name or number, linking to each", async () => {
 it("searches by the number typed, keeping it in the URL", async () => {
   const router = renderPage();
 
-  fireEvent.change(await screen.findByLabelText("Phone number"), {
+  fireEvent.change(await screen.findByLabelText("Search by phone number"), {
     target: { value: "(415) 555" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
   await waitFor(() => expect(requests.at(-1)?.get("search")).toBe("(415) 555"));
-  expect(router.state.location.search).toBe("?tab=all&search=%28415%29+555");
+  expect(router.state.location.search).toBe("?tab=all&q=%28415%29+555");
 });
 
 it("pages to older texts and back", async () => {
@@ -137,12 +135,21 @@ it("pages to older texts and back", async () => {
   ).toBe("/inbox?tab=all&page=3");
 });
 
-it("says when a search matches nothing", async () => {
-  renderPage("/inbox?tab=all&search=999");
+it("opens the next page at its first row", async () => {
+  renderPage();
 
-  expect(
-    await screen.findByText("No phone number matches that search."),
-  ).toBeTruthy();
+  const rows = (await screen.findByRole("list", { name: "All" })).parentElement;
+  if (!rows) throw new Error("no rows pane");
+  rows.scrollTop = 400;
+  fireEvent.click(screen.getByRole("link", { name: "Older texts" }));
+
+  expect(rows.scrollTop).toBe(0);
+});
+
+it("says when a search matches nothing", async () => {
+  renderPage("/inbox?tab=all&q=999");
+
+  expect(await screen.findByText("No results")).toBeTruthy();
 });
 
 it("keeps the current page up while the next loads, offering no page past it", async () => {
@@ -163,7 +170,7 @@ it("keeps the current page up while the next loads, offering no page past it", a
 });
 
 it("asks for digits instead of listing every thread for a name", async () => {
-  renderPage("/inbox?tab=all&search=Sam");
+  renderPage("/inbox?tab=all&q=Sam");
 
   expect(
     await screen.findByText("Search by the digits of a phone number."),
@@ -172,27 +179,41 @@ it("asks for digits instead of listing every thread for a name", async () => {
   expect(requests).toEqual([]);
 });
 
+it("takes no more of a typed search than the server does, on a phone keypad", async () => {
+  renderPage("/inbox?tab=all");
+
+  const box = await screen.findByLabelText("Search by phone number");
+  expect(box.getAttribute("maxlength")).toBe("40");
+  expect(box.getAttribute("inputmode")).toBe("tel");
+});
+
+it("refuses a longer search from the URL", async () => {
+  renderPage(`/inbox?tab=all&q=${"5".repeat(41)}`);
+
+  expect(
+    await screen.findByText("Search by at most 40 characters."),
+  ).toBeTruthy();
+  expect(requests).toEqual([]);
+});
+
 it("drops the previous rows while a new search loads", async () => {
   let answer = () => {};
   searchGate = new Promise((resolve) => (answer = resolve));
   renderPage();
-  fireEvent.change(await screen.findByLabelText("Phone number"), {
+  fireEvent.change(await screen.findByLabelText("Search by phone number"), {
     target: { value: "999" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-  expect(await screen.findByText("Loading texts…")).toBeTruthy();
+  expect(await screen.findByRole("status", { name: "Loading" })).toBeTruthy();
   expect(screen.queryByText("See you there", { exact: false })).toBeNull();
   answer();
-  expect(
-    await screen.findByText("No phone number matches that search."),
-  ).toBeTruthy();
+  expect(await screen.findByText("No results")).toBeTruthy();
 });
 
 it("says no more texts past the last page of a search", async () => {
-  renderPage("/inbox?tab=all&search=999&page=3");
+  renderPage("/inbox?tab=all&q=999&page=3");
 
-  expect(await screen.findByText("No more texts.")).toBeTruthy();
+  expect(await screen.findByText("No more texts")).toBeTruthy();
 });
 
 it("offers the newer page when a page fails to load", async () => {
@@ -215,10 +236,9 @@ it("dates a row from yesterday once the page stays open past midnight", () => {
     ],
     hasMore: false,
   });
-  const router = createMemoryRouter(
-    [{ path: "/inbox", element: <TextsPage /> }],
-    { initialEntries: ["/inbox?tab=all"] },
-  );
+  const router = createMemoryRouter([{ path: "/inbox", element: <AllTab /> }], {
+    initialEntries: ["/inbox?tab=all"],
+  });
   render(
     <Wrapper>
       <RouterProvider router={router} />

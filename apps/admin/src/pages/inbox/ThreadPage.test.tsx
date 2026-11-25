@@ -7,9 +7,10 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
-import { ToastProvider } from "../ui/ToastProvider";
-import TextThreadPage from "./TextThreadPage";
+import { MmsThreadsLiveContext, OFFLINE } from "../../lib/mmsThreadsLive";
+import { ToastProvider } from "../../ui/ToastProvider";
+import InboxPage from "./InboxPage";
+import ThreadPage from "./ThreadPage";
 
 const THREAD_ID = "00000000-0000-4000-8000-000000000001";
 
@@ -38,6 +39,7 @@ let newerTextOnSend: MmsMessageDto | null;
 
 serveApi(
   routes({
+    "GET /mms-threads/needs-reply-threads": () => Response.json([]),
     [`GET /mms-threads/by-id/${THREAD_ID}`]: async () => {
       if (heldThread) {
         const held = heldThread;
@@ -118,7 +120,8 @@ beforeEach(() => {
   };
 });
 
-const renderPage = (live = OFFLINE) => {
+/** `inInbox` adds the page around the thread: its title and the people on the number. */
+const renderPage = (live = OFFLINE, { inInbox = false } = {}) => {
   const { wrapper: Wrapper, client } = queryWrapper();
   client.setQueryData(queryKeys.needsReplyAdmin(), []);
   render(
@@ -127,7 +130,13 @@ const renderPage = (live = OFFLINE) => {
         <ToastProvider>
           <MemoryRouter initialEntries={[`/inbox/${THREAD_ID}`]}>
             <Routes>
-              <Route path="/inbox/:threadId" element={<TextThreadPage />} />
+              {inInbox ? (
+                <Route element={<InboxPage />}>
+                  <Route path="/inbox/:threadId" element={<ThreadPage />} />
+                </Route>
+              ) : (
+                <Route path="/inbox/:threadId" element={<ThreadPage />} />
+              )}
             </Routes>
           </MemoryRouter>
         </ToastProvider>
@@ -157,7 +166,7 @@ it("reports a draft under the number, and shows who else is replying to it", asy
 });
 
 it("names a number with no member by the number, and sends in its thread", async () => {
-  renderPage();
+  renderPage(OFFLINE, { inInbox: true });
 
   expect(
     await screen.findByRole("heading", { name: "(415) 555-0101" }),
@@ -212,16 +221,14 @@ it("links to the page of each member on the number", async () => {
       { id: 8, name: "Kim", timeZone: null },
     ],
   };
-  renderPage();
+  renderPage(OFFLINE, { inInbox: true });
 
   expect(
     await screen.findByRole("heading", { name: "Sam and Kim" }),
   ).toBeTruthy();
-  expect(
-    screen
-      .getByRole("link", { name: "Sam's member page" })
-      .getAttribute("href"),
-  ).toBe("/members/7");
+  expect(screen.getByRole("link", { name: "Sam" }).getAttribute("href")).toBe(
+    "/members/7",
+  );
   expect(screen.getByText("Their local time is unknown")).toBeTruthy();
 });
 

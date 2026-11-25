@@ -12,8 +12,11 @@ export default [
     layout("shell/ShellLayout.tsx", [
       route("/", "pages/home/HomePage.tsx"),
 
-      route("/inbox", "places/InboxPlace.tsx"),
-      route("/inbox/:threadId", "pages/TextThreadPage.tsx"),
+      // One layout for both, so the list stays mounted while threads open and close.
+      layout("pages/inbox/InboxPage.tsx", [
+        route("/inbox", "pages/inbox/NoThreadOpen.tsx"),
+        route("/inbox/:threadId", "pages/inbox/ThreadPage.tsx"),
+      ]),
 
       route("/tasks", "places/TasksPlace.tsx"),
       route("/tasks/:actionId", "pages/ActionDashboard.tsx"),
