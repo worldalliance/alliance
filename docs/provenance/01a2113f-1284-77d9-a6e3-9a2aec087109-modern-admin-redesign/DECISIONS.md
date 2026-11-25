@@ -271,3 +271,14 @@ All agent judgement; the user was asleep and has not seen these. They replace th
 - **The three panels staff load with a button** (Recent missed tasks, Member reliability, Task completion and churn after joining) **still replace the earlier result with the failed state when a reload fails**, as today's tests require: the reader asked for a fresh answer, and the old one beside a failure would read as it.
 - **Skeletons above the Tasks section have their content's height**, so nothing in the first screens moves when the stats land. Cohort completion, the task bars and the task table are as tall as their data, so what sits under them still moves on first load.
 - **A failed recalculation shows in its panel with "Dismiss"**, not as a toast or a page banner: the button is in that panel.
+
+## Trial page: Activity › Scheduled jobs
+
+All agent judgement; the user was asleep and has not seen these. Built from `apps/admin/DESIGN.md` alone as a trial of the guide.
+
+- **Scheduled jobs is a table, one row per job, edge to edge**, where the prototype has a card of rows: the guide puts a List's table on the page with no card. Columns: When (Pacific time), Job, Task, UTC, Members.
+- **The Pacific time of day is shown.** Today's page computed it and showed only the day, leaving the time readable only from the UTC string. The UTC timestamp keeps its own column, since today's page shows it and the prototype's Comfortable density hides it.
+- **The kind badges are neutral**, where the prototype colours Suspension as a warning and Forum auto-complete as info: a job's kind is a category, and the guide keeps those colours for their meanings.
+- **The member count is the row's expand control** ("9 members", `aria-expanded`), and a row click does not expand. Expanded rows are not in the URL.
+- **A failed refetch keeps the loaded jobs and adds a danger banner with "Try again"**, as today's page kept its timeline beside the error; the guide says only that a failed refetch keeps its content.
+- **The header says the list covers the next 7 days.** Today's page said "in this window" without saying which. The window stays fixed, with no control and no search, as today.
