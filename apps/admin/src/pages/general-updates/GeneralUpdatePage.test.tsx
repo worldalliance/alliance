@@ -17,6 +17,8 @@ import {
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
 import { generalUpdateAdmin } from "../../lib/testing/generalUpdateAdmin";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
 import GeneralUpdatePage from "./GeneralUpdatePage";
 
@@ -150,12 +152,14 @@ const renderPage = (
 const listInvalidated = (client: ReturnType<typeof renderPage>["client"]) =>
   client.getQueryState(queryKeys.generalUpdatesAdmin())?.isInvalidated;
 
-it("shows the stored schedule in the admin's local time", async () => {
+it("shows the stored schedule in Pacific time, whatever the admin's own zone", async () => {
   renderPage();
-  const start = await screen.findByLabelText<HTMLInputElement>(/^Start date/);
-  await waitFor(() => expect(start.value).toBe("2026-03-10T11:00"));
+  const start = await screen.findByLabelText<HTMLInputElement>(
+    "Start date (Pacific time) (optional)",
+  );
+  await waitFor(() => expect(start.value).toBe("2026-03-10T08:00"));
   expect(screen.getByLabelText<HTMLInputElement>(/^End date/).value).toBe(
-    "2026-03-20T18:30",
+    "2026-03-20T15:30",
   );
 });
 
@@ -191,7 +195,7 @@ it("creates a general update with the entered details", async () => {
     target: { value: "New" },
   });
   fireEvent.change(screen.getByLabelText(/^Start date/), {
-    target: { value: "2026-03-10T11:00" },
+    target: { value: "2026-03-10T08:00" },
   });
   fireEvent.click(
     screen.getByRole("button", { name: "Create general update" }),
@@ -292,6 +296,7 @@ it("reports a failed load", async () => {
   expect(
     await screen.findByText("Couldn't load this general update"),
   ).toBeDefined();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeDefined();
 });
 
 it("assigns the suite named in the link to a new general update", async () => {
@@ -355,6 +360,32 @@ it("removes a suite and brings back the schedule", async () => {
   );
 });
 
+it("moves focus to the select once the last suite is removed", async () => {
+  renderPage("/content/general-updates/new?suiteId=7");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Remove: Spring" }),
+  );
+
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByLabelText("Add suite")),
+  );
+});
+
+it("clears a stored date that was emptied", async () => {
+  renderPage();
+  const start = await screen.findByLabelText<HTMLInputElement>(/^Start date/);
+  await waitFor(() => expect(start.value).not.toBe(""));
+  fireEvent.change(start, { target: { value: "" } });
+  expect(
+    screen.getByText("Saves with no start date, so members don't see it."),
+  ).toBeDefined();
+
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+  await waitFor(() => expect(saved).not.toBeNull());
+  expect(saved).toMatchObject({ startDate: null, endDate });
+});
+
 it("loads the pickers alongside the general update", async () => {
   pickersRequested = {
     tags: deferred(),
@@ -370,8 +401,10 @@ it("reports suites that failed to load", async () => {
   suitesStatus = 500;
   renderPage();
 
-  expect(await screen.findByText("Failed to load suites.")).toBeDefined();
-  expect(screen.queryByText("No suites available.")).toBeNull();
+  expect(
+    await screen.findByText("Couldn't load suites, so none can be added."),
+  ).toBeDefined();
+  expect(screen.queryByText("No suites yet.")).toBeNull();
 });
 
 it("reports a failed save and keeps the form", async () => {
@@ -382,7 +415,7 @@ it("reports a failed save and keeps the form", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   expect(
-    await screen.findByText(/^Couldn't save: Unable to save/),
+    await screen.findByText(`Couldn't save: ${SAVE_FAILED_FALLBACK}`),
   ).toBeDefined();
   expect(screen.getByLabelText("Title")).toBe(title);
   errors.mockRestore();
@@ -412,7 +445,7 @@ it("asks for a title instead of saving without one", async () => {
   fireEvent.change(title, { target: { value: "  " } });
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
-  expect(await screen.findByText("Enter a title.")).toBeDefined();
+  expect(await screen.findByText("Enter a title")).toBeDefined();
   expect(writes).toBe(0);
 });
 

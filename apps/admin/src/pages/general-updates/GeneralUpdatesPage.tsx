@@ -1,10 +1,8 @@
-import { withCount } from "@alliance/common/plural";
 import type { GeneralUpdateAdminDto } from "@alliance/shared/client";
 import { Fragment, useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDateTime } from "../../lib/formatDate";
-import { formatCount } from "../../lib/formatNumber";
 import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 import { useGeneralUpdatesAdmin } from "../../lib/useGeneralUpdatesAdmin";
 import { PlaceId } from "../../places";
@@ -15,16 +13,23 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableGroupRow,
   TableHead,
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { Banner, BannerTone } from "../../ui/templates/Banner";
-import { FilterBar, ListContent, SearchField } from "../../ui/templates/List";
+import {
+  FilterBar,
+  ListContent,
+  listCount,
+  SearchField,
+  useListSearch,
+} from "../../ui/templates/List";
 import { Page } from "../../ui/templates/Page";
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
 import {
@@ -38,18 +43,7 @@ const COLUMNS = 4;
 
 export default function GeneralUpdatesPage() {
   const list = useGeneralUpdatesAdmin();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const q = searchParams.get("q") ?? "";
-  const setQ = (value: string) =>
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set("q", value);
-        else next.delete("q");
-        return next;
-      },
-      { replace: true },
-    );
+  const [q, setQ] = useListSearch();
 
   const all = list.data;
   const rows = useMemo(() => {
@@ -64,29 +58,20 @@ export default function GeneralUpdatesPage() {
     <Page
       fill
       place={PlaceId.GeneralUpdates}
-      description="Updates shown to the members you choose, on their own dates or a suite's."
+      description="Each goes on the home page of the members you choose between its dates, and on every member's General updates page from its start date."
       actions={
         <Button variant={ButtonVariant.Primary} to={generalUpdateHref("new")}>
           New general update
         </Button>
       }
-      banner={
-        list.isError &&
-        all && (
-          <Banner tone={BannerTone.Danger}>
-            Couldn&apos;t refresh general updates, so this list may be out of
-            date. {adminRefusalMessage(list.error, LOAD_FAILED_FALLBACK)}
-          </Banner>
-        )
-      }
+      banner={<RefreshFailedBanner things="general updates" query={list} />}
     >
       <FilterBar
-        count={
-          all &&
-          (rows.length === all.length
-            ? withCount(all.length, "general update")
-            : `${formatCount(rows.length)} of ${withCount(all.length, "general update")}`)
-        }
+        count={listCount({
+          shown: rows.length,
+          total: all?.length,
+          noun: "general update",
+        })}
       >
         <SearchField label="Filter general updates" value={q} onChange={setQ} />
       </FilterBar>
@@ -101,11 +86,12 @@ export default function GeneralUpdatesPage() {
           }
           errorTitle="Couldn't load general updates"
           onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
           empty={rows.length === 0}
           filtered={q !== ""}
           onClearFilters={() => setQ("")}
           emptyTitle="No general updates yet"
-          emptyDescription="A general update is shown to the members you choose, between its start and end dates."
+          emptyDescription="A general update goes on members' home pages between its start and end dates."
           emptyAction={
             <Button
               variant={ButtonVariant.Default}
@@ -127,21 +113,15 @@ export default function GeneralUpdatesPage() {
             <TableBody>
               {groups.map((group) => (
                 <Fragment key={group.status}>
-                  <TableRow>
-                    <TableCell
-                      colSpan={COLUMNS}
-                      className="bg-surface-2 text-fg-muted"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Badge tone={STATUS_TONE[group.status]}>
-                          {STATUS_LABEL[group.status]}
-                        </Badge>
-                        <span className="tabular-nums">
-                          {formatCount(group.updates.length)}
-                        </span>
-                      </span>
-                    </TableCell>
-                  </TableRow>
+                  <TableGroupRow
+                    colSpan={COLUMNS}
+                    label={
+                      <Badge tone={STATUS_TONE[group.status]}>
+                        {STATUS_LABEL[group.status]}
+                      </Badge>
+                    }
+                    count={group.updates.length}
+                  />
                   {group.updates.map((update) => (
                     <UpdateRow key={update.id} update={update} />
                   ))}
@@ -159,10 +139,9 @@ const dateOf = (value: string | null | undefined) =>
   value ? formatDateTime(value, { timeZone: LAUNCH_TIME_ZONE }) : "—";
 
 function UpdateRow({ update }: { update: GeneralUpdateAdminDto }) {
-  const suites = update.suites?.map((suite) => suite.name).join(", ");
   return (
     <TableRow>
-      <TableCell className="max-w-64 truncate">
+      <TableCell truncate title={update.name}>
         <Link to={generalUpdateHref(update.id)} className={nameLinkClass}>
           {update.name}
         </Link>
@@ -173,8 +152,8 @@ function UpdateRow({ update }: { update: GeneralUpdateAdminDto }) {
       <TableCell className="whitespace-nowrap">
         {dateOf(update.endDate)}
       </TableCell>
-      <TableCell className="max-w-64 truncate" title={suites || undefined}>
-        {suites || "—"}
+      <TableCell truncate>
+        {update.suites?.map((suite) => suite.name).join(", ") || "—"}
       </TableCell>
     </TableRow>
   );

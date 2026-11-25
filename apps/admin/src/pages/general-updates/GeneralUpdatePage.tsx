@@ -13,16 +13,21 @@ import { placeById, PlaceId, RecordId, tabHref } from "../../places";
 import Badge from "../../ui/Badge";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
-import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { Banner } from "../../ui/templates/Banner";
 import { Page, PageBody } from "../../ui/templates/Page";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  FormSkeleton,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 import { useRecordTabs } from "../../ui/templates/usePlaceTabs";
 import { useSelectableUsers } from "../../ui/UserSelect";
 import { GeneralUpdateContentTab } from "./GeneralUpdateContentTab";
 import { GeneralUpdateDetailsTab } from "./GeneralUpdateDetailsTab";
 import {
   GENERAL_UPDATES_HREF,
-  GeneralUpdateStatus,
+  LIVE_NOTICE,
   STATUS_LABEL,
   STATUS_TONE,
   statusOf,
@@ -33,6 +38,19 @@ const TABS = ["details", "content"] as const;
 type Tab = (typeof TABS)[number];
 
 const NEW = "new";
+
+const SKELETON: Record<Tab, ReactNode> = {
+  details: (
+    <PageBody width="form">
+      <FormSkeleton fields={5} />
+    </PageBody>
+  ),
+  content: (
+    <PageBody>
+      <Skeleton className="h-96 w-full rounded-card" />
+    </PageBody>
+  ),
+};
 
 export default function GeneralUpdatePage() {
   const { id } = useParams();
@@ -58,15 +76,21 @@ function GeneralUpdateRecord({ idParam }: { idParam: string }) {
   // The server answers a missing general update with a 500, so a fresh list
   // without the id is what tells "not found" from a failed load.
   const list = useGeneralUpdatesAdmin();
+  const listed = list.data?.find((candidate) => candidate.id === updateId);
   const missingFromList =
-    query.isError &&
-    list.isSuccess &&
-    list.isFetchedAfterMount &&
-    !list.data.some((listed) => listed.id === updateId);
+    query.isError && list.isSuccess && list.isFetchedAfterMount && !listed;
   const notFound =
     !isNew &&
     (updateId === null || thrownStatus(query.error) === 404 || missingFromList);
+  // While the fresh list is on its way a failed load may yet be "not found".
+  const failed =
+    query.isError && !(list.isFetching && !list.isFetchedAfterMount);
+  const loading = !notFound && !details.filled && !failed;
   const status = update && statusOf(update, new Date());
+  // The list a visit usually comes from already knows the status, so the
+  // banner neither arrives late nor leaves a gap.
+  const noticeFrom = update ?? listed;
+  const notice = noticeFrom && LIVE_NOTICE[statusOf(noticeFrom, new Date())];
 
   const detailsTab = (
     <GeneralUpdateDetailsTab
@@ -102,7 +126,7 @@ function GeneralUpdateRecord({ idParam }: { idParam: string }) {
       <Page
         record={RecordId.GeneralUpdate}
         title="New general update"
-        description="Nothing is shown to members until the update has a start date or a suite."
+        description="Members see nothing of it until its start date has passed."
         actions={managePriority}
       >
         {contentDialog}
@@ -140,29 +164,25 @@ function GeneralUpdateRecord({ idParam }: { idParam: string }) {
       actions={managePriority}
       tabs={tabs}
       banner={
-        status === GeneralUpdateStatus.Active && (
-          <Banner tone={BannerTone.Info}>
-            Members in this update&apos;s audience can see it now. A save to its
-            details or its content reaches them on their next load.
-          </Banner>
-        )
+        <>
+          <RefreshFailedBanner things="this general update" query={query} />
+          {notice && <Banner>{notice}</Banner>}
+        </>
       }
+      bannerPending={loading && !noticeFrom}
     >
       {contentDialog}
       <ContentState
-        loading={!notFound && !details.filled && !query.isError}
-        skeleton={
-          <PageBody width="form">
-            <Skeleton className="h-96 w-full rounded-card" />
-          </PageBody>
-        }
+        loading={loading}
+        skeleton={SKELETON[tabs.value]}
         error={
-          !notFound && !details.filled && query.isError
+          !notFound && !details.filled && failed
             ? adminRefusalMessage(query.error, LOAD_FAILED_FALLBACK)
             : null
         }
         errorTitle="Couldn't load this general update"
         onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
         empty={notFound}
         emptyTitle="General update not found"
         emptyDescription="Check the link, or find it in the list."

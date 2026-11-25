@@ -6,14 +6,13 @@ import type {
 import type { Dispatch, SetStateAction } from "react";
 import { href } from "react-router";
 import { BadgeTone } from "../../ui/Badge";
-import { formatLocalDateTime, resolveDateValue } from "../../ui/DateTimePicker";
 
 export const GENERAL_UPDATES_HREF = href("/content/general-updates");
 
 export const generalUpdateHref = (id: number | "new") =>
   href("/content/general-updates/:id", { id: String(id) });
 
-/** The schedule in the admin's local time, as a `datetime-local` input holds it. */
+/** The dates are UTC instants as ISO strings, or "" for none. */
 export type GeneralUpdateForm = {
   name: string;
   startDate: string;
@@ -50,29 +49,30 @@ export const withSuite = (
 export const usesSuiteSchedule = (form: GeneralUpdateForm) =>
   form.suiteIds.length > 0;
 
+const instantOf = (date: string | null | undefined) =>
+  date ? new Date(date).toISOString() : "";
+
 export const formOf = (update: GeneralUpdateAdminDto): GeneralUpdateForm => ({
   name: update.name,
-  startDate: formatLocalDateTime(resolveDateValue(update.startDate), "minute"),
-  endDate: formatLocalDateTime(resolveDateValue(update.endDate), "minute"),
+  startDate: instantOf(update.startDate),
+  endDate: instantOf(update.endDate),
   useManualCohort: update.useManualCohort,
   manualCohortUserIds: update.manualCohortUserIds ?? [],
   tagIds: update.tags?.map((tag) => tag.id) ?? [],
   suiteIds: update.suites?.map((suite) => suite.id) ?? [],
 });
 
-/** What a save sends. A suite's schedule is the server's to set, so the dates stay out. */
+/**
+ * What a save sends. A suite's schedule is the server's to set, so the dates
+ * stay out. Without a suite an empty date goes as `null`, which clears a
+ * stored one: left out, the server would keep the old date.
+ */
 export const saveBodyOf = (form: GeneralUpdateForm) => {
   const ownSchedule = !usesSuiteSchedule(form);
   return {
     name: form.name,
-    startDate:
-      ownSchedule && form.startDate
-        ? new Date(form.startDate).toISOString()
-        : undefined,
-    endDate:
-      ownSchedule && form.endDate
-        ? new Date(form.endDate).toISOString()
-        : undefined,
+    startDate: ownSchedule ? form.startDate || null : undefined,
+    endDate: ownSchedule ? form.endDate || null : undefined,
     useManualCohort: form.useManualCohort,
     manualCohortUserIds: form.useManualCohort ? form.manualCohortUserIds : [],
     tagIds: form.tagIds,
@@ -114,7 +114,10 @@ type Schedule = {
   endDate?: string | null;
 };
 
-/** Members see an update from its start until its end; one with no start is a draft. */
+/**
+ * One with no start is a draft. From its start every member can open it under
+ * General updates; until its end it is also on its audience's home pages.
+ */
 export function statusOf(
   { startDate, endDate }: Schedule,
   now: Date,
@@ -136,14 +139,26 @@ export function groupByStatus<T extends Schedule>(
 }
 
 const SAVE_REACH: Record<GeneralUpdateStatus, string> = {
-  [GeneralUpdateStatus.Draft]: "Not shown to members yet.",
+  [GeneralUpdateStatus.Draft]:
+    "Saves with no start date, so members don't see it.",
   [GeneralUpdateStatus.Active]: "Members see this on save.",
-  [GeneralUpdateStatus.Scheduled]: "Shown from its start date.",
-  [GeneralUpdateStatus.Expired]: "Not shown: its end date has passed.",
+  [GeneralUpdateStatus.Scheduled]: "Members see this from its start date.",
+  [GeneralUpdateStatus.Expired]:
+    "Past its end date: off home pages, still under General updates for every member.",
 };
 
-/** What saving the form as it stands does for members, for the save bar. */
+/** What saving the form as it stands stores and shows members, for the save bar. */
 export const saveReachOf = (form: GeneralUpdateForm, now: Date): string =>
   usesSuiteSchedule(form)
-    ? "Shown on its suite's dates."
+    ? "Saves no dates: the update follows its suite's."
     : SAVE_REACH[statusOf(form, now)];
+
+/** The standing fact on a record members can already open, where every save is live. */
+export const LIVE_NOTICE: Record<GeneralUpdateStatus, string | null> = {
+  [GeneralUpdateStatus.Draft]: null,
+  [GeneralUpdateStatus.Scheduled]: null,
+  [GeneralUpdateStatus.Active]:
+    "Members see this update now. A save to its details or content reaches them on their next load.",
+  [GeneralUpdateStatus.Expired]:
+    "Past its end date, but every member still sees this under General updates. A save reaches them on their next load.",
+};

@@ -50,8 +50,14 @@ export default [
       route("/growth/ambassadors", "pages/AmbassadorProgramPage.tsx"),
 
       route("/content/task-updates", "pages/ActionUpdatesPage.tsx"),
-      route("/content/general-updates", "pages/general-updates/GeneralUpdatesPage.tsx"),
-      route("/content/general-updates/:id", "pages/general-updates/GeneralUpdatePage.tsx"),
+      route(
+        "/content/general-updates",
+        "pages/general-updates/GeneralUpdatesPage.tsx",
+      ),
+      route(
+        "/content/general-updates/:id",
+        "pages/general-updates/GeneralUpdatePage.tsx",
+      ),
       route(FORUM_POST_PATH, "pages/PostsManagement.tsx"),
       route("/content/media", "pages/media/MediaPage.tsx"),
       route("/content/media/videos/:videoId", "pages/media/VideoPage.tsx"),

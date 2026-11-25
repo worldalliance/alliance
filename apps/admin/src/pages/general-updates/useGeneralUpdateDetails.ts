@@ -5,8 +5,11 @@ import { useNavigate, useSearchParams } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import type { useGeneralUpdateAdmin } from "../../lib/useGeneralUpdateAdmin";
 import { useLeaveGuard } from "../../lib/useLeaveGuard";
-import { useRefusalToast } from "../../lib/useRefusalToast";
-import { SaveState, useFocusFirstInvalid } from "../../ui/templates/Form";
+import {
+  SAVE_FAILED_FALLBACK,
+  SaveState,
+  useFocusFirstInvalid,
+} from "../../ui/templates/Form";
 import { useToast } from "../../ui/ToastProvider";
 import {
   EMPTY_FORM,
@@ -18,8 +21,6 @@ import {
 } from "./generalUpdateRules";
 
 export type GeneralUpdateErrors = { name?: string };
-
-const SAVE_FAILED = "Unable to save the general update. Please try again.";
 
 const newForm = (suiteIdParam: string | null): GeneralUpdateForm => {
   const suiteId = suiteIdParam ? parseInt(suiteIdParam, 10) : NaN;
@@ -44,7 +45,6 @@ export function useGeneralUpdateDetails({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { success } = useToast();
-  const refusalToast = useRefusalToast();
 
   const [seeded, setSeeded] = useState<{
     id: number | null;
@@ -90,7 +90,7 @@ export function useGeneralUpdateDetails({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.name.trim()) {
-      setErrors({ name: "Enter a title." });
+      setErrors({ name: "Enter a title" });
       focusFirstInvalid();
       return;
     }
@@ -111,9 +111,8 @@ export function useGeneralUpdateDetails({
     } catch (error) {
       setOutcome({
         saved: false,
-        reason: adminRefusalMessage(error, SAVE_FAILED),
+        reason: adminRefusalMessage(error, SAVE_FAILED_FALLBACK),
       });
-      refusalToast(error, SAVE_FAILED);
     }
   };
 

@@ -4,6 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../../lib/sessionExpired";
 import { generalUpdateAdmin } from "../../lib/testing/generalUpdateAdmin";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import GeneralUpdatesPage from "./GeneralUpdatesPage";
 
 let loadStatus = 200;
@@ -46,6 +47,7 @@ it("says the general updates failed to load instead of listing none", async () =
   loadStatus = 500;
   renderPage();
   expect(await screen.findByText("Couldn't load general updates")).toBeTruthy();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   expect(screen.queryByText("No general updates yet")).toBeNull();
 });
 

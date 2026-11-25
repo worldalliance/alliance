@@ -50,23 +50,35 @@ it("leaves a suite's schedule and an unticked cohort out of the save", () => {
   const body = saveBodyOf({
     ...EMPTY_FORM,
     name: "Note",
-    startDate: "2026-06-01T09:00",
+    startDate: past,
     suiteIds: [7],
     manualCohortUserIds: [5],
   });
   expect(body.startDate).toBeUndefined();
+  expect(body.endDate).toBeUndefined();
   expect(body.manualCohortUserIds).toEqual([]);
   expect(body.suiteIds).toEqual([7]);
 });
 
+it("sends an emptied date as null, so the save clears the stored one", () => {
+  const body = saveBodyOf({ ...EMPTY_FORM, name: "Note", endDate: future });
+  expect(body.startDate).toBeNull();
+  expect(body.endDate).toBe(future);
+});
+
 it("says what a save does for members", () => {
   const form = { ...EMPTY_FORM, name: "Note" };
-  expect(saveReachOf(form, now)).toMatch(/Not shown to members yet/);
-  expect(saveReachOf({ ...form, startDate: "2026-06-01T09:00" }, now)).toMatch(
+  expect(saveReachOf(form, now)).toMatch(/no start date, so members don't/);
+  expect(saveReachOf({ ...form, startDate: past }, now)).toMatch(
     /Members see this on save/,
   );
-  expect(saveReachOf({ ...form, startDate: "2026-07-01T09:00" }, now)).toMatch(
+  expect(saveReachOf({ ...form, startDate: future }, now)).toMatch(
     /from its start date/,
   );
-  expect(saveReachOf({ ...form, suiteIds: [7] }, now)).toMatch(/suite's dates/);
+  expect(saveReachOf({ ...form, startDate: past, endDate: past }, now)).toMatch(
+    /still under General updates for every member/,
+  );
+  expect(saveReachOf({ ...form, suiteIds: [7] }, now)).toMatch(
+    /follows its suite's/,
+  );
 });
