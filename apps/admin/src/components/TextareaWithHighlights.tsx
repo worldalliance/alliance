@@ -1,5 +1,5 @@
-import { cn } from "@alliance/shared/styles/util";
 import { useEffect, useMemo, useRef } from "react";
+import { cn } from "../ui/cn";
 
 export interface TextareaWithHighlightProps {
   value: string;
@@ -19,6 +19,10 @@ export interface TextareaWithHighlightProps {
   onDragOver?: React.DragEventHandler<HTMLTextAreaElement>;
   onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
   onKeyUp?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+  /** From a `Field`, which labels the text area. */
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }
 
 function escapeHtml(s: string) {
@@ -49,6 +53,7 @@ export default function TextareaWithHighlight({
   onDragOver,
   onKeyDown,
   onKeyUp,
+  ...labelled
 }: TextareaWithHighlightProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -79,14 +84,14 @@ export default function TextareaWithHighlight({
     const afterHashPipe = highlightHashPipeSyntax
       ? safe.replace(
           HASH_PIPE_SYNTAX_REGEX,
-          '<span class="bg-amber-400/20 text-transparent">$&</span>',
+          '<span class="rounded-sm bg-warning-soft text-transparent">$&</span>',
         )
       : safe;
 
     if (!highlightRegex) return afterHashPipe;
     return afterHashPipe.replace(
       highlightRegex,
-      `<span class="bg-green/20 text-transparent">$1</span>`,
+      `<span class="rounded-sm bg-success-soft text-transparent">$1</span>`,
     );
   }, [value, highlightRegex, highlightHashPipeSyntax]);
 
@@ -176,8 +181,8 @@ export default function TextareaWithHighlight({
           "whitespace-pre-wrap",
           "break-words",
           "text-transparent",
-          "will-change-transform -mx-[0.5px]",
-          "rounded-lg",
+          "will-change-transform",
+          "rounded-md",
         )}
         dangerouslySetInnerHTML={{
           __html: highlightedHtml + (value?.endsWith("\n") ? "\n" : ""),
@@ -185,6 +190,7 @@ export default function TextareaWithHighlight({
       />
 
       <textarea
+        {...labelled}
         ref={resolvedTextareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -196,12 +202,12 @@ export default function TextareaWithHighlight({
         placeholder={placeholder}
         className={cn(
           "w-full resize-y",
-          "rounded-lg border border-zinc-300",
-          "text-sm leading-6",
-          "p-3",
+          "rounded-md border border-line-control bg-transparent text-fg",
+          "text-body",
+          "px-3 py-2",
           "overflow-auto",
-          "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
-          !editable && "!border-0 !resize-none",
+          "focus-ring",
+          !editable && "border-0! resize-none!",
           textareaClassName,
         )}
         spellCheck={false}

@@ -1,18 +1,14 @@
 import { withCount } from "@alliance/common/plural";
 import type { ActionEvent, ReminderGroupDto } from "@alliance/shared/client";
-import {
-  format,
-  formatDistanceStrict,
-  isValid,
-  parseISO,
-  subSeconds,
-} from "date-fns";
+import { formatDistanceStrict, isValid, parseISO, subSeconds } from "date-fns";
 import {
   millisecondsInMinute,
   millisecondsInSecond,
   minutesInDay,
   minutesInHour,
 } from "date-fns/constants";
+import { formatDateTime } from "../../../lib/formatDate";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 
 export type GroupScheduleLabels = {
   primary: string;
@@ -22,7 +18,8 @@ export type GroupScheduleLabels = {
 
 type ReferenceEvent = Pick<ActionEvent, "date" | "title">;
 
-const DISPLAY_DATETIME_FORMAT = "PP p";
+const when = (date: Date) =>
+  formatDateTime(date, { timeZone: LAUNCH_TIME_ZONE });
 
 const parseDate = (value?: string | Date | null) => {
   if (!value) {
@@ -34,7 +31,7 @@ const parseDate = (value?: string | Date | null) => {
 
 const formatDisplayDate = (value?: string | Date | null) => {
   const date = parseDate(value);
-  return date ? format(date, DISPLAY_DATETIME_FORMAT) : null;
+  return date ? when(date) : null;
 };
 
 const describeOffset = (seconds: number) => {
@@ -81,17 +78,14 @@ export const describeGroupSchedule = ({
         const referenceTitle =
           anchorLabel ??
           (referenceEvent?.title?.trim() ||
-            `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`);
+            `deadline on ${when(deadlineDate)}`);
         if (seconds === 0) {
           return {
             primary: anchorLabel
               ? `Sends at ${referenceTitle}`
               : `Sends when ${referenceTitle} begins`,
-            secondary: `${format(
-              sendDate,
-              DISPLAY_DATETIME_FORMAT,
-            )} • Deadline ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`,
-            pastTense: `at ${format(sendDate, DISPLAY_DATETIME_FORMAT)}`,
+            secondary: `${when(sendDate)} • Deadline ${when(deadlineDate)}`,
+            pastTense: `at ${when(sendDate)}`,
           };
         }
         const distance = formatDistanceStrict(deadlineDate, sendDate, {
@@ -101,10 +95,7 @@ export const describeGroupSchedule = ({
           primary: `Sends ${distance} ${
             seconds >= 0 ? "before" : "after"
           } ${referenceTitle}`,
-          secondary: `${format(
-            sendDate,
-            DISPLAY_DATETIME_FORMAT,
-          )} • Deadline ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`,
+          secondary: `${when(sendDate)} • Deadline ${when(deadlineDate)}`,
           pastTense: `${distance} ${
             seconds >= 0 ? "before" : "after"
           } ${referenceTitle}`,
@@ -121,15 +112,9 @@ export const describeGroupSchedule = ({
       const end = parseDate(group.send_range_end);
       if (start && end) {
         return {
-          primary: `Sends between ${format(
-            start,
-            DISPLAY_DATETIME_FORMAT,
-          )} and ${format(end, DISPLAY_DATETIME_FORMAT)}`,
+          primary: `Sends between ${when(start)} and ${when(end)}`,
           secondary: "Personalized window",
-          pastTense: `between ${format(
-            start,
-            DISPLAY_DATETIME_FORMAT,
-          )} and ${format(end, DISPLAY_DATETIME_FORMAT)}`,
+          pastTense: `between ${when(start)} and ${when(end)}`,
         };
       }
       return {
@@ -155,21 +140,17 @@ export const describeGroupSchedule = ({
       const endLabel = describeOffset(endSeconds);
       const referenceTitle =
         anchorLabel ??
-        (referenceEvent?.title?.trim() ||
-          `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`);
+        (referenceEvent?.title?.trim() || `deadline on ${when(deadlineDate)}`);
       const startDate = subSeconds(deadlineDate, startSeconds);
       const endDate = subSeconds(deadlineDate, endSeconds);
-      const deadlineLabel = format(deadlineDate, DISPLAY_DATETIME_FORMAT);
+      const deadlineLabel = when(deadlineDate);
 
       return {
         primary:
           startSeconds === endSeconds
             ? `Sends ${startLabel} ${referenceTitle}`
             : `Sends between ${startLabel} and ${endLabel} ${referenceTitle}`,
-        secondary: `${format(startDate, DISPLAY_DATETIME_FORMAT)} – ${format(
-          endDate,
-          DISPLAY_DATETIME_FORMAT,
-        )} • Deadline ${deadlineLabel}`,
+        secondary: `${when(startDate)} – ${when(endDate)} • Deadline ${deadlineLabel}`,
         pastTense:
           startSeconds === endSeconds
             ? `${startLabel} ${referenceTitle}`
@@ -180,17 +161,11 @@ export const describeGroupSchedule = ({
       const launchDate = parseDate(group.memberActionEvent?.date);
       return {
         primary: launchDate
-          ? `Sends when launch event begins (${format(
-              launchDate,
-              DISPLAY_DATETIME_FORMAT,
-            )})`
+          ? `Sends when launch event begins (${when(launchDate)})`
           : "Sends when launch event begins",
         secondary: null,
         pastTense: launchDate
-          ? `when launch event began (${format(
-              launchDate,
-              DISPLAY_DATETIME_FORMAT,
-            )})`
+          ? `when launch event began (${when(launchDate)})`
           : "when launch event began",
       };
     }

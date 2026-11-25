@@ -3,7 +3,8 @@ import {
   defaultTextMessage,
 } from "@alliance/common/reminderPresetCopy";
 import { client } from "@alliance/shared/client/client.gen";
-import { makeEvent } from "@alliance/shared/lib/testFixtures";
+import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import {
   cleanup,
@@ -13,7 +14,12 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import ActionReminderGroupForm from "./ActionReminderGroupForm";
+import { formatDateTime } from "../../../lib/formatDate";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
+import { ReminderGroupForm } from "./ReminderGroupForm";
+
+// The app registers this at its root; a refusal's message depends on it.
+registerErrorStatus(client);
 
 const { baseUrl, fetch } = client.getConfig();
 
@@ -31,6 +37,16 @@ const tentativeRequests = (
 ) =>
   fetchMock.mock.calls.map(([request]) => request).filter(isTentativeRequest);
 
+const memberEvents = [{ event: makeEvent({ id: 3 }), task: makeAction() }];
+
+let submitted = jest.fn();
+beforeEach(() => {
+  submitted = jest.fn();
+});
+
+const pressCreate = () =>
+  fireEvent.click(screen.getByRole("button", { name: "Create reminders" }));
+
 const initialValues = {
   memberActionEventId: 3,
   reminderGroup: null,
@@ -38,10 +54,10 @@ const initialValues = {
 };
 
 const formElement = (suiteId: number, waitForRecipientCount = true) => (
-  <ActionReminderGroupForm
+  <ReminderGroupForm
     suiteId={suiteId}
     waitForRecipientCount={waitForRecipientCount}
-    memberEvents={[makeEvent({ id: 3 })]}
+    memberEvents={memberEvents}
     anchorCandidates={[]}
     users={[]}
     loadingUsers={false}
@@ -49,7 +65,7 @@ const formElement = (suiteId: number, waitForRecipientCount = true) => (
     userTags={[]}
     loadingUserTags={false}
     initialValues={initialValues}
-    onSubmit={() => {}}
+    onSubmit={(...args) => submitted(...args)}
   />
 );
 
@@ -111,10 +127,10 @@ it("ignores a preview response superseded by a newer change", async () => {
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
 
   rerender(formElement(8));
-  await screen.findByText("1");
+  await screen.findByText("1 reminder");
   resolveFirst(Response.json([plan, plan, plan], { status: 201 }));
   await new Promise((resolve) => setTimeout(resolve, 50));
-  expect(screen.queryByText("3")).toBeNull();
+  expect(screen.queryByText("3 reminders")).toBeNull();
 });
 
 it("holds submit until the recipient count is current", async () => {
@@ -127,14 +143,18 @@ it("holds submit until the recipient count is current", async () => {
       : Promise.resolve(Response.json([], { status: 201 })),
   );
   renderForm(formElement(7));
-  const submit = screen.getByRole("button", { name: "Create reminders" });
 
-  expect(submit).toHaveProperty("disabled", true);
+  pressCreate();
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
-  expect(submit).toHaveProperty("disabled", true);
+  pressCreate();
   expect(screen.getByText("Counting recipients…")).toBeTruthy();
+  expect(submitted).not.toHaveBeenCalled();
   resolvePreview(Response.json([plan], { status: 201 }));
-  await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+  await screen.findByText("1 reminder");
+  pressCreate();
+  await waitFor(() =>
+    expect(submitted).toHaveBeenCalledWith(expect.anything(), 1),
+  );
 });
 
 it("starts at the earliest plan without reordering the previewed plans", async () => {
@@ -149,9 +169,10 @@ it("starts at the earliest plan without reordering the previewed plans", async (
   renderForm(formElement(7));
 
   expect(
-    await screen.findByText(new Date(plan.scheduledFor).toLocaleString(), {
-      exact: false,
-    }),
+    await screen.findByText(
+      formatDateTime(plan.scheduledFor, { timeZone: LAUNCH_TIME_ZONE }),
+      { exact: false },
+    ),
   ).toBeTruthy();
 });
 
@@ -165,17 +186,20 @@ it("holds submit after a failed preview until a retry succeeds", async () => {
     return Response.json([plan], { status: 201 });
   });
   renderForm(formElement(7));
-  const submit = screen.getByRole("button", { name: "Create reminders" });
 
   expect(await screen.findByText(countError)).toBeTruthy();
-  expect(submit).toHaveProperty("disabled", true);
+  pressCreate();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(submitted).not.toHaveBeenCalled();
 
   failing = false;
   fireEvent.click(
     screen.getByRole("button", { name: "Retry recipient count" }),
   );
-  await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+  await screen.findByText("1 reminder");
   expect(screen.queryByText(countError)).toBeNull();
+  pressCreate();
+  await waitFor(() => expect(submitted).toHaveBeenCalled());
 });
 
 it("shows why the server refused to count recipients", async () => {
@@ -211,10 +235,10 @@ it("replaces a failed preview's error while it recounts", async () => {
 it("clears a fixed validation error once the preview succeeds", async () => {
   mockFetch(async () => Response.json([plan], { status: 201 }));
   renderForm(
-    <ActionReminderGroupForm
+    <ReminderGroupForm
       suiteId={7}
       waitForRecipientCount
-      memberEvents={[makeEvent({ id: 3 })]}
+      memberEvents={memberEvents}
       anchorCandidates={[]}
       users={[]}
       loadingUsers={false}
@@ -255,12 +279,14 @@ it("clears a fixed validation error once the preview succeeds", async () => {
 it("holds submit again when a change outdates the count", async () => {
   mockFetch(async () => Response.json([plan], { status: 201 }));
   const { rerender } = renderForm(formElement(7));
-  const submit = screen.getByRole("button", { name: "Create reminders" });
-  await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+  await screen.findByText("1 reminder");
 
   rerender(formElement(8));
+  pressCreate();
 
-  expect(submit).toHaveProperty("disabled", true);
+  expect(screen.getByText("Counting recipients…")).toBeTruthy();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(submitted).not.toHaveBeenCalled();
 });
 
 it("lets a form that needs no count submit while counting", async () => {
@@ -272,9 +298,11 @@ it("lets a form that needs no count submit while counting", async () => {
   renderForm(formElement(7, false));
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
-  expect(
-    screen.getByRole("button", { name: "Create reminders" }),
-  ).toHaveProperty("disabled", false);
+  pressCreate();
+
+  await waitFor(() =>
+    expect(submitted).toHaveBeenCalledWith(expect.anything(), null),
+  );
 });
 
 it("previews the text message for the chosen task count", async () => {
@@ -337,7 +365,7 @@ it("keeps a save error visible over a failed preview", async () => {
       : Response.json([], { status: 201 }),
   );
   renderForm(
-    <ActionReminderGroupForm
+    <ReminderGroupForm
       {...formElement(7).props}
       serverError="Reminder name taken"
     />,
@@ -348,7 +376,7 @@ it("keeps a save error visible over a failed preview", async () => {
   );
 
   expect(await screen.findByText("Unknown keyword")).toBeTruthy();
-  expect(screen.getByText("Reminder name taken")).toBeTruthy();
+  expect(screen.getByText(/Reminder name taken/)).toBeTruthy();
 });
 
 it("switches the previewed task count and closes the preview", async () => {
@@ -381,7 +409,7 @@ it("reloads the push message and suite task count from new initial values", asyn
   const { rerender } = renderForm(formElement(7));
 
   rerender(
-    <ActionReminderGroupForm
+    <ReminderGroupForm
       {...formElement(7).props}
       initialValues={{
         ...initialValues,
@@ -411,10 +439,7 @@ it("shows why it refuses to submit", async () => {
   mockFetch();
   const onSubmit = jest.fn();
   renderForm(
-    <ActionReminderGroupForm
-      {...formElement(7, false).props}
-      onSubmit={onSubmit}
-    />,
+    <ReminderGroupForm {...formElement(7, false).props} onSubmit={onSubmit} />,
   );
 
   fireEvent.change(screen.getByDisplayValue("All uncompleted"), {

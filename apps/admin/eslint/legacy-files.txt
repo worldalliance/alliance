@@ -64,7 +64,6 @@ src/components/ReferralUrlNotice.tsx
 src/components/ShareableTextBuilder.tsx
 src/components/SharedOutputSourceWarning.tsx
 src/components/SlugField.tsx
-src/components/TextareaWithHighlights.tsx
 src/components/UpdatePreview.tsx
 src/components/UserPicker.tsx
 src/components/VariableBuilder.sourceForms.test.tsx
@@ -160,16 +159,6 @@ src/components/form-fields/conditions/styles.ts
 src/components/output-builder/EditableOutputFieldBlock.tsx
 src/components/output-builder/OutputBlockList.tsx
 src/components/output-builder/OutputPreview.tsx
-src/components/reminders/ActionReminderCard.tsx
-src/components/reminders/ActionReminderGroupForm.tsx
-src/components/reminders/ActionRemindersTab.tsx
-src/components/reminders/MissedSuiteNote.tsx
-src/components/reminders/PresetPicker.tsx
-src/components/reminders/ReminderKeywordHelp.tsx
-src/components/reminders/ReminderMessageFields.tsx
-src/components/reminders/ReminderPreviewError.tsx
-src/components/reminders/ReminderScheduleFields.tsx
-src/components/reminders/TentativePlanSummary.tsx
 src/components/row-list/RowConditionEditor.tsx
 src/components/row-list/RowListBuilder.tsx
 src/pages/ActionDashboard.tsx

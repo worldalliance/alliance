@@ -1,5 +1,7 @@
 import type { ReminderGroupDto } from "@alliance/shared/client";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
+import { formatDateTime } from "../../../lib/formatDate";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import {
   describeGroupSchedule,
   groupSendStart,
@@ -36,6 +38,12 @@ const makeGroup = (overrides: Partial<ReminderGroupDto>): ReminderGroupDto => ({
   ...overrides,
 });
 
+/** Jan `day`, 2026 at `hour` in the runner's zone, as staff read it: in Pacific time. */
+const pt = (day: number, hour: number) =>
+  formatDateTime(new Date(2026, 0, day, hour, 0), {
+    timeZone: LAUNCH_TIME_ZONE,
+  });
+
 const close = makeEvent({ title: "Close", date: deadline.toISOString() });
 
 describe("describeGroupSchedule", () => {
@@ -48,9 +56,9 @@ describe("describeGroupSchedule", () => {
     expect(
       describeGroupSchedule({ group, referenceEvent: null, anchorLabel: null }),
     ).toEqual({
-      primary: "Sends Jan 2, 2026 10:00 AM",
+      primary: `Sends ${pt(2, 10)}`,
       secondary: "Absolute schedule",
-      pastTense: "at Jan 2, 2026 10:00 AM",
+      pastTense: `at ${pt(2, 10)}`,
     });
   });
 
@@ -68,7 +76,7 @@ describe("describeGroupSchedule", () => {
       }),
     ).toEqual({
       primary: "Sends 3 hours before Close",
-      secondary: "Jan 10, 2026 9:00 AM • Deadline Jan 10, 2026 12:00 PM",
+      secondary: `${pt(10, 9)} • Deadline ${pt(10, 12)}`,
       pastTense: "3 hours before Close",
     });
   });
@@ -110,7 +118,7 @@ describe("describeGroupSchedule", () => {
     expect(
       describeGroupSchedule({ group, referenceEvent: null, anchorLabel: null })
         .primary,
-    ).toBe("Sends between Jan 3, 2026 8:00 AM and Jan 4, 2026 8:00 AM");
+    ).toBe(`Sends between ${pt(3, 8)} and ${pt(4, 8)}`);
   });
 
   it("describes a window relative to the reference event", () => {
@@ -128,8 +136,7 @@ describe("describeGroupSchedule", () => {
       }),
     ).toEqual({
       primary: "Sends between 2 days before and 1 day before Close",
-      secondary:
-        "Jan 8, 2026 12:00 PM – Jan 9, 2026 12:00 PM • Deadline Jan 10, 2026 12:00 PM",
+      secondary: `${pt(8, 12)} – ${pt(9, 12)} • Deadline ${pt(10, 12)}`,
       pastTense: "between 2 days before and 1 day before Close",
     });
   });
@@ -141,7 +148,7 @@ describe("describeGroupSchedule", () => {
         referenceEvent: null,
         anchorLabel: null,
       }).primary,
-    ).toBe("Sends when launch event begins (Jan 1, 2026 9:00 AM)");
+    ).toBe(`Sends when launch event begins (${pt(1, 9)})`);
   });
 });
 

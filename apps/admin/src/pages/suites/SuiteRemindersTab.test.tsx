@@ -1,4 +1,5 @@
 import type {
+  ActionSuiteDto,
   PreviewEmailHtmlDto,
   PreviewTextDto,
   ReminderAnchorCandidateDto,
@@ -6,19 +7,15 @@ import type {
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../../components/LeaveGuard";
 import { ToastProvider } from "../../ui/ToastProvider";
-import ActionRemindersTab from "./ActionRemindersTab";
+import { SuiteRemindersTab } from "./SuiteRemindersTab";
 
 let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];
 let groupsStatus = 200;
+let groupsByEvent: Record<string, typeof groups> | null = null;
 let deleteStatus = 200;
 let createStatus = 200;
 let updateRequests = 0;
@@ -30,8 +27,10 @@ serveApi(
   routes({
     "GET /user/list": () => Response.json({}, { status: 500 }),
     "GET /user/tags": () => Response.json([]),
-    "GET /actions/reminderGroupsForEvent/:id": () =>
-      Response.json(groups, { status: groupsStatus }),
+    "GET /actions/reminderGroupsForEvent/:id": ({ params }) =>
+      Response.json(groupsByEvent?.[params.id] ?? groups, {
+        status: groupsStatus,
+      }),
     "GET /actions/reminderAnchorCandidates/:id": () =>
       Response.json(anchorCandidates, { status: anchorCandidatesStatus }),
     "GET /actions/plansForGroup/:groupId": () => Response.json([]),
@@ -86,6 +85,7 @@ serveApi(
 
 afterEach(() => {
   groups = [];
+  groupsByEvent = null;
   groupsStatus = 200;
   deleteStatus = 200;
   createStatus = 200;
@@ -94,25 +94,95 @@ afterEach(() => {
   previewRequests.length = 0;
 });
 
-const renderTab = (events = [makeEvent({ newStatus: "member_action" })]) =>
-  render(
-    <MemoryRouter>
-      <ToastProvider>
-        <ActionRemindersTab
-          suite={{
-            id: 1,
-            name: "Suite",
-            actions: [makeAction({ events })],
-            events: [],
-            reminderGroups: [],
-            generalUpdates: [],
-            isPartitioned: false,
-          }}
-        />
-      </ToastProvider>
-    </MemoryRouter>,
-    queryWrapper(),
+const renderSuite = (
+  actions: ActionSuiteDto["actions"],
+  highlightedReminder: number | null = null,
+) => {
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/tasks/suites/:suiteId",
+        element: (
+          <LeaveGuard>
+            <ToastProvider>
+              <SuiteRemindersTab
+                suite={{
+                  id: 1,
+                  name: "Suite",
+                  actions,
+                  events: [],
+                  reminderGroups: [],
+                  generalUpdates: [],
+                  isPartitioned: false,
+                }}
+                highlightedReminder={highlightedReminder}
+              />
+            </ToastProvider>
+          </LeaveGuard>
+        ),
+      },
+    ],
+    { initialEntries: ["/tasks/suites/1?tab=reminders"] },
   );
+  return render(<RouterProvider router={router} />, queryWrapper());
+};
+
+const renderTab = (events = [makeEvent({ newStatus: "member_action" })]) =>
+  renderSuite([makeAction({ events })]);
+
+it("lists the groups of every task's members taking action event", async () => {
+  groupsByEvent = {
+    "1": [{ id: 1, name: "On the first task", timingMode: "event_launch" }],
+    "2": [{ id: 2, name: "On the second task", timingMode: "event_launch" }],
+  };
+  renderSuite([
+    makeAction({
+      id: 1,
+      events: [makeEvent({ id: 1, newStatus: "member_action" })],
+    }),
+    makeAction({
+      id: 2,
+      events: [makeEvent({ id: 2, newStatus: "member_action" })],
+    }),
+  ]);
+
+  expect(await screen.findByText("On the first task")).toBeTruthy();
+  expect(screen.getByText("On the second task")).toBeTruthy();
+});
+
+it("says a suite without a members taking action event gets reminders at launch", () => {
+  renderTab([]);
+
+  expect(
+    screen.getByText(
+      /Launching the suite creates that event and the default reminders/,
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "New reminder" })).toBeNull();
+});
+
+it("marks the reminder the timeline asked for, then lets it go", async () => {
+  groups = [
+    { id: 1, name: "Announcement", timingMode: "event_launch" },
+    { id: 2, name: "Last call", timingMode: "event_launch" },
+  ];
+  renderSuite(
+    [makeAction({ events: [makeEvent({ newStatus: "member_action" })] })],
+    2,
+  );
+
+  const row = (await screen.findByText("Last call")).closest("tr");
+  expect(row?.getAttribute("aria-selected")).toBe("true");
+  expect(
+    screen
+      .getByText("Announcement")
+      .closest("tr")
+      ?.getAttribute("aria-selected"),
+  ).toBeNull();
+  await waitFor(() => expect(row?.getAttribute("aria-selected")).toBeNull(), {
+    timeout: 3000,
+  });
+});
 
 it("says under the custom recipients picker when the user list fails to load", async () => {
   renderTab();
@@ -129,7 +199,7 @@ it("says the reminders failed to load", async () => {
   groupsStatus = 500;
   renderTab();
 
-  expect(await screen.findByText("Failed to load reminders.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load reminders")).toBeTruthy();
   expect(
     screen.queryByRole("button", { name: "Populate default reminders" }),
   ).toBeNull();
@@ -140,9 +210,7 @@ it("says the dependency deadlines failed to load", async () => {
   renderTab();
 
   expect(
-    await screen.findByText(
-      "Failed to load dependency deadlines for timing anchors.",
-    ),
+    await screen.findByText(/Couldn't load the dependency deadlines/),
   ).toBeTruthy();
 });
 
@@ -177,13 +245,10 @@ it("schedules a from-deadline group from the event after the member-action event
 });
 
 const deleteGroup = async (name: string) => {
-  const card = (await screen.findByText(name)).closest(".bg-white");
-  if (!(card instanceof HTMLElement)) throw new Error(`no card for ${name}`);
-  fireEvent.click(within(card).getByRole("button", { name: "Delete" }));
-  const confirmButtons = await screen.findAllByRole("button", {
-    name: "Delete",
-  });
-  fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+  fireEvent.click(
+    await screen.findByRole("button", { name: `Delete: ${name}` }),
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Delete group" }));
 };
 
 it("removes a deleted group", async () => {
@@ -207,7 +272,7 @@ it("says a delete was refused and keeps the group", async () => {
   await deleteGroup("Announcement");
 
   expect(
-    await screen.findByText("Failed to delete reminder group."),
+    await screen.findByText("Couldn't delete the reminder group."),
   ).toBeTruthy();
   expect(screen.getByText("Announcement")).toBeTruthy();
 });
@@ -239,9 +304,7 @@ it("populates the default reminders in order", async () => {
 
   await populate();
 
-  expect(
-    await screen.findByText("Reminders created successfully."),
-  ).toBeTruthy();
+  expect(await screen.findByText("Reminders created")).toBeTruthy();
   expect(groups.map((group) => group.name)).toEqual([
     "Member action announcement",
     "24-48h reminder",
@@ -259,9 +322,7 @@ it("populates only the announcement without a deadline event", async () => {
   await populate();
 
   expect(
-    await screen.findByText(
-      "No deadline reminders created - does this event have a deadline?",
-    ),
+    await screen.findByText(/^Created only the announcement/),
   ).toBeTruthy();
   expect(groups.map((group) => group.name)).toEqual([
     "Member action announcement",
@@ -275,11 +336,7 @@ it("says why a populate was refused", async () => {
   await populate();
 
   expect(await screen.findByText("Reminder name taken")).toBeTruthy();
-  expect(
-    screen.queryByText(
-      "No deadline reminders created - does this event have a deadline?",
-    ),
-  ).toBeNull();
+  expect(screen.queryByText(/^Created only the announcement/)).toBeNull();
 });
 
 it("clears a refused populate's message when a retry succeeds", async () => {
@@ -291,9 +348,7 @@ it("clears a refused populate's message when a retry succeeds", async () => {
   createStatus = 200;
   await populate();
 
-  expect(
-    await screen.findByText("Reminders created successfully."),
-  ).toBeTruthy();
+  expect(await screen.findByText("Reminders created")).toBeTruthy();
   expect(screen.queryByText("Reminder name taken")).toBeNull();
 });
 
@@ -313,15 +368,17 @@ it("says why an edit was refused and keeps the form open", async () => {
   groups = [announcementGroup];
   renderTab();
 
-  fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Edit: Announcement" }),
+  );
   const submit = await screen.findByRole("button", {
-    name: "Update reminders",
+    name: "Save changes",
   });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
   fireEvent.click(submit);
 
-  expect(await screen.findByText("Reminder name taken")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Update reminders" })).toBeTruthy();
+  expect(await screen.findByText(/Reminder name taken/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
 });
 
 it.each([
@@ -336,37 +393,42 @@ it.each([
     updateRequests = 0;
     renderTab();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Edit: Announcement" }),
+    );
     const submit = await screen.findByRole("button", {
-      name: "Update reminders",
+      name: "Save changes",
     });
     await waitFor(() => expect(submit).toHaveProperty("disabled", false));
     fireEvent.click(submit);
 
-    expect((await screen.findByRole("dialog")).textContent).toContain(
-      "See https://worldalliance.org/x",
-    );
+    expect(
+      (await screen.findByRole("dialog", { name: "Save anyway?" })).textContent,
+    ).toContain("See https://worldalliance.org/x");
     expect(updateRequests).toBe(0);
     fireEvent.click(screen.getByRole("button", { name: choice }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Save anyway?" })).toBeNull(),
+    );
     await waitFor(() => expect(updateRequests).toBe(saves));
     expect(
-      await screen.findByRole("button", { name: "Update reminders" }),
+      await screen.findByRole("button", { name: "Save changes" }),
     ).toBeTruthy();
   },
 );
 
 const openPresets = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "New reminder" }));
-  fireEvent.click(screen.getByRole("button", { name: "Load preset..." }));
+  fireEvent.click(await screen.findByRole("button", { name: "Load preset" }));
 };
 
 const createFromAnnouncementPreset = async () => {
   await openPresets();
-  fireEvent.click(screen.getByRole("button", { name: "Announcement" }));
-  const submit = screen.getByRole("button", { name: "Create reminders" });
-  await waitFor(() => expect(submit).toHaveProperty("disabled", false));
-  fireEvent.click(submit);
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "Announcement" }),
+  );
+  await screen.findByText(/^This sends/);
+  fireEvent.click(screen.getByRole("button", { name: "Create reminders" }));
   fireEvent.change(
     await screen.findByPlaceholderText("I am going to notify 0 real members"),
     { target: { value: "I am going to notify 0 real members" } },
@@ -390,11 +452,16 @@ it("anchors a dependency-deadline preset to the next upcoming deadline", async (
   renderTab();
   await openPresets();
 
-  const preset = await screen.findByRole("button", {
-    name: "Catch-up late joiners",
-  });
-  await waitFor(() => expect(preset).toHaveProperty("disabled", false));
-  fireEvent.click(preset);
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("menuitem", { name: "Catch-up late joiners" })
+        .getAttribute("aria-disabled"),
+    ).not.toBe("true"),
+  );
+  fireEvent.click(
+    screen.getByRole("menuitem", { name: "Catch-up late joiners" }),
+  );
 
   expect(
     await screen.findByDisplayValue(
@@ -403,10 +470,10 @@ it("anchors a dependency-deadline preset to the next upcoming deadline", async (
   ).toBeTruthy();
   expect(
     screen
-      .getByRole("option", { name: "This action's deadline" })
+      .getByRole("option", { name: "This task's deadline" })
       .closest("select"),
   ).toHaveProperty("value", "11");
-  expect(screen.queryByRole("button", { name: "Announcement" })).toBeNull();
+  expect(screen.queryByRole("menuitem", { name: "Announcement" })).toBeNull();
 });
 
 it("disables a dependency-deadline preset without an upcoming deadline", async () => {
@@ -414,20 +481,25 @@ it("disables a dependency-deadline preset without an upcoming deadline", async (
   renderTab();
   await openPresets();
   // The preset is also disabled before the candidates load, so wait for them.
-  fireEvent.click(screen.getByRole("button", { name: "Two day range" }));
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "Two day range" }),
+  );
   await screen.findByRole("option", { name: /^Dependency 10 deadline/ });
-  fireEvent.click(screen.getByRole("button", { name: "Load preset..." }));
+  fireEvent.click(screen.getByRole("button", { name: "Load preset" }));
 
-  const preset = screen.getByRole("button", { name: "Catch-up late joiners" });
+  const preset = await screen.findByRole("menuitem", {
+    name: "Catch-up late joiners",
+  });
 
-  expect(preset).toHaveProperty("disabled", true);
+  expect(preset.getAttribute("aria-disabled")).toBe("true");
   expect(preset.getAttribute("title")).toBe(
-    "Needs an upcoming dependency deadline to anchor to; this action's cohort has none",
+    "Needs an upcoming dependency deadline to anchor to; this task's cohort has none",
   );
-  expect(screen.getByRole("button", { name: "Announcement" })).toHaveProperty(
-    "disabled",
-    false,
-  );
+  expect(
+    screen
+      .getByRole("menuitem", { name: "Announcement" })
+      .getAttribute("aria-disabled"),
+  ).not.toBe("true");
 });
 
 it("creates a group from the form and closes it", async () => {
@@ -435,10 +507,12 @@ it("creates a group from the form and closes it", async () => {
 
   await createFromAnnouncementPreset();
 
+  expect(await screen.findByText("Reminder group created")).toBeTruthy();
   expect(
-    await screen.findByText("Personal reminders group scheduled successfully."),
+    await screen.findByRole("button", {
+      name: "Edit: Member action announcement",
+    }),
   ).toBeTruthy();
-  expect(screen.getByText("Member action announcement")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Create reminders" })).toBeNull();
 });
 
@@ -448,7 +522,7 @@ it("says why a create from the form was refused and keeps it open", async () => 
 
   await createFromAnnouncementPreset();
 
-  expect(await screen.findAllByText("Reminder name taken")).not.toHaveLength(0);
+  expect(await screen.findAllByText(/Reminder name taken/)).not.toHaveLength(0);
   expect(screen.getByRole("button", { name: "Create reminders" })).toBeTruthy();
 });
 
@@ -456,7 +530,7 @@ it("previews an expanded reminder's messages", async () => {
   groups = [announcementGroup];
   renderTab();
   const expand = await screen.findByRole("button", {
-    name: "Expand reminder",
+    name: "Details: Announcement",
   });
   expect(previewRequests).toEqual([]);
 
@@ -480,8 +554,10 @@ it("does not preview a reminder being edited", async () => {
   groups = [announcementGroup];
   renderTab();
 
-  fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
-  await screen.findByRole("button", { name: "Update reminders" });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Edit: Announcement" }),
+  );
+  await screen.findByRole("button", { name: "Save changes" });
   await new Promise((resolve) => setTimeout(resolve, 50));
 
   expect(previewRequests).toEqual([]);
