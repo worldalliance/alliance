@@ -297,7 +297,6 @@ src/pages/ClustersPage.tsx
 src/pages/ContractPage.tsx
 src/pages/ContractsPage.tsx
 src/pages/CustomLinksPage.tsx
-src/pages/EventLogPage.tsx
 src/pages/ExternalShareTargetsPage.tsx
 src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
