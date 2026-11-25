@@ -1,8 +1,8 @@
 import { onlineManager } from "@tanstack/react-query";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
-import { pickUser } from "../../ui/UserSelect.testing";
-import { LaunchSection } from "./launchBlockers";
+import { LaunchSection } from "../../../components/suite-launch/launchBlockers";
+import { pickUser } from "../../../ui/UserSelect.testing";
 import {
   api,
   launchButton,
@@ -106,7 +106,7 @@ it("groups members by the actions they get and previews one from a group", async
   await screen.findByText("Double space · Call · Action page description");
 
   const mixes = screen.getAllByRole("button", {
-    name: "Preview a member who gets these actions",
+    name: "Preview a member who gets these tasks",
   });
   const mixRow = (button: HTMLElement) => {
     const [members, minutes, actions] = [
@@ -162,7 +162,7 @@ it("counts only members with an active contract, as the server admits them", asy
   renderPanel();
 
   expect(
-    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+    await screen.findByRole("button", { name: "Launch and notify 1 member…" }),
   ).toBeTruthy();
   expect((await actionsCheck()).getByText(/^1 member ·/)).toBeTruthy();
   expect(screen.getByText(/^0 members ·/)).toBeTruthy();
@@ -308,13 +308,13 @@ it("refuses an action that already has its own members taking action event", asy
   renderPanel();
 
   const note = await screen.findByText(
-    /^Already has its own members taking action event \(Sep 30, 2026 at 7:00 PM PT\)/,
+    /^Already has its own members taking action event \(Wed, Sep 30, 7:00 PM PT\)/,
   );
   expect(note.closest("li")?.textContent).toContain("Write");
   expect(screen.getAllByText(/Already has its own/)).toHaveLength(1);
   expect(
     screen.getByText(
-      "1 action already has its own members taking action event. Delete it, or take the action out of the suite, before launching.",
+      "1 task already has its own members taking action event. Delete it, or take the task out of the suite, before launching.",
     ),
   ).toBeTruthy();
 });
@@ -342,7 +342,7 @@ it("blocks launch again when a dismissed item, fixed since, goes missing again",
   renderPanel();
   expect(await screen.findByText("Unfinished: Part of a project")).toBeTruthy();
   expect(
-    screen.getByText("1 action has unfinished checklist items."),
+    screen.getByText("1 task has unfinished checklist items."),
   ).toBeTruthy();
   expect(launchButton().hasAttribute("disabled")).toBe(true);
 });
@@ -366,7 +366,7 @@ it("keeps a dismissal its task form decides while that form fails to load", asyn
   api.formLoadFails = true;
   const failed = renderPanel();
   expect(
-    await screen.findByText("Failed to load the task form for Call."),
+    await screen.findByText("Couldn't load the task form for Call."),
   ).toBeTruthy();
   failed.unmount();
 
@@ -376,7 +376,7 @@ it("keeps a dismissal its task form decides while that form fails to load", asyn
     await screen.findByText("Unfinished (dismissed): ", { exact: false }),
   ).toBeTruthy();
   expect(
-    screen.queryByText("1 action has unfinished checklist items."),
+    screen.queryByText("1 task has unfinished checklist items."),
   ).toBeNull();
 });
 
@@ -386,7 +386,7 @@ it("keeps running checks while an action's load is paused offline", async () => 
   await waitFor(() => expect(onlineManager.isOnline()).toBe(false));
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(screen.getByText("Running checks…", { selector: "p" })).toBeTruthy();
-  expect(screen.queryByText("Preview members' actions")).toBeNull();
+  expect(screen.queryByText("Members' tasks")).toBeNull();
   view.unmount();
 });
 

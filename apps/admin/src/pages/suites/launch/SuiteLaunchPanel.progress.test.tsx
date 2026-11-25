@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
-import { blockStorage } from "../../lib/testing/blockStorage";
+import { blockStorage } from "../../../lib/testing/blockStorage";
 import {
   api,
   launchButton,
@@ -69,7 +69,7 @@ it.each([
       await screen.findByText("Edited since it was marked ready"),
     ).toBeTruthy();
     expect(
-      screen.getByText("1 action isn't marked ready to launch."),
+      screen.getByText("1 task isn't marked ready to launch."),
     ).toBeTruthy();
     expect(launchButton().hasAttribute("disabled")).toBe(true);
   },
@@ -169,7 +169,7 @@ it("doesn't call a marked action edited while its task form fails to load", asyn
   api.formLoadFails = true;
   renderPanel();
   expect(
-    await screen.findByText("Failed to load the task form for Call."),
+    await screen.findByText("Couldn't load the task form for Call."),
   ).toBeTruthy();
   expect(screen.queryByText("Edited since it was marked ready")).toBeNull();
 });
@@ -229,7 +229,8 @@ it("pre-fills the schedule afresh on a later visit when staff left it untouched"
   const memberStart = container.querySelectorAll(
     'input[type="datetime-local"]',
   )[0];
+  // The field shows Pacific time: 04:00 UTC is 8pm the evening before.
   expect(memberStart instanceof HTMLInputElement && memberStart.value).toBe(
-    "2099-01-02T04:00",
+    "2099-01-01T20:00",
   );
 });

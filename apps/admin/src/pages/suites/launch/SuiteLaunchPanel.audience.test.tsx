@@ -14,7 +14,7 @@ it("counts no one for an action without a cohort, as the server does", async () 
   renderPanel();
 
   expect(
-    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+    await screen.findByRole("button", { name: "Launch and notify 1 member…" }),
   ).toBeTruthy();
 });
 
@@ -24,7 +24,7 @@ it("counts an onboarding action's unsigned members", async () => {
   renderPanel();
 
   expect(
-    await screen.findByRole("button", { name: "Launch and notify 2 members" }),
+    await screen.findByRole("button", { name: "Launch and notify 2 members…" }),
   ).toBeTruthy();
 });
 
@@ -35,7 +35,7 @@ it("leaves out of an onboarding action the members who have already signed", asy
   renderPanel();
 
   expect(
-    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+    await screen.findByRole("button", { name: "Launch and notify 1 member…" }),
   ).toBeTruthy();
 });
 
@@ -44,7 +44,7 @@ it("leaves out members away during the launch", async () => {
   renderPanel();
 
   expect(
-    await screen.findByRole("button", { name: "Launch and notify 1 member" }),
+    await screen.findByRole("button", { name: "Launch and notify 1 member…" }),
   ).toBeTruthy();
 });
 
@@ -56,16 +56,16 @@ it("counts members away only before members start or after office taking action"
   renderPanel();
 
   expect(
-    await screen.findByRole("button", { name: "Launch and notify 2 members" }),
+    await screen.findByRole("button", { name: "Launch and notify 2 members…" }),
   ).toBeTruthy();
 });
 
 it("keeps the checks up while away dates load past the year ahead", async () => {
   const { container } = renderPanel();
-  await screen.findByRole("button", { name: "Launch and notify 2 members" });
+  await screen.findByRole("button", { name: "Launch and notify 2 members…" });
   fireEvent.click(
     screen.getAllByRole("button", {
-      name: "Preview a member who gets these actions",
+      name: "Preview a member who gets these tasks",
     })[0],
   );
   fireEvent.change(
@@ -73,10 +73,10 @@ it("keeps the checks up while away dates load past the year ahead", async () => 
     { target: { value: "2099-01-10T10:00" } },
   );
   expect(screen.queryByText("Running checks…")).toBeNull();
-  expect(launchButton().textContent).toBe("Launch and notify ? members");
-  expect(screen.getByText("Actions unknown")).toBeTruthy();
-  await screen.findByRole("button", { name: "Launch and notify 2 members" });
-  expect(screen.queryByText("Actions unknown")).toBeNull();
+  expect(launchButton().textContent).toBe("Launch and notify — members…");
+  expect(screen.getByText("Tasks unknown")).toBeTruthy();
+  await screen.findByRole("button", { name: "Launch and notify 2 members…" });
+  expect(screen.queryByText("Tasks unknown")).toBeNull();
 });
 
 it("blocks launch, counting no one, when members' away dates fail to load", async () => {
@@ -84,14 +84,14 @@ it("blocks launch, counting no one, when members' away dates fail to load", asyn
   renderPanel();
 
   expect(
-    await screen.findByText("Failed to load members' away dates."),
+    await screen.findByText("Couldn't load members' away dates."),
   ).toBeTruthy();
   await waitFor(() =>
     expect(launchButton().hasAttribute("disabled")).toBe(true),
   );
-  expect(screen.getAllByText(/^\? members ·/)).toHaveLength(2);
-  expect(launchButton().textContent).toBe("Launch and notify ? members");
-  expect(screen.queryByText("No member is assigned any action.")).toBeNull();
+  expect(screen.getAllByText(/^Members unknown ·/)).toHaveLength(2);
+  expect(launchButton().textContent).toBe("Launch and notify — members…");
+  expect(screen.queryByText("No member is assigned any task.")).toBeNull();
   expect(
     screen.getByText("Minutes unknown until every member count loads"),
   ).toBeTruthy();
@@ -102,15 +102,15 @@ it("blocks launch when members' contract status fails to load", async () => {
   renderPanel();
 
   expect(
-    await screen.findByText("Failed to load members' contract status."),
+    await screen.findByText("Couldn't load members' contract status."),
   ).toBeTruthy();
   await waitFor(() =>
     expect(launchButton().hasAttribute("disabled")).toBe(true),
   );
-  expect(screen.getByText("Some checks failed to load.")).toBeTruthy();
-  expect(screen.getAllByText(/^\? members ·/)).toHaveLength(2);
-  expect(launchButton().textContent).toBe("Launch and notify ? members");
-  expect(screen.queryByText("No member is assigned any action.")).toBeNull();
+  expect(screen.getByText("Some checks couldn't load.")).toBeTruthy();
+  expect(screen.getAllByText(/^Members unknown ·/)).toHaveLength(2);
+  expect(launchButton().textContent).toBe("Launch and notify — members…");
+  expect(screen.queryByText("No member is assigned any task.")).toBeNull();
 });
 
 it("doesn't offer to notify 0 members while the checks load", async () => {

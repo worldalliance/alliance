@@ -16,8 +16,8 @@ import { onlineManager } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, mock, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../../ui/ToastProvider";
-import { spellcheckerQuery } from "./spellchecker";
+import { ToastProvider } from "../../../ui/ToastProvider";
+import { spellcheckerQuery } from "../../../components/suite-launch/spellchecker";
 import SuiteLaunchPanel from "./SuiteLaunchPanel";
 
 export const manual = (userIds: number[]): CohortExpression => ({

@@ -4,16 +4,16 @@ import type {
   CreateActionEventDto,
 } from "@alliance/shared/client";
 import { Link } from "react-router";
-import SuiteLaunchPanel from "../../components/suite-launch/SuiteLaunchPanel";
 import { formatDateTime } from "../../lib/formatDate";
 import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 import { linkClass } from "../../ui/styles";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
+import SuiteLaunchPanel from "./launch/SuiteLaunchPanel";
 import { LaunchStatus, type SuiteLaunch, suiteDates } from "./suiteRules";
 
 /**
- * Launch: today's launch panel while the suite can launch; otherwise why it
- * can't, in the suite page's words.
+ * Launch: the checks and the launch while the suite can launch; otherwise
+ * why it can't, in the words the suite record's header uses, and no button.
  */
 export function SuiteLaunchTab({
   suite,
@@ -29,7 +29,7 @@ export function SuiteLaunchTab({
   addEvent: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
   /** Rereads the suite past the cache, so launch checks what the server has. */
   fetchSuite: () => Promise<Result<ActionSuiteDto, unknown>>;
-  /** After a launch, or Back to suite. */
+  /** After a launch. */
   onClose: () => void;
 }) {
   switch (launch.status) {
@@ -45,27 +45,48 @@ export function SuiteLaunchTab({
     case LaunchStatus.Launched: {
       const { membersStart } = suiteDates(suite.events);
       return (
-        <Banner inline>
-          <p className="font-medium">This suite has launched</p>
-          <p>{launch.reason}</p>
-          <p className="text-fg-muted">
-            {membersStart &&
-              `Members start ${formatDateTime(membersStart, { weekday: true, timeZone: LAUNCH_TIME_ZONE })}. `}
-            See its{" "}
-            <Link to={eventsHref} className={linkClass}>
-              events
-            </Link>
-            .
-          </p>
-        </Banner>
+        <div className="max-w-176">
+          <Banner inline>
+            <div className="flex flex-col gap-1">
+              <h2 className="font-semibold">This suite has launched</h2>
+              <p>{launch.reason}</p>
+              {membersStart && (
+                <p>
+                  Members start{" "}
+                  {formatDateTime(membersStart, {
+                    weekday: true,
+                    timeZone: LAUNCH_TIME_ZONE,
+                  })}
+                  .
+                </p>
+              )}
+              <p>
+                <Link to={eventsHref} className={linkClass}>
+                  See its events
+                </Link>
+              </p>
+            </div>
+          </Banner>
+        </div>
       );
     }
     case LaunchStatus.Refused:
       return (
-        <Banner inline tone={BannerTone.Warning}>
-          <p className="font-medium">This suite can't launch</p>
-          <p>{launch.reason}</p>
-        </Banner>
+        <div className="max-w-176">
+          <Banner inline tone={BannerTone.Warning}>
+            <div className="flex flex-col gap-1">
+              <h2 className="font-semibold">This suite can't launch</h2>
+              <p>{launch.reason}</p>
+              {!suite.isPartitioned && (
+                <p>
+                  <Link to={eventsHref} className={linkClass}>
+                    Open the suite's events
+                  </Link>
+                </p>
+              )}
+            </div>
+          </Banner>
+        </div>
       );
     default:
       throw new Error(`unknown launch status: ${launch satisfies never}`);

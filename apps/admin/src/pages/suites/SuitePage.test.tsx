@@ -150,9 +150,10 @@ it("opens the launch page from the suite and goes back", async () => {
 
   fireEvent.click(await screen.findByRole("link", { name: "Launch…" }));
   expect(
-    await screen.findByRole("heading", { name: "Launch Suite" }),
+    await screen.findByRole("complementary", { name: "Launch summary" }),
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Back to suite" }));
+  expect(screen.queryByRole("link", { name: "Launch…" })).toBeNull();
+  fireEvent.click(screen.getByRole("tab", { name: "Timeline" }));
   expect(await screen.findByRole("link", { name: "Launch…" })).toBeTruthy();
 });
 

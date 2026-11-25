@@ -2,11 +2,11 @@ import { reminderEmailHtml } from "@alliance/common/reminderKeywords";
 import { Bell } from "lucide-react";
 
 export const TextMockup = ({ message }: { message: string }) => (
-  <figure className="flex w-80 flex-col gap-1 rounded-3xl bg-zinc-100 p-3">
-    <figcaption className="text-center text-xs text-zinc-500">
+  <figure className="flex w-80 flex-col gap-1.5 rounded-card border border-line bg-surface p-3">
+    <figcaption className="text-center text-caption text-fg-muted">
       Text message
     </figcaption>
-    <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-zinc-300 px-3 py-2 text-sm text-black">
+    <p className="max-w-4/5 rounded-card rounded-bl-sm bg-surface-2 px-3 py-2 whitespace-pre-wrap">
       {message}
     </p>
   </figure>
@@ -15,15 +15,15 @@ export const TextMockup = ({ message }: { message: string }) => (
 export const PushMockup = ({ message }: { message: string }) => (
   <figure
     aria-label="Push notification"
-    className="flex w-80 gap-2 rounded-2xl bg-zinc-200/80 p-3 shadow-sm backdrop-blur"
+    className="flex w-80 gap-2.5 rounded-card border border-line bg-surface-2 p-3"
   >
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green text-white">
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-accent-fg">
       <Bell className="size-4" aria-hidden />
     </span>
-    <span className="min-w-0 text-sm">
-      <span className="flex justify-between text-xs">
+    <span className="min-w-0">
+      <span className="flex justify-between text-caption">
         <span className="font-semibold">Alliance</span>
-        <span className="text-zinc-500">now</span>
+        <span className="text-fg-muted">now</span>
       </span>
       <span className="block whitespace-pre-wrap">{message}</span>
     </span>
@@ -46,26 +46,28 @@ export const EmailMockup = ({
 }) => (
   <figure
     aria-label="Email"
-    className="flex max-w-2xl flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4"
+    className="flex max-w-2xl flex-col gap-3 rounded-card border border-line bg-surface p-4"
   >
-    <h4 className="text-xl text-zinc-900">{subject ?? "(no subject)"}</h4>
+    <h4 className="text-heading font-semibold">
+      {subject ?? "(no subject)"}
+    </h4>
     <div className="flex items-center gap-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green text-lg text-white">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-fg">
         A
       </span>
-      <span className="text-sm">
+      <span>
         <span className="font-semibold">Alliance</span>
-        <span className="block text-xs text-zinc-500">to {recipient}</span>
+        <span className="block text-caption text-fg-muted">
+          to {recipient}
+        </span>
       </span>
     </div>
-    <div className="pl-13">
-      {/* Sandboxed: keyword values such as #{fullname} are member-entered text. */}
-      <iframe
-        title="Email body"
-        sandbox="allow-popups allow-popups-to-escape-sandbox"
-        srcDoc={emailHtml(body)}
-        className="h-64 w-full"
-      />
-    </div>
+    {/* Sandboxed: keyword values such as #{fullname} are member-entered text. */}
+    <iframe
+      title="Email body"
+      sandbox="allow-popups allow-popups-to-escape-sandbox"
+      srcDoc={emailHtml(body)}
+      className="h-64 w-full"
+    />
   </figure>
 );

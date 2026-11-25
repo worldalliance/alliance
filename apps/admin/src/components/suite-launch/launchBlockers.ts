@@ -53,7 +53,7 @@ export function eventBeforeDeadline(
     return date >= schedule.memberActionAt && date <= schedule.officeActionAt;
   });
   return early
-    ? `This suite has a "${ACTION_STATUS_LABELS[early.newStatus]}" event before the office deadline, which would end members' time early. Move office taking action before it, or delete it on the suite page.`
+    ? `This suite has a "${ACTION_STATUS_LABELS[early.newStatus]}" event before the office deadline, which would end members' time early. Move office taking action before it, or delete it on the suite's Events tab.`
     : null;
 }
 
@@ -142,7 +142,7 @@ export function launchBlockers(params: {
   const blockers: LaunchBlocker[] = [];
   const block = (section: LaunchSection | null, message: string) =>
     blockers.push({ message, section });
-  if (data.errors.length > 0) block(null, "Some checks failed to load.");
+  if (data.errors.length > 0) block(null, "Some checks couldn't load.");
   for (const problem of scheduleProblems(schedule, now)) {
     block(LaunchSection.Schedule, problem);
   }
@@ -156,7 +156,7 @@ export function launchBlockers(params: {
     );
   }
   if (data.recipientCount === 0) {
-    block(LaunchSection.Actions, "No member is assigned any action.");
+    block(LaunchSection.Actions, "No member is assigned any task.");
   }
   if (data.recipientCount === null) {
     block(LaunchSection.Actions, "The member count is unknown.");
@@ -167,7 +167,7 @@ export function launchBlockers(params: {
   if (ownEvents.length > 0) {
     block(
       LaunchSection.Actions,
-      `${plural(ownEvents.length, "action already has its", "actions already have their")} own members taking action event. Delete it, or take the action out of the suite, before launching.`,
+      `${plural(ownEvents.length, "task already has its", "tasks already have their")} own members taking action event. Delete it, or take the task out of the suite, before launching.`,
     );
   }
   const unready = data.actions.filter((entry) =>
@@ -176,7 +176,7 @@ export function launchBlockers(params: {
   if (unready.length > 0) {
     block(
       LaunchSection.Actions,
-      `${plural(unready.length, "action has", "actions have")} unfinished checklist items.`,
+      `${plural(unready.length, "task has", "tasks have")} unfinished checklist items.`,
     );
   }
   if (violations.length > 0 && !violationsAcknowledged) {
@@ -191,7 +191,7 @@ export function launchBlockers(params: {
   if (unchecked.length > 0) {
     block(
       LaunchSection.Actions,
-      `${plural(unchecked.length, "action isn't", "actions aren't")} marked ready to launch.`,
+      `${plural(unchecked.length, "task isn't", "tasks aren't")} marked ready to launch.`,
     );
   }
   const open = new Set(

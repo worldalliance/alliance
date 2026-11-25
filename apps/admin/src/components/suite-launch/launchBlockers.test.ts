@@ -79,7 +79,7 @@ describe("launchBlockers", () => {
           { id: "form", label: "Task form linked", isReady: false },
         ]),
       ),
-    ).toEqual(["1 action has unfinished checklist items."]);
+    ).toEqual(["1 task has unfinished checklist items."]);
   });
 
   it("finds dismissals of checklist items fixed since or of actions out of the suite, not of text findings", () => {
@@ -127,7 +127,7 @@ describe("launchBlockers", () => {
         },
       }),
     ).toEqual([
-      "1 action already has its own members taking action event. Delete it, or take the action out of the suite, before launching.",
+      "1 task already has its own members taking action event. Delete it, or take the task out of the suite, before launching.",
     ]);
   });
 
@@ -167,7 +167,7 @@ describe("launchBlockers", () => {
     ).toEqual([
       {
         message:
-          'This suite has a "Resolution" event before the office deadline, which would end members\' time early. Move office taking action before it, or delete it on the suite page.',
+          'This suite has a "Resolution" event before the office deadline, which would end members\' time early. Move office taking action before it, or delete it on the suite\'s Events tab.',
         section: LaunchSection.Schedule,
       },
     ]);
@@ -212,17 +212,17 @@ describe("launchBlockers", () => {
               ownMemberStart: null,
             },
           ],
-          errors: ["Failed to load action A."],
+          errors: ["Couldn't load the task A."],
         },
         checkedActionIds: new Set(),
         dismissedKeys: new Set(),
         violations: ["Over 15 minutes."],
       }),
     ).toEqual([
-      "Some checks failed to load.",
-      "1 action has unfinished checklist items.",
+      "Some checks couldn't load.",
+      "1 task has unfinished checklist items.",
       "1 contract violation to fix or accept.",
-      "1 action isn't marked ready to launch.",
+      "1 task isn't marked ready to launch.",
       "1 text finding to fix or dismiss.",
     ]);
   });
@@ -264,14 +264,14 @@ describe("launchBlockers", () => {
   it("says no member is assigned only when the count is known", () => {
     const failed = {
       ...ready.data,
-      errors: ["Failed to load the spelling dictionary."],
+      errors: ["Couldn't load the spelling dictionary."],
     };
     expect(
       messages({ ...ready, data: { ...failed, recipientCount: 0 } }),
-    ).toContain("No member is assigned any action.");
+    ).toContain("No member is assigned any task.");
     expect(
       messages({ ...ready, data: { ...failed, recipientCount: null } }),
-    ).not.toContain("No member is assigned any action.");
+    ).not.toContain("No member is assigned any task.");
   });
 
   it("blocks an unknown member count even when nothing failed to load", () => {
@@ -301,7 +301,7 @@ describe("launchBlockers", () => {
     ).toEqual([
       "Members taking action must start in the future.",
       "Office taking action must come after members start.",
-      "No member is assigned any action.",
+      "No member is assigned any task.",
     ]);
   });
 

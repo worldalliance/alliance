@@ -172,17 +172,6 @@ src/components/reminders/ReminderScheduleFields.tsx
 src/components/reminders/TentativePlanSummary.tsx
 src/components/row-list/RowConditionEditor.tsx
 src/components/row-list/RowListBuilder.tsx
-src/components/suite-launch/ActionLinks.tsx
-src/components/suite-launch/ActionReviewCheck.tsx
-src/components/suite-launch/ContractViolationsBanner.tsx
-src/components/suite-launch/LaunchCheck.tsx
-src/components/suite-launch/LaunchRemindersCheck.tsx
-src/components/suite-launch/MemberChecks.tsx
-src/components/suite-launch/MessageMockups.tsx
-src/components/suite-launch/SuiteLaunchPanel.test.tsx
-src/components/suite-launch/SuiteLaunchPanel.tsx
-src/components/suite-launch/TaskFormPreviews.tsx
-src/components/suite-launch/TextFindingsCheck.tsx
 src/pages/ActionDashboard.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
