@@ -40,7 +40,7 @@ export default tseslint.config([
   {
     files: [
       "sharedweb/forms/taskflow/**/*.{ts,tsx}",
-      "sharedweb/ui/{ProgressBar,Timeline}.tsx",
+      "sharedweb/ui/{ProgressBar,StackedCard,Timeline}.tsx",
     ],
     ...pluginReactHooks.configs["recommended-latest"],
   },

@@ -20,20 +20,21 @@ import {
 import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { cn } from "@alliance/shared/styles/util";
-import { TASK_FLOW_ORIGIN } from "@alliance/sharedweb/forms/taskflow/useExpandingPanel";
+import {
+  CompletedTaskHeader,
+  TaskPanelCard,
+} from "@alliance/sharedweb/forms/taskflow/TaskPanelCard";
 import Card from "@alliance/sharedweb/ui/Card";
-import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
-import { useCopyActionShareText } from "../lib/actionShare";
 import { useAuth } from "../lib/AuthContext";
+import { useCopyActionShareText } from "../lib/actionShare";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
 import ShareButton from "./ShareButton";
-import StackedCard from "./system/StackedCard";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -135,8 +136,6 @@ const taskPanelHeaderByState: Record<
   [ActionPageTaskPanelState.ShowTask]: null,
 };
 
-const bodyPaddingClasses = "p-4 sm:p-6";
-
 const ActionPageTaskPanel = () => {
   const {
     userRelation,
@@ -210,11 +209,7 @@ const ActionPageTaskPanel = () => {
       userName: user?.name,
     });
   const completedHeader = (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-x-3">
-        <CheckIcon size={24} />
-        <p>{taskHeaders.actionPage.completed}</p>
-      </div>
+    <CompletedTaskHeader>
       {isAuthenticated && (
         <ShareButton
           onClick={handleShareCopy}
@@ -226,7 +221,7 @@ const ActionPageTaskPanel = () => {
           labelClassName="text-sm order-first"
         />
       )}
-    </div>
+    </CompletedTaskHeader>
   );
 
   let taskPanelHeader = taskPanelHeaderByState[state];
@@ -235,7 +230,7 @@ const ActionPageTaskPanel = () => {
   } else if (isNonmemberPublicReferralAction) {
     taskPanelHeader = null;
   }
-  const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
+  const cardStyles = cardStylesForState(state);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -263,55 +258,45 @@ const ActionPageTaskPanel = () => {
   }, [isNonmemberPublicReferralAction, referralPanelAnimationNonce]);
 
   const renderStackedCard = (bottom: React.ReactNode) => (
-    <div className={cn("relative", TASK_FLOW_ORIGIN)}>
-      <StackedCard
-        top={taskPanelHeader}
-        topCardStyle={headerStyle}
-        bottom={
-          <>
-            {isNonmemberPublicReferralAction &&
-              showReferralTaskPanel &&
-              signupHref && (
-                <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
-                  <div
-                    className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-white px-4 py-5 sm:px-6 sm:py-6 ${
-                      !guestCompleted && animateReferralPanel
-                        ? "referral-panel-slide-in"
-                        : ""
-                    }`}
-                  >
-                    {guestCompleted ? (
-                      <>
-                        <p className="mt-1 text-base text-zinc-700">
-                          {guestReferral.joinForMoreText}
-                        </p>
-                        <div className="mt-5">
-                          <AllianceSignupPitch signupHref={signupHref} />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-lg font-semibold leading-8 text-zinc-900">
-                          {guestReferral.inviteToTryTask(
-                            sharePreviewFirstName ??
-                              guestReferral.defaultReferrerName,
-                          )}
-                        </p>
-                        <p className="mt-3 text-base leading-7 text-zinc-700">
-                          {guestReferral.allianceIntro}
-                        </p>
-                      </>
-                    )}
+    <TaskPanelCard header={taskPanelHeader} styles={cardStyles}>
+      {isNonmemberPublicReferralAction &&
+        showReferralTaskPanel &&
+        signupHref && (
+          <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
+            <div
+              className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-white px-4 py-5 sm:px-6 sm:py-6 ${
+                !guestCompleted && animateReferralPanel
+                  ? "referral-panel-slide-in"
+                  : ""
+              }`}
+            >
+              {guestCompleted ? (
+                <>
+                  <p className="mt-1 text-base text-zinc-700">
+                    {guestReferral.joinForMoreText}
+                  </p>
+                  <div className="mt-5">
+                    <AllianceSignupPitch signupHref={signupHref} />
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-semibold leading-8 text-zinc-900">
+                    {guestReferral.inviteToTryTask(
+                      sharePreviewFirstName ??
+                        guestReferral.defaultReferrerName,
+                    )}
+                  </p>
+                  <p className="mt-3 text-base leading-7 text-zinc-700">
+                    {guestReferral.allianceIntro}
+                  </p>
+                </>
               )}
-            {bottom}
-          </>
-        }
-        bottomCardStyle={bodyStyle}
-        bottomCardClassName={bodyPaddingClasses}
-      />
-    </div>
+            </div>
+          </div>
+        )}
+      {bottom}
+    </TaskPanelCard>
   );
 
   switch (state) {
