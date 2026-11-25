@@ -37,6 +37,7 @@ const HOLDS_CHILDREN = {
   timePicker: false,
   header: false,
   label: false,
+  conversation: false,
   divider: false,
   spacer: false,
   html: false,

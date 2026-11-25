@@ -32,6 +32,7 @@ export const FIELD_KIND_NAMES = {
   image: "Image Upload Field",
   toggle: "Toggle Field",
   timePicker: "Time Picker Field",
+  conversation: "Conversation Field",
 } as const satisfies Record<FieldKind, string>;
 
 export const DISPLAY_KIND_NAMES = {
@@ -78,6 +79,7 @@ const FIELD_KIND_ADDABLE = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: true,
 } as const satisfies Record<FieldKind, boolean>;
 
 export const ADDABLE_FIELD_KINDS = (

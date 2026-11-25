@@ -11,6 +11,7 @@ import {
   type OutputViewSchema,
   type PageItem,
 } from "./form-schema";
+import { conversationFieldErrors } from "./conversation";
 import { pairedToggleErrors } from "./paired-toggles";
 import { getRangeOptionCount, isValidRangeSelection } from "./range";
 import { rowListErrors } from "./row-list";
@@ -88,6 +89,7 @@ export function validateFormSchema(
   }
   collectVisibilityCycleErrors(schema, errors);
   errors.push(...pairedToggleErrors(collectFieldLookup(schema.pages ?? [])));
+  errors.push(...conversationFieldErrors(schema.pages ?? []));
 
   collectVariableErrors(schema, context, errors);
   errors.push(...rowListErrors(schema));

@@ -104,6 +104,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: true,
   header: true,
   label: true,
   divider: true,

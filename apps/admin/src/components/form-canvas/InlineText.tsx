@@ -40,6 +40,7 @@ const LABEL_ON_CANVAS: Record<FieldKind, boolean> = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: false,
 };
 
 const editsLabelInline = (field: AnyField) => LABEL_ON_CANVAS[field.kind];

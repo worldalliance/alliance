@@ -211,6 +211,21 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         label: "Time Picker Field",
         required: false,
       };
+    case "conversation":
+      return {
+        id,
+        type: "input",
+        kind: "conversation",
+        label: "Conversation Field",
+        required: false,
+        expert: null,
+        message: "",
+        options: [
+          { label: "Option 1", value: "option1" },
+          { label: "Option 2", value: "option2" },
+        ],
+        noteId: `${id}_note`,
+      };
     default:
       throw new Error(`unknown field kind: ${kind satisfies never}`);
   }

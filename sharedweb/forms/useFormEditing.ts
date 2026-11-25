@@ -66,9 +66,13 @@ export function useFormEditing({
               ? null
               : validateFieldValue(fieldDefinition, nextValue, next);
           applyFieldErrorUpdates({ [fieldId]: validationResult });
-        } else if (fieldDefinition.kind === "ranking") {
+        } else if (
+          fieldDefinition.kind === "ranking" ||
+          fieldDefinition.kind === "conversation"
+        ) {
           // Don't flag partial rankings while the user is still placing
-          // items; page validation on submit enforces completeness.
+          // items, or a required note before its box appears; page validation
+          // on submit enforces completeness.
           applyFieldErrorUpdates({ [fieldId]: null });
         } else {
           const requiredError = validateFieldValue(

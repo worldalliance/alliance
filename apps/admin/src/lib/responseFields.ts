@@ -1,3 +1,4 @@
+import { withConversationNoteFields } from "@alliance/common/forms/conversation";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
@@ -30,6 +31,7 @@ const ANSWER_FIELD_KINDS: Record<FieldKind, boolean> = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: true,
 };
 
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
@@ -43,7 +45,9 @@ export function answerFieldLabels(
   schema?.pages?.forEach((page) => {
     page.fields.forEach((field) => {
       if (!isAnswerField(field) || labels.has(field.id)) return;
-      labels.set(field.id, elementInternalDescriptor(field));
+      for (const answerField of withConversationNoteFields([field])) {
+        labels.set(answerField.id, elementInternalDescriptor(answerField));
+      }
     });
   });
   return labels;

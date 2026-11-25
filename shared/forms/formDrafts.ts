@@ -82,7 +82,8 @@ export function resolveFieldDefaultValue(
   if (rawDefault !== undefined) {
     switch (field.kind) {
       case "radio":
-      case "select": {
+      case "select":
+      case "conversation": {
         if (typeof rawDefault !== "string" || !isNonEmptyString(rawDefault)) {
           return undefined;
         }
