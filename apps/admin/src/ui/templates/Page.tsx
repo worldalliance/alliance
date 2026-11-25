@@ -27,12 +27,16 @@ export type PageTabsProps<T extends string> = {
 
 type PageIdentity =
   | {
-      /** The place this page is. */
+      /** The place this page is. Its title and breadcrumb come from `places.ts`. */
       place: PlaceId;
+      record?: never;
+      title?: never;
+      parents?: never;
     }
   | {
       /** The kind of record this page shows; its place comes from `places.ts`. */
       record: RecordId;
+      place?: never;
       /** The record's name. Until it loads, the page says what one is called. */
       title?: string;
       /** Its parent records, between its place and itself in the breadcrumb. */
@@ -42,7 +46,7 @@ type PageIdentity =
 const headerOf = (
   page: PageIdentity,
 ): { title: string; trail: readonly Crumb[] } => {
-  if ("record" in page) {
+  if (page.record !== undefined) {
     const record = recordById(page.record);
     const place = placeById(record.place);
     const tab = place.tabs?.find((candidate) => candidate.id === record.tab);

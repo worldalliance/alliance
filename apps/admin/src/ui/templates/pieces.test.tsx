@@ -334,6 +334,16 @@ describe("Page for a record under a later tab", () => {
     ].map((link) => [link.textContent, link.getAttribute("href")]);
     expect(links.at(-1)).toEqual(["Videos", "/content/media?tab=videos"]);
   });
+
+  it("rejects a title beside a place, which would be ignored", () => {
+    const page = (
+      // @ts-expect-error A place's title comes from places.ts.
+      <Page place={PlaceId.Home} title="Dashboard">
+        body
+      </Page>
+    );
+    expect(page).toBeDefined();
+  });
 });
 
 describe("Overview controls", () => {
