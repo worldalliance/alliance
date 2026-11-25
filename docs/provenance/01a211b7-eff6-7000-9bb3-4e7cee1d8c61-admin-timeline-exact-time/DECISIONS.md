@@ -8,6 +8,10 @@
 
 `timelineScale(globalStartDate, pixelsPerDay)` in `apps/admin/src/lib/actionTimelineData.ts` turns an instant into an x position, and the phase bars, the "now" marker, reminder markers and windows, the focus indicator, the scroll-to-focus and scroll-to-now effects, and the week ticks all use it. Before, each computed its own offset; one function keeps them on the same scale (agent decision). The bars go through it by `phaseBarBounds`, at their phases' exact instants. `firstRowActiveInWeek` compares exact phase instants with the week's bounds too, so a header click finds the rows whose bars actually overlap that week (agent decision).
 
+## An open last phase names only its start
+
+An action's last phase has no real end, since the timeline draws it to a placeholder a week past the render time, so its tooltip names only its start ("Member action (from …)"); the placeholder would read as a scheduled end (agent decision).
+
 ## Bar edges, separators and minimum width
 
 - Touching bars are told apart by a 1px inset `box-shadow` in near-white (`rgba(255, 255, 255, 0.9)`) on the left edge of every bar after a row's first. An inset shadow paints inside the bar, so neither edge moves, and it shows against the grey and the project colours alike; a border would change the box's size or position (agent decision).

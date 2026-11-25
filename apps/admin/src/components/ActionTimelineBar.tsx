@@ -171,9 +171,11 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
                   : undefined,
               ...backgroundStyle,
             }}
-            title={`${action.name}: ${
-              ACTION_STATUS_LABELS[phase.status]
-            } (${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()})`}
+            title={`${action.name}: ${ACTION_STATUS_LABELS[phase.status]} (${
+              isLastPhase
+                ? `from ${phase.startDate.toLocaleDateString()}`
+                : `${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()}`
+            })`}
           >
             {stickyLabel && (
               <div

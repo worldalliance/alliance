@@ -104,6 +104,20 @@ describe("ActionTimeline", () => {
     expect(barColor("Third")).not.toBe(barColor("First"));
   });
 
+  it("gives a closed phase its end and an open last phase none", () => {
+    renderTimeline();
+    const [planned, completed] = finished.events.map((event) =>
+      new Date(event.date).toLocaleDateString(),
+    );
+
+    expect(
+      screen.getByTitle(`Finished action: Planned (${planned} - ${completed})`),
+    ).toBeDefined();
+    expect(
+      screen.getByTitle(`Finished action: Completed (from ${completed})`),
+    ).toBeDefined();
+  });
+
   it("highlights every row of the hovered action's project", () => {
     const project = { id: 1, name: "Shared project", category: [] };
     renderTimeline({
