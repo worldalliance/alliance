@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "../Table";
-import { FieldGroup, SaveBar, SaveState } from "./Form";
+import { FieldGroup, SaveBar, SaveState, useFocusFirstInvalid } from "./Form";
 import { listCount, useListSearch } from "./List";
 import { DateRangeFields, Panel, Section } from "./Overview";
 import { Page } from "./Page";
@@ -228,6 +228,29 @@ describe("FieldGroup", () => {
       .map((id) => document.getElementById(id)?.textContent);
     expect(described).toEqual(["Who sees it.", "Pick one"]);
     expect(group.hasAttribute("disabled")).toBe(true);
+  });
+});
+
+describe("useFocusFirstInvalid with a FieldGroup", () => {
+  it("focuses the group's first control, since a fieldset takes no focus", () => {
+    function Audience() {
+      const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+      return (
+        <form ref={formRef}>
+          <FieldGroup label="Audience" error="Pick one">
+            <input type="checkbox" aria-label="Members" />
+          </FieldGroup>
+          <button type="button" onClick={focusFirstInvalid}>
+            Save
+          </button>
+        </form>
+      );
+    }
+    render(<Audience />);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("checkbox", { name: "Members" }),
+    );
   });
 });
 

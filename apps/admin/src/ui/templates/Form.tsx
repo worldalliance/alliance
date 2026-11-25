@@ -48,7 +48,8 @@ export function FormSection({
 /**
  * Lands a failed submit on what to fix: `formRef` goes on the `<form>`, and
  * `focusFirstInvalid()`, called where the submit sets its errors, focuses the
- * first control marked invalid once they render. Errors set on blur never
+ * first control marked invalid, or the first control of a `FieldGroup` with an
+ * error, once they render. Errors set on blur never
  * move focus.
  */
 export function useFocusFirstInvalid() {
@@ -56,7 +57,11 @@ export function useFocusFirstInvalid() {
   const [failedSubmits, setFailedSubmits] = useState(0);
   useEffect(() => {
     if (failedSubmits === 0) return;
-    formRef.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+    formRef.current
+      ?.querySelector<HTMLElement>(
+        "[aria-invalid=true], fieldset[data-invalid] :is(input, select, textarea, button):not(:disabled)",
+      )
+      ?.focus();
   }, [failedSubmits]);
   const focusFirstInvalid = useCallback(
     () => setFailedSubmits((count) => count + 1),
@@ -155,7 +160,7 @@ export function FieldGroup({
     <fieldset
       disabled={disabled}
       aria-describedby={describedBy}
-      aria-invalid={error ? true : undefined}
+      data-invalid={error ? true : undefined}
       className={cn("min-w-0", className)}
     >
       <legend className="mb-1.5 font-medium">
