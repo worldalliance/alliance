@@ -124,7 +124,7 @@ export function SuiteTimelineTab({
                     <PhaseBadge status={task.status} />
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {task.timeEstimate ?? "—"}
+                    {task.timeEstimate || "—"}
                   </TableCell>
                 </TableRow>
               ))}

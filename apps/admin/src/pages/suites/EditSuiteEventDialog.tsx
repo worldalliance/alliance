@@ -3,7 +3,7 @@ import type {
   ActionSuiteDto,
   UpdateActionEventDto,
 } from "@alliance/shared/client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LAUNCH_CONFIRM_TEXT } from "../../components/CreateEventForm";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDateTime } from "../../lib/formatDate";
@@ -58,6 +58,7 @@ export function EditSuiteEventDialog({
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const consequenceAt = (now: Date) =>
     editConsequence({ event, date, events: suite.events, now });
@@ -127,7 +128,7 @@ export function EditSuiteEventDialog({
   };
 
   return (
-    <Modal onClose={onClose} dismissDisabled={saving}>
+    <Modal onClose={onClose} dismissDisabled={saving} initialFocus={titleRef}>
       <form ref={formRef} onSubmit={(e) => void submit(e)} noValidate>
         <ModalHeader>
           <ModalTitle>Edit event for every task</ModalTitle>
@@ -143,6 +144,7 @@ export function EditSuiteEventDialog({
             {(control) => (
               <Input
                 {...control}
+                ref={titleRef}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />

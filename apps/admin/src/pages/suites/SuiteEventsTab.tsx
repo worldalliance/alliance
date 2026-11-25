@@ -173,9 +173,8 @@ export function SuiteEventsTab({
             <TableHeader>
               <TableRow>
                 <TableHead>Event</TableHead>
-                <TableHead>Phase</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead>State</TableHead>
                 <TableHead actions>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -184,18 +183,32 @@ export function SuiteEventsTab({
                 const name = event.title || phaseLabel(event.newStatus);
                 return (
                   <TableRow key={event.id} {...removal.row(event.id)}>
-                    <TableCell className="font-medium">{name}</TableCell>
                     <TableCell>
-                      <PhaseBadge status={event.newStatus} />
-                    </TableCell>
-                    <TableCell>
-                      {pacific(event.date)}
-                      {new Date(event.date) <= now && (
-                        <span className="text-fg-muted"> · passed</span>
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <PhaseBadge status={event.newStatus} />
+                        {name !== phaseLabel(event.newStatus) && (
+                          <span
+                            className="max-w-40 truncate font-medium"
+                            title={name}
+                          >
+                            {name}
+                          </span>
+                        )}
+                      </span>
+                      {event.description && (
+                        <span
+                          className="mt-1 block max-w-36 truncate text-fg-muted"
+                          title={event.description}
+                        >
+                          {event.description}
+                        </span>
                       )}
                     </TableCell>
-                    <TableCell truncate className="text-fg-muted">
-                      {event.description || "—"}
+                    <TableCell className="whitespace-nowrap">
+                      {pacific(event.date)}
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {new Date(event.date) <= now ? "Passed" : "Upcoming"}
                     </TableCell>
                     <TableCell actions>
                       <Button
