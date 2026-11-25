@@ -28,7 +28,7 @@ function NumberThread({ threadId }: { threadId: string }) {
   const contactName = data ? threadContactName(data) : "Text thread";
 
   return (
-    <div className="flex flex-col gap-4 p-5 max-w-3xl">
+    <div className="flex grow flex-col gap-4 p-5 max-w-3xl">
       <title>{`${contactName} - Texts - Admin`}</title>
       <Link
         to={"/inbox?tab=all"}
@@ -45,22 +45,25 @@ function NumberThread({ threadId }: { threadId: string }) {
           {adminRefusalMessage(thread.error, "Couldn't load this thread.")}
         </p>
       ) : (
-        <TextThreadSection
-          {...actions}
-          threadKey={threadId}
-          contactName={contactName}
-          thread={thread}
-          fetchOlder={(before) => fetchNumberThread({ threadId, before })}
-          emptyText="No texts with this number yet."
-          composer={(loaded, onConflictShown) => (
-            <Composer
-              thread={loaded}
-              contactName={contactName}
-              conflict={{ newestTextId, threadLoadFailed, onConflictShown }}
-              send={send}
-            />
-          )}
-        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-clip rounded-card border border-line">
+          <TextThreadSection
+            {...actions}
+            threadKey={threadId}
+            fill
+            contactName={contactName}
+            thread={thread}
+            fetchOlder={(before) => fetchNumberThread({ threadId, before })}
+            emptyText="No texts with this number yet."
+            composer={(loaded, onConflictShown) => (
+              <Composer
+                thread={loaded}
+                contactName={contactName}
+                conflict={{ newestTextId, threadLoadFailed, onConflictShown }}
+                send={send}
+              />
+            )}
+          />
+        </div>
       )}
     </div>
   );

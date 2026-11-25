@@ -448,3 +448,4 @@ Agent judgement in the review loop; the user was asleep.
 
 - **A failed mark shows in the conversation it was made in, and as a toast once staff have left it.** The member record keeps one conversation mounted across members, so a banner not tied to its number showed one member's failed opt-out inside the next member's texts.
 - **The conversation's "Mark opted out" confirm closes when its conversation changes, not when the path does**, so it takes the section's own signal rather than `useConfirmOnPage()`: an inbox pane may switch conversations without a new path, and the same signal decides whether a failed mark shows as a banner or a toast.
+- **The thread page is at least the window's height, its history scrolling between the strip and the composer, with a floor under the history**: when the history, a long draft and a warning don't fit the window, the page grows and scrolls rather than squeezing the history to nothing or cutting off the composer.

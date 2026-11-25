@@ -21,8 +21,10 @@ type Failure = { title: string; message: string; threadKey: string | number };
 
 /**
  * One phone number's conversation: its marks in a header strip, the history,
- * and the composer or the reason there is none. In a column of sections it is
- * a card of a fixed height.
+ * and the composer or the reason there is none. In a column of sections its
+ * history has a fixed height; with `fill` it fills a parent flex column, the
+ * history taking what the strip and the composer leave, down to a floor that
+ * the parent grows to fit.
  */
 export default function TextThreadSection<T extends Thread>(props: {
   threadKey: string | number;
@@ -50,8 +52,10 @@ export default function TextThreadSection<T extends Thread>(props: {
   composer: (thread: T, onConflictShown: () => void) => ReactNode;
   /** Beside the heading: a link, or a fact about the number. */
   headerLink?: ReactNode;
+  fill?: boolean;
 }) {
   const { threadKey, contactName, thread, markingOptedOut } = props;
+  const { fill = false } = props;
   const { confirm, showToast } = useToast();
   const headingId = useId();
   const optedOutShown = Boolean(
@@ -147,10 +151,15 @@ export default function TextThreadSection<T extends Thread>(props: {
     }
   };
 
+  const historySize = fill ? "min-h-40 flex-1 basis-0" : "h-112 shrink-0";
+
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col rounded-card border border-line bg-surface"
+      className={cn(
+        "flex flex-col bg-surface",
+        fill ? "min-h-0 flex-1" : "rounded-card border border-line",
+      )}
     >
       <div className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line px-card py-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3">
@@ -236,9 +245,9 @@ export default function TextThreadSection<T extends Thread>(props: {
             sentId={props.sentId}
             conflictsShown={conflictsShown}
             emptyText={props.emptyText}
-            className={HISTORY_SIZE}
+            className={historySize}
           />
-          <div className={cn(COMPOSER_AREA, COMPOSER_HEIGHT)}>
+          <div className={cn(COMPOSER_AREA, !fill && COMPOSER_HEIGHT)}>
             {props.composer(thread.data, () =>
               setConflictsShown((count) => count + 1),
             )}
@@ -246,7 +255,7 @@ export default function TextThreadSection<T extends Thread>(props: {
         </>
       ) : (
         <>
-          <div className={cn(HISTORY_SIZE, "overflow-hidden")}>
+          <div className={cn(historySize, "overflow-hidden")}>
             <ContentState
               things="texts"
               query={thread}
@@ -314,8 +323,6 @@ export function ComposerNotice({ children }: { children: ReactNode }) {
     </p>
   );
 }
-
-const HISTORY_SIZE = "h-112 shrink-0";
 
 const COMPOSER_AREA = "shrink-0 px-card pt-1 pb-4";
 
