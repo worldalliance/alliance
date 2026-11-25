@@ -34,7 +34,6 @@ src/components/CollectiveResultFields.tsx
 src/components/CountSamples.tsx
 src/components/CreateActionMenu.tsx
 src/components/CreateEventForm.tsx
-src/components/Disclosure.tsx
 src/components/DisplayOnlyPreview.tsx
 src/components/EventManagementTab.tsx
 src/components/ExpressionNodeEditor.tsx
@@ -62,7 +61,6 @@ src/components/PrerequisitePicker.tsx
 src/components/PreviewAsUserBar.tsx
 src/components/PriorityFollowUps.tsx
 src/components/ReferralUrlNotice.tsx
-src/components/SelectableCards.tsx
 src/components/ShareableTextBuilder.tsx
 src/components/SharedOutputSourceWarning.tsx
 src/components/SlugField.tsx
