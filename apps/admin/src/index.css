@@ -314,6 +314,11 @@
   transition-property: width;
 }
 
+/* A popup as wide as the control that opened it (Base UI sets the variable). */
+@utility w-anchor {
+  width: var(--anchor-width);
+}
+
 @utility scrollbar-stable {
   scrollbar-gutter: stable;
 }
