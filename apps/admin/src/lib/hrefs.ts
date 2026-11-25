@@ -73,6 +73,27 @@ export const formHref = (formId: number, tab?: RecordTabId<RecordId.Form>) =>
     tab,
   );
 
+export const projectTaskHref = ({
+  projectId,
+  actionId,
+  hash,
+}: {
+  projectId: number;
+  actionId: number;
+  /** A section of the page, without the "#". */
+  hash?: string;
+}) =>
+  href("/tasks/projects/:projectId/tasks/:actionId", {
+    projectId: projectId.toString(),
+    actionId: actionId.toString(),
+  }) + (hash ? `#${hash}` : "");
+
+export const formulaHref = (formulaId: number | "new") =>
+  href("/tasks/formulas/:formulaId", { formulaId: formulaId.toString() });
+
+export const contractHref = (contractId: number | "new") =>
+  href("/tasks/contracts/:id", { id: contractId.toString() });
+
 export const threadHref = (threadId: string) =>
   href("/inbox/:threadId", { threadId });
 

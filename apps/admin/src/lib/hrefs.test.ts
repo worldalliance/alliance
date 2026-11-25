@@ -1,12 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import {
+  contractHref,
   formHref,
+  formulaHref,
   groupHref,
   koraAssignmentHref,
   koraTranscriptPreviewHref,
   memberHref,
   memberListHref,
   projectHref,
+  projectTaskHref,
   suiteHref,
   taskHref,
   taskUpdateHref,
@@ -30,6 +33,8 @@ describe("hrefs", () => {
     expect(videoHref(7)).toBe("/content/media/videos/7");
     expect(koraAssignmentHref("a-1")).toBe("/research/assignments/a-1");
     expect(koraTranscriptPreviewHref("b-1")).toBe("/research/preview/b-1");
+    expect(formulaHref(7)).toBe("/tasks/formulas/7");
+    expect(contractHref(7)).toBe("/tasks/contracts/7");
   });
 
   it("names a tab other than the first in the query", () => {
@@ -40,5 +45,18 @@ describe("hrefs", () => {
   it("leaves the first tab as the bare URL", () => {
     expect(formHref(7, "builder")).toBe("/tasks/forms/7");
     expect(taskHref(7, "overview")).toBe("/tasks/7");
+  });
+
+  it("builds the create page of a record made on its own page", () => {
+    expect(formulaHref("new")).toBe("/tasks/formulas/new");
+    expect(contractHref("new")).toBe("/tasks/contracts/new");
+  });
+
+  it("builds a task under its project, at a section when one is named", () => {
+    const task = { projectId: 3, actionId: 7 };
+    expect(projectTaskHref(task)).toBe("/tasks/projects/3/tasks/7");
+    expect(projectTaskHref({ ...task, hash: "release" })).toBe(
+      "/tasks/projects/3/tasks/7#release",
+    );
   });
 });
