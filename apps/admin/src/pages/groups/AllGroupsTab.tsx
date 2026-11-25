@@ -32,13 +32,14 @@ import {
 import { byGroupName, openSeats } from "./groupRules";
 
 const NUMBER = "text-right";
+const PICKED = "Picked, unconfirmed";
 const HEADS: readonly (readonly [string, string | undefined])[] = [
   ["Group", undefined],
   ["Description", undefined],
   ["Visibility", undefined],
   ["Leaders", NUMBER],
   ["Members", NUMBER],
-  ["Picked, unconfirmed", NUMBER],
+  [PICKED, NUMBER],
   ["Capacity", NUMBER],
   ["Open seats", NUMBER],
 ];
@@ -62,6 +63,9 @@ export function AllGroupsTab({
       .filter((group) => group.name.toLowerCase().includes(needle))
       .sort(byGroupName);
   }, [all, q]);
+  // Picks exist only while staff are assigning on the other tab.
+  const picking = Object.values(pendingByGroupId).some((count) => count > 0);
+  const heads = picking ? HEADS : HEADS.filter(([label]) => label !== PICKED);
 
   return (
     <>
@@ -80,8 +84,8 @@ export function AllGroupsTab({
           skeleton={
             <TableSkeleton
               bleed
-              columns={HEADS.length}
-              columnClassNames={HEADS.map(([, className]) => className)}
+              columns={heads.length}
+              columnClassNames={heads.map(([, className]) => className)}
             />
           }
           error={
@@ -106,7 +110,7 @@ export function AllGroupsTab({
           <Table bleed>
             <TableHeader>
               <TableRow>
-                {HEADS.map(([label, className]) => (
+                {heads.map(([label, className]) => (
                   <TableHead key={label} className={className}>
                     {label}
                   </TableHead>
@@ -118,7 +122,7 @@ export function AllGroupsTab({
                 <GroupRow
                   key={group.id}
                   group={group}
-                  pending={pendingByGroupId[group.id] ?? 0}
+                  pending={picking ? (pendingByGroupId[group.id] ?? 0) : null}
                 />
               ))}
             </TableBody>
@@ -134,7 +138,8 @@ function GroupRow({
   pending,
 }: {
   group: CommunityDto;
-  pending: number;
+  /** Null when no group has picks, so the column is absent. */
+  pending: number | null;
 }) {
   const seats = openSeats(group);
   return (
@@ -156,9 +161,11 @@ function GroupRow({
       <TableCell className="text-right tabular-nums">
         {formatCount(getMemberCount(group))}
       </TableCell>
-      <TableCell className="text-right tabular-nums">
-        {pending > 0 ? formatCount(pending) : "—"}
-      </TableCell>
+      {pending !== null && (
+        <TableCell className="text-right tabular-nums">
+          {pending > 0 ? formatCount(pending) : "—"}
+        </TableCell>
+      )}
       <TableCell className="text-right tabular-nums">
         {group.maxCapacity === null ? "—" : formatCount(group.maxCapacity)}
       </TableCell>
