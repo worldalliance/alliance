@@ -6,6 +6,7 @@ import {
   collectFieldLookup,
   isQuestionField,
   type AnyField,
+  type ConversationField,
   type FieldKind,
   type FormSchema,
   type OutputFieldBlock,
@@ -29,6 +30,7 @@ const INTERPOLATED_DISPLAY_FIELDS: Record<DisplayKind, readonly string[]> = {
   images: [],
   video: ["caption"],
   chatTranscript: ["leftName", "rightName"],
+  expertMessage: ["text"],
   previousAnswer: ["title", "emptyText"],
   userLocation: ["title", "emptyText"],
   divider: [],
@@ -54,6 +56,7 @@ const FIELD_KIND_HAS_OPTION_LABELS: Record<FieldKind, boolean> = {
   select: true,
   multiselect: true,
   ranking: true,
+  conversation: true,
   text: false,
   textarea: false,
   email: false,
@@ -101,6 +104,7 @@ const FIELD_KIND_SUPPORTS_INTERPOLATION: Record<FieldKind, boolean> = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: true,
 };
 
 export type TextRewrite = (text: string) => string;
@@ -211,6 +215,13 @@ export function rewriteFieldText<T extends AnyField>(
   if (!FIELD_KIND_SUPPORTS_INTERPOLATION[field.kind]) return field;
   const result = interpolateStringProps(field, paths.fieldProps, rewrite);
 
+  if (result.kind === "conversation") {
+    const { message, options } = rewriteConversationText(result, rewrite);
+    return message === result.message && options === result.options
+      ? result
+      : { ...result, message, options };
+  }
+
   if (hasOptionLabels(result)) {
     const options = mapPreservingIdentity(result.options, (option) =>
       interpolateStringProps(option, ["label"], rewrite),
@@ -224,6 +235,23 @@ export function rewriteFieldText<T extends AnyField>(
     rewriteFieldText(sub, rewrite, paths),
   );
   return fields === result.fields ? result : { ...result, fields };
+}
+
+function rewriteConversationText(
+  field: ConversationField,
+  rewrite: TextRewrite,
+): Pick<ConversationField, "message" | "options"> {
+  const options = mapPreservingIdentity(field.options, (option) => {
+    const text = interpolateStringProps(option, ["label", "reply"], rewrite);
+    if (!text.note) return text;
+    const note = interpolateStringProps(
+      text.note,
+      ["label", "placeholder"],
+      rewrite,
+    );
+    return note === text.note ? text : { ...text, note };
+  });
+  return { message: rewrite(field.message), options };
 }
 
 export function interpolateOutputFieldBlock<T extends OutputFieldBlock>(
@@ -267,6 +295,19 @@ function visitElementText(
   const location = element.id ?? `<${element.kind}>`;
   if (isQuestionField(element)) {
     visitProps(element, paths.fieldProps, location, visit);
+    if (element.kind === "conversation") {
+      visit(element.message, `${location}.message`);
+      element.options.forEach((option, index) => {
+        const at = `${location}.options[${index}]`;
+        visitProps(option, ["reply"], at, visit);
+        visitProps(
+          option.note ?? {},
+          ["label", "placeholder"],
+          `${at}.note`,
+          visit,
+        );
+      });
+    }
     if (hasOptionLabels(element)) {
       element.options.forEach((option, index) =>
         visit(option.label, `${location}.options[${index}].label`),

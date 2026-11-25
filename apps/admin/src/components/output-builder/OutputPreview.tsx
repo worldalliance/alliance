@@ -18,6 +18,7 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
         answers[field.id] = true;
         break;
       case "radio":
+      case "conversation":
       case "select":
         answers[field.id] = field.options?.[0]?.value ?? field.label;
         break;

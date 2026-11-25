@@ -19,6 +19,7 @@ type StatsFieldKind =
   | "select"
   | "multiselect"
   | "radio"
+  | "conversation"
   | "range"
   | "number";
 
@@ -55,6 +56,7 @@ export const STAT_FIELD_KINDS: Record<FieldKind, boolean> = {
   image: false,
   toggle: true,
   timePicker: false,
+  conversation: true,
 };
 
 const toNumberValue = (value: unknown): number | null => {
@@ -123,6 +125,7 @@ export const buildFieldStats = (
       };
     }
     case "radio":
+    case "conversation":
     case "select": {
       const options = field.options ?? [];
       const counts = new Map(options.map((option) => [option.value, 0]));

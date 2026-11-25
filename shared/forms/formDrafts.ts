@@ -1,4 +1,5 @@
 import { parseCityValue } from "@alliance/common/forms/city";
+import { fieldAnswerKeys } from "@alliance/common/forms/conversation";
 import type {
   AnyField,
   CheckboxExtractionTarget,
@@ -82,7 +83,8 @@ export function resolveFieldDefaultValue(
   if (rawDefault !== undefined) {
     switch (field.kind) {
       case "radio":
-      case "select": {
+      case "select":
+      case "conversation": {
         if (typeof rawDefault !== "string" || !isNonEmptyString(rawDefault)) {
           return undefined;
         }
@@ -182,10 +184,11 @@ export function filterAnswersByFieldIds(
     return {};
   }
 
+  const keys = new Set([...allowedFields.values()].flatMap(fieldAnswerKeys));
   const filtered: Record<string, FormValue> = {};
-  for (const [fieldId, value] of Object.entries(answers)) {
-    if (allowedFields.has(fieldId)) {
-      filtered[fieldId] = value;
+  for (const [key, value] of Object.entries(answers)) {
+    if (keys.has(key)) {
+      filtered[key] = value;
     }
   }
   return filtered;

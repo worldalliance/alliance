@@ -43,6 +43,25 @@ describe("restorableAnswers", () => {
       { places: [] },
     );
   });
+
+  it("keeps a conversation's note, which has an answer key of its own", () => {
+    const aware: AnyField = {
+      id: "aware",
+      type: "input",
+      kind: "conversation",
+      label: "Aware",
+      expert: null,
+      message: "Were you aware?",
+      options: [{ label: "No", value: "no", note: {} }],
+      noteId: "aware_note",
+    };
+    expect(
+      restorableAnswers(
+        { aware: "no", aware_note: "Never heard of it", gone: "x" },
+        new Map([["aware", aware]]),
+      ),
+    ).toEqual({ aware: "no", aware_note: "Never heard of it" });
+  });
 });
 
 describe("readStoredFormDraft", () => {
