@@ -40,6 +40,7 @@ const LABEL_ON_CANVAS: Record<FieldKind, boolean> = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: false,
 };
 
 const editsLabelInline = (field: AnyField) => LABEL_ON_CANVAS[field.kind];
@@ -53,6 +54,7 @@ const BLOCK_TEXT_LINES: Record<DisplayKind, TextLines | null> = {
   header: TextLines.Single,
   text: TextLines.Multiple,
   quote: TextLines.Multiple,
+  expertMessage: TextLines.Multiple,
   label: TextLines.Single,
   divider: null,
   spacer: null,

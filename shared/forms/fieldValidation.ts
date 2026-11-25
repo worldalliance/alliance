@@ -1,3 +1,4 @@
+import { conversationNote } from "@alliance/common/forms/conversation";
 import {
   type AnyField,
   asCards,
@@ -167,6 +168,14 @@ export function validateFieldValue(
     case "radio":
       if (!required) return null;
       return valueToCheck ? null : "Please select an option.";
+    case "conversation": {
+      if (!valueToCheck) return required ? "Please select an option." : null;
+      const note = data[field.noteId];
+      const noted = typeof note === "string" && note.trim() !== "";
+      return conversationNote(field, data)?.required && !noted
+        ? "Please add a note."
+        : null;
+    }
     case "file":
       if (!required) return null;
       return valueToCheck ? null : "Please upload a file.";
