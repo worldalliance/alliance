@@ -32,7 +32,7 @@ These bind every page. Each has a reason a reviewer will check against.
 4. **No server change, and no change outside `apps/admin`.** Where a fix needs the server, leave today's behaviour and report it for a Linear issue in the "Modern admin" project.
 5. **Guards on member-facing operations stay or get stronger.** Most of them exist only in the admin UI, so a screen you drop takes its guard with it and the server won't catch it. See **Operations that reach members**.
 6. **Components come from `apps/admin/src/ui` only.** Never import `@alliance/sharedweb/ui/*` in the admin (lint). The shared form renderer, API client and hooks are still imported from where they live. Merge classes with `cn` from `ui/cn.ts` (lint). Buttons take `variant={ButtonVariant.X}` (lint).
-7. **Tokens only.** No raw colour classes, hex or `oklch()` values, and no arbitrary values such as `p-[13px]`, in classes or in `style` (the lint reads only classes; reviewers read `style`). The ux-guidelines allowance for one-off values doesn't apply in the admin: ask for a token.
+7. **Tokens only.** No raw colour classes, hex or `oklch()` values, and no arbitrary values such as `p-[13px]`, in classes or in `style`, `fill` or `stroke` (lint; a length computed from data, such as a bar's `${share}%`, is fine). The ux-guidelines allowance for one-off values doesn't apply in the admin: ask for a token.
 8. **Fix today's defects in your area** where no server change is needed; the list is in the spec's `DECISIONS.md` under "Data and defects".
 9. **Nothing in view moves** (owner requirement, admin-wide). Selecting, hovering, opening an inspector, sheet or menu, a load finishing, a save bar or bulk bar appearing: none shifts content the reader is looking at. The templates hold this: skeletons are laid out at once and take the content's shape, the save bar is one height always, the bulk bar floats, `Page`'s `bannerPending` holds a banner's line. Don't undo it: no control that appears only on hover or selection in the flow, no border that adds width when selected, no panel that mounts beside content and squeezes it. The accepted moves, and only these: a failure or refresh banner appearing, a field's error line, results landing in a panel the reader asked to load, a row expanding in place, Home's queue list landing.
 10. **Member content keeps the member look.** Any container of `FormRenderer`, `DisplayOnlyBlocks`, `RenderDisplayBlock`, `OutputRenderer`, `AppMarkdownWrapper` or `ActionUpdateCard` gets the class `member-surface`, which restores the member app's type inside the admin's.
@@ -86,7 +86,7 @@ Two flows sit on top of a page rather than being one: **Dialog** and **Sheet**.
 | Every page    | `Page` (`Page.tsx`). `usePlaceTabs`, `usePlaceViews`, `useRecordTabs`, `withQueueCounts` (`usePlaceTabs.ts`), `Banner` (`Banner.tsx`), `ContentState`, `ErrorState`, `RefreshFailedBanner`, `TableSkeleton`, `FormSkeleton`, `LOAD_FAILED_FALLBACK` (`States.tsx`). |
 | List          | `Page fill`, then `FilterBar` with `SearchField`, filters, `FilterChip`; `useListSearch`, `listCount`; `ListContent`; `ListFooter`; `ViewSwitch`; `BulkBar` (all `List.tsx`). Table from `ui/Table.tsx` with `bleed`.                                               |
 | Record        | `RecordBody` with `SidePanelSection`, `FactList`, `Fact` (`Record.tsx`), or `PageBody` when there is no side panel.                                                                                                                                                 |
-| Overview      | `PageBody`, `Section`, `OverviewGrid`, `Panel`, `StatTile` (`Overview.tsx`).                                                                                                                                                                                        |
+| Overview      | `PageBody`, `Section`, `OverviewGrid`, `Panel`, `StatTile`, and inside a panel `PanelControls`, `PanelStack`, `PanelNote`, `PanelStat`, `DateRangeFields`, `NumberField` (`Overview.tsx`; see **Charts**).                                                          |
 | Workspace     | `Page fill`, then `Workspace`, `WorkspaceToolbar`, `PaneHeader` (`Workspace.tsx`).                                                                                                                                                                                  |
 | Settings form | `PageBody width="form"`, `FormSection`, `Field`, `FieldGroup`, `CheckboxField`, `SaveBar`, `SAVE_FAILED_FALLBACK`, `useFocusFirstInvalid` (`Form.tsx`).                                                                                                             |
 | Dialog        | `ui/Modal.tsx`: a `<form>` holding `ModalHeader` with `ModalTitle`, `ModalBody`, then `ModalFooter` (its `error` shows a refusal above the buttons) with `ModalActions` (Cancel, then the primary submit). A confirmation is `confirm()` or `ui/ConfirmDialog.tsx`. |
@@ -345,7 +345,7 @@ A status is always a badge with a word (`ui/Badge.tsx` with a `BadgeTone`). Neve
 
 Phase order everywhere (columns, legends, strips): Draft, Planned, Members taking action, Office taking action, Resolution, Completed, Failed, Abandoned. A status the data holds is shown, though no control sets it. A suite's badge is the phase of its two shared events; its tasks may be further along.
 
-For other statuses pick the tone by meaning: neutral for inactive or not started, success for done or healthy, warning for needs attention soon, danger for failed or blocked, info for in progress or scheduled. Two statuses that share a tone must still differ by their word. A role, kind or type (Leader, Member, a job's kind) is not a status: plain text or a neutral badge, never accent or a status tone. A count that asks for attention (queue counts) is a count badge, not a status.
+For other statuses pick the tone by meaning: neutral for inactive or not started, success for done or healthy, warning for needs attention soon, danger for failed or blocked, info for in progress or scheduled. Two statuses that share a tone must still differ by their word. A role, kind or type (Leader, Member, a job's kind) is not a status: plain text or a neutral badge, never accent or a status tone. A count that asks for attention (queue counts) is a count badge, not a status; Home alone shows the exact number (**Home's states**).
 
 ## Tables
 
@@ -482,7 +482,7 @@ Charts come from `apps/admin/src/ui/charts`, and the pieces of the panels around
 - **Without a pointer.** Every value a tip shows can be reached without one: the `<svg>` takes focus and the arrow keys move the active mark, as the kit's charts do, or the values are on the page as text or a table. The `aria-label` names the chart and says how to read it.
 - **A range change** keeps the chart on screen with `updating`. The skeleton is for a first load, or when there was nothing to keep.
 - **Nothing in range** is `ContentState`'s `emptyTitle` ("No invites in this date range"), with no Clear filters.
-- A panel's controls (ranges, weeks, a checkbox) are not URL state. A quick range ("Last 7 days") is a `Default` small button in `actions`. Ticks and tips format numbers with `formatNumber`.
+- A panel's controls (ranges, weeks, a checkbox) are not URL state. A quick range ("Last 7 days") is a `Default` small button in `actions`. Ticks and tips format numbers with `formatCount`.
 - Run the grayscale pass on any page with a chart.
 
 ## Home's states
@@ -490,7 +490,7 @@ Charts come from `apps/admin/src/ui/charts`, and the pieces of the panels around
 - While the queue counts load, Home shows one skeleton line, and the list appears whole once all four settle. Its landing pushes the stats down; it is the one load allowed to move content on Home.
 - A count that couldn't load keeps its row, showing "—" and saying the count couldn't load: a failed count is not an empty queue.
 - Each row shows the exact number, not a `CountBadge` (which caps at 99+), then `QUEUES[id].label` and a button reading `QUEUES[id].open` to `queueHref(id)`, all from `places.ts`.
-- A stat tile whose number comes from a query still loading or failed says so in its `note` ("Loading…", "Couldn't load"), never "—".
+- A stat tile whose number comes from a query still loading or failed to load says so in its `note` ("Loading…", "Couldn't load"), never "—". A failed refetch keeps the number and shows `RefreshFailedBanner inline` above the tiles.
 - Stats stay on Home under the queues. Panels that compare well side by side take half the grid (`col-span-12 @4xl:col-span-6`); wide charts and tables take the row.
 
 ## Keyboard
@@ -537,12 +537,12 @@ The URL holds what a colleague needs to see the same thing from a pasted link, a
 
 - **`src/places.ts` is the page map in code:** `PLACES` (each with its `path`, `tabs`, `views`), `RECORDS` (each with its `place`, `path`, `tab`, `tabs`), `placeById`, `recordById`. The sidebar, the palette, `Page` and the tab hooks read it, and `routes.test.ts` fails when it and `routes.ts` disagree. What you may edit there is under **Who owns what**.
 - **Your place's route already exists** in `routes.ts`, pointing at today's page or, for a place merged from several pages (Inbox, All tasks, People, Invites, Waitlist, Links, Media, the form record) and for Suites and the suite record, at a module in `src/places/`. Either way your page goes in `pages/<place>/` and you repoint the line (**Files**).
-- **Queue counts:** `useQueueCounts()` (`shell/useQueueCounts.ts`) gives the four counts Home and the sidebar show, keyed by `CountId`: a number, `null` when it couldn't load, `undefined` while loading. `shell/CountBadge.tsx` renders one.
+- **Queue counts:** `useQueueCounts()` (`shell/useQueueCounts.ts`) gives the four counts Home and the sidebar show, keyed by `CountId`: a number, `null` when it couldn't load, `undefined` while loading. `shell/CountBadge.tsx` renders one. `QUEUES` in `places.ts` holds each queue's label, button words, place and tab, and `queueHref(id)` its link.
 - A place found by its old name in the palette comes from `oldNames` in `places.ts`; if staff knew your page by a name that isn't there, ask for it.
 
 ## Lint
 
-`bun run typecheck` in `apps/admin` runs ESLint, which fails a file on: a raw palette colour class, an arbitrary value (a bracketed variant such as `aria-[current=true]:` is fine, a bracketed breakpoint or modifier is not), an import of `@alliance/sharedweb/ui/*` outside `src/ui`, the shared `cn`, `ButtonColor`, and `window.confirm`, `globalThis.confirm` or a bare `confirm(`.
+`bun run typecheck` in `apps/admin` runs ESLint, which fails a file on: a raw palette colour class, an arbitrary value (a bracketed variant such as `aria-[current=true]:` is fine, a bracketed breakpoint or modifier is not), a colour literal (hex, `rgb()`, `oklch()`, `color-mix()`, `white`, `black` and the like) in `fill`, `stroke`, `color`, `stopColor` or `style`, a fixed px, rem or em length in `style`, an import of `@alliance/sharedweb/ui/*` outside `src/ui`, the shared `cn`, `ButtonColor`, and `window.confirm`, `globalThis.confirm` or a bare `confirm(`.
 
 The files written before the redesign are listed in `apps/admin/eslint/legacy-files.txt` and skipped. When you redesign a file, delete its line, and fix what the lint then reports; `bun eslint/legacy-list.mjs` from `apps/admin` drops every line whose file now passes. Never add a line or an `eslint-disable` for these rules: a new file that needs an exception needs a token or component instead, so ask. A file you delete loses its line too, or the lint fails naming it. The redesign's PR merges only once the list is empty.
 
