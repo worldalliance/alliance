@@ -30,7 +30,7 @@ export default [
         "/tasks/projects/:projectId/tasks/:actionId",
         "pages/ProjectActionPage.tsx",
       ),
-      route("/tasks/forms", "pages/FormsList.tsx"),
+      route("/tasks/forms", "pages/forms/FormsPage.tsx"),
       route("/tasks/forms/:formId", "places/FormRecord.tsx"),
       route("/tasks/formulas", "pages/formulas/FormulasPage.tsx"),
       route("/tasks/formulas/:formulaId", "pages/formulas/FormulaPage.tsx"),

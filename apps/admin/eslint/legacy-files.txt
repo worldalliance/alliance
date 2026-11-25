@@ -217,7 +217,6 @@ src/pages/ActionSuitePage.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
 src/pages/FormSnapshotMigration.tsx
-src/pages/FormsList.tsx
 src/pages/NewActionSuitePage.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
