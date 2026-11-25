@@ -190,6 +190,7 @@ export default function SuitePage() {
     timeline: (shown) => (
       <SuiteTimelineTab
         suite={shown}
+        now={now}
         onReminderClick={(reminderId) =>
           void navigate(suiteReminderHref({ suiteId, reminderId }))
         }
