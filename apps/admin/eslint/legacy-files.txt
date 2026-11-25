@@ -51,7 +51,6 @@ src/components/FormSection.tsx
 src/components/FormSlugEditor.tsx
 src/components/FormulaEditor.tsx
 src/components/FormulaResultPreview.tsx
-src/components/GeneralUpdateCard.tsx
 src/components/HistoryControls.tsx
 src/components/HomePlacementBadges.tsx
 src/components/InsertableTokenButton.tsx
