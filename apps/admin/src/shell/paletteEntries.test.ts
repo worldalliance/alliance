@@ -75,6 +75,7 @@ const OLD_UNLISTED: [label: string, to: string][] = [
   ["Tag management", "/members/tags"],
   ["Suites", "/tasks/suites"],
   ["Forms", "/tasks/forms"],
+  ["Kora transcripts", "/research?tab=assignments"],
 ];
 
 describe("an old page name typed into the palette finds its new place", () => {

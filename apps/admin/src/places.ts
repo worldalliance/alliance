@@ -426,7 +426,14 @@ export const AREAS: readonly Area[] = [
         area: AreaId.Research,
         label: "Kora participants",
         path: "/research",
-        oldNames: ["Kora transcripts"],
+        tabs: [
+          { id: "participants", label: "Participants" },
+          {
+            id: "assignments",
+            label: "Assignments",
+            oldNames: ["Kora transcripts"],
+          },
+        ],
       },
     ],
   },
