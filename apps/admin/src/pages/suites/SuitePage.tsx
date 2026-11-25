@@ -195,7 +195,7 @@ export default function SuitePage() {
         }
       />
     ),
-    tasks: (shown) => <SuiteTasksTab suite={shown} newTaskHref={newTaskHref} />,
+    tasks: (shown) => <SuiteTasksTab suite={shown} />,
     events: (shown) => (
       <SuiteEventsTab
         suite={shown}
