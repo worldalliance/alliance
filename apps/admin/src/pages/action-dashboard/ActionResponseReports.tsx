@@ -104,6 +104,8 @@ const ActionResponseReports: React.FC<ActionResponseReportsProps> = ({
           <FormResponseStatistics
             form={taskForm}
             responses={formResponses}
+            loading={false}
+            error={null}
             onFilterSelect={(filter: FormResponseFilter) => {
               setSearchParams((prev) => {
                 const next = new URLSearchParams(prev);

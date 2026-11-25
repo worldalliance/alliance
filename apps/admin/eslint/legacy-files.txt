@@ -47,7 +47,6 @@ src/components/FormConflictModal.tsx
 src/components/FormJsonButton.tsx
 src/components/FormJsonModal.tsx
 src/components/FormPickerError.tsx
-src/components/FormResponseStatistics.tsx
 src/components/FormResponsesView.tsx
 src/components/FormSection.tsx
 src/components/FormSlugEditor.tsx

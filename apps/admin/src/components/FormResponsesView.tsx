@@ -29,6 +29,7 @@ import {
 } from "../lib/responseFilter";
 import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
+import { PageBody } from "../ui/templates/Page";
 import FormResponsesHeader, {
   isTab,
 } from "./form-responses/FormResponsesHeader";
@@ -445,11 +446,16 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         </div>
       )}
       {tab === "stats" && (
-        <FormResponseStatistics
-          form={form}
-          responses={scopedResponses}
-          onFilterSelect={handleStatFilter}
-        />
+        <PageBody className="max-w-5xl">
+          <FormResponseStatistics
+            form={form}
+            responses={scopedResponses}
+            loading={loading}
+            error={error}
+            onRetry={onRefresh}
+            onFilterSelect={handleStatFilter}
+          />
+        </PageBody>
       )}
       {tab === "questions" && (
         <QuestionResponses
