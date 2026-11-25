@@ -59,7 +59,10 @@ export default [
         "/growth/partnerships",
         "pages/partnerships/OutreachPartnershipsPage.tsx",
       ),
-      route("/growth/ambassadors", "pages/AmbassadorProgramPage.tsx"),
+      route(
+        "/growth/ambassadors",
+        "pages/ambassadors/AmbassadorProgramPage.tsx",
+      ),
 
       route(
         "/content/project-updates",

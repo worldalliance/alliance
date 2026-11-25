@@ -86,10 +86,6 @@ src/components/VariableTextField.tsx
 src/components/VisibilityGroupContext.tsx
 src/components/VisibilityProfilePicker.tsx
 src/components/WithdrawalInfo.tsx
-src/components/ambassador-program/GrowthProjectionPanel.tsx
-src/components/ambassador-program/InviteGoalStatsPanel.tsx
-src/components/ambassador-program/ProgramMemberCard.tsx
-src/components/ambassador-program/ProgramSectionPanel.tsx
 src/components/display-blocks/BlockPreview.tsx
 src/components/display-blocks/DisplayBlockWrapper.tsx
 src/components/display-blocks/EditableAccordionBlock.tsx
@@ -220,7 +216,6 @@ src/pages/ActionDashboard.tsx
 src/pages/ActionSuitePage.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
-src/pages/AmbassadorProgramPage.tsx
 src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
 src/pages/NewActionSuitePage.tsx

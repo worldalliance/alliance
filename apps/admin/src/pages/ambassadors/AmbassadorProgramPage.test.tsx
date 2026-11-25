@@ -13,6 +13,7 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
 import AmbassadorProgramPage from "./AmbassadorProgramPage";
 
 const makeGoal = (
@@ -136,8 +137,10 @@ beforeEach(() => {
 const renderPage = async () => {
   const { wrapper } = queryWrapper();
   render(
-    <MemoryRouter>
-      <AmbassadorProgramPage />
+    <MemoryRouter initialEntries={["/growth/ambassadors"]}>
+      <ToastProvider>
+        <AmbassadorProgramPage />
+      </ToastProvider>
     </MemoryRouter>,
     { wrapper },
   );
@@ -171,7 +174,7 @@ it("narrows the add picker by the pool search", async () => {
   await renderPage();
   const invited = section("Invited");
 
-  fireEvent.change(invited.getByPlaceholderText("Search member pool"), {
+  fireEvent.change(invited.getByLabelText("Search members"), {
     target: { value: "sam" },
   });
 
@@ -220,14 +223,16 @@ it.each([
     body: { activeParticipant: false },
   },
 ])(
-  "removes a member from only $title",
+  "removes a member from only $title, then focuses its search",
   async ({ title, button, userId, body }) => {
     api.alsoServing({
       "PATCH /user/ambassadorProgram/member/:userId": record,
     });
     await renderPage();
 
-    fireEvent.click(section(title).getByRole("button", { name: button }));
+    fireEvent.click(
+      section(title).getByRole("button", { name: new RegExp(`^${button}: `) }),
+    );
 
     await waitFor(() =>
       expect(calls).toEqual([
@@ -238,15 +243,50 @@ it.each([
         },
       ]),
     );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        section(title).getByLabelText("Search members"),
+      ),
+    );
   },
 );
+
+it("never moves focus onto the next member's unconfirmed Remove", async () => {
+  const second = makeMember({
+    userId: 4,
+    invited: true,
+    user: makeUser({ id: 4, name: "Ian Invitee" }),
+  });
+  api.alsoServing({
+    "GET /user/ambassadorProgram": () =>
+      Response.json({
+        members: [invitee, second, participant],
+        projection: { generatedAt: "2026-10-05T00:00:00.000Z", points: [] },
+      }),
+    "PATCH /user/ambassadorProgram/member/:userId": record,
+  });
+  await renderPage();
+
+  fireEvent.click(
+    section("Invited").getByRole("button", {
+      name: "Remove invited: Ivy Invitee",
+    }),
+  );
+
+  await waitFor(() =>
+    expect(document.activeElement?.textContent).toBe("Add entry"),
+  );
+  expect(
+    document.activeElement?.closest("article")?.getAttribute("data-member"),
+  ).toBe("4");
+});
 
 it("records a trimmed interaction note on the member's date", async () => {
   api.alsoServing({ "POST /user/ambassadorProgram/interaction": record });
   await renderPage();
   const invited = section("Invited");
 
-  fireEvent.change(invited.getByPlaceholderText("Add interaction note"), {
+  fireEvent.change(invited.getByLabelText("Interaction note"), {
     target: { value: "  Sent a follow-up  " },
   });
   fireEvent.change(invited.getByDisplayValue(/^\d{4}-\d{2}-\d{2}$/), {
