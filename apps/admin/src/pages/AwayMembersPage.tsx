@@ -4,11 +4,11 @@ import { TZDate } from "@date-fns/tz";
 import { addDays, isTuesday, nextTuesday, set } from "date-fns";
 import { useState } from "react";
 import { href, Link } from "react-router";
-import { formatAwayRange } from "../components/UserAwayPeriodsSection";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { inLaunchZone, LAUNCH_TIME_ZONE } from "../lib/launchTimeZone";
 import { useAwayRangesInWindowAdmin } from "../lib/useAwayRangesInWindowAdmin";
 import DateTimePicker from "../ui/DateTimePicker";
+import { formatAwayRange } from "./people/awayRange";
 
 /** Next Tuesday, today included, 7pm through the Tuesday after at 11:59pm, Pacific time. */
 export const defaultAwayWindow = (now: Date) => {

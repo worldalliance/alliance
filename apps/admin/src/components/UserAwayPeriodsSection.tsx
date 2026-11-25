@@ -25,6 +25,7 @@ import { Pencil, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
+import { formatAwayRange } from "../pages/people/awayRange";
 import Button, { ButtonColor } from "../ui/Button";
 import FormInput from "../ui/FormInput";
 import Spinner from "../ui/Spinner";
@@ -428,20 +429,6 @@ const AWAY_RANGE_STATUS_TEXT_CLASS = {
   [AwayRangeStatus.Upcoming]: "text-blue-700",
   [AwayRangeStatus.Past]: "text-zinc-400",
 } satisfies Record<AwayRangeStatus, string>;
-
-function formatAwayDate(date: string) {
-  return new Date(date).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-export function formatAwayRange(range: UserAwayRangeDto) {
-  return `${formatAwayDate(range.startDate)} to ${formatAwayDate(
-    range.endDate,
-  )}`;
-}
 
 function AwayReasonSelect({
   value,
