@@ -284,7 +284,7 @@ const GeneralUpdatePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full">
       <title>{pageTitle} - Admin</title>
       {contentDialog}
       <div className="p-5 pb-0 flex flex-row justify-between w-full">

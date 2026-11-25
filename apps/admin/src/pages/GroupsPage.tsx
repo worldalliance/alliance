@@ -126,7 +126,7 @@ const GroupsPage: React.FC = () => {
   );
 
   return (
-    <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
+    <div className="min-h-full p-5 pt-20 flex flex-col items-center gap-y-4">
       {queueLoadFailed && (
         <p className="w-full max-w-5xl text-sm text-red-500">
           {adminRefusalMessage(

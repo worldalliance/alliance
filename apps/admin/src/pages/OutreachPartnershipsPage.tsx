@@ -133,7 +133,7 @@ const OutreachPartnershipsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-5 pt-20">
+    <div className="min-h-full p-5 pt-20">
       <title>Outreach Partnerships - Admin</title>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <div className="flex flex-col gap-1">

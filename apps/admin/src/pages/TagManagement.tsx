@@ -96,7 +96,7 @@ const TagManagement: React.FC = () => {
     error ?? (isError ? "Failed to load tags. Please try again." : null);
 
   return (
-    <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
+    <div className="min-h-full p-5 pt-20 flex flex-col items-center gap-y-4">
       {errorMessage && (
         <div className="w-full">
           <p className="text-sm text-red-500">{errorMessage}</p>

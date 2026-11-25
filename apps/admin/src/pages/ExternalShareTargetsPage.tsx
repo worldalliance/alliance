@@ -110,7 +110,7 @@ const ExternalShareTargetsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
+    <div className="min-h-full p-5 pt-20 flex flex-col items-center gap-y-4">
       <title>Share Targets - Admin</title>
       {error && (
         <div className="w-full max-w-4xl">

@@ -170,8 +170,8 @@ export function ListFooter({ children }: { children: ReactNode }) {
 }
 
 /**
- * Actions on the selected rows. It floats over the page's foot, so appearing
- * never moves the list.
+ * Actions on the selected rows, as the last child of the page's body. It
+ * floats over the foot of the main region, so appearing never moves the list.
  */
 export function BulkBar({
   count,
@@ -194,21 +194,22 @@ export function BulkBar({
 
   if (count === 0) return null;
   return (
-    <div
-      role="group"
-      aria-label="Actions on selected rows"
-      className={cn(
-        zIndex.nav,
-        "fixed bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-card bg-surface py-1.5 pr-1.5 pl-4 shadow-pop",
-      )}
-    >
-      <span className="mr-2 font-semibold tabular-nums" aria-live="polite">
-        {count.toLocaleString("en-US")} selected
-      </span>
-      {children}
-      <Button variant={ButtonVariant.Ghost} size="small" onClick={onClear}>
-        Clear
-      </Button>
+    // Zero height and stuck to the foot of the scrolling region: the bar hangs
+    // above it without taking room in the flow.
+    <div className={cn(zIndex.nav, "sticky bottom-0 h-0 shrink-0")}>
+      <div
+        role="group"
+        aria-label="Actions on selected rows"
+        className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-card bg-surface py-1.5 pr-1.5 pl-4 whitespace-nowrap shadow-pop"
+      >
+        <span className="mr-2 font-semibold tabular-nums" aria-live="polite">
+          {count.toLocaleString("en-US")} selected
+        </span>
+        {children}
+        <Button variant={ButtonVariant.Ghost} size="small" onClick={onClear}>
+          Clear
+        </Button>
+      </div>
     </div>
   );
 }

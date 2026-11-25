@@ -65,7 +65,7 @@ const ClustersPage: React.FC = () => {
   }, [clusters, success, toastError]);
 
   return (
-    <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
+    <div className="min-h-full p-5 pt-20 flex flex-col items-center gap-y-4">
       <title>Clusters - Admin</title>
       <div className="w-full max-w-5xl flex flex-col gap-4">
         <div className="flex flex-row items-center justify-between">

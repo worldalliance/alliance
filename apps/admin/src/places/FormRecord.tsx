@@ -20,7 +20,7 @@ export default function FormRecord() {
   const Page = PAGES[tab.id];
   if (!Page) throw new Error(`no page for form tab: ${tab.id}`);
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-full flex-col">
       <div className="border-b border-line px-page">
         <TabLinks label="Form tabs" param={TabParam.Tab} tabs={tabs} />
       </div>

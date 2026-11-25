@@ -153,7 +153,7 @@ const ActionDashboard: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full">
       <title>{`${isNew ? "New action" : (action?.name ?? "Action")} - Admin`}</title>
       <div className="flex justify-between items-center mb-2">
         <div className="p-5 pb-0 flex flex-row flex-wrap justify-between gap-y-2 w-full">

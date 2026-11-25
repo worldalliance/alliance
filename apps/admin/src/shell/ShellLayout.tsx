@@ -90,7 +90,9 @@ function Shell() {
         tabIndex={-1}
         className="min-w-0 flex-1 overflow-y-auto outline-none"
       >
-        <div className="flex min-h-full flex-col gap-y-5">
+        {/* A definite height, so a page can take exactly the frame's (`Page fill`).
+            Its children don't shrink: a taller page overflows and <main> scrolls. */}
+        <div className="flex h-full flex-col gap-y-5 *:shrink-0">
           <Outlet />
         </div>
       </main>
