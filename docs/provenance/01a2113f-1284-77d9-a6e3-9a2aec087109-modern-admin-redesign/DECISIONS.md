@@ -208,23 +208,30 @@ All agent judgement; nobody was there to ask. The bar is round 3's.
 - **Round 5 changed no code.** Its 16 findings repeated ones already declined or filed, or were wording, splits or missing tests; none was a defect in behaviour, accessibility, a guard, or the guide as it stands at the tip. The loop's hub classified them itself, with no fixer, and the loop ended there.
 - **Left as a follow-up:** no test covers two confirmations opened together showing one at a time (ALL-2501); the reviewer checked that the behaviour is right.
 
-## Review loop, round 8
-
-All agent judgement, under round 7's terms: nobody was there to ask, and every fix is a new commit on top.
-
-- **`PersonCell`'s 16rem cap is back on its table cell.** Round 7 moved it to the cell's content on the belief that Chromium ignores a cell's max-width; round 8's reviewer measured that it holds whenever the table lacks room, and that the cap on the content cut a name while the width it needed sat empty beside it. This supersedes round 7's move.
-- **Rule 9's accepted moves are all the agents' acceptance.** The owner's rule names no exceptions, so the guide no longer sets five of them apart as if the owner had approved them. This supersedes round 7's bullet on the three load moves.
-- **Before the awaiting-assignment queue loads, the groups table counts this browser's stored picks**, so the picks column shows them when the queue fails rather than "—" for none.
-- **A field group that only failed to load still takes a failed submit's focus.** Unreachable on General updates, whose one submit error comes first; left as ALL-2513.
-
 ## Review loop, round 7
 
 All agent judgement; nobody was there to ask. The bar is round 3's. Other agents had already branched from `modern-admin`, so every fix is a new commit on top and no commit was rewritten; findings asking for a split, a reorder or a new message were declined for that reason.
 
 - **The completion curve chart's average is "Average"**, since "Average of all tasks" was false whenever the run-length filter is on and a name for each case would add a branch for a legend word.
-- **Rule 9's three load moves stay in the guide, marked as the agents' acceptance.** The owner's rule says loading never moves content in view and names no exceptions; taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads. The owner may rule otherwise.
+- **Rule 9's accepted moves stay in the guide**, all of them the agents' acceptance, since the owner's rule names no exceptions. Taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads. The owner may rule otherwise.
 - **Removing the last suite on General updates while suites failed to load leaves focus where the browser puts it**: the Add suite select is disabled then, and the group already says the suites failed. Not fixed.
 - **Left as follow-ups:** the lint's gaps (ALL-2508), the invite funnel's accessibility (ALL-2509), the groups table's width with picks stored (ALL-2510), and the shared pieces the trial pages left for the system owner (ALL-2511).
+
+## Review loop, round 8
+
+All agent judgement, under round 7's terms: nobody was there to ask, and every fix is a new commit on top.
+
+- **`PersonCell`'s 16rem cap is back on its table cell.** Round 7 moved it to the cell's content on the belief that Chromium ignores a cell's max-width; round 8's reviewer measured that it holds whenever the table lacks room, and that the cap on the content cut a name while the width it needed sat empty beside it.
+- **Rule 9's accepted moves are all the agents' acceptance.** The owner's rule names no exceptions, so the guide no longer sets five of them apart as if the owner had approved them.
+- **Before the awaiting-assignment queue loads, the groups table counts this browser's stored picks**, so the picks column shows them when the queue fails rather than "—" for none.
+- **A field group that only failed to load still takes a failed submit's focus.** Unreachable on General updates, whose one submit error comes first; left as ALL-2513.
+
+## Review loop, round 9
+
+All agent judgement, under round 7's terms.
+
+- **Rule 9 says whose rule it is**: the owner required that selecting or loading never move the form builder's content, and was told it holds admin-wide (*The form builder gets its own design pass*); the guide no longer calls the admin-wide rule an owner requirement.
+- **The guide names the colour functions and attributes the lint checks**, rather than "such as", which implied `color()` and `light-dark()` are caught.
 
 ## After the page trial
 
@@ -354,7 +361,7 @@ The reviewed foundation, the system fixes after the trial, the chart kit with Ho
 - **A group write's failure is the caller's to show, with no `report` switch.** The loop's round 4 added `report: false` for the Add dialogs; the system fixes had already stopped the membership hook reporting at all, which covers it, and round 4's test stays with the new wording.
 - **The chart kit's "Hold a delayed skeleton's space while it waits" commit is gone**: the system fixes made the same change, so it was empty after the join.
 - **A List's table with no filter bar above it starts 12 px below the header** (`ListContent`, when it is the body's first child). Scheduled jobs, a List with no filter bar as the guide prescribes, had its description touching the table header. `Page` is unchanged, so Overviews, Records and lists with a filter bar don't move.
-- **Rule 9's accepted moves gained three the trial pages could not avoid**, which the guide marks as the agents' acceptance, not the owner's: an unsized table's columns settling when rows land, data-height content landing below the first screen, and the held banner line closing on a record with no banner.
+- **Rule 9's accepted moves gained three the trial pages could not avoid**, accepted by the agents like the others: an unsized table's columns settling when rows land, data-height content landing below the first screen, and the held banner line closing on a record with no banner.
 - **A reload staff ask for with a button is not a refetch**: its failure replaces the earlier result. Home's three button-loaded panels do this, as their tests from before the redesign require.
 - **Rule 11 names the member app's endpoints too.** General updates' admin handlers said nothing false; the list every member reads did.
 - **Left open for the system owner**: a linked `PersonChip`; a tooltip a keyboard reaches on static text; `formatDateTime` in UTC ending "GMT+0"; `listCount` without `shown`; a `useFocusAfterRemoval` hook; a helper for "Couldn't X: reason" that keeps the row's name; `generalUpdateHref`; `Page` accepting `title` beside `place` and ignoring it; `StatTile` holding its note line; `RefreshFailedBanner` for several queries; `templates.test.tsx` at its 500-line ceiling (add to `pieces.test.tsx`); all filed as ALL-2511.
