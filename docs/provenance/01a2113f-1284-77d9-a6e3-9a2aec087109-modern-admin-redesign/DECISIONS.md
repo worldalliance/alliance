@@ -213,7 +213,7 @@ All agent judgement; nobody was there to ask. The bar is round 3's.
 All agent judgement; nobody was there to ask. The bar is round 3's. Other agents had already branched from `modern-admin`, so every fix is a new commit on top and no commit was rewritten; findings asking for a split, a reorder or a new message were declined for that reason.
 
 - **The completion curve chart's average is "Average"**, since "Average of all tasks" was false whenever the run-length filter is on and a name for each case would add a branch for a legend word.
-- **Rule 9's accepted moves stay in the guide**, all of them the agents' acceptance, since the owner's rule names no exceptions. Taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads. The owner may rule otherwise.
+- **Rule 9's accepted moves stay in the guide**, all of them the agents' acceptance: every one is a load move, outside the owner's rule on selecting in the form builder and an exception to the agents' admin-wide extension of it. Taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads. The owner may rule otherwise.
 - **Removing the last suite on General updates while suites failed to load leaves focus where the browser puts it**: the Add suite select is disabled then, and the group already says the suites failed. Not fixed.
 - **Left as follow-ups:** the lint's gaps (ALL-2508), the invite funnel's accessibility (ALL-2509), the groups table's width with picks stored (ALL-2510), and the shared pieces the trial pages left for the system owner (ALL-2511).
 
@@ -222,7 +222,6 @@ All agent judgement; nobody was there to ask. The bar is round 3's. Other agents
 All agent judgement, under round 7's terms: nobody was there to ask, and every fix is a new commit on top.
 
 - **`PersonCell`'s 16rem cap is back on its table cell.** Round 7 moved it to the cell's content on the belief that Chromium ignores a cell's max-width; round 8's reviewer measured that it holds whenever the table lacks room, and that the cap on the content cut a name while the width it needed sat empty beside it.
-- **Rule 9's accepted moves are all the agents' acceptance.** The owner's rule names no exceptions, so the guide no longer sets five of them apart as if the owner had approved them.
 - **Before the awaiting-assignment queue loads, the groups table counts this browser's stored picks**, so the picks column shows them when the queue fails rather than "—" for none.
 - **A field group that only failed to load still takes a failed submit's focus.** Unreachable on General updates, whose one submit error comes first; left as ALL-2513.
 
@@ -230,7 +229,7 @@ All agent judgement, under round 7's terms: nobody was there to ask, and every f
 
 All agent judgement, under round 7's terms.
 
-- **Rule 9 says whose rule it is**: the owner required that selecting or loading never move the form builder's content, and was told it holds admin-wide (*The form builder gets its own design pass*); the guide no longer calls the admin-wide rule an owner requirement.
+- **Rule 9 says whose rule it is**: the owner required only that selecting an element in the form builder not make the page jump (REQUIREMENTS). Extending it to hover, the inspector, loading and the whole admin was the agents' decision, told to the owner, who did not object (*The form builder gets its own design pass*).
 - **The guide names the colour functions and attributes the lint checks**, rather than "such as", which implied `color()` and `light-dark()` are caught.
 
 ## After the page trial
