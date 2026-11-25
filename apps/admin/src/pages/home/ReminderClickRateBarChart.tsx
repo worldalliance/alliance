@@ -170,7 +170,10 @@ export function ReminderClickRateBarChart({
                           }
                           strokeWidth={2}
                           rx={3}
-                          onMouseEnter={() => cursor.setIndex(index)}
+                          onMouseEnter={() => {
+                            keyed.current = false;
+                            cursor.setIndex(index);
+                          }}
                         />
                         {index % labelEvery === 0 && (
                           <text
