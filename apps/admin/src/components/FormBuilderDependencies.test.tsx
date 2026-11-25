@@ -16,6 +16,7 @@ import {
   renderFormBuilder,
   renderSavedFormBuilder,
 } from "../lib/testing/renderFormBuilder";
+import { spyOnReveals } from "../lib/testing/reveals";
 
 const reads = (when: string, sourceFormId?: number): VisibleIfFormula => ({
   conditions: {
@@ -198,24 +199,24 @@ describe("FormBuilder dependency links", () => {
   });
 
   it("selects and reveals the question a link to the form names", async () => {
-    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const reveals = spyOnReveals();
     const router = renderSavedFormBuilder(1, "/?select=c&editor=form");
     expect(
       await screen.findByRole("heading", { name: "Text Field: Label c" }),
     ).toBeTruthy();
-    expect(scroll.mock.contexts).toContain(
+    expect(reveals.targets()).toContain(
       canvasButton("Select Text Field: Label c"),
     );
     expect(router.state.location.search).toBe("?editor=form");
   });
 
   it("turns to the page of a linked list's sub-field", async () => {
-    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const reveals = spyOnReveals();
     renderSavedFormBuilder(2, "/?select=name");
     expect(
       await screen.findByRole("heading", { name: "Text Field: Name" }),
     ).toBeTruthy();
-    expect(scroll.mock.contexts).toContain(
+    expect(reveals.targets()).toContain(
       canvasButton("Select Text Field: Name"),
     );
   });

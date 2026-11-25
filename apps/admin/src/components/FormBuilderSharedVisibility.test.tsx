@@ -15,6 +15,7 @@ import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
 } from "../lib/testing/renderFormBuilder";
+import { spyOnReveals } from "../lib/testing/reveals";
 import { addRule, rule } from "./form-fields/conditions/conditionEditorTesting";
 
 const shownWhen = (when: string): VisibleIfFormula => ({
@@ -138,21 +139,24 @@ describe("FormBuilder range selection", () => {
     const onCanvas = (label: string) =>
       canvas().getByRole("button", { name: `Select Text Field: ${label}` });
     const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const reveals = spyOnReveals();
 
     selectElement("Label a");
     scroll.mockClear();
+    reveals.clear();
     fireEvent.click(checkbox("Label d"));
-    expect(scroll.mock.contexts).toContain(onCanvas("Label d"));
+    expect(reveals.targets()).toContain(onCanvas("Label d"));
     expect(scroll.mock.contexts).toContain(
       outline().getByRole("button", { name: "Text Field: Label d" }),
     );
-    expect(scroll.mock.contexts).not.toContain(onCanvas("Label a"));
+    expect(reveals.targets()).not.toContain(onCanvas("Label a"));
 
     selectElement("Label d");
     scroll.mockClear();
+    reveals.clear();
     fireEvent.click(checkbox("Label a"));
-    expect(scroll.mock.contexts).toContain(onCanvas("Label a"));
-    expect(scroll.mock.contexts).not.toContain(onCanvas("Label d"));
+    expect(reveals.targets()).toContain(onCanvas("Label a"));
+    expect(reveals.targets()).not.toContain(onCanvas("Label d"));
   });
 
   it("Shift-click on a group's header takes in the whole group", () => {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
 
 /**
  * Returns a function that focuses `region`, or what `within` picks inside it,
@@ -26,6 +27,6 @@ export function useRestoreFocusWithin(
     const active = document.activeElement;
     if (active && active !== document.body) return;
     const root = region.current;
-    if (root) (within?.(root) ?? root).focus();
+    if (root) focusInPlace(within?.(root) ?? root);
   }, [region, within]);
 }

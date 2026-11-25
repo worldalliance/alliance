@@ -1,5 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
+import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
 import { SidebarSection, SidebarSections } from "./sidebarSections";
 
 const EDITING_CONTROL =
@@ -41,10 +42,11 @@ export function SettingsSidebar({
 
   useEffect(() => {
     if (!focusPending) return;
-    ref.current
-      ?.querySelector('[role="tabpanel"]:not([hidden])')
-      ?.querySelector<HTMLElement>(EDITING_CONTROL)
-      ?.focus();
+    focusInPlace(
+      ref.current
+        ?.querySelector('[role="tabpanel"]:not([hidden])')
+        ?.querySelector<HTMLElement>(EDITING_CONTROL),
+    );
     onFocused();
   }, [focusPending, onFocused]);
 

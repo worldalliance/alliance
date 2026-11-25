@@ -18,6 +18,7 @@ import {
   type IssueIndex,
   type IssueTarget,
 } from "../../lib/formIssues";
+import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
 import {
   CanvasTargetKind,
   ChildKind,
@@ -170,7 +171,7 @@ export function IssueList({
   const count = rows.length + (loadFailure ? 1 : 0);
 
   useEffect(() => {
-    if (open && gate) panelRef.current?.focus();
+    if (open && gate) focusInPlace(panelRef.current);
   }, [open, gate]);
 
   const restorePanelFocus = useRestoreFocusWithin(panelRef);
@@ -197,7 +198,7 @@ export function IssueList({
 
   const closeAndReturn = () => {
     onOpenChange(false);
-    toggleRef.current?.focus();
+    focusInPlace(toggleRef.current);
   };
 
   if (count === 0 && sources.pending === 0 && sources.failed === 0 && !open) {

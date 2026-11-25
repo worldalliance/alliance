@@ -20,6 +20,7 @@ import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
 } from "../lib/testing/renderFormBuilder";
+import { spyOnReveals } from "../lib/testing/reveals";
 
 serveApi(routes({}, () => Response.json([])));
 
@@ -48,7 +49,7 @@ describe("the form outline", () => {
   });
 
   it("opens an element on another page, in its settings", () => {
-    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const reveals = spyOnReveals();
     renderFormBuilder(schema);
     fireEvent.click(contents("Two"));
     fireEvent.click(entry("Text Field: Vet"));
@@ -60,7 +61,7 @@ describe("the form outline", () => {
         .getAttribute("aria-pressed"),
     ).toBe("true");
     expect(entry("Text Field: Vet").getAttribute("aria-current")).toBe("true");
-    expect(scroll.mock.contexts).toContain(
+    expect(reveals.targets()).toContain(
       canvas().getByRole("button", { name: "Select Text Field: Vet" }),
     );
   });

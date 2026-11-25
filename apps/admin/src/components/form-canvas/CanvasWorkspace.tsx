@@ -9,6 +9,10 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import {
+  focusInPlace,
+  revealInPane,
+} from "../../pages/forms/builder/kit/revealInPane";
 import { useRestoreFocusWithin } from "./useRestoreFocusWithin";
 
 /** The selection's select button, marked pressed, within `root`; a range's focus first. */
@@ -54,12 +58,14 @@ export function CanvasWorkspace({
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const focusSelection = useCallback(
-    () => selectedOnCanvas(canvasRef.current)?.focus(),
+    () => focusInPlace(selectedOnCanvas(canvasRef.current)),
     [],
   );
   useEffect(() => {
     if (!revealPending) return;
-    selectedOnCanvas(canvasRef.current)?.scrollIntoView({ block: "nearest" });
+    const pane = canvasRef.current;
+    const selected = selectedOnCanvas(pane);
+    if (pane && selected) revealInPane(pane, selected);
     onRevealed();
   }, [revealPending, onRevealed]);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -190,10 +196,12 @@ function Drawer({
 
   useEffect(() => {
     const drawer = ref.current;
-    if (drawer && !drawer.contains(document.activeElement)) drawer.focus();
+    if (drawer && !drawer.contains(document.activeElement)) {
+      focusInPlace(drawer);
+    }
     return () => {
       if (invoker instanceof HTMLElement && invoker.isConnected) {
-        invoker.focus();
+        focusInPlace(invoker);
       } else {
         focusSelection();
       }

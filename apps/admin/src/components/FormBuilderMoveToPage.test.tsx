@@ -12,6 +12,7 @@ import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
 } from "../lib/testing/renderFormBuilder";
+import { spyOnReveals } from "../lib/testing/reveals";
 
 serveApi(routes({}, () => Response.json([])));
 
@@ -37,7 +38,7 @@ const schema: FormSchema = {
 };
 
 it("moves the selected element to the end of the page picked, keeping it selected and in view", async () => {
-  const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+  const reveals = spyOnReveals();
   renderFormBuilder(schema);
   selectElement("Town");
   fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
@@ -53,26 +54,26 @@ it("moves the selected element to the end of the page picked, keeping it selecte
     "Text Field: Town",
   ]);
   expect(heading()).toBe("Text Field: Town");
-  expect(scroll.mock.contexts).toContain(
+  expect(reveals.targets()).toContain(
     canvas().getByRole("button", { name: "Select Text Field: Town" }),
   );
 });
 
 it("follows the moved element between pages on Undo and Redo, keeping it selected and in view", async () => {
-  const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+  const reveals = spyOnReveals();
   renderFormBuilder(schema);
   selectElement("Town");
   fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
   fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-  scroll.mockClear();
+  reveals.clear();
   fireEvent.click(screen.getByRole("button", { name: "Undo" }));
   expect(heading()).toBe("Text Field: Town");
   expect(entries().slice(0, 2)).toEqual(["One", "Text Field: Town"]);
-  expect(scroll.mock.contexts).toContain(
+  expect(reveals.targets()).toContain(
     canvas().getByRole("button", { name: "Select Text Field: Town" }),
   );
-  scroll.mockClear();
+  reveals.clear();
   fireEvent.click(screen.getByRole("button", { name: "Redo" }));
   expect(heading()).toBe("Text Field: Town");
   expect(entries().slice(1)).toEqual([
@@ -80,7 +81,7 @@ it("follows the moved element between pages on Undo and Redo, keeping it selecte
     "Text Field: Food",
     "Text Field: Town",
   ]);
-  expect(scroll.mock.contexts).toContain(
+  expect(reveals.targets()).toContain(
     canvas().getByRole("button", { name: "Select Text Field: Town" }),
   );
 });

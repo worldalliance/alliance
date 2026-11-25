@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
 
 export enum SidebarSection {
   Content = "content",
@@ -88,9 +89,11 @@ export function SidebarSections({
       ];
     if (!next) return;
     onSelect(next);
-    tabsRef.current
-      ?.querySelector<HTMLElement>(`#${CSS.escape(tabId(idPrefix, next))}`)
-      ?.focus();
+    focusInPlace(
+      tabsRef.current?.querySelector<HTMLElement>(
+        `#${CSS.escape(tabId(idPrefix, next))}`,
+      ),
+    );
   };
 
   return (
