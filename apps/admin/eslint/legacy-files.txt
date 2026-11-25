@@ -41,7 +41,6 @@ src/components/DisplayOnlyPreview.tsx
 src/components/EventManagementTab.tsx
 src/components/ExpressionNodeEditor.tsx
 src/components/ExternalShareTargetSelect.tsx
-src/components/FailedLoadsBanner.tsx
 src/components/FormBuilder.tsx
 src/components/FormBuilderHeader.tsx
 src/components/FormBuilderPreview.tsx
@@ -120,8 +119,6 @@ src/components/display-blocks/EditableUserLocationBlock.tsx
 src/components/display-blocks/EditableVideoBlock.tsx
 src/components/display-blocks/ManualUserList.tsx
 src/components/display-blocks/PerUserOptions.tsx
-src/components/force-graph/EnumFilterSelect.tsx
-src/components/force-graph/UserGraphFilters.tsx
 src/components/form-canvas/CanvasContainers.tsx
 src/components/form-canvas/CanvasContent.tsx
 src/components/form-canvas/CanvasElement.tsx
@@ -275,7 +272,6 @@ src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
 src/pages/FormulaPage.tsx
 src/pages/FormulasPage.tsx
-src/pages/FriendGraphPage.tsx
 src/pages/HostedDocsPage.tsx
 src/pages/InviteFeedPage.tsx
 src/pages/InviteGraphPage.tsx

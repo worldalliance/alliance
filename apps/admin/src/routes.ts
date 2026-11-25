@@ -43,7 +43,7 @@ export default [
       route("/members/tags", "pages/tags/TagsPage.tsx"),
       route("/members/lists", "pages/lists/MemberListsPage.tsx"),
       route("/members/lists/:listId", "pages/lists/MemberListPage.tsx"),
-      route("/members/friends", "pages/FriendGraphPage.tsx"),
+      route("/members/friends", "pages/friends/FriendGraphPage.tsx"),
 
       route("/growth/invites", "places/InvitesPlace.tsx"),
       route("/growth/waitlist", "places/WaitlistPlace.tsx"),

@@ -1,5 +1,7 @@
 import { UserDto } from "@alliance/shared/client";
 import { useCallback, useMemo, useState } from "react";
+import { Select } from "../../ui/Select";
+import { Field } from "../../ui/templates/Form";
 import { EnumFilterSelect } from "./EnumFilterSelect";
 
 export type UserFilterOption = {
@@ -99,6 +101,7 @@ export function useUserGraphFilters(users: UserDto[]) {
 
 type UserGraphFilters = ReturnType<typeof useUserGraphFilters>;
 
+/** Role, community and tag selects, stacked to fill a graph's inspector. */
 export const UserGraphFilterControls = ({
   filters,
 }: {
@@ -112,37 +115,46 @@ export const UserGraphFilterControls = ({
       value={filters.roleFilter}
       onChange={filters.setRoleFilter}
     />
-
-    <label className="flex items-center gap-1.5">
-      <span className="text-xs font-medium text-gray-600">Community</span>
-      <select
-        value={filters.communityFilter}
-        onChange={(e) => filters.setCommunityFilter(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
-      >
-        <option value="all">All</option>
-        {filters.availableCommunities.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-    </label>
-
-    <label className="flex items-center gap-1.5">
-      <span className="text-xs font-medium text-gray-600">Tag</span>
-      <select
-        value={filters.tagFilter}
-        onChange={(e) => filters.setTagFilter(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
-      >
-        <option value="all">All</option>
-        {filters.availableTags.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <OptionsSelect
+      label="Community"
+      value={filters.communityFilter}
+      onChange={filters.setCommunityFilter}
+      options={filters.availableCommunities}
+    />
+    <OptionsSelect
+      label="Tag"
+      value={filters.tagFilter}
+      onChange={filters.setTagFilter}
+      options={filters.availableTags}
+    />
   </>
+);
+
+const OptionsSelect = ({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { id: string; name: string }[];
+}) => (
+  <Field label={label}>
+    {(control) => (
+      <Select
+        {...control}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="all">All</option>
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
+      </Select>
+    )}
+  </Field>
 );

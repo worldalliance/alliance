@@ -9,12 +9,14 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import {
   drawnCircleStroke,
   drawnLinks,
   drawnNode,
   user,
-} from "../components/force-graph/graphTesting";
+} from "../../components/force-graph/graphTesting";
+import { graphColor, NODE_STYLE } from "./friendGraph";
 import FriendGraphPage from "./FriendGraphPage";
 
 const api = serveApi(
@@ -35,16 +37,36 @@ const api = serveApi(
   }),
 );
 
+const renderPage = (query = queryWrapper()) =>
+  render(
+    <MemoryRouter initialEntries={["/members/friends"]}>
+      <FriendGraphPage />
+    </MemoryRouter>,
+    query,
+  );
+
+/** The graph's pane, so a banner's icon isn't read as a friendship. */
+const canvasOf = (container: HTMLElement) => {
+  const pane = container.querySelector("svg:not(.lucide)")?.parentElement;
+  if (!(pane instanceof HTMLElement)) throw new Error("no graph drawn");
+  return pane;
+};
+
 it("highlights the selected member and their direct friends", async () => {
-  const { container } = render(<FriendGraphPage />, queryWrapper());
+  const { container } = renderPage();
   await waitFor(() => drawnNode(container, "sam"));
 
   fireEvent.click(drawnNode(container, "sam"));
 
-  expect(drawnCircleStroke(container, "sam")).toBe("#3b82f6");
-  expect(drawnCircleStroke(container, "ada")).toBe("#60a5fa");
-  expect(drawnCircleStroke(container, "ren")).toBe("#60a5fa");
-  expect(drawnCircleStroke(container, "lee")).toBe("#d1d5db");
+  expect(drawnCircleStroke(container, "sam")).toBe(graphColor.selected);
+  expect(
+    drawnNode(container, "sam")
+      .querySelector("circle")
+      ?.getAttribute("stroke-width"),
+  ).toBe("3");
+  expect(drawnCircleStroke(container, "ada")).toBe(graphColor.selected);
+  expect(drawnCircleStroke(container, "ren")).toBe(graphColor.selected);
+  expect(drawnCircleStroke(container, "lee")).toBe(NODE_STYLE.stroke);
   const strokes = Object.fromEntries(
     Array.from(drawnLinks(container), ([name, line]) => [
       name,
@@ -52,32 +74,65 @@ it("highlights the selected member and their direct friends", async () => {
     ]),
   );
   expect(strokes).toEqual({
-    "ada->sam": "#3b82f6",
-    "ren->sam": "#3b82f6",
-    "ren->lee": "#ccc",
+    "ada->sam": graphColor.selected,
+    "ren->sam": graphColor.selected,
+    "ren->lee": graphColor.edge,
   });
 });
 
-it("names the users when they fail to load", async () => {
+it("names the members when they fail to load", async () => {
   api.alsoServing({
     "GET /user/list-graph": () => Response.json({}, { status: 500 }),
   });
-  render(<FriendGraphPage />, queryWrapper());
+  renderPage();
 
-  expect(
-    await screen.findByText("Could not load users.", { exact: false }),
-  ).toBeTruthy();
+  expect(await screen.findByText("Couldn't load members")).toBeTruthy();
 });
 
 it("names the friendships when they fail to load", async () => {
   api.alsoServing({
     "GET /user/friends/graphEdges": () => Response.json({}, { status: 500 }),
   });
-  render(<FriendGraphPage />, queryWrapper());
+  renderPage();
 
   expect(
-    await screen.findByText("Could not load friendships.", { exact: false }),
+    await screen.findByText("Couldn't load friendships.", { exact: false }),
   ).toBeTruthy();
+  expect(screen.getByText("4 members with an active contract")).toBeTruthy();
+  expect(screen.queryByText("—", { exact: false })).toBeNull();
+});
+
+it("retries members and friendships from one place when both fail on first load", async () => {
+  let userLoads = 0;
+  let edgeLoads = 0;
+  api.alsoServing({
+    "GET /user/list-graph": () => {
+      userLoads += 1;
+      return Response.json({}, { status: 500 });
+    },
+    "GET /user/friends/graphEdges": () => {
+      edgeLoads += 1;
+      return Response.json({}, { status: 500 });
+    },
+  });
+  renderPage();
+
+  expect(
+    await screen.findByText("Couldn't load members or friendships"),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText("The graph is incomplete.", { exact: false }),
+  ).toBeNull();
+  const retries = screen.getAllByRole("button", { name: "Try again" });
+  expect(retries).toHaveLength(1);
+
+  const before = { userLoads, edgeLoads };
+  fireEvent.click(retries[0]);
+
+  await waitFor(() => {
+    expect(userLoads).toBe(before.userLoads + 1);
+    expect(edgeLoads).toBe(before.edgeLoads + 1);
+  });
 });
 
 it("draws no cached friendships once a reload of them fails", async () => {
@@ -89,10 +144,10 @@ it("draws no cached friendships once a reload of them fails", async () => {
     { userAId: 1, userBId: 2 },
   ]);
 
-  const view = render(<FriendGraphPage />, query);
+  const view = renderPage(query);
 
-  await screen.findByText("Could not load friendships.", { exact: false });
-  expect(drawnLinks(view.container).size).toBe(0);
+  await screen.findByText("Couldn't load friendships.", { exact: false });
+  expect(drawnLinks(canvasOf(view.container)).size).toBe(0);
 });
 
 it("waits for a fresh user list before drawing cached users", async () => {
@@ -109,9 +164,9 @@ it("waits for a fresh user list before drawing cached users", async () => {
     user({ id: 2, name: "sam" }),
   ]);
 
-  const view = render(<FriendGraphPage />, query);
+  const view = renderPage(query);
   await act(async () => {});
-  expect(screen.getByText("Loading graph...")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
 
   release();
   await waitFor(() => drawnNode(view.container, "ada"));
@@ -132,15 +187,17 @@ it("waits for a fresh friendship list before drawing cached friendships", async 
     { userAId: 1, userBId: 2 },
   ]);
 
-  const view = render(<FriendGraphPage />, query);
+  const view = renderPage(query);
   await waitFor(() =>
     expect(query.client.getQueryData(queryKeys.graphUsersAdmin())).toBeTruthy(),
   );
-  expect(screen.getByText("Loading graph...")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
 
   release();
   await waitFor(() => drawnNode(view.container, "ren"));
-  expect([...drawnLinks(view.container).keys()]).toEqual(["ren->lee"]);
+  expect([...drawnLinks(canvasOf(view.container)).keys()]).toEqual([
+    "ren->lee",
+  ]);
 });
 
 it.each([
@@ -167,7 +224,7 @@ it.each([
       return Response.json([]);
     },
   });
-  const { container } = render(<FriendGraphPage />, queryWrapper());
+  const { container } = renderPage();
   await waitFor(() => drawnNode(container, "ada"));
 
   act(() => {
