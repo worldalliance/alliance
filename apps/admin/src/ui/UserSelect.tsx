@@ -24,6 +24,13 @@ interface UserSelectProps {
   loadFailed?: boolean;
   label?: string | null;
   single?: boolean;
+  /** Shows the picks but takes no search and no removal. */
+  disabled?: boolean;
+  /**
+   * One line shown while nothing is picked. A multi-pick has its own unless
+   * this replaces it; a single pick has none.
+   */
+  hint?: string;
 }
 
 const nameOf = (user: UserSelectUser) => user.name;
@@ -42,6 +49,8 @@ const UserSelect: React.FC<UserSelectProps> = ({
   loadFailed = false,
   label = "Recipients",
   single = false,
+  disabled = false,
+  hint = single ? undefined : "Selected users will appear here.",
 }) => {
   const inputId = useId();
   const [filterQuery, setFilterQuery] = useState<string>("");
@@ -88,10 +97,10 @@ const UserSelect: React.FC<UserSelectProps> = ({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={placeholder}
-          disabled={inputDisabled}
+          disabled={disabled || inputDisabled}
         />
       )}
-      {query && filteredUsers.length > 0 && (
+      {!disabled && query && filteredUsers.length > 0 && (
         <div
           className={cn(
             popupClass,
@@ -114,11 +123,15 @@ const UserSelect: React.FC<UserSelectProps> = ({
       {loadFailed && (
         <p className="mt-2 text-caption text-danger">Failed to load users.</p>
       )}
-      {query && !filteredUsers.length && !loading && !loadFailed && (
-        <p className="mt-2 text-caption text-fg-muted">
-          No users match that search.
-        </p>
-      )}
+      {!disabled &&
+        query &&
+        !filteredUsers.length &&
+        !loading &&
+        !loadFailed && (
+          <p className="mt-2 text-caption text-fg-muted">
+            No users match that search.
+          </p>
+        )}
       {selectedUsers.length > 0 && !single && (
         <div className="my-1 flex items-center gap-2">
           {filterOpen ? (
@@ -163,26 +176,32 @@ const UserSelect: React.FC<UserSelectProps> = ({
         {displayedSelectedUsers.map((user) => (
           <div
             key={user.id}
-            className="flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2"
+            className={cn(
+              "flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2",
+              disabled && "cursor-not-allowed text-fg-muted",
+            )}
           >
-            <div className="flex items-center gap-x-2 min-w-0">
-              <AvatarProfile pfp={user.profilePicture} size="medium" />
+            <div className="flex min-w-0 items-center gap-x-2">
+              <AvatarProfile
+                pfp={user.profilePicture}
+                size="medium"
+                className={cn(disabled && "opacity-50")}
+              />
               <p className="font-medium truncate">{displayName(user)}</p>
             </div>
             <button
               type="button"
               onClick={() => removeUser(user.id)}
+              disabled={disabled}
               aria-label={`Remove ${displayName(user)}`}
-              className="ml-1 shrink-0 rounded-sm text-fg-muted focus-ring hover:text-danger"
+              className="ml-1 shrink-0 rounded-sm text-fg-muted focus-ring not-disabled:hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
             >
               <X size={14} aria-hidden />
             </button>
           </div>
         ))}
-        {selectedUsers.length === 0 && !single && (
-          <p className="text-caption text-fg-muted">
-            Selected users will appear here.
-          </p>
+        {selectedUsers.length === 0 && hint && (
+          <p className="text-caption text-fg-muted">{hint}</p>
         )}
       </div>
     </div>
