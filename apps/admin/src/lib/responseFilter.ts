@@ -38,6 +38,7 @@ export const FILTERABLE_FIELD_KINDS: Record<FieldKind, boolean> = {
   image: false,
   toggle: true,
   timePicker: false,
+  conversation: true,
 };
 
 export const isResponseFilterOp = (
@@ -70,6 +71,7 @@ export const matchesResponseFilter = (
       return selections.includes(filter.value ?? "");
     }
     case "radio":
+    case "conversation":
     case "select":
     case "range": {
       if (filter.op !== "equals") return false;
@@ -124,6 +126,7 @@ export function filterDescription(params: {
       };
     }
     case "radio":
+    case "conversation":
     case "select": {
       const optionLabel = getOptionLabel(field, filter.value);
       return { fieldLabel, description: optionLabel ?? valueLabel };

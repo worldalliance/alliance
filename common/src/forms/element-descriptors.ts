@@ -32,6 +32,7 @@ export const FIELD_KIND_NAMES = {
   image: "Image Upload Field",
   toggle: "Toggle Field",
   timePicker: "Time Picker Field",
+  conversation: "Conversation Field",
 } as const satisfies Record<FieldKind, string>;
 
 export const DISPLAY_KIND_NAMES = {
@@ -49,6 +50,7 @@ export const DISPLAY_KIND_NAMES = {
   previousAnswer: "Previous Answer Block",
   userLocation: "User Location Block",
   chatTranscript: "Chat Transcript Block",
+  expertMessage: "Expert Message Block",
   accordion: "Accordion Block",
 } as const satisfies Record<DisplayKind, string>;
 
@@ -78,6 +80,7 @@ const FIELD_KIND_ADDABLE = {
   image: true,
   toggle: true,
   timePicker: true,
+  conversation: true,
 } as const satisfies Record<FieldKind, boolean>;
 
 export const ADDABLE_FIELD_KINDS = (
@@ -91,6 +94,7 @@ export function displayBlockPreview(block: DisplayBlock): string {
     case "label":
     case "quote":
     case "biglink":
+    case "expertMessage":
       return block.text;
     case "copytext":
       return block.title || block.text;

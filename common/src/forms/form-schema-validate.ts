@@ -1,3 +1,4 @@
+import { conversationFieldErrors } from "./conversation";
 import type { DisplayBlock } from "./display-blocks";
 import {
   collectFieldLookup,
@@ -88,6 +89,7 @@ export function validateFormSchema(
   }
   collectVisibilityCycleErrors(schema, errors);
   errors.push(...pairedToggleErrors(collectFieldLookup(schema.pages ?? [])));
+  errors.push(...conversationFieldErrors(schema.pages ?? []));
 
   collectVariableErrors(schema, context, errors);
   errors.push(...rowListErrors(schema));
@@ -263,6 +265,20 @@ function collectDisplayContentErrors(
 ): void {
   if (!("type" in item) || item.type !== "display") return;
   const blockId = item.id ?? "<unnamed>";
+  if (item.kind === "expertMessage" && item.text.trim() === "") {
+    errors.push({
+      viewId,
+      blockId,
+      message: "Expert message has no text. Write what the expert says",
+    });
+  }
+  if (item.kind === "expertMessage" && item.expert === null) {
+    errors.push({
+      viewId,
+      blockId,
+      message: "Expert message has no expert. Pick one",
+    });
+  }
   if (item.kind === "images" && item.images.length === 0) {
     errors.push({
       viewId,
