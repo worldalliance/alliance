@@ -307,3 +307,16 @@ Agent judgement throughout; the owner was not asked.
 - **A failed delete names its video by id** ("Couldn't delete video 36.", or "Couldn't delete video 36: " and the server's reason), since most videos share the filename `output.m3u8`. For the same reason each row's Delete is labelled with the filename and the id.
 - **After a delete, focus goes to the next row's Delete, else the previous row's.** When the last video goes there is no row and the list has no add control, so focus is left where the browser puts it.
 - **The page says videos are "uploaded in video blocks"**, not "to forms": the video block is a display block, and the upload endpoint doesn't record where the block sits.
+
+## Trial page: Content › General updates
+
+All agent judgement; the user was asleep and has not seen these. Built from `apps/admin/DESIGN.md` alone as a trial of the guide.
+
+- **The list is one table grouped by schedule state** (Draft, Active, Scheduled, Expired, today's groups and order), each group under a heading row holding the status badge and a count, with a search by name in `?q=`. Dates show in Pacific time with the zone named, as the guide asks of events; the form edits them in the admin's own zone and names it in the labels, as today's form did without saying so.
+- **The record keeps today's two tabs, Details first, as `details` and `content`**, so old `?tab=` links still open the same tab. No side panel: the Content tab is the block editor and needs the width, so status is the header's badge and the dates and suites its description line.
+- **New general update stays a page at `/content/general-updates/new`**, not a dialog: the form has more fields than a dialog takes, and the suite page links to it with `?suiteId=`.
+- **The details form is one section with one save bar.** The priority link moved to the header as "Manage priority". Cancel is gone: Discard resets the form and the breadcrumb leads back.
+- **The schedule fields and the manual cohort picker stay rendered, disabled with the reason, when a suite or an unticked box means they aren't used**; today's form hid them. The picker is disabled by a `fieldset`, since `UserSelect` takes no `disabled`.
+- **The details form gained a leave guard** (`allowSamePath`, since its state lives above the tabs and survives a look at Content), a required-title message in place of the browser's bubble, and a save bar note saying what a save does for members: an Active update's save reaches them at once. An Active update also carries a standing banner saying so on both tabs, since the editor on Content has its own save control.
+- **A missing general update reads as "not found" when a fresh list lacks its id.** The server answers a missing id with a 500, so today's not-found message could never show; the 500 itself needs a server fix.
+- **Not fixed, needs the server or another area:** clearing a start or end date sends nothing, so a date once set can't be removed; `components/GeneralUpdateCard.tsx` stays for the suite page, which still uses it.
