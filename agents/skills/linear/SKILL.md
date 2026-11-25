@@ -1,6 +1,6 @@
 ---
 name: linear
-description: Read before starting or continuing work on an issue in Linear, our issue tracker, touching Linear, naming a branch for one of its issues, or writing a commit or PR that names one.
+description: Read before starting or continuing work on an issue in Linear, our issue tracker, touching Linear, naming a branch for one of its issues, or naming one in chat, a commit or a PR.
 ---
 
 # Linear API
@@ -30,6 +30,10 @@ Write the description so the bug can be fixed from it alone, weeks later: repro,
 ## Starting work on an issue
 
 Claim an issue before working on it, so two agents don't do the same work: move it to `In Progress` and comment your branch and session id (`claude:$CLAUDE_CODE_SESSION_ID` or `codex:$CODEX_THREAD_ID`). Every agent acts in Linear as the same `Alliance agent` user, so the session id is what tells claims apart, and it leads to the transcript of a session that stopped without a PR. A session continuing the claimant's work, through a handoff or as its subagent, works under that claim. When the issue already looks claimed by someone else, ask the user. If you drop the work without opening a PR, put the issue back as you found it.
+
+## Referencing an issue
+
+Wherever markdown renders, such as chat, PR descriptions and Linear comments, write an issue's key as a link so the reader can open it with one click: `[ALL-XXXX](https://linear.app/worldalliance/issue/ALL-XXXX)`. Linear resolves the URL without the title slug. The `Fixes` and `Part of` keys below stay bare, since the GitHub integration matches that text; link the issue elsewhere in the description. Commit messages render no markdown, so they keep bare keys.
 
 ## Linking work to an issue
 
