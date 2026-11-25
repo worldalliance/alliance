@@ -245,19 +245,6 @@ src/components/share-links/CampaignPicker.tsx
 src/components/share-links/GroupCard.tsx
 src/components/share-links/ShareLinkManager.tsx
 src/components/share-links/TargetPicker.tsx
-src/components/stats/ActionCompletionBarsChart.tsx
-src/components/stats/AggregateStatsCard.tsx
-src/components/stats/CohortCompletionGrid.tsx
-src/components/stats/CohortRetentionCharts.tsx
-src/components/stats/CompletionRateCharts.tsx
-src/components/stats/InviteFunnelCard.tsx
-src/components/stats/MemberReliabilityCard.tsx
-src/components/stats/MembersOverTimeChart.tsx
-src/components/stats/MissedActionsCard.tsx
-src/components/stats/PlatformTenureCohortCard.tsx
-src/components/stats/ReminderClickRateBarChart.tsx
-src/components/stats/ReminderClickRateCard.tsx
-src/components/stats/TimeToChurnCard.tsx
 src/components/suite-launch/ActionLinks.tsx
 src/components/suite-launch/ActionReviewCheck.tsx
 src/components/suite-launch/ContractViolationsBanner.tsx
@@ -359,7 +346,6 @@ src/pages/ProjectsPage.tsx
 src/pages/ScheduledPlansPage.tsx
 src/pages/ShareLinksPage.tsx
 src/pages/StaffDirectoryPage.tsx
-src/pages/StatsPage.tsx
 src/pages/SuiteLaunchPage.tsx
 src/pages/TagManagement.tsx
 src/pages/TestPushNotification.tsx

@@ -3,8 +3,7 @@ import type {
   MemberCompletionRetentionPointDto,
 } from "@alliance/shared/client/types.gen";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { fullDateFormatter } from "../TimeSeriesChart";
-import CohortCompletionGrid from "./CohortCompletionGrid";
+import { CohortCompletionGrid, cohortDate } from "./CohortCompletionGrid";
 
 const point = (
   weekIndex: number,
@@ -31,19 +30,17 @@ const cohort = (
   points,
 });
 
-const weekOf = (cohortStart: string) =>
-  `Week of ${fullDateFormatter.format(new Date(`${cohortStart}T00:00:00Z`))}`;
+const weekOf = (cohortStart: string) => `Week of ${cohortDate(cohortStart)}`;
 
 describe("CohortCompletionGrid", () => {
   it("lays out the newest cohort first across the weeks in range", () => {
     render(
       <CohortCompletionGrid
-        filteredRetentionCohorts={[
+        cohorts={[
           cohort("2026-01-05", [point(0, 1), point(1, 0.5), point(2, 0.25)]),
           cohort("2026-01-12", [point(0, 0.75)]),
         ]}
         weekRange={{ min: 1, max: 20 }}
-        retentionLoading={false}
       />,
     );
 
@@ -60,9 +57,8 @@ describe("CohortCompletionGrid", () => {
   it("details the hovered cell", () => {
     render(
       <CohortCompletionGrid
-        filteredRetentionCohorts={[cohort("2026-01-05", [point(0, 0.5)])]}
+        cohorts={[cohort("2026-01-05", [point(0, 0.5)])]}
         weekRange={{ min: 0, max: 20 }}
-        retentionLoading={false}
       />,
     );
 

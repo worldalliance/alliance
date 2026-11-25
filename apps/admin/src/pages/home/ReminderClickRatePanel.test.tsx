@@ -3,7 +3,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { millisecondsInDay } from "date-fns/constants";
-import ReminderClickRateCard from "./ReminderClickRateCard";
+import { ReminderClickRatePanel } from "./ReminderClickRatePanel";
 
 serveApi(
   routes({
@@ -26,43 +26,38 @@ serveApi(
   }),
 );
 
-describe("ReminderClickRateCard", () => {
+describe("ReminderClickRatePanel", () => {
   it("charts each channel and describes the hovered bar", async () => {
     const { wrapper } = queryWrapper();
-    const { container } = render(<ReminderClickRateCard />, { wrapper });
+    const { container } = render(<ReminderClickRatePanel />, { wrapper });
 
-    await screen.findByText("Email Click Rate (Avg by Action)");
+    await screen.findByText("Email click rate (average by task)");
     expect(
       screen.getByText("No texted reminder data in this range."),
     ).toBeTruthy();
 
-    const bar = container.querySelector("rect.cursor-pointer");
+    const bar = container.querySelector("rect[data-bar]");
     if (!bar) throw new Error("no bar");
     fireEvent.mouseEnter(bar);
 
-    expect(screen.getByText("Channel").nextSibling?.textContent).toBe("email");
+    expect(screen.getByText("Channel").nextSibling?.textContent).toBe("Email");
     expect(screen.getByText("Click rate").nextSibling?.textContent).toBe("25%");
-    expect(screen.getByText("Clicked / Sent").nextSibling?.textContent).toBe(
+    expect(screen.getByText("Clicked / sent").nextSibling?.textContent).toBe(
       "2/8",
     );
   });
 
   it("leaves out reminder groups sent before the chosen start date", async () => {
     const { wrapper } = queryWrapper();
-    render(<ReminderClickRateCard />, { wrapper });
-    await screen.findByText("Email Click Rate (Avg by Action)");
+    render(<ReminderClickRatePanel />, { wrapper });
+    await screen.findByText("Email click rate (average by task)");
 
-    const from = screen
-      .getByText("From")
-      .closest("div")
-      ?.querySelector("input");
-    if (!from) throw new Error("no From input");
-    fireEvent.change(from, {
+    fireEvent.change(screen.getByLabelText("From"), {
       target: {
         value: dateToInputValue(new Date(Date.now() - millisecondsInDay)),
       },
     });
 
-    await screen.findByText(/No sent reminder groups with email\/text link/);
+    await screen.findByText(/No sent reminder groups with email or text link/);
   });
 });

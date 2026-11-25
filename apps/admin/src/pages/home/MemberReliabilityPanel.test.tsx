@@ -1,7 +1,7 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import MemberReliabilityCard from "./MemberReliabilityCard";
+import { MemberReliabilityPanel } from "./MemberReliabilityPanel";
 
 let reliabilityStatus = 200;
 let reliabilityMessage = "Internal server error";
@@ -43,9 +43,9 @@ const weeksInput = () => screen.getByRole("spinbutton");
 const submit = () =>
   fireEvent.click(screen.getByRole("button", { name: "View reliability" }));
 
-describe("MemberReliabilityCard", () => {
+describe("MemberReliabilityPanel", () => {
   it("shows each rate for the requested weeks", async () => {
-    render(<MemberReliabilityCard />, queryWrapper());
+    render(<MemberReliabilityPanel />, queryWrapper());
 
     submit();
 
@@ -58,7 +58,7 @@ describe("MemberReliabilityCard", () => {
   });
 
   it("refuses a week count below 1 without requesting it", async () => {
-    render(<MemberReliabilityCard />, queryWrapper());
+    render(<MemberReliabilityPanel />, queryWrapper());
 
     fireEvent.change(weeksInput(), { target: { value: "0" } });
     const form = weeksInput().closest("form");
@@ -71,32 +71,24 @@ describe("MemberReliabilityCard", () => {
 
   it("says the load failed", async () => {
     reliabilityStatus = 500;
-    render(<MemberReliabilityCard />, queryWrapper());
+    render(<MemberReliabilityPanel />, queryWrapper());
 
     submit();
 
-    await screen.findByText(
-      "Unable to load reliability data right now. Please try again soon.",
-    );
+    await screen.findByText("Couldn't load member reliability");
   });
 
   it("loads the same week count again when reapplied after a failure", async () => {
     reliabilityStatus = 500;
-    render(<MemberReliabilityCard />, queryWrapper());
+    render(<MemberReliabilityPanel />, queryWrapper());
     submit();
-    await screen.findByText(
-      "Unable to load reliability data right now. Please try again soon.",
-    );
+    await screen.findByText("Couldn't load member reliability");
 
     reliabilityStatus = 200;
     submit();
 
     await screen.findByText("75.0%");
-    expect(
-      screen.queryByText(
-        "Unable to load reliability data right now. Please try again soon.",
-      ),
-    ).toBeNull();
+    expect(screen.queryByText("Couldn't load member reliability")).toBeNull();
     expect(
       reliabilityRequests.map((url) => url.searchParams.get("weeks")),
     ).toEqual(["5", "5"]);
@@ -105,7 +97,7 @@ describe("MemberReliabilityCard", () => {
   it("says why a refused load failed", async () => {
     reliabilityStatus = 403;
     reliabilityMessage = "Admins only";
-    render(<MemberReliabilityCard />, queryWrapper());
+    render(<MemberReliabilityPanel />, queryWrapper());
 
     submit();
 
@@ -114,7 +106,7 @@ describe("MemberReliabilityCard", () => {
   });
 
   it("hides the shown rates when a later load fails", async () => {
-    render(<MemberReliabilityCard />, queryWrapper());
+    render(<MemberReliabilityPanel />, queryWrapper());
     submit();
     await screen.findByText("75.0%");
 
@@ -122,9 +114,7 @@ describe("MemberReliabilityCard", () => {
     fireEvent.change(weeksInput(), { target: { value: "8" } });
     submit();
 
-    await screen.findByText(
-      "Unable to load reliability data right now. Please try again soon.",
-    );
+    await screen.findByText("Couldn't load member reliability");
     await waitFor(() => expect(screen.queryByText("75.0%")).toBeNull());
   });
 });

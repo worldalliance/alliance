@@ -2,7 +2,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, render, screen } from "@testing-library/react";
-import TimeToChurnCard from "./TimeToChurnCard";
+import { TimeToChurnPanel } from "./TimeToChurnPanel";
 
 let samples: { daysToChurn: number }[] = [];
 let status = 200;
@@ -23,35 +23,34 @@ afterEach(() => {
   message = "Internal server error";
 });
 
-describe("TimeToChurnCard", () => {
+describe("TimeToChurnPanel", () => {
   it("bins churned members by whole weeks since signing", async () => {
     samples = [{ daysToChurn: 2 }, { daysToChurn: 6 }, { daysToChurn: 13 }];
-    render(<TimeToChurnCard />, queryWrapper());
+    render(<TimeToChurnPanel />, queryWrapper());
 
-    await screen.findByText("3 churned members");
+    await screen.findByText(/^3 churned members/);
     expect(screen.getByText("0-1w: 2 members")).toBeTruthy();
     expect(screen.getByText("1-2w: 1 members")).toBeTruthy();
   });
 
   it("says when no one has churned", async () => {
-    render(<TimeToChurnCard />, queryWrapper());
+    render(<TimeToChurnPanel />, queryWrapper());
 
-    await screen.findByText("No churned members yet.");
+    await screen.findByText("No churned members yet");
   });
 
   it("says the load failed rather than that no one has churned", async () => {
     status = 500;
-    render(<TimeToChurnCard />, queryWrapper());
+    render(<TimeToChurnPanel />, queryWrapper());
 
-    await screen.findByText("Unable to load time to churn.");
+    await screen.findByText("Couldn't load time to churn");
     expect(screen.queryByText("No churned members yet")).toBeNull();
-    expect(screen.queryByText("No churned members yet.")).toBeNull();
   });
 
   it("hides the shown histogram when a refetch fails", async () => {
     samples = [{ daysToChurn: 2 }];
     const query = queryWrapper();
-    render(<TimeToChurnCard />, query);
+    render(<TimeToChurnPanel />, query);
     await screen.findByText("0-1w: 1 members");
 
     status = 500;
@@ -61,14 +60,14 @@ describe("TimeToChurnCard", () => {
       }),
     );
 
-    await screen.findByText("Unable to load time to churn.");
+    await screen.findByText("Couldn't load time to churn");
     expect(screen.queryByText("0-1w: 1 members")).toBeNull();
   });
 
   it("says why a refused load failed", async () => {
     status = 403;
     message = "Admins only";
-    render(<TimeToChurnCard />, queryWrapper());
+    render(<TimeToChurnPanel />, queryWrapper());
 
     await screen.findByText("Admins only");
   });

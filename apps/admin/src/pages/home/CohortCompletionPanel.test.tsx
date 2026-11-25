@@ -2,8 +2,8 @@ import type { MemberCompletionRetentionCohortDto } from "@alliance/shared/client
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
-import { fullDateFormatter } from "../TimeSeriesChart";
-import CohortRetentionCharts from "./CohortRetentionCharts";
+import { cohortDate } from "./CohortCompletionGrid";
+import { CohortCompletionPanel } from "./CohortCompletionPanel";
 
 const cohort = (
   cohortStart: string,
@@ -34,12 +34,11 @@ const api = serveApi(
   }),
 );
 
-const weekOf = (cohortStart: string) =>
-  `Week of ${fullDateFormatter.format(new Date(`${cohortStart}T00:00:00Z`))}`;
+const weekOf = (cohortStart: string) => `Week of ${cohortDate(cohortStart)}`;
 
-describe("CohortRetentionCharts", () => {
+describe("CohortCompletionPanel", () => {
   it("leaves cohorts without a completion out of the grid", async () => {
-    render(<CohortRetentionCharts />, queryWrapper());
+    render(<CohortCompletionPanel />, queryWrapper());
 
     await screen.findByText(weekOf("2026-01-05"));
     expect(screen.queryByText(weekOf("2026-01-12"))).toBeNull();
@@ -52,8 +51,8 @@ describe("CohortRetentionCharts", () => {
         Response.json({ message: "boom" }, { status: 500 }),
     });
 
-    render(<CohortRetentionCharts />, queryWrapper());
+    render(<CohortCompletionPanel />, queryWrapper());
 
-    await screen.findByText("Unable to load cohort retention.");
+    await screen.findByText("Couldn't load cohort completion");
   });
 });

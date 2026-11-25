@@ -8,8 +8,13 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import StatsPage from "./StatsPage";
+import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
+import HomePage from "./HomePage";
 
+let needsReplyThreads: unknown[] = [];
+let awaitingGroup: unknown[] = [];
+let welcomeQueueStatus = 200;
 let clickRatesStatus = 200;
 let contractStatusHistoryStatus = 200;
 let respondToContractStatusHistory: (() => Promise<Response>) | null = null;
@@ -23,6 +28,14 @@ let respondToPlatformTenureCohort: (() => Promise<Response>) | null = null;
 
 serveApi(
   routes({
+    "GET /mms-threads/needs-reply-threads": () =>
+      Response.json(needsReplyThreads),
+    "GET /actions/welcome-queue": () =>
+      welcomeQueueStatus === 200
+        ? Response.json({ requiredActionCount: 1, members: [] })
+        : Response.json({}, { status: welcomeQueueStatus }),
+    "POST /user/groupAssignment/members": () => Response.json(awaitingGroup),
+    "GET /action-partnerships/responses": () => Response.json([]),
     "GET /analytics/daily-stats": ({ request }) => {
       dailyStatsRequests.push(new URL(request.url));
       return dailyStatsStatus === 200
@@ -78,6 +91,9 @@ serveApi(
 );
 
 afterEach(() => {
+  needsReplyThreads = [];
+  awaitingGroup = [];
+  welcomeQueueStatus = 200;
   clickRatesStatus = 200;
   contractStatusHistoryStatus = 200;
   respondToContractStatusHistory = null;
@@ -91,15 +107,70 @@ afterEach(() => {
 });
 
 const renderPage = () => {
-  const { wrapper } = queryWrapper();
-  render(<StatsPage />, { wrapper });
+  render(
+    <MemoryRouter>
+      <ToastProvider>
+        <HomePage />
+      </ToastProvider>
+    </MemoryRouter>,
+    queryWrapper(),
+  );
 };
 
-describe("StatsPage reminder click rates", () => {
+describe("HomePage queues", () => {
+  it("says nothing needs you when every queue is empty", async () => {
+    renderPage();
+
+    await screen.findByText("Nothing needs you right now");
+    expect(screen.queryByRole("heading", { name: "Needs you" })).toBeNull();
+  });
+
+  it("lists only the queues with someone waiting, each with its count and the way to it", async () => {
+    needsReplyThreads = [{}, {}];
+    awaitingGroup = [{}, {}, {}];
+    renderPage();
+
+    const texts = (await screen.findByText("Texts need a reply")).closest("li");
+    const awaiting = screen.getByText("Members awaiting a group").closest("li");
+    if (!texts || !awaiting) throw new Error("no queue rows");
+    expect(texts.textContent).toContain("2");
+    expect(
+      within(texts)
+        .getByRole("link", { name: "Open inbox" })
+        .getAttribute("href"),
+    ).toBe("/inbox");
+    expect(awaiting.textContent).toContain("3");
+    expect(
+      within(awaiting)
+        .getByRole("link", { name: "Open group assignment" })
+        .getAttribute("href"),
+    ).toBe("/members/groups?tab=awaiting");
+    expect(screen.queryByText("New members to welcome")).toBeNull();
+    expect(screen.queryByText("Partnership responses to review")).toBeNull();
+    expect(screen.queryByText("Nothing needs you right now")).toBeNull();
+  });
+
+  it("keeps a queue whose count couldn't load, instead of calling it empty", async () => {
+    welcomeQueueStatus = 500;
+    renderPage();
+
+    const row = (await screen.findByText(/This count couldn't load/)).closest(
+      "li",
+    );
+    if (!row) throw new Error("no queue row");
+    expect(row.textContent).toContain("New members to welcome");
+    expect(
+      within(row).getByRole("link", { name: "Open welcome queue" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Nothing needs you right now")).toBeNull();
+  });
+});
+
+describe("HomePage reminder click rates", () => {
   it("says so when there are none in range", async () => {
     renderPage();
 
-    await screen.findByText(/No sent reminder groups with email\/text link/);
+    await screen.findByText(/No sent reminder groups with email or text link/);
   });
 
   it("says the load failed instead of reporting none", async () => {
@@ -107,34 +178,28 @@ describe("StatsPage reminder click rates", () => {
 
     renderPage();
 
-    await screen.findByText("Unable to load reminder click rates.");
+    await screen.findByText("Couldn't load reminder click rates");
     expect(
-      screen.queryByText(/No sent reminder groups with email\/text link/),
+      screen.queryByText(/No sent reminder groups with email or text link/),
     ).toBeNull();
   });
 });
 
-const dateInput = (label: string) => {
-  const input = screen.getByText(label).closest("div")?.querySelector("input");
-  if (!input) throw new Error(`no input labelled ${label}`);
-  return input;
-};
+const dateInput = (label: string) => screen.getByLabelText(label);
 
-describe("StatsPage daily stats", () => {
+describe("HomePage daily stats", () => {
   it("says the load failed instead of reporting none", async () => {
     dailyStatsStatus = 500;
 
     renderPage();
 
-    await screen.findByText(
-      "Unable to load analytics right now. Please try again soon.",
-    );
-    expect(screen.queryByText("No daily stats for this range.")).toBeNull();
+    await screen.findByText("Couldn't load daily stats");
+    expect(screen.queryByText("No daily stats for this range")).toBeNull();
   });
 
   it("refuses a range that ends before it starts without requesting it", async () => {
     renderPage();
-    await screen.findByText("No daily stats for this range.");
+    await screen.findByText("No daily stats for this range");
 
     fireEvent.change(dateInput("Start date"), {
       target: { value: "2026-02-10" },
@@ -154,7 +219,7 @@ describe("StatsPage daily stats", () => {
 
   it("clears a refused range once a quick range applies", async () => {
     renderPage();
-    await screen.findByText("No daily stats for this range.");
+    await screen.findByText("No daily stats for this range");
 
     fireEvent.change(dateInput("Start date"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
@@ -169,7 +234,7 @@ describe("StatsPage daily stats", () => {
 
   it("requests a valid range once applied", async () => {
     renderPage();
-    await screen.findByText("No daily stats for this range.");
+    await screen.findByText("No daily stats for this range");
 
     fireEvent.change(dateInput("Start date"), {
       target: { value: "2026-02-01" },
@@ -187,12 +252,15 @@ describe("StatsPage daily stats", () => {
   });
 });
 
-describe("StatsPage invite funnel", () => {
+const funnelPanel = () =>
+  screen.getByRole("region", { name: "Invite conversion funnel" });
+
+describe("HomePage invite funnel", () => {
   it("charts the funnel's stages", async () => {
     renderPage();
 
-    await screen.findByText("Finished Onboarding");
-    expect(screen.queryByText("Loading invite funnel...")).toBeNull();
+    await screen.findByText("Finished onboarding");
+    expect(within(funnelPanel()).queryByRole("status")).toBeNull();
   });
 
   it("says the load failed instead of charting nothing", async () => {
@@ -200,16 +268,16 @@ describe("StatsPage invite funnel", () => {
 
     renderPage();
 
-    await screen.findByText("Unable to load the invite funnel.");
-    expect(screen.queryByText("Loading invite funnel...")).toBeNull();
+    await screen.findByText("Couldn't load the invite funnel");
+    expect(within(funnelPanel()).queryByRole("status")).toBeNull();
   });
 });
 
-describe("StatsPage members over time", () => {
+describe("HomePage members over time", () => {
   it("says so when there is no history in range", async () => {
     renderPage();
 
-    await screen.findByText("No contract status data in this date range.");
+    await screen.findByText("No contract status data in this date range");
   });
 
   it("says the load failed instead of reporting none", async () => {
@@ -217,40 +285,38 @@ describe("StatsPage members over time", () => {
 
     renderPage();
 
-    await screen.findByText("Unable to load members over time.");
+    await screen.findByText("Couldn't load members over time");
     expect(
-      screen.queryByText("No contract status data in this date range."),
+      screen.queryByText("No contract status data in this date range"),
     ).toBeNull();
   });
 
   it("says it is loading, not that there is none, while a range change loads", async () => {
     renderPage();
-    await screen.findByText("No contract status data in this date range.");
+    await screen.findByText("No contract status data in this date range");
     const next: Pending<Response>[] = [];
     respondToContractStatusHistory = () => pending(next);
 
-    const section = screen
-      .getByText("Members over time")
-      .closest<HTMLElement>("div.relative");
-    const from = section?.querySelector('input[type="date"]');
-    if (!section || !from) throw new Error("no members over time range input");
-    fireEvent.change(from, { target: { value: "2025-01-01" } });
+    const section = screen.getByRole("region", { name: "Members over time" });
+    fireEvent.change(within(section).getByLabelText("From"), {
+      target: { value: "2025-01-01" },
+    });
     await waitFor(() => expect(next).toHaveLength(1));
 
-    expect(within(section).getByText("Loading...")).toBeTruthy();
+    expect(within(section).getByRole("status")).toBeTruthy();
     expect(
-      screen.queryByText("No contract status data in this date range."),
+      screen.queryByText("No contract status data in this date range"),
     ).toBeNull();
   });
 });
 
-describe("StatsPage platform tenure cohort", () => {
+describe("HomePage platform tenure cohort", () => {
+  const cohortPanel = () =>
+    screen.getByRole("region", {
+      name: "Task completion and churn after joining",
+    });
   const viewCohort = (weeks: string) => {
-    const input = screen
-      .getByText("Weeks after joining")
-      .closest("label")
-      ?.querySelector("input");
-    if (!input) throw new Error("no weeks after joining input");
+    const input = screen.getByLabelText("Weeks after joining");
     fireEvent.change(input, { target: { value: weeks } });
     const form = input.closest("form");
     if (!form) throw new Error("no weeks after joining form");
@@ -283,9 +349,7 @@ describe("StatsPage platform tenure cohort", () => {
     platformTenureCohortStatus = 500;
     renderPage();
     viewCohort("4");
-    await screen.findByText(
-      "Unable to load this cohort right now. Please try again soon.",
-    );
+    await screen.findByText("Couldn't load this cohort");
 
     platformTenureCohortStatus = 200;
     viewCohort("4");
@@ -302,9 +366,7 @@ describe("StatsPage platform tenure cohort", () => {
     platformTenureCohortStatus = 500;
     viewCohort("4");
 
-    await screen.findByText(
-      "Unable to load this cohort right now. Please try again soon.",
-    );
+    await screen.findByText("Couldn't load this cohort");
     expect(screen.queryByText("37")).toBeNull();
   });
 
@@ -314,21 +376,15 @@ describe("StatsPage platform tenure cohort", () => {
     await screen.findByText("37");
     platformTenureCohortStatus = 500;
     viewCohort("4");
-    await screen.findByText(
-      "Unable to load this cohort right now. Please try again soon.",
-    );
+    await screen.findByText("Couldn't load this cohort");
 
     const next: Pending<Response>[] = [];
     respondToPlatformTenureCohort = () => pending(next);
     viewCohort("4");
     await waitFor(() => expect(next).toHaveLength(1));
 
-    await screen.findByText("Loading cohort...");
-    expect(
-      screen.queryByText(
-        "Unable to load this cohort right now. Please try again soon.",
-      ),
-    ).toBeNull();
+    await within(cohortPanel()).findByRole("status");
+    expect(screen.queryByText("Couldn't load this cohort")).toBeNull();
   });
 
   it("says why the server refused the cohort", async () => {

@@ -7,7 +7,7 @@ export default [
     route("/growth/invites/feed", "pages/InviteFeedPage.tsx"),
     route("/research/preview/:batchId", "pages/KoraTranscriptPreviewPage.tsx"),
     layout("shell/ShellLayout.tsx", [
-      route("/", "pages/StatsPage.tsx"),
+      route("/", "pages/home/HomePage.tsx"),
 
       route("/inbox", "places/InboxPlace.tsx"),
       route("/inbox/:threadId", "pages/TextThreadPage.tsx"),

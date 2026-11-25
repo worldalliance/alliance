@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import MembersOverTimeChart from "./MembersOverTimeChart";
+import { MembersOverTimePanel } from "./MembersOverTimePanel";
 
 const point = (date: string, activeCount: number, churnedCount: number) => ({
   date,
@@ -11,26 +11,24 @@ const point = (date: string, activeCount: number, churnedCount: number) => ({
 
 const renderChart = () =>
   render(
-    <MembersOverTimeChart
-      parsedContractStatusHistory={[
-        point("2026-01-01", 10, 0),
-        point("2026-02-01", 12, 3),
-      ]}
-      contractStatusLoading={false}
-      contractStatusError={null}
-      contractStatusRange={{ start: "2026-01-01", end: "2026-02-01" }}
-      setContractStatusRange={() => {}}
+    <MembersOverTimePanel
+      history={[point("2026-01-01", 10, 0), point("2026-02-01", 12, 3)]}
+      loading={false}
+      error={null}
+      onRetry={() => {}}
+      range={{ start: "2026-01-01", end: "2026-02-01" }}
+      onRangeChange={() => {}}
     />,
   );
 
-describe("MembersOverTimeChart", () => {
+describe("MembersOverTimePanel", () => {
   it("draws the churned area, then the active one", () => {
     const { container } = renderChart();
 
     const paths = Array.from(container.querySelectorAll("path"));
     expect(paths.map((path) => path.getAttribute("fill"))).toEqual([
-      "rgba(239, 68, 68, 0.9)",
-      "rgba(22, 163, 74, 0.8)",
+      "var(--color-danger)",
+      "var(--color-success)",
     ]);
     expect(paths.every((path) => path.getAttribute("d"))).toBe(true);
   });
