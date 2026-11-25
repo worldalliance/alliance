@@ -29,7 +29,8 @@ export default function PhoneConfirm({
 }: {
   /** E.164. */
   phoneNumber: string;
-  unconfirmedNote: string;
+  /** Left out where the host shows its own. */
+  unconfirmedNote?: string;
   onConfirmed?: (phoneNumber: string) => void;
 }) {
   const { user } = useAuth();
@@ -89,7 +90,7 @@ function CodeEntry({
   onConfirmed,
 }: {
   phoneNumber: string;
-  unconfirmedNote: string;
+  unconfirmedNote?: string;
   onConfirmed: (phoneNumber: string) => void;
 }) {
   const sendCode = useSendPhoneCode();
@@ -148,7 +149,9 @@ function CodeEntry({
         />
       ) : (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="text-zinc-600">{unconfirmedNote}</p>
+          {unconfirmedNote && (
+            <p className="text-zinc-600">{unconfirmedNote}</p>
+          )}
           <Button
             size="small"
             color={ButtonColor.White}
