@@ -3,6 +3,7 @@ import { withCount } from "@alliance/common/plural";
 import { cn } from "@alliance/shared/styles/util";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { groupEdges } from "../../lib/formGroups";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
 import type { ElementDrop, ElementSpan } from "../../lib/moveElements";
 import { DropPosition, type ListMove } from "../../lib/useDragReorder";
@@ -187,9 +188,15 @@ export function FormOutline({
       const container = isContainer(element) ? element : null;
       const open = container !== null && isExpanded(key, false);
       const alone = elementTarget(element, at);
+      const edges = groupEdges(page.fields, at);
       return (
         <OutlineEntry
           key={element.id || at}
+          band={cn(
+            edges && "bg-zinc-100",
+            edges?.first && "rounded-t-md",
+            edges?.last && "rounded-b-md",
+          )}
           label={describeElement(element)}
           current={
             (target !== null && (!target.child || !open)) ||
@@ -401,12 +408,18 @@ export function FormOutline({
 
 function OutlineEntry({
   drag,
+  band,
   children,
   ...row
-}: RowProps & { drag: EntryDrag; children?: ReactNode }) {
+}: RowProps & {
+  drag: EntryDrag;
+  /** Classes for the grey band of a grouped element. */
+  band?: string;
+  children?: ReactNode;
+}) {
   return (
     <li
-      className={cn("relative", drag.dragging && "opacity-50")}
+      className={cn("relative", drag.dragging && "opacity-50", band)}
       onDragOver={drag.overEntry}
     >
       {drag.dropPosition && (

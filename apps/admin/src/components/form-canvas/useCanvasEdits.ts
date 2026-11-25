@@ -14,6 +14,7 @@ import {
   copyPageWithUniqueIds,
   createUniqueFormBuilderId,
 } from "../../lib/copyWithUniqueIds";
+import { settleInserted } from "../../lib/formGroups";
 import {
   moveElements,
   repeatedIds,
@@ -99,8 +100,14 @@ export function useCanvasEdits({
       groupFormula && item.id
         ? { ...item, visibleIfFormula: groupFormula }
         : item;
-    const newFields = [...currentPage.fields];
-    newFields.splice(index, 0, inserted);
+    const newFields = settleInserted(
+      [
+        ...currentPage.fields.slice(0, index),
+        inserted,
+        ...currentPage.fields.slice(index),
+      ],
+      index,
+    );
     updateSchema(
       {
         ...schema,

@@ -1,4 +1,5 @@
 import type { Page } from "@alliance/common/forms/form-schema";
+import { settlePlaced } from "./formGroups";
 import { moveSpan } from "./useDragReorder";
 
 /** Top-level elements `start` up to, not including, `end`, on one page. */
@@ -9,7 +10,8 @@ export type ElementDrop = { pageIndex: number; index: number };
 
 /**
  * Moves the elements in `from` to the gap at `to`, on the same page or
- * another, keeping their order. Null when the move leaves them where they were.
+ * another, keeping their order and settling their grey groups. Null when the
+ * move leaves them where they were.
  */
 export function moveElements({
   pages,
@@ -40,11 +42,14 @@ export function moveElements({
       end: from.end,
       index: to.index,
     });
-    return (
-      moved &&
-      pages.map((page, index) =>
-        index === to.pageIndex ? { ...page, fields: moved.items } : page,
-      )
+    if (!moved) return null;
+    const fields = settlePlaced({
+      fields: moved.items,
+      start: moved.insertionIndex,
+      end: moved.insertionIndex + (from.end - from.start),
+    });
+    return pages.map((page, index) =>
+      index === to.pageIndex ? { ...page, fields } : page,
     );
   }
 
@@ -52,11 +57,16 @@ export function moveElements({
     ...source.fields.slice(0, from.start),
     ...source.fields.slice(from.end),
   ];
-  const landed = [
-    ...destination.fields.slice(0, to.index),
-    ...source.fields.slice(from.start, from.end),
-    ...destination.fields.slice(to.index),
-  ];
+  const landed = settlePlaced({
+    fields: [
+      ...destination.fields.slice(0, to.index),
+      ...source.fields.slice(from.start, from.end),
+      ...destination.fields.slice(to.index),
+    ],
+    start: to.index,
+    end: to.index + (from.end - from.start),
+    left: remaining,
+  });
   return pages.map((page, index) =>
     index === to.pageIndex
       ? { ...page, fields: landed }

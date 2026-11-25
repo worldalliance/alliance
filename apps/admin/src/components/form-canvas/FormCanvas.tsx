@@ -11,6 +11,7 @@ import {
   addressedWrite,
   type BlockWriteById,
 } from "../../lib/displayBlockById";
+import { groupEdges } from "../../lib/formGroups";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
 import type { ListMove } from "../../lib/useDragReorder";
 import {
@@ -130,6 +131,33 @@ export function FormCanvas({
     },
   };
 
+  // Members see a group as one grey box, so the canvas draws its members, and
+  // the insert points between them, on a grey band.
+  const greyBand = (index: number, node: ReactNode) => {
+    const edges = groupEdges(fields, index);
+    if (edges === null) return node;
+    return (
+      <div
+        className={cn(
+          "-mx-4 bg-zinc-100 px-4",
+          edges.first && "mt-2 rounded-t-lg pt-3",
+          edges.last && "mb-2 rounded-b-lg pb-3",
+        )}
+      >
+        {node}
+      </div>
+    );
+  };
+  const insertPoint = (loc: InsertLoc) => {
+    const group = fields[loc.index]?.group;
+    const node = renderInsertPoint(loc);
+    return group !== undefined && fields[loc.index - 1]?.group === group ? (
+      <div className="-mx-4 bg-zinc-100 px-4">{node}</div>
+    ) : (
+      node
+    );
+  };
+
   const renderElement = (
     element: PageItem,
     index: number,
@@ -140,7 +168,8 @@ export function FormCanvas({
         ? selected
         : null;
     const alone = elementTarget(element, index);
-    return (
+    return greyBand(
+      index,
       <CanvasElement
         key={element.id || index}
         element={element}
@@ -169,7 +198,7 @@ export function FormCanvas({
             : null
         }
         drag={dragFor(index)}
-      />
+      />,
     );
   };
 
@@ -274,7 +303,7 @@ export function FormCanvas({
             const element = fields[segment.index]!;
             return (
               <div key={element.id || segment.index}>
-                {renderInsertPoint({ groupKey: null, index: segment.index })}
+                {insertPoint({ groupKey: null, index: segment.index })}
                 {renderElement(element, segment.index, false)}
               </div>
             );
@@ -292,7 +321,7 @@ export function FormCanvas({
             }).length;
             return (
               <div key={key}>
-                {renderInsertPoint({ groupKey: null, index: start })}
+                {insertPoint({ groupKey: null, index: start })}
                 <section
                   aria-label="Visibility group"
                   className={cn(
@@ -333,13 +362,12 @@ export function FormCanvas({
                     const index = start + offset;
                     return (
                       <div key={member.id || index}>
-                        {offset > 0 &&
-                          renderInsertPoint({ groupKey: key, index })}
+                        {offset > 0 && insertPoint({ groupKey: key, index })}
                         {renderElement(member, index, true)}
                       </div>
                     );
                   })}
-                  {renderInsertPoint({ groupKey: key, index: end })}
+                  {insertPoint({ groupKey: key, index: end })}
                 </section>
               </div>
             );
