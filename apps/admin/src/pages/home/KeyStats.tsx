@@ -108,6 +108,11 @@ export function KeyStats({
         things="the churn rates"
         query={historyQuery}
       />
+      <RefreshFailedBanner
+        inline
+        things="completion reliability"
+        query={stats}
+      />
       <ContentState
         loading={aggregate.isPending}
         skeleton={

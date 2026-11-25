@@ -1,6 +1,7 @@
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { useActionStats } from "../../lib/useActionStats";
 import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { actionStat } from "./actionStatFixture";
@@ -66,6 +67,24 @@ describe("KeyStats", () => {
     ).toBeTruthy();
     expect(
       within(tile("Churn in the last 30 days")).getByText("Couldn't load"),
+    ).toBeTruthy();
+  });
+
+  it("says when completion reliability fails to refresh", async () => {
+    const query = queryWrapper();
+    render(<Stats />, query);
+    await screen.findByText(/75\.00/);
+    api.alsoServing({
+      "GET /analytics/action-stats": () =>
+        Response.json({ message: "boom" }, { status: 500 }),
+    });
+
+    await act(() =>
+      query.client.refetchQueries({ queryKey: queryKeys.actionStatsAdmin() }),
+    );
+
+    expect(
+      await screen.findByText(/Couldn't refresh completion reliability/),
     ).toBeTruthy();
   });
 });
