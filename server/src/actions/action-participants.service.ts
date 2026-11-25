@@ -236,7 +236,9 @@ export class ActionParticipantsService {
     const actions = (
       await this.actionRepository.find({ relations: { events: true } })
     ).map(parseAction);
-    const participantIds = await this.findParticipantIdsForActions(actions);
+    const participantIds = await this.findParticipantIdsForActions(actions, {
+      undecided: UndecidedMembers.LiveWhileOpen,
+    });
     await this.publishUsersJoined({
       computation,
       counts: actions.map((action) => ({
@@ -248,8 +250,11 @@ export class ActionParticipantsService {
 
   async reloadUsersJoinedForAction(actionId: number): Promise<void> {
     const computation = await this.startUsersJoinedComputation();
-    const usersJoined = (await this.findParticipantIdsForActionById(actionId))
-      .length;
+    const usersJoined = (
+      await this.findParticipantIdsForActionById(actionId, {
+        undecided: UndecidedMembers.LiveWhileOpen,
+      })
+    ).length;
     await this.publishUsersJoined({
       computation,
       counts: [{ id: actionId, usersJoined }],
