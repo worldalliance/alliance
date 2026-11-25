@@ -368,7 +368,7 @@ export default function TaskFlow({
           void (flow.stage === FlowStage.Complete ? finish() : close());
         }}
       >
-        <Dialog.Portal>
+        <Dialog.Portal container={host.panelContainer}>
           <Dialog.Popup
             ref={panelRef}
             initialFocus={panel}

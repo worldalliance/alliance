@@ -56,4 +56,6 @@ export type TaskFlowHost = {
   panelClassName: string;
   /** Renders under a profile phone question in a flow that records a signed-in member's answers; absent renders the plain field. */
   confirmPhone?: (phoneNumber: string) => ReactNode;
+  /** The element the panel mounts in: the document body when undefined, nothing until set when null. */
+  panelContainer?: HTMLElement | null;
 };
