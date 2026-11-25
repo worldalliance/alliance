@@ -48,7 +48,7 @@ export default [
       route("/members/lists/:listId", "pages/lists/MemberListPage.tsx"),
       route("/members/friends", "pages/friends/FriendGraphPage.tsx"),
 
-      route("/growth/invites", "places/InvitesPlace.tsx"),
+      route("/growth/invites", "pages/invites/InvitesPage.tsx"),
       route("/growth/waitlist", "pages/waitlist/WaitlistPage.tsx"),
       route("/growth/links", "pages/links/LinksPage.tsx"),
       route("/growth/organizations", "pages/OrganizationsPage.tsx"),

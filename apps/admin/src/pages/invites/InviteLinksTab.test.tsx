@@ -3,8 +3,9 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it } from "bun:test";
-import { ToastProvider } from "../ui/ToastProvider";
-import InviteLinksPage from "./InviteLinksPage";
+import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
+import InvitesPage from "./InvitesPage";
 
 let requests: URLSearchParams[];
 let status: number;
@@ -61,11 +62,29 @@ beforeEach(() => {
 });
 const renderPage = () =>
   render(
-    <ToastProvider>
-      <InviteLinksPage />
-    </ToastProvider>,
+    <MemoryRouter initialEntries={["/growth/invites?tab=links"]}>
+      <ToastProvider>
+        <InvitesPage />
+      </ToastProvider>
+    </MemoryRouter>,
     queryWrapper(),
   );
+
+it("explains initial signers and retention from their column headers", async () => {
+  renderPage();
+  await screen.findByText("Link 1");
+  expect(
+    screen
+      .getByRole("button", { name: "About Initial signers" })
+      .getAttribute("aria-describedby"),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "About Retention" }),
+  ).toHaveProperty(
+    "textContent",
+    "The share of initial signers whose contract is active now.",
+  );
+});
 
 it("shows per-link counts and retention, fetching just the selected page", async () => {
   renderPage();
@@ -99,17 +118,15 @@ it("sends filters and sorts to the server and resets to page one", async () => {
 it("shows an empty result without page controls", async () => {
   empty = true;
   renderPage();
-  expect(
-    await screen.findByText("No invite links match this filter."),
-  ).toBeTruthy();
+  expect(await screen.findByText("No invite links yet")).toBeTruthy();
   expect(screen.queryByRole("navigation", { name: "Pagination" })).toBeNull();
 });
 
 it("allows retrying a failed request", async () => {
   status = 500;
   renderPage();
-  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load invite links")).toBeTruthy();
   status = 200;
-  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
   expect(await screen.findByText("Link 1")).toBeTruthy();
 });
