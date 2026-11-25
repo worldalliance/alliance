@@ -108,7 +108,7 @@ export function FormBuilderCanvas({
       outline={
         <>
           {taskFlow && (
-            <label className="flex items-start gap-2 border-b border-gray-200 px-3 py-2 text-xs text-gray-700">
+            <label className="flex items-start gap-2 border-b border-line px-3 py-2 text-xs text-fg">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -122,7 +122,7 @@ export function FormBuilderCanvas({
               />
               <span>
                 Show the step outline on the task card
-                <span className="block text-gray-500">
+                <span className="block text-fg-muted">
                   Turn it off for long tasks.
                 </span>
               </span>
