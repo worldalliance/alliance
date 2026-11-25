@@ -8,6 +8,7 @@ import {
 import { TZDate } from "@date-fns/tz";
 import { format } from "date-fns";
 import React, { useMemo } from "react";
+import type { ButtonSize } from "./Button";
 import { cn } from "./cn";
 import { Input } from "./Input";
 
@@ -23,11 +24,13 @@ export {
 
 export interface DateTimePickerProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
-  "value" | "onChange" | "type"
+  "value" | "onChange" | "type" | "size"
 > {
   value?: string | Date | null;
   onChange: (change: DateTimePickerChange) => void;
   precision?: DatePrecision;
+  /** `small` in a filter bar or a table row; as `Button`'s sizes. */
+  size?: Extract<ButtonSize, "small" | "medium">;
   /**
    * An IANA zone, such as `LAUNCH_TIME_ZONE`: the control shows and edits the
    * instant as wall-clock time there. Omit for the viewer's own zone.
@@ -108,6 +111,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
   value,
   onChange,
   precision = "minute",
+  size = "medium",
   timeZone,
   label,
   helperText,
@@ -173,7 +177,11 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
       <Input
         {...rest}
         type="datetime-local"
-        className={cn(className, inputClassName)}
+        className={cn(
+          size === "small" && "h-control-sm",
+          className,
+          inputClassName,
+        )}
         value={localValue}
         onChange={handleChange}
       />

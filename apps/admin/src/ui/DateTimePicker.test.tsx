@@ -139,3 +139,18 @@ describe("timeZoneLabel", () => {
     expect(timeZoneLabel("Europe/Paris")).toBe("Central European time");
   });
 });
+
+describe("DateTimePicker size", () => {
+  it("is the control height by default and small on request", () => {
+    render(
+      <>
+        <DateTimePicker aria-label="Medium" onChange={() => {}} />
+        <DateTimePicker aria-label="Small" size="small" onChange={() => {}} />
+      </>,
+    );
+    expect(screen.getByLabelText("Medium").className).not.toContain(
+      "h-control-sm",
+    );
+    expect(screen.getByLabelText("Small").className).toContain("h-control-sm");
+  });
+});
