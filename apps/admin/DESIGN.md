@@ -426,7 +426,7 @@ Three levels. Pick by what the action reaches, not by how nervous it feels; a co
 
 ### Operations that reach members
 
-`CUJ-TASK.md` section 4 is the full list with today's guard for each; `CUJ-SUITE.md` covers launch. Read both before touching a task, suite, project, update or reminder screen. The typed phrases are constants; import them, don't retype them, and don't reformat the number inside.
+`CUJ-TASK.md` section 4 is the full list with today's guard for each; `CUJ-SUITE.md` covers launch. Read both before touching a task, suite, project, update or reminder screen. The typed phrases are constants in `lib/notifyRealMembers.ts` (`notifyRealPeopleText` where those reached may not be members, as with Kora's waitlist participants); import them, don't retype them, and don't reformat the number inside.
 
 | Operation                                                                    | Phrase or guard to keep                                                                                                                                                 |
 | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
