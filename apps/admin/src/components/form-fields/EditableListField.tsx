@@ -51,7 +51,6 @@ const SUB_FIELD_KINDS_OPTIONS = {
     | "image"
     | "toggle"
     | "timePicker"
-    | "conversation"
   >,
   unknown
 >;

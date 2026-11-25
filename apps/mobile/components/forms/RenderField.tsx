@@ -36,7 +36,6 @@ import {
 } from "./ChoiceFields";
 import CityAutosuggest from "./CityAutosuggest";
 import { ContractInputField } from "./ContractInputField";
-import { ConversationInputField } from "./ConversationInputField";
 import { getCustomComponentById } from "./customComponentRegistry";
 import { fieldAccessibilityLabel } from "./fieldAccessibilityLabel";
 import {
@@ -63,9 +62,6 @@ export type RenderFieldProps = {
   field: AnyField;
   value?: FormValue;
   onChange?: (value: FormValueUpdater) => void;
-  /** A conversation's note answer, stored under its `noteId`. */
-  noteValue?: FormValue;
-  onNoteChange?: (value: FormValueUpdater) => void;
   onFocus?: () => void;
   disabled?: boolean;
   fileUpload?: FileUploadSlots;
@@ -85,8 +81,6 @@ export function RenderField({
   field,
   value,
   onChange,
-  noteValue,
-  onNoteChange,
   onFocus,
   disabled,
   fileUpload,
@@ -173,19 +167,6 @@ export function RenderField({
           field={field}
           randomizationKey={randomizationKey}
           disableOptionRandomization={disableOptionRandomization}
-        />
-      );
-
-    case "conversation":
-      return (
-        <ConversationInputField
-          field={field}
-          value={value}
-          onChange={onChange}
-          noteValue={noteValue}
-          onNoteChange={onNoteChange}
-          disabled={disabled}
-          errorMessage={errorMessage}
         />
       );
 

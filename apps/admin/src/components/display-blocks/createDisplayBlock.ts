@@ -31,13 +31,6 @@ const FACTORIES: {
   images: (id) => ({ type: "display", kind: "images", id, images: [] }),
   video: (id) => ({ type: "display", kind: "video", id, src: "" }),
   quote: (id) => ({ type: "display", kind: "quote", id, text: "body text" }),
-  expertMessage: (id) => ({
-    type: "display",
-    kind: "expertMessage",
-    id,
-    expert: null,
-    text: "",
-  }),
   biglink: (id) => ({
     type: "display",
     kind: "biglink",

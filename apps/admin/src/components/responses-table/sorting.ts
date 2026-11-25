@@ -77,7 +77,6 @@ const ANSWER_COMPARATORS: Record<FieldKind, AnswerComparator> = {
   image: byText,
   custom: byText,
   radio: byText,
-  conversation: byText,
   select: byText,
   multiselect: byText,
   ranking: byText,

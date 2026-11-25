@@ -1,4 +1,3 @@
-import { conversationsByNoteId } from "@alliance/common/forms/conversation";
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import {
   pairedToggleRequired,
@@ -28,8 +27,7 @@ export function resolveFormValue(
  * names turned on. `clearedErrors` clears the errors the answer resolves, once
  * their toggle validates: the turned-on toggle's, and the required error of
  * each toggle paired with `fieldId` or with it that was off and required by
- * its pairing, and, when `fieldId` is a conversation's note, the
- * conversation's once it validates. The caller validates `fieldId` itself.
+ * its pairing. The caller validates `fieldId` itself.
  */
 export function answerField(params: {
   prev: Record<string, FormValue>;
@@ -68,9 +66,5 @@ export function answerField(params: {
       )
       .map((field) => [field.id, null] as const),
   );
-  const noteOwner = conversationsByNoteId(fields).get(fieldId);
-  if (noteOwner && validate(noteOwner, next[noteOwner.id], next) === null) {
-    clearedErrors[noteOwner.id] = null;
-  }
   return { next, clearedErrors };
 }

@@ -1,4 +1,3 @@
-import { fieldAnswerKeys } from "@alliance/common/forms/conversation";
 import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
   readFormAnswers,
@@ -168,7 +167,7 @@ export class FormDraftService {
         if (!isQuestionField(element)) {
           continue;
         }
-        for (const key of fieldAnswerKeys(element)) answered.add(key);
+        answered.add(element.id);
         if (element.output?.output) {
           output.add(element.id);
         }

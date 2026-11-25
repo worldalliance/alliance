@@ -477,6 +477,3 @@ export const commentThreadLanding = ({
     : total > 0
       ? "Comments, none match the filter"
       : "Comments, none yet";
-
-/** Shown above an expert's reply, so members know it was written in advance. */
-export const autoResponseLabel = "Auto response";

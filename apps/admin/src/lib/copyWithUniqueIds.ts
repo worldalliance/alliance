@@ -1,4 +1,3 @@
-import { conversationNoteId } from "@alliance/common/forms/conversation";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
@@ -187,9 +186,7 @@ const assignCopiedFieldIds = <T extends AnyField>(
     };
   }
 
-  return field.kind === "conversation"
-    ? { ...field, id: nextId, noteId: conversationNoteId(nextId) }
-    : { ...field, id: nextId };
+  return { ...field, id: nextId };
 };
 
 export const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {

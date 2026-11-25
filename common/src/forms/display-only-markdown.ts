@@ -49,13 +49,6 @@ function blockMarkdown(params: {
       return `${"#".repeat(block.level ?? 2)} ${escapeMarkdownText(block.text)}`;
     case "text":
       return block.text;
-    case "expertMessage":
-      return quoted(
-        joinBlocks([
-          block.expert ? strong(block.expert.userName) : "",
-          block.text,
-        ]),
-      );
     case "quote":
       return quoted(
         joinBlocks([

@@ -2,7 +2,6 @@ import { type PageItem } from "@alliance/common/forms/form-schema";
 import { withResolvedOptions } from "@alliance/common/forms/formula-options";
 import { formUnrenderable } from "@alliance/common/forms/unrenderable";
 import { interpolateFieldText } from "@alliance/common/forms/variable-interpolation";
-import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import { UnrenderableSubject } from "@alliance/shared/forms/unrenderable";
 import { type ReactElement } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -80,11 +79,6 @@ export function FormElements({
             )}
             value={form.effectiveFormData[field.id]}
             onChange={(value) => form.handleFieldChange(field.id, value)}
-            {...(field.kind === "conversation" && {
-              noteValue: form.effectiveFormData[field.noteId],
-              onNoteChange: (value: FormValueUpdater) =>
-                form.handleFieldChange(field.noteId, value),
-            })}
             fileUpload={readOnly ? undefined : form.imageUpload}
             disabled={readOnly}
             error={fieldErrors[field.id]}

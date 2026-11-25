@@ -17,7 +17,6 @@ import {
 } from "./variables";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
-export * from "./expert-schema";
 export * from "./field-schemas";
 export * from "./form-value";
 

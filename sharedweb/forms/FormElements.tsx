@@ -91,12 +91,6 @@ export function FormElements({
           onChange={
             readOnly ? undefined : (val) => form.updateField(field.id, val)
           }
-          {...(field.kind === "conversation" && {
-            noteValue: form.effectiveFormData[field.noteId],
-            onNoteChange: readOnly
-              ? undefined
-              : (val) => form.updateField(field.noteId, val),
-          })}
           fileUpload={readOnly ? undefined : form.imageUpload}
           disabled={readOnly}
           error={fieldErrors[field.id]}

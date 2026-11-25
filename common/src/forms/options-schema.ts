@@ -1,16 +1,16 @@
 import { z } from "zod";
 import type { OptionsFormula } from "./variables";
 
-export const optionSchema = z.strictObject({
+const optionSchema = z.strictObject({
   label: z.string(),
   value: z.string(),
 });
 
 // An option's identity is its value (answer matching, ranking order, React
 // keys), so duplicate values would make answers ambiguous.
-export const hasUniqueValues = (options: { value: string }[]) =>
+const hasUniqueValues = (options: { value: string }[]) =>
   new Set(options.map((option) => option.value)).size === options.length;
-export const uniqueValuesMessage = "option values must be unique";
+const uniqueValuesMessage = "option values must be unique";
 
 export const optionListSchema = z
   .array(optionSchema)

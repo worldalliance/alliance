@@ -98,11 +98,6 @@ const listEntryText = (params: {
     .join(" · ");
 };
 
-const singleOption: CellRenderer = ({ field, value }) => {
-  const [label] = optionLabels({ field, values: selectedValues(value) });
-  return label ? { text: label } : EMPTY_CELL;
-};
-
 const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
   text: plainText,
   textarea: plainText,
@@ -129,9 +124,14 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
       no: field.noLabel.trim() || "Not signed",
     }),
   ),
-  radio: singleOption,
-  conversation: singleOption,
-  select: singleOption,
+  radio: ({ field, value }) => {
+    const [label] = optionLabels({ field, values: selectedValues(value) });
+    return label ? { text: label } : EMPTY_CELL;
+  },
+  select: ({ field, value }) => {
+    const [label] = optionLabels({ field, values: selectedValues(value) });
+    return label ? { text: label } : EMPTY_CELL;
+  },
   multiselect: ({ field, value }) => {
     const labels = optionLabels({ field, values: selectedValues(value) });
     return labels.length ? { text: labels.join(", ") } : EMPTY_CELL;

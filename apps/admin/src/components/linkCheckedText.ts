@@ -25,7 +25,6 @@ const LINKED_DISPLAY_FIELDS: LinkedFields = {
   header: [],
   text: ["text"],
   quote: ["text"],
-  expertMessage: ["text"],
   label: [],
   divider: [],
   spacer: [],
@@ -98,12 +97,6 @@ const linkedFieldText = (field: AnyField | ListSubField): unknown[] => {
     case "radio":
     case "multiselect":
       return [field.label, field.options.map(({ label }) => label)];
-    case "conversation":
-      return [
-        field.label,
-        field.message,
-        field.options.map(({ label, reply }) => [label, reply ?? ""]),
-      ];
     case "list":
       return [field.label, field.fields.map(linkedFieldText)];
     // A contract field shows the contract, edited on the contracts page, in
