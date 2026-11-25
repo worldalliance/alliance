@@ -230,3 +230,18 @@ Five agents built pages from the guide alone; a judge compared them. What the gu
 - **`PersonCell` renders its own table cell**, so its cap and truncation can't be left off; `PersonChip` is the inline form.
 - **`DateTimePicker timeZone` edits in the named zone.** A wall-clock time the spring change skips moves an hour later; a repeated autumn hour takes its first occurrence (what `@date-fns/tz` does).
 - **Left for later**: a multi-pick with reserved height, `Field limit`, `Textarea autoGrow`, `Modal` scrolling inside 720 px and `initialFocus`, toasts placed clear of the header, `LeaveGuard` asking with the admin's dialog, duplicate `confirm()` calls, an admin `CommunityMembersTable`, `CopyField`, a code well, and lint on literal colours in `style`.
+
+## Trial page: Home
+
+All agent judgement; the user was asleep and has not seen these.
+
+- **Home's files are `apps/admin/src/pages/home/`**, the page and one file per stats panel; `components/stats/` and `pages/StatsPage.tsx` are gone. The panels' data hooks stay in `src/lib`.
+- **The queue list waits for every count, then appears once.** A queue whose count could not load keeps its row, saying so, with its button: a failed count is not an empty queue. The row shows the exact number, where the sidebar's badge stops at "99+".
+- **The stats sit in five sections after the queues: Organization stats, Members, Tasks, Invites, Daily activity**, each linking to the place that holds its full data. Within a section today's order is kept, except that Recent missed tasks leads Members, as the one stat that names people to act on.
+- **A stat's controls sit inside its panel, above what they drive**, each a labelled field. The daily range, which today sits loose between two charts and reads as a page-wide filter, is inside the Daily stats panel, the only thing it drives.
+- **Two charts that share one control are one panel**: the cumulative and weekly completion rates share a date range and one "Absolute" checkbox (today the checkbox is drawn twice), and the cohort lines and the cohort grid share a week range.
+- **The two tables are always shown and scroll inside their panels**, where today each sat behind a toggle. Task stats links each task to its record.
+- **A rate is a plain number.** Today's task table coloured the completion rate green, yellow or red, which is a status by colour alone.
+- **Chart marks take token colours** (`success` for completed and active, `danger` for churned, `warning` for withdrawn, `info` for in progress, `cat-1` and `cat-3` for email and text). The cohort grid's red-to-green ramp and the cohort lines' spectral ramp stay computed scales: there are no tokens for a ramp, and each cell carries its number.
+- **A date the server sends without a time shows as that date** (`cohortDate`, formatted in UTC). Today a cohort's week shows a day early west of UTC.
+- **"Completions throughout week" is still `components/ActionCompletionCurveChart.tsx`**, with its old look: the task record uses it too, so it belongs to the system owner. `CompletionRatePanel` and `CohortCompletionPanel` draw with `components/time-series-chart/` directly, inside the admin's panel, for the same reason.
