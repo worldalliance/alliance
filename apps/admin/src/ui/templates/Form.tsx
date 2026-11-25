@@ -238,8 +238,13 @@ const STATE_TEXT: Record<SaveState, string> = {
   [SaveState.Failed]: "Couldn't save",
 };
 
-/** The reason to show for a failed save when the server gave none; the bar says "Couldn't save: " before it. */
-export const SAVE_FAILED_FALLBACK = "The server didn't answer. Try again.";
+/**
+ * The reason for any failed write the reader retries with its own button (a
+ * `SaveBar`, an upload, a recalculation) when the server gave none: "Couldn't
+ * save: The server didn't answer." Unlike `LOAD_FAILED_FALLBACK`, it has no
+ * "Try again" button beside it to name.
+ */
+export const SAVE_FAILED_FALLBACK = "The server didn't answer.";
 
 /**
  * The foot of an explicit-save form. Always rendered and always one height,
