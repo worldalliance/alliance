@@ -8,6 +8,14 @@
 
 `timelineScale(globalStartDate, pixelsPerDay)` in `apps/admin/src/lib/actionTimelineData.ts` turns an instant into an x position, and the phase bars, the "now" marker, reminder markers and windows, the focus indicator, the scroll-to-focus and scroll-to-now effects, and the week ticks all use it. Before, each computed its own offset; one function keeps them on the same scale (agent decision). The bars go through it by `phaseBarBounds`, at their phases' exact instants. `firstRowActiveInWeek` compares exact phase instants with the week's bounds too, so a header click finds the rows whose bars actually overlap that week (agent decision).
 
+## Gridlines follow Pacific time
+
+Phase times are absolute instants and the scale is linear in them, so only the gridlines depend on a zone; the requirement fixes them to Pacific. They use `LAUNCH_TIME_ZONE` with `TZDate`, so `nextTuesday` and `addWeeks` step in Pacific and a tick stays on Pacific midnight across a clock change.
+
+## Tooltips name Pacific times
+
+The bar tooltips and the "now" marker's tooltip format their instants with `inLaunchZone`, the admin's existing Pacific date-and-time format (`Mar 3, 2026 at 7:00 PM PT`), instead of the browser's locale and zone. With the gridlines in Pacific, a browser-zone date could name a different day from the gridline a bar starts on, and a date alone can't show the time of day that now places the bar (agent decision).
+
 ## An open last phase names only its start
 
 An action's last phase has no real end, since the timeline draws it to a placeholder a week past the render time, so its tooltip names only its start ("Member action (from …)"); the placeholder would read as a scheduled end (agent decision).

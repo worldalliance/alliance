@@ -8,6 +8,7 @@ import {
   type TimelineRow,
 } from "../lib/actionTimelineData";
 import { swatchColors } from "../lib/identitySwatch";
+import { inLaunchZone } from "../lib/launchTimeZone";
 
 interface ActionTimelineBarProps {
   action: TimelineRow["action"];
@@ -173,8 +174,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
             }}
             title={`${action.name}: ${ACTION_STATUS_LABELS[phase.status]} (${
               isLastPhase
-                ? `from ${phase.startDate.toLocaleDateString()}`
-                : `${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()}`
+                ? `from ${inLaunchZone(phase.startDate)}`
+                : `${inLaunchZone(phase.startDate)} - ${inLaunchZone(phase.endDate)}`
             })`}
           >
             {stickyLabel && (

@@ -7,6 +7,7 @@ import {
   ReminderGroupDto,
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
+import { TZDate } from "@date-fns/tz";
 import {
   addWeeks,
   isTuesday,
@@ -15,6 +16,7 @@ import {
   startOfDay,
 } from "date-fns";
 import { millisecondsInDay, millisecondsInSecond } from "date-fns/constants";
+import { LAUNCH_TIME_ZONE } from "./launchTimeZone";
 
 export type TimelineAction = Pick<
   ActionDto,
@@ -360,8 +362,8 @@ export const phaseBarBounds = (
   };
 };
 
-// globalStartDate falls at an arbitrary time of day, so ticks anchor to
-// midnight rather than to it.
+// globalStartDate falls at an arbitrary time of day, so ticks start from the
+// Pacific midnight on or before it.
 export const weekTicks = ({
   globalStartDate,
   globalEndDate,
@@ -372,8 +374,8 @@ export const weekTicks = ({
   pixelsPerDay: number;
 }) => {
   const xForTime = timelineScale(globalStartDate, pixelsPerDay);
-  const firstDay = startOfDay(globalStartDate);
-  const ticks: { date: Date; left: number }[] = [];
+  const firstDay = startOfDay(new TZDate(globalStartDate, LAUNCH_TIME_ZONE));
+  const ticks: { date: TZDate; left: number }[] = [];
 
   let current = isTuesday(firstDay) ? firstDay : nextTuesday(firstDay);
 

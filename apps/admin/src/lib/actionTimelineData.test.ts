@@ -344,18 +344,18 @@ describe("phaseBarBounds", () => {
 });
 
 describe("weekTicks", () => {
-  it("places a tick at each local-midnight Tuesday in range", () => {
-    const globalStartDate = new Date(2026, 2, 1, 15);
+  it("places a tick at each Pacific-midnight Tuesday in range", () => {
+    const globalStartDate = new Date("2026-03-01T23:00:00Z");
     const ticks = weekTicks({
       globalStartDate,
-      globalEndDate: new Date(2026, 2, 17),
+      globalEndDate: new Date("2026-03-17T08:00:00Z"),
       pixelsPerDay: 16,
     });
 
-    expect(ticks.map(({ date }) => date)).toEqual([
-      new Date(2026, 2, 3),
-      new Date(2026, 2, 10),
-      new Date(2026, 2, 17),
+    expect(ticks.map(({ date }) => date.toISOString())).toEqual([
+      "2026-03-03T00:00:00.000-08:00",
+      "2026-03-10T00:00:00.000-07:00",
+      "2026-03-17T00:00:00.000-07:00",
     ]);
     expect(ticks[0].left).toBe(
       ((ticks[0].date.getTime() - globalStartDate.getTime()) * 16) /

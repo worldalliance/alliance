@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import { getDayOfYear, milliseconds } from "date-fns";
+import { format, getDayOfYear, milliseconds } from "date-fns";
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import {
   weekTicks,
 } from "../lib/actionTimelineData";
 import type { CohortSegment } from "../lib/describeCohortExpression";
+import { inLaunchZone } from "../lib/launchTimeZone";
 import ActionTimelineBar from "./ActionTimelineBar";
 import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
 
@@ -318,9 +319,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                       </div>
                       <div>
                         <div className="font-medium">{date.getDate()}</div>
-                        <div>
-                          {date.toLocaleDateString("en-US", { month: "short" })}
-                        </div>
+                        <div>{format(date, "MMM")}</div>
                       </div>
                     </button>
                   );
@@ -439,7 +438,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                         top: "45px",
                         height: `${timelineContentHeight}px`,
                       }}
-                      title={`Now - ${currentDate.toLocaleString()}`}
+                      title={`Now - ${inLaunchZone(currentDate)}`}
                     >
                       <div className="absolute left-1/2 transform -translate-x-1/2 w-2 h-2 bg-inherit rotate-45"></div>
                     </div>
