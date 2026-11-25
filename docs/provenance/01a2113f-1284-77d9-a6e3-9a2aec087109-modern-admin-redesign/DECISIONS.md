@@ -282,3 +282,12 @@ All agent judgement; the user was asleep and has not seen these. Built from `app
 - **The member count is the row's expand control** ("9 members", `aria-expanded`), and a row click does not expand. Expanded rows are not in the URL.
 - **A failed refetch keeps the loaded jobs and adds a danger banner with "Try again"**, as today's page kept its timeline beside the error; the guide says only that a failed refetch keeps its content.
 - **The header says the list covers the next 7 days.** Today's page said "in this window" without saying which. The window stays fixed, with no control and no search, as today.
+
+After the judge's verdict and the revised guide, still agent judgement:
+
+- **A suspension shows the day it is due by ("By Wed, Nov 25"), not a time.** The endpoint looks for suspensions every 6 hours counted from the moment the page asked (`actions.controller.ts`, `getSuspendPlans`), so the time it returns is the first look that found the members due, and the suspension can come up to 6 hours sooner. The sampled time, in Pacific time and UTC, is the cell's tooltip.
+- **A forum auto-complete keeps its time to the minute.** The server's date is 5 minutes before the task's deadline and its worker runs every 5 minutes (`forum-action-completer.worker.ts`), so the job runs within 5 minutes of the time shown; the tooltip says so.
+- **The UTC time is the When cell's tooltip, formatted ("Thu, Nov 26, 4:55 AM UTC")**, replacing the UTC column and the raw ISO string: the guide puts a fact the prototype hides in a tooltip or a detail row.
+- **The count sits in the description ("… soonest first. 5 jobs.") and the page has no filter bar**, as the guide now says for a list with nothing to filter. It is left out while loading and when there are none.
+- **A suspension row is keyed by its members and a forum row by its task**, so a row stays open across a refetch, which moves every suspension's sampled time.
+- **The empty state says no member is due**, since the server leaves out a job with no members.
