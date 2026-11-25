@@ -50,7 +50,7 @@ export default [
 
       route("/growth/invites", "places/InvitesPlace.tsx"),
       route("/growth/waitlist", "places/WaitlistPlace.tsx"),
-      route("/growth/links", "places/LinksPlace.tsx"),
+      route("/growth/links", "pages/links/LinksPage.tsx"),
       route("/growth/organizations", "pages/OrganizationsPage.tsx"),
       route("/growth/partnerships", "pages/OutreachPartnershipsPage.tsx"),
       route("/growth/ambassadors", "pages/AmbassadorProgramPage.tsx"),

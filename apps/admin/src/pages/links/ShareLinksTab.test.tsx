@@ -16,11 +16,13 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { adminActionListItem } from "../lib/testing/adminActionListItem";
-import { ToastProvider } from "../ui/ToastProvider";
-import { pickUser } from "../ui/UserSelect.testing";
-import ShareLinksPage from "./ShareLinksPage";
+import { MemoryRouter } from "react-router";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { adminActionListItem } from "../../lib/testing/adminActionListItem";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { pickUser } from "../../ui/UserSelect.testing";
+import { chooseRowAction } from "./chooseRowAction.testing";
+import { ShareLinksTab } from "./ShareLinksTab";
 
 const campaign = (id: number, name: string): CampaignDto => ({
   id,
@@ -72,6 +74,7 @@ serveApi(
       return actionsStatus === 200
         ? Response.json([
             adminActionListItem(1, "Call your rep"),
+            adminActionListItem(3, "Share the video"),
             adminActionListItem(2, "Old petition", { archived: true }),
           ])
         : Response.json({}, { status: actionsStatus });
@@ -179,67 +182,86 @@ beforeEach(() => {
   deleteStatus = 200;
 });
 
+const renderTab = (query = queryWrapper()) =>
+  render(
+    <MemoryRouter initialEntries={["/growth/links"]}>
+      <ToastProvider>
+        <ShareLinksTab />
+      </ToastProvider>
+    </MemoryRouter>,
+    query,
+  );
+
 it("says the users failed to load instead of offering none", async () => {
   membersStatus = 500;
-  render(
-    <ToastProvider>
-      <ShareLinksPage />
-    </ToastProvider>,
-    queryWrapper(),
-  );
+  renderTab();
 
   expect(await screen.findByText("Failed to load users.")).toBeTruthy();
 });
 
 const pickOwner = async (query = queryWrapper()) => {
-  render(
-    <ToastProvider>
-      <ShareLinksPage />
-    </ToastProvider>,
-    query,
-  );
-  const userSearch = await screen.findByPlaceholderText("Search by name");
+  renderTab(query);
+  const userSearch = await screen.findByRole("combobox", { name: "Member" });
   await pickUser(userSearch, { query: "Test", name: /Test Member/ });
-  return screen.findByPlaceholderText("Search actions…");
+  return screen.findByLabelText("Task");
 };
 
-it("offers the loaded actions that are not archived as targets", async () => {
-  fireEvent.focus(await pickOwner());
+const openPicker = (name: string, text?: string) => {
+  const box = screen.getByRole("combobox", { name });
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  if (text !== undefined) fireEvent.input(box, { target: { value: text } });
+  return box;
+};
+
+it("offers the loaded tasks that are not archived as targets", async () => {
+  await pickOwner();
+  openPicker("Task");
   expect(
-    await screen.findByRole("button", { name: "Call your rep" }),
+    await screen.findByRole("option", { name: "Call your rep" }),
   ).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Old petition" })).toBeNull();
+  expect(screen.queryByRole("option", { name: "Old petition" })).toBeNull();
 });
 
-it("says the actions are loading instead of offering none", async () => {
+it("says the tasks are loading instead of offering none", async () => {
   let release = () => {};
   actionsGate = new Promise((resolve) => (release = resolve));
-  fireEvent.focus(await pickOwner());
-  expect(screen.getByText("Loading actions…")).toBeTruthy();
-  expect(screen.queryByText("No matches.")).toBeNull();
+  await pickOwner();
+  openPicker("Task");
+  expect(await screen.findByText("Loading")).toBeTruthy();
 
   release();
   expect(
-    await screen.findByRole("button", { name: "Call your rep" }),
+    await screen.findByRole("option", { name: "Call your rep" }),
   ).toBeTruthy();
 });
 
-it("says the actions failed to load instead of offering none", async () => {
-  actionsStatus = 500;
+it("filters the tasks by any word of their name as staff type", async () => {
   await pickOwner();
-  expect(await screen.findByText("Failed to load actions")).toBeTruthy();
+  openPicker("Task", "video");
+  await waitFor(() =>
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Share the video",
+    ]),
+  );
 });
 
-it("says the session expired when the actions load is refused with a 401", async () => {
+it("says the tasks failed to load instead of offering none", async () => {
+  actionsStatus = 500;
+  await pickOwner();
+  expect(await screen.findByText("Couldn't load tasks.")).toBeTruthy();
+});
+
+it("says the session expired when the tasks load is refused with a 401", async () => {
   actionsStatus = 401;
   await pickOwner();
   expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
 });
 
-it("keeps offering the loaded actions when a refetch fails", async () => {
+it("keeps offering the loaded tasks when a refetch fails", async () => {
   const query = queryWrapper();
-  fireEvent.focus(await pickOwner(query));
-  await screen.findByRole("button", { name: "Call your rep" });
+  await pickOwner(query);
+  openPicker("Task");
+  await screen.findByRole("option", { name: "Call your rep" });
 
   actionsStatus = 500;
   await act(() => query.client.refetchQueries());
@@ -250,56 +272,52 @@ it("keeps offering the loaded actions when a refetch fails", async () => {
   );
   await act(async () => {});
 
-  expect(screen.queryByText("Failed to load actions")).toBeNull();
-  expect(screen.getByRole("button", { name: "Call your rep" })).toBeTruthy();
+  expect(screen.queryByText("Couldn't load tasks.")).toBeNull();
+  expect(screen.getByRole("option", { name: "Call your rep" })).toBeTruthy();
 });
 
 const pickExternalKind = async () => {
   await pickOwner();
-  fireEvent.change(screen.getByDisplayValue("Action"), {
+  fireEvent.change(screen.getByLabelText("Link to"), {
     target: { value: "external" },
   });
-  return screen.findByPlaceholderText("Search external targets…");
+  await screen.findByLabelText("Share target");
 };
 
 it("offers the loaded external share targets", async () => {
-  fireEvent.focus(await pickExternalKind());
+  await pickExternalKind();
+  openPicker("Share target");
   expect(
-    await screen.findByRole("button", { name: "Partner petition" }),
+    await screen.findByRole("option", { name: "Partner petition" }),
   ).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Call your rep" })).toBeNull();
+  expect(screen.queryByRole("option", { name: "Call your rep" })).toBeNull();
 });
 
 it("says the external share targets are loading instead of offering none", async () => {
   let release = () => {};
   targetsGate = new Promise((resolve) => (release = resolve));
-  fireEvent.focus(await pickExternalKind());
-  expect(screen.getByText("Loading external targets…")).toBeTruthy();
-  expect(screen.queryByText("No matches.")).toBeNull();
+  await pickExternalKind();
+  openPicker("Share target");
+  expect(await screen.findByText("Loading")).toBeTruthy();
 
   release();
   expect(
-    await screen.findByRole("button", { name: "Partner petition" }),
+    await screen.findByRole("option", { name: "Partner petition" }),
   ).toBeTruthy();
 });
 
 it("says the external share targets failed to load", async () => {
   targetsStatus = 500;
   await pickExternalKind();
-  expect(await screen.findByText("Failed to load share targets.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load share targets.")).toBeTruthy();
 });
 
 const pickCampaignKind = async () => {
   jest
     .spyOn(config, "getInviteBaseUrl")
     .mockReturnValue("https://test.alliance/");
-  render(
-    <ToastProvider>
-      <ShareLinksPage />
-    </ToastProvider>,
-    queryWrapper(),
-  );
-  fireEvent.change(await screen.findByDisplayValue("User"), {
+  renderTab();
+  fireEvent.change(await screen.findByLabelText("Links of"), {
     target: { value: "campaign" },
   });
 };
@@ -307,26 +325,47 @@ const pickCampaignKind = async () => {
 it("gives a campaign's signup link on the invite domain", async () => {
   await pickCampaignKind();
   await screen.findByRole("option", { name: "Spring fundraiser" });
-  fireEvent.change(screen.getByDisplayValue("Select a campaign…"), {
+  fireEvent.change(screen.getByLabelText("Campaign"), {
     target: { value: "7" },
   });
 
   expect(
-    await screen.findByText("https://test.alliance/signup?ref=spring7"),
+    await screen.findByDisplayValue("https://test.alliance/signup?ref=spring7"),
   ).toBeTruthy();
+});
+
+const openNewCampaign = async (name: string) => {
+  fireEvent.click(await screen.findByRole("button", { name: "New campaign…" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Name"), {
+    target: { value: name },
+  });
+  return dialog;
+};
+
+it("returns focus to New campaign when its dialog closes", async () => {
+  await pickCampaignKind();
+  const trigger = await screen.findByRole("button", { name: "New campaign…" });
+  trigger.focus();
+  const dialog = await openNewCampaign("Fall drive");
+  await waitFor(() =>
+    expect(document.activeElement).toBe(within(dialog).getByLabelText("Name")),
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
 });
 
 it("lists and selects a campaign it creates", async () => {
   await pickCampaignKind();
   await screen.findByRole("option", { name: "Spring fundraiser" });
 
-  fireEvent.change(screen.getByPlaceholderText(/Campaign name/), {
-    target: { value: "Fall drive" },
-  });
-  fireEvent.change(screen.getByLabelText("Invite page description"), {
+  const dialog = await openNewCampaign("Fall drive");
+  fireEvent.change(within(dialog).getByLabelText(/^Invite page description/), {
     target: { value: "Join us this fall" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Create campaign" }),
+  );
 
   expect(
     await screen.findByRole("option", { name: "Fall drive", selected: true }),
@@ -344,13 +383,15 @@ it("says when it cannot create a campaign", async () => {
   jest.spyOn(console, "error").mockImplementation(() => {});
   await pickCampaignKind();
 
-  fireEvent.change(await screen.findByPlaceholderText(/Campaign name/), {
-    target: { value: "Fall drive" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  const dialog = await openNewCampaign("Fall drive");
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Create campaign" }),
+  );
 
-  expect(await screen.findByText("Failed to create campaign.")).toBeTruthy();
-  expect(screen.getByDisplayValue("Fall drive")).toBeTruthy();
+  expect(
+    await within(dialog).findByText("Couldn't create the campaign."),
+  ).toBeTruthy();
+  expect(within(dialog).getByDisplayValue("Fall drive")).toBeTruthy();
 });
 
 it("says the session expired when a campaign create is refused for it", async () => {
@@ -358,43 +399,35 @@ it("says the session expired when a campaign create is refused for it", async ()
   jest.spyOn(console, "error").mockImplementation(() => {});
   await pickCampaignKind();
 
-  fireEvent.change(await screen.findByPlaceholderText(/Campaign name/), {
-    target: { value: "Fall drive" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  const dialog = await openNewCampaign("Fall drive");
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Create campaign" }),
+  );
 
-  expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
+  expect(await within(dialog).findByText(sessionExpiredMessage)).toBeTruthy();
 });
 
 it("says why a campaign image upload was refused", async () => {
   uploadStatus = 400;
   jest.spyOn(console, "error").mockImplementation(() => {});
-  const { container } = render(
-    <ToastProvider>
-      <ShareLinksPage />
-    </ToastProvider>,
-    queryWrapper(),
-  );
-  fireEvent.change(await screen.findByDisplayValue("User"), {
-    target: { value: "campaign" },
-  });
-  const input = await waitFor(() => {
-    const found = container.querySelector('input[type="file"]');
-    if (!found) throw new Error("no file input");
-    return found;
-  });
-  fireEvent.change(input, {
+  await pickCampaignKind();
+
+  const dialog = await openNewCampaign("Fall drive");
+  fireEvent.change(within(dialog).getByLabelText(/^Picture/), {
     target: { files: [new File(["x"], "pic.png", { type: "image/png" })] },
   });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Create campaign" }),
+  );
 
-  expect(await screen.findByText("Image is too large")).toBeTruthy();
-  expect(screen.queryByAltText("Campaign avatar preview")).toBeNull();
+  expect(await within(dialog).findByText("Image is too large")).toBeTruthy();
+  expect(campaigns.map((c) => c.name)).toEqual(["Spring fundraiser"]);
 });
 
 it("says the campaigns failed to load", async () => {
   campaignsStatus = 500;
   await pickCampaignKind();
-  expect(await screen.findByText("Failed to load campaigns.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load campaigns.")).toBeTruthy();
 });
 
 it("lists the owner's share links", async () => {
@@ -404,36 +437,61 @@ it("lists the owner's share links", async () => {
   expect(screen.getByText("https://example.com/s/a")).toBeTruthy();
 });
 
+it("keeps the owner in the URL", async () => {
+  userLinks = [shareLink("a", "Newsletter")];
+  render(
+    <MemoryRouter initialEntries={["/growth/links?member=5"]}>
+      <ToastProvider>
+        <ShareLinksTab />
+      </ToastProvider>
+    </MemoryRouter>,
+    queryWrapper(),
+  );
+  expect(await screen.findByText("Newsletter")).toBeTruthy();
+});
+
 it("says the share links failed to load instead of listing none", async () => {
   userLinksStatus = 500;
   await pickOwner();
-  expect(await screen.findByText("Failed to load share links.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load share links")).toBeTruthy();
   expect(screen.queryByText(/has no share links yet/)).toBeNull();
 });
 
-it("lists a duplicate it creates", async () => {
-  userLinks = [shareLink("a", "Newsletter")];
-  fireEvent.focus(await pickOwner());
-  fireEvent.click(await screen.findByRole("button", { name: "Call your rep" }));
-  fireEvent.change(screen.getByPlaceholderText(/label/i), {
+const createDuplicateFlyer = async () => {
+  await pickOwner();
+  const box = openPicker("Task", "rep");
+  await screen.findByRole("option", { name: "Call your rep" });
+  fireEvent.keyDown(box, { key: "Enter" });
+  fireEvent.change(screen.getByLabelText(/^Label/), {
     target: { value: "Flyer" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Create duplicate" }));
+};
+
+it("lists a duplicate it creates", async () => {
+  userLinks = [shareLink("a", "Newsletter")];
+  await createDuplicateFlyer();
 
   expect(await screen.findByText("Flyer")).toBeTruthy();
   expect(screen.getByText("Newsletter")).toBeTruthy();
 });
 
-it("shows a renamed label", async () => {
-  userLinks = [shareLink("a", "Newsletter")];
+const renameNewsletter = async () => {
   await pickOwner();
-  fireEvent.click(await screen.findByRole("button", { name: "Edit label" }));
-  fireEvent.change(screen.getByDisplayValue("Newsletter"), {
+  await chooseRowAction("Newsletter", "Edit label…");
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByDisplayValue("Newsletter"), {
     target: { value: "Poster" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save label" }));
+  return dialog;
+};
 
-  expect(await screen.findByText("Poster")).toBeTruthy();
+it("shows a renamed label", async () => {
+  userLinks = [shareLink("a", "Newsletter")];
+  await renameNewsletter();
+
+  expect(await screen.findByRole("cell", { name: "Poster" })).toBeTruthy();
   expect(screen.getByText("Label updated")).toBeTruthy();
 });
 
@@ -441,42 +499,48 @@ it("says why a label update was refused and keeps editing", async () => {
   labelStatus = 400;
   userLinks = [shareLink("a", "Newsletter")];
   jest.spyOn(console, "error").mockImplementation(() => {});
-  await pickOwner();
-  fireEvent.click(await screen.findByRole("button", { name: "Edit label" }));
-  fireEvent.change(screen.getByDisplayValue("Newsletter"), {
-    target: { value: "Poster" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const dialog = await renameNewsletter();
 
-  expect(await screen.findByText("Label is too long")).toBeTruthy();
-  expect(screen.getByDisplayValue("Poster")).toBeTruthy();
+  expect(await within(dialog).findByText("Label is too long")).toBeTruthy();
+  expect(within(dialog).getByDisplayValue("Poster")).toBeTruthy();
 });
+
+const deleteNewsletter = async () => {
+  await pickOwner();
+  await chooseRowAction("Newsletter", "Delete");
+  fireEvent.click(await screen.findByRole("button", { name: "Delete link" }));
+};
 
 it("drops a link it deletes", async () => {
   userLinks = [shareLink("a", "Newsletter"), shareLink("b", "Poster")];
-  await pickOwner();
-  await screen.findByText("Newsletter");
-  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
-  fireEvent.click(
-    within(await screen.findByRole("dialog")).getByRole("button", {
-      name: "Delete",
-    }),
-  );
+  await deleteNewsletter();
 
   expect(await screen.findByText("Share link deleted")).toBeTruthy();
   expect(screen.queryByText("Newsletter")).toBeNull();
   expect(screen.getByText("Poster")).toBeTruthy();
 });
 
+it("says deleting an external target link changes no Alliance page", async () => {
+  userLinks = [
+    {
+      ...shareLink("b", "Partner post"),
+      kind: "externalTarget",
+      action: null,
+      externalTarget: { id: 4, name: "Partner X signup" },
+    },
+  ];
+  await pickOwner();
+  await chooseRowAction("Partner post", "Delete");
+  expect(
+    await screen.findByText(/still reaches the partner's page as before/),
+  ).toBeTruthy();
+  expect(screen.queryByText(/the page no longer names them/)).toBeNull();
+});
+
 it("says why a duplicate was refused and keeps its label", async () => {
   duplicateStatus = 400;
   jest.spyOn(console, "error").mockImplementation(() => {});
-  fireEvent.focus(await pickOwner());
-  fireEvent.click(await screen.findByRole("button", { name: "Call your rep" }));
-  fireEvent.change(screen.getByPlaceholderText(/label/i), {
-    target: { value: "Flyer" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Create duplicate" }));
+  await createDuplicateFlyer();
 
   expect(await screen.findByText("That action is archived")).toBeTruthy();
   expect(screen.getByDisplayValue("Flyer")).toBeTruthy();
@@ -486,15 +550,10 @@ it("says when it cannot delete a link and keeps it", async () => {
   deleteStatus = 500;
   userLinks = [shareLink("a", "Newsletter")];
   jest.spyOn(console, "error").mockImplementation(() => {});
-  await pickOwner();
-  await screen.findByText("Newsletter");
-  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-  fireEvent.click(
-    within(await screen.findByRole("dialog")).getByRole("button", {
-      name: "Delete",
-    }),
-  );
+  await deleteNewsletter();
 
-  expect(await screen.findByText("Failed to delete share link.")).toBeTruthy();
+  expect(
+    await screen.findByText("Couldn't delete the share link “Newsletter”."),
+  ).toBeTruthy();
   expect(screen.getByText("Newsletter")).toBeTruthy();
 });

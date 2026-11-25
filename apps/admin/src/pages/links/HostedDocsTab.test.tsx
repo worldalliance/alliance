@@ -2,10 +2,17 @@ import type { HostedDocDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { setTestWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import HostedDocsPage from "./HostedDocsPage";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { chooseRowAction } from "./chooseRowAction.testing";
+import { HostedDocsTab } from "./HostedDocsTab";
 
 const pilot: HostedDocDto = {
   id: 1,
@@ -71,9 +78,9 @@ beforeEach(() => {
 });
 const renderPage = () =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/growth/links?tab=hosted-docs"]}>
       <ToastProvider>
-        <HostedDocsPage />
+        <HostedDocsTab />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -84,7 +91,7 @@ test("lists documents with views, uploader, and replacement state", async () => 
   await screen.findByText("2026-Pilot.pdf");
   expect(screen.getByText("7")).toBeTruthy();
   expect(screen.getByText("Ada Admin")).toBeTruthy();
-  expect(screen.getByDisplayValue("Board packet")).toBeTruthy();
+  expect(screen.getByText("Board packet")).toBeTruthy();
 });
 
 test("prefills the ID from the file name and uploads", async () => {
@@ -96,7 +103,7 @@ test("prefills the ID from the file name and uploads", async () => {
   const id = screen.getByLabelText("ID");
   expect(id.getAttribute("value")).toBe("Annual-Report-2026.pdf");
   fireEvent.change(id, { target: { value: "AnnualReport.pdf" } });
-  fireEvent.change(screen.getByLabelText("Notes"), {
+  fireEvent.change(screen.getByLabelText(/^Notes/), {
     target: { value: "For the board" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -178,6 +185,7 @@ test("rejects an invalid ID without sending it", async () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Upload" }));
   await screen.findByText(/^Use up to 100 letters/);
+  expect(document.activeElement).toBe(screen.getByLabelText("ID"));
   expect(writes).toEqual([]);
 });
 
@@ -193,31 +201,36 @@ test("copies the URL on this environment's site", async () => {
   renderPage();
   fireEvent.click(
     await screen.findByRole("button", {
-      name: "Copy link to 2026-Pilot.pdf",
+      name: "Copy link: 2026-Pilot.pdf",
     }),
   );
-  await screen.findByText("Link copied.");
+  await screen.findByText("Copied link");
   expect(writeText).toHaveBeenCalledWith(
     "https://staging.thealliance.org/docs/2026-Pilot.pdf",
   );
 });
 
-test("saves edited notes inline", async () => {
+test("saves edited notes", async () => {
   renderPage();
-  const input = await screen.findByLabelText("Notes for 2026-Pilot.pdf");
-  fireEvent.change(input, { target: { value: "Final version" } });
-  fireEvent.blur(input);
+  await chooseRowAction("2026-Pilot.pdf", "Edit notes…");
+  const dialog = await screen.findByRole("dialog");
+  const notes = within(dialog).getByLabelText("Notes for 2026-Pilot.pdf");
+  await waitFor(() => expect(document.activeElement).toBe(notes));
+  fireEvent.change(notes, { target: { value: "Final version" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save notes" }));
   await waitFor(() => expect(writes).toEqual([{ notes: "Final version" }]));
 });
 
 test("confirms before replacing a file", async () => {
   renderPage();
-  fireEvent.change(
-    await screen.findByLabelText("Replace file for 2026-Pilot.pdf"),
-    { target: { files: [pdf("v2.pdf")] } },
-  );
+  await chooseRowAction("2026-Pilot.pdf", "Replace file…");
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByText(/The current file is deleted/)).toBeTruthy();
+  fireEvent.change(within(dialog).getByLabelText("New PDF"), {
+    target: { files: [pdf("v2.pdf")] },
+  });
   expect(writes).toEqual([]);
-  fireEvent.click(screen.getByRole("button", { name: "Replace file" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Replace file" }));
   await waitFor(() =>
     expect(writes).toEqual([{ replacedId: "1", file: "v2.pdf" }]),
   );
@@ -225,13 +238,11 @@ test("confirms before replacing a file", async () => {
 
 test("confirms before deleting a document", async () => {
   renderPage();
+  await chooseRowAction("2026-Pilot.pdf", "Delete");
+  expect(writes).toEqual([]);
   fireEvent.click(
     await screen.findByRole("button", { name: "Delete document" }),
   );
-  expect(writes).toEqual([]);
-  fireEvent.click(
-    screen.getAllByRole("button", { name: "Delete document" }).at(-1)!,
-  );
-  await screen.findByText("No hosted docs yet.");
+  await screen.findByText("No hosted docs yet");
   expect(writes).toEqual([{ deletedId: "1" }]);
 });

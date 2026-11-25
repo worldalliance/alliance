@@ -1,55 +1,50 @@
 import type { ShareUrlAdminDto } from "@alliance/shared/client/types.gen";
 
-export type TargetKind = "action" | "external" | "invite";
-export type PickableKind = Exclude<TargetKind, "invite">;
+export enum TargetKind {
+  Task = "action",
+  External = "external",
+  Invite = "invite",
+}
 
 export type Target =
-  | { kind: "action"; id: number; name: string }
-  | { kind: "external"; id: number; name: string }
-  | { kind: "invite" };
+  | { kind: TargetKind.Task; id: number; name: string }
+  | { kind: TargetKind.External; id: number; name: string }
+  | { kind: TargetKind.Invite };
+
+export const TARGET_KIND_LABEL: Record<TargetKind, string> = {
+  [TargetKind.Task]: "Task",
+  [TargetKind.External]: "Share target",
+  [TargetKind.Invite]: "Signup invite",
+};
 
 export const targetKey = (t: Target): string =>
-  t.kind === "invite" ? "invite" : `${t.kind}-${t.id}`;
+  t.kind === TargetKind.Invite ? "invite" : `${t.kind}-${t.id}`;
 
 export const targetName = (t: Target): string =>
-  t.kind === "invite" ? "Signup invite" : t.name;
-
-export const targetKindLabel = (kind: TargetKind): string => {
-  switch (kind) {
-    case "action":
-      return "Action";
-    case "external":
-      return "External target";
-    case "invite":
-      return "Invite (signup link)";
-    default:
-      throw new Error(`unknown target kind: ${kind satisfies never}`);
-  }
-};
+  t.kind === TargetKind.Invite ? "Signup invite" : t.name;
 
 export const targetSubtitle = (t: Target): string => {
   switch (t.kind) {
-    case "action":
-      return `Action #${t.id}`;
-    case "external":
-      return "External share target";
-    case "invite":
-      return "Signup invite link";
+    case TargetKind.Task:
+      return `Task ${t.id}`;
+    case TargetKind.External:
+      return "Share target";
+    case TargetKind.Invite:
+      return "Signup link";
     default:
       throw new Error(`unknown target kind: ${t satisfies never}`);
   }
 };
 
-/** The target identity to send to the create-duplicate endpoint. */
 export const targetColumns = (
   t: Target,
 ): { actionId?: number; externalTargetId?: number; invite?: true } => {
   switch (t.kind) {
-    case "action":
+    case TargetKind.Task:
       return { actionId: t.id };
-    case "external":
+    case TargetKind.External:
       return { externalTargetId: t.id };
-    case "invite":
+    case TargetKind.Invite:
       return { invite: true };
     default:
       throw new Error(`unknown target kind: ${t satisfies never}`);
@@ -64,21 +59,25 @@ export type ShareLinkGroup = {
   mostRecent: number;
 };
 
+const rowTarget = (row: ShareUrlAdminDto): Target | null => {
+  if (row.action) {
+    return { kind: TargetKind.Task, id: row.action.id, name: row.action.name };
+  }
+  if (row.externalTarget) {
+    return {
+      kind: TargetKind.External,
+      id: row.externalTarget.id,
+      name: row.externalTarget.name,
+    };
+  }
+  return row.kind === "invite" ? { kind: TargetKind.Invite } : null;
+};
+
+/** Links by target, newest group first; in a group the original, then duplicates oldest first. */
 export const groupShareLinks = (rows: ShareUrlAdminDto[]): ShareLinkGroup[] => {
   const byKey = new Map<string, ShareLinkGroup>();
   for (const row of rows) {
-    let target: Target | null = null;
-    if (row.action) {
-      target = { kind: "action", id: row.action.id, name: row.action.name };
-    } else if (row.externalTarget) {
-      target = {
-        kind: "external",
-        id: row.externalTarget.id,
-        name: row.externalTarget.name,
-      };
-    } else if (row.kind === "invite") {
-      target = { kind: "invite" };
-    }
+    const target = rowTarget(row);
     if (!target) continue;
     const key = targetKey(target);
     const existing = byKey.get(key);

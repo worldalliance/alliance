@@ -2,11 +2,18 @@ import { customLinkFieldsSchema } from "@alliance/common/customLinks";
 import type { CustomLinkDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { PlaceId, placeById } from "../places";
-import { ToastProvider } from "../ui/ToastProvider";
-import CustomLinksPage from "./CustomLinksPage";
+import { PlaceId, placeById } from "../../places";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { chooseRowAction } from "./chooseRowAction.testing";
+import { CustomLinksTab } from "./CustomLinksTab";
 
 const flyer: CustomLinkDto = {
   id: 1,
@@ -21,6 +28,7 @@ let stored: CustomLinkDto[];
 let writeStatus: number;
 let loadStatus: number;
 let writes: unknown[];
+let writeGate: Promise<void>;
 
 serveApi(
   routes({
@@ -31,6 +39,7 @@ serveApi(
     "POST /custom-links": async ({ request }) => {
       const body = await request.json();
       writes.push(body);
+      await writeGate;
       if (writeStatus !== 200)
         return Response.json(
           { message: "That custom path already exists." },
@@ -79,13 +88,14 @@ beforeEach(() => {
   writeStatus = 200;
   loadStatus = 200;
   writes = [];
+  writeGate = Promise.resolve();
   window.localStorage.clear();
 });
 const renderPage = () =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/growth/links?tab=custom-links"]}>
       <ToastProvider>
-        <CustomLinksPage />
+        <CustomLinksTab />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -103,10 +113,10 @@ const fill = (slug: string) => {
 
 test("shows visit counts and creates a custom link with the full waitlist destination", async () => {
   renderPage();
-  await screen.findByDisplayValue("/100k");
+  await screen.findByText("/100k");
   expect(screen.getByText("7")).toBeTruthy();
   fill("/second-flyer");
-  await screen.findByDisplayValue("/second-flyer");
+  await screen.findByText("/second-flyer");
   expect(writes).toEqual([
     {
       label: "Second flyer",
@@ -115,6 +125,20 @@ test("shows visit counts and creates a custom link with the full waitlist destin
     },
   ]);
   expect(screen.getByLabelText("Path").getAttribute("value")).toBe("");
+});
+
+test("keeps the create form read-only while the create runs", async () => {
+  let release = () => {};
+  writeGate = new Promise((resolve) => (release = resolve));
+  renderPage();
+  await screen.findByText("/100k");
+  fill("/second-flyer");
+
+  const path = screen.getByLabelText("Path");
+  await waitFor(() => expect(path).toHaveProperty("readOnly", true));
+  release();
+  await screen.findByText("/second-flyer");
+  expect(path).toHaveProperty("readOnly", false);
 });
 
 test("rejects reserved paths without sending them to the API", async () => {
@@ -134,12 +158,19 @@ test("keeps the create form and displays a duplicate-path refusal", async () => 
   expect(screen.getByLabelText("Path").getAttribute("value")).toBe("/100k");
 });
 
-test("saves an edited destination inline while preserving its query", async () => {
+const editField = async (label: string, value: string) => {
+  await chooseRowAction("/100k", "Edit…");
+  const dialog = await screen.findByRole("dialog");
+  const input = within(dialog).getByLabelText(label);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+  return { dialog, input };
+};
+
+test("saves an edited destination while preserving its query", async () => {
   renderPage();
-  const input = await screen.findByLabelText("Destination for /100k");
   const destination = "/projects/democratic-grantmaking-26?link=new-flyer";
-  fireEvent.change(input, { target: { value: destination } });
-  fireEvent.blur(input);
+  await editField("Destination", destination);
   await waitFor(() => expect(stored[0].destination).toBe(destination));
   expect(writes).toEqual([{ destination }]);
 });
@@ -147,12 +178,24 @@ test("saves an edited destination inline while preserving its query", async () =
 test("keeps an unsuccessful edit visible and reports the refusal", async () => {
   writeStatus = 409;
   renderPage();
-  const input = await screen.findByLabelText("Destination for /100k");
-  fireEvent.change(input, { target: { value: "/guide" } });
-  fireEvent.blur(input);
-  await screen.findByText("Update refused");
+  const { dialog, input } = await editField("Destination", "/guide");
+  await within(dialog).findByText("Update refused");
   expect(input.getAttribute("value")).toBe("/guide");
   expect(stored[0].destination).toBe(flyer.destination);
+});
+
+test("asks before changing a path, since the old path stops working", async () => {
+  renderPage();
+  await editField("Path", "/200k");
+  const question = await screen.findByRole("dialog", {
+    name: "Change the path of “Printed flyer”?",
+  });
+  expect(within(question).getByText(/\/100k stops working/)).toBeTruthy();
+  expect(writes).toEqual([]);
+  fireEvent.click(
+    within(question).getByRole("button", { name: "Change path" }),
+  );
+  await waitFor(() => expect(writes).toEqual([{ slug: "200k" }]));
 });
 
 test("copies the public URL", async () => {
@@ -162,30 +205,34 @@ test("copies the public URL", async () => {
     value: { writeText },
   });
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Copy /100k" }));
-  await screen.findByText("Link copied.");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Copy link: /100k" }),
+  );
+  await screen.findByText("Copied link");
   expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/\/100k$/));
 });
 
 test("requires confirmation before deleting a link", async () => {
   renderPage();
+  await chooseRowAction("/100k", "Delete");
+  expect(writes).toEqual([]);
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(writes).toEqual([]);
+  await chooseRowAction("/100k", "Delete");
   fireEvent.click(await screen.findByRole("button", { name: "Delete link" }));
-  expect(writes).toEqual([]);
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(writes).toEqual([]);
-  fireEvent.click(screen.getByRole("button", { name: "Delete link" }));
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-  await screen.findByText("No custom links yet.");
+  await screen.findByText("No custom links yet");
   expect(writes).toEqual([{ deletedId: "1" }]);
 });
 
 test("displays a load failure and can retry", async () => {
   loadStatus = 403;
   renderPage();
-  await screen.findByText("Unable to load");
+  await screen.findByText("Couldn't load custom links");
+  expect(screen.getByText("Unable to load")).toBeTruthy();
   loadStatus = 200;
-  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByDisplayValue("/100k");
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await screen.findByText("/100k");
 });
 
 test("places Custom links under the Links place", () => {
@@ -194,22 +241,20 @@ test("places Custom links under the Links place", () => {
   expect(links.tabs?.map((tab) => tab.label)).toContain("Custom links");
 });
 
-test("rejects a reserved inline path edit without sending a request", async () => {
+test("rejects a reserved path edit without sending a request", async () => {
   renderPage();
-  const input = await screen.findByLabelText("Path for /100k");
-  fireEvent.change(input, { target: { value: "/join" } });
-  fireEvent.blur(input);
-  await screen.findByText("That path is reserved by the app.");
+  const { dialog } = await editField("Path", "/join");
+  await within(dialog).findByText("That path is reserved by the app.");
   expect(writes).toEqual([]);
 });
 
-test("keeps the link and confirmation open after a failed deletion", async () => {
+test("keeps the link and says so after a failed deletion", async () => {
   writeStatus = 500;
   renderPage();
+  await chooseRowAction("/100k", "Delete");
   fireEvent.click(await screen.findByRole("button", { name: "Delete link" }));
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-  await screen.findByText("Could not delete the custom link.");
-  expect(screen.getByRole("dialog")).toBeTruthy();
+  await screen.findByText("Couldn't delete /100k.");
+  expect(screen.getByText("/100k")).toBeTruthy();
   expect(stored).toEqual([flyer]);
 });
 
@@ -221,7 +266,9 @@ test("reports a failed clipboard write", async () => {
     },
   });
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Copy /100k" }));
-  await screen.findByText("Could not copy the link.");
-  expect(screen.queryByText("Link copied.")).toBeNull();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Copy link: /100k" }),
+  );
+  await screen.findByText("Couldn't copy the link.");
+  expect(screen.queryByText("Copied link")).toBeNull();
 });

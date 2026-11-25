@@ -11,9 +11,13 @@ import {
   screen,
   waitFor,
   waitForElementToBeRemoved,
+  within,
 } from "@testing-library/react";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import ExternalShareTargetsPage from "./ExternalShareTargetsPage";
+import { MemoryRouter } from "react-router";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { ShareTargetsTab } from "./ShareTargetsTab";
 
 const target = (id: number, name: string) =>
   ({
@@ -73,30 +77,41 @@ beforeEach(() => {
   loadStatus = 200;
   writeStatus = 200;
   writeGate = Promise.resolve();
-  jest.spyOn(window, "confirm").mockReturnValue(true);
 });
 
 const renderPage = (query = queryWrapper()) =>
-  render(<ExternalShareTargetsPage />, query);
+  render(
+    <MemoryRouter initialEntries={["/growth/links?tab=share-targets"]}>
+      <ToastProvider>
+        <ShareTargetsTab />
+      </ToastProvider>
+    </MemoryRouter>,
+    query,
+  );
 
 const deleteFirst = async () => {
-  const [first] = await screen.findAllByRole("button", { name: "Delete" });
-  fireEvent.click(first);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete: Partner A" }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete share target" }),
+  );
 };
 
 const saveFirstAs = async (name: string) => {
-  const [first] = await screen.findAllByRole("button", { name: "Edit" });
-  fireEvent.click(first);
-  fireEvent.change(screen.getByDisplayValue("Partner A"), {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Edit: Partner A" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByDisplayValue("Partner A"), {
     target: { value: name },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+  return dialog;
 };
 
 const createPartnerC = () => {
-  const name = screen.getByPlaceholderText(
-    "Internal label, e.g. Partner X signup",
-  );
+  const name = screen.getByPlaceholderText("Partner X signup");
   fireEvent.change(name, { target: { value: "Partner C" } });
   fireEvent.change(screen.getByPlaceholderText("https://example.com/route"), {
     target: { value: "https://example.com/c" },
@@ -104,7 +119,7 @@ const createPartnerC = () => {
   fireEvent.change(screen.getByPlaceholderText("code"), {
     target: { value: "ref" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create share target" }));
   return name;
 };
 
@@ -124,6 +139,20 @@ it("adds a created target to the list and clears the form", async () => {
   expect(name).toHaveProperty("value", "");
 });
 
+it("keeps the form read-only while the create runs", async () => {
+  let release = () => {};
+  writeGate = new Promise((resolve) => (release = resolve));
+  renderPage();
+  await screen.findByText("Partner A");
+
+  const name = createPartnerC();
+
+  await waitFor(() => expect(name).toHaveProperty("readOnly", true));
+  release();
+  expect(await screen.findByText("Partner C")).toBeTruthy();
+  expect(name).toHaveProperty("readOnly", false);
+});
+
 it("keeps the form and shows the refusal when the create fails", async () => {
   writeStatus = 400;
   renderPage();
@@ -139,30 +168,45 @@ it("shows a saved target and leaves edit mode", async () => {
   renderPage();
   await saveFirstAs("Partner Z");
 
-  expect(await screen.findByText("Partner Z")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  expect(await screen.findByRole("cell", { name: "Partner Z" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
 });
 
-it("marks the row saving until the save lands", async () => {
+it("marks the save busy until the save lands", async () => {
   let release = () => {};
   writeGate = new Promise((resolve) => (release = resolve));
   renderPage();
-  await saveFirstAs("Partner Z");
+  const dialog = await saveFirstAs("Partner Z");
 
-  const saving = await screen.findByRole("button", { name: "Saving…" });
-  expect(saving.hasAttribute("disabled")).toBe(true);
+  const saving = within(dialog).getByRole("button", { name: "Save changes" });
+  await waitFor(() => expect(saving.getAttribute("aria-busy")).toBe("true"));
   release();
-  expect(await screen.findByText("Partner Z")).toBeTruthy();
+  expect(await screen.findByRole("cell", { name: "Partner Z" })).toBeTruthy();
 });
 
 it("stays in edit mode and shows the refusal when the save fails", async () => {
   writeStatus = 404;
   renderPage();
-  await saveFirstAs("Partner Z");
+  const dialog = await saveFirstAs("Partner Z");
 
-  expect(await screen.findByText("Refused by the server")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
-  expect(screen.getByText("Partner A")).toBeTruthy();
+  expect(await within(dialog).findByText("Refused by the server")).toBeTruthy();
+  expect(within(dialog).getByDisplayValue("Partner Z")).toBeTruthy();
+  expect(stored.map((t) => t.name)).toEqual(["Partner A", "Partner B"]);
+});
+
+it("asks before moving where the target's links go", async () => {
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Edit: Partner A" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByDisplayValue("https://example.com/1"), {
+    target: { value: "https://example.com/new" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Change link" }));
+
+  await waitFor(() => expect(stored[0].url).toBe("https://example.com/new"));
 });
 
 it("removes a deleted target from the list", async () => {
@@ -179,8 +223,13 @@ it("marks the row deleting until the delete lands", async () => {
   renderPage();
   await deleteFirst();
 
-  const deleting = await screen.findByRole("button", { name: "Deleting…" });
-  expect(deleting.hasAttribute("disabled")).toBe(true);
+  const deleting = screen.getByRole("button", { name: "Delete: Partner A" });
+  await waitFor(() => expect(deleting.getAttribute("aria-busy")).toBe("true"));
+  expect(
+    screen
+      .getByRole("button", { name: "Delete: Partner B" })
+      .getAttribute("aria-busy"),
+  ).toBeNull();
   release();
   await waitForElementToBeRemoved(() => screen.queryByText("Partner A"));
 });
@@ -190,16 +239,14 @@ it("keeps the target and says so when the delete fails", async () => {
   renderPage();
   await deleteFirst();
 
-  expect(
-    await screen.findByText("Unable to delete share target."),
-  ).toBeTruthy();
+  expect(await screen.findByText("Couldn't delete “Partner A”.")).toBeTruthy();
   expect(screen.getByText("Partner A")).toBeTruthy();
   await waitFor(() =>
     expect(
       screen
-        .getAllByRole("button", { name: "Delete" })
-        .map((b) => b.hasAttribute("disabled")),
-    ).toEqual([false, false]),
+        .getAllByRole("button", { name: /^Delete: / })
+        .map((b) => b.getAttribute("aria-busy")),
+    ).toEqual([null, null]),
   );
 });
 
@@ -215,8 +262,9 @@ it("drops a target another admin already deleted", async () => {
 it("says the targets failed to load instead of listing none", async () => {
   loadStatus = 500;
   renderPage();
-  expect(await screen.findByText("Failed to load share targets.")).toBeTruthy();
-  expect(screen.queryByText("No share targets yet.")).toBeNull();
+  expect(await screen.findByText("Couldn't load share targets")).toBeTruthy();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
+  expect(screen.queryByText("No share targets yet")).toBeNull();
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
@@ -234,7 +282,7 @@ it("keeps the loaded targets beside a refetch error", async () => {
   await act(() => query.client.refetchQueries());
 
   await waitFor(() =>
-    expect(screen.getByText("Failed to load share targets.")).toBeTruthy(),
+    expect(screen.getByText(/Couldn't refresh share targets/)).toBeTruthy(),
   );
   expect(screen.getByText("Partner A")).toBeTruthy();
 });

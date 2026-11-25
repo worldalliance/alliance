@@ -200,10 +200,6 @@ src/components/responses-table/SnapshotNavigator.tsx
 src/components/responses-table/cells.tsx
 src/components/row-list/RowConditionEditor.tsx
 src/components/row-list/RowListBuilder.tsx
-src/components/share-links/CampaignPicker.tsx
-src/components/share-links/GroupCard.tsx
-src/components/share-links/ShareLinkManager.tsx
-src/components/share-links/TargetPicker.tsx
 src/components/suite-launch/ActionLinks.tsx
 src/components/suite-launch/ActionReviewCheck.tsx
 src/components/suite-launch/ContractViolationsBanner.tsx
@@ -244,11 +240,8 @@ src/pages/ActionUpdatePage.tsx
 src/pages/ActionUpdatesPage.tsx
 src/pages/Actions.tsx
 src/pages/AmbassadorProgramPage.tsx
-src/pages/CustomLinksPage.tsx
-src/pages/ExternalShareTargetsPage.tsx
 src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
-src/pages/HostedDocsPage.tsx
 src/pages/InviteFeedPage.tsx
 src/pages/InviteGraphPage.tsx
 src/pages/InviteLinksPage.tsx
@@ -260,7 +253,6 @@ src/pages/OutreachPartnershipsPage.tsx
 src/pages/PostsManagement.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
-src/pages/ShareLinksPage.tsx
 src/pages/SuiteLaunchPage.tsx
 src/pages/WaitlistEmailsPage.tsx
 src/pages/WaitlistPage.tsx

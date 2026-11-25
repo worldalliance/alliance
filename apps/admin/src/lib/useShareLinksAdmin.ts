@@ -15,7 +15,6 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
-import { adminRefusalMessage } from "./adminRefusal";
 import { usePatchAnyQueryData } from "./usePatchQueryData";
 
 export type ShareLinkOwner =
@@ -58,9 +57,6 @@ const shareLinksQuery = (owner: ShareLinkOwner | null) =>
     queryKey: queryKeys.shareLinksAdmin(owner),
     queryFn: owner ? () => loadShareLinks(owner) : skipToken,
   });
-
-export const shareLinksLoadError = (error: unknown) =>
-  adminRefusalMessage(error, "Failed to load share links.");
 
 /** Each write names its owner, so it patches that owner's list even after the
  * page has moved on to another. */
