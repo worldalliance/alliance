@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, jest, mock } from "bun:test";
 import {
   ShortcutsProvider,
+  shortcutKeys,
   useOpenShortcutList,
   useShortcut,
 } from "./shortcuts";
@@ -247,3 +248,59 @@ it.each([
     }
   },
 );
+
+const UndoRedo = ({
+  onUndo,
+  onRedo,
+}: {
+  onUndo: () => void;
+  onRedo: () => void;
+}) => {
+  useShortcut({
+    keys: "mod+z",
+    label: "Undo",
+    allowInTextField: false,
+    run: onUndo,
+  });
+  useShortcut({
+    keys: "mod+shift+z",
+    label: "Redo",
+    allowInTextField: false,
+    run: onRedo,
+  });
+  const openList = useOpenShortcutList();
+  return (
+    <>
+      <input aria-label="Label" />
+      <button type="button" onClick={openList}>
+        Keyboard shortcuts
+      </button>
+    </>
+  );
+};
+
+it("tells Shift apart, leaves a text field its own undo and lists both", () => {
+  const onUndo = mock();
+  const onRedo = mock();
+  render(
+    <ShortcutsProvider>
+      <UndoRedo onUndo={onUndo} onRedo={onRedo} />
+    </ShortcutsProvider>,
+  );
+
+  fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+  expect(onUndo).toHaveBeenCalledTimes(1);
+  fireEvent.keyDown(window, { key: "Z", ctrlKey: true, shiftKey: true });
+  expect(onRedo).toHaveBeenCalledTimes(1);
+  expect(onUndo).toHaveBeenCalledTimes(1);
+
+  const field = screen.getByRole("textbox", { name: "Label" });
+  expect(fireEvent.keyDown(field, { key: "z", ctrlKey: true })).toBe(true);
+  expect(onUndo).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+  expect(screen.getByText("Ctrl+Z")).toBeTruthy();
+  expect(screen.getByText("Ctrl+Shift+Z")).toBeTruthy();
+  setPlatform("MacIntel");
+  expect(shortcutKeys("mod+shift+z")).toEqual(["⇧⌘Z"]);
+});

@@ -17,7 +17,7 @@ import { Switch } from "../ui/Switch";
 export type Shortcut = {
   /**
    * Keys pressed one after another, separated by spaces: `[`, `g t`. `mod+k`
-   * is ⌘K on a Mac and Ctrl+K elsewhere.
+   * is ⌘K on a Mac and Ctrl+K elsewhere; `mod+shift+z` is ⇧⌘Z.
    */
   keys: string;
   /** What it does, as the shortcut list words it. */
@@ -25,6 +25,11 @@ export type Shortcut = {
   run: () => void;
   /** The shell's own; a page's shortcuts leave this out. */
   global?: boolean;
+  /**
+   * `false` leaves a `mod+` shortcut to a focused text field, as undo and
+   * redo do, so the field's own undo runs there. Single keys never run in one.
+   */
+  allowInTextField?: boolean;
 };
 
 type Registry = {
@@ -38,6 +43,7 @@ const ShortcutsContext = createContext<Registry | null>(null);
 const STORAGE_KEY = "alliance.admin.singleKeyShortcuts.v1";
 const SEQUENCE_MS = 1000;
 const MOD = "mod+";
+const SHIFT = "shift+";
 
 const readSingleKeysOn = (): boolean =>
   typeof window === "undefined" ||
@@ -53,10 +59,14 @@ const isMac = () =>
   /Mac|iPhone|iPad/.test(navigator.platform);
 
 /** The keys as printed: `mod+k` is ⌘K on a Mac. */
-export const shortcutKeys = (keys: string): string[] =>
-  usesModifier(keys)
-    ? [`${isMac() ? "⌘" : "Ctrl+"}${keys.slice(MOD.length).toUpperCase()}`]
-    : keys.split(" ");
+export const shortcutKeys = (keys: string): string[] => {
+  if (!usesModifier(keys)) return keys.split(" ");
+  const rest = keys.slice(MOD.length);
+  const shift = rest.startsWith(SHIFT);
+  const key = (shift ? rest.slice(SHIFT.length) : rest).toUpperCase();
+  if (isMac()) return [`${shift ? "⇧" : ""}⌘${key}`];
+  return [`Ctrl+${shift ? "Shift+" : ""}${key}`];
+};
 
 /** Whether one is the other, or the keys the other's sequence starts with. */
 const collide = (a: string, b: string) =>
@@ -201,9 +211,12 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
         reset();
         // Only the platform's own modifier: Ctrl+K on a Mac deletes to the end of the line.
         const mod = isMac() ? !event.ctrlKey : !event.metaKey;
-        const combo = `${MOD}${event.key.toLowerCase()}`;
+        const combo = `${MOD}${event.shiftKey ? SHIFT : ""}${event.key.toLowerCase()}`;
         const shortcut = all.find((candidate) => candidate.keys === combo);
-        if (!mod || !shortcut || event.altKey || event.shiftKey) return;
+        if (!mod || !shortcut || event.altKey) return;
+        if (shortcut.allowInTextField === false && isTyping(event.target)) {
+          return;
+        }
         event.preventDefault();
         shortcut.run();
         return;
@@ -281,10 +294,17 @@ function useRegistered(registry: Registry | null, shortcut: Shortcut): void {
   const id = useId();
   const run = useRef(shortcut.run);
   run.current = shortcut.run;
-  const { keys, label, global } = shortcut;
+  const { keys, label, global, allowInTextField } = shortcut;
   useEffect(
-    () => register?.(id, { keys, label, global, run: () => run.current() }),
-    [register, id, keys, label, global],
+    () =>
+      register?.(id, {
+        keys,
+        label,
+        global,
+        allowInTextField,
+        run: () => run.current(),
+      }),
+    [register, id, keys, label, global, allowInTextField],
   );
 }
 
