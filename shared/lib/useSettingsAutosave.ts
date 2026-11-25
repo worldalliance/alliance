@@ -41,6 +41,12 @@ export type SettingsAutosaveState = {
    * number is reported as unsaved rather than as an error to fix.
    */
   setPhoneNumberEditing: (editing: boolean) => void;
+  /** The entered number, while the server refuses it because another account holds it. */
+  refusedPhoneNumber: string | null;
+  /** The number to offer a code for: the refused one, or the saved one while the field shows it. */
+  confirmablePhoneNumber: string | null;
+  /** Records a number confirmed by code, which saved it, so autosave neither resends nor reverts it. */
+  phoneNumberConfirmed: (phoneNumber: string) => void;
   saveStatus: SettingsSaveStatus;
   saveStatusText: string;
   saveError: string | null;
@@ -103,7 +109,12 @@ export function useSettingsAutosave(
         await updateProfile(save.body);
       },
       onSaved: (save) => {
-        setInitialUser(save.savedState);
+        // A number confirmed while this save was on its way stays saved.
+        setInitialUser((previous) =>
+          "phoneNumber" in save.body || !previous
+            ? save.savedState
+            : { ...save.savedState, phoneNumber: previous.phoneNumber },
+        );
         setEditableUser((previous) =>
           settingsSavedEditable(
             previous,
@@ -154,6 +165,11 @@ export function useSettingsAutosave(
     [resetAutosave],
   );
 
+  const phoneNumberConfirmed = useCallback((phoneNumber: string) => {
+    setRefusal(null);
+    setInitialUser((previous) => previous && { ...previous, phoneNumber });
+  }, []);
+
   const setPhoneNumberCountry = useCallback(
     (nextCountry: CountryCode) => {
       clearFailure();
@@ -161,6 +177,8 @@ export function useSettingsAutosave(
     },
     [clearFailure],
   );
+
+  const refusedPhoneNumber = refused ? (refusal?.phoneNumber ?? null) : null;
 
   const saveStatus = settingsSaveStatus({
     saving,
@@ -178,6 +196,14 @@ export function useSettingsAutosave(
     phoneNumberCountry: country,
     setPhoneNumberCountry,
     setPhoneNumberEditing,
+    refusedPhoneNumber,
+    confirmablePhoneNumber:
+      refusedPhoneNumber ??
+      (editableUser?.phoneNumber &&
+      editableUser.phoneNumber === initialUser?.phoneNumber
+        ? editableUser.phoneNumber
+        : null),
+    phoneNumberConfirmed,
     saveStatus,
     saveStatusText: settingsSaveStatusText(saveStatus),
     saveError,

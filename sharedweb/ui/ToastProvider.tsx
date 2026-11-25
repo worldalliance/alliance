@@ -104,6 +104,8 @@ type ConfirmOptions = {
   requiredText?: string;
   requiredTextLabel?: string;
   requiredTextPlaceholder?: string;
+  /** Aborting it closes the confirm, resolving `false`. */
+  signal?: AbortSignal;
 };
 
 type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
@@ -149,7 +151,7 @@ const toastRegion: Record<ToastVariant, ToastRegion> = {
 
 const toastColorClasses: Record<ToastVariant, string> = {
   [ToastVariant.Info]: "bg-slate-700 text-white",
-  [ToastVariant.Success]: "bg-emerald-600 text-white",
+  [ToastVariant.Success]: "bg-emerald-700 text-white",
   [ToastVariant.Warning]: "bg-amber-500 text-white",
   [ToastVariant.Error]: "bg-white text-red-500 border border-red-500",
 };
@@ -209,10 +211,21 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
       requiredText,
       requiredTextLabel,
       requiredTextPlaceholder,
+      signal,
     }: ConfirmOptions): Promise<boolean> => {
+      if (signal?.aborted) return Promise.resolve(false);
       const id = ++idRef.current;
 
-      return new Promise<boolean>((resolve) => {
+      return new Promise<boolean>((settle) => {
+        const onAbort = () => {
+          settle(false);
+          removeToast(id);
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+        const resolve = (value: boolean) => {
+          signal?.removeEventListener("abort", onAbort);
+          settle(value);
+        };
         const toast: ToastConfirm = {
           id,
           variant: "confirm",
@@ -233,7 +246,7 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setToasts((prev) => [...prev, toast]);
       });
     },
-    [],
+    [removeToast],
   );
 
   const handleConfirm = useCallback(

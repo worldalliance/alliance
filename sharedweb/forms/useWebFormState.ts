@@ -118,12 +118,18 @@ export function useWebFormState({
   const {
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
+  } = useFormSchemaMaps({
+    schema,
+    userDefaultPublic,
+    timeZone,
+    profilePhoneNumber: user?.phoneNumber,
+  });
 
   const {
     formData,
@@ -153,6 +159,7 @@ export function useWebFormState({
     userDefaultPublic,
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,

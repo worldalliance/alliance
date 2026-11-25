@@ -12,7 +12,12 @@ describe("useFormSchemaMaps", () => {
       listField("addresses", [textField("street"), textField("city")]),
     ]);
     const { result } = renderHook(() =>
-      useFormSchemaMaps({ schema, userDefaultPublic: false, timeZone: "UTC" }),
+      useFormSchemaMaps({
+        schema,
+        userDefaultPublic: false,
+        timeZone: "UTC",
+        profilePhoneNumber: null,
+      }),
     );
 
     expect(result.current.fieldLookup.has("addresses")).toBe(true);
@@ -31,7 +36,12 @@ describe("useFormSchemaMaps", () => {
     ]);
 
     const { result } = renderHook(() =>
-      useFormSchemaMaps({ schema, userDefaultPublic: true, timeZone: "UTC" }),
+      useFormSchemaMaps({
+        schema,
+        userDefaultPublic: true,
+        timeZone: "UTC",
+        profilePhoneNumber: null,
+      }),
     );
 
     expect(result.current.outputFieldDefaultPublic.get("shared")).toBe(true);
@@ -61,7 +71,12 @@ describe("useFormSchemaMaps", () => {
     };
     const { result, rerender } = renderHook(
       ({ timeZone }) =>
-        useFormSchemaMaps({ schema, userDefaultPublic: false, timeZone }),
+        useFormSchemaMaps({
+          schema,
+          userDefaultPublic: false,
+          timeZone,
+          profilePhoneNumber: null,
+        }),
       { initialProps },
     );
 
@@ -77,12 +92,47 @@ describe("useFormSchemaMaps", () => {
     expect(result.current.defaultValueMap.size).toBe(0);
   });
 
+  it("seeds a phone field that fills the profile with the member's number", () => {
+    const schema = schemaWith([
+      {
+        id: "profile",
+        type: "input",
+        kind: "phone",
+        label: "profile",
+        autoExtractUserData: true,
+        defaultValue: "+14155550100",
+      },
+      { id: "other", type: "input", kind: "phone", label: "other" },
+    ]);
+    const initialProps: { profilePhoneNumber: string | null } = {
+      profilePhoneNumber: "+14155552671",
+    };
+    const { result, rerender } = renderHook(
+      ({ profilePhoneNumber }) =>
+        useFormSchemaMaps({
+          schema,
+          userDefaultPublic: false,
+          timeZone: "UTC",
+          profilePhoneNumber,
+        }),
+      { initialProps },
+    );
+
+    expect(Object.fromEntries(result.current.defaultValueMap)).toEqual({
+      profile: "+14155552671",
+    });
+
+    rerender({ profilePhoneNumber: null });
+    expect(result.current.defaultValueMap.get("profile")).toBe("+14155550100");
+  });
+
   it("reports the page bounds", () => {
     const { result } = renderHook(() =>
       useFormSchemaMaps({
         schema: { pages: [{ id: "a", fields: [] }], outputViews: [] },
         userDefaultPublic: false,
         timeZone: "UTC",
+        profilePhoneNumber: null,
       }),
     );
     expect(result.current.pageCount).toBe(1);

@@ -7,8 +7,10 @@ import {
   type ActionSuiteDto,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { omit } from "es-toolkit";
-import React, { useCallback, useEffect, useState } from "react";
+import jsonStableStringify from "json-stable-stringify";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { useContentConfirm } from "../../components/useContentConfirm";
 import { partsMaySetOptional } from "../../lib/actionFieldDefs";
@@ -16,6 +18,7 @@ import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
 import { useCoverImage } from "../../lib/useCoverImage";
+import { useLeaveGuard } from "../../lib/useLeaveGuard";
 import { imageUploadingMessage, logActionError } from "./actionSaveErrors";
 import { useNavigateToCreatedAction } from "./useActionCommands";
 
@@ -40,9 +43,22 @@ function emptyActionDraft(suiteId: number | undefined): CreateActionDto {
     suiteId,
     optional: false,
     authorIds: [],
+    prerequisiteActionIds: [],
     onboarding: false,
   };
 }
+
+const NAME_MISSING = "Give the action a name.";
+
+// Keys are sorted so a field patched into a saved draft that lacked it
+// compares equal to the form. A blank field may be absent, null or ""
+// depending on whether it was seeded, fetched or cleared, so all three
+// compare equal.
+const serializeDraft = (draft: object) =>
+  jsonStableStringify(draft, {
+    replacer: (_key, value) =>
+      value === null || value === "" ? undefined : value,
+  }) ?? "";
 
 const draftOf = (input: {
   form: CreateActionDto;
@@ -50,7 +66,7 @@ const draftOf = (input: {
   cohortExpression: CohortExpression | null;
   imageKey: string | null;
 }) =>
-  JSON.stringify({
+  serializeDraft({
     ...input.form,
     reviewers: input.reviewerRows.map(({ key: _key, ...row }) => row),
     cohortExpression: input.cohortExpression,
@@ -113,7 +129,7 @@ export function useActionEditor(params: {
     suitesError: boolean;
   };
   searchParams: URLSearchParams;
-  setError: (error: string | null) => void;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
 }) {
   const {
     admin: { action, isFetching: actionFetching, createAction, updateAction },
@@ -147,15 +163,29 @@ export function useActionEditor(params: {
   const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
   const { confirmSave, dialog: contentDialog } = useContentConfirm();
+  // A save can resolve after staff have moved on to another action, whose
+  // draft it must leave alone.
+  const currentActionId = useRef(actionId);
+  useEffect(() => {
+    currentActionId.current = actionId;
+  }, [actionId]);
+  const { success } = useToast();
 
   useEffect(() => {
     if (isNew) {
-      setForm(
-        emptyActionDraft(
-          searchParams.get("suiteId")
-            ? parseInt(searchParams.get("suiteId")!)
-            : undefined,
-        ),
+      const emptyForm = emptyActionDraft(
+        searchParams.get("suiteId")
+          ? parseInt(searchParams.get("suiteId")!)
+          : undefined,
+      );
+      setForm(emptyForm);
+      setSavedDraft(
+        draftOf({
+          form: emptyForm,
+          reviewerRows: [],
+          cohortExpression: null,
+          imageKey: null,
+        }),
       );
       setReviewerRows([]);
       resetCoverImage(null);
@@ -174,9 +204,10 @@ export function useActionEditor(params: {
         console.error(result.error);
         return;
       }
+      if (currentActionId.current !== actionId) return;
       setSavedDraft(
         (prev) =>
-          prev && JSON.stringify({ ...JSON.parse(prev), taskFormId: formId }),
+          prev && serializeDraft({ ...JSON.parse(prev), taskFormId: formId }),
       );
     }
   };
@@ -190,9 +221,10 @@ export function useActionEditor(params: {
       setError(result.error);
       return;
     }
+    if (currentActionId.current !== actionId) return;
     setForm((prev) => ({ ...prev, staffPreview }));
     setSavedDraft(
-      (prev) => prev && JSON.stringify({ ...JSON.parse(prev), staffPreview }),
+      (prev) => prev && serializeDraft({ ...JSON.parse(prev), staffPreview }),
     );
   };
 
@@ -267,6 +299,9 @@ export function useActionEditor(params: {
       ...prev,
       [name]: actionFormInputValue(name, value),
     }));
+    if (name === "name" && value.trim()) {
+      setError((shown) => (shown === NAME_MISSING ? null : shown));
+    }
   };
 
   const handleCohortExpressionChange = useCallback(
@@ -299,6 +334,17 @@ export function useActionEditor(params: {
     if (file) void pickCoverImage(file);
   };
 
+  const dirty =
+    seededActionId === actionId &&
+    savedDraft !== null &&
+    draftOf({ form, reviewerRows, cohortExpression, imageKey }) !== savedDraft;
+  // A cover image still uploading is not in the draft yet. A new action's
+  // draft resets when its search params change.
+  const navigateUnprompted = useLeaveGuard(
+    dirty || (imageUploading && seededActionId === actionId),
+    { allowSamePath: !isNew },
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -314,6 +360,11 @@ export function useActionEditor(params: {
 
     if (imageUploading) {
       setError(imageUploadingMessage);
+      return;
+    }
+
+    if (!form.name.trim()) {
+      setError(NAME_MISSING);
       return;
     }
 
@@ -348,7 +399,11 @@ export function useActionEditor(params: {
         setError(result.error);
         return;
       }
-      handleActionCreated(result.value);
+      const created = result.value;
+      success(`Saved "${form.name.trim()}"`);
+      if (currentActionId.current !== actionId) return;
+      setSavedDraft(null);
+      navigateUnprompted(() => handleActionCreated(created));
     } else if (actionId) {
       // The mutation invalidates the action query, so fresh data is
       // refetched before this resolves.
@@ -375,6 +430,8 @@ export function useActionEditor(params: {
         setError(result.error);
         return;
       }
+      success(`Saved "${form.name.trim()}"`);
+      if (currentActionId.current !== actionId) return;
       if (!gridOptional) {
         setSavedDraft(submitted);
         return;
@@ -395,10 +452,7 @@ export function useActionEditor(params: {
 
   return {
     draftSeeded: seededActionId === actionId,
-    dirty:
-      savedDraft !== null &&
-      draftOf({ form, reviewerRows, cohortExpression, imageKey }) !==
-        savedDraft,
+    dirty,
     setStaffPreview,
     contentDialog,
     form,

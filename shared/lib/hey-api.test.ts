@@ -1,7 +1,12 @@
 import { errorMessage, GENERIC_FAILURE } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
+import { z } from "zod";
 import { client } from "../client/client.gen";
-import { createClientConfig, refreshSession } from "./hey-api";
+import {
+  createClientConfig,
+  namedRefusalMessage,
+  refreshSession,
+} from "./hey-api";
 import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 
 const originalNavigator = globalThis.navigator;
@@ -283,5 +288,27 @@ describe("refreshSession", () => {
     );
     answering(200);
     expect(await refreshSession()).toEqual(R.success(true));
+  });
+});
+
+describe("namedRefusalMessage", () => {
+  const codes = z.enum(["wrong_code"]);
+
+  it("shows the copy of a refusal named with one of the codes, at any status", () => {
+    expect(
+      namedRefusalMessage(
+        { statusCode: 503, error: "wrong_code", message: "Try again." },
+        codes,
+      ),
+    ).toBe("Try again.");
+  });
+
+  it("falls back for a refusal named with another code", () => {
+    expect(
+      namedRefusalMessage(
+        { statusCode: 503, error: "other", message: "Internal detail" },
+        codes,
+      ),
+    ).toBe(GENERIC_FAILURE);
   });
 });

@@ -9,6 +9,7 @@ import {
 } from "@alliance/shared/client";
 import { draftFetchState } from "@alliance/shared/forms/draftFetchState";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import { seedsFromMember } from "@alliance/shared/forms/useFormSchemaMaps";
 import { taskFlowMode } from "@alliance/shared/forms/useTaskFlow";
 import {
   formAlreadySubmitted,
@@ -202,12 +203,7 @@ const ActionTaskPanelForm = ({
   }
 
   const schema = form?.schema as unknown as FormSchema | undefined;
-  // The form seeds its timezone fields from `user` at mount.
-  const waitsForUser =
-    authLoading &&
-    !!schema?.pages.some((page) =>
-      page.fields.some((item) => item.kind === "timezone"),
-    );
+  const waitsForUser = authLoading && !!schema && seedsFromMember(schema);
 
   if (!form || !schema || waitsForUser) {
     if (isPending || waitsForUser) {

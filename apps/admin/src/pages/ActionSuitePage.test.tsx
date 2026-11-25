@@ -13,6 +13,7 @@ import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, jest, spyOn } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../components/LeaveGuard";
 import ActionSuitePage from "./ActionSuitePage";
 import SuiteLaunchPage from "./SuiteLaunchPage";
 
@@ -83,7 +84,14 @@ afterEach(() => {
 const renderPage = (initialEntry = "/suites/3") => {
   const router = createMemoryRouter(
     [
-      { path: "/suites/:suiteId", element: <ActionSuitePage /> },
+      {
+        path: "/suites/:suiteId",
+        element: (
+          <LeaveGuard>
+            <ActionSuitePage />
+          </LeaveGuard>
+        ),
+      },
       { path: "/suites/:suiteId/launch", element: <SuiteLaunchPage /> },
     ],
     { initialEntries: [initialEntry] },
@@ -125,6 +133,8 @@ it("says why an edit was refused", async () => {
   renderPage();
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit for all" }));
+  expect(screen.getByLabelText("Title")).toBeTruthy();
+  expect(screen.getByLabelText("Date")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
   expect(await screen.findByText("Title is too long")).toBeTruthy();

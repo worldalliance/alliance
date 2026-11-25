@@ -136,7 +136,7 @@ it("groups members by the actions they get and previews one from a group", async
 it("lists the reminders the launch creates", async () => {
   renderPanel();
   expect(await screen.findByText("7 created on launch")).toBeTruthy();
-  expect(screen.getByText("Member Action announcement")).toBeTruthy();
+  expect(screen.getByText("Member action announcement")).toBeTruthy();
   expect(screen.getByText("Missed deadline message")).toBeTruthy();
 });
 
@@ -225,7 +225,7 @@ it("shows each reminder as the picked group of members gets it", async () => {
   const announcement = (
     await screen.findByText("New Alliance tasks: Call, Write", { exact: false })
   ).closest("li");
-  expect(announcement?.textContent).toContain("Member Action announcement");
+  expect(announcement?.textContent).toContain("Member action announcement");
   expect(announcement?.textContent).toContain("As Ben gets it");
   if (!announcement) throw new Error("no announcement");
   const preview = within(announcement);
@@ -236,7 +236,7 @@ it("shows each reminder as the picked group of members gets it", async () => {
     preview.getByRole("figure", { name: "Push notification" }).textContent,
   ).toContain("New tasks: Call, Write");
   expect(
-    preview.getByText("Text Message").closest("figure")?.textContent,
+    preview.getByText("Text message").closest("figure")?.textContent,
   ).toContain("New Alliance tasks: Call, Write. Complete within");
 
   const mixes = within(

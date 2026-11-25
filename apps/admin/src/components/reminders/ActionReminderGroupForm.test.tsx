@@ -127,7 +127,7 @@ it("holds submit until the recipient count is current", async () => {
       : Promise.resolve(Response.json([], { status: 201 })),
   );
   renderForm(formElement(7));
-  const submit = screen.getByRole("button", { name: "Create Reminders" });
+  const submit = screen.getByRole("button", { name: "Create reminders" });
 
   expect(submit).toHaveProperty("disabled", true);
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
@@ -165,7 +165,7 @@ it("holds submit after a failed preview until a retry succeeds", async () => {
     return Response.json([plan], { status: 201 });
   });
   renderForm(formElement(7));
-  const submit = screen.getByRole("button", { name: "Create Reminders" });
+  const submit = screen.getByRole("button", { name: "Create reminders" });
 
   expect(await screen.findByText(countError)).toBeTruthy();
   expect(submit).toHaveProperty("disabled", true);
@@ -255,7 +255,7 @@ it("clears a fixed validation error once the preview succeeds", async () => {
 it("holds submit again when a change outdates the count", async () => {
   mockFetch(async () => Response.json([plan], { status: 201 }));
   const { rerender } = renderForm(formElement(7));
-  const submit = screen.getByRole("button", { name: "Create Reminders" });
+  const submit = screen.getByRole("button", { name: "Create reminders" });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
 
   rerender(formElement(8));
@@ -273,7 +273,7 @@ it("lets a form that needs no count submit while counting", async () => {
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
   expect(
-    screen.getByRole("button", { name: "Create Reminders" }),
+    screen.getByRole("button", { name: "Create reminders" }),
   ).toHaveProperty("disabled", false);
 });
 
@@ -286,7 +286,7 @@ it("previews the text message for the chosen task count", async () => {
   renderForm(formElement(7));
 
   fireEvent.click(
-    screen.getByRole("button", { name: "Preview Text (2 tasks)" }),
+    screen.getByRole("button", { name: "Preview text (2 tasks)" }),
   );
 
   expect(await screen.findByText("Rendered text")).toBeTruthy();
@@ -305,7 +305,7 @@ it("shows why an email preview failed", async () => {
   renderForm(formElement(7));
 
   fireEvent.click(
-    screen.getByRole("button", { name: "Preview Email (1 task)" }),
+    screen.getByRole("button", { name: "Preview email (1 task)" }),
   );
 
   expect(await screen.findByText("Unknown keyword")).toBeTruthy();
@@ -322,7 +322,7 @@ it("previews the push message", async () => {
   renderForm(formElement(7));
 
   fireEvent.click(
-    screen.getByRole("button", { name: "Preview Push (1 task)" }),
+    screen.getByRole("button", { name: "Preview push (1 task)" }),
   );
 
   expect(
@@ -344,7 +344,7 @@ it("keeps a save error visible over a failed preview", async () => {
   );
 
   fireEvent.click(
-    screen.getByRole("button", { name: "Preview Email (1 task)" }),
+    screen.getByRole("button", { name: "Preview email (1 task)" }),
   );
 
   expect(await screen.findByText("Unknown keyword")).toBeTruthy();
@@ -361,11 +361,11 @@ it("switches the previewed task count and closes the preview", async () => {
   });
   renderForm(formElement(7));
   const previewTwo = screen.getByRole("button", {
-    name: "Preview Text (2 tasks)",
+    name: "Preview text (2 tasks)",
   });
 
   fireEvent.click(
-    screen.getByRole("button", { name: "Preview Text (1 task)" }),
+    screen.getByRole("button", { name: "Preview text (1 task)" }),
   );
   expect(await screen.findByText("Rendered for 1")).toBeTruthy();
   fireEvent.click(previewTwo);
@@ -420,7 +420,7 @@ it("shows why it refuses to submit", async () => {
   fireEvent.change(screen.getByDisplayValue("All uncompleted"), {
     target: { value: "custom" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create Reminders" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create reminders" }));
 
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Select at least one user.",

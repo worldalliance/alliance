@@ -121,12 +121,18 @@ export function useMobileFormState({
   const {
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     unknownKind,
     hasUserLocationDisplayBlock,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,
-  } = useFormSchemaMaps({ schema, userDefaultPublic, timeZone });
+  } = useFormSchemaMaps({
+    schema,
+    userDefaultPublic,
+    timeZone,
+    profilePhoneNumber: user?.phoneNumber,
+  });
 
   const {
     previousAnswerSchemas,
@@ -203,6 +209,7 @@ export function useMobileFormState({
     edited: hasEmittedStart,
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     outputFieldDefaultPublic,
     outputFieldIds,
     maxPageIndex,

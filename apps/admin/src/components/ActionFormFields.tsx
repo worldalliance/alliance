@@ -141,6 +141,7 @@ const ActionFormFields: React.FC<
             value={(form as any)[f.name] ?? ""}
             onChange={onInputChange}
             rows={f.rows || 3}
+            required={f.required}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           />
         </div>

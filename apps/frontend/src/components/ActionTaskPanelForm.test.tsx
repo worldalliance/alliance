@@ -30,7 +30,7 @@ import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
-import { CLOSE_TIMEOUT } from "./taskflow/TaskFlow.testing";
+import { CLOSE_TIMEOUT, LAZY_PART_TIMEOUT } from "./taskflow/TaskFlow.testing";
 
 const action = makeAction({ id: 1 });
 
@@ -103,6 +103,71 @@ it("seeds a timezone field from a member whose session loads after the form", as
   await begin();
 
   expect(await screen.findByRole("combobox", { name: /Chatham/ })).toBeTruthy();
+});
+
+it("seeds a profile phone field over its default from a member whose session loads after the form", async () => {
+  api.alsoServing({
+    "GET /tasks/slug/:id": () =>
+      Response.json({
+        id: 9,
+        title: "task",
+        formSnapshotId: 1,
+        schema: {
+          pages: [
+            {
+              id: "p1",
+              fields: [
+                {
+                  id: "phone",
+                  type: "input",
+                  kind: "phone",
+                  label: "Phone",
+                  autoExtractUserData: true,
+                  defaultValue: "+14155550100",
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      }),
+  });
+  const queryClient = new QueryClient();
+  const panel = (auth: AuthContextType) => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <SiteAppProvider>
+          <AuthContext.Provider value={auth}>
+            {withFlow(
+              <ActionTaskPanelForm
+                taskFormId={9}
+                action={action}
+                onCompleteAction={() => {}}
+                onDeadlinePassed={() => {}}
+                onFormStarted={() => {}}
+                publicAction
+              />,
+            )}
+          </AuthContext.Provider>
+        </SiteAppProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+  const { rerender } = render(panel(authValue({ loading: true })));
+  await waitFor(() =>
+    expect(queryClient.getQueryData(queryKeys.taskForm(9))).toBeDefined(),
+  );
+  rerender(
+    panel(authValue({ user: makeUser({ phoneNumber: "+14155552671" }) })),
+  );
+  await begin();
+
+  const field = await screen.findByRole(
+    "textbox",
+    { name: /Phone/ },
+    { timeout: LAZY_PART_TIMEOUT },
+  );
+  expect((field as HTMLInputElement).value).toContain("2671");
 });
 
 it("opens a form with no timezone field to begin before the session loads", async () => {

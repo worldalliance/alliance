@@ -194,12 +194,16 @@ export const sharedEnvReads = {
   reader: "the app's webEnv() or mobileEnv(), and pass the value in",
 };
 
-export const frontendBlockerImport = {
+/** Keeps React Router's one blocker in the file or files `owner` names. */
+export const blockerImport = (owner) => ({
   name: "react-router",
   importNames: ["useBlocker", "unstable_usePrompt"],
-  message:
-    "React Router runs only one blocker; merge into the one in apps/frontend/src/lib/useFullLoadOnNewBuild.ts.",
-};
+  message: `React Router runs only one blocker; merge into the one in ${owner}.`,
+});
+
+export const frontendBlockerImport = blockerImport(
+  "apps/frontend/src/lib/useFullLoadOnNewBuild.ts",
+);
 
 export default [
   { linterOptions: { reportUnusedDisableDirectives: "error" } },

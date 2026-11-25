@@ -33,6 +33,7 @@ interface ActionTimelineProps {
   focusOnDate?: Date | string | number | null;
   latestLaunchFirst?: boolean;
   participantsById?: ReadonlyMap<number, CohortSegment[]>;
+  emptyMessage?: React.ReactNode;
 }
 
 const EMPTY_REMINDERS: TimelineReminder[] = [];
@@ -47,6 +48,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   focusOnDate,
   latestLaunchFirst = false,
   participantsById,
+  emptyMessage = "No actions with timeline events found.",
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -197,11 +199,18 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   };
 
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
-    const emptyMessage = "No actions with timeline events found.";
+    // Nested as in the populated chart below, so React keeps the header's
+    // controls, and their focus, mounted when the chart empties or fills.
     return header ? (
       <div className={cn("bg-white rounded-lg", className)}>
-        <div className="w-80 h-[50px] bg-zinc-50 border-b border-r border-zinc-200 py-3 pr-4 text-xs">
-          {header}
+        <div>
+          <div>
+            <div className="w-80 border-r border-zinc-200">
+              <div className="h-[50px] bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs">
+                <div className="h-full">{header}</div>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="p-8 text-center text-zinc-500">{emptyMessage}</div>
       </div>
@@ -260,6 +269,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   </div>
                   <ActionTimelineRowMeta
                     status={action.status}
+                    archived={action.archived}
                     participants={participantsById?.get(action.id)}
                   />
                 </Link>

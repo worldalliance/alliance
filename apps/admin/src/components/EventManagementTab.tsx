@@ -1,5 +1,6 @@
 import { AdminActionDto } from "@alliance/shared/client";
 import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -37,7 +38,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           >
             <ChevronDown className="h-3 w-3 text-black" />
           </button>
-          <h2 className="text-lg font-semibold">Add New Event</h2>
+          <h2 className="text-lg font-semibold">Add new event</h2>
         </div>
         {addEventExpanded && (
           <CreateEventForm
@@ -50,7 +51,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
           />
         )}
       </Card>
-      <h2 className="text-lg font-semibold mb-4">All Events</h2>
+      <h2 className="text-lg font-semibold mb-4">All events</h2>
       <div className="space-y-3 mb-3">
         {action.events && action.events.length > 0 ? (
           sortByDateDescending(action.events).map((event) => (
@@ -79,17 +80,7 @@ const EventManagementTab = ({ action, addEvent }: EventManagementTabProps) => {
               )}
 
               <div className="text-xs text-gray-500 space-y-1">
-                <div>
-                  Date:{" "}
-                  {new Date(event.date).toLocaleString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZoneName: "short",
-                  })}
-                </div>
+                <div>Date: {formatDateTimeWithZone(new Date(event.date))}</div>
               </div>
             </div>
           ))

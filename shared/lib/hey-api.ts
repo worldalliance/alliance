@@ -129,3 +129,17 @@ export const thrownRefusalMessage = (params: {
   if (status === undefined) return params.fallback;
   return refusalMessage({ ...params, status });
 };
+
+/** The server's copy for a refusal it named with one of `codes`, at any
+ * status, including the 503 of a failed delivery. */
+export const namedRefusalMessage = (
+  error: unknown,
+  codes: z.ZodType<string>,
+): string =>
+  z.object({ error: codes, message: z.string() }).safeParse(error).data
+    ?.message ??
+  thrownRefusalMessage({
+    error,
+    fallback: GENERIC_FAILURE,
+    sessionExpired: GENERIC_FAILURE,
+  });

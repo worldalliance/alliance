@@ -38,9 +38,11 @@ const CHIP = "rounded border border-black/10 px-1 leading-4 shrink-0";
 
 const ActionTimelineRowMeta = ({
   status,
+  archived,
   participants,
 }: {
   status: ActionStatus;
+  archived?: boolean;
   participants?: CohortSegment[];
 }) => (
   <div
@@ -55,6 +57,16 @@ const ActionTimelineRowMeta = ({
     >
       {STATUS_SHORT[status]}
     </span>
+    {archived && (
+      <span
+        className={cn(
+          CHIP,
+          "bg-zinc-200 text-xs font-medium uppercase text-zinc-700",
+        )}
+      >
+        archived
+      </span>
+    )}
     {participants && (
       <span className="truncate">
         {participants.map((segment, index) => {

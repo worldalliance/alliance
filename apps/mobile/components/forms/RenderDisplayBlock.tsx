@@ -21,6 +21,7 @@ import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
 import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
+import { ExpertBubble } from "./ExpertBubble";
 import HtmlBlock from "./HtmlBlock";
 import ImagesDisplay from "./ImagesDisplay";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
@@ -270,6 +271,18 @@ export function RenderDisplayBlockMobile({
         </View>
       );
     }
+    case "expertMessage":
+      return (
+        <ExpertBubble expert={block.expert} showName>
+          <AppMarkdownWrapper
+            style={MARKDOWN_HUG_WIDTH_STYLE}
+            tone={MarkdownTone.Default}
+            markLinksLeavingApp
+          >
+            {block.text}
+          </AppMarkdownWrapper>
+        </ExpertBubble>
+      );
     case "chatTranscript": {
       const transcript = groupChatTranscriptMessages(block.messages).map(
         (group, gi) => {

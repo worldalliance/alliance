@@ -82,7 +82,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
     <>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Email Subject
+          Email subject
         </label>
         <TextareaWithHighlights
           keywords={keywords}
@@ -96,7 +96,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
       <div>
         <div className="flex items-center gap-2 mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email Message
+            Email message
           </label>
           <Button
             onClick={handlePreviewEmail1Task}
@@ -108,7 +108,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
             }
             className="!px-2 !py-1"
           >
-            Preview Email (1 task)
+            Preview email (1 task)
           </Button>
           <Button
             onClick={handlePreviewEmail2Task}
@@ -120,7 +120,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
             }
             className="!px-2 !py-1"
           >
-            Preview Email (2 tasks)
+            Preview email (2 tasks)
           </Button>
         </div>
         {emailPreviewTaskCount !== null ? (
@@ -147,7 +147,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
       <div>
         <div className="flex items-center gap-2 mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Text Message
+            Text message
           </label>
           <Button
             onClick={handlePreviewText1Task}
@@ -157,7 +157,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
             }
             className="!px-2 !py-1"
           >
-            Preview Text (1 task)
+            Preview text (1 task)
           </Button>
           <Button
             onClick={handlePreviewText2Task}
@@ -167,7 +167,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
             }
             className="!px-2 !py-1"
           >
-            Preview Text (2 tasks)
+            Preview text (2 tasks)
           </Button>
         </div>
         {textPreviewTaskCount !== null ? (
@@ -192,7 +192,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
       <div>
         <div className="flex items-center gap-2 mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Push Message
+            Push message
           </label>
           <Button
             onClick={handlePreviewPushTask}
@@ -202,7 +202,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
             }
             className="!px-2 !py-1"
           >
-            Preview Push (1 task)
+            Preview push (1 task)
           </Button>
           <Button
             onClick={handlePreviewPush2Task}
@@ -212,7 +212,7 @@ const ReminderMessageFields: React.FC<ReminderMessageFieldsProps> = ({
             }
             className="!px-2 !py-1"
           >
-            Preview Push (2 tasks)
+            Preview push (2 tasks)
           </Button>
         </div>
         {pushPreviewTaskCount !== null ? (

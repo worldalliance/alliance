@@ -15,7 +15,6 @@ import {
   actionsCreateAdmin,
   actionsFindOneAdmin,
   actionsPasteJsonAdmin,
-  actionsRemoveAdmin,
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
   CreateActionDto,
@@ -151,17 +150,6 @@ export function useActionAdmin(
     onSuccess: invalidateActionAndList,
   });
 
-  const removeActionMutation = useMutation({
-    // No per-action invalidation: refetching a deleted action would just 404;
-    // callers navigate away.
-    mutationFn: () =>
-      actionsRemoveAdmin({
-        path: { id: requireActionId() },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onSuccess: invalidateList,
-  });
-
   const archiveActionMutation = useMutation({
     mutationFn: () =>
       actionsArchiveAdmin({
@@ -264,8 +252,6 @@ export function useActionAdmin(
     pasteActionJson: pasteActionJsonMutation.mutateAsync,
     updateAction: updateActionMutation.mutateAsync,
     isUpdating: updateActionMutation.isPending,
-    removeAction: removeActionMutation.mutateAsync,
-    isRemoving: removeActionMutation.isPending,
     archiveAction: archiveActionMutation.mutateAsync,
     unarchiveAction: unarchiveActionMutation.mutateAsync,
     addEvent: addEventMutation.mutateAsync,
