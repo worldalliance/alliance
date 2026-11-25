@@ -1,52 +1,32 @@
 import type { ActionStatus } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import { ActionPhase } from "../lib/actionPhase";
-import {
-  COUNT_COLORS,
-  COUNT_LABELS,
-  STEP_COUNT_BUCKET,
-} from "../lib/projectCards";
+import Badge, { BadgeTone } from "../ui/Badge";
+import PhaseBadge from "../ui/PhaseBadge";
 
 type OpenPhase = Exclude<ActionPhase, ActionPhase.Closed>;
 
-const PHASE_LABELS: Record<OpenPhase, string> = {
-  [ActionPhase.Draft]: "Draft",
-  [ActionPhase.StaffTesting]: "Staff testing",
-  [ActionPhase.Scheduled]: "Scheduled",
-  [ActionPhase.Live]: "Live",
+const OPEN_PHASE: Record<OpenPhase, { label: string; tone: BadgeTone }> = {
+  [ActionPhase.Draft]: { label: "Draft", tone: BadgeTone.Neutral },
+  [ActionPhase.StaffTesting]: {
+    label: "Staff testing",
+    tone: BadgeTone.Warning,
+  },
+  [ActionPhase.Scheduled]: { label: "Scheduled", tone: BadgeTone.Info },
+  [ActionPhase.Live]: { label: "Live", tone: BadgeTone.Success },
 };
 
-const PHASE_COLORS: Record<OpenPhase, string> = {
-  [ActionPhase.Draft]: "bg-zinc-100 text-zinc-700",
-  [ActionPhase.StaffTesting]: "bg-amber-100 text-amber-800",
-  [ActionPhase.Scheduled]: "bg-blue-100 text-blue-800",
-  [ActionPhase.Live]: "bg-purple-100 text-purple-800",
-};
-
+/** Where a task stands before it closes; once closed, its final status. */
 const ActionPhasePill = ({
   phase,
   status,
 }: {
   phase: ActionPhase;
   status: ActionStatus;
-}) => {
-  const [label, color] =
-    phase === ActionPhase.Closed
-      ? [
-          COUNT_LABELS[STEP_COUNT_BUCKET[status]],
-          COUNT_COLORS[STEP_COUNT_BUCKET[status]],
-        ]
-      : [PHASE_LABELS[phase], PHASE_COLORS[phase]];
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
-        color,
-      )}
-    >
-      {label}
-    </span>
+}) =>
+  phase === ActionPhase.Closed ? (
+    <PhaseBadge status={status} />
+  ) : (
+    <Badge tone={OPEN_PHASE[phase].tone}>{OPEN_PHASE[phase].label}</Badge>
   );
-};
 
 export default ActionPhasePill;

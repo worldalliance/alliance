@@ -31,7 +31,7 @@ export const COLLAPSIBLE: Record<ProjectLifecycle, boolean> = {
 };
 
 // Event dates are instants members experience, so they read in the launch zone.
-const day = (date: Date | string) =>
+export const day = (date: Date | string) =>
   formatDate(date, { timeZone: LAUNCH_TIME_ZONE });
 
 const relative = (date: Date) =>

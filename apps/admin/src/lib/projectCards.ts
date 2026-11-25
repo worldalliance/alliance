@@ -5,7 +5,6 @@ import type {
   AdminProjectDto,
 } from "@alliance/shared/client";
 import { addDays, addHours, isAfter, isBefore } from "date-fns";
-import { BADGE_TONE_CLASS, BadgeTone } from "../ui/Badge";
 import { ActionPhase, actionPhase } from "./actionPhase";
 
 export enum ProjectLifecycle {
@@ -49,14 +48,6 @@ export const COUNT_LABELS: Record<StepCountBucket, string> = {
   [StepCountBucket.Draft]: "draft",
   [StepCountBucket.WrappingUp]: "wrapping up",
   [StepCountBucket.Done]: "done",
-};
-
-export const COUNT_COLORS: Record<StepCountBucket, string> = {
-  [StepCountBucket.Live]: BADGE_TONE_CLASS[BadgeTone.Success],
-  [StepCountBucket.Planned]: BADGE_TONE_CLASS[BadgeTone.Info],
-  [StepCountBucket.Draft]: BADGE_TONE_CLASS[BadgeTone.Neutral],
-  [StepCountBucket.WrappingUp]: BADGE_TONE_CLASS[BadgeTone.Info],
-  [StepCountBucket.Done]: BADGE_TONE_CLASS[BadgeTone.Neutral],
 };
 
 export enum ProjectFlagKind {

@@ -10,7 +10,6 @@ src/components/ActionFormFields.tsx
 src/components/ActionFormVariantCoverage.tsx
 src/components/ActionFormVariantsTab.tsx
 src/components/ActionListCard.tsx
-src/components/ActionPhasePill.tsx
 src/components/ActionProgressBar.tsx
 src/components/ActionProjectControls.tsx
 src/components/ActionReviewersEditor.tsx
@@ -62,16 +61,12 @@ src/components/IdentitySwatch.tsx
 src/components/InsertableTokenButton.tsx
 src/components/MarkedDiagnostics.tsx
 src/components/NewActionTimeline.tsx
-src/components/NewProjectActionDialog.tsx
 src/components/NumberSample.tsx
 src/components/OpenReferenceWarning.tsx
 src/components/OutputBuilder.tsx
 src/components/PrerequisitePicker.tsx
 src/components/PreviewAsUserBar.tsx
 src/components/PriorityFollowUps.tsx
-src/components/ProjectCardBody.tsx
-src/components/ProjectMiniTimeline.tsx
-src/components/ProjectStepRows.tsx
 src/components/ReferralUrlNotice.tsx
 src/components/SelectableCards.tsx
 src/components/ShareableTextBuilder.tsx
@@ -278,7 +273,6 @@ src/pages/OutreachPartnershipsPage.tsx
 src/pages/PostsManagement.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
-src/pages/ProjectDetailPage.tsx
 src/pages/ShareLinksPage.tsx
 src/pages/SuiteLaunchPage.tsx
 src/pages/WaitlistEmailsPage.tsx
