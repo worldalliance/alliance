@@ -6,7 +6,17 @@ It holds what you can't get from reading the components: which template a place 
 
 The spec is `docs/provenance/01a2113f-1284-77d9-a6e3-9a2aec087109-modern-admin-redesign/` ("the spec" below). `agents/skills/ux-guidelines/SKILL.md` applies in full and this guide doesn't repeat it; where this guide departs from the skill on purpose it says so, as for one-off values, and the guide wins; on any other disagreement, tell the system owner (see **Asking for a change**) and follow the skill meanwhile.
 
-Reference page: `TODO(reference): path of the finished reference page`. When this guide and the reference page disagree, the guide is right and the page has a bug to report.
+Reference page: Members › Groups, in `apps/admin/src/pages/groups/` (`/members/groups`, `/members/groups/:id`). Read it beside this guide and copy its shape:
+
+- `GroupsPage.tsx`: a List place with tabs. One `Page`; the route file holds the queries both tabs need and hands each tab's body its data; a failed load of one part is a `Banner` on the tab that depends on it.
+- `AllGroupsTab.tsx`: filter bar with a search in `?q=`, `ContentState` for loading, failed, no results and nothing yet, then `<Table bleed>`.
+- `AwaitingTab.tsx`: a table with a control in each row, one list-wide primary action in the filter bar, and a `ConfirmDialog` that stays open, `busy`, while the write runs.
+- `NewGroupDialog.tsx`: create in a dialog, then open the new record. `AddPersonDialog.tsx`: a dialog that reports a refusal inside itself.
+- `GroupPage.tsx`: a Record with tabs: title from the record, facts in the description, loading, failed, not found, a danger action behind `confirm`, and a failed write as a dismissible `Banner`.
+- `GroupMembersTab.tsx`: a table in a `Panel`, row actions behind `confirm`, each `busy` while it runs. `GroupSettingsTab.tsx`: an explicit-save form with `SaveBar`, `useLeaveGuard` and errors on their fields.
+- `groupRules.ts`, `useGroupAssignment.ts`, `useGroupMembership.ts`: the page's rules and state, out of the markup. The `*.test.tsx` files show what a page test wraps the page in.
+
+When this guide and the reference page disagree, the guide is right and the page has a bug to report.
 
 ## What you must keep
 
@@ -23,9 +33,24 @@ These bind every page. Each has a reason a reviewer will check against.
 9. **Nothing in view moves.** Selecting, hovering, opening an inspector, a sheet or a menu, a load finishing, a save bar or bulk bar appearing: none of them shifts content the reader is looking at (owner requirement, admin-wide). The templates do this by default: panes and side panels have fixed widths, skeletons take the content's shape, the save bar is always there, the bulk bar floats. Don't undo it: no control that appears only on hover or selection in the flow, no border that adds width when selected (use an outline or a colour change), no panel that mounts beside content and squeezes it.
 10. **Member content keeps the member look.** Any container of `FormRenderer`, `DisplayOnlyBlocks`, `RenderDisplayBlock`, `OutputRenderer`, `AppMarkdownWrapper` or `ActionUpdateCard` gets the class `member-surface`, which restores the member app's type inside the admin's.
 
+### Files
+
+A place's files live in one folder, `apps/admin/src/pages/<place>/`, named for the place's path (`pages/groups/`), with its record's page beside it. A stranger finds a page from its URL, and deleting the folder deletes the place.
+
+| File                                          | Holds                                                                                                                   |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `<Place>Page.tsx` (`GroupsPage.tsx`)          | The place's route: the default export `routes.ts` points at. One `Page`, its tabs, the queries more than one tab needs. |
+| `<Record>Page.tsx` (`GroupPage.tsx`)          | The record's route, the same way.                                                                                       |
+| `<Name>Tab.tsx`                               | One tab's body, a named export. A page without tabs has its body in the page file.                                      |
+| `<Verb><Thing>Dialog.tsx`, `<Thing>Sheet.tsx` | One dialog or sheet. A plain `confirm()` needs no file.                                                                 |
+| `<thing>Rules.ts`, `use<Thing>.ts`            | Rules and state the markup reads, so they can be tested and read without it.                                            |
+| `<File>.test.tsx`                             | Beside the file it tests. An old page's test moves here and is edited, not rewritten, where it still fits.              |
+
+Data hooks shared with other places stay in `src/lib`. When every file of an old page is replaced, delete the old files (`pages/<Old>Page.tsx` and the files under `src/components/` only it used) in the same commit, and point `routes.ts` at the new route files. A component two places need goes to the system owner, not into one place's folder.
+
 ### Asking for a change
 
-You own your area's page folders. Tokens, `src/ui`, the shell (`src/shell`, `routes.ts`, `places.ts`, `legacyRoutes.ts`) and this guide have one system owner. If a page needs a component, variant, token or template this guide lacks, don't build a local one, since ten local variants are ten products: put the ask in your report under "For the system owner", tell your lead, and meanwhile compose the nearest existing pieces. If the guide is wrong, say so the same way rather than working around it: the fix goes in the guide, so every page gets it.
+You own your area's page folders. Tokens, `src/ui`, the shell (`src/shell`, `routes.ts`, `places.ts`, `legacyRoutes.ts`) and this guide have one system owner, with two edits that are yours: pointing your own places' and records' lines in `routes.ts` at your new route files, and listing your own records' tabs in `RECORDS` in `places.ts`. If a page needs a component, variant, token or template this guide lacks, don't build a local one, since ten local variants are ten products: put the ask in your report under "For the system owner", tell your lead, and meanwhile compose the nearest existing pieces. If the guide is wrong, say so the same way rather than working around it: the fix goes in the guide, so every page gets it.
 
 ## Templates
 
@@ -41,37 +66,69 @@ Every place uses one template. The template fixes the page's skeleton, so two pa
 
 Two flows sit on top of a page rather than being one: **Dialog** and **Sheet**.
 
-| Template      | Pieces                                                                                                                                                                                                                                    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every page    | `Page` (`Page.tsx`): document title, breadcrumb, header, tabs, banner, body. `usePlaceTabs`, `usePlaceViews`, `useRecordTabs` (`usePlaceTabs.ts`), `Banner` (`Banner.tsx`), `ContentState`, `ErrorState`, `TableSkeleton` (`States.tsx`). |
-| List          | `Page fill`, then `FilterBar` with `SearchField`, filters, `FilterChip`; `ListContent`; `ListFooter`; `ViewSwitch`; `BulkBar` (all `List.tsx`). Table from `ui/Table.tsx` with `bleed`.                                                   |
-| Record        | `RecordBody` with `SidePanelSection`, `FactList`, `Fact` (`Record.tsx`), or `PageBody` when there is no side panel.                                                                                                                       |
-| Overview      | `PageBody`, `Section`, `OverviewGrid`, `Panel`, `StatTile` (`Overview.tsx`).                                                                                                                                                              |
-| Workspace     | `Page fill`, then `Workspace`, `WorkspaceToolbar`, `PaneHeader` (`Workspace.tsx`).                                                                                                                                                        |
-| Settings form | `PageBody width="form"`, `FormSection`, `Field`, `SaveBar` (`Form.tsx`).                                                                                                                                                                  |
-| Dialog        | `ui/Modal.tsx`; a confirmation is `confirm()` or `ui/ConfirmDialog.tsx` (see **Confirmations**).                                                                                                                                          |
-| Sheet         | `ui/Sheet.tsx`, `size="peek"` for a look at one row, `"wide"` for a form or table.                                                                                                                                                        |
+| Template      | Pieces                                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every page    | `Page` (`Page.tsx`): document title, breadcrumb, header, tabs, banner, body. `usePlaceTabs`, `usePlaceViews`, `useRecordTabs` (`usePlaceTabs.ts`), `Banner` (`Banner.tsx`), `ContentState`, `ErrorState`, `TableSkeleton` (`States.tsx`).   |
+| List          | `Page fill`, then `FilterBar` with `SearchField`, filters, `FilterChip`; `ListContent`; `ListFooter`; `ViewSwitch`; `BulkBar` (all `List.tsx`). Table from `ui/Table.tsx` with `bleed`.                                                     |
+| Record        | `RecordBody` with `SidePanelSection`, `FactList`, `Fact` (`Record.tsx`), or `PageBody` when there is no side panel.                                                                                                                         |
+| Overview      | `PageBody`, `Section`, `OverviewGrid`, `Panel`, `StatTile` (`Overview.tsx`).                                                                                                                                                                |
+| Workspace     | `Page fill`, then `Workspace`, `WorkspaceToolbar`, `PaneHeader` (`Workspace.tsx`).                                                                                                                                                          |
+| Settings form | `PageBody width="form"`, `FormSection`, `Field`, `CheckboxField`, `SaveBar`, `useFocusFirstInvalid` (`Form.tsx`).                                                                                                                           |
+| Dialog        | `ui/Modal.tsx`: a `<form>` holding `ModalHeader` with `ModalTitle`, `ModalBody`, then `ModalFooter` with `ModalActions` (Cancel, then the primary submit). A confirmation is `confirm()` or `ui/ConfirmDialog.tsx` (see **Confirmations**). |
+| Sheet         | `ui/Sheet.tsx`, `size="peek"` for a look at one row, `"wide"` for a form or table.                                                                                                                                                          |
 
 ### The page file
 
-A route's component returns one `Page`. This is a whole List page; the other templates change only what is inside `Page`.
+A route's component returns one `Page`. This is a List place with tabs, the reference page cut down; the other templates change only what is inside `Page`.
 
 ```tsx
+const TABS = ["all", "awaiting"] as const;
+type Tab = (typeof TABS)[number];
+
 export default function GroupsPage() {
-  const tabs = usePlaceTabs(PlaceId.Groups, ["all", "awaiting"]);
-  const groups = useGroups(filters); // today's hook, unchanged
+  const tabs = usePlaceTabs(PlaceId.Groups, TABS);
+  const groups = useCommunitiesAdmin(); // today's hook, unchanged
+  const [creating, setCreating] = useState(false);
+  const body: Record<Tab, () => ReactNode> = {
+    all: () => <AllGroupsTab groups={groups} />,
+    awaiting: () => <AwaitingTab groups={groups} />,
+  };
   return (
     <Page
       fill
       place={PlaceId.Groups}
       actions={
-        <Button variant={ButtonVariant.Primary} onClick={openNew}>
+        <Button
+          // One primary per view: Awaiting assignment has its own.
+          variant={
+            tabs.value === "all" ? ButtonVariant.Primary : ButtonVariant.Default
+          }
+          onClick={() => setCreating(true)}
+        >
           New group…
         </Button>
       }
       tabs={tabs}
     >
-      <FilterBar count={`${total.toLocaleString("en-US")} groups`}>
+      {body[tabs.value]()}
+      {creating && <NewGroupDialog onClose={() => setCreating(false)} />}
+    </Page>
+  );
+}
+```
+
+A tab's body, or the body of a page without tabs, is the filter bar and the content in its states (`q`, `setQ` and `rows` are the `?q=` search and the filtered list; `AllGroupsTab.tsx` has them whole):
+
+```tsx
+export function AllGroupsTab({
+  groups,
+}: {
+  groups: UseQueryResult<CommunityDto[]>;
+}) {
+  // …
+  return (
+    <>
+      <FilterBar count={countOf(rows.length, "group")}>
         <SearchField label="Filter groups" value={q} onChange={setQ} />
       </FilterBar>
       <ListContent>
@@ -80,11 +137,11 @@ export default function GroupsPage() {
           skeleton={<TableSkeleton bleed columns={4} />}
           error={
             groups.isLoadingError
-              ? adminRefusalMessage(groups.error, "Try again.")
+              ? adminRefusalMessage(groups.error, LOAD_FAILED_FALLBACK)
               : null
           }
           errorTitle="Couldn't load groups"
-          onRetry={groups.refetch}
+          onRetry={() => void groups.refetch()}
           empty={rows.length === 0}
           filtered={q !== ""}
           onClearFilters={() => setQ("")}
@@ -93,14 +150,13 @@ export default function GroupsPage() {
           <Table bleed>…</Table>
         </ContentState>
       </ListContent>
-      <ListFooter>…</ListFooter>
-    </Page>
+    </>
   );
 }
 ```
 
-- **`place`** is the `PlaceId` (`src/places.ts`) the page is. From it `Page` sets the document title, the breadcrumb and the one `h1`; don't write a `<title>`, a trail or a header by hand. A record's page passes `record={RecordId.Suite}` in its place, with `title={suite?.name}` (until the name loads `Page` shows the record's kind, "Suite", from `places.ts`), and `parents={[{ label, to }]}` when it sits under another record, as a project's task does. `badge`, `description` and `actions` fill the rest of the header.
-- **Tabs and views** come from `places.ts`, which the redirects, the palette and the sidebar also read. `usePlaceTabs(place, ids)` binds a place's tabs to `?tab=`, `usePlaceViews(place, ids)` its views to `?view=`, `useRecordTabs(RecordId.Suite, ids)` a record's tabs. `ids` repeats the ids from `places.ts`, so `tabs.value` is a typed union to `switch` on, and the hook throws if they differ. Pass the result as `tabs={tabs}`; with `tabs`, the children are the current tab's body. To show a count on a tab, map `tabs.items` and add `count`.
+- **`place`** is the `PlaceId` (`src/places.ts`) the page is. From it `Page` sets the document title, the breadcrumb and the one `h1`; don't write a `<title>`, a trail or a header by hand. A record's page passes `record={RecordId.Suite}` in its place, with `title={suite?.name}` (until the name loads `Page` shows the record's kind, "Suite", from `places.ts`), and `parents={[{ label, to }]}` when it sits under another record, as a project's task does. `badge`, `description` and `actions` fill the rest of the header. A record whose `description` comes with its data passes `""` until it loads: the line is held, so the tabs don't drop when it arrives.
+- **Tabs and views** come from `places.ts`, which the redirects, the palette and the sidebar also read. `usePlaceTabs(place, ids)` binds a place's tabs to `?tab=`, `usePlaceViews(place, ids)` its views to `?view=`, `useRecordTabs(RecordId.Suite, ids)` a record's tabs. `ids` repeats the ids from `places.ts` (`const TABS = ["all", "awaiting"] as const`), so `tabs.value` is a typed union to `switch` on or to index a `Record<Tab, …>` with, and the hook throws if they differ. Pass the result as `tabs={tabs}`; with `tabs`, the children are the current tab's body. Only the current tab's body is mounted, so state both tabs need (a selection one tab makes and the other shows) lives in the page file or the URL, and an unsaved form on a tab is lost on leaving it unless `useLeaveGuard` asks first. To show a count on a tab, map `tabs.items` and add `count`.
 - **`fill`** makes the page take the frame's height so only its body scrolls: always on List and Workspace, never on the others, which scroll with the frame.
 - The body brings its own padding: `ListContent` and `Workspace` run edge to edge; `PageBody` and `RecordBody` pad and space their children. Don't add page margins yourself.
 
@@ -110,7 +166,7 @@ Anatomy, top to bottom:
 
 1. **Page header.** The place's name as the page's one `h1`, an optional one-line description under it in muted text, and on the right at most one primary action plus secondary actions. The primary action creates the thing listed ("New suite").
 2. **Tabs**, when the place has them in `PLACES.md` (People: All, Staff, Away). A count sits beside a tab label only where today's page has that count.
-3. **Filter bar** (`FilterBar`). Search field first, then filters, then on the right the result count and list-wide actions such as export. An applied filter shows as a chip naming field and value with a remove control, so the reader sees why rows are missing. Offer only the filters and sorts today's page has; the server pages and filters some lists and not others, and the data hook decides.
+3. **Filter bar** (`FilterBar`). Search field first, then filters, then on the right the result count and list-wide actions such as export. Every tab of a place renders one, even with nothing to filter, and its controls are the small size (`size="small"`, `h-control-sm`), so the list starts at the same height on every tab. An applied filter shows as a chip naming field and value with a remove control, so the reader sees why rows are missing. Offer only the filters and sorts today's page has; the server pages and filters some lists and not others, and the data hook decides. The one addition allowed everywhere: a search by name over a list the hook already loads whole.
 4. **Body** (`ListContent`, the only part that scrolls). A table, edge to edge with no card around it (`<Table bleed>`), when rows share columns that staff compare. A stack of cards (`<ListContent cards>`) when each item is several lines of prose or holds its own controls (tags, organizations, partnership responses, the projects board). Grouped rows get a group heading row (suite name and count), not separate tables.
 5. **Footer** (`ListFooter`): pagination, only where the data hook paginates.
 
@@ -118,12 +174,12 @@ A list that offers views of the same items (Tasks: Timeline, List, Priority; Peo
 
 ### Record
 
-1. **Record header** (`Page`'s `title`, `badge`, `description`, `actions`). Title as `h1`; the status badge directly after it; one muted line of facts under it (kind, parent links, the one or two numbers that matter). On the right: at most one primary action, secondary actions, and a "More" menu for the rest. The breadcrumb `Page` renders above the title carries the way back; don't add a back link.
+1. **Record header** (`Page`'s `title`, `badge`, `description`, `actions`). Title as `h1`; the status badge directly after it; one muted line of facts under it (kind, parent links, the one or two numbers that matter). On the right: at most one primary action, secondary actions, and a "More" menu for the rest; a record whose only header action is its delete shows it as a `DangerOutline` button rather than a menu of one. The breadcrumb `Page` renders above the title carries the way back; don't add a back link.
 2. **Tabs**, from `PLACES.md`, in that order. The first tab is the one staff most often want on arrival, not an empty summary.
 3. **Body** (`RecordBody`): a main column, plus a **side panel** on the right (its `side` prop; 320 px, moving above the main column in a narrow frame) when the record has a handful of standing facts worth seeing on every tab's first screen (status, dates, parent links, audience). The side panel is a label and value list (`FactList`, `Fact`). A value there is editable in place only if today's control for it already saves at once; otherwise it links to the tab that edits it. No side panel when a tab needs the full width (a builder, a wide table, the launch page) or the record has fewer than about four such facts.
 4. A **standing banner** (`Page`'s `banner`, a `Banner`) above the body for a fact that changes what every action on the page means: "Nothing is visible to members until you launch" on a draft suite, "Not visible to members" on a draft task. Not for tips.
 
-A record with one screen of content has no tabs. A record that is mostly one form (contract, formula, general update, member list) is still a Record: it has identity, a status or usage, and delete; its body follows **Forms**.
+A record with one screen of content has no tabs. One whose sections are different jobs, or run long enough to push each other off the first screen, gets a tab per job (a group: Members, Progress, Settings), added to its `tabs` in `RECORDS`. While the record loads, fails or isn't found, the header and tabs stay and `ContentState` fills the body: "not found" is its empty state, with a button to the place's list. A record that is mostly one form (contract, formula, general update, member list) is still a Record: it has identity, a status or usage, and delete; its body follows **Forms**.
 
 ### Overview
 
@@ -154,6 +210,8 @@ A page header, then one column (`PageBody width="form"`) of `FormSection`s, each
 | **Dialog** | A decision, a confirmation, or creating something from up to about four fields (New suite: a name). Blocks the page.                                                        | Anything needing a look at the page behind it; anything with tabs; long forms.   |
 | **Sheet**  | Looking at or lightly editing one item from a list while the list stays in view: a member from People, a forum post, a task update from Messages. Slides in from the right. | Records staff work in for long. Those get a page; the sheet offers "Open" to it. |
 | **Page**   | Everything else. A flow with consequences for members (suite launch) is a page, so it has a URL, survives a reload and has room for its checks.                             |                                                                                  |
+
+A dialog's form follows **Forms**. While its write runs, the submit button is `busy` and the dialog can't be dismissed (`dismissDisabled`); a refusal shows in the footer above the buttons, as an alert, and the dialog stays open with what was typed. Mount the dialog only while it is open (`{creating && <NewGroupDialog … />}`), so each opening starts clean. Keep the title short: the page behind it already names the record.
 
 The sheet's open item is in the URL (see **URL state**), so a copied link opens the same item and Back closes it. Up and down controls in the sheet header (`headerActions`) step through the list's rows.
 
@@ -273,25 +331,27 @@ For other statuses pick the tone by meaning: neutral for inactive or not started
 
 `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` from `ui/Table.tsx`: row and header heights, the sticky header, hover and the selected tint (`aria-selected` on the row) are built in. `bleed` on a List; none inside a `Panel flush`.
 
-- **First column** is the thing's name, medium weight, and is a real link to its record or sheet, so open-in-new-tab and copy-link work. A row click may also open it, but the link is the accessible route.
+- **First column** is the thing's name, medium weight, and is a real link to its record or sheet (`className={nameLinkClass}` from `ui/styles.ts`), so open-in-new-tab and copy-link work. A row click may also open it, but the link is the accessible route. Any other link in a cell or a sentence takes `linkClass`, which underlines it.
 - **Alignment**: text and dates left; numbers right, with their header right too (`text-right tabular-nums`); a status badge left. Never center.
 - **Numeric columns** show the unit in the header, not in every cell ("Time (min)"). A value the server doesn't have is "—", never 0.
-- One line per row; long text truncates with the full value in a tooltip or the record. Cap a text column near 260 px rather than let it push others off screen. A row that needs two lines of content is a card, not a tall row.
+- One line per row, a row with a control in it included: a message about the row's control goes in the cell beside it, not under it, so it appearing doesn't grow the row. Long text truncates with the full value in a tooltip or the record. Cap a text column near 260 px rather than let it push others off screen. A row that needs two lines of content is a card, not a tall row.
 - **Header** is sticky, sentence case, and a sortable header is a button that shows its direction and sets `aria-sort`. Sort only by what today's page or the data hook sorts by.
-- **Row actions**: the action staff take most on a row is a small labelled button at the row's end; the rest go in a "More" menu. Which icons may stand alone is under **Copy**. Row actions are visible at rest, not only on hover, since hover-only controls are invisible to keyboard and touch.
+- **Row actions**: the action staff take most on a row is a small labelled button at the row's end; the rest go in a "More" menu, though two short actions may both show. Every row's button reads the same, so give each an `aria-label` that starts with the visible label and names the row ("Remove: Sam Lee"). The header cell over the actions holds a visually hidden name. Which icons may stand alone is under **Copy**. Row actions are visible at rest, not only on hover, since hover-only controls are invisible to keyboard and touch.
 - **Selection** exists only where today's page has an action on several rows. Checkbox column first; the header checkbox selects the loaded rows and says how many. Selected rows get the selected tint plus the checked box. `BulkBar`, the last child of the page's body, floats at the foot of the main region, says "N selected", lists the actions with words, and Escape clears the selection.
 - **Expandable rows** (scheduled jobs, event data) expand in place under the row with a labelled or `aria-expanded` control.
 - **Pagination** (`ui/Pagination.tsx` in a `ListFooter`) follows the data hook: numbered pages where the server pages, none where the list loads whole. Don't add infinite scroll.
 
 ## Forms
 
-`Field` (`templates/Form.tsx`) lays out the label, help and error and hands its child the `id` and ARIA props; controls are `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `UserSelect` and `DateTimePicker` from `ui/`. `FormInput` and `LargeCheckbox` are the old pages' and stay with them.
+`Field` (`templates/Form.tsx`) lays out the label, help and error and hands its child the `id` and ARIA props; controls are `Input`, `Textarea`, `Select`, `Switch`, `UserSelect` and `DateTimePicker` from `ui/`. A checkbox with its label and explanation is `CheckboxField`. `UserSelect` brings its own label (`label=`), so it doesn't go inside a `Field`. A form whose fields serve both a create dialog and a record's settings is one fields component used by both (`GroupSettingsFields.tsx`). `FormInput` and `LargeCheckbox` are the old pages' and stay with them.
 
 - **Label above its control**, sentence case, no colon. Help text sits under the label or control in small muted text and stays visible when an error shows. A placeholder is an example at most, never the label or a needed instruction.
 - Mark the minority with `Field`'s `mark`: where most fields are required, mark the optional ones "(optional)"; where most are optional, mark the required ones "(required)". No bare asterisk.
 - One column. Two fields share a row only when they are one thought (start and end).
-- **Errors** appear under the field when the reader leaves it or submits, say how to fix it, and clear once fixed. A failed submit keeps every value, focuses the first bad field, and a form with more than a few fields leads with a summary linking to each.
+- **Errors** appear under the field when the reader leaves it or submits, say how to fix it, and clear once fixed. A failed submit keeps every value, focuses the first bad field (`useFocusFirstInvalid()` gives the form's `ref` and a function the submit handler calls beside setting its errors), and a form with more than a few fields leads with a summary linking to each. Put `noValidate` on the `<form>` so the browser's bubbles don't answer first.
+- **A field that only sometimes applies stays rendered**, disabled, with its help saying why it isn't used, so ticking the box that governs it moves nothing.
 - **The submit button stays enabled** and reports what's wrong when pressed, unless today's page disables it as a guard (Launch while blockers remain): then the reason is visible text beside it.
+- **A button whose write is running takes `busy`** (`ui/Button.tsx`): it keeps its label and focus, shows a spinner and ignores presses, submits included. That is the admin's pending button; the ux-guidelines' hand-styled `aria-disabled` is for the old pages' buttons.
 - A switch takes effect at once; a setting saved by a Save button is a checkbox.
 - Dates and times use `ui/DateTimePicker.tsx`, name their timezone in the label ("Pacific time") and never default to now for anything that creates an event.
 
@@ -303,7 +363,7 @@ Keep each page's save model as it is today; the model is part of the data layer 
 | ---------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Explicit save**      | Most forms: task details, contract, general update, formula, the form builder.  | A `SaveBar` at the foot of the form, always rendered: primary "Save changes", "Discard", and its `SaveState` (unsaved changes, saving, saved, failed with the reason). |
 | **Immediate**          | A control that today writes on change: a switch, the project picker, a tag add. | The control itself shows pending and failure; failure puts the old value back and says why.                                                                            |
-| **Create in a dialog** | New suite.                                                                      | A "Create suite" button; on success go to the new record.                                                                                                              |
+| **Create in a dialog** | New suite, New group.                                                           | A "Create suite" button; on success a toast and go to the new record.                                                                                                  |
 
 - Don't turn an explicit save into autosave. An update's first content save publishes it, and a form save on a launched task is live for members on their next load, so an autosave would publish half-written text.
 - **Unsaved changes**: every explicit-save form calls `useLeaveGuard` from `lib/useLeaveGuard.ts` with its dirty state. It asks before navigation and reload; pass `allowSamePath` when the unsaved state survives a tab or filter change on the same path. After a save that navigates, use the function it returns so the guard doesn't ask about what was just saved.
@@ -312,10 +372,11 @@ Keep each page's save model as it is today; the model is part of the data layer 
 
 ## Empty, loading, error
 
-- **Loading.** The first load of a page or tab shows a skeleton shaped like the content (rows for a table, tiles for tiles), after a delay of about 200 ms so fast loads don't flash, with the header, tabs and filter bar already in place so nothing jumps when data lands. A refetch keeps the current content on screen. A button that is working keeps its label, shows a spinner, and ignores presses. `ContentState` does the delay and the choice of state for any region that loads; give it a `skeleton` built from `TableSkeleton` or `ui/Skeleton.tsx` blocks sized like the content. For anything else, `useDelayedFlag` (`templates/useDelayedFlag.ts`) is the delay.
+- **Loading.** The first load of a page or tab shows a skeleton shaped like the content (rows for a table, tiles for tiles), after a delay of about 200 ms so fast loads don't flash, with the header, tabs and filter bar already in place so nothing jumps when data lands. A refetch keeps the current content on screen. A button that is working keeps its label, shows a spinner, and ignores presses: pass `busy` to `Button`, which also keeps its focus; don't swap the label for "Saving…" or disable it. `ContentState` does the delay and the choice of state for any region that loads; give it a `skeleton` built from `TableSkeleton` or `ui/Skeleton.tsx` blocks sized like the content. For anything else, `useDelayedFlag` (`templates/useDelayedFlag.ts`) is the delay.
 - **Nothing yet** (`ContentState`'s `emptyTitle`, or `ui/EmptyState.tsx`): names what is empty and offers the next step where there is one ("No suites yet", "New suite"). On Home and queues, an empty queue is good news and says so in one line.
 - **No results**: filters or search matched nothing. Says so and offers "Clear filters". Never the same text as nothing yet.
-- **Failed to load** (`ErrorState`): says what couldn't load, shows the server's reason, offers "Try again". Use the query's `isLoadingError`, so a failed refetch keeps the content it already has. Inline where the content would be, and it stays until resolved. When part of a page fails, the rest still renders and a banner names the failed part and what that means for what's shown, as `components/FailedLoadsBanner.tsx` does today. A failed load never looks like an empty list.
+- **Failed to load** (`ErrorState`): says what couldn't load, shows the server's reason (`adminRefusalMessage(error, LOAD_FAILED_FALLBACK)`, the fallback being for a failure with no reason), offers "Try again". Use the query's `isLoadingError`, so a failed refetch keeps the content it already has. Inline where the content would be, and it stays until resolved. When part of a page fails, the rest still renders and a banner names the failed part and what that means for what's shown, as `components/FailedLoadsBanner.tsx` does today. A failed load never looks like an empty list.
+- **A write that failed** says so where the reader is looking and stays until dismissed or the next success: an explicit save in its `SaveBar`; a write from a dialog's form in the dialog's footer; a write confirmed in a `ConfirmDialog`, which closes once the write settles, beside the control that opened it (the filter bar for a filter-bar action, as `AwaitingTab.tsx` does); a write from a row or a header button as `Page`'s `banner`, a `Banner` with `BannerTone.Danger` and a "Dismiss" button. A toast may accompany each (`lib/useRefusalToast.ts`).
 - **Refused by the server**: show the server's own message through `lib/adminRefusal.ts`, as today. An expired session shows the session message from `lib/sessionExpired.ts`.
 - **Permissions**: every signed-in admin can do everything; there are no roles to gate on. Don't add permission states, and don't hide or disable a control because an action is risky: admins may do almost anything given a warning that says what it breaks (ux-guidelines). A new block needs its own reason recorded in the spec's `DECISIONS.md`.
 - A malformed thing fails loudly: a form whose schema has an error doesn't render a fillable preview.
@@ -330,7 +391,7 @@ Three levels. Pick by what the action reaches, not by how nervous it feels; a co
 | **Confirm**         | Irreversible or hard to reverse, staff-side: delete a tag, remove a group member or leader, archive a task, delete a variant. | Dialog. Title names the action and the thing ("Delete the tag "captain"?"). Body says what is lost or who is affected. Buttons: "Cancel" and a verb ("Delete tag"), danger-styled when destructive. The destructive button is never the default: no Enter, no initial focus. `confirm({ title, message, confirmLabel, destructive: true })` |
 | **Typed phrase**    | Notifies or exposes real members.                                                                                             | Full dialog stating who is reached and that it can't be undone, then a field that must match the phrase exactly. `confirm({ …, requiredText })`                                                                                                                                                                                             |
 
-`confirm` comes from `useConfirmOnPage()` (`lib/useConfirmOnPage.ts`) and resolves to `true` or `false`; it closes, declined, when the path changes, so a question left open doesn't act on a different record. It opens the admin's dialog, `ui/ConfirmDialog.tsx`; render that component yourself only when the dialog must stay open, `busy`, while the work runs. Replace every `window.confirm` with the Confirm level (lint), keeping its wording's facts. `components/ConfirmDialog.tsx` is the old pages' wrapper.
+`confirm` comes from `useConfirmOnPage()` (`lib/useConfirmOnPage.ts`) and resolves to `true` or `false`; it closes, declined, when the path changes, so a question left open doesn't act on a different record. It opens the admin's dialog, `ui/ConfirmDialog.tsx`; render that component yourself only when the dialog must stay open, `busy`, while the work runs, as a batch that can half-apply does. Its `message` is text; lines break at `\n`. When the confirmed write runs after the dialog closes, the button that opened it shows `busy`. Replace every `window.confirm` with the Confirm level (lint), keeping its wording's facts. `components/ConfirmDialog.tsx` is the old pages' wrapper.
 
 ### Operations that reach members
 
@@ -392,6 +453,7 @@ The URL holds what a colleague needs to see the same thing from a pasted link, a
 | Selection, expanded rows, scroll, a half-typed form | Not in the URL                                                                                           |                                                                |
 
 - Defaults stay out of the URL, and an unknown value falls back to the default without an error.
+- Bind `SearchField` straight to the search param: it keeps its own text while the URL catches up, so fast typing loses nothing. Any other text input bound to the URL needs the same care.
 - Changing a filter resets `page`. Changing a tab through the hooks drops every param but `view`, since a tab's filters, page and open item mean nothing on its sibling; changing a view keeps them all.
 - A place's tabs share one URL, so write a search param from the current ones (`setSearchParams((prev) => …)`, or a hidden input per kept param in a GET `<Form>`): replacing the whole query drops `tab` and `view` and lands on the first tab. Link to a tab with `tabHref(placeById(PlaceId.Groups), { tab: "awaiting" })`, and to a record with `href()`. `lib/useSearchParamTab.ts` is the old pages': it writes the first tab's id into the URL.
 - Old URLs already redirect, query and hash kept (`legacyRoutes.ts`, tested by `routes.test.ts`); link to the new URLs.
@@ -403,7 +465,7 @@ The URL holds what a colleague needs to see the same thing from a pasted link, a
 - **"Task", never "action"**, in everything staff read: "Task updates", "Suite" (not "Action suite"), "Scheduled jobs" (not "Scheduled plans"). Three exceptions. The phase names stay "Members taking action" and "Office taking action", since "member task" would mean something else. Code, routes' internals, API fields and types keep `action`. The typed phrases keep their exact words.
 - **US spelling**: organization, canceled, color.
 - **Dates** in `en-US` through `formatDate`, `formatTime` and `formatDateTime` from `lib/formatDate.ts`: "Nov 30", with the year only when it isn't this year, the weekday where the day of the week matters ("Tue, Nov 24"), time as "7:00 PM". A deadline, event or scheduled job passes `timeZone` (`LAUNCH_TIME_ZONE`), which names the zone ("PT"). A relative time ("2m ago") is for recent past activity only and carries the absolute time in its tooltip.
-- **Numbers** get thousands separators (2,911) except inside a typed phrase. A missing value is "—".
+- **Numbers** get thousands separators (2,911) through `formatCount` from `lib/formatNumber.ts`, except inside a typed phrase. A count with its noun is `countOf(n, "member")` from the same file ("2,911 members"), not `withCount`, which leaves the separators out. A missing value is "—".
 - **Buttons** start with a verb and name the result ("Add event", "Delete tag"); a button that opens a dialog asking for more ends in "…". Links are named for where they go.
 - Say what a thing does to members in plain words where it does something to members: "Members can see and start the tasks." No internal names (`publicOnly`, `staffPreview`) in the UI.
 - Icons from `lucide-react`. An icon stands alone only for close, search, send, delete and settings; every other control has a visible word, an overflow menu included ("More").
@@ -433,4 +495,5 @@ The files written before the redesign are listed in `apps/admin/eslint/legacy-fi
 - Keyboard pass: reach and operate everything, open and close each dialog and sheet, focus returns.
 - Colour pass under grayscale if the page shows any status or category by colour.
 - Reload and Back on every tab, filter and open sheet return to the same thing.
+- Tests render the page as the shell does: inside a router at the page's URL and `ToastProvider`; a page that calls `useLeaveGuard` needs a data router with `LeaveGuard` above the route (`pages/groups/GroupPage.test.tsx`). An open dialog makes the page behind it inert, so query the page only after the dialog closes. A `Panel` or `FormSection` is a region named by its title, which scopes a query to it.
 - Your report says which template you used, any place you departed from this guide and why, and anything you think the guide gets wrong.
