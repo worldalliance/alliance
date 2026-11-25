@@ -1,11 +1,40 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, useLocation } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { MmsThreadsLiveProvider } from "../lib/mmsThreadsLive";
+import { AREAS } from "../places";
 import Palette from "./Palette";
+import {
+  type Shortcut,
+  ShortcutsProvider,
+  useOpenShortcutList,
+  useShortcut,
+  useSingleKeysOn,
+} from "./shortcuts";
 import Sidebar from "./Sidebar";
 import { useQueueCounts } from "./useQueueCounts";
 import { useSidebarExpanded } from "./useSidebarExpanded";
+
+function Bind({ shortcut }: { shortcut: Shortcut }) {
+  useShortcut(shortcut);
+  return null;
+}
+
+/** `g` then an area's letter goes to that area's first page. */
+function AreaShortcuts() {
+  const navigate = useNavigate();
+  return AREAS.map((area) => (
+    <Bind
+      key={area.id}
+      shortcut={{
+        keys: `g ${area.key}`,
+        label: `Go to ${area.label}`,
+        global: true,
+        run: () => void navigate(area.places[0].path),
+      }}
+    />
+  ));
+}
 
 /**
  * The frame every signed-in page renders in: the sidebar and one scrolling
@@ -18,6 +47,19 @@ function Shell() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const counts = useQueueCounts();
+  const openShortcutList = useOpenShortcutList();
+  useShortcut({
+    keys: "[",
+    label: "Collapse or expand the sidebar",
+    global: true,
+    run: toggleSidebar,
+  });
+  useShortcut({
+    keys: "?",
+    label: "Show keyboard shortcuts",
+    global: true,
+    run: openShortcutList,
+  });
 
   // The main region scrolls, not the window, so the router can't reset it.
   useEffect(() => {
@@ -39,6 +81,8 @@ function Shell() {
         counts={counts}
         user={user}
         onSignOut={() => void logout()}
+        onOpenShortcuts={openShortcutList}
+        singleKeysOn={useSingleKeysOn()}
       />
       <main
         id="main"
@@ -55,6 +99,7 @@ function Shell() {
         onOpenChange={setPaletteOpen}
         counts={counts}
       />
+      <AreaShortcuts />
     </div>
   );
 }
@@ -62,7 +107,9 @@ function Shell() {
 export default function ShellLayout() {
   return (
     <MmsThreadsLiveProvider>
-      <Shell />
+      <ShortcutsProvider>
+        <Shell />
+      </ShortcutsProvider>
     </MmsThreadsLiveProvider>
   );
 }

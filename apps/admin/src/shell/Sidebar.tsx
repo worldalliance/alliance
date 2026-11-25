@@ -1,6 +1,7 @@
 import { isProduction } from "@alliance/sharedweb/lib/config";
 import { memberPathFor } from "@alliance/sharedweb/lib/zoneLinks";
 import {
+  Keyboard,
   LayoutGrid,
   LogOut,
   type LucideIcon,
@@ -109,10 +110,12 @@ function AccountMenu({
   expanded,
   user,
   onSignOut,
+  onOpenShortcuts,
 }: {
   expanded: boolean;
   user: SidebarUser | undefined;
   onSignOut: () => void;
+  onOpenShortcuts: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -147,6 +150,10 @@ function AccountMenu({
           <Settings className="size-4 text-fg-muted" aria-hidden />
           Settings
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={onOpenShortcuts}>
+          <Keyboard className="size-4 text-fg-muted" aria-hidden />
+          Keyboard shortcuts
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onSignOut}>
           <LogOut className="size-4 text-fg-muted" aria-hidden />
@@ -164,6 +171,8 @@ export default function Sidebar({
   counts,
   user,
   onSignOut,
+  onOpenShortcuts,
+  singleKeysOn,
 }: {
   expanded: boolean;
   onToggle: () => void;
@@ -172,6 +181,9 @@ export default function Sidebar({
   /** Undefined until the session has loaded. */
   user: SidebarUser | undefined;
   onSignOut: () => void;
+  onOpenShortcuts: () => void;
+  /** Whether `[` works, so the toggle's hint can name it. */
+  singleKeysOn: boolean;
 }) {
   const location = useLocation();
   const active = activeRailEntry(location);
@@ -213,7 +225,9 @@ export default function Sidebar({
           >
             <PanelLeft className="size-4.5" aria-hidden />
           </TooltipTrigger>
-          <TooltipContent side="right">{toggleLabel}</TooltipContent>
+          <TooltipContent side="right" className="flex items-center gap-2">
+            {toggleLabel} {singleKeysOn && <Kbd>[</Kbd>}
+          </TooltipContent>
         </Tooltip>
         <Link
           to="/"
@@ -266,7 +280,12 @@ export default function Sidebar({
           label="Open in member zone"
           expanded={expanded}
         />
-        <AccountMenu expanded={expanded} user={user} onSignOut={onSignOut} />
+        <AccountMenu
+          expanded={expanded}
+          user={user}
+          onSignOut={onSignOut}
+          onOpenShortcuts={onOpenShortcuts}
+        />
       </div>
     </aside>
   );

@@ -41,6 +41,8 @@ const renderSidebar = ({
         counts={{ ...NO_COUNTS, ...counts }}
         user={user}
         onSignOut={onSignOut}
+        onOpenShortcuts={() => {}}
+        singleKeysOn
       />
     );
   };

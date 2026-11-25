@@ -2,7 +2,7 @@ import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { useFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { type LucideIcon, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
   adminSearchResults,
@@ -19,6 +19,7 @@ import Modal from "../ui/Modal";
 import { CountBadge } from "./CountBadge";
 import { BROWSE_GROUPS, SEARCH_PAGES } from "./paletteEntries";
 import { PLACE_ICONS } from "./placeIcons";
+import { useShortcut } from "./shortcuts";
 import type { QueueCount } from "./useQueueCounts";
 
 type Entry = {
@@ -213,7 +214,7 @@ function PaletteContent({
 /**
  * Every page and search in one dialog: with nothing typed it lists every place
  * by area, and typing finds pages (by today's name or the one they had before)
- * and records. ⌘K opens it from anywhere.
+ * and records. ⌘K opens and closes it from anywhere.
  */
 export default function Palette({
   open,
@@ -224,16 +225,12 @@ export default function Palette({
   onOpenChange: (open: boolean) => void;
   counts: Record<CountId, QueueCount>;
 }) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        onOpenChange(!open);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onOpenChange]);
+  useShortcut({
+    keys: "mod+k",
+    label: "Open all pages and search",
+    global: true,
+    run: () => onOpenChange(!open),
+  });
 
   if (!open) return null;
   return (

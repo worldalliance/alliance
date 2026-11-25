@@ -6,6 +6,7 @@ import { useState } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { CountId, PLACES } from "../places";
 import Palette from "./Palette";
+import { ShortcutsProvider } from "./shortcuts";
 
 let failForms = false;
 let usersArrive = Promise.resolve();
@@ -57,7 +58,9 @@ const Search = () => {
 const renderSearch = () =>
   render(
     <MemoryRouter>
-      <Search />
+      <ShortcutsProvider>
+        <Search />
+      </ShortcutsProvider>
       <Routes>
         <Route path="/" element={null} />
         <Route path="/members/:userId" element={<p>Member page</p>} />
@@ -74,7 +77,7 @@ const renderSearch = () =>
 it("opens on ⌘K and goes to the highlighted result on Enter", async () => {
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
   const input = await screen.findByRole("combobox", { name: "Search" });
   fireEvent.change(input, { target: { value: "ana" } });
   await screen.findByText("ana@example.org");
@@ -88,7 +91,7 @@ it("says which lists failed to load, since they aren't searched", async () => {
   failForms = true;
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
 
   expect(
     await screen.findByText("Couldn't load forms, so they aren't searched."),
@@ -100,7 +103,7 @@ it("still opens a result that arrives after arrowing through none", async () => 
   usersArrive = new Promise((resolve) => (release = resolve));
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
   const input = await screen.findByRole("combobox", { name: "Search" });
   fireEvent.change(input, { target: { value: "ana@" } });
   fireEvent.keyDown(input, { key: "ArrowDown" });
@@ -114,7 +117,7 @@ it("still opens a result that arrives after arrowing through none", async () => 
 it("lists every place by area before anything is typed", async () => {
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
   await screen.findByRole("combobox", { name: "Search" });
 
   const options = screen
@@ -133,7 +136,7 @@ it("lists every place by area before anything is typed", async () => {
 it("browses the places with the arrow keys and opens one on Enter", async () => {
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
   const input = await screen.findByRole("combobox", { name: "Search" });
   fireEvent.keyDown(input, { key: "ArrowDown" });
   fireEvent.keyDown(input, { key: "Enter" });
@@ -144,7 +147,7 @@ it("browses the places with the arrow keys and opens one on Enter", async () => 
 it("finds a page by the name it had before the redesign", async () => {
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
   const input = await screen.findByRole("combobox", { name: "Search" });
   fireEvent.change(input, { target: { value: "scheduled plans" } });
   expect(
@@ -158,9 +161,9 @@ it("finds a page by the name it had before the redesign", async () => {
 it("closes on a second ⌘K", async () => {
   renderSearch();
 
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
   await screen.findByRole("combobox", { name: "Search" });
-  fireEvent.keyDown(window, { key: "k", metaKey: true });
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
 
   await waitFor(() =>
     expect(screen.queryByRole("combobox", { name: "Search" })).toBeNull(),
