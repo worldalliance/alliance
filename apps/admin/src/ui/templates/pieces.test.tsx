@@ -23,7 +23,7 @@ import {
 } from "../Table";
 import { FieldGroup, SaveBar, SaveState, useFocusFirstInvalid } from "./Form";
 import { listCount, SearchField, useListSearch } from "./List";
-import { DateRangeFields, Panel, Section } from "./Overview";
+import { DateRangeFields, Panel, Section, StatTile } from "./Overview";
 import { Page } from "./Page";
 import { ContentState, RefreshFailedBanner } from "./States";
 import { usePlaceTabs, withQueueCounts } from "./usePlaceTabs";
@@ -396,5 +396,12 @@ describe("Overview controls", () => {
       "true",
     );
     expect(screen.getByLabelText("To").getAttribute("aria-invalid")).toBeNull();
+  });
+});
+
+describe("StatTile", () => {
+  it("holds its note's line without a note", () => {
+    const { container } = render(<StatTile label="Members" value="12" />);
+    expect(container.querySelector(".min-h-lh")).not.toBeNull();
   });
 });

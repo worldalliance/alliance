@@ -91,6 +91,7 @@ export function StatTile({
   label: string;
   /** Formatted; "—" when the server has no value. */
   value: string;
+  /** Its line is held when there is none, so tiles in a row match and a note arriving moves nothing. */
   note?: ReactNode;
   className?: string;
 }) {
@@ -105,7 +106,7 @@ export function StatTile({
       <span className="mt-1.5 text-stat font-semibold tabular-nums">
         {value}
       </span>
-      {note && <span className="text-caption text-fg-muted">{note}</span>}
+      <span className="min-h-lh text-caption text-fg-muted">{note}</span>
     </div>
   );
 }
