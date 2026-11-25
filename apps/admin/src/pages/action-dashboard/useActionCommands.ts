@@ -3,10 +3,10 @@ import { ActionDto, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
 import { duplicatedActionImages } from "../../lib/actionImages";
+import { useToast } from "../../ui/ToastProvider";
 import { imageUploadingMessage, logActionError } from "./actionSaveErrors";
 
 export const useNavigateToCreatedAction = () => {

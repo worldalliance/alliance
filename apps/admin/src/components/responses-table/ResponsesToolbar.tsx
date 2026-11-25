@@ -1,7 +1,7 @@
 import { withCount } from "@alliance/common/plural";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Layers, Link2, Search, UnfoldVertical } from "lucide-react";
 import React from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 import { SnapshotMode } from "./columns";
 import ColumnVisibilityMenu from "./ColumnVisibilityMenu";
 import type { StoredView } from "./persistence";

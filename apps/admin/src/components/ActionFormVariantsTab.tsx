@@ -5,11 +5,6 @@ import type {
   ActionFormVariantsListDto,
 } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
-import BaseButton, {
-  BaseButtonVariant,
-} from "@alliance/sharedweb/ui/BaseButton";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { formatPct } from "../lib/formatPct";
@@ -19,6 +14,9 @@ import {
   useFormVariantsAdmin,
 } from "../lib/useFormVariantsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import BaseButton, { BaseButtonVariant } from "../ui/BaseButton";
+import Card from "../ui/Card";
+import { useToast } from "../ui/ToastProvider";
 import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
 
 export interface ActionFormVariantsTabProps {

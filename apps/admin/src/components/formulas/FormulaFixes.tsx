@@ -3,9 +3,9 @@ import type {
   FormulaEditDto,
   FormulaProblemDto,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useRef } from "react";
 import { asDraft } from "../../lib/formulaDraft";
+import Button, { ButtonColor } from "../../ui/Button";
 import FormulaFields from "./FormulaFields";
 import OtherFormulaProblems from "./OtherFormulaProblems";
 import PartFixFields, { partFixOf, type PartFixDraft } from "./PartFixFields";

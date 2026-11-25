@@ -2,7 +2,6 @@ import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import React, { useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 import ActionListCard from "../components/ActionListCard";
@@ -18,6 +17,7 @@ import {
 } from "../lib/actionStatusBucket";
 import { inProgressSuites } from "../lib/inProgressSuites";
 import { useActionParticipants } from "../lib/useActionParticipants";
+import { zIndex } from "../ui/zIndex";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,

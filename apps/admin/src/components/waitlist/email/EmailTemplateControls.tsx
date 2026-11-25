@@ -1,9 +1,4 @@
 import type { WaitlistEmailTemplateDto } from "@alliance/shared/client/types.gen";
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@alliance/sharedweb/ui/DropdownMenu";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Menu } from "@base-ui/react/menu";
 import { BookmarkPlus, ChevronDown, Save, Trash2 } from "lucide-react";
 import React, { useState } from "react";
@@ -15,6 +10,11 @@ import {
   useWaitlistEmailTemplatesAdmin,
 } from "../../../lib/useWaitlistEmailTemplatesAdmin";
 import { completeDraft, type EmailDraft } from "../../../lib/waitlistEmail";
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../../ui/DropdownMenu";
+import { useToast } from "../../../ui/ToastProvider";
 import ConfirmDialog from "../../ConfirmDialog";
 import InlineNameForm from "../InlineNameForm";
 import {

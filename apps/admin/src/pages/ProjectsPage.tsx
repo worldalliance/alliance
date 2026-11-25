@@ -1,5 +1,4 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import React, { useState } from "react";
 import ProjectCardTile from "../components/ProjectCardTile";
@@ -12,6 +11,7 @@ import {
 } from "../lib/projectCards";
 import { useCreateProjectAdmin } from "../lib/useProjectsAdmin";
 import { ProjectsLoad, useProjectsPageData } from "../lib/useProjectsPageData";
+import { useToast } from "../ui/ToastProvider";
 
 const SECTION_TITLES: Record<ProjectLifecycle, string> = {
   [ProjectLifecycle.Live]: "Live",

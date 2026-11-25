@@ -11,17 +11,15 @@ import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
-import BaseButton, {
-  BaseButtonVariant,
-} from "@alliance/sharedweb/ui/BaseButton";
-import Card from "@alliance/sharedweb/ui/Card";
-import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { followUpFormLabel } from "../lib/followUpFormLabel";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import BaseButton, { BaseButtonVariant } from "../ui/BaseButton";
+import Card from "../ui/Card";
+import DateTimePicker from "../ui/DateTimePicker";
+import { useToast } from "../ui/ToastProvider";
+import type { UserSelectUser } from "../ui/UserSelect";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
 

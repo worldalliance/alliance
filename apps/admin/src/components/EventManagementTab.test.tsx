@@ -1,8 +1,8 @@
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
+import { ToastProvider } from "../ui/ToastProvider";
 import EventManagementTab from "./EventManagementTab";
 
 it("labels an event's status pill with spaces between words", () => {

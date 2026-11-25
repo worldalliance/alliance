@@ -10,10 +10,10 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import type { BlockWriteById } from "../lib/displayBlockById";
+import Button, { ButtonColor } from "../ui/Button";
 import { createDisplayBlock } from "./display-blocks";
 import { OutputBlockList } from "./output-builder/OutputBlockList";
 import {

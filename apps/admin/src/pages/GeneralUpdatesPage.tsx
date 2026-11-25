@@ -1,12 +1,12 @@
 import { forCount } from "@alliance/common/plural";
 import { GeneralUpdateAdminDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { useGeneralUpdatesAdmin } from "../lib/useGeneralUpdatesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 
 const GeneralUpdatesPage: React.FC = () => {
   const list = useGeneralUpdatesAdmin();

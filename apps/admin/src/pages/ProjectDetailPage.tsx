@@ -2,8 +2,6 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import type { AdminProjectDto } from "@alliance/shared/client";
 import { optionSections } from "@alliance/shared/forms/optionSections";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import React, { useId, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -23,6 +21,8 @@ import {
   useUpdateProjectAdmin,
 } from "../lib/useProjectsAdmin";
 import { ProjectsLoad, useProjectsPageData } from "../lib/useProjectsPageData";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 enum EditField {
   None = "none",

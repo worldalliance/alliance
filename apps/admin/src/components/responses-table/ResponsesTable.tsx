@@ -7,8 +7,6 @@ import type {
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   getCoreRowModel,
   getSortedRowModel,
@@ -28,7 +26,9 @@ import React, {
 } from "react";
 import { useSearchParams } from "react-router";
 import { assignedRowFields } from "../../lib/assignedRowFields";
+import Card from "../../ui/Card";
 import Sheet from "../../ui/Sheet";
+import { useToast } from "../../ui/ToastProvider";
 import type {
   FormWithSchema,
   ResponseVariantOption,

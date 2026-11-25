@@ -1,7 +1,7 @@
 import { withCount } from "@alliance/common/plural";
 import type { FormResponseDto } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useMemo } from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 import type { ResponseVariantOption } from "../FormResponsesView";
 
 type Tab = "responses" | "stats" | "questions" | "replays";

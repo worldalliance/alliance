@@ -1,7 +1,6 @@
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { useFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import Modal from "@alliance/sharedweb/ui/Modal";
 import { Search } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +9,7 @@ import { adminSearchResults, SEARCH_KIND_LABELS } from "../lib/adminSearch";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useCommunitiesAdmin } from "../lib/useCommunitiesAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import Modal from "../ui/Modal";
 import { searchPages } from "./adminNavEntries";
 
 const SearchPalette = ({ onClose }: { onClose: () => void }) => {

@@ -11,9 +11,9 @@ import { fieldHasOptions } from "@alliance/common/forms/form-schema";
 import type { TagDto } from "@alliance/shared/client";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
-import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React from "react";
+import type { UserSelectUser } from "../ui/UserSelect";
+import UserSelect from "../ui/UserSelect";
 import {
   formFieldsErrorReason,
   FormPickerError,

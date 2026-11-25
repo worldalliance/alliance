@@ -6,10 +6,6 @@ import {
 import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import DateTimePicker, {
-  DateTimePickerChange,
-} from "@alliance/sharedweb/ui/DateTimePicker";
-import { ConfirmMode } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
 import {
@@ -18,6 +14,8 @@ import {
 } from "../lib/actionStatusDisplay";
 import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
 import { useConfirmOnPage } from "../lib/useConfirmOnPage";
+import DateTimePicker, { DateTimePickerChange } from "../ui/DateTimePicker";
+import { ConfirmMode } from "../ui/ToastProvider";
 
 export type AddActionEvent = ReturnType<typeof useActionAdmin>["addEvent"];
 

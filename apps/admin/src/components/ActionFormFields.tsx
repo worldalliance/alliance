@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import React, { useRef } from "react";
 import type { ActionFieldDef } from "../lib/actionFieldDefs";
+import UploadingWithCancel from "../ui/UploadingWithCancel";
 import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import FormTextarea from "./FormTextarea";
 

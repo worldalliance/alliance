@@ -11,13 +11,13 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { isEqual } from "es-toolkit";
 import React, { useCallback, useState } from "react";
 import { useUpdateCommunityAdmin } from "../../lib/useCommunitiesAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
+import CharacterLimitNotice from "../../ui/CharacterLimitNotice";
+import { useToast } from "../../ui/ToastProvider";
 import type { GroupErrorReporting } from "./groupErrors";
 
 const detailsOf = (community: CommunityDto): CreateCommunityDto => ({

@@ -4,8 +4,6 @@ import type {
   ActionPartnershipResponseDto,
 } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { formatLocalDateTime } from "@alliance/sharedweb/ui/DateTimePicker";
 import React, { useMemo, useRef, useState } from "react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import {
@@ -13,6 +11,8 @@ import {
   useDeleteOutreachPartnershipResponseAdmin,
   useOutreachPartnershipResponsesAdmin,
 } from "../lib/useOutreachPartnershipResponsesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { formatLocalDateTime } from "../ui/DateTimePicker";
 
 const formatDateTime = (value: string): string =>
   new Date(value).toLocaleString(undefined, {

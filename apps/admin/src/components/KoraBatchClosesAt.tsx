@@ -1,6 +1,4 @@
 import type { KoraBatchDto } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useState, type FormEvent } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -9,6 +7,8 @@ import {
   formatKoraDate,
 } from "../lib/koraParticipants";
 import { useSetKoraBatchClosesAt } from "../lib/useKoraBatchesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 const FIELD = "rounded border border-zinc-300 bg-white px-2 py-1";
 

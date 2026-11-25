@@ -7,7 +7,6 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { onlineManager } from "@tanstack/react-query";
 import {
   cleanup,
@@ -18,6 +17,7 @@ import {
 } from "@testing-library/react";
 import { Suspense } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import GroupDetailPage from "./GroupDetailPage";
 
 afterEach(cleanup);

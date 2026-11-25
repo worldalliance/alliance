@@ -1,6 +1,5 @@
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -17,6 +16,7 @@ import {
 } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
 const noSearchParams = new URLSearchParams();

@@ -1,9 +1,9 @@
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
+import { ToastProvider } from "../ui/ToastProvider";
 import VideoReplaceForm from "./VideoReplaceForm";
 
 let answer: () => Response = () => Response.json({});

@@ -1,4 +1,5 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import React from "react";
+import Button, { ButtonColor } from "../ui/Button";
 import Modal, {
   ModalActions,
   ModalBody,
@@ -6,8 +7,7 @@ import Modal, {
   ModalFooter,
   ModalHeader,
   ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import React from "react";
+} from "../ui/Modal";
 
 interface ConfirmDialogProps {
   isOpen: boolean;

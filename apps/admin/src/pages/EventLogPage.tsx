@@ -1,7 +1,6 @@
 import { hoursInDay } from "@alliance/common/duration";
 import type { EventLogDto, EventType } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { milliseconds } from "date-fns";
 import {
   millisecondsInSecond,
@@ -15,6 +14,7 @@ import {
   useEventLogWebSocket,
   type EventLogWsEvent,
 } from "../lib/useEventLogWebSocket";
+import Pagination from "../ui/Pagination";
 
 const EVENT_TYPES: EventType[] = [
   "account_created",

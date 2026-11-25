@@ -1,9 +1,9 @@
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useFormulasAdmin } from "../lib/useFormulasAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 
 const FormulasPage: React.FC = () => {
   const formulas = useFormulasAdmin();

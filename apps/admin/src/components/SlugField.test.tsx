@@ -1,8 +1,8 @@
 import { actionsUpdateAdmin } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, spyOn } from "bun:test";
+import { ToastProvider } from "../ui/ToastProvider";
 import { SlugField } from "./SlugField";
 
 let saved: unknown[] = [];

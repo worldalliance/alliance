@@ -3,8 +3,6 @@ import type {
   ReferencedAction,
 } from "@alliance/common/cohort-expression";
 import { ActionSuiteDto, TagDto } from "@alliance/shared/client";
-import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import {
@@ -14,6 +12,8 @@ import {
   suiteKindUnknown,
   type ActionFieldDef,
 } from "../lib/actionFieldDefs";
+import type { UserSelectUser } from "../ui/UserSelect";
+import UserSelect from "../ui/UserSelect";
 import ActionFormFields, { type ActionFieldInputs } from "./ActionFormFields";
 import ActionReviewersEditor, {
   type ReviewerRow,

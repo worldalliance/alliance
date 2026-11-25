@@ -1,7 +1,5 @@
 import type { ReplyState } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   type MouseEvent,
   type ReactNode,
@@ -11,6 +9,8 @@ import {
 } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import type { TextPage } from "../../lib/useOlderTexts";
+import Button, { ButtonColor } from "../../ui/Button";
+import { ToastVariant, useToast } from "../../ui/ToastProvider";
 import {
   SectionLoadState,
   SectionRefreshError,

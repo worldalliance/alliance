@@ -2,9 +2,9 @@ import type { HostedDocDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { setTestWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import HostedDocsPage from "./HostedDocsPage";
 
 const pilot: HostedDocDto = {

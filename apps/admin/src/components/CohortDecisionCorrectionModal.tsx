@@ -1,7 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import type { CohortDecisionDto } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import InlineError from "@alliance/sharedweb/ui/InlineError";
+import { useId, useState } from "react";
+import { useCorrectCohortDecisionAdmin } from "../lib/useCohortDecisionsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import InlineError from "../ui/InlineError";
 import Modal, {
   ModalActions,
   ModalBody,
@@ -9,9 +11,7 @@ import Modal, {
   ModalFooter,
   ModalHeader,
   ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import { useId, useState } from "react";
-import { useCorrectCohortDecisionAdmin } from "../lib/useCohortDecisionsAdmin";
+} from "../ui/Modal";
 
 export function CohortDecisionCorrectionModal({
   actionId,

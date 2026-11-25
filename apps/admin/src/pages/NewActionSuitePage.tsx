@@ -1,10 +1,10 @@
 import { R } from "@alliance/common/result";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
 
 const NewActionSuitePage = () => {
   const navigate = useNavigate();

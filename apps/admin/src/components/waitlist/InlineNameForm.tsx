@@ -1,5 +1,5 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useState } from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 
 type InlineNameFormProps = {
   label: string;

@@ -1,13 +1,13 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { rowFieldNames } from "@alliance/common/forms/row-list";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useState } from "react";
 import {
   conditionableItems,
   parseRowsJson,
   withRowCondition,
 } from "../../lib/rowListEdits";
+import Button, { ButtonColor } from "../../ui/Button";
 import { inputPad } from "../VariableSamples";
 import { RowConditionEditor } from "./RowConditionEditor";
 

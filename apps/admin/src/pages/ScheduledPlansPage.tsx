@@ -1,15 +1,15 @@
 import { withCount } from "@alliance/common/plural";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Card from "@alliance/sharedweb/ui/Card";
-import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ChevronDown, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { useScheduledPlansAdmin } from "../lib/useScheduledPlansAdmin";
+import { AvatarProfile } from "../ui/Avatar";
+import Card from "../ui/Card";
+import CenterLayout from "../ui/CenterLayout";
+import Spinner from "../ui/Spinner";
 
 const ScheduledPlansPage = () => {
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());

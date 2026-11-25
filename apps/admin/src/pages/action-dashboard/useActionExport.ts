@@ -1,8 +1,8 @@
 import { actionsExportActionAdmin } from "@alliance/shared/client";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
+import { useToast } from "../../ui/ToastProvider";
 
 export type ActionExport = ReturnType<typeof useActionExport>;
 

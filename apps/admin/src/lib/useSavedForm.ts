@@ -1,8 +1,8 @@
 import type { FormPlace } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useToast } from "../ui/ToastProvider";
 import { adminRefusalMessage } from "./adminRefusal";
 import { ensurePages } from "./ensureFormSchema";
 import { placeForSelect } from "./formDependencies";

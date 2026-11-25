@@ -3,13 +3,13 @@ import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Card from "@alliance/sharedweb/ui/Card";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
 } from "../lib/actionStatusDisplay";
+import Card from "../ui/Card";
 import CreateEventForm, { type AddActionEvent } from "./CreateEventForm";
 
 // Status options for event creation

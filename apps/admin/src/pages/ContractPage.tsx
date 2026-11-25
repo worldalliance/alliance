@@ -4,18 +4,15 @@ import {
   UpdateContractDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
-import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import {
-  formatLocalDateTime,
-  resolveDateValue,
-} from "@alliance/sharedweb/ui/DateTimePicker";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Plus, X } from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import FormTextarea from "../components/FormTextarea";
 import { useContentConfirm } from "../components/useContentConfirm";
 import { useContractAdmin } from "../lib/useContractAdmin";
+import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
+import { formatLocalDateTime, resolveDateValue } from "../ui/DateTimePicker";
+import { useToast } from "../ui/ToastProvider";
 
 type DescriptionRow = {
   key: string;

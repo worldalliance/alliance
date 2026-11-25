@@ -1,6 +1,6 @@
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useLayoutEffect, useState } from "react";
 import { useLocation } from "react-router";
+import { useToast } from "../ui/ToastProvider";
 
 type ConfirmOptions = Parameters<ReturnType<typeof useToast>["confirm"]>[0];
 // The page owns the signal; a caller's own would be silently replaced.

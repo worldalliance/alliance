@@ -1,7 +1,5 @@
 import type { ScheduleReleaseDto } from "@alliance/shared/client";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMemo, useState } from "react";
 import {
   defaultReminderPresetNames,
@@ -22,6 +20,8 @@ import {
 } from "../../lib/releaseDates";
 import { useCohortEvaluationAdmin } from "../../lib/useCohortEvaluationAdmin";
 import { useActionReleaseAdmin } from "../../lib/useProjectsAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import { ConfirmMode, useToast } from "../../ui/ToastProvider";
 import PacificDateTimeInput from "./PacificDateTimeInput";
 
 type DeadlineStatus = "office_action" | "completed";

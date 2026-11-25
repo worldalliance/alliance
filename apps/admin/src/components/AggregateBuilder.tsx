@@ -8,9 +8,9 @@ import {
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import Button, { ButtonColor } from "../ui/Button";
 
 const inputBase =
   "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";

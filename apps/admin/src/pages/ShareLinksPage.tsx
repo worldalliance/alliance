@@ -4,12 +4,6 @@ import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect, {
-  useSelectableUsers,
-} from "@alliance/sharedweb/ui/UserSelect";
 import { Copy } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import CampaignPicker from "../components/share-links/CampaignPicker";
@@ -23,6 +17,10 @@ import {
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { type ShareLinkOwner } from "../lib/useShareLinksAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import { useToast } from "../ui/ToastProvider";
+import UserSelect, { useSelectableUsers } from "../ui/UserSelect";
 
 type OwnerKind = ShareLinkOwner["type"];
 

@@ -13,8 +13,8 @@ import {
   useAdminTaskFormActions,
 } from "@alliance/shared/lib/useTaskForm";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useState } from "react";
+import { useToast } from "../ui/ToastProvider";
 import {
   customValidatorIds,
   mapCustomValidatorIds,

@@ -5,10 +5,10 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { MmsThreadsLiveContext, OFFLINE } from "../lib/mmsThreadsLive";
+import { ToastProvider } from "../ui/ToastProvider";
 import TextThreadPage from "./TextThreadPage";
 
 const THREAD_ID = "00000000-0000-4000-8000-000000000001";

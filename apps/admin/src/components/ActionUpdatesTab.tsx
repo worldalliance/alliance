@@ -7,11 +7,6 @@ import {
   CreateActionUpdateDto,
   TagDto,
 } from "@alliance/shared/client";
-import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { EyeOff, SquarePen } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -22,6 +17,11 @@ import {
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import type { CollectiveResultTexts } from "../lib/updatePreview";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
+import ActionUpdateCard from "../ui/ActionUpdateCard";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import DateTimePicker from "../ui/DateTimePicker";
+import { ToastPlacement, useToast } from "../ui/ToastProvider";
 import { CollectiveResultFields } from "./CollectiveResultFields";
 import { UPDATE_PREVIEW_DESCRIPTION, UpdatePreview } from "./UpdatePreview";
 

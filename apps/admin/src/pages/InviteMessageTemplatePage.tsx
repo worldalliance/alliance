@@ -6,11 +6,11 @@ import {
   useInviteMessageTemplate,
   useUpdateInviteMessageTemplate,
 } from "@alliance/shared/lib/useInviteMessageTemplate";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useEffect, useState, type FormEvent } from "react";
 import FormTextarea from "../components/FormTextarea";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import { useToast } from "../ui/ToastProvider";
 
 const InviteMessageTemplatePage = () => {
   const {

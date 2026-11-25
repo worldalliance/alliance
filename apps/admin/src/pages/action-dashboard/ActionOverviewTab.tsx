@@ -6,7 +6,6 @@ import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Card from "@alliance/sharedweb/ui/Card";
 import React from "react";
 import type { SetURLSearchParams } from "react-router";
 import { ActionProjectSteps } from "../../components/ActionProjectControls";
@@ -15,6 +14,7 @@ import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
 } from "../../lib/actionStatusDisplay";
+import Card from "../../ui/Card";
 import ActionDashboardToolbar from "./ActionDashboardToolbar";
 import ActionParticipationStats from "./ActionParticipationStats";
 import ActionResponseReports from "./ActionResponseReports";

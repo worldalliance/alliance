@@ -8,8 +8,6 @@ import type { HostedDocDto } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy, FileUp } from "lucide-react";
 import React, { useRef, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -23,6 +21,8 @@ import {
   useUpdateHostedDocAdmin,
 } from "../lib/useHostedDocsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 const INITIAL_DRAFT = { slug: "", notes: "" };
 const INPUT_CLASS = "border border-zinc-300 rounded px-2 py-1 mt-1";

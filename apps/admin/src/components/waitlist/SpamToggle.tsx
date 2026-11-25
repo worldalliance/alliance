@@ -1,6 +1,5 @@
 import type { AdminWaitlistEntryDto } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { ShieldAlert } from "lucide-react";
 import React from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
@@ -9,6 +8,7 @@ import {
   WaitlistEntryChange,
 } from "../../lib/useWaitlistEntriesAdmin";
 import { SPAM_STATUSES } from "../../lib/waitlistFilter";
+import { useToast } from "../../ui/ToastProvider";
 import { ICON_BUTTON_CLASS } from "./controlClasses";
 
 export const SPAM_CHANGE_FAILED = "Could not change spam status.";

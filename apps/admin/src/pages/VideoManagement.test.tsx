@@ -2,7 +2,6 @@ import type { VideoListItemDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -12,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { ToastProvider } from "../ui/ToastProvider";
 import VideoManagement from "./VideoManagement";
 
 const video = (id: number, originalFilename: string) =>

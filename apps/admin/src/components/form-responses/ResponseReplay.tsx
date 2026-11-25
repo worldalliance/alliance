@@ -2,10 +2,10 @@ import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React, { useMemo } from "react";
 import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../../lib/aiScore";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
 import type { FormWithSchema } from "../FormResponsesView";
 
 type ResponseReplayProps = {

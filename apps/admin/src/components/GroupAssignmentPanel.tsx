@@ -7,15 +7,15 @@ import type {
   UserDto,
 } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useCommunitiesAdmin } from "../lib/useCommunitiesAdmin";
 import { useAssignGroupsAdmin } from "../lib/useGroupAssignmentAdmin";
+import { AvatarProfile } from "../ui/Avatar";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import List from "../ui/List";
 import ConfirmDialog from "./ConfirmDialog";
 
 const storageKey = "admin.groupAssignmentSelections";

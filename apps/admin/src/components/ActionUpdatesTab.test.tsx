@@ -2,11 +2,11 @@ import type { ActionUpdateDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQuery } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import ActionUpdatesTab from "./ActionUpdatesTab";
 
 let answer: (request: Request) => Response | Promise<Response> = () =>

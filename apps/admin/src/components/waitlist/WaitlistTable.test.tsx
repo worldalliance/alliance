@@ -1,9 +1,9 @@
 import type { AdminWaitlistEntryDto } from "@alliance/shared/client/types.gen";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render, screen, within } from "@testing-library/react";
 import { expect, it } from "bun:test";
+import { ToastProvider } from "../../ui/ToastProvider";
 import WaitlistTable from "./WaitlistTable";
 
 const entry: AdminWaitlistEntryDto = {

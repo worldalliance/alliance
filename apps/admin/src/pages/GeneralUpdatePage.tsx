@@ -9,11 +9,6 @@ import {
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
-import {
-  formatLocalDateTime,
-  resolveDateValue,
-} from "@alliance/sharedweb/ui/DateTimePicker";
-import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
@@ -30,6 +25,8 @@ import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 import { useTagsAdmin } from "../lib/useTagsAdmin";
+import { formatLocalDateTime, resolveDateValue } from "../ui/DateTimePicker";
+import { useSelectableUsers } from "../ui/UserSelect";
 
 const tabs = ["details", "content"] as const;
 

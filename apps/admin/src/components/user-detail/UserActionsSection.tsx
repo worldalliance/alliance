@@ -1,9 +1,9 @@
 import { cn } from "@alliance/shared/styles/util";
-import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
 import { keyBy } from "es-toolkit";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { useUserActionRelationsAdmin } from "../../lib/useUserActionRelationsAdmin";
+import { PILL_STATUS_DATA } from "../../ui/UserProgressPills";
 import CreateActivityControls from "../CreateActivityControls";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import { humanize } from "./humanize";

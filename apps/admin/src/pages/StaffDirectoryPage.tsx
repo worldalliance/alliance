@@ -1,8 +1,6 @@
 import { type StaffDirectoryEntryDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { GripVertical } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -13,6 +11,8 @@ import {
   useSaveStaffDirectoryAdmin,
   useStaffDirectoryAdmin,
 } from "../lib/useStaffDirectoryAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 type StaffRow = StaffDirectoryEntryDto;
 

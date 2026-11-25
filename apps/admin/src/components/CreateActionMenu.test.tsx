@@ -1,9 +1,9 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import CreateActionMenu from "./CreateActionMenu";
 
 const { baseUrl, fetch } = client.getConfig();

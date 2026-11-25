@@ -5,8 +5,6 @@ import {
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -14,6 +12,8 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { EditableCopyTextBlock } from "./EditableCopyTextBlock";
 
 let userList: () => Response | Promise<Response> = () => Response.json([]);

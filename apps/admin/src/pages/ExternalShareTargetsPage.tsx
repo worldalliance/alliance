@@ -5,8 +5,6 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React, { useEffect, useState } from "react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import {
@@ -16,6 +14,8 @@ import {
   useExternalShareTargetsAdmin,
   useUpdateExternalShareTargetAdmin,
 } from "../lib/useExternalShareTargetsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
 
 const INITIAL_NEW_TARGET: CreateExternalShareTargetDto = {
   name: "",

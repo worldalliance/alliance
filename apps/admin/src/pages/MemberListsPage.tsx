@@ -1,8 +1,8 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useMemberListsAdmin } from "../lib/useMemberListsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 
 const MemberListsPage: React.FC = () => {
   const lists = useMemberListsAdmin();

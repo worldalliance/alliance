@@ -8,8 +8,6 @@ import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { cn } from "@alliance/shared/styles/util";
 import { resolveImageSrc } from "@alliance/sharedweb/lib/imageSrc";
 import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import {
   closestCenter,
   DndContext,
@@ -33,6 +31,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { useToast } from "../../ui/ToastProvider";
+import UploadingWithCancel from "../../ui/UploadingWithCancel";
 import { VariableTextField } from "../VariableTextField";
 import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";

@@ -3,8 +3,6 @@ import type {
   CommunityDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -14,6 +12,8 @@ import {
   useCommunitiesAdmin,
   useMoveCommunityMemberAdmin,
 } from "../lib/useCommunitiesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 const NO_COMMUNITIES: CommunityDto[] = [];
 

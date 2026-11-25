@@ -24,7 +24,7 @@ beforeEach(() => {
     .mockImplementation((_dataUri, signal) => pending(uploads, signal));
 });
 
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { EditableImagesBlock } from "./EditableImagesBlock";
 
 const emptyBlock: ImagesBlock = {

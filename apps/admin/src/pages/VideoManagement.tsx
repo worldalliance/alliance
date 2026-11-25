@@ -1,9 +1,9 @@
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { useDeleteVideoAdmin, useVideosAdmin } from "../lib/useVideosAdmin";
+import { useToast } from "../ui/ToastProvider";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

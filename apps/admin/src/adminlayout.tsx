@@ -1,9 +1,9 @@
 import { cn } from "@alliance/shared/styles/util";
 import { isStaging } from "@alliance/sharedweb/lib/config";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Outlet } from "react-router";
 import LeaveGuard from "./components/LeaveGuard";
 import { useAuth } from "./lib/AuthContext";
+import { zIndex } from "./ui/zIndex";
 
 export default function AdminLayout() {
   const { user, isAuthenticated, logout, loading } = useAuth();

@@ -4,17 +4,13 @@ import {
   type CohortDecisionReason,
 } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import InlineError from "@alliance/sharedweb/ui/InlineError";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alliance/sharedweb/ui/Tooltip";
 import { ArrowLeftRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useCohortDecisionsAdmin } from "../lib/useCohortDecisionsAdmin";
+import InlineError from "../ui/InlineError";
+import Spinner from "../ui/Spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/Tooltip";
 import { CohortDecisionCorrectionModal } from "./CohortDecisionCorrectionModal";
 
 const REASON_LABELS: Record<CohortDecisionReason, string> = {

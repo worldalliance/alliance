@@ -21,14 +21,14 @@ import {
   todayDateInputValue,
 } from "@alliance/shared/lib/dateInput";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import FormInput from "@alliance/sharedweb/ui/FormInput";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Pencil, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import FormInput from "../ui/FormInput";
+import Spinner from "../ui/Spinner";
+import { useToast } from "../ui/ToastProvider";
 
 export default function UserAwayPeriodsSection({
   user,

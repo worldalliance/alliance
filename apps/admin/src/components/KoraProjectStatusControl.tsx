@@ -2,7 +2,6 @@ import {
   KORA_ACTIVE_NEEDS_TRANSCRIPTS,
   KoraProjectStatus,
 } from "@alliance/common/kora";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CirclePlay, Hourglass, Lock, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -10,6 +9,7 @@ import {
   useKoraProjectAdmin,
   useSetKoraProjectStatus,
 } from "../lib/useKoraParticipantsAdmin";
+import { useToast } from "../ui/ToastProvider";
 import ConfirmDialog from "./ConfirmDialog";
 
 const STATUS: Record<

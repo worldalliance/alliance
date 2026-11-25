@@ -1,9 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
-import UserSelect, {
-  type useSelectableUsers,
-} from "@alliance/sharedweb/ui/UserSelect";
 import React, { useCallback } from "react";
 import type { useTagsAdmin } from "../../lib/useTagsAdmin";
+import UserSelect, { type useSelectableUsers } from "../../ui/UserSelect";
 import FormSection from "../FormSection";
 import type { GeneralUpdateFieldsProps } from "./generalUpdateForm";
 

@@ -6,12 +6,12 @@ import {
   type ReminderGroupTimingMode,
 } from "@alliance/shared/client";
 import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useReminderTentativePlansAdmin } from "../../lib/useReminderTentativePlansAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import LargeCheckbox from "../../ui/LargeCheckbox";
+import UserSelect, { UserSelectUser } from "../../ui/UserSelect";
 import { useContentConfirm } from "../useContentConfirm";
 import ReminderKeywordHelp from "./ReminderKeywordHelp";
 import ReminderMessageFields from "./ReminderMessageFields";

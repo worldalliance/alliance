@@ -4,7 +4,6 @@ import {
 } from "@alliance/common/forms/form-conditions";
 import { type Page } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useState } from "react";
 import {
   DependentEntryKind,
@@ -12,6 +11,7 @@ import {
   groupDependents,
 } from "../../lib/formDependencies";
 import type { VisibilityGroups } from "../../lib/visibilityGroups";
+import { useToast } from "../../ui/ToastProvider";
 import ConfirmDialog from "../ConfirmDialog";
 import { describePlace } from "./DependencyLinks";
 

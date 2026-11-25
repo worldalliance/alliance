@@ -1,8 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { render, screen } from "@testing-library/react";
+import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import FormResponseStatistics from "./FormResponseStatistics";
 
 const schema: FormSchema = {

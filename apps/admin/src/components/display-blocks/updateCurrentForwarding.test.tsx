@@ -1,8 +1,8 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { createDisplayBlock } from "./createDisplayBlock";
 import { EditableBigLinkBlock } from "./EditableBigLinkBlock";
 import { EditableChatTranscriptBlock } from "./EditableChatTranscriptBlock";

@@ -1,8 +1,8 @@
 import type { HeaderBlock } from "@alliance/common/forms/display-blocks";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render, screen } from "@testing-library/react";
 import { EditorSidebar } from "../../lib/testing/EditorSidebar";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { EditableHeaderBlock } from "./EditableHeaderBlock";
 
 const HINT =

@@ -1,8 +1,8 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
+import { ToastProvider } from "../../ui/ToastProvider";
 import ActionDashboardToolbar from "./ActionDashboardToolbar";
 import type { ActionExport } from "./useActionExport";
 

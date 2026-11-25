@@ -3,14 +3,14 @@ import {
   WaitlistEmailPlaceholder,
   waitlistEmailToken,
 } from "@alliance/common/waitlistEmail";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import {
   WaitlistEntryChange as EntryChange,
   useChangeWaitlistEntriesAdmin,
 } from "../../lib/useWaitlistEntriesAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import { useToast } from "../../ui/ToastProvider";
 import ConfirmDialog from "../ConfirmDialog";
 import { SPAM_CHANGE_FAILED } from "./SpamToggle";
 

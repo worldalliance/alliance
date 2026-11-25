@@ -16,10 +16,6 @@ import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
-import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
@@ -29,6 +25,10 @@ import {
   useCreateCommunityAdmin,
 } from "../lib/useCommunitiesAdmin";
 import { useGroupAssignmentMembersAdmin } from "../lib/useGroupAssignmentAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import CharacterLimitNotice from "../ui/CharacterLimitNotice";
+import List from "../ui/List";
 
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",

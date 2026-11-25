@@ -1,11 +1,6 @@
 import type { ActionCategory } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alliance/sharedweb/ui/Tooltip";
-import {
   Cpu,
   HandCoins,
   Landmark,
@@ -13,6 +8,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/Tooltip";
 
 const ACTION_CATEGORY_DISPLAY: Record<
   ActionCategory,

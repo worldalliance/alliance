@@ -1,7 +1,6 @@
 import { withCount } from "@alliance/common/plural";
 import type { UserCityCountDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Card from "@alliance/sharedweb/ui/Card";
 import chroma from "chroma-js";
 import React, { useMemo } from "react";
 import {
@@ -12,6 +11,7 @@ import {
 } from "react-simple-maps";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useUserCityCountsAdmin } from "../lib/useUserCityCountsAdmin";
+import Card from "../ui/Card";
 
 type AggregatedPoint = {
   key: string;

@@ -6,13 +6,6 @@ import type {
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { copyOutcome, CopyOutcome } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Modal, {
-  ModalBody,
-  ModalHeader,
-  ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { BellOff, Copy, Link2, Ticket } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
@@ -22,6 +15,9 @@ import {
 } from "../../lib/useWaitlistEntriesAdmin";
 import { PLACEMENT_NOTES } from "../../lib/waitlistEmail";
 import { SPAM_STATUSES } from "../../lib/waitlistFilter";
+import Button, { ButtonColor } from "../../ui/Button";
+import Modal, { ModalBody, ModalHeader, ModalTitle } from "../../ui/Modal";
+import { useToast } from "../../ui/ToastProvider";
 import ConfirmDialog from "../ConfirmDialog";
 import { ICON_BUTTON_CLASS } from "./controlClasses";
 

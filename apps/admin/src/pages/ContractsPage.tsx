@@ -2,12 +2,12 @@ import { forCount } from "@alliance/common/plural";
 import { ContractAdminDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router";
 import ContractCard from "../components/ContractCard";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { useContractsAdmin } from "../lib/useContractsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 
 const ContractsPage: React.FC = () => {
   const list = useContractsAdmin();

@@ -4,8 +4,6 @@ import type {
   KoraDeletionImpactDto,
 } from "@alliance/shared/client";
 import { isFeatureEnabled } from "@alliance/sharedweb/lib/config";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useState, type ReactNode } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { formatKoraDate } from "../lib/koraParticipants";
@@ -14,6 +12,8 @@ import {
   useKoraBatchAction,
   useKoraDeletionImpact,
 } from "../lib/useKoraBatchesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 import ConfirmDialog from "./ConfirmDialog";
 
 type Pending =

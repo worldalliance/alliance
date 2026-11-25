@@ -4,8 +4,8 @@ import {
 } from "@alliance/common/kora";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { ToastProvider } from "../ui/ToastProvider";
 import { KoraProjectStatusControl } from "./KoraProjectStatusControl";
 
 let status = KoraProjectStatus.Pending;

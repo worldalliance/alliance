@@ -6,11 +6,11 @@ import type {
   SavePartitionResultDto,
   SuitePartitionDto,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { isEqual } from "es-toolkit";
 import React, { useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useLeaveGuard } from "../../lib/useLeaveGuard";
+import Button, { ButtonColor } from "../../ui/Button";
 import PartFields, { PartitionProblemList } from "./PartFields";
 import PartitionGrid from "./PartitionGrid";
 import PartitionPreview from "./PartitionPreview";

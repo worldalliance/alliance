@@ -4,13 +4,13 @@ import {
 } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
 import VideoPlayer from "@alliance/sharedweb/forms/VideoPlayer";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React from "react";
 import { useNavigate, useParams } from "react-router";
 import VideoReplaceForm from "../components/VideoReplaceForm";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { useVideoAdmin } from "../lib/useVideosAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

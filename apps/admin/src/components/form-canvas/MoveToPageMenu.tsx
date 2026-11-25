@@ -1,10 +1,7 @@
 import type { Page } from "@alliance/common/forms/form-schema";
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { ChevronDown } from "lucide-react";
+import { DropdownMenuContent, DropdownMenuItem } from "../../ui/DropdownMenu";
 import { pageTitle } from "./canvasSelection";
 
 export function MoveToPageMenu({

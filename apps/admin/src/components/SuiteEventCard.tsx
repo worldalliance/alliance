@@ -1,9 +1,9 @@
 import { ActionEventDto, UpdateActionEventDto } from "@alliance/shared/client";
 import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import { useState } from "react";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import DateTimePicker from "../ui/DateTimePicker";
 
 export type SuiteEventCardProps = {
   event: ActionEventDto;

@@ -1,7 +1,6 @@
 import type { AdminActionUpdateDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   fireEvent,
@@ -15,6 +14,7 @@ import LeaveGuard from "../components/LeaveGuard";
 import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
+import { ToastProvider } from "../ui/ToastProvider";
 import ActionUpdatePage from "./ActionUpdatePage";
 
 let served: AdminActionUpdateDto = update();

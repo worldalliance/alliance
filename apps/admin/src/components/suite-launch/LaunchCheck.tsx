@@ -1,6 +1,6 @@
-import Card from "@alliance/sharedweb/ui/Card";
 import { AlertTriangle, CheckIcon } from "lucide-react";
 import type React from "react";
+import Card from "../../ui/Card";
 import type { LaunchSection } from "./launchBlockers";
 
 const LaunchCheck: React.FC<

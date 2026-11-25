@@ -5,7 +5,6 @@ import type {
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as config from "@alliance/sharedweb/lib/config";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   cleanup,
   fireEvent,
@@ -14,6 +13,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeEach, expect, it, jest } from "bun:test";
+import { ToastProvider } from "../../ui/ToastProvider";
 import EntryContactActions, { InvitationDialog } from "./EntryContactActions";
 
 const phoneEntry: AdminWaitlistEntryDto = {

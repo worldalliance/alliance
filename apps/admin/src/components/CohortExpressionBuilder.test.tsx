@@ -1,7 +1,7 @@
 import { makeTag } from "@alliance/shared/lib/testFixtures";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { ToastProvider } from "../ui/ToastProvider";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { ActionSelectEditor, TagEditor } from "./CohortLeafEditors";
 

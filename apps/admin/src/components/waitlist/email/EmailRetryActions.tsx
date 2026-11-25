@@ -1,10 +1,10 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
 import type { WaitlistEmailBatchDto } from "@alliance/shared/client/types.gen";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
 import { useRetryWaitlistEmailAdmin } from "../../../lib/useWaitlistEmailsAdmin";
+import Button, { ButtonColor } from "../../../ui/Button";
+import { useToast } from "../../../ui/ToastProvider";
 import ConfirmDialog from "../../ConfirmDialog";
 
 const EmailRetryActions: React.FC<{ batch: WaitlistEmailBatchDto }> = ({

@@ -1,7 +1,7 @@
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, render, screen } from "@testing-library/react";
 import { StrictMode, useLayoutEffect, useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import { useConfirmOnPage } from "./useConfirmOnPage";
 
 let answer: Promise<boolean> | null = null;

@@ -3,13 +3,13 @@ import { UserValueProperty } from "@alliance/common/forms/user-properties";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { useFormQuestionFieldsPeek } from "@alliance/shared/lib/useFormSchema";
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Plus } from "lucide-react";
 import { useCustomValidatorTypesAdmin } from "../../../lib/useCustomValidatorTypesAdmin";
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../../ui/DropdownMenu";
 import { useCustomValidatorDrafts } from "../customValidatorDrafts";
 import type { RuleSources } from "./ConditionRule";
 import { defaultFieldRule } from "./fieldConditions";

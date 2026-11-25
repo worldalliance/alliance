@@ -1,7 +1,6 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -13,6 +12,7 @@ import {
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
+import { ToastProvider } from "../ui/ToastProvider";
 import ActionsList from "./Actions";
 
 const loaded = [

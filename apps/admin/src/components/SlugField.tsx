@@ -1,9 +1,9 @@
 import { R } from "@alliance/common/result";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 import { logActionError } from "../pages/action-dashboard/actionSaveErrors";
+import { useToast } from "../ui/ToastProvider";
 
 export function SlugField({
   slug,

@@ -18,8 +18,8 @@ import {
   type UpdateProjectDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "../ui/ToastProvider";
 import {
   dataOrThrow,
   sendConfirmingDeadlineShortening,

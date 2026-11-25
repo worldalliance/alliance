@@ -1,15 +1,11 @@
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
-import {
-  ConfirmMode,
-  ToastPlacement,
-  useToast,
-} from "@alliance/sharedweb/ui/ToastProvider";
 import type React from "react";
 import { useCallback, useState } from "react";
 import {
   MembershipChange,
   useChangeCommunityMembershipAdmin,
 } from "../../lib/useCommunitiesAdmin";
+import { ConfirmMode, ToastPlacement, useToast } from "../../ui/ToastProvider";
 import type { GroupErrorReporting } from "./groupErrors";
 
 export function useGroupMembershipChanges({

@@ -16,7 +16,6 @@ import {
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { userQueryKeys } from "@alliance/shared/lib/user";
 import { queryClient } from "@alliance/sharedweb/lib/queryClient";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -29,6 +28,7 @@ import {
 import { omit } from "es-toolkit";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { AuthProvider } from "../lib/AuthContext";
+import { ToastProvider } from "../ui/ToastProvider";
 import UserDetailView, { clientLoader } from "./UserDetailView";
 
 const sam: UserAdminDetailDto = {

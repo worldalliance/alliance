@@ -6,7 +6,6 @@ import type {
   Page,
   PageItem,
 } from "@alliance/common/forms/form-schema";
-import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useState } from "react";
 import {
   collectSchemaIds,
@@ -29,6 +28,7 @@ import {
   type GroupedPages,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
+import { ToastVariant, useToast } from "../../ui/ToastProvider";
 import { createDisplayBlock } from "../display-blocks";
 import type { ElementExpressionsMove } from "../form-fields/conditions/expressionBuffers";
 import { createField } from "../form-fields/createField";

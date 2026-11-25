@@ -3,8 +3,6 @@ import type { ProjectDto } from "@alliance/shared/client";
 import { optionSections } from "@alliance/shared/forms/optionSections";
 import { cn } from "@alliance/shared/styles/util";
 import SearchableSelect from "@alliance/sharedweb/forms/SearchableSelect";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
@@ -17,6 +15,8 @@ import {
   useProjectsAdmin,
   useUpdateProjectAdmin,
 } from "../lib/useProjectsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import ConfirmDialog from "./ConfirmDialog";
 import { ProjectNameInput } from "./ProjectNameInput";

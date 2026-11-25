@@ -6,11 +6,11 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { ToastProvider } from "../ui/ToastProvider";
 import FormulaPage from "./FormulaPage";
 
 export const base: FormulaDto = {

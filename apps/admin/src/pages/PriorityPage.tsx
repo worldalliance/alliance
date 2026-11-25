@@ -7,8 +7,6 @@ import { homePagePriorityComparator } from "@alliance/shared/lib/actionUtils";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -29,6 +27,8 @@ import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 import { useGeneralUpdatesAdmin } from "../lib/useGeneralUpdatesAdmin";
 import { useSetPrioritiesAdmin } from "../lib/useSetPrioritiesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 type PriorityItem =
   | {

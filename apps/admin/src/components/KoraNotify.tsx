@@ -4,8 +4,6 @@ import {
 } from "@alliance/common/kora";
 import { withCount } from "@alliance/common/plural";
 import type { KoraAdminProjectDto } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -13,6 +11,8 @@ import {
   useKoraProjectAdmin,
   useSendKoraNotice,
 } from "../lib/useKoraParticipantsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 import ConfirmDialog from "./ConfirmDialog";
 
 const NOTICE: Record<

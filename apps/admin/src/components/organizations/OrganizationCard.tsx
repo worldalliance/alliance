@@ -4,8 +4,6 @@ import type {
   CommunityDto,
 } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Building2, ImageUp } from "lucide-react";
 import React from "react";
 import {
@@ -13,6 +11,8 @@ import {
   useUploadCampaignPictureAdmin,
 } from "../../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../../lib/useRefusalToast";
+import Card from "../../ui/Card";
+import { useToast } from "../../ui/ToastProvider";
 import InlineTextInput from "../InlineTextInput";
 import OrganizationLinks from "./OrganizationLinks";
 

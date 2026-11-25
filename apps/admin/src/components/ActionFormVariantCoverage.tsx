@@ -5,9 +5,9 @@ import {
   useFormDisplaySlugs,
 } from "@alliance/shared/lib/useFormsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Card from "@alliance/sharedweb/ui/Card";
 import { useNavigate } from "react-router";
 import { formatPct } from "../lib/formatPct";
+import Card from "../ui/Card";
 
 export interface ActionFormVariantCoverageProps {
   stats: ActionFormVariantStatsDto[];

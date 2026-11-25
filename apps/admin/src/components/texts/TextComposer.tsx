@@ -6,8 +6,6 @@ import {
   minuteStart,
   useClockMinute,
 } from "@alliance/shared/lib/useClockMinute";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { SegmentedMessage } from "sms-segments-calculator";
@@ -19,6 +17,8 @@ import {
   staffTextConflict,
 } from "../../lib/memberTexts";
 import { useReportComposing } from "../../lib/useReportComposing";
+import Button, { ButtonColor } from "../../ui/Button";
+import { ToastVariant, useToast } from "../../ui/ToastProvider";
 import ComposingNotice from "./ComposingNotice";
 
 const CONFLICT_COPY: Record<

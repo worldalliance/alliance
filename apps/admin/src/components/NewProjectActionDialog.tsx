@@ -1,13 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Modal, {
-  ModalFooter,
-  ModalHeader,
-  ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
 import { useId, useState } from "react";
 import { useNavigate } from "react-router";
 import { useCreateProjectActionAdmin } from "../lib/useProjectsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Modal, { ModalFooter, ModalHeader, ModalTitle } from "../ui/Modal";
 
 const NewProjectActionDialog = ({
   projectId,

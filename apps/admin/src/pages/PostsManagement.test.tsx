@@ -1,11 +1,11 @@
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { postAdmin } from "../lib/testing/postAdmin";
+import { ToastProvider } from "../ui/ToastProvider";
 import PostsManagement from "./PostsManagement";
 
 const failure = () => Response.json({}, { status: 500 });

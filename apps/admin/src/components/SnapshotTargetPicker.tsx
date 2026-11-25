@@ -1,11 +1,11 @@
+import React from "react";
+import { type SnapshotMigrationTarget } from "../lib/navigation";
 import Modal, {
   ModalBody,
   ModalDescription,
   ModalHeader,
   ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import React from "react";
-import { type SnapshotMigrationTarget } from "../lib/navigation";
+} from "../ui/Modal";
 
 export type SnapshotTargetPickerProps = {
   targets: SnapshotMigrationTarget[];

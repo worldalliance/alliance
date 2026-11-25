@@ -1,14 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Modal, {
-  ModalActions,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-  ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -19,6 +10,15 @@ import {
   type PreparedJsonApply,
 } from "../lib/formJson";
 import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Modal, {
+  ModalActions,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "../ui/Modal";
+import { useToast } from "../ui/ToastProvider";
 import { useCustomValidatorDrafts } from "./form-fields/customValidatorDrafts";
 
 const TITLES: Record<JsonScopeKind, string> = {

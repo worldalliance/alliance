@@ -10,13 +10,13 @@ import {
   VARIABLE_INPUT_TYPE,
   VariableInputMode,
 } from "@alliance/common/forms/variables";
+import { Fragment, type ReactNode } from "react";
 import Modal, {
   ModalBody,
   ModalDescription,
   ModalHeader,
   ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import { Fragment, type ReactNode } from "react";
+} from "../ui/Modal";
 import { FormulaResult } from "./formulaResult";
 import type { OptionsRecipe } from "./variableInputHelp";
 

@@ -1,8 +1,8 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useInputSources } from "../lib/useInputSources";
+import { ToastProvider } from "../ui/ToastProvider";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { VariableBuilder } from "./VariableBuilder";
 

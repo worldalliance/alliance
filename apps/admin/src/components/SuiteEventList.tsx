@@ -4,9 +4,9 @@ import {
   UpdateActionEventDto,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import { useState } from "react";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
 import CreateEventForm from "./CreateEventForm";
 import SuiteEventCard from "./SuiteEventCard";
 

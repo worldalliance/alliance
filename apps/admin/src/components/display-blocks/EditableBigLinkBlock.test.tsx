@@ -6,10 +6,10 @@ import {
 import type { ExternalShareTargetDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { EditableBigLinkBlock } from "./EditableBigLinkBlock";
 
 serveApi(

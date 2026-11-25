@@ -1,4 +1,3 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useMemo, useState } from "react";
 import OrganizationCard from "../components/organizations/OrganizationCard";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -15,6 +14,7 @@ import {
   useWaitlistLinksAdmin,
   waitlistLinksLoadFailed,
 } from "../lib/useWaitlistLinksAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 
 const OrganizationsPage: React.FC = () => {
   const refusalToast = useRefusalToast();

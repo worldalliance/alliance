@@ -1,7 +1,7 @@
 import { type AdminUserListItemDto } from "@alliance/shared/client";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useMemo, useState } from "react";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import { AvatarProfile } from "../ui/Avatar";
 
 export type PickedUser = {
   userId: number;

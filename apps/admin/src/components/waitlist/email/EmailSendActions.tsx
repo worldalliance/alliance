@@ -1,8 +1,6 @@
 import { withCount } from "@alliance/common/plural";
 import { WaitlistEmailPlaceholder } from "@alliance/common/waitlistEmail";
 import type { WaitlistEmailPreviewDto } from "@alliance/shared/client/types.gen";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useRef, useState } from "react";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
 import {
@@ -10,6 +8,8 @@ import {
   useSendWaitlistEmailAdmin,
 } from "../../../lib/useWaitlistEmailsAdmin";
 import { type EmailDraft, sendConfirmation } from "../../../lib/waitlistEmail";
+import Button, { ButtonColor } from "../../../ui/Button";
+import { useToast } from "../../../ui/ToastProvider";
 import ConfirmDialog from "../../ConfirmDialog";
 
 type ConfirmingSend = {

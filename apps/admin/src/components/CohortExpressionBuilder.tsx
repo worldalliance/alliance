@@ -6,7 +6,6 @@ import {
 } from "@alliance/common/cohort-expression";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   ClipboardPaste,
   Copy,
@@ -21,6 +20,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useToast } from "../ui/ToastProvider";
 import type { CohortLeafEditorSources } from "./CohortLeafEditors";
 import CohortVisualization from "./CohortVisualization";
 import ExpressionNodeEditor from "./ExpressionNodeEditor";

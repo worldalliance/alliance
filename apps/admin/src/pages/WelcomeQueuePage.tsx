@@ -1,11 +1,11 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { getSiteUrl } from "../lib/config";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { useWelcomeQueueAdmin } from "../lib/useWelcomeQueueAdmin";
+import { AvatarProfile } from "../ui/Avatar";
 
 type WelcomeQueueFilter = "all" | "staff-liked";
 

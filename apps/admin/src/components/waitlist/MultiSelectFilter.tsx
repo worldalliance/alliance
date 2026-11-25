@@ -1,9 +1,6 @@
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Check, ChevronDown } from "lucide-react";
+import { DropdownMenuContent, DropdownMenuItem } from "../../ui/DropdownMenu";
 import { MENU_TRIGGER_CLASS } from "./controlClasses";
 
 type Option<T> = { value: T; label: string };

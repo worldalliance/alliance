@@ -6,7 +6,6 @@ import type {
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   fireEvent,
   render,
@@ -15,6 +14,7 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
 import ActionRemindersTab from "./ActionRemindersTab";
 
 let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];

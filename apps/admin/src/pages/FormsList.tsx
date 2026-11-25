@@ -7,10 +7,10 @@ import {
   type FormResponseCounts,
 } from "@alliance/shared/lib/useFormsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
+import Card from "../ui/Card";
+import { useToast } from "../ui/ToastProvider";
 
 // The endpoint answers with a row per requested id, zeroes included, so a
 // missing entry means unresolved, not none.

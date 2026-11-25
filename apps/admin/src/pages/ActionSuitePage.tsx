@@ -2,8 +2,6 @@ import { Features } from "@alliance/common/features";
 import { PARTITION_LAUNCH_REFUSED } from "@alliance/common/suite-partition";
 import { UpdateActionEventDto } from "@alliance/shared/client";
 import { isFeatureEnabled } from "@alliance/sharedweb/lib/config";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -22,6 +20,8 @@ import {
   suiteLoadError,
   useActionSuiteAdmin,
 } from "../lib/useActionSuiteAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
 
 const ActionSuitePage = () => {
   const { suiteId: suiteIdString } = useParams();

@@ -3,11 +3,11 @@ import type {
   FormResponseDto,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { CirclePlay } from "lucide-react";
 import React from "react";
 import type { filterDescription } from "../../lib/responseFilter";
+import Button, { ButtonColor } from "../../ui/Button";
+import Pagination from "../../ui/Pagination";
 import { IdentityChip } from "../IdentitySwatch";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import type { RespondentSearch } from "./useRespondentSearch";

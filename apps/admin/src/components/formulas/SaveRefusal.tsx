@@ -1,5 +1,5 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 
 export type Refusal = { message: string; outdated: boolean };
 

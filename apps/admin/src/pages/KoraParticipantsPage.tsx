@@ -3,8 +3,6 @@ import type {
   KoraAdminParticipantDto,
 } from "@alliance/shared/client";
 import { downloadBlob } from "@alliance/sharedweb/lib/downloadBlob";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import React, { useMemo, useState } from "react";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -33,6 +31,8 @@ import {
   useDeleteKoraRecordAdmin,
   useKoraParticipantsAdmin,
 } from "../lib/useKoraParticipantsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 type Deleting = {
   kind: KoraRecordKind;

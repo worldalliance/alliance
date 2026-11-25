@@ -1,6 +1,10 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormSchemaValidationContext } from "@alliance/common/forms/form-schema-validate";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { AlertTriangle } from "lucide-react";
+import React, { useMemo } from "react";
+import { mergeFormSchemas } from "../lib/formSchemaMerge";
+import { SchemaDiffView } from "../lib/schemaDiff";
+import Button, { ButtonColor } from "../ui/Button";
 import Modal, {
   ModalActions,
   ModalBody,
@@ -8,11 +12,7 @@ import Modal, {
   ModalFooter,
   ModalHeader,
   ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import { AlertTriangle } from "lucide-react";
-import React, { useMemo } from "react";
-import { mergeFormSchemas } from "../lib/formSchemaMerge";
-import { SchemaDiffView } from "../lib/schemaDiff";
+} from "../ui/Modal";
 
 interface FormConflictModalProps {
   /** Shared starting snapshot. */

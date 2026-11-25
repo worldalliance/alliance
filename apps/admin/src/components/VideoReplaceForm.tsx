@@ -1,10 +1,10 @@
 import { withCount } from "@alliance/common/plural";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useRef, useState } from "react";
 import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
 import { useReplaceVideoAdmin } from "../lib/useVideosAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 interface VideoReplaceFormProps {
   videoId: number;

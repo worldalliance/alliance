@@ -1,10 +1,10 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Eye, LogIn, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { getApiUrl } from "../../lib/config";
+import UserSelect from "../../ui/UserSelect";
 import {
   ActionLinks,
   iconControlClass,

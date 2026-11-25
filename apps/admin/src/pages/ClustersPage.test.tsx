@@ -1,10 +1,10 @@
 import type { ClusterAdminDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { ToastProvider } from "../ui/ToastProvider";
 import ClustersPage from "./ClustersPage";
 
 const cluster = (id: number, displayName: string) =>

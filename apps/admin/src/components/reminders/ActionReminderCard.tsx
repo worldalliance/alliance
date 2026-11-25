@@ -7,9 +7,6 @@ import {
   TagDto,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { formatDate } from "date-fns";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -18,6 +15,9 @@ import {
   useReminderEmailPreviewAdmin,
   useReminderTextPreviewAdmin,
 } from "../../lib/useReminderPreviewsAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
+import { UserSelectUser } from "../../ui/UserSelect";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
 import { GroupScheduleLabels, relativeSendLabel } from "./groupSchedule";

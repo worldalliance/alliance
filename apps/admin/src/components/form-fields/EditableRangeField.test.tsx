@@ -1,9 +1,9 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { EditorSidebar } from "../../lib/testing/EditorSidebar";
+import { SiteAppProvider } from "../../ui/SiteAppProvider";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 import { EditableRangeField } from "./EditableRangeField";
 

@@ -7,12 +7,12 @@ import {
 } from "@alliance/shared/client";
 import { useResponseSnapshotMigrationAdmin } from "@alliance/shared/lib/useResponseSnapshotMigrationAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { getReturnTo } from "../lib/navigation";
 import { SchemaDiffView } from "../lib/schemaDiff";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
 
 const formatRespondent = (response: SnapshotResponseSummaryDto): string => {
   if (response.userName && response.userName.trim()) return response.userName;

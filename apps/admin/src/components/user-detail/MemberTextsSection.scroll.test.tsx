@@ -5,7 +5,6 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   fireEvent,
   render,
@@ -13,6 +12,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { ToastProvider } from "../../ui/ToastProvider";
 import MemberTextsSection from "./MemberTextsSection";
 
 const text = (id: number): MmsMessageDto => ({

@@ -6,8 +6,6 @@ import type {
 import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import React, { useState } from "react";
 import { fromDateInput, toDateInput } from "../../lib/dateInput";
@@ -16,6 +14,8 @@ import {
   useCreateWaitlistLinkAdmin,
   useUpdateWaitlistLinkAdmin,
 } from "../../lib/useWaitlistLinksAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import { useToast } from "../../ui/ToastProvider";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineTextInput from "../InlineTextInput";
 

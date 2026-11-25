@@ -5,9 +5,6 @@ import {
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { cn } from "@alliance/shared/styles/util";
-import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { groupBy, mapValues } from "es-toolkit";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,6 +24,9 @@ import { useMemberContactInfoAdmin } from "../lib/useMemberContactInfoAdmin";
 import { useTagsAdmin } from "../lib/useTagsAdmin";
 import { useTimeSpentPerUserTotalAdmin } from "../lib/useTimeSpentPerUserTotalAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import CommunityMembersTable from "../ui/CommunityMembersTable";
+import Pagination from "../ui/Pagination";
+import { useMaxActionsPerWeek } from "../ui/UserProgressPills";
 
 type ViewMode = "cards" | "rows";
 

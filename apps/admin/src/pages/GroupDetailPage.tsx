@@ -1,5 +1,3 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
 import GroupMembership from "../components/group-detail/GroupMembership";
@@ -12,6 +10,8 @@ import {
 import { useCommunityMemberInfoAdmin } from "../lib/useCommunityMemberInfoAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { ConfirmMode, useToast } from "../ui/ToastProvider";
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();

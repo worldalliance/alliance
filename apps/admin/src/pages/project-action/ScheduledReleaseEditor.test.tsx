@@ -3,10 +3,10 @@ import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { addDays } from "date-fns";
 import { fromPacificInput, toPacificInput } from "../../lib/releaseDates";
+import { ToastProvider } from "../../ui/ToastProvider";
 import ScheduledReleaseEditor from "./ScheduledReleaseEditor";
 
 const launchAt = addDays(new Date(), 5);

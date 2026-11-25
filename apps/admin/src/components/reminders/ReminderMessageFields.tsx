@@ -1,10 +1,10 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React, { useState } from "react";
 import {
   useReminderEmailPreviewAdmin,
   useReminderTextPreviewAdmin,
 } from "../../lib/useReminderPreviewsAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import { keywords } from "./ReminderKeywordHelp";
 import ReminderPreviewError from "./ReminderPreviewError";

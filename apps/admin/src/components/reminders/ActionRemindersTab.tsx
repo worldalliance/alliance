@@ -1,13 +1,6 @@
 import { memberActionPhase } from "@alliance/common/actionEvent";
 import { ActionSuiteDto, ReminderGroupDto } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import {
-  ConfirmMode,
-  ToastPlacement,
-  useToast,
-} from "@alliance/sharedweb/ui/ToastProvider";
 import React, {
   useCallback,
   useEffect,
@@ -21,6 +14,9 @@ import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsA
 import { useReminderAnchorCandidatesAdmin } from "../../lib/useReminderAnchorCandidatesAdmin";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
+import { ConfirmMode, ToastPlacement, useToast } from "../../ui/ToastProvider";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
 import { describeGroupSchedule, groupSendStart } from "./groupSchedule";

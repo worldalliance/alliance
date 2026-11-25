@@ -1,6 +1,5 @@
 import { makeProfile } from "@alliance/shared/lib/testFixtures";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -11,6 +10,7 @@ import {
 import type React from "react";
 import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
 const action = makeParsedAction({ shortDescription: "Short", body: "Body" });

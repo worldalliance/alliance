@@ -1,12 +1,12 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React from "react";
 import type { SetURLSearchParams } from "react-router";
 import FormResponseStatistics from "../../components/FormResponseStatistics";
 import type { FormResponseFilter } from "../../lib/responseFilter";
+import { AvatarProfile } from "../../ui/Avatar";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
 import type { ActionReporting } from "./useActionReporting";
 
 type ActionResponseReportsProps = {

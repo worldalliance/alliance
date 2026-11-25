@@ -1,13 +1,13 @@
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useAdminTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Card from "@alliance/sharedweb/ui/Card";
 import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
 import { actionPhase } from "../lib/actionPhase";
 import { ActionEditorSection } from "../lib/staffTestingGate";
+import Card from "../ui/Card";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
 import { useActionEditor } from "./action-dashboard/useActionEditor";

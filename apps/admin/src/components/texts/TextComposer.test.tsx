@@ -1,5 +1,4 @@
 import { resetClock } from "@alliance/shared/lib/useClockMinute";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -10,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { MmsThreadsLiveContext, OFFLINE } from "../../lib/mmsThreadsLive";
+import { ToastProvider } from "../../ui/ToastProvider";
 import TextComposer from "./TextComposer";
 
 afterEach(resetClock);

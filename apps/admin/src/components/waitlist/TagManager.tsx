@@ -1,10 +1,5 @@
 import { withCount } from "@alliance/common/plural";
 import type { AdminWaitlistTagDto } from "@alliance/shared/client/types.gen";
-import Modal, {
-  ModalBody,
-  ModalHeader,
-  ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
 import { Tags, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
@@ -12,6 +7,7 @@ import {
   useDeleteWaitlistTagAdmin,
   useRenameWaitlistTagAdmin,
 } from "../../lib/useWaitlistTagsAdmin";
+import Modal, { ModalBody, ModalHeader, ModalTitle } from "../../ui/Modal";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineTextInput from "../InlineTextInput";
 import {

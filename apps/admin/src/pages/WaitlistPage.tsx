@@ -5,7 +5,6 @@ import type {
   WaitlistEntrySort,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { ChartColumn, Mail, X } from "lucide-react";
 import React, {
   useCallback,
@@ -50,6 +49,7 @@ import {
   INITIAL_WAITLIST_FILTER,
   withFilterField,
 } from "../lib/waitlistFilter";
+import Pagination from "../ui/Pagination";
 
 const PAGE_SIZE = 50;
 

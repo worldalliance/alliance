@@ -1,10 +1,10 @@
-import { DropdownMenuContent } from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Check, ChevronDown } from "lucide-react";
 import {
   ACTION_STATUS_BUCKET_LABELS,
   ActionStatusBucket,
 } from "../lib/actionStatusBucket";
+import { DropdownMenuContent } from "../ui/DropdownMenu";
 
 const ActionStatusBucketFilter = ({
   selected,

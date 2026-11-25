@@ -2,7 +2,6 @@ import type {
   WaitlistCohortDto,
   WaitlistEntryFilterDto,
 } from "@alliance/shared/client/types.gen";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { BookmarkPlus, RotateCcw, Save, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
@@ -12,6 +11,7 @@ import {
   useUpdateWaitlistCohortAdmin,
 } from "../../lib/useWaitlistCohortsAdmin";
 import { compactFilter, sameFilter } from "../../lib/waitlistFilter";
+import { useToast } from "../../ui/ToastProvider";
 import ConfirmDialog from "../ConfirmDialog";
 import {
   DELETE_BUTTON_CLASS,

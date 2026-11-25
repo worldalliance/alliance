@@ -1,10 +1,10 @@
 import { memberConditions } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import Card from "@alliance/sharedweb/ui/Card";
 import { sumBy } from "es-toolkit";
 import { formPreviewPath } from "../../lib/formEditorLink";
 import { useVisibilityProfilesAdmin } from "../../lib/useVisibilityProfilesAdmin";
+import Card from "../../ui/Card";
 import Disclosure from "../Disclosure";
 import { VisibilityProfilePicker } from "../VisibilityProfilePicker";
 import type { LaunchAction } from "./useSuiteLaunchData";

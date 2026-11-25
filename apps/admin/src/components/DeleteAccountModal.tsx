@@ -3,8 +3,11 @@ import {
   type DeleteUserAdminDto,
   imagesUploadImage,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import FormInput from "@alliance/sharedweb/ui/FormInput";
+import { AlertTriangle, Paperclip, X } from "lucide-react";
+import React, { useCallback, useState } from "react";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import Button, { ButtonColor } from "../ui/Button";
+import FormInput from "../ui/FormInput";
 import Modal, {
   ModalActions,
   ModalBody,
@@ -12,10 +15,7 @@ import Modal, {
   ModalFooter,
   ModalHeader,
   ModalTitle,
-} from "@alliance/sharedweb/ui/Modal";
-import { AlertTriangle, Paperclip, X } from "lucide-react";
-import React, { useCallback, useState } from "react";
-import { adminRefusalMessage } from "../lib/adminRefusal";
+} from "../ui/Modal";
 
 interface DeleteAccountModalProps {
   deleteAccount: (body: DeleteUserAdminDto) => Promise<unknown>;

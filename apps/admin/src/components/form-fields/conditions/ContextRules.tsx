@@ -10,7 +10,7 @@ import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import {
   formatLocalDateTime,
   resolveDateValue,
-} from "@alliance/sharedweb/ui/DateTimePicker";
+} from "../../../ui/DateTimePicker";
 import { INPUT_CLASS } from "./styles";
 
 type ConditionOf<K extends Condition["kind"]> = Extract<Condition, { kind: K }>;

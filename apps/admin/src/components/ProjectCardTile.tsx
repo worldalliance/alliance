@@ -1,11 +1,11 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { CohortSegment } from "../lib/describeCohortExpression";
 import { ProjectCardKind, type ProjectCard } from "../lib/projectCards";
 import { useCreateProjectAdmin } from "../lib/useProjectsAdmin";
+import { useToast } from "../ui/ToastProvider";
 import { ActionCategoryIcons } from "./ActionCategoryIcons";
 import ProjectCardBody, { ProjectCounts, startedText } from "./ProjectCardBody";
 import { ProjectNameInput } from "./ProjectNameInput";

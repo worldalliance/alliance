@@ -2,10 +2,10 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
+import { ToastProvider } from "../ui/ToastProvider";
 import FormResponses from "./FormResponses";
 
 let responsesStatus = 200;

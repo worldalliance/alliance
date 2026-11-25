@@ -4,13 +4,6 @@ import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import List from "@alliance/sharedweb/ui/List";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -21,6 +14,13 @@ import {
   useOnetimeInvitesAdmin,
 } from "../lib/useOnetimeInvitesAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import { AvatarProfile } from "../ui/Avatar";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import List from "../ui/List";
+import Pagination from "../ui/Pagination";
+import { useToast } from "../ui/ToastProvider";
+import UserSelect from "../ui/UserSelect";
 
 const InvitesPage = () => {
   const { error: pushError, success: pushSuccess } = useToast();

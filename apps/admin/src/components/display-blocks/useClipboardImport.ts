@@ -4,9 +4,9 @@ import {
   type DisplayBlock,
 } from "@alliance/common/forms/display-blocks";
 import { pickForCount, withCount } from "@alliance/common/plural";
-import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useLayoutEffect, useRef } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { ConfirmMode, useToast } from "../../ui/ToastProvider";
 import { importManualContent, writeBlockFor } from "./perUserContent";
 
 /**

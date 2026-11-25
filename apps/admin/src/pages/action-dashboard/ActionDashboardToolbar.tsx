@@ -1,13 +1,13 @@
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Dropdown from "@alliance/sharedweb/ui/Dropdown";
-import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import { Copy } from "lucide-react";
 import React from "react";
 import { Link, useNavigate } from "react-router";
 import { ActionProjectControls } from "../../components/ActionProjectControls";
 import { stepPath } from "../../components/ProjectStepRows";
+import Button, { ButtonColor } from "../../ui/Button";
+import Dropdown from "../../ui/Dropdown";
+import LargeCheckbox from "../../ui/LargeCheckbox";
 import { imageUploadingMessage } from "./actionSaveErrors";
 import type { ActionExport } from "./useActionExport";
 

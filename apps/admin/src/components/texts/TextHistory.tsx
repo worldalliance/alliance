@@ -4,12 +4,12 @@ import type {
   MmsThreadEventKind,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { format, isThisYear } from "date-fns";
 import { type MouseEvent, useEffect, useLayoutEffect, useRef } from "react";
 import { getApiUrl } from "../../lib/config";
 import { deliveryStatus } from "../../lib/memberTexts";
 import { type TextPage, useOlderTexts } from "../../lib/useOlderTexts";
+import Button, { ButtonColor } from "../../ui/Button";
 
 /** Fixed, so the sections below don't move when the thread arrives. */
 export const THREAD_PANE = "h-[28rem]";

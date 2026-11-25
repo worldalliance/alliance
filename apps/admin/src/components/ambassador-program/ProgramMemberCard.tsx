@@ -4,10 +4,10 @@ import {
   UserDto,
 } from "@alliance/shared/client";
 import { todayDateInputValue } from "@alliance/shared/lib/dateInput";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { CalendarDays, Plus } from "lucide-react";
 import React, { useState } from "react";
 import { Link } from "react-router";
+import { AvatarProfile } from "../../ui/Avatar";
 import { memberDisplayName } from "./format";
 import { InviteGoalStatsPanel } from "./InviteGoalStatsPanel";
 import { ProgramSection, sectionConfig } from "./programSection";

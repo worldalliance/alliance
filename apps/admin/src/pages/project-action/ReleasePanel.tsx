@@ -1,6 +1,5 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Card from "@alliance/sharedweb/ui/Card";
 import { Link } from "react-router";
 import { ActionPhase } from "../../lib/actionPhase";
 import { ActionEditorSection } from "../../lib/staffTestingGate";
@@ -8,6 +7,7 @@ import {
   suiteLoadError,
   useActionSuiteAdmin,
 } from "../../lib/useActionSuiteAdmin";
+import Card from "../../ui/Card";
 import ScheduledReleaseEditor from "./ScheduledReleaseEditor";
 import ScheduleReleaseForm from "./ScheduleReleaseForm";
 

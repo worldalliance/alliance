@@ -5,17 +5,17 @@ import type {
   UserActionSummaryDto,
 } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
-import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo } from "react";
 import { href } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import type { useCommunityMemberInfoAdmin } from "../../lib/useCommunityMemberInfoAdmin";
 import { useCompletedAllActiveActions } from "../../lib/useCompletedAllActiveActions";
 import type { useUsersAdmin } from "../../lib/useUsersAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
+import CommunityMembersTable from "../../ui/CommunityMembersTable";
+import { useMaxActionsPerWeek } from "../../ui/UserProgressPills";
+import UserSelect from "../../ui/UserSelect";
 import type { GroupErrorReporting } from "./groupErrors";
 import { useGroupMembershipChanges } from "./useGroupMembershipChanges";
 

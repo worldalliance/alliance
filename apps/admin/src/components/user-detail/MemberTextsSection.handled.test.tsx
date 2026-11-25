@@ -7,9 +7,9 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
+import { ToastProvider } from "../../ui/ToastProvider";
 import MemberTextsSection from "./MemberTextsSection";
 
 const text = (

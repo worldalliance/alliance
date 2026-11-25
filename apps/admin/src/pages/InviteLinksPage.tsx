@@ -4,12 +4,12 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { useInviteLinksAdmin } from "../lib/useInviteLinksAdmin";
+import Pagination from "../ui/Pagination";
+import { useToast } from "../ui/ToastProvider";
 
 const KINDS: Record<InviteLinkKind, string> = {
   individual: "Individual",

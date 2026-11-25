@@ -7,9 +7,6 @@ import {
 import { holdChunkReloads } from "@alliance/sharedweb/lib/lazyOrReload";
 import { queryClient } from "@alliance/sharedweb/lib/queryClient";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
@@ -27,6 +24,9 @@ import {
 } from "./lib/analytics";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import { getSiteUrl } from "./lib/config";
+import { SiteOriginLinkProvider } from "./ui/SiteAppProvider";
+import Spinner from "./ui/Spinner";
+import { ToastProvider } from "./ui/ToastProvider";
 
 registerErrorStatus(client);
 

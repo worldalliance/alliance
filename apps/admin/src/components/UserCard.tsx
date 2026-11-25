@@ -7,16 +7,14 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Badge from "@alliance/sharedweb/ui/Badge";
-import Card from "@alliance/sharedweb/ui/Card";
-import UserProgressPills, {
-  PILL_STATUS_DATA,
-} from "@alliance/sharedweb/ui/UserProgressPills";
 import { keyBy } from "es-toolkit";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { AvatarProfile } from "../ui/Avatar";
+import Badge from "../ui/Badge";
+import Card from "../ui/Card";
+import UserProgressPills, { PILL_STATUS_DATA } from "../ui/UserProgressPills";
 import { WithdrawalDetails } from "./WithdrawalInfo";
 
 export interface UserCardProps {

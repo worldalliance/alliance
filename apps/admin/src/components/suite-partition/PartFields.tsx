@@ -2,8 +2,8 @@ import type {
   PartitionPartDraftDto,
   PartitionProblemDto,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useId } from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 import MarkedDiagnostics from "../MarkedDiagnostics";
 import FallbackSelect from "./FallbackSelect";
 import { CONDITION_HINT, hasRequiredWork } from "./partitionDrafts";

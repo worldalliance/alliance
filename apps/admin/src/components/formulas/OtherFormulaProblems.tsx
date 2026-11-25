@@ -4,10 +4,10 @@ import type {
   PartitionPartRefDto,
   SaveProblemKind,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import NewTabMark from "@alliance/sharedweb/ui/NewTabMark";
 import React from "react";
 import { Link } from "react-router";
+import Button, { ButtonColor } from "../../ui/Button";
+import NewTabMark from "../../ui/NewTabMark";
 import FormulaDiagnostics from "./FormulaDiagnostics";
 
 /** A dependent isn't a formula, so it has no formula page or fields. */

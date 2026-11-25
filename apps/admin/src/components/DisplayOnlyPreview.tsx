@@ -2,7 +2,7 @@ import { formSchemaToDisplayOnly } from "@alliance/common/forms/display-only-sch
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import { DisplayOnlyBlocks } from "@alliance/sharedweb/forms/DisplayOnlyRenderer";
-import Card from "@alliance/sharedweb/ui/Card";
+import Card from "../ui/Card";
 
 export function DisplayOnlyPreview({
   schema,

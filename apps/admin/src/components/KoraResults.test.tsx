@@ -1,8 +1,8 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render, screen, within } from "@testing-library/react";
 import { exportsJsonl } from "../lib/useKoraResultsAdmin";
+import { ToastProvider } from "../ui/ToastProvider";
 import { KoraResults } from "./KoraResults";
 
 serveApi(

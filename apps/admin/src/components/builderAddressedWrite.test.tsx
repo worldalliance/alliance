@@ -1,12 +1,12 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { findDisplayBlock } from "../lib/displayBlockById";
 import { selectElement } from "../lib/testing/formCanvas";
+import { ToastProvider } from "../ui/ToastProvider";
 import { FormBuilder } from "./FormBuilder";
 import LeaveGuard from "./LeaveGuard";
 import { OutputBuilder } from "./OutputBuilder";

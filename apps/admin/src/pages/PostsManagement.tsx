@@ -4,16 +4,16 @@ import { forumExportPostAdmin } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
 import { postsLoadError, usePostsAdmin } from "../lib/usePostsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import { ConfirmMode, useToast } from "../ui/ToastProvider";
+import UserSelect from "../ui/UserSelect";
 
 type TagDraft = { id?: number; name: string };
 

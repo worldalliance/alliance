@@ -1,8 +1,8 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it } from "bun:test";
+import { ToastProvider } from "../ui/ToastProvider";
 import FormSlugEditor from "./FormSlugEditor";
 
 let slug = "v2";

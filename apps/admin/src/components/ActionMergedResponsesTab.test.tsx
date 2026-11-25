@@ -7,10 +7,10 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
+import { ToastProvider } from "../ui/ToastProvider";
 import ActionMergedResponsesTab from "./ActionMergedResponsesTab";
 
 const schema: FormSchema = {

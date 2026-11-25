@@ -6,9 +6,6 @@ import type {
   UserDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { isEqual } from "es-toolkit";
 import React, { useId, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -34,6 +31,9 @@ import {
   useSaveMemberListAdmin,
 } from "../lib/useMemberListsAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
+import UserSelect from "../ui/UserSelect";
 
 const NEW = "new";
 

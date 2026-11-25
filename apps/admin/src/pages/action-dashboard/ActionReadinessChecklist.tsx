@@ -1,7 +1,6 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Card from "@alliance/sharedweb/ui/Card";
 import {
   AlertTriangle,
   CheckIcon,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import React, { useMemo } from "react";
 import type { FormWithSchema } from "../../components/FormResponsesView";
+import Card from "../../ui/Card";
 import {
   actionReadinessItems,
   type ReadinessCheckItem,

@@ -1,9 +1,9 @@
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
+import { ToastProvider } from "../../ui/ToastProvider";
 import ActionEditor from "./ActionEditor";
 import { useActionEditor } from "./useActionEditor";
 

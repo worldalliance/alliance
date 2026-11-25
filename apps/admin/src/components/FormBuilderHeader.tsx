@@ -1,8 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useEffect, type ComponentProps } from "react";
 import { IssueTargetKind, type FormIssue } from "../lib/formIssues";
+import Button, { ButtonColor } from "../ui/Button";
 import {
   IssueGate,
   IssueList,

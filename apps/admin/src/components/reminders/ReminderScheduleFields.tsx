@@ -1,6 +1,6 @@
 import type { ReminderAnchorCandidateDto } from "@alliance/shared/client";
-import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import React from "react";
+import DateTimePicker from "../../ui/DateTimePicker";
 import type { ReminderGroupDraft } from "./reminderGroupDraft";
 import { anchorApplies } from "./reminderGroupRequest";
 

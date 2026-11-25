@@ -1,5 +1,5 @@
 import type { UserDto } from "@alliance/shared/client";
-import UserSelect from "@alliance/sharedweb/ui/UserSelect";
+import UserSelect from "../ui/UserSelect";
 
 export interface PreviewAsUserBarProps {
   previewUserId: string;

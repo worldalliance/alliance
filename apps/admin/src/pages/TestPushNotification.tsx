@@ -5,10 +5,10 @@ import type {
   PushDto,
   TestPushNotificationDto,
 } from "@alliance/shared/client/types.gen";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useCallback, useMemo, useState } from "react";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import UserSelect, { UserSelectUser } from "../ui/UserSelect";
 
 const TestPushNotification: React.FC = () => {
   const {

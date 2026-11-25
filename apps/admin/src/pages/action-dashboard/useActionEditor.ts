@@ -7,7 +7,6 @@ import {
   type ActionSuiteDto,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { omit } from "es-toolkit";
 import jsonStableStringify from "json-stable-stringify";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -19,6 +18,7 @@ import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
 import { useCoverImage } from "../../lib/useCoverImage";
 import { useLeaveGuard } from "../../lib/useLeaveGuard";
+import { useToast } from "../../ui/ToastProvider";
 import { imageUploadingMessage, logActionError } from "./actionSaveErrors";
 import { useNavigateToCreatedAction } from "./useActionCommands";
 

@@ -7,7 +7,6 @@ import {
   authRefreshTokens,
   UserDto,
 } from "@alliance/shared/client";
-import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
 import React, {
   createContext,
   memo,
@@ -17,6 +16,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { ViewerAuthenticationProvider } from "../ui/ViewerAuthenticationProvider";
 
 interface AuthContextType {
   isAuthenticated: boolean;

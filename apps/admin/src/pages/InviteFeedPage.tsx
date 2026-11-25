@@ -1,8 +1,8 @@
-import { formatLocalDateTime } from "@alliance/sharedweb/ui/DateTimePicker";
 import { Settings2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEventLogWebSocket } from "../lib/useEventLogWebSocket";
 import { InviteFeedKind, useInviteFeedAdmin } from "../lib/useInviteFeedAdmin";
+import { formatLocalDateTime } from "../ui/DateTimePicker";
 
 const STORAGE_KEY = "alliance-admin-invite-feed-settings";
 

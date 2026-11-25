@@ -5,11 +5,11 @@ import type {
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Card from "@alliance/sharedweb/ui/Card";
 import React, { useCallback, useMemo } from "react";
 import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../../lib/aiScore";
 import { formatAnswerValue, isEmptyAnswer } from "../../lib/answerValues";
 import { choiceAnswerText } from "../../lib/questionAnswer";
+import Card from "../../ui/Card";
 import { IdentityChip } from "../IdentitySwatch";
 import { WithdrawalBadge } from "../WithdrawalInfo";
 

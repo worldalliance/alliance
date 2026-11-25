@@ -1,7 +1,7 @@
 import { INVITE_PAGE_DESCRIPTION_MAX_LENGTH } from "@alliance/common/invitePageDescription";
 import type { CampaignDto } from "@alliance/shared/client/types.gen";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 
 const CampaignPicker: React.FC<{
   campaigns: CampaignDto[];

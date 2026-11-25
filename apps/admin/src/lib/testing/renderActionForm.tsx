@@ -1,9 +1,9 @@
 import type { CreateActionDto } from "@alliance/shared/client";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import ActionForm from "../../components/ActionForm";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { createActionForm } from "./createActionForm";
 
 const baseForm = createActionForm({

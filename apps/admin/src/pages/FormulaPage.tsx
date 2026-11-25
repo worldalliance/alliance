@@ -5,8 +5,6 @@ import type {
   FormulaProblemDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { isEqual } from "es-toolkit";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useHref, useNavigate, useParams } from "react-router";
@@ -29,6 +27,8 @@ import {
   useSaveFormulasAdmin,
 } from "../lib/useFormulasAdmin";
 import { useLeaveGuard } from "../lib/useLeaveGuard";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 const NEW = "new";
 

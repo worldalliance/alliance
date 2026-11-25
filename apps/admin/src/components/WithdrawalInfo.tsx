@@ -4,12 +4,8 @@ import {
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
 import { cn } from "@alliance/shared/styles/util";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alliance/sharedweb/ui/HoverCard";
 import React from "react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../ui/HoverCard";
 
 export const WithdrawalBadge: React.FC<{ className?: string }> = ({
   className,

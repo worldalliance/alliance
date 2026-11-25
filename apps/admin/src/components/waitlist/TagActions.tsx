@@ -1,15 +1,12 @@
 import { withCount } from "@alliance/common/plural";
 import type { AdminWaitlistTagDto } from "@alliance/shared/client/types.gen";
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@alliance/sharedweb/ui/DropdownMenu";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Menu } from "@base-ui/react/menu";
 import { ChevronDown } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
 import { useChangeWaitlistEntryTagsAdmin } from "../../lib/useWaitlistTagsAdmin";
+import { DropdownMenuContent, DropdownMenuItem } from "../../ui/DropdownMenu";
+import { useToast } from "../../ui/ToastProvider";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineNameForm from "./InlineNameForm";
 import { MENU_TRIGGER_CLASS } from "./controlClasses";

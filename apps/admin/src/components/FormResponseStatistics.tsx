@@ -3,13 +3,13 @@ import type { AnyField } from "@alliance/common/forms/form-schema";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
 import { fieldWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import { FormResponseDto } from "@alliance/shared/client";
-import Card from "@alliance/sharedweb/ui/Card";
-import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";
 import React, { useMemo } from "react";
 import { buildFieldStats, STAT_FIELD_KINDS } from "../lib/fieldStatistics";
 import { formatNumber, type StatRow } from "../lib/numberStatistics";
 import { type FormResponseFilter } from "../lib/responseFilter";
 import { savedChoicesAcrossResponses } from "../lib/savedChoices";
+import Card from "../ui/Card";
+import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import { type FormWithSchema } from "./FormResponsesView";
 
 export interface FormResponseStatisticsProps {

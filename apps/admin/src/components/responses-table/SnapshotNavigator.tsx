@@ -1,12 +1,12 @@
 import { withCount } from "@alliance/common/plural";
 import { useResponseSnapshotMigrationsAdmin } from "@alliance/shared/lib/useResponseSnapshotMigrationAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { GitCompare } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 import { Link } from "react-router";
 import { stableStringify } from "../../lib/schemaDiff";
+import Button, { ButtonColor } from "../../ui/Button";
 import { IdentitySwatch } from "../IdentitySwatch";
 import type { SnapshotFieldSet } from "./columns";
 import {

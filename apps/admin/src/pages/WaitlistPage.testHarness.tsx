@@ -12,10 +12,10 @@ import {
   routes,
   serveApi,
 } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import WaitlistPage from "./WaitlistPage";
 
 const entry = (

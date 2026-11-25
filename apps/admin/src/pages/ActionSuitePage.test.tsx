@@ -9,11 +9,11 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
 import { deployedWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, jest, spyOn } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { ToastProvider } from "../ui/ToastProvider";
 import ActionSuitePage from "./ActionSuitePage";
 import SuiteLaunchPage from "./SuiteLaunchPage";
 

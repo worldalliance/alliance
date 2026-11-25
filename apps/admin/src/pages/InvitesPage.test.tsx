@@ -7,9 +7,9 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import * as config from "@alliance/sharedweb/lib/config";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../ui/ToastProvider";
 import InvitesPage from "./InvitesPage";
 
 const created: unknown[] = [];

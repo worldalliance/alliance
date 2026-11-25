@@ -1,7 +1,6 @@
 import type { StaffDirectoryEntryDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -11,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { ToastProvider } from "../ui/ToastProvider";
 import StaffDirectoryPage from "./StaffDirectoryPage";
 
 const entry = (id: number, displayName: string) =>

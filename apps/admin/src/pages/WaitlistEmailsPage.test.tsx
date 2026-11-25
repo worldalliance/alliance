@@ -5,7 +5,6 @@ import type {
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   fireEvent,
   render,
@@ -15,6 +14,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { emailDraftFromState, SENDING_POLL_MS } from "../lib/waitlistEmail";
+import { ToastProvider } from "../ui/ToastProvider";
 import WaitlistEmailsPage from "./WaitlistEmailsPage";
 
 const batch: WaitlistEmailBatchDto = {

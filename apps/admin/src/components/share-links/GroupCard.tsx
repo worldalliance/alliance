@@ -3,10 +3,10 @@ import { SHARE_URL_LABEL_MAX_LENGTH } from "@alliance/common/shareUrlLabel";
 import type { ShareUrlAdminDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
 import { type Target, targetName, targetSubtitle } from "./shareLinkTargets";
 
 const GroupCard: React.FC<{

@@ -7,8 +7,6 @@ import type { AdminActionUpdateDto } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ActionUpdateCardImageField } from "../components/ActionUpdateCardImageField";
@@ -36,6 +34,8 @@ import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
 import { useConfirmOnPage } from "../lib/useConfirmOnPage";
 import { useLeaveGuard } from "../lib/useLeaveGuard";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
+import DateTimePicker from "../ui/DateTimePicker";
+import { ConfirmMode, useToast } from "../ui/ToastProvider";
 
 const tabs = ["details", "content"] as const;
 

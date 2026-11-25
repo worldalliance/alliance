@@ -1,6 +1,5 @@
 import { KORA_UPLOAD_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
 import type { KoraBatchDto } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Play, Shuffle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
@@ -16,6 +15,7 @@ import {
   useKoraBatchesAdmin,
   useUploadKoraBatch,
 } from "../lib/useKoraBatchesAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 import { useKoraBatchActions } from "./KoraBatchActions";
 import { KoraBatchClosesAt } from "./KoraBatchClosesAt";
 import { KoraBatchEvents } from "./KoraBatchEvents";

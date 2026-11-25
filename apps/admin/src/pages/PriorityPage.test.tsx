@@ -7,7 +7,6 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
   fireEvent,
@@ -19,6 +18,7 @@ import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import { generalUpdateAdmin } from "../lib/testing/generalUpdateAdmin";
+import { ToastProvider } from "../ui/ToastProvider";
 import PriorityPage from "./PriorityPage";
 
 const loaded = [

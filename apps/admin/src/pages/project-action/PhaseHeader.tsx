@@ -1,8 +1,8 @@
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import ActionPhasePill from "../../components/ActionPhasePill";
 import { ActionPhase } from "../../lib/actionPhase";
 import { missingForStaffTesting } from "../../lib/staffTestingGate";
+import Button, { ButtonColor } from "../../ui/Button";
 
 type StaffPreviewToggle = {
   staffPreview: boolean;

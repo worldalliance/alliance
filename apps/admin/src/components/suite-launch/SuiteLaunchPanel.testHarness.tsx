@@ -12,11 +12,11 @@ import {
 import { makeAction, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { onlineManager } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, mock, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
 import { spellcheckerQuery } from "./spellchecker";
 import SuiteLaunchPanel from "./SuiteLaunchPanel";
 

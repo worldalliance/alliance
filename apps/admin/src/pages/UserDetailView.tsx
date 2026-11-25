@@ -4,9 +4,6 @@ import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { userFriendsQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
 import { prefetchFromLoader } from "@alliance/sharedweb/lib/queryClient";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Mail, Phone, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLoaderData, useNavigate } from "react-router";
@@ -35,6 +32,9 @@ import {
   userFormResponsesQuery,
   userNotifsQuery,
 } from "../lib/useUserNotifsAndFormsAdmin";
+import { AvatarProfile } from "../ui/Avatar";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 export function clientLoader({ params }: Route.LoaderArgs) {
   const userIdParam = params.userId;

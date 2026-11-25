@@ -5,7 +5,6 @@ import {
 import { THREAD_SEARCH_MAX_LENGTH } from "@alliance/common/staffText";
 import type { ThreadSummaryDto } from "@alliance/shared/client/types.gen";
 import { useClockMinute } from "@alliance/shared/lib/useClockMinute";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { format, isThisYear, isToday } from "date-fns";
 import { useId } from "react";
 import { Form, href, Link, useSearchParams } from "react-router";
@@ -14,6 +13,7 @@ import { SectionRefreshError } from "../components/user-detail/SectionQueryState
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { textPreview, threadContactName } from "../lib/memberTexts";
 import { useTextThreadListAdmin } from "../lib/useTextThreadsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
 
 export default function TextsPage() {
   const [params] = useSearchParams();

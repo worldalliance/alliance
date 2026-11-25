@@ -1,9 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { dragOverAt } from "../lib/testing/dragOverAt";
+import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
+import { ToastProvider } from "../ui/ToastProvider";
 import { OutputBuilder } from "./OutputBuilder";
 
 const renderBuilder = (

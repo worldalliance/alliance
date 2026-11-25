@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Columns3 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 import { IdentitySwatch } from "../IdentitySwatch";
 import { ColumnKind, type TableColumn } from "./types";
 

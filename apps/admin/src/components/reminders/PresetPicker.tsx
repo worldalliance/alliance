@@ -1,5 +1,5 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useState } from "react";
+import Button, { ButtonColor } from "../../ui/Button";
 import { presetNames, ReminderPresetName, reminderPresets } from "./presets";
 
 interface PresetPickerProps {

@@ -3,8 +3,6 @@ import type {
   CreateActionEventDto,
 } from "@alliance/shared/client";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
-import { formatLocalDateTime } from "@alliance/sharedweb/ui/DateTimePicker";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   cleanup,
   fireEvent,
@@ -14,6 +12,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
+import { formatLocalDateTime } from "../ui/DateTimePicker";
+import { ToastProvider } from "../ui/ToastProvider";
 import CreateEventForm, {
   LAUNCH_CONFIRM_TEXT,
   type AddActionEvent,

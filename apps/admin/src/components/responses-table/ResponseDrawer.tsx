@@ -11,10 +11,10 @@ import type {
   ProfileDto,
 } from "@alliance/shared/client";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ChevronLeft, ChevronRight, CirclePlay } from "lucide-react";
 import React, { useMemo } from "react";
 import { respondentName } from "../../lib/respondent";
+import Button, { ButtonColor } from "../../ui/Button";
 import Sheet from "../../ui/Sheet";
 import type { FormWithSchema } from "../FormResponsesView";
 import { IdentityChip } from "../IdentitySwatch";

@@ -1,7 +1,5 @@
 import type { KoraQuestionCountsDto } from "@alliance/shared/client";
 import { downloadBlob } from "@alliance/sharedweb/lib/downloadBlob";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { format } from "date-fns";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -9,6 +7,8 @@ import {
   useDownloadKoraSpecExport,
   useKoraAnswersAdmin,
 } from "../lib/useKoraResultsAdmin";
+import Button, { ButtonColor } from "../ui/Button";
+import { useToast } from "../ui/ToastProvider";
 
 function AnswerTable({
   caption,

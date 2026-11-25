@@ -2,10 +2,10 @@ import { customLinkFieldsSchema } from "@alliance/common/customLinks";
 import type { CustomLinkDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import SidebarNav from "../components/SidebarNav";
+import { ToastProvider } from "../ui/ToastProvider";
 import CustomLinksPage from "./CustomLinksPage";
 
 const flyer: CustomLinkDto = {

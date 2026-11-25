@@ -3,10 +3,6 @@ import type { ClusterAdminDto } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Pencil } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -16,6 +12,10 @@ import {
   useClustersAdmin,
   useRenameClusterAdmin,
 } from "../lib/useClustersAdmin";
+import { AvatarProfile } from "../ui/Avatar";
+import Button, { ButtonColor } from "../ui/Button";
+import Card from "../ui/Card";
+import { useToast } from "../ui/ToastProvider";
 
 const ClustersPage: React.FC = () => {
   const list = useClustersAdmin();

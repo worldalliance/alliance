@@ -1,5 +1,5 @@
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
 import { BlockPreview } from "./BlockPreview";
 
 const header = { type: "display", kind: "header", text: "Hello" } as const;

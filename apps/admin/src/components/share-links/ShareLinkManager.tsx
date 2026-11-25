@@ -1,8 +1,5 @@
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, {
   useCallback,
   useEffect,
@@ -21,6 +18,9 @@ import {
   shareLinksLoadError,
   useShareLinksAdmin,
 } from "../../lib/useShareLinksAdmin";
+import Button, { ButtonColor } from "../../ui/Button";
+import Card from "../../ui/Card";
+import { ToastPlacement, useToast } from "../../ui/ToastProvider";
 import GroupCard from "./GroupCard";
 import TargetPicker from "./TargetPicker";
 import {

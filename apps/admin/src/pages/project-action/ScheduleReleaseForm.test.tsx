@@ -2,8 +2,8 @@ import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render, screen } from "@testing-library/react";
+import { ToastProvider } from "../../ui/ToastProvider";
 import ScheduleReleaseForm from "./ScheduleReleaseForm";
 
 const action: ParsedActionDto = {

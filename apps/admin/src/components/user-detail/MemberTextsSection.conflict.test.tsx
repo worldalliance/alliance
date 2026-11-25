@@ -6,10 +6,10 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import type { DefaultOptions } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
 import MemberTextsSection from "./MemberTextsSection";
 
 const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({

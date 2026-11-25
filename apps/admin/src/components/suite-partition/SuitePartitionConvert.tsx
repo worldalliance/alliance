@@ -1,8 +1,8 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UseMutationResult } from "@tanstack/react-query";
 import React from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import Button, { ButtonColor } from "../../ui/Button";
+import { useToast } from "../../ui/ToastProvider";
 
 const SuitePartitionConvert: React.FC<{
   convert: UseMutationResult<unknown, Error, void>;

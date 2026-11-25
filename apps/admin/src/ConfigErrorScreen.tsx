@@ -1,5 +1,5 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useEffect, useRef } from "react";
+import Button, { ButtonColor } from "./ui/Button";
 
 export function ConfigErrorScreen({ detail }: { detail: string }) {
   const heading = useRef<HTMLHeadingElement>(null);

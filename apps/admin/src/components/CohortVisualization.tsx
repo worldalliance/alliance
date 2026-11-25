@@ -1,10 +1,10 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { cn } from "@alliance/shared/styles/util";
-import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { Search } from "lucide-react";
 import React, { useMemo, useRef, useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useCohortEvaluationAdmin } from "../lib/useCohortEvaluationAdmin";
+import type { UserSelectUser } from "../ui/UserSelect";
 
 interface CohortVisualizationProps {
   expression: CohortExpression | null | undefined;
