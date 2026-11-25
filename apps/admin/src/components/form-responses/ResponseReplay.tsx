@@ -97,7 +97,7 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
                   (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
                   form.schema;
                 return (
-                  <div className="bg-white p-6 border border-gray-200 rounded-lg">
+                  <div className="member-surface bg-white p-6 border border-gray-200 rounded-lg">
                     <FormRenderer
                       id={currentResponse?.formId ?? form.id}
                       formSnapshotId={

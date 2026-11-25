@@ -215,7 +215,7 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
           )}
 
           {schema && form ? (
-            <div className="rounded-lg border border-zinc-200 bg-white p-5">
+            <div className="member-surface rounded-lg border border-zinc-200 bg-white p-5">
               <FormRenderer
                 id={response.formId}
                 formSnapshotId={response.formSnapshotId}

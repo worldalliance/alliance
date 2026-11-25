@@ -302,7 +302,7 @@ const ActionUpdatesTab = ({
           </p>
         )}
       </div>
-      <div className="space-y-2 bg-white pb-5">
+      <div className="member-surface space-y-2 bg-white pb-5">
         {updates.map((update) => (
           <ActionUpdateCard
             key={update.id}

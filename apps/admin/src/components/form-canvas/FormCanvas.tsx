@@ -211,7 +211,7 @@ export function FormCanvas({
   return (
     <div
       ref={ref}
-      className="mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white px-10 py-8"
+      className="member-surface mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white px-10 py-8"
       onDragOver={acceptDrop}
       onDrop={drop}
     >

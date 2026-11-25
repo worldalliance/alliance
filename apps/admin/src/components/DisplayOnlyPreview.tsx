@@ -13,7 +13,7 @@ export function DisplayOnlyPreview({
 }) {
   return R.match(formSchemaToDisplayOnly(schema), {
     success: (displaySchema) => (
-      <Card className="p-6 sm:p-8 w-full border-[1.5px] rounded">
+      <Card className="member-surface p-6 sm:p-8 w-full border-[1.5px] rounded">
         <p className="text-title-small mb-4">{title}</p>
         <DisplayOnlyBlocks {...displaySchema} />
       </Card>

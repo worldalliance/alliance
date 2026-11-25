@@ -17,21 +17,23 @@ export function MemberFormRenderer({
 }) {
   return (
     <PreviewBoundary resetKeys={[schema, previewUserId]}>
-      <FormRenderer
-        key={previewUserId}
-        id={0}
-        formSnapshotId={null}
-        actionId={0}
-        form={schema}
-        onSubmit={null}
-        renderFormAsCompleted={false}
-        userId={previewUserId}
-        user={user}
-        adminPreviewUserId={previewUserId}
-        showDetail
-        draft
-        initialPageIndex={initialPageIndex}
-      />
+      <div className="member-surface">
+        <FormRenderer
+          key={previewUserId}
+          id={0}
+          formSnapshotId={null}
+          actionId={0}
+          form={schema}
+          onSubmit={null}
+          renderFormAsCompleted={false}
+          userId={previewUserId}
+          user={user}
+          adminPreviewUserId={previewUserId}
+          showDetail
+          draft
+          initialPageIndex={initialPageIndex}
+        />
+      </div>
     </PreviewBoundary>
   );
 }

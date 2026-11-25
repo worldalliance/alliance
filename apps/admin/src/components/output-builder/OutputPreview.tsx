@@ -97,7 +97,7 @@ export function OutputPreview({
         <h3 className="text-sm font-medium text-gray-900">Output preview</h3>
       </div>
       {view.blocks.length > 0 ? (
-        <div className="border-t border-gray-200 pt-2">
+        <div className="member-surface border-t border-gray-200 pt-2">
           <OutputRenderer
             submission={{
               id: 0,

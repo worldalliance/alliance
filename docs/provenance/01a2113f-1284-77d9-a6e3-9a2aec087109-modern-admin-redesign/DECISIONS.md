@@ -44,6 +44,13 @@ Agent decisions for the admin redesign. Each may be reconsidered within `REQUIRE
 - **Models:** subagents doing design, implementation, review and fixing run on Fable 5.2 (`claude --model claude-fable-5-2`). A subagent that fails with an overloaded error is retried with backoff, and after repeated failures the unit runs on Opus 5.5 so one busy model cannot stall the build; the unit's report names the model that did it. Mechanical work, such as scripted import swaps and monitoring, runs on Opus 5.5.
 - **Concurrency:** about 30 to 40 agents at once while they run typechecks and tests, wider for read-only work, adjusted by a monitoring agent.
 
+## Foundation: tokens and components
+
+- **The admin's tokens take new names; nothing the member form renderer uses is overridden.** They sit in a second `@theme` block in `apps/admin/src/index.css` (`canvas`, `surface`, `line`, `fg`, `accent`, the status colours and their `-soft` pairs, `cat-1` to `cat-6`, `text-body`, `h-control`, `rounded-card`, `shadow-pop`, `duration-fast`, …), with values from the prototype's Comfortable density. Tailwind's own scales (`rounded-lg`, `text-sm`, `ease-out`) and the earlier entries (`green`, `gray-1`, `page`) keep their values, because `sharedweb` and `shared` are styled with them. The prototype's JetBrains Mono is not added: the admin bundles no copy and the existing `.font-mono` stack serves.
+- **The admin's type is set on `body`, and member-facing content resets it with the `member-surface` class.** The root font size stays 16px so `rem` is unchanged. Form previews, the builder canvas, response replays, update cards and contract previews carry `member-surface`, which restores Source Sans 3 at 16px; a later page that mounts the shared form renderer, `DisplayOnlyBlocks` or `AppMarkdownWrapper` must put it on the container. Content those portal to `body` falls outside it and takes the admin's font.
+- **Contrast is a test.** `apps/admin/src/ui/tokens.test.ts` reads the tokens from `index.css` and checks the text pairs at 4.5:1 and the control-boundary and graphic pairs at 3:1 (WCAG 2.2 SC 1.4.3 and 1.4.11, formal standard), the pairs the prototype's `contrast.mjs` checked plus the hover fills. A new pairing, or a dark theme, adds its pairs there.
+- **`apps/admin/src/ui/cn.ts` replaces `@alliance/shared/styles/util`'s `cn` inside the admin's components.** tailwind-merge knows only Tailwind's default theme, so the shared `cn` reads `text-body` as a colour and drops it beside `text-fg`. The admin's `cn` registers the token names; a token added to `index.css` is added there too.
+
 ## Build plan
 
 Proposed by the agent; the user has seen its outline in conversation but not approved it as written.

@@ -248,7 +248,7 @@ const ContractPage: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-0.5">Preview:</p>
                 )}
                 {form.markdown && (
-                  <div className="w-full px-3 py-2 border border-gray-200 rounded-md max-h-96 overflow-y-auto">
+                  <div className="member-surface w-full px-3 py-2 border border-gray-200 rounded-md max-h-96 overflow-y-auto">
                     <AppMarkdownWrapper markdownContent={form.markdown} />
                   </div>
                 )}
@@ -355,7 +355,7 @@ const ContractPage: React.FC = () => {
                         />
                         {(row.point.trim() !== "" ||
                           row.subtext.trim() !== "") && (
-                          <div className="px-3 py-2 border border-gray-200 rounded-md">
+                          <div className="member-surface px-3 py-2 border border-gray-200 rounded-md">
                             {row.point.trim() !== "" && (
                               <div className="font-semibold">
                                 <AppMarkdownWrapper
