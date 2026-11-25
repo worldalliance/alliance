@@ -10,12 +10,23 @@ type TableProps = React.ComponentProps<"table"> & {
    * columns take the page margin, so the first column lines up with the title.
    */
   bleed?: boolean;
+  /**
+   * For a table wider than its scroll area: the actions column stays at the
+   * right edge while the rest scrolls under it.
+   */
+  stickyActions?: boolean;
 };
 
-function Table({ className, bleed = false, ...props }: TableProps) {
+function Table({
+  className,
+  bleed = false,
+  stickyActions = false,
+  ...props
+}: TableProps) {
   return (
     <table
       data-bleed={bleed ? "" : undefined}
+      data-sticky-actions={stickyActions ? "" : undefined}
       className={cn(
         "group/table w-full border-separate border-spacing-0 text-left",
         className,
@@ -49,6 +60,16 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 
 const BLEED_EDGES =
   "group-data-bleed/table:first:pl-page group-data-bleed/table:last:pr-page";
+
+const STICKY_ACTIONS =
+  "group-data-sticky-actions/table:sticky group-data-sticky-actions/table:right-0 group-data-sticky-actions/table:border-l";
+
+// Opaque, so the columns scrolling under it don't show through; it takes the
+// row's hover and selected tones itself.
+const STICKY_ACTIONS_CELL = cn(
+  STICKY_ACTIONS,
+  "group-data-sticky-actions/table:bg-surface group-data-sticky-actions/table:group-hover/row:group-not-aria-selected/row:bg-surface-2 group-data-sticky-actions/table:group-aria-selected/row:bg-accent-soft",
+);
 
 /** Values are `aria-sort`'s. */
 export enum SortDirection {
@@ -105,6 +126,7 @@ function TableHead({
         zIndex.raised,
         "sticky top-0 h-th border-b border-line bg-surface-2 px-cell text-caption font-medium whitespace-nowrap text-fg-muted",
         BLEED_EDGES,
+        actions && STICKY_ACTIONS,
         className,
       )}
       {...props}
@@ -150,7 +172,7 @@ function TableCell({
         truncate
           ? "max-w-0 truncate"
           : "group-has-[[data-truncate]]/table:w-px group-has-[[data-truncate]]/table:whitespace-nowrap",
-        actions && "whitespace-nowrap",
+        actions && ["whitespace-nowrap", STICKY_ACTIONS_CELL],
         className,
       )}
       title={
