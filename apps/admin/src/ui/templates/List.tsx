@@ -2,9 +2,11 @@ import { Search, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
   type ReactNode,
+  type Ref,
 } from "react";
 import { useSearchParams } from "react-router";
 import { countOf, formatCount } from "../../lib/formatNumber";
@@ -100,14 +102,18 @@ export function SearchField({
   value,
   onChange,
   className,
+  ref: outer,
 }: {
   /** The accessible name and the placeholder: "Filter suites". */
   label: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  /** For `useFocusAfterRemoval`'s fallback in a list with no add control. */
+  ref?: Ref<{ focus: () => void }>;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  useImperativeHandle(outer, () => ({ focus: () => ref.current?.focus() }));
   useShortcutInShell({
     keys: "/",
     label,

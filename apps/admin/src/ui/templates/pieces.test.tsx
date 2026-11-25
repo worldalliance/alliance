@@ -1,5 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
+import { createRef } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 import { CountId, PlaceId, RecordId } from "../../places";
 import { ModalFooter } from "../Modal";
@@ -15,7 +22,7 @@ import {
   TableRow,
 } from "../Table";
 import { FieldGroup, SaveBar, SaveState, useFocusFirstInvalid } from "./Form";
-import { listCount, useListSearch } from "./List";
+import { listCount, SearchField, useListSearch } from "./List";
 import { DateRangeFields, Panel, Section } from "./Overview";
 import { Page } from "./Page";
 import { ContentState, RefreshFailedBanner } from "./States";
@@ -124,6 +131,24 @@ describe("useListSearch", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
     expect(screen.getByRole("status").textContent).toBe("?tab=awaiting");
+  });
+});
+
+describe("SearchField", () => {
+  it("can be focused through its ref", () => {
+    const ref = createRef<{ focus: () => void }>();
+    render(
+      <SearchField
+        ref={ref}
+        label="Filter videos"
+        value=""
+        onChange={() => {}}
+      />,
+    );
+    act(() => ref.current?.focus());
+    expect(document.activeElement).toBe(
+      screen.getByRole("searchbox", { name: "Filter videos" }),
+    );
   });
 });
 

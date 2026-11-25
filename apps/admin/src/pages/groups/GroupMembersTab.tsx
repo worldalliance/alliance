@@ -2,7 +2,7 @@ import type {
   CommunityDto,
   ProfileDto,
 } from "@alliance/shared/client/types.gen";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { MembershipChange } from "../../lib/useCommunitiesAdmin";
 import type { useCommunityMemberInfoAdmin } from "../../lib/useCommunityMemberInfoAdmin";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
@@ -20,6 +20,7 @@ import {
 } from "../../ui/Table";
 import { Panel } from "../../ui/templates/Overview";
 import { PageBody } from "../../ui/templates/Page";
+import { useFocusAfterRemoval } from "../../ui/useFocusAfterRemoval";
 import { type AddChange, AddPersonDialog } from "./AddPersonDialog";
 import { byPersonName } from "./groupRules";
 import {
@@ -49,11 +50,7 @@ export function GroupMembersTab({
     refreshMemberInfo,
     clearError,
   });
-  const tableRef = useRef<HTMLTableElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
-  // After a row's own button removes the row, focus goes to the next row's
-  // first button, or Add member when it was the last.
-  const [focusAfter, setFocusAfter] = useState<number | "add" | null>(null);
 
   const memberIds = useMemo(
     () => new Set(group.users.map((member) => member.id)),
@@ -74,18 +71,10 @@ export function GroupMembersTab({
     [group, leaderIds],
   );
 
-  useEffect(() => {
-    if (focusAfter === null) return;
-    const target =
-      focusAfter === "add"
-        ? addRef.current
-        : tableRef.current?.querySelector<HTMLElement>(
-            `[data-person="${focusAfter}"] button`,
-          );
-    if (!target) return;
-    target.focus();
-    setFocusAfter(null);
-  }, [focusAfter, people]);
+  const focus = useFocusAfterRemoval({
+    ids: people.map((person) => person.id),
+    fallback: addRef,
+  });
 
   const change = async (params: {
     person: ProfileDto;
@@ -94,8 +83,7 @@ export function GroupMembersTab({
     removesRow: boolean;
   }) => {
     const { person, removesRow } = params;
-    const index = people.findIndex((candidate) => candidate.id === person.id);
-    const next = people[index + 1] ?? people[index - 1];
+    const removed = focus.removing(person.id);
     const result = await membership.apply({
       change: params.change,
       userId: person.id,
@@ -105,7 +93,7 @@ export function GroupMembersTab({
       reportError(result.error);
       return;
     }
-    if (removesRow) setFocusAfter(next ? next.id : "add");
+    if (removesRow) removed();
   };
 
   const makeLeader = async (person: ProfileDto) => {
@@ -191,7 +179,7 @@ export function GroupMembersTab({
             description="Add a member or a leader to start the group."
           />
         ) : (
-          <Table ref={tableRef}>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -204,7 +192,7 @@ export function GroupMembersTab({
                 const name = nameOf(person);
                 const isLeader = leaderIds.has(person.id);
                 return (
-                  <TableRow key={person.id} data-person={person.id}>
+                  <TableRow key={person.id} {...focus.row(person.id)}>
                     <PersonCell
                       userId={person.id}
                       name={person.displayName}

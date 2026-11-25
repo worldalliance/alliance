@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Link } from "react-router";
 import { formatCount } from "../../lib/formatNumber";
 import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
@@ -19,6 +19,7 @@ import {
   SaveBar,
 } from "../../ui/templates/Form";
 import { PageBody } from "../../ui/templates/Page";
+import { useFocusAfterRemoval } from "../../ui/useFocusAfterRemoval";
 import UserSelect, { type useSelectableUsers } from "../../ui/UserSelect";
 import {
   saveReachOf,
@@ -100,28 +101,11 @@ function SuiteFields({
   const unassigned = available.filter(
     (suite) => !form.suiteIds.includes(suite.id),
   );
-  const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLSelectElement>(null);
-  // After Remove takes its row away, focus goes to the next suite's Remove,
-  // else the one before, else the select.
-  const [focusAfter, setFocusAfter] = useState<number | "add" | null>(null);
-  useEffect(() => {
-    if (focusAfter === null) return;
-    const target =
-      focusAfter === "add"
-        ? addRef.current
-        : listRef.current?.querySelector<HTMLElement>(
-            `[data-suite="${focusAfter}"] button`,
-          );
-    target?.focus();
-    setFocusAfter(null);
-  }, [focusAfter]);
+  const focus = useFocusAfterRemoval({ ids: form.suiteIds, fallback: addRef });
 
   const remove = (suiteId: number) => {
-    const index = form.suiteIds.indexOf(suiteId);
-    setFocusAfter(
-      form.suiteIds[index + 1] ?? form.suiteIds[index - 1] ?? "add",
-    );
+    focus.removing(suiteId)();
     setForm((prev) => ({
       ...prev,
       suiteIds: prev.suiteIds.filter((id) => id !== suiteId),
@@ -146,7 +130,7 @@ function SuiteFields({
       }
     >
       {form.suiteIds.length > 0 && (
-        <ul ref={listRef} className="flex flex-col gap-1.5">
+        <ul className="flex flex-col gap-1.5">
           {form.suiteIds.map((suiteId) => {
             const name =
               available.find((suite) => suite.id === suiteId)?.name ??
@@ -154,7 +138,7 @@ function SuiteFields({
             return (
               <li
                 key={suiteId}
-                data-suite={suiteId}
+                {...focus.row(suiteId)}
                 className="flex h-control items-center justify-between gap-2 rounded-md border border-line bg-surface-2 pr-1 pl-2.5"
               >
                 <span className="truncate font-medium">{name}</span>

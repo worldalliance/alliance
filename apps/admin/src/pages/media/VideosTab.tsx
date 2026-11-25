@@ -1,5 +1,5 @@
 import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
@@ -30,6 +30,7 @@ import {
   RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
+import { useFocusAfterRemoval } from "../../ui/useFocusAfterRemoval";
 import { formatSize } from "./mediaRules";
 
 const SIZE_COLUMN = "text-right tabular-nums";
@@ -46,23 +47,11 @@ export function VideosTab() {
     );
   }, [all, q]);
 
-  const tableRef = useRef<HTMLTableElement>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
-  // After a row's Delete removes the row, focus goes to the neighbouring
-  // row's Delete, or to the search when no row is left.
-  const [focusAfter, setFocusAfter] = useState<number | "search" | null>(null);
-  useEffect(() => {
-    if (focusAfter === null) return;
-    const target =
-      focusAfter === "search"
-        ? searchRef.current?.querySelector("input")
-        : tableRef.current?.querySelector<HTMLElement>(
-            `[data-video="${focusAfter}"] button`,
-          );
-    if (!target) return;
-    target.focus();
-    setFocusAfter(null);
-  }, [focusAfter, rows]);
+  const searchRef = useRef<{ focus: () => void }>(null);
+  const focus = useFocusAfterRemoval({
+    ids: rows.map((video) => video.id),
+    fallback: searchRef,
+  });
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deletion = useDeleteVideoAdmin({
@@ -85,11 +74,7 @@ export function VideosTab() {
     });
     if (!confirmed) return;
     setDeleteError(null);
-    const index = rows.findIndex((row) => row.id === video.id);
-    const neighbour = rows[index + 1] ?? rows[index - 1];
-    deletion.mutate(video.id, {
-      onSuccess: () => setFocusAfter(neighbour?.id ?? "search"),
-    });
+    deletion.mutate(video.id, { onSuccess: focus.removing(video.id) });
   };
 
   return (
@@ -118,9 +103,12 @@ export function VideosTab() {
           noun: "video",
         })}
       >
-        <div ref={searchRef}>
-          <SearchField label="Filter videos" value={q} onChange={setQ} />
-        </div>
+        <SearchField
+          ref={searchRef}
+          label="Filter videos"
+          value={q}
+          onChange={setQ}
+        />
       </FilterBar>
       <ListContent>
         <ContentState
@@ -146,7 +134,7 @@ export function VideosTab() {
           emptyTitle="No videos yet"
           emptyDescription="A video uploaded in a video block is listed here."
         >
-          <Table bleed ref={tableRef}>
+          <Table bleed>
             <TableHeader>
               <TableRow>
                 <TableHead>Filename</TableHead>
@@ -158,7 +146,7 @@ export function VideosTab() {
             </TableHeader>
             <TableBody>
               {rows.map((video) => (
-                <TableRow key={video.id} data-video={video.id}>
+                <TableRow key={video.id} {...focus.row(video.id)}>
                   <TableCell truncate title={video.originalFilename}>
                     <Link to={videoHref(video.id)} className={nameLinkClass}>
                       {video.originalFilename}
