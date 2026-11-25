@@ -14,15 +14,15 @@ describe("BlockPreview", () => {
   it("renders the block behind its toggle", () => {
     renderPreview(true);
     expect(screen.queryByText("Hello")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Show preview" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show preview" }));
     expect(screen.getByText("Hello")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Hide preview" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show preview" }));
     expect(screen.queryByText("Hello")).toBeNull();
   });
 
   it("renders the block outright when not toggleable", () => {
     renderPreview(false);
     expect(screen.getByText("Hello")).toBeTruthy();
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 });

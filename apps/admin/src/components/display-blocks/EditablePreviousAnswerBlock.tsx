@@ -1,196 +1,157 @@
 import type { PreviousAnswerBlock } from "@alliance/common/forms/display-blocks";
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
-import type { ListField } from "@alliance/common/forms/form-schema";
 import { DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT } from "@alliance/shared/lib/previousAnswers";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Checkbox } from "../../ui/Checkbox";
+import { Select } from "../../ui/Select";
+import { CheckboxField, Field, FieldGroup } from "../../ui/templates/Form";
 import {
   formFieldsErrorReason,
   FormPickerError,
   FormPickerErrorReason,
 } from "../FormPickerError";
-import { VariableTextField } from "../VariableTextField";
+import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
-export function EditablePreviousAnswerBlock({
+export function EditablePreviousAnswerBlock(
+  props: BaseDisplayBlockProps<PreviousAnswerBlock>,
+) {
+  return (
+    <DisplayBlockWrapper {...props}>
+      {({ block, onUpdate }) => (
+        <>
+          <InspectorGroup>
+            <BlockTextField
+              label="Title"
+              mark="optional"
+              value={block.title ?? ""}
+              onChange={(title) => onUpdate({ title })}
+            />
+            <BlockTextField
+              label="Empty-state text"
+              mark="optional"
+              help="Shown when there's no answer to show."
+              value={block.emptyText ?? ""}
+              onChange={(emptyText) => onUpdate({ emptyText })}
+              placeholder={DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT}
+            />
+          </InspectorGroup>
+          <InspectorGroup title="Answer to show">
+            <AnswerSource block={block} onUpdate={onUpdate} />
+          </InspectorGroup>
+        </>
+      )}
+    </DisplayBlockWrapper>
+  );
+}
+
+function AnswerSource({
   block,
   onUpdate,
-  updateCurrent,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
-  previousFields,
-  laterFields,
-}: BaseDisplayBlockProps<PreviousAnswerBlock>) {
+}: {
+  block: PreviousAnswerBlock;
+  onUpdate: (updates: Partial<PreviousAnswerBlock>) => void;
+}) {
   const { options: forms, isError: formListFailed } = useFormOptions();
   const { fields: sourceFields, status: sourceStatus } = useFormQuestionFields(
     block.sourceFormId,
   );
   const sourceFormError = formFieldsErrorReason(sourceStatus);
-
   const selectedField = sourceFields.find((f) => f.id === block.sourceFieldId);
-  const isListField = selectedField?.kind === "list";
-  const listSubFields = isListField ? (selectedField as ListField).fields : [];
+  const listSubFields =
+    selectedField?.kind === "list" ? selectedField.fields : [];
+  const shownSubFields =
+    block.visibleSubFieldIds && block.visibleSubFieldIds.length > 0
+      ? block.visibleSubFieldIds
+      : listSubFields.map((f) => f.id);
+
+  const setSubFieldShown = (id: string, shown: boolean) => {
+    const next = shown
+      ? [...shownSubFields, id]
+      : shownSubFields.filter((shownId) => shownId !== id);
+    onUpdate({
+      visibleSubFieldIds: next.length === listSubFields.length ? [] : next,
+    });
+  };
 
   return (
-    <DisplayBlockWrapper
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
-      block={block}
-      onUpdate={onUpdate}
-      updateCurrent={updateCurrent}
-      previousFields={previousFields}
-      laterFields={laterFields}
-    >
-      {({ block: activeBlock, onUpdate: handleUpdate }) => (
-        <div className="space-y-3">
-          <div className="font-medium">Previous Answer Block</div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title (optional)
-            </label>
-            <VariableTextField
-              value={activeBlock.title ?? ""}
-              onChange={(title) => handleUpdate({ title })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Display title"
-            />
-          </div>
-
-          {/* Empty text */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Empty state text (optional)
-            </label>
-            <VariableTextField
-              value={activeBlock.emptyText ?? ""}
-              onChange={(emptyText) => handleUpdate({ emptyText })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder={DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT}
-            />
-          </div>
-
-          {/* Form picker */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Source Form
-            </label>
-            <select
-              value={activeBlock.sourceFormId || ""}
-              onChange={(e) => {
-                const formId = Number(e.target.value);
-                handleUpdate({
-                  sourceFormId: formId,
+    <>
+      <Field label="Source form">
+        {(control) => (
+          <>
+            <Select
+              {...control}
+              value={block.sourceFormId || ""}
+              onChange={(event) =>
+                onUpdate({
+                  sourceFormId: Number(event.target.value),
                   sourceFieldId: "",
                   visibleSubFieldIds: [],
-                });
-              }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                })
+              }
             >
-              <option value="">Select a form...</option>
+              <option value="">Select a form…</option>
               {forms.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.title} ({f.displaySlug})
                 </option>
               ))}
-            </select>
+            </Select>
             {formListFailed && (
-              <FormPickerError
-                reason={FormPickerErrorReason.FormList}
-                className="mt-1"
-              />
+              <FormPickerError reason={FormPickerErrorReason.FormList} />
             )}
-          </div>
-
-          {/* Field picker */}
-          {activeBlock.sourceFormId > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Source Field
-              </label>
-              <select
-                value={activeBlock.sourceFieldId || ""}
-                onChange={(e) =>
-                  handleUpdate({
-                    sourceFieldId: e.target.value,
+          </>
+        )}
+      </Field>
+      {block.sourceFormId > 0 && (
+        <Field label="Source field">
+          {(control) => (
+            <>
+              <Select
+                {...control}
+                value={block.sourceFieldId || ""}
+                onChange={(event) =>
+                  onUpdate({
+                    sourceFieldId: event.target.value,
                     visibleSubFieldIds: [],
                   })
                 }
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="">Select a field...</option>
+                <option value="">Select a field…</option>
                 {sourceFields.map((f) => (
                   <option key={f.id} value={f.id}>
                     {fieldPickerLabel(f)}
                   </option>
                 ))}
-              </select>
-              {sourceFormError && (
-                <FormPickerError reason={sourceFormError} className="mt-1" />
-              )}
-            </div>
+              </Select>
+              {sourceFormError && <FormPickerError reason={sourceFormError} />}
+            </>
           )}
-
-          {/* Field label visibility */}
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={activeBlock.showLabel ?? true}
-              onChange={(e) => handleUpdate({ showLabel: e.target.checked })}
-              className="h-4 w-4"
-            />
-            Show field label when rendering
-          </label>
-
-          {/* Sub-field visibility (list fields only) */}
-          {isListField && listSubFields.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Visible sub-fields (uncheck to hide)
-              </label>
-              <div className="space-y-1">
-                {listSubFields.map((subField) => {
-                  const visible =
-                    !activeBlock.visibleSubFieldIds ||
-                    activeBlock.visibleSubFieldIds.length === 0 ||
-                    activeBlock.visibleSubFieldIds.includes(subField.id);
-                  return (
-                    <label
-                      key={subField.id}
-                      className="flex items-center gap-2 text-sm text-gray-700"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={visible}
-                        onChange={(e) => {
-                          const current =
-                            activeBlock.visibleSubFieldIds &&
-                            activeBlock.visibleSubFieldIds.length > 0
-                              ? activeBlock.visibleSubFieldIds
-                              : listSubFields.map((f) => f.id);
-                          const next = e.target.checked
-                            ? [...current, subField.id]
-                            : current.filter((id) => id !== subField.id);
-                          handleUpdate({
-                            visibleSubFieldIds:
-                              next.length === listSubFields.length ? [] : next,
-                          });
-                        }}
-                        className="h-4 w-4"
-                      />
-                      {fieldPickerLabel(subField)}
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        </Field>
       )}
-    </DisplayBlockWrapper>
+      <CheckboxField
+        label="Show field label when rendering"
+        checked={block.showLabel ?? true}
+        onChange={(event) => onUpdate({ showLabel: event.target.checked })}
+      />
+      {listSubFields.length > 0 && (
+        <FieldGroup label="Visible sub-fields">
+          {listSubFields.map((subField) => (
+            <label key={subField.id} className="flex items-center gap-2.5">
+              <Checkbox
+                checked={shownSubFields.includes(subField.id)}
+                onChange={(event) =>
+                  setSubFieldShown(subField.id, event.target.checked)
+                }
+              />
+              {fieldPickerLabel(subField)}
+            </label>
+          ))}
+        </FieldGroup>
+      )}
+    </>
   );
 }

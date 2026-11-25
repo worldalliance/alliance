@@ -66,7 +66,7 @@ it("stores the picked target with its base URL as the fallback link", async () =
   const onUpdate = renderEditor(urlLink);
 
   fireEvent.click(screen.getByRole("radio", { name: "Share target" }));
-  const select = await screen.findByRole("combobox");
+  const select = await screen.findByDisplayValue("Select a target…");
   fireEvent.change(select, { target: { value: "4" } });
 
   expect(onUpdate).toHaveBeenLastCalledWith({
@@ -79,24 +79,30 @@ it("drops the target when switched back to a URL", () => {
   const onUpdate = renderEditor(targetLink);
 
   expect(
-    screen
-      .getByRole("radio", { name: "Share target" })
-      .getAttribute("aria-checked"),
-  ).toBe("true");
+    screen.getByRole<HTMLInputElement>("radio", { name: "Share target" })
+      .checked,
+  ).toBe(true);
   fireEvent.click(screen.getByRole("radio", { name: "URL" }));
 
   expect(onUpdate).toHaveBeenLastCalledWith({ externalTargetId: undefined });
 });
 
-it.each([
-  ["Green", { color: BigLinkColor.Green }],
-  ["Copy the link", { action: BigLinkAction.Copy }],
-])("stores the %s option", (name, update) => {
+it("stores the Green color", () => {
   const onUpdate = renderEditor(urlLink);
 
-  fireEvent.click(screen.getByRole("button", { name }));
+  fireEvent.change(screen.getByRole("combobox", { name: "Color" }), {
+    target: { value: BigLinkColor.Green },
+  });
 
-  expect(onUpdate).toHaveBeenLastCalledWith(update);
+  expect(onUpdate).toHaveBeenLastCalledWith({ color: BigLinkColor.Green });
+});
+
+it("stores the Copy the link option", () => {
+  const onUpdate = renderEditor(urlLink);
+
+  fireEvent.click(screen.getByRole("radio", { name: "Copy the link" }));
+
+  expect(onUpdate).toHaveBeenLastCalledWith({ action: BigLinkAction.Copy });
 });
 
 it("stores showing the link, and drops it when unchecked", () => {

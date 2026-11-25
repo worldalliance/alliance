@@ -5,184 +5,132 @@ import {
   type BigLinkBlock,
   type BigLinkIcon,
 } from "@alliance/common/forms/display-blocks";
-import { cn } from "@alliance/shared/styles/util";
-import {
-  ArrowUpRight,
-  Ban,
-  Copy,
-  File,
-  FileCheck,
-  FileText,
-  MessagesSquare,
-  Signature,
-} from "lucide-react";
 import { useState } from "react";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Select } from "../../ui/Select";
+import { CheckboxField, Field } from "../../ui/templates/Form";
 import { ExternalShareTargetSelect } from "../ExternalShareTargetSelect";
-import { VariableTextField } from "../VariableTextField";
+import { choiceOf } from "./blockChoices";
 import { BlockPreview } from "./BlockPreview";
+import { BlockRadios } from "./BlockRadios";
+import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
-type Option<T> = { value: T; label: string; content: React.ReactNode };
-
-const iconOptions: Option<BigLinkIcon>[] = [
-  {
-    value: "messages-square",
-    label: "Messages",
-    content: <MessagesSquare size={16} />,
-  },
-  { value: "file", label: "File", content: <File size={16} /> },
-  { value: "file-text", label: "File Text", content: <FileText size={16} /> },
-  {
-    value: "file-check",
-    label: "File Check",
-    content: <FileCheck size={16} />,
-  },
-  { value: "signature", label: "Signature", content: <Signature size={16} /> },
-  { value: "none", label: "No icon", content: <Ban size={16} /> },
+const ICONS: readonly { value: BigLinkIcon; label: string }[] = [
+  { value: "messages-square", label: "Messages" },
+  { value: "file", label: "File" },
+  { value: "file-text", label: "File text" },
+  { value: "file-check", label: "File check" },
+  { value: "signature", label: "Signature" },
+  { value: "none", label: "No icon" },
 ];
 
-const colorChoices: Record<BigLinkColor, { label: string; swatch: string }> = {
-  [BigLinkColor.Grey]: { label: "Grey", swatch: "bg-grey-0 border-zinc-300" },
-  [BigLinkColor.Green]: { label: "Green", swatch: "bg-green/20 border-green" },
+const COLOR_NAMES: Record<BigLinkColor, string> = {
+  [BigLinkColor.Grey]: "Grey",
+  [BigLinkColor.Green]: "Green",
 };
+const COLORS = Object.values(BigLinkColor).map((value) => ({
+  value,
+  label: COLOR_NAMES[value],
+}));
 
-const colorOptions: Option<BigLinkColor>[] = Object.values(BigLinkColor).map(
-  (color) => ({
-    value: color,
-    label: colorChoices[color].label,
-    content: (
-      <span
-        className={cn(
-          "block size-4 rounded-sm border",
-          colorChoices[color].swatch,
-        )}
-      />
-    ),
-  }),
-);
+const ACTION_NAMES: Record<BigLinkAction, string> = {
+  [BigLinkAction.Open]: "Open the link",
+  [BigLinkAction.Copy]: "Copy the link",
+};
+const ACTIONS = Object.values(BigLinkAction).map((value) => ({
+  value,
+  label: ACTION_NAMES[value],
+}));
 
-const actionOptions: Option<BigLinkAction>[] = [
-  {
-    value: BigLinkAction.Open,
-    label: "Open the link",
-    content: <ArrowUpRight size={16} />,
-  },
-  {
-    value: BigLinkAction.Copy,
-    label: "Copy the link",
-    content: <Copy size={16} />,
-  },
-];
-
-function OptionRow<T extends string>({
-  label,
-  options,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  options: Option<T>[];
-  selected: T;
-  onSelect: (value: T) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-xs text-zinc-500 mr-1">{label}:</span>
-      {options.map(({ value, label, content }) => (
-        <button
-          key={value}
-          type="button"
-          title={label}
-          aria-label={label}
-          aria-pressed={selected === value}
-          onClick={() => onSelect(value)}
-          className={cn(
-            "p-1.5 rounded border",
-            selected === value
-              ? "border-blue-500 bg-blue-50 text-blue-700"
-              : "border-zinc-200 text-zinc-500 hover:border-zinc-400",
-          )}
-        >
-          {content}
-        </button>
-      ))}
-    </div>
-  );
+enum LinkTo {
+  Url = "url",
+  Target = "target",
 }
 
-export function EditableBigLinkBlock({
-  block,
-  onUpdate,
-  updateCurrent,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
-  previousFields,
-  laterFields,
-}: BaseDisplayBlockProps<BigLinkBlock>) {
+const LINK_TO = [
+  { value: LinkTo.Url, label: "URL" },
+  { value: LinkTo.Target, label: "Share target" },
+];
+
+export function EditableBigLinkBlock(
+  props: BaseDisplayBlockProps<BigLinkBlock>,
+) {
   return (
-    <DisplayBlockWrapper
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
-      block={block}
-      onUpdate={onUpdate}
-      updateCurrent={updateCurrent}
-      previousFields={previousFields}
-      laterFields={laterFields}
-    >
-      {({ block: activeBlock, onUpdate: handleUpdate }) => (
-        <div className="space-y-2">
-          <VariableTextField
-            value={activeBlock.text}
-            onChange={(text) => handleUpdate({ text })}
-            className="w-full text-gray-900 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Link label"
-          />
-          <VariableTextField
-            multiline
-            value={activeBlock.body ?? ""}
-            onChange={(body) => handleUpdate({ body: body || undefined })}
-            className="w-full text-sm text-gray-900 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Body text (optional)"
-            rows={1}
-          />
-          <LinkSourceFields block={activeBlock} onUpdate={handleUpdate} />
-          <label className="flex items-center gap-2 text-xs text-zinc-600">
-            <input
-              type="checkbox"
-              checked={activeBlock.showUrl ?? false}
-              onChange={(e) =>
-                handleUpdate({ showUrl: e.target.checked || undefined })
+    <DisplayBlockWrapper {...props}>
+      {({ block, onUpdate }) => (
+        <>
+          <InspectorGroup>
+            <BlockTextField
+              label="Link label"
+              value={block.text}
+              onChange={(text) => onUpdate({ text })}
+            />
+            <BlockTextField
+              label="Body"
+              mark="optional"
+              multiline
+              rows={2}
+              value={block.body ?? ""}
+              onChange={(body) => onUpdate({ body: body || undefined })}
+            />
+            <LinkSourceFields block={block} onUpdate={onUpdate} />
+            <CheckboxField
+              label="Show the link"
+              checked={block.showUrl ?? false}
+              onChange={(event) =>
+                onUpdate({ showUrl: event.target.checked || undefined })
               }
             />
-            Show the link
-          </label>
-
-          <OptionRow
-            label="Icon"
-            options={iconOptions}
-            selected={bigLinkIconOrDefault(activeBlock.icon)}
-            onSelect={(icon) => handleUpdate({ icon })}
-          />
-          <OptionRow
-            label="Color"
-            options={colorOptions}
-            selected={activeBlock.color ?? BigLinkColor.Grey}
-            onSelect={(color) => handleUpdate({ color })}
-          />
-          <OptionRow
-            label="On click"
-            options={actionOptions}
-            selected={activeBlock.action ?? BigLinkAction.Open}
-            onSelect={(action) => handleUpdate({ action })}
-          />
-
-          <BlockPreview block={activeBlock} toggleable />
-        </div>
+          </InspectorGroup>
+          <InspectorGroup title="Look">
+            <Field label="Icon">
+              {(control) => (
+                <Select
+                  {...control}
+                  value={bigLinkIconOrDefault(block.icon)}
+                  onChange={(event) => {
+                    const icon = choiceOf(ICONS, event.target.value);
+                    if (icon) onUpdate({ icon });
+                  }}
+                >
+                  {ICONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Color">
+              {(control) => (
+                <Select
+                  {...control}
+                  value={block.color ?? BigLinkColor.Grey}
+                  onChange={(event) => {
+                    const color = choiceOf(COLORS, event.target.value);
+                    if (color) onUpdate({ color });
+                  }}
+                >
+                  {COLORS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <BlockRadios
+              label="On click"
+              choices={ACTIONS}
+              value={block.action ?? BigLinkAction.Open}
+              onChange={(action) => onUpdate({ action })}
+            />
+            <BlockPreview block={block} toggleable />
+          </InspectorGroup>
+        </>
       )}
     </DisplayBlockWrapper>
   );
@@ -200,37 +148,16 @@ function LinkSourceFields({
 
   return (
     <>
-      <div
-        role="radiogroup"
-        aria-label="Link to"
-        className="inline-flex rounded-md border border-zinc-300 text-xs"
-      >
-        {[
-          { label: "URL", selected: !linksToTarget },
-          { label: "Share target", selected: linksToTarget },
-        ].map(({ label, selected }) => (
-          <button
-            key={label}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => {
-              if (selected) return;
-              setPickingTarget(!linksToTarget);
-              if (linksToTarget) onUpdate({ externalTargetId: undefined });
-            }}
-            className={cn(
-              "px-2 py-1 first:rounded-l-md last:rounded-r-md",
-              selected
-                ? "bg-blue-50 text-blue-700"
-                : "text-zinc-500 hover:bg-zinc-50",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
+      <BlockRadios
+        label="Link to"
+        choices={LINK_TO}
+        value={linksToTarget ? LinkTo.Target : LinkTo.Url}
+        onChange={(next) => {
+          const toTarget = next === LinkTo.Target;
+          setPickingTarget(toTarget);
+          if (!toTarget) onUpdate({ externalTargetId: undefined });
+        }}
+      />
       {linksToTarget ? (
         <ExternalShareTargetSelect
           label="Share target"
@@ -242,13 +169,16 @@ function LinkSourceFields({
           onClear={() => onUpdate({ externalTargetId: undefined })}
         />
       ) : (
-        <input
-          type="text"
-          value={block.url}
-          onChange={(e) => onUpdate({ url: e.target.value })}
-          className="w-full text-zinc-600 text-sm border border-zinc-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="/path or https://..."
-        />
+        <Field label="URL">
+          {(control) => (
+            <Input
+              {...control}
+              value={block.url}
+              onChange={(event) => onUpdate({ url: event.target.value })}
+              placeholder="/path or https://..."
+            />
+          )}
+        </Field>
       )}
     </>
   );

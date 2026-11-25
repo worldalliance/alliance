@@ -47,7 +47,9 @@ const renderEditor = (block: CopyTextBlock, onUpdate = jest.fn()) => {
 
 const toggleFrom = (block: CopyTextBlock) => {
   const { onUpdate } = renderEditor(block);
-  fireEvent.click(screen.getByRole("button", { name: "Rich text" }));
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "Rich text (markdown)" }),
+  );
   return onUpdate.mock.calls[0][0];
 };
 
@@ -97,7 +99,7 @@ describe("the copy text preview", () => {
       format: CopyTextFormat.Markdown,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Show preview" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show preview" }));
 
     expect(screen.getByText("council").tagName).toBe("STRONG");
   });
@@ -105,7 +107,7 @@ describe("the copy text preview", () => {
   it("isn't offered for a plain block", () => {
     renderEditor(plain);
 
-    expect(screen.queryByRole("button", { name: "Show preview" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Show preview" })).toBeNull();
   });
 });
 
@@ -182,13 +184,11 @@ describe("a per-user copy text block's user list", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Editing content for Ben")).toBeTruthy();
-    expect(
-      screen.getByText("Currently using the default block content."),
-    ).toBeTruthy();
+    expect(screen.getByText("Using the default content.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("1/2")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Prev" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
     expect(screen.getByText("2/2")).toBeTruthy();
   });
 

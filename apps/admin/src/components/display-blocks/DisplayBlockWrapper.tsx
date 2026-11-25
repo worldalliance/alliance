@@ -5,24 +5,16 @@ import {
 import { type AnyField } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
-import { cn } from "@alliance/shared/styles/util";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { withBlockVisibility } from "../../lib/blockVisibility";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import Button, { ButtonVariant } from "../../ui/Button";
 import {
   SectionPanels,
   useSidebarSections,
 } from "../form-canvas/sidebarSections";
-import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
 import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
-import { useTypedExpression } from "../form-fields/conditions/expressionBuffers";
 import { ElementConditions } from "../form-fields/conditions/VisibilityConditions";
 import { BlockPreviewAllowed } from "./BlockPreview";
 import { ManualUserList } from "./ManualUserList";
@@ -34,8 +26,13 @@ import {
 } from "./perUserContent";
 import { PerUserOptions } from "./PerUserOptions";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
+import { StackedBlockCard } from "./StackedBlockCard";
 import { useClipboardImport } from "./useClipboardImport";
-import { useManualTargets, type TargetLabel } from "./useManualTargets";
+import {
+  useManualTargets,
+  type ManualTargets,
+  type TargetLabel,
+} from "./useManualTargets";
 
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   block: T;
@@ -60,6 +57,7 @@ type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
 };
 
 interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
+  /** Inspector groups (`InspectorGroup`), which the wrapper stacks. */
   children: ReactNode | ((props: DisplayBlockChildRenderProps<T>) => ReactNode);
   onRemove: () => void;
   onDragStart?: (e: React.DragEvent) => void;
@@ -75,6 +73,10 @@ interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
   perUserContent?: boolean;
 }
 
+/**
+ * A display block's editor: its Content and Conditions panels in the
+ * inspector, or both stacked in a card where no inspector holds it.
+ */
 export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   children,
   onRemove,
@@ -92,58 +94,11 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const perViewerOptionsAllowed = usePerViewerOptionsAllowed();
   const sidebar = useSidebarSections();
   const showConditional = Boolean(block && onUpdate && perViewerOptionsAllowed);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const optionsMenuRef = useRef<HTMLDivElement | null>(null);
-  const expression = useTypedExpression(block ?? {});
-  const [
-    showConditionalVisibilityControl,
-    setShowConditionalVisibilityControl,
-  ] = useState<boolean>(() => {
-    if (!block) return false;
-    return expression.typed || block.visibleIfFormula !== undefined;
-  });
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const targets = useManualTargets(block);
-  const {
-    manualPerUserEnabled,
-    activeManualUserId,
-    totalManualTargets,
-    paginationLabel,
-    hasContentForActiveUser,
-    targetLabel,
-    handleCycleUser,
-  } = targets;
-  useEffect(() => {
-    if (!isMenuOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (optionsMenuRef.current?.contains(event.target as Node)) return;
-      setIsMenuOpen(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isMenuOpen]);
-
-  useEffect(() => {
-    if (
-      block?.visibleIfFormula !== undefined &&
-      !showConditionalVisibilityControl
-    ) {
-      setShowConditionalVisibilityControl(true);
-    }
-  }, [block, showConditionalVisibilityControl]);
+  const { manualPerUserEnabled, activeManualUserId, hasContentForActiveUser } =
+    targets;
 
   const effectiveBlock = useMemo(() => {
     if (!block) return block;
@@ -154,26 +109,25 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   }, [activeManualUserId, block, manualPerUserEnabled]);
 
   const updateBlockWide = (updates: Partial<T>) => {
-    if (!onUpdate || !block) {
-      return;
-    }
+    if (!onUpdate || !block) return;
     if (
       block.manualUserContent &&
       Object.keys(block.manualUserContent).length
     ) {
-      const nextManualContent = Object.fromEntries(
-        Object.entries(block.manualUserContent).map(([userId, content]) => [
-          userId,
-          { ...content, ...updates },
-        ]),
-      ) as Record<string, ManualDisplayBlockContent>;
+      const nextManualContent: Record<string, ManualDisplayBlockContent> =
+        Object.fromEntries(
+          Object.entries(block.manualUserContent).map(([userId, content]) => [
+            userId,
+            { ...content, ...updates },
+          ]),
+        );
+      // `manualUserContent` exists on every display block kind, so it fits any `T`.
       onUpdate({
         ...updates,
         manualUserContent: nextManualContent,
       } as Partial<T>);
       return;
     }
-
     onUpdate(updates);
   };
 
@@ -187,16 +141,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       visibleIfFormula: next.visibleIfFormula,
       manualUserContent: next.manualUserContent,
     } as Partial<T>);
-  };
-
-  const handleConditionalVisibilityToggle = (checked: boolean) => {
-    setShowConditionalVisibilityControl(checked);
-    if (!checked) {
-      handleConditionalChange({
-        visibleIfFormula: undefined,
-      });
-      expression.clear();
-    }
   };
 
   const updateBlockFor = useCallback(
@@ -220,35 +164,30 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     [activeManualUserId, updateBlockFor],
   );
 
-  const showConditionalControls =
-    showConditionalVisibilityControl && showConditional;
+  const importFromClipboard = useClipboardImport({
+    block,
+    onUpdate,
+    updateCurrent,
+    closeMenu: () => setOptionsOpen(false),
+  });
 
+  const shownBlock = effectiveBlock ?? block;
   const editorContent =
     typeof children === "function"
-      ? children({
-          block: (effectiveBlock ?? (block as T)) as T,
+      ? shownBlock &&
+        children({
+          block: shownBlock,
           onUpdate: handleBlockUpdate,
           updateFor: updateBlockFor,
           landingFor,
           activeUserId: activeManualUserId,
-          targetLabel,
+          targetLabel: targets.targetLabel,
           isDefaultContent: !manualPerUserEnabled || !activeManualUserId,
           hasContentForUser: hasContentForActiveUser,
           updateBlockWide,
         })
       : children;
-  const renderContent = (
-    <BlockPreviewAllowed.Provider value={!sidebar}>
-      {editorContent}
-    </BlockPreviewAllowed.Provider>
-  );
 
-  const importFromClipboard = useClipboardImport({
-    block,
-    onUpdate,
-    updateCurrent,
-    closeMenu: () => setIsMenuOpen(false),
-  });
   const perUserOptions = perUserContent && block && onUpdate && (
     <PerUserOptions
       block={block}
@@ -257,190 +196,114 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       targets={targets}
     />
   );
-  const contentBody = (
-    <>
-      {manualPerUserEnabled && (
-        <div className="mb-3 flex items-center justify-between rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-          <div>
-            <p className="text-sm font-semibold">
-              {activeManualUserId
-                ? `Editing content for ${targetLabel(activeManualUserId)}`
-                : "Editing default content"}
-            </p>
-            <p className="text-xs">
-              {hasContentForActiveUser
-                ? "Custom content saved for this user."
-                : "Currently using the default block content."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-white px-2 py-1 text-[11px] text-gray-700">
-              {paginationLabel}
-            </span>
-            <button
-              type="button"
-              className="text-xs text-gray-700 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
-              onClick={() => handleCycleUser("prev")}
-              disabled={totalManualTargets === 0}
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              className="text-xs text-gray-700 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
-              onClick={() => handleCycleUser("next")}
-              disabled={totalManualTargets === 0}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
-      {renderContent}
-      {manualPerUserEnabled && onUpdate && <ManualUserList targets={targets} />}
-    </>
+  const status = manualPerUserEnabled && <PerUserStatus targets={targets} />;
+  const fields = (
+    <BlockPreviewAllowed.Provider value={!sidebar}>
+      {editorContent}
+    </BlockPreviewAllowed.Provider>
   );
+  const userList = manualPerUserEnabled && onUpdate && (
+    <ManualUserList targets={targets} />
+  );
+  const conditionsProps = shownBlock && {
+    field: shownBlock,
+    previousFields: previousFields ?? [],
+    laterFields,
+    outputBlocks,
+    onChange: handleConditionalChange,
+  };
 
   if (sidebar) {
     return (
       <SectionPanels
         content={
-          <div className="space-y-3">
+          <>
+            {fields}
             {showConditional && perUserOptions && (
-              <div className="rounded-md border border-gray-200 py-2 text-sm">
+              <InspectorGroup title="Per-user content">
                 {perUserOptions}
-              </div>
+                {status}
+                {userList}
+              </InspectorGroup>
             )}
-            {contentBody}
-          </div>
+          </>
         }
         conditions={
-          showConditional && (
-            <ElementConditions
-              field={effectiveBlock ?? block!}
-              previousFields={previousFields || []}
-              laterFields={laterFields}
-              outputBlocks={outputBlocks}
-              onChange={handleConditionalChange}
-            />
-          )
+          showConditional &&
+          conditionsProps && <ElementConditions {...conditionsProps} />
         }
       />
     );
   }
 
   return (
-    <div
-      className={cn(
-        "group relative border rounded-lg p-4 pl-8 pt-8 transition-all",
-        isDragging
-          ? "border-blue-400 shadow-lg opacity-50"
-          : "border-gray-200 hover:border-gray-300",
-      )}
+    <StackedBlockCard
+      blockId={block?.id}
+      onRemove={onRemove}
+      drag={onDragStart ? { onDragStart, onDragEnd } : undefined}
+      isDragging={isDragging}
+      options={
+        showConditional && conditionsProps
+          ? {
+              open: optionsOpen,
+              onOpenChange: setOptionsOpen,
+              perUserOptions,
+              conditions: conditionsProps,
+            }
+          : null
+      }
     >
-      {onDragStart && (
-        <div
-          className="absolute left-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
-          draggable
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          title="Drag to reorder"
-        >
-          <div
-            className="text-gray-400 hover:text-gray-600 p-1"
-            style={{ userSelect: "none" }}
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="currentColor"
-              style={{ userSelect: "none" }}
-            >
-              <circle cx="2" cy="2" r="1" />
-              <circle cx="6" cy="2" r="1" />
-              <circle cx="2" cy="6" r="1" />
-              <circle cx="6" cy="6" r="1" />
-              <circle cx="2" cy="10" r="1" />
-              <circle cx="6" cy="10" r="1" />
-            </svg>
-          </div>
-        </div>
-      )}
-      {block?.id && (
-        <span
-          className="absolute top-2 left-8 font-mono text-[10px] text-gray-400 px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded select-all"
-          title="Block id"
-        >
-          {block.id}
-        </span>
-      )}
-      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {showConditional && (
-          <div className="relative" ref={optionsMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="text-gray-500 hover:text-gray-700 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-              aria-haspopup="menu"
-              aria-expanded={isMenuOpen}
-            >
-              <span className="sr-only">Display block options</span>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <circle cx="3.5" cy="8" r="1.2" />
-                <circle cx="8" cy="8" r="1.2" />
-                <circle cx="12.5" cy="8" r="1.2" />
-              </svg>
-            </button>
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg z-20">
-                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={showConditionalVisibilityControl}
-                    onChange={(event) =>
-                      handleConditionalVisibilityToggle(event.target.checked)
-                    }
-                  />
-                  Use conditional visibility
-                </label>
-                {perUserOptions && (
-                  <div className="mt-2 border-t border-gray-100 pt-2">
-                    {perUserOptions}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        <button
-          onClick={onRemove}
-          className="text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50"
-          title="Remove field"
-        >
-          ×
-        </button>
+      {status}
+      {fields}
+      {userList}
+    </StackedBlockCard>
+  );
+}
+
+/** Whose content the fields below hold, and stepping through the members. */
+function PerUserStatus({ targets }: { targets: ManualTargets }) {
+  const {
+    activeManualUserId,
+    hasContentForActiveUser,
+    targetLabel,
+    paginationLabel,
+    totalManualTargets,
+    handleCycleUser,
+  } = targets;
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
+      <div className="flex min-w-0 flex-col">
+        <p className="truncate font-semibold">
+          {activeManualUserId
+            ? `Editing content for ${targetLabel(activeManualUserId)}`
+            : "Editing default content"}
+        </p>
+        <p className="text-caption text-fg-muted">
+          {hasContentForActiveUser
+            ? "Custom content saved for this user."
+            : "Using the default content."}
+        </p>
       </div>
-      <div className={cn(showConditionalControls && "space-y-3")}>
-        {contentBody}
-        {showConditionalControls && (
-          <div className="border-t border-gray-200 pt-4">
-            <ConditionalVisibility
-              field={effectiveBlock ?? block!}
-              previousFields={previousFields || []}
-              laterFields={laterFields}
-              outputBlocks={outputBlocks}
-              onChange={handleConditionalChange}
-            />
-          </div>
-        )}
+      <div className="flex shrink-0 items-center gap-1">
+        <span className="px-1 text-caption text-fg-muted tabular-nums">
+          {paginationLabel}
+        </span>
+        <Button
+          variant={ButtonVariant.Default}
+          size="small"
+          onClick={() => handleCycleUser("prev")}
+          disabled={totalManualTargets === 0}
+        >
+          Previous
+        </Button>
+        <Button
+          variant={ButtonVariant.Default}
+          size="small"
+          onClick={() => handleCycleUser("next")}
+          disabled={totalManualTargets === 0}
+        >
+          Next
+        </Button>
       </div>
     </div>
   );

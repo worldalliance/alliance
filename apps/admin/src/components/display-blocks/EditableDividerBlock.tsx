@@ -1,40 +1,48 @@
 import type { DividerBlock } from "@alliance/common/forms/display-blocks";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Select } from "../../ui/Select";
+import { Field } from "../../ui/templates/Form";
+import { choiceOf } from "./blockChoices";
 import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
+
+type Thickness = NonNullable<DividerBlock["thickness"]>;
+
+const THICKNESSES: readonly { value: Thickness; label: string }[] = [
+  { value: "hairline", label: "Hairline" },
+  { value: "thin", label: "Thin" },
+  { value: "medium", label: "Medium" },
+  { value: "thick", label: "Thick" },
+];
 
 export function EditableDividerBlock(
   props: BaseDisplayBlockProps<DividerBlock>,
 ) {
   return (
     <DisplayBlockWrapper {...props}>
-      {({ block: activeBlock, onUpdate: handleUpdate }) => (
-        <div className="space-y-2">
-          {/* Compact thickness selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Thickness:</span>
-            <select
-              value={activeBlock.thickness || "thin"}
-              onChange={(e) =>
-                handleUpdate({
-                  thickness: e.target.value as
-                    | "hairline"
-                    | "thin"
-                    | "medium"
-                    | "thick",
-                })
-              }
-              className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="hairline">Hairline</option>
-              <option value="thin">Thin</option>
-              <option value="medium">Medium</option>
-              <option value="thick">Thick</option>
-            </select>
-          </div>
-
-          <BlockPreview block={activeBlock} />
-        </div>
+      {({ block, onUpdate }) => (
+        <InspectorGroup>
+          <Field label="Thickness">
+            {(control) => (
+              <Select
+                {...control}
+                value={block.thickness ?? "thin"}
+                onChange={(event) => {
+                  const thickness = choiceOf(THICKNESSES, event.target.value);
+                  if (thickness) onUpdate({ thickness });
+                }}
+              >
+                {THICKNESSES.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <BlockPreview block={block} />
+        </InspectorGroup>
       )}
     </DisplayBlockWrapper>
   );

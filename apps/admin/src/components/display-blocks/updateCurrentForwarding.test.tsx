@@ -21,16 +21,15 @@ const renderIn = (editor: ReactElement) =>
     </QueryClientProvider>,
   );
 
-// These list their wrapper props by hand, so each has to forward the addressed
-// write rather than getting it from a spread.
+// Each editor has to hand its wrapper the addressed write.
 const editors: {
   name: string;
-  placeholder: string;
+  field: () => HTMLElement;
   mount: (w: Wiring) => DisplayBlock;
 }[] = [
   {
     name: "EditableBigLinkBlock",
-    placeholder: "Link label",
+    field: () => screen.getByRole("textbox", { name: "Link label" }),
     mount: (w) => {
       const block = createDisplayBlock("biglink", "block-1");
       renderIn(<EditableBigLinkBlock {...w} block={block} />);
@@ -39,7 +38,7 @@ const editors: {
   },
   {
     name: "EditableChatTranscriptBlock",
-    placeholder: "Left user name",
+    field: () => screen.getByRole("textbox", { name: "Left name" }),
     mount: (w) => {
       const block = createDisplayBlock("chatTranscript", "block-1");
       renderIn(<EditableChatTranscriptBlock {...w} block={block} />);
@@ -48,7 +47,7 @@ const editors: {
   },
   {
     name: "EditableCopyTextBlock",
-    placeholder: "Text to copy",
+    field: () => screen.getByRole("textbox", { name: "Text to copy" }),
     mount: (w) => {
       const block = createDisplayBlock("copytext", "block-1");
       renderIn(<EditableCopyTextBlock {...w} block={block} />);
@@ -57,7 +56,7 @@ const editors: {
   },
   {
     name: "EditablePreviousAnswerBlock",
-    placeholder: "Display title",
+    field: () => screen.getByRole("textbox", { name: "Title" }),
     mount: (w) => {
       const block = createDisplayBlock("previousAnswer", "block-1");
       renderIn(<EditablePreviousAnswerBlock {...w} block={block} />);
@@ -66,7 +65,7 @@ const editors: {
   },
   {
     name: "EditableUserLocationBlock",
-    placeholder: "Your location",
+    field: () => screen.getByRole("textbox", { name: "Title" }),
     mount: (w) => {
       const block = createDisplayBlock("userLocation", "block-1");
       renderIn(<EditableUserLocationBlock {...w} block={block} />);
@@ -75,7 +74,7 @@ const editors: {
   },
   {
     name: "EditableVideoBlock",
-    placeholder: "Add an optional caption",
+    field: () => screen.getByPlaceholderText("Add an optional caption"),
     mount: (w) => {
       const block = createDisplayBlock("video", "block-1");
       renderIn(<EditableVideoBlock {...w} block={block} />);
@@ -85,7 +84,7 @@ const editors: {
 ];
 
 describe("a block editor forwards the addressed write", () => {
-  for (const { name, placeholder, mount } of editors) {
+  for (const { name, field, mount } of editors) {
     it(name, () => {
       const wrote: string[] = [];
       const block = mount({
@@ -97,7 +96,7 @@ describe("a block editor forwards the addressed write", () => {
         onRemove: () => {},
       });
 
-      fireEvent.change(screen.getByPlaceholderText(placeholder), {
+      fireEvent.change(field(), {
         target: { value: "edited" },
       });
 

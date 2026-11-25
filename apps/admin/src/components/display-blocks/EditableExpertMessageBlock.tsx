@@ -1,7 +1,9 @@
 import type { ExpertMessageBlock } from "@alliance/common/forms/display-blocks";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
 import { UserPicker } from "../UserPicker";
-import { VariableTextField } from "../VariableTextField";
+import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
+import { ExpandableBlockText } from "./ExpandableBlockText";
 import type { BaseDisplayBlockProps } from "./types";
 
 export function EditableExpertMessageBlock(
@@ -10,9 +12,9 @@ export function EditableExpertMessageBlock(
   return (
     <DisplayBlockWrapper {...props}>
       {({ block, onUpdate }) => (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <span className="block text-xs font-medium text-gray-700">
+        <InspectorGroup>
+          <div className="flex flex-col gap-1.5">
+            <span aria-hidden="true" className="font-medium">
               Expert
             </span>
             <UserPicker
@@ -22,20 +24,20 @@ export function EditableExpertMessageBlock(
               onChange={(expert) => onUpdate({ expert })}
             />
           </div>
-          <label className="block space-y-1">
-            <span className="block text-xs font-medium text-gray-700">
-              Message (markdown)
-            </span>
-            <VariableTextField
-              multiline
-              rows={Math.max(4, block.text.split("\n").length)}
-              value={block.text}
-              onChange={(text) => onUpdate({ text })}
-              className="w-full resize-y rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="What the expert says"
-            />
-          </label>
-        </div>
+          <ExpandableBlockText title="Edit expert message" block={block}>
+            {(rows) => (
+              <BlockTextField
+                label="Message"
+                help="Written in markdown."
+                multiline
+                rows={rows}
+                value={block.text}
+                onChange={(text) => onUpdate({ text })}
+                placeholder="What the expert says"
+              />
+            )}
+          </ExpandableBlockText>
+        </InspectorGroup>
       )}
     </DisplayBlockWrapper>
   );
