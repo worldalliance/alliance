@@ -5,11 +5,11 @@ import { PlaceId } from "../../places";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Page } from "../../ui/templates/Page";
 import { usePlaceTabs } from "../../ui/templates/usePlaceTabs";
-import InviteFeedPage from "../InviteFeedPage";
 import InviteGraphPage from "../InviteGraphPage";
-import InviteMessageTemplatePage from "../InviteMessageTemplatePage";
 import { InviteLinksTab } from "./InviteLinksTab";
 import { InvitesTab } from "./InvitesTab";
+import { LiveFeedTab } from "./LiveFeedTab";
+import { MessageTemplateTab } from "./MessageTemplateTab";
 import { NewInviteDialog } from "./NewInviteDialog";
 
 const TABS = ["invites", "links", "graph", "feed", "template"] as const;
@@ -52,8 +52,8 @@ export default function InvitesPage() {
     ),
     links: () => <InviteLinksTab />,
     graph: () => <InviteGraphPage />,
-    feed: () => <InviteFeedPage embedded />,
-    template: () => <InviteMessageTemplatePage />,
+    feed: () => <LiveFeedTab />,
+    template: () => <MessageTemplateTab />,
   };
 
   return (

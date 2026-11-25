@@ -225,9 +225,7 @@ src/pages/Actions.tsx
 src/pages/AmbassadorProgramPage.tsx
 src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
-src/pages/InviteFeedPage.tsx
 src/pages/InviteGraphPage.tsx
-src/pages/InviteMessageTemplatePage.tsx
 src/pages/NewActionSuitePage.tsx
 src/pages/OrganizationsPage.tsx
 src/pages/OutreachPartnershipsPage.tsx

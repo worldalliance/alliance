@@ -4,7 +4,7 @@ import { FORUM_POST_PATH } from "./places";
 
 export default [
   layout("adminlayout.tsx", [
-    route("/growth/invites/feed", "pages/InviteFeedPage.tsx"),
+    route("/growth/invites/feed", "pages/invites/InviteFeedFullScreenPage.tsx"),
     route(
       "/research/preview/:batchId",
       "pages/research/TranscriptPreviewPage.tsx",
