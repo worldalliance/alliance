@@ -68,19 +68,22 @@ export function useGroupAssignment({
     });
   }, [groups, members, selections]);
 
+  // Before the queue loads, the stored picks are counted, so the column
+  // showing them doesn't arrive after the table or read none picked.
   const pendingByGroupId = useMemo(() => {
+    const groupIds = members
+      ? assignments.map(({ group }) => group.id)
+      : Object.values(stored)
+          .filter((groupId) => groupId !== "")
+          .map(Number);
     const counts: Record<number, number> = {};
-    for (const { group } of assignments) {
-      counts[group.id] = (counts[group.id] ?? 0) + 1;
+    for (const groupId of groupIds) {
+      counts[groupId] = (counts[groupId] ?? 0) + 1;
     }
     return counts;
-  }, [assignments]);
+  }, [assignments, members, stored]);
 
-  // Before the queue loads, the stored picks decide, so the column showing
-  // them doesn't arrive after the table.
-  const picking = members
-    ? assignments.length > 0
-    : Object.values(stored).some((groupId) => groupId !== "");
+  const picking = Object.keys(pendingByGroupId).length > 0;
 
   const groupOf = useCallback(
     (memberId: number) =>

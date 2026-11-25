@@ -231,10 +231,14 @@ it("holds the picks column while the queue is not loaded", async () => {
   );
   renderPage();
 
-  await screen.findByRole("link", { name: "North" });
+  const north = (await screen.findByRole("link", { name: "North" })).closest(
+    "tr",
+  );
   expect(
     screen.getByRole("columnheader", { name: "Picked, unconfirmed" }),
   ).toBeTruthy();
+  await screen.findByText(/Couldn't load the members awaiting a group\./);
+  expect(north?.querySelectorAll("td")[5]?.textContent).toBe("1");
 });
 
 it("says no one is awaiting a group once the last member is assigned", async () => {
