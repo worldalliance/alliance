@@ -58,6 +58,9 @@ function Projection({
       // From ambassador-invite-stats.service: the projection is computed
       // when the page loads.
       description={`As of ${formatDateTime(projection.generatedAt)}`}
+      // Panel clips its overflow, so in the scrolling card column it would
+      // otherwise shrink to nothing.
+      className="shrink-0"
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-x-10 gap-y-4">
