@@ -1,4 +1,4 @@
-import { formatSize, replacementFilesError, videoHref } from "./mediaRules";
+import { formatSize, replacementFilesError } from "./mediaRules";
 
 it.each([
   [0, "0 B"],
@@ -8,10 +8,6 @@ it.each([
   [1.5 * 1024 * 1024 * 1024, "1.50 GB"],
 ])("shows %i bytes as %s", (bytes, shown) => {
   expect(formatSize(bytes)).toBe(shown);
-});
-
-it("links a video to its record", () => {
-  expect(videoHref(7)).toBe("/content/media/videos/7");
 });
 
 const files = (names: string[]) => names.map((name) => new File(["x"], name));

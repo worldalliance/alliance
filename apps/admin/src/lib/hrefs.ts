@@ -1,16 +1,86 @@
 import { href } from "react-router";
+import {
+  RECORD_TABS,
+  RecordId,
+  type RecordTabId,
+  TabParam,
+  type TabbedRecordId,
+} from "../places";
+
+/** The record's first tab is its bare URL, as `tabHref` does for a place. */
+const withTab = <R extends TabbedRecordId>(
+  record: R,
+  path: string,
+  tab: RecordTabId<R> | undefined,
+): string =>
+  tab && tab !== RECORD_TABS[record][0].id
+    ? `${path}?${new URLSearchParams({ [TabParam.Tab]: tab })}`
+    : path;
 
 export const memberHref = (userId: number) =>
   href("/members/:userId", { userId: userId.toString() });
 
-export const groupHref = (groupId: number) =>
-  href("/members/groups/:id", { id: groupId.toString() });
+export const groupHref = (groupId: number, tab?: RecordTabId<RecordId.Group>) =>
+  withTab(
+    RecordId.Group,
+    href("/members/groups/:id", { id: groupId.toString() }),
+    tab,
+  );
 
-export const taskHref = (actionId: number) =>
-  href("/tasks/:actionId", { actionId: actionId.toString() });
+export const memberListHref = (listId: number | "new") =>
+  href("/members/lists/:listId", { listId: listId.toString() });
 
-export const suiteHref = (suiteId: number) =>
-  href("/tasks/suites/:suiteId", { suiteId: suiteId.toString() });
+export const taskHref = (actionId: number, tab?: RecordTabId<RecordId.Task>) =>
+  withTab(
+    RecordId.Task,
+    href("/tasks/:actionId", { actionId: actionId.toString() }),
+    tab,
+  );
 
-export const projectHref = (projectId: number) =>
-  href("/tasks/projects/:projectId", { projectId: projectId.toString() });
+export const taskUpdateHref = ({
+  actionId,
+  updateId,
+}: {
+  actionId: number;
+  updateId: number | "new";
+}) =>
+  href("/tasks/:actionId/updates/:updateId", {
+    actionId: actionId.toString(),
+    updateId: updateId.toString(),
+  });
+
+export const suiteHref = (suiteId: number, tab?: RecordTabId<RecordId.Suite>) =>
+  withTab(
+    RecordId.Suite,
+    href("/tasks/suites/:suiteId", { suiteId: suiteId.toString() }),
+    tab,
+  );
+
+export const projectHref = (
+  projectId: number,
+  tab?: RecordTabId<RecordId.Project>,
+) =>
+  withTab(
+    RecordId.Project,
+    href("/tasks/projects/:projectId", { projectId: projectId.toString() }),
+    tab,
+  );
+
+export const formHref = (formId: number, tab?: RecordTabId<RecordId.Form>) =>
+  withTab(
+    RecordId.Form,
+    href("/tasks/forms/:formId", { formId: formId.toString() }),
+    tab,
+  );
+
+export const threadHref = (threadId: string) =>
+  href("/inbox/:threadId", { threadId });
+
+export const videoHref = (videoId: number) =>
+  href("/content/media/videos/:videoId", { videoId: videoId.toString() });
+
+export const koraAssignmentHref = (assignmentId: string) =>
+  href("/research/assignments/:assignmentId", { assignmentId });
+
+export const koraTranscriptPreviewHref = (batchId: string) =>
+  href("/research/preview/:batchId", { batchId });

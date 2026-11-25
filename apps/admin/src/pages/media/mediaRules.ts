@@ -1,10 +1,6 @@
-import { href } from "react-router";
 import { PlaceId, placeById, tabHref } from "../../places";
 
 export const VIDEOS_HREF = tabHref(placeById(PlaceId.Media), { tab: "videos" });
-
-export const videoHref = (videoId: number): string =>
-  href("/content/media/videos/:videoId", { videoId: String(videoId) });
 
 const KB = 1024;
 const MB = KB * 1024;

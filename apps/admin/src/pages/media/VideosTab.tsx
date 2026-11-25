@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
+import { videoHref } from "../../lib/hrefs";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
 import { useDeleteVideoAdmin, useVideosAdmin } from "../../lib/useVideosAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
@@ -29,7 +30,7 @@ import {
   RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
-import { formatSize, videoHref } from "./mediaRules";
+import { formatSize } from "./mediaRules";
 
 const SIZE_COLUMN = "text-right tabular-nums";
 

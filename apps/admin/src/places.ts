@@ -484,6 +484,52 @@ export type AdminRecord = {
   fullScreen?: boolean;
 };
 
+/** Each tabbed record's tabs; `lib/hrefs.ts` types its `tab` argument from the ids. */
+export const RECORD_TABS = {
+  [RecordId.Task]: [
+    { id: "overview", label: "Overview" },
+    { id: "form", label: "Form" },
+    { id: "variants", label: "Variants" },
+    { id: "follow-up-forms", label: "Follow-up forms" },
+    { id: "messages", label: "Messages" },
+    { id: "responses", label: "Responses" },
+    { id: "events", label: "Events" },
+    { id: "activity", label: "Activity" },
+  ],
+  [RecordId.Suite]: [
+    { id: "timeline", label: "Timeline" },
+    { id: "tasks", label: "Tasks" },
+    { id: "events", label: "Events" },
+    { id: "general-updates", label: "General updates" },
+    { id: "partition", label: "Partition" },
+    { id: "launch", label: "Launch" },
+  ],
+  [RecordId.Project]: [
+    { id: "tasks", label: "Tasks by suite" },
+    { id: "timeline", label: "Timeline" },
+    { id: "task-updates", label: "Task updates" },
+  ],
+  [RecordId.Form]: [
+    { id: "builder", label: "Builder" },
+    { id: "responses", label: "Responses" },
+    { id: "versions", label: "Versions" },
+  ],
+  [RecordId.Group]: [
+    { id: "members", label: "Members" },
+    { id: "progress", label: "Progress" },
+    { id: "settings", label: "Settings" },
+  ],
+  [RecordId.GeneralUpdate]: [
+    { id: "details", label: "Details" },
+    { id: "content", label: "Content" },
+  ],
+} as const satisfies Partial<Record<RecordId, readonly PlaceTab[]>>;
+
+export type TabbedRecordId = keyof typeof RECORD_TABS;
+
+export type RecordTabId<R extends TabbedRecordId> =
+  (typeof RECORD_TABS)[R][number]["id"];
+
 export const RECORDS: readonly AdminRecord[] = [
   {
     id: RecordId.Thread,
@@ -496,16 +542,7 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.AllTasks,
     label: "Task",
     path: "/tasks/:actionId",
-    tabs: [
-      { id: "overview", label: "Overview" },
-      { id: "form", label: "Form" },
-      { id: "variants", label: "Variants" },
-      { id: "follow-up-forms", label: "Follow-up forms" },
-      { id: "messages", label: "Messages" },
-      { id: "responses", label: "Responses" },
-      { id: "events", label: "Events" },
-      { id: "activity", label: "Activity" },
-    ],
+    tabs: RECORD_TABS[RecordId.Task],
   },
   {
     id: RecordId.TaskUpdate,
@@ -530,36 +567,21 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.Suites,
     label: "Suite",
     path: "/tasks/suites/:suiteId",
-    tabs: [
-      { id: "timeline", label: "Timeline" },
-      { id: "tasks", label: "Tasks" },
-      { id: "events", label: "Events" },
-      { id: "general-updates", label: "General updates" },
-      { id: "partition", label: "Partition" },
-      { id: "launch", label: "Launch" },
-    ],
+    tabs: RECORD_TABS[RecordId.Suite],
   },
   {
     id: RecordId.Project,
     place: PlaceId.Projects,
     label: "Project",
     path: "/tasks/projects/:projectId",
-    tabs: [
-      { id: "tasks", label: "Tasks by suite" },
-      { id: "timeline", label: "Timeline" },
-      { id: "task-updates", label: "Task updates" },
-    ],
+    tabs: RECORD_TABS[RecordId.Project],
   },
   {
     id: RecordId.Form,
     place: PlaceId.Forms,
     label: "Form",
     path: "/tasks/forms/:formId",
-    tabs: [
-      { id: "builder", label: "Builder" },
-      { id: "responses", label: "Responses" },
-      { id: "versions", label: "Versions" },
-    ],
+    tabs: RECORD_TABS[RecordId.Form],
   },
   {
     id: RecordId.Formula,
@@ -584,11 +606,7 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.Groups,
     label: "Group",
     path: "/members/groups/:id",
-    tabs: [
-      { id: "members", label: "Members" },
-      { id: "progress", label: "Progress" },
-      { id: "settings", label: "Settings" },
-    ],
+    tabs: RECORD_TABS[RecordId.Group],
   },
   {
     id: RecordId.MemberList,
@@ -608,10 +626,7 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.GeneralUpdates,
     label: "General update",
     path: "/content/general-updates/:id",
-    tabs: [
-      { id: "details", label: "Details" },
-      { id: "content", label: "Content" },
-    ],
+    tabs: RECORD_TABS[RecordId.GeneralUpdate],
   },
   {
     id: RecordId.Video,
