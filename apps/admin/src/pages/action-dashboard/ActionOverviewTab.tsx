@@ -15,20 +15,13 @@ import {
   ACTION_STATUS_LABELS,
 } from "../../lib/actionStatusDisplay";
 import Card from "../../ui/Card";
-import ActionDashboardToolbar from "./ActionDashboardToolbar";
 import ActionParticipationStats from "./ActionParticipationStats";
 import ActionResponseReports from "./ActionResponseReports";
-import type { ActionExport } from "./useActionExport";
 import type { ActionReporting } from "./useActionReporting";
 
 type ActionOverviewTabProps = {
   action: ParsedActionDto;
   reporting: ActionReporting;
-  actionExport: ActionExport;
-  imageUploading: boolean;
-  unsaved: boolean;
-  onDuplicate: () => Promise<void>;
-  onArchive: () => Promise<void>;
   onTabChange: (tab: "events" | "responses") => void;
   setSearchParams: SetURLSearchParams;
   incompleteUsersExpanded: boolean;
@@ -38,11 +31,6 @@ type ActionOverviewTabProps = {
 const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
   action,
   reporting,
-  actionExport,
-  imageUploading,
-  unsaved,
-  onDuplicate,
-  onArchive,
   onTabChange,
   setSearchParams,
   incompleteUsersExpanded,
@@ -54,14 +42,6 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
 
   return (
     <div className="space-y-4 pb-4">
-      <ActionDashboardToolbar
-        action={action}
-        actionExport={actionExport}
-        imageUploading={imageUploading}
-        unsaved={unsaved}
-        onDuplicate={onDuplicate}
-        onArchive={onArchive}
-      />
       <FailedLoadsBanner
         failed={reporting.failedLoads}
         consequence="The reports below are incomplete."

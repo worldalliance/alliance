@@ -488,6 +488,7 @@ export type AdminRecord = {
 export const RECORD_TABS = {
   [RecordId.Task]: [
     { id: "overview", label: "Overview" },
+    { id: "details", label: "Details" },
     { id: "form", label: "Form" },
     { id: "variants", label: "Variants" },
     { id: "follow-up-forms", label: "Follow-up forms" },
@@ -556,6 +557,7 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.Projects,
     label: "Task",
     path: "/tasks/projects/:projectId/tasks/:actionId",
+    tabs: RECORD_TABS[RecordId.Task],
   },
   {
     id: RecordId.NewSuite,

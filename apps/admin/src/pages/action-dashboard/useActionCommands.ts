@@ -5,8 +5,12 @@ import { useCreateFormAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { useAdminTaskFormActions } from "@alliance/shared/lib/useTaskForm";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
+import { LAUNCH_CONFIRM_TEXT } from "../../components/CreateEventForm";
 import { duplicatedActionImages } from "../../lib/actionImages";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
 import { useToast } from "../../ui/ToastProvider";
+import { unarchiveConsequence } from "../tasks/taskFacts";
 import { imageUploadingMessage, logActionError } from "./actionSaveErrors";
 
 export const useNavigateToCreatedAction = () => {
@@ -43,7 +47,8 @@ export function useActionCommands(params: {
   const { createForm } = useCreateFormAdmin();
   const { fetchLatest } = useAdminTaskFormActions();
   const handleActionCreated = useNavigateToCreatedAction();
-  const { confirm, success } = useToast();
+  const confirm = useConfirmOnPage();
+  const { success } = useToast();
 
   const handleDuplicate = useCallback(async () => {
     if (imageUploading) {
@@ -53,9 +58,7 @@ export function useActionCommands(params: {
 
     let taskFormId = form.taskFormId;
     if (taskFormId) {
-      const failed = logActionError(
-        "Failed to duplicate the action's task form",
-      );
+      const failed = logActionError("Couldn't copy the task's form.");
       const read = await fetchLatest(taskFormId);
       const copied = read.ok
         ? await R.fromPromise(
@@ -81,7 +84,7 @@ export function useActionCommands(params: {
     };
     const result = await R.fromPromise(
       createAction(duplicateForm),
-      logActionError("Failed to duplicate action"),
+      logActionError("Couldn't duplicate the task."),
     );
     if (!result.ok) {
       setError(result.error);
@@ -89,7 +92,7 @@ export function useActionCommands(params: {
     }
     // Edits made while the copy was created hold the navigation at the leave
     // prompt, so the copy is announced on its own.
-    success("Action duplicated");
+    success("Task duplicated");
     handleActionCreated(result.value);
   }, [
     form,
@@ -105,32 +108,37 @@ export function useActionCommands(params: {
   ]);
 
   const handleArchive = useCallback(async () => {
-    const confirmed =
-      action?.archived ||
-      (await confirm({
-        title: "Archive this action?",
-        message: `${action?.publicOnly ? "Its public page stays open to anyone with the link." : "Only admins can open it."} It also leaves the actions list unless archived actions are shown.`,
-        confirmLabel: "Archive",
-      }));
-    if (confirmed && actionId) {
-      const archived = action?.archived;
-      const result = await R.fromPromise(
-        archived ? unarchiveAction() : archiveAction(),
+    if (!action || !actionId) return;
+    const { archived } = action;
+    const unarchived = unarchiveConsequence(action, new Date());
+    const confirmed = await confirm(
+      archived
+        ? {
+            title: "Unarchive this task?",
+            message: unarchived.message,
+            confirmLabel: "Unarchive task",
+            requiredText: unarchived.exposes ? LAUNCH_CONFIRM_TEXT : undefined,
+          }
+        : {
+            title: "Archive this task?",
+            message: `${action.publicOnly ? "Its public page stays open to anyone with the link." : "Only admins can open it."} It also leaves the tasks list unless archived tasks are shown.`,
+            confirmLabel: "Archive task",
+          },
+    );
+    if (!confirmed) return;
+    const result = await R.fromPromise(
+      archived ? unarchiveAction() : archiveAction(),
+    );
+    if (!result.ok) {
+      console.error(result.error);
+      setError(
+        adminRefusalMessage(
+          result.error,
+          `Couldn't ${archived ? "unarchive" : "archive"} the task.`,
+        ),
       );
-      if (!result.ok) {
-        setError(`Failed to ${archived ? "unarchive" : "archive"} action`);
-        console.error(result.error);
-      }
     }
-  }, [
-    actionId,
-    action?.archived,
-    action?.publicOnly,
-    confirm,
-    archiveAction,
-    unarchiveAction,
-    setError,
-  ]);
+  }, [actionId, action, confirm, archiveAction, unarchiveAction, setError]);
 
   return { handleDuplicate, handleArchive };
 }

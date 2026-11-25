@@ -19,7 +19,7 @@ export default [
       ]),
 
       route("/tasks", "places/TasksPlace.tsx"),
-      route("/tasks/:actionId", "pages/ActionDashboard.tsx"),
+      route("/tasks/:actionId", "pages/tasks/TaskPage.tsx"),
       route("/tasks/:actionId/updates/:updateId", "pages/ActionUpdatePage.tsx"),
       route("/tasks/suites", "pages/suites/SuitesPage.tsx", [
         route("new", "pages/suites/NewSuiteDialog.tsx"),
