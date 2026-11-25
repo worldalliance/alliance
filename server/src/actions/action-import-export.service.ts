@@ -1,5 +1,5 @@
 import { Assert } from "@alliance/common/types";
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { writeUnderLive } from "src/datasources/soft-delete";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
@@ -8,6 +8,8 @@ import {
   followGrid,
 } from "src/suite-partitions/partition-guards";
 import { Form } from "src/tasks/entities/form.entity";
+import { FormSnapshotService } from "src/tasks/formsnapshot.service";
+import { parseFormSchemaOrThrow } from "src/tasks/parse-form-schema";
 import { User } from "src/user/entities/user.entity";
 import type { IsRelation, Relations } from "src/utils/Repository";
 import { type Repository } from "typeorm";
@@ -34,6 +36,7 @@ export class ActionImportExportService {
     private readonly formRepository: Repository<Form>,
     private readonly reminderGroupService: ReminderGroupService,
     private readonly generalUpdates: GeneralUpdatesService,
+    private readonly formSnapshotService: FormSnapshotService,
   ) {}
 
   async exportAction(
@@ -115,6 +118,11 @@ export class ActionImportExportService {
             value: actionCols.cohortExpression,
           });
 
+    const pastedForm = taskForm && {
+      title: taskForm.title,
+      schema: await this.parseTaskFormSchemaOrThrow(taskForm),
+    };
+
     let suiteIdToSync: number | undefined;
     const result = await this.actionRepository.manager.transaction(
       async (em) => {
@@ -175,9 +183,17 @@ export class ActionImportExportService {
           });
         }
 
-        if (taskForm) {
+        if (pastedForm) {
+          const snapshot = await this.formSnapshotService.findOrCreate(
+            pastedForm.schema,
+            em,
+          );
           const newTaskForm = await insertForm(em, {
-            form: taskForm,
+            form: {
+              title: pastedForm.title,
+              formSnapshotId: snapshot.id,
+              formSnapshot: snapshot,
+            },
             placement: { actionId, sequence: FormSlugSequence.Main },
           });
           await actionRepo.update(actionId, { taskFormId: newTaskForm.id });
@@ -204,5 +220,20 @@ export class ActionImportExportService {
     );
     await this.generalUpdates.syncGeneralUpdateDatesForSuites([suiteIdToSync]);
     return parseAction(result);
+  }
+
+  // Snapshot ids name different snapshots in another environment, so the
+  // pasted form keeps its content and the snapshot is matched by hash.
+  private async parseTaskFormSchemaOrThrow(taskForm: Form) {
+    if (!taskForm.formSnapshot) {
+      throw new BadRequestException(
+        "The pasted task form has no content (formSnapshot.schema)",
+      );
+    }
+    return parseFormSchemaOrThrow({
+      formRepository: this.formRepository,
+      schema: taskForm.formSnapshot.schema,
+      formId: undefined,
+    });
   }
 }
