@@ -5,6 +5,7 @@ import {
   buildActionCompletionCurveChartData,
   curveDurationDays,
 } from "../lib/actionCompletionCurveChartData";
+import { formatRatioAsPct } from "../lib/formatPct";
 import {
   type GranularityMode,
   useActionCompletionCurvesAdmin,
@@ -264,7 +265,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
           ? [
               {
                 label: "Cumulative completed",
-                value: `${(cumulativeRate * 100).toFixed(2)}%`,
+                value: formatRatioAsPct(cumulativeRate),
                 color: series.color,
               },
             ]
@@ -272,12 +273,12 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
               { label: "Day", value: xValue },
               {
                 label: "Completions today",
-                value: `${(completionRate * 100).toFixed(2)}%`,
+                value: formatRatioAsPct(completionRate),
                 color: series.color,
               },
               {
                 label: "Total completed",
-                value: `${(cumulativeRate * 100).toFixed(2)}%`,
+                value: formatRatioAsPct(cumulativeRate),
               },
             ];
 

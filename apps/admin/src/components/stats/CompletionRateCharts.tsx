@@ -1,6 +1,7 @@
 import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import React, { useMemo, useState } from "react";
+import { formatRatioAsPct } from "../../lib/formatPct";
 import {
   TimeSeriesChart,
   fullDateFormatter,
@@ -123,7 +124,7 @@ const CompletionRateCharts: React.FC<{
           items: [
             {
               label: "Average rate",
-              value: `${((point.avgRate as number) * 100).toFixed(2)}%`,
+              value: formatRatioAsPct(point.avgRate as number),
               color: "#15803d",
             },
             {
@@ -153,7 +154,7 @@ const CompletionRateCharts: React.FC<{
           items: [
             {
               label: "Weekly rate",
-              value: `${((point.weekRate as number) * 100).toFixed(2)}%`,
+              value: formatRatioAsPct(point.weekRate as number),
               color: "#16a34a",
             },
             {
