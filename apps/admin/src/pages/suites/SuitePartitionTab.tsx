@@ -31,7 +31,7 @@ export function SuitePartitionTab({
       <Panel title="Partition">
         <EmptyState
           title="This suite has no parts"
-          description="It is scheduled to launch, so it can't be partitioned now."
+          description="It has a members taking action event, so it can't be partitioned."
         />
       </Panel>
     ) : (

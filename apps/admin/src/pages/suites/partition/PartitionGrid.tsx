@@ -58,8 +58,8 @@ export function PartitionGrid({
           This suite has no tasks yet. Add one to give it to parts.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-line">
-          <Table>
+        <div className="max-w-full self-start overflow-x-auto rounded-md border border-line">
+          <Table className="w-auto">
             <TableHeader>
               <TableRow>
                 <TableHead>Task</TableHead>
@@ -73,14 +73,14 @@ export function PartitionGrid({
             <TableBody>
               {tasks.map((task) => (
                 <TableRow key={task.id}>
-                  <TableCell truncate className="font-medium">
+                  <TableCell truncate className="min-w-48 font-medium">
                     {task.name}
                   </TableCell>
                   {parts.map((part, partIndex) => (
                     <TableCell key={part.id}>
                       <Select
                         aria-label={`${task.name} for ${part.name || "unnamed part"}`}
-                        className="h-control-sm"
+                        className="h-control-sm w-36"
                         value={cellOf(part, task.id)}
                         onChange={(event) =>
                           onChange({

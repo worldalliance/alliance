@@ -106,8 +106,8 @@ function PreviewResult({
         Members with only optional work neither miss the suite nor reset their
         streak.
       </p>
-      <div className="overflow-x-auto rounded-md border border-line">
-        <Table>
+      <div className="max-w-full self-start overflow-x-auto rounded-md border border-line">
+        <Table className="w-auto">
           <TableHeader>
             <TableRow>
               <TableHead>Part</TableHead>
@@ -117,7 +117,7 @@ function PreviewResult({
           <TableBody>
             {result.parts.map(({ partId, count }) => (
               <TableRow key={partId}>
-                <TableCell truncate className="font-medium">
+                <TableCell truncate className="min-w-48 font-medium">
                   {name(partId)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">

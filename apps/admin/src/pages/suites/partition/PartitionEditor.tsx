@@ -64,8 +64,8 @@ export function PartitionEditor({
       )}
       {scheduled && (
         <Banner tone={BannerTone.Warning} inline>
-          This suite is scheduled to launch, so its partition can&apos;t change
-          here.
+          This suite has a members taking action event, so its partition
+          can&apos;t change.
         </Banner>
       )}
       {editor.stale !== null && (
