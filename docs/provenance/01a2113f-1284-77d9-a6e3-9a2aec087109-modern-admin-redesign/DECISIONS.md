@@ -208,6 +208,15 @@ All agent judgement; nobody was there to ask. The bar is round 3's.
 - **Round 5 changed no code.** Its 16 findings repeated ones already declined or filed, or were wording, splits or missing tests; none was a defect in behaviour, accessibility, a guard, or the guide as it stands at the tip. The loop's hub classified them itself, with no fixer, and the loop ended there.
 - **Left as a follow-up:** no test covers two confirmations opened together showing one at a time (ALL-2501); the reviewer checked that the behaviour is right.
 
+## Review loop, round 7
+
+All agent judgement; nobody was there to ask. The bar is round 3's. Other agents had already branched from `modern-admin`, so every fix is a new commit on top and no commit was rewritten; findings asking for a split, a reorder or a new message were declined for that reason.
+
+- **The completion curve chart's average is "Average"**, since "Average of all tasks" was false whenever the run-length filter is on and a name for each case would add a branch for a legend word.
+- **Rule 9's three load moves stay in the guide, marked as the agents' acceptance.** The owner's rule says loading never moves content in view and names no exceptions; taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads. The owner may rule otherwise.
+- **Removing the last suite on General updates while suites failed to load leaves focus where the browser puts it**: the Add suite select is disabled then, and the group already says the suites failed. Not fixed.
+- **Left as follow-ups:** the lint's gaps (ALL-2508), the invite funnel's accessibility (ALL-2509), the groups table's width with picks stored (ALL-2510), and the shared pieces the trial pages left for the system owner (ALL-2511).
+
 ## After the page trial
 
 Five agents built pages from the guide alone; a judge compared them. What the guide and the system took from it, all agent judgement (nobody was there to ask):
@@ -229,7 +238,7 @@ Five agents built pages from the guide alone; a judge compared them. What the gu
 - **Queue counts on tabs come from `places.ts` through `withQueueCounts`, and the page passes the size it loaded.** Reading `useQueueCounts` inside `Page` would fetch all four queues on any page with a queue tab and in every test of it; the shell already fetches them, so the numbers agree with the sidebar.
 - **`PersonCell` renders its own table cell**, so its cap and truncation can't be left off; `PersonChip` is the inline form.
 - **`DateTimePicker timeZone` edits in the named zone.** A wall-clock time the spring change skips moves an hour later; a repeated autumn hour takes its first occurrence (what `@date-fns/tz` does).
-- **Left for later**: a multi-pick with reserved height, `Field limit`, `Textarea autoGrow`, `Modal` scrolling inside 720 px and `initialFocus`, toasts placed clear of the header, `LeaveGuard` asking with the admin's dialog, duplicate `confirm()` calls, an admin `CommunityMembersTable`, `CopyField`, a code well, and lint on literal colours in `style`.
+- **Left for later**: a multi-pick with reserved height, `Field limit`, `Textarea autoGrow`, `Modal` scrolling inside 720 px and `initialFocus`, toasts placed clear of the header, `LeaveGuard` asking with the admin's dialog, duplicate `confirm()` calls, an admin `CommunityMembersTable`, `CopyField`, and a code well (ALL-2511). Lint on literal colours in `style`, once on this list, came with the chart kit.
 
 ## Trial page: Home
 
@@ -237,7 +246,7 @@ All agent judgement; the user was asleep and has not seen these.
 
 - **Home's files are `apps/admin/src/pages/home/`**, the page and one file per stats panel; `components/stats/` and `pages/StatsPage.tsx` are gone. The panels' data hooks stay in `src/lib`.
 - **The queue list waits for every count, then appears once.** A queue whose count could not load keeps its row, saying so, with its button: a failed count is not an empty queue. The row shows the exact number, where the sidebar's badge stops at "99+".
-- **The stats sit in five sections after the queues: Organization stats, Members, Tasks, Invites, Daily activity**, each linking to the place that holds its full data. Within a section today's order is kept, except that Recent missed tasks leads Members, as the one stat that names people to act on.
+- **The stats sit in five sections after the queues: Organization stats, Members, Tasks, Invites, Daily activity**, Members, Tasks and Invites each link to the place that holds their full data; Organization stats and Daily activity have no such place. The panels' order within a section is the second pass's layout (below).
 - **A stat's controls sit inside its panel, above what they drive**, each a labelled field. The daily range, which today sits loose between two charts and reads as a page-wide filter, is inside the Daily stats panel, the only thing it drives.
 - **Two charts that share one control are one panel**: the cumulative and weekly completion rates share a date range and one "Absolute" checkbox (today the checkbox is drawn twice), and the cohort lines and the cohort grid share a week range.
 - **The two tables are always shown and scroll inside their panels**, where today each sat behind a toggle. Task stats links each task to its record.
@@ -252,8 +261,8 @@ All agent judgement; the user was asleep and has not seen these. They replace th
 
 - **Charts have their own tokens.** Six series colours (`chart-1` to `chart-6`) whose neighbours alternate dark and light at 3:1, so two series side by side differ in grayscale (WCAG 2.2 SC 1.4.11 and technique G111, which the ux-guidelines chart item cites); a seven-step sequence (`seq-*`) for an ordered set of lines; a seven-step heat ramp (`heat-*`) for filled cells, with text that reads on each step. Status colours colour a series only when it is that status, so Home's churned members, withdrawn members and in-progress tasks no longer borrow danger, warning and info. A running task's expected bar is hatched instead.
 - **The kit is `src/ui/charts`, and the panel pieces are in `templates/Overview.tsx`.** The shared line charts moved there from `components/time-series-chart/`, rewritten on tokens; `TimeSeriesChart`, the old card around them, is gone, its empty and loading text now each caller's `ContentState`.
-- **A chart draws at its real width**, not a fixed 1000-unit picture scaled to fit, so axis text keeps its size in a half-width panel.
-- **Every chart can be read without a pointer**: the chart takes focus and the arrow keys move through its marks (up and down change line on a multi-line chart, and rows on the task bars); the cohort grid is a table with one tab stop. This goes past today's page, whose detail was hover-only.
+- **A chart on the kit draws at its real width**, not a fixed 1000-unit picture scaled to fit, so axis text keeps its size in a half-width panel.
+- **Every chart on the kit can be read without a pointer**: the chart takes focus and the arrow keys move through its marks (up and down change line on a multi-line chart, and rows on the task bars); the cohort grid is a table with one tab stop. This goes past today's page, whose detail was hover-only. The invite funnel is not on the kit: a fixed picture whose numbers a screen reader doesn't hear, as today (ALL-2509).
 - **A range change keeps the chart, dimmed and marked "Updating…"**, where the trial showed a skeleton. The inventory's "loading, not none" still holds: nothing reads as empty while the new range loads, and a range that had nothing keeps the skeleton.
 - **"Completions throughout week" is redesigned on the kit**, as "Completions through the week", in a `Panel` with labelled controls: "Show" (Cumulative by hour, By day), "Task" (All tasks), "Shortest run (days)" and "Longest run (days)", "Clear duration". The task record shows the same panel. With every task shown each task's line is a muted context line under the average; one picked task takes the second series colour.
 - **The organization's churn tiles read their own six-month history**, so the Members over time range no longer changes them. A tile whose number is still loading or failed says so in its note.
@@ -265,7 +274,7 @@ All agent judgement; the user was asleep and has not seen these. They replace th
 
 All agent judgement; the user was asleep and has not seen these. They replace the daily stats and tile lines of the section above where they differ.
 
-- **Home's words follow the server** (`server/src/analytics/`). Daily stats is one snapshot a day (`analytics.service.ts`, `calculateDailyStats`): tasks completed, anonymous form responses, invites created and invites accepted are totals to that day and say "(total)"; "Members signed (total)" was the members with an active contract that day and is now "Active members", beside "Suspended members". "Last month churn" is "Churn in the last 30 days" (`contractStatusHistory.ts`). Recent missed tasks, Member reliability and Time to churn say what their endpoints count (`getMissedActions`, `getMemberReliabilityWindow`, `getTimeToChurnSamples`).
+- **Home's words follow the server** (`server/src/analytics/`). Daily stats is one snapshot a day (`analytics.service.ts`, `calculateDailyStats`): tasks completed, anonymous form responses, invites created and invites accepted are totals to that day and say "(total)"; "Members signed (total)" was the members with an active contract that day and is now "Active members", beside "Suspended members". "Last month churn" is "Churn in the last 30 days" (`apps/admin/src/pages/home/contractStatusHistory.ts`, computed in the admin from the history endpoint). Recent missed tasks, Member reliability and Time to churn say what their endpoints count (`getMissedActions`, `getMemberReliabilityWindow`, `getTimeToChurnSamples`).
 - **Every stat tile has a note saying what its number counts**, replaced by "Loading…" or "Couldn't load" while its query loads or after it fails, so the row is one height in every state.
 - **A panel whose background refetch fails keeps its chart and shows `RefreshFailedBanner inline`.** Time to churn hid its histogram on a failed refetch before; it now follows the guide.
 - **The three panels staff load with a button** (Recent missed tasks, Member reliability, Task completion and churn after joining) **still replace the earlier result with the failed state when a reload fails**, as today's tests require: the reader asked for a fresh answer, and the old one beside a failure would read as it.
@@ -280,10 +289,10 @@ All agent judgement; the user was asleep and has not seen these. Built from `app
 - **The Pacific time of day is shown.** Today's page computed it and showed only the day, leaving the time readable only from the UTC string. The UTC timestamp keeps its own column, since today's page shows it and the prototype's Comfortable density hides it.
 - **The kind badges are neutral**, where the prototype colours Suspension as a warning and Forum auto-complete as info: a job's kind is a category, and the guide keeps those colours for their meanings.
 - **The member count is the row's expand control** ("9 members", `aria-expanded`), and a row click does not expand. Expanded rows are not in the URL.
-- **A failed refetch keeps the loaded jobs and adds a danger banner with "Try again"**, as today's page kept its timeline beside the error; the guide says only that a failed refetch keeps its content.
+- **A failed refetch keeps the loaded jobs and adds a danger banner with "Try again"**, as today's page kept its timeline beside the error; the guide then said only that a failed refetch keeps its content.
 - **The header says the list covers the next 7 days.** Today's page said "in this window" without saying which. The window stays fixed, with no control and no search, as today.
 
-After the judge's verdict and the revised guide, still agent judgement:
+After the judge's verdict and the revised guide, still agent judgement. They replace the trial's columns and time-of-day entries above where they differ:
 
 - **A suspension shows the day it is due by ("By Wed, Nov 25"), not a time.** The endpoint looks for suspensions every 6 hours counted from the moment the page asked (`actions.controller.ts`, `getSuspendPlans`), so the time it returns is the first look that found the members due, and the suspension can come up to 6 hours sooner. The sampled time, in Pacific time and UTC, is the cell's tooltip.
 - **A forum auto-complete keeps its time to the minute.** The server's date is 5 minutes before the task's deadline and its worker runs every 5 minutes (`forum-action-completer.worker.ts`), so the job runs within 5 minutes of the time shown; the tooltip says so.
@@ -312,12 +321,12 @@ Agent judgement throughout; the owner was not asked.
 
 All agent judgement; the user was asleep and has not seen these. Built from `apps/admin/DESIGN.md` alone as a trial of the guide.
 
-- **The list is one table grouped by schedule state** (Draft, Active, Scheduled, Expired, today's groups and order), each group under a heading row holding the status badge and a count, with a search by name in `?q=`. Dates show in Pacific time with the zone named, as the guide asks of events; the form edits them in the admin's own zone and names it in the labels, as today's form did without saying so.
+- **The list is one table grouped by schedule state** (Draft, Active, Scheduled, Expired, today's groups and order), each group under a heading row holding the status badge and a count, with a search by name in `?q=`. Dates show in Pacific time with the zone named, as the guide asks of events; the form edits them in Pacific time too (below).
 - **The record keeps today's two tabs, Details first, as `details` and `content`**, so old `?tab=` links still open the same tab. No side panel: the Content tab is the block editor and needs the width, so status is the header's badge and the dates and suites its description line.
 - **New general update stays a page at `/content/general-updates/new`**, not a dialog: the form has more fields than a dialog takes, and the suite page links to it with `?suiteId=`.
 - **The details form is one section with one save bar.** The priority link moved to the header as "Manage priority". Cancel is gone: Discard resets the form and the breadcrumb leads back.
-- **The schedule fields and the manual cohort picker stay rendered, disabled with the reason, when a suite or an unticked box means they aren't used**; today's form hid them. The picker is disabled by a `fieldset`, since `UserSelect` takes no `disabled`.
-- **The details form gained a leave guard** (`allowSamePath`, since its state lives above the tabs and survives a look at Content), a required-title message in place of the browser's bubble, and a save bar note saying what a save does for members: an Active update's save reaches them at once. An Active update also carries a standing banner saying so on both tabs, since the editor on Content has its own save control.
+- **The schedule fields and the manual cohort picker stay rendered, disabled with the reason, when a suite or an unticked box means they aren't used**; today's form hid them. The picker takes `disabled`.
+- **The details form gained a leave guard** (`allowSamePath`, since its state lives above the tabs and survives a look at Content), a required-title message in place of the browser's bubble, and a save bar note saying what a save does for members: an Active update's save reaches them at once. An Active or Expired update (below) also carries a standing banner saying so on both tabs, since the editor on Content has its own save control.
 - **A missing general update reads as "not found" when a fresh list lacks its id.** The server answers a missing id with a 500, so today's not-found message could never show; the 500 itself needs a server fix.
 - **Not fixed, needs another area:** `components/GeneralUpdateCard.tsx` stays for the suite page, which still uses it.
 
@@ -336,10 +345,10 @@ The reviewed foundation, the system fixes after the trial, the chart kit with Ho
 - **A group write's failure is the caller's to show, with no `report` switch.** The loop's round 4 added `report: false` for the Add dialogs; the system fixes had already stopped the membership hook reporting at all, which covers it, and round 4's test stays with the new wording.
 - **The chart kit's "Hold a delayed skeleton's space while it waits" commit is gone**: the system fixes made the same change, so it was empty after the join.
 - **A List's table with no filter bar above it starts 12 px below the header** (`ListContent`, when it is the body's first child). Scheduled jobs, a List with no filter bar as the guide prescribes, had its description touching the table header. `Page` is unchanged, so Overviews, Records and lists with a filter bar don't move.
-- **Rule 9's accepted moves gained three the trial pages could not avoid**: an unsized table's columns settling when rows land, data-height content landing below the first screen, and the held banner line closing on a record with no banner.
+- **Rule 9's accepted moves gained three the trial pages could not avoid**, which the guide marks as the agents' acceptance, not the owner's: an unsized table's columns settling when rows land, data-height content landing below the first screen, and the held banner line closing on a record with no banner.
 - **A reload staff ask for with a button is not a refetch**: its failure replaces the earlier result. Home's three button-loaded panels do this, as their tests from before the redesign require.
 - **Rule 11 names the member app's endpoints too.** General updates' admin handlers said nothing false; the list every member reads did.
-- **Left open for the system owner**: a linked `PersonChip`; a tooltip a keyboard reaches on static text; `formatDateTime` in UTC ending "GMT+0"; `listCount` without `shown`; a `useFocusAfterRemoval` hook; a helper for "Couldn't X: reason" that keeps the row's name; `generalUpdateHref`; `Page` accepting `title` beside `place` and ignoring it; `StatTile` holding its note line; `RefreshFailedBanner` for several queries; `templates.test.tsx` at its 500-line ceiling (add to `pieces.test.tsx`).
+- **Left open for the system owner**: a linked `PersonChip`; a tooltip a keyboard reaches on static text; `formatDateTime` in UTC ending "GMT+0"; `listCount` without `shown`; a `useFocusAfterRemoval` hook; a helper for "Couldn't X: reason" that keeps the row's name; `generalUpdateHref`; `Page` accepting `title` beside `place` and ignoring it; `StatTile` holding its note line; `RefreshFailedBanner` for several queries; `templates.test.tsx` at its 500-line ceiling (add to `pieces.test.tsx`); all filed as ALL-2511.
 
 ## Foundation: trial and hand-over to the fan-out
 

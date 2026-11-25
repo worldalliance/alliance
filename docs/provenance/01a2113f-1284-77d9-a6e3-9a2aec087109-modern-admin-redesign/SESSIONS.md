@@ -6,3 +6,4 @@
 - claude:a762895c-9b6e-48dc-b4e7-26f662d83fce (subagent)
 - claude:8a94e215-f9ac-4075-93aa-40c39cf558d1 (subagent)
 - claude:ae5d2b82-f25e-4c36-83bd-79e6f12ba47c (subagent)
+- claude:396e1e0b-ec97-4dee-9b79-88e3d0a5bf07 (review loop round 7 fixer, foundation-lead.loop3.fix7)
