@@ -94,7 +94,6 @@ export function FormBuilder(props: FormBuilderProps) {
   const displayOnlyTitle = props.displayOnly ? props.title : "";
   const formId = props.displayOnly ? undefined : props.formId;
   const actionName = props.displayOnly ? undefined : props.actionName;
-  const taskFlow = props.displayOnly ? false : (props.taskFlow ?? false);
 
   const newFormTitle = actionName ? actionName + " form" : "Untitled Form";
 
@@ -138,8 +137,17 @@ export function FormBuilder(props: FormBuilderProps) {
     reloadEditors,
     selectPlace,
   });
-  const { hasUnsavedChanges, conflict, isLoading, loadError, retryLoad } =
-    saved;
+  const {
+    hasUnsavedChanges,
+    conflict,
+    isLoading,
+    loadError,
+    retryLoad,
+    usedInAction,
+  } = saved;
+  const taskFlow =
+    !props.displayOnly &&
+    ((props.taskFlow ?? false) || usedInAction !== undefined);
   useEffect(() => {
     onUnsavedChangesChange?.(hasUnsavedChanges);
   }, [hasUnsavedChanges, onUnsavedChangesChange]);

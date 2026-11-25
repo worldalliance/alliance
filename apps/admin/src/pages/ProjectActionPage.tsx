@@ -137,6 +137,7 @@ const ProjectActionPage = () => {
               setFormId={editor.setTaskFormId}
               actionName={action.name}
               onUnsavedChangesChange={setFormUnsaved}
+              taskFlow
             />
           </div>
         )}
