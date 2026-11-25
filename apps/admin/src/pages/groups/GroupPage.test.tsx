@@ -9,6 +9,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { onlineManager } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -542,4 +543,35 @@ it("reloads the member details after a membership change", async () => {
   await pressAndConfirm("Remove from group: Sam", "Remove from group");
 
   await waitFor(() => expect(memberInfoRequests).toBe(2));
+});
+
+it("says a failed load once when the cached list predates the group", async () => {
+  listStatus = 403;
+  renderPage({ cached: [] });
+
+  expect(await screen.findByText("Admins only")).toBeTruthy();
+  expect(screen.queryByText(/Couldn't refresh/)).toBeNull();
+});
+
+it("says when the members' contact info fails to refresh", async () => {
+  const client = renderPage({ tab: "progress" });
+  await screen.findByRole("heading", { level: 1, name: "North" });
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.communityMemberContactInfoAdmin(4))
+        ?.status,
+    ).toBe("success"),
+  );
+  contactInfoStatus = 403;
+  await act(() =>
+    client.refetchQueries({
+      queryKey: queryKeys.communityMemberContactInfoAdmin(4),
+    }),
+  );
+
+  expect(
+    await screen.findByText(
+      /Couldn't refresh the members' contact details\. Contact info is private/,
+    ),
+  ).toBeTruthy();
 });

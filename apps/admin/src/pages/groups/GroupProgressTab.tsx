@@ -55,6 +55,11 @@ export function GroupProgressTab({
         </Banner>
       )}
       <RefreshFailedBanner inline things="progress" query={progress} />
+      <RefreshFailedBanner
+        inline
+        things="the members' contact details"
+        query={contactInfo}
+      />
       <Panel title="Progress" flush>
         <ContentState
           loading={progress.isPending}

@@ -161,7 +161,7 @@ export default function GroupPage() {
       tabs={tabs}
       banner={
         <>
-          <RefreshFailedBanner things="this group" query={groups} />
+          {group && <RefreshFailedBanner things="this group" query={groups} />}
           {actionError && (
             <Banner
               tone={BannerTone.Danger}
