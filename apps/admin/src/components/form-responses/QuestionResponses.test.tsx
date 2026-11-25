@@ -45,6 +45,7 @@ const renderQuestions = (params: {
     <QuestionResponses
       loading={params.loading ?? false}
       error={params.error ?? null}
+      onRetry={() => {}}
       responses={params.responses}
       orderedFieldIds={params.orderedFieldIds ?? ["essay", "color"]}
       fieldLabels={
@@ -84,11 +85,11 @@ it("lists each answer to the question with its respondent and AI score", () => {
     ],
   });
 
-  expect(screen.getByText("AI Score")).toBeTruthy();
+  expect(screen.getByText("AI score")).toBeTruthy();
   expect(screen.getByText("Respondent 1")).toBeTruthy();
   expect(screen.getByText("My essay")).toBeTruthy();
   expect(screen.getByText("42%")).toBeTruthy();
-  expect(screen.getByText("--")).toBeTruthy();
+  expect(screen.getByText("—")).toBeTruthy();
   expect(screen.queryByText("Respondent 2")).toBeNull();
   expect(screen.getAllByText("Short")).toHaveLength(2);
 });
@@ -100,7 +101,7 @@ it("shows a choice answer by its option label, without an AI score", () => {
   });
 
   expect(screen.getByText("Bright red")).toBeTruthy();
-  expect(screen.queryByText("AI Score")).toBeNull();
+  expect(screen.queryByText("AI score")).toBeNull();
 });
 
 it("marks a respondent who withdrew", () => {
@@ -132,13 +133,17 @@ it("reports the question picked", () => {
 
 it("shows the load state, or that the form has no questions, instead of answers", () => {
   renderQuestions({ responses: [], loading: true });
-  expect(screen.getByText("Loading responses...")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
+  expect(screen.queryByText("No answerable questions")).toBeNull();
+  expect(screen.queryByText("Couldn't load responses")).toBeNull();
   cleanup();
 
   renderQuestions({ responses: [], error: "Failed to load" });
+  expect(screen.getByText("Couldn't load responses")).toBeTruthy();
   expect(screen.getByText("Failed to load")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   cleanup();
 
   renderQuestions({ responses: [], orderedFieldIds: [] });
-  expect(screen.getByText("No answerable questions found.")).toBeTruthy();
+  expect(screen.getByText("No answerable questions")).toBeTruthy();
 });

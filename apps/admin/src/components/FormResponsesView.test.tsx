@@ -75,7 +75,7 @@ it("opens on the responses table when no tab is picked", () => {
 it("lists no response to a question whose stored answer is an empty object", () => {
   renderView({ path: "/?tab=questions" });
 
-  expect(screen.getByText("No users responded to this question.")).toBeTruthy();
+  expect(screen.getByText("No answers to this question")).toBeTruthy();
 });
 
 it("says the referrals failed to load beside the responses", () => {

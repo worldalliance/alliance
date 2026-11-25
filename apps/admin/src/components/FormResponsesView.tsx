@@ -461,6 +461,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         <QuestionResponses
           loading={loading}
           error={error}
+          onRetry={onRefresh}
           responses={scopedResponses}
           orderedFieldIds={orderedFieldIds}
           fieldLabels={fieldLabels}
