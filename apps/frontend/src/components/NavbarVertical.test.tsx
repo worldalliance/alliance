@@ -1,13 +1,11 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { ImmersiveTone } from "@alliance/sharedweb/forms/taskflow/host";
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "bun:test";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../lib/AuthContext";
-import {
-  ImmersiveTone,
-  NavbarOptionsContext,
-} from "../lib/NavbarOptionsContext";
+import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import NavbarVertical from "./NavbarVertical";

@@ -20,20 +20,20 @@ import {
 import { getCompletedShareableTextTemplate } from "@alliance/shared/lib/shareText";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { cn } from "@alliance/shared/styles/util";
+import { TASK_FLOW_ORIGIN } from "@alliance/sharedweb/forms/taskflow/useExpandingPanel";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
-import { useAuth } from "../lib/AuthContext";
 import { useCopyActionShareText } from "../lib/actionShare";
+import { useAuth } from "../lib/AuthContext";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
 import AllianceSignupPitch from "./AllianceSignupPitch";
 import ShareButton from "./ShareButton";
 import StackedCard from "./system/StackedCard";
-import { TASK_FLOW_ORIGIN } from "./taskflow/useExpandingPanel";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);

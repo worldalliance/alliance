@@ -1,7 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
+import Timeline from "@alliance/sharedweb/ui/Timeline";
 import { ChevronRight, Clock } from "lucide-react";
-import Timeline from "../../components/system/Timeline";
 import { MEMBER_FACES } from "../memberFaces";
 
 export enum TimelineEntryKind {

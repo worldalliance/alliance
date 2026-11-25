@@ -1,3 +1,4 @@
+import { ImmersiveTone } from "@alliance/sharedweb/forms/taskflow/host";
 import {
   createContext,
   useCallback,
@@ -7,12 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
-export enum ImmersiveTone {
-  Plain = "plain",
-  /** Green, behind the flow's completion screen. */
-  Success = "success",
-}
 
 export interface NavbarOptions {
   whiteBackground?: boolean;

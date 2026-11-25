@@ -1,6 +1,11 @@
 import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  flowMotion,
+  REDUCED_MOTION,
+  transition,
+} from "@alliance/sharedweb/forms/taskflow/flowMotion";
 import { adminPathFor } from "@alliance/sharedweb/lib/zoneLinks";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import {
@@ -30,7 +35,6 @@ import {
 } from "../lib/NavbarOptionsContext";
 import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 import { useMessagingUnread } from "../pages/app/messages";
-import { flowMotion, REDUCED_MOTION, transition } from "./taskflow/flowMotion";
 
 export enum NavbarPage {
   Tasks = "Tasks",

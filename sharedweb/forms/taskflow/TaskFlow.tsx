@@ -17,32 +17,27 @@ import {
 } from "@alliance/shared/forms/useTaskFlow";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { taskFlow } from "@alliance/shared/lib/copy";
-import {
-  useReopenLeftTask,
-  useTaskFlowReturn,
-} from "@alliance/shared/lib/TaskFlowReturnContext";
 import { cn } from "@alliance/shared/styles/util";
 import { StickyAccordionTitles } from "@alliance/sharedweb/forms/accordionStyles";
 import { formBlockedView } from "@alliance/sharedweb/forms/FormElements";
 import { PhoneConfirmSlot } from "@alliance/sharedweb/forms/phoneConfirmSlot";
 import { useWebFormState } from "@alliance/sharedweb/forms/useWebFormState";
+import ProgressBar from "@alliance/sharedweb/ui/ProgressBar";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Dialog } from "@base-ui/react/dialog";
 import { ArrowRight } from "lucide-react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { href, matchPath, useLocation, useNavigate } from "react-router";
-import { useAuth } from "../../lib/AuthContext";
-import {
-  ImmersiveTone,
-  useImmersiveNavbar,
-} from "../../lib/NavbarOptionsContext";
-import PhoneConfirm from "../phone/PhoneConfirm";
-import ProgressBar from "../system/ProgressBar";
 import { CardMenuSlotContext } from "./CardMenuSlot";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
 import { afterMotion, flowMotion, transition } from "./flowMotion";
+import {
+  ImmersiveTone,
+  type FinishFlow,
+  type TaskFlowHost,
+  type TaskFlowViewer,
+} from "./host";
 import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete, {
   COMPLETION_TONE,
@@ -61,10 +56,6 @@ import TaskOutline from "./TaskOutline";
 import { useExpandingPanel } from "./useExpandingPanel";
 
 const PROGRESS_TRANSITION = transition(flowMotion.progress, "width");
-const TASKS_PATH = href("/tasks");
-
-const isTaskPage = (path: string, actionId: number) =>
-  matchPath("/actions/:id", path)?.params.id === String(actionId);
 
 const localFlowStorage: FlowPositionStorage = {
   getItem: async (key) => window.localStorage.getItem(key),
@@ -73,7 +64,9 @@ const localFlowStorage: FlowPositionStorage = {
 };
 
 type TaskFlowProps = {
-  action: ActionDto;
+  host: TaskFlowHost;
+  viewer: TaskFlowViewer;
+  action: Pick<ActionDto, "id" | "name">;
   mode: TaskFlowMode;
   /** The submission a read-only flow shows. */
   completedFormResponse?: FormResponseDto;
@@ -95,18 +88,13 @@ type TaskFlowProps = {
   signupHref?: string;
 };
 
-const confirmFormPhone = (phoneNumber: string) => (
-  <PhoneConfirm
-    phoneNumber={phoneNumber}
-    unconfirmedNote="Confirm your number so we know it’s right."
-  />
-);
-
 /**
  * `onCompleteAction` runs only once the member leaves the completion screen
  * of a live flow, since completing the action unmounts this panel.
  */
 export default function TaskFlow({
+  host,
+  viewer,
   action,
   mode,
   completedFormResponse,
@@ -126,16 +114,12 @@ export default function TaskFlow({
   onAbandonAction,
   signupHref,
 }: TaskFlowProps) {
-  const {
-    user,
-    isAuthenticated,
-    isImpersonation,
-    loading: userLoading,
-  } = useAuth();
+  const { user, isAuthenticated, isImpersonation, userLoading } = viewer;
   const menuSlot = useContext(CardMenuSlotContext);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
   const withdraw = withdraws && !publicAction ? onAbandonAction : undefined;
+  const { useResume, useChrome, useCompletionExits } = host;
 
   // Leaving through the nav or the browser's Back unmounts the flow before
   // its buttons can complete the action, even while the submit is in flight.
@@ -204,36 +188,19 @@ export default function TaskFlow({
     position,
     onExit: () => void close(),
   });
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const { leaveTask } = useTaskFlowReturn();
-
-  // Navigating away mid-task (the browser's Back, say) unmounts the flow.
-  // Only the task's own page reopens it, as on mobile.
-  const openRef = useRef(flow.open);
-  openRef.current = flow.open;
-  const mountedPathRef = useRef(pathname);
-  useEffect(
-    () => () => {
-      const mountedPath = mountedPathRef.current;
-      if (
-        openRef.current &&
-        !submitInFlight.current &&
-        isTaskPage(mountedPath, action.id) &&
-        window.location.pathname !== mountedPath
-      ) {
-        leaveTask(action.id);
-      }
-    },
-    [action.id, leaveTask],
-  );
-
-  useReopenLeftTask({
+  useResume({
     actionId: action.id,
-    onTaskPage: isTaskPage(pathname, action.id),
+    open: flow.open,
+    submitInFlight,
     ready: position.loaded && form.visibilitySettled,
     begin: flow.begin,
   });
+  const {
+    leavesToTasks,
+    close: closeExit,
+    invite,
+    signUp,
+  } = useCompletionExits({ isAuthenticated, signupHref });
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const { panel, panelRef, collapse } = useExpandingPanel(anchorRef);
@@ -247,7 +214,7 @@ export default function TaskFlow({
     complete && !recoloring
       ? COMPLETION_TONE[completionPhase]
       : ImmersiveTone.Plain;
-  useImmersiveNavbar({
+  useChrome({
     immersive: shown && !navReleased,
     panelUp: shown,
     tone,
@@ -278,6 +245,7 @@ export default function TaskFlow({
       completeAction();
       then?.();
     });
+  const finishFlow: FinishFlow = (then) => void finish(then);
 
   const onWithdraw: FlowWithdrawHandler | null = withdraw
     ? (withdrawal) => {
@@ -324,18 +292,10 @@ export default function TaskFlow({
             user={user}
             phase={completionPhase}
             fading={recoloring}
-            leavesToTasks={isAuthenticated}
-            onClose={() =>
-              void finish(
-                isAuthenticated && pathname !== TASKS_PATH
-                  ? () => navigate(TASKS_PATH)
-                  : undefined,
-              )
-            }
-            onInvite={isAuthenticated ? () => navigate(href("/invites")) : null}
-            onSignUp={
-              !isAuthenticated && signupHref ? () => navigate(signupHref) : null
-            }
+            leavesToTasks={leavesToTasks}
+            onClose={() => closeExit(finishFlow)}
+            onInvite={invite && (() => invite(finishFlow))}
+            onSignUp={signUp && (() => signUp(finishFlow))}
           />
         );
       default:
@@ -414,7 +374,8 @@ export default function TaskFlow({
             initialFocus={panel}
             className={cn(
               zIndex.drawer,
-              "fixed inset-0 top-[var(--site-nav-height)] flex flex-col bg-white outline-none md:top-[calc(var(--navbar-top-bar-height)+var(--site-nav-height))] md:left-[var(--nav-width)]",
+              "flex flex-col bg-white outline-none",
+              host.panelClassName,
             )}
           >
             {flow.open ? (
@@ -441,7 +402,7 @@ export default function TaskFlow({
               <PhoneConfirmSlot.Provider
                 value={
                   records && isAuthenticated && !isImpersonation
-                    ? confirmFormPhone
+                    ? (host.confirmPhone ?? null)
                     : null
                 }
               >

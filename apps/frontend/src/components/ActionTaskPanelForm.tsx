@@ -23,12 +23,13 @@ import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useTaskFormSubmission } from "@alliance/shared/lib/useTaskFormSubmission";
 import { cn } from "@alliance/shared/styles/util";
 import { computeFormStorageKey } from "@alliance/sharedweb/forms/FormRenderer";
+import TaskFlow from "@alliance/sharedweb/forms/taskflow/TaskFlow";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import posthog from "posthog-js";
 import { useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
-import TaskFlow from "./taskflow/TaskFlow";
+import { memberTaskFlowHost } from "./taskflow/memberTaskFlowHost";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -68,6 +69,7 @@ const ActionTaskPanelForm = ({
   const {
     user,
     isAuthenticated,
+    isImpersonation,
     refreshUser,
     loading: authLoading,
   } = useAuth();
@@ -170,6 +172,13 @@ const ActionTaskPanelForm = ({
     <Wrapper className={wrapperClassName}>
       <TaskFlow
         key={`${actionId}:${taskFormId}:${flowMode}`}
+        host={memberTaskFlowHost}
+        viewer={{
+          user,
+          isAuthenticated,
+          isImpersonation,
+          userLoading: authLoading,
+        }}
         action={action}
         {...flowForm}
         mode={flowMode}
