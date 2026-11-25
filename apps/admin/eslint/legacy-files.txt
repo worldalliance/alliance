@@ -301,7 +301,6 @@ src/pages/InviteGraphPage.tsx
 src/pages/InviteLinksPage.tsx
 src/pages/InviteMessageTemplatePage.tsx
 src/pages/InvitesPage.tsx
-src/pages/LoginPage.tsx
 src/pages/MemberListPage.tsx
 src/pages/MemberListsPage.tsx
 src/pages/MemberMapPage.tsx
