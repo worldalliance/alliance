@@ -119,7 +119,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
           No users match that search.
         </p>
       )}
-      {selectedUsers.length > 0 && (
+      {selectedUsers.length > 0 && !single && (
         <div className="my-1 flex items-center gap-2">
           {filterOpen ? (
             <>
@@ -153,7 +153,13 @@ const UserSelect: React.FC<UserSelectProps> = ({
           )}
         </div>
       )}
-      <div className="my-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      <div
+        className={cn(
+          "my-1 grid grid-cols-1 gap-2",
+          // One pick has the row to itself, so its name isn't cut short.
+          !single && "sm:grid-cols-2 lg:grid-cols-3",
+        )}
+      >
         {displayedSelectedUsers.map((user) => (
           <div
             key={user.id}
