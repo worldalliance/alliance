@@ -51,7 +51,8 @@ export function FilterBar({
 
 /**
  * A list's search text, kept in `?q=`: `[q, setQ]` for `SearchField`. Typing
- * replaces the history entry, and the other params stay.
+ * replaces the history entry, and the other params stay, `page` apart: a new
+ * term starts at the first page.
  */
 export function useListSearch(): [string, (value: string) => void] {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,6 +63,7 @@ export function useListSearch(): [string, (value: string) => void] {
           const next = new URLSearchParams(prev);
           if (value) next.set("q", value);
           else next.delete("q");
+          next.delete("page");
           return next;
         },
         { replace: true },

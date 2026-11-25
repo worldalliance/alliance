@@ -158,6 +158,18 @@ describe("useListSearch", () => {
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
     expect(screen.getByRole("status").textContent).toBe("?tab=awaiting");
   });
+
+  it("starts at the first page when the term changes", () => {
+    render(
+      <MemoryRouter initialEntries={["/members/groups?page=3&tab=awaiting"]}>
+        <Search />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.getByRole("status").textContent).toBe(
+      "?tab=awaiting&q=north",
+    );
+  });
 });
 
 describe("SearchField", () => {
