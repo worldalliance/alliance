@@ -372,6 +372,7 @@ For other statuses pick the tone by meaning: neutral for inactive or not started
 - Mark the minority with `mark`: where most fields are required, mark the optional ones; where most are optional, the required ones. No bare asterisk.
 - One column. Two fields share a row only when they are one thought (start and end).
 - **Errors** appear under the field when the reader leaves it or submits, say how to fix it, and clear once fixed. A failed submit keeps every value and focuses the first bad field (`useFocusFirstInvalid()` gives the form's `ref` and a function the submit handler calls); a form with more than a few fields leads with a summary linking to each. Put `noValidate` on the `<form>`.
+- A section the reader opens on demand (visibility profiles, advanced options) is a `Disclosure summary` (`ui/Disclosure.tsx`, a native `<details>`), closed unless `defaultOpen`. In a table it is an expandable row instead.
 - **A field that only sometimes applies stays rendered**, disabled, with its help saying why.
 - **The submit button stays enabled** and reports what's wrong when pressed, unless today's page disables it as a guard (Launch while blockers remain): then the reason is visible text beside it.
 - **A button whose write is running takes `busy`** (`ui/Button.tsx`): it keeps its label and focus, shows a spinner and ignores presses. Don't swap the label for "Saving…" or disable it.
