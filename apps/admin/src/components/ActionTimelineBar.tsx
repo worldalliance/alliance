@@ -1,9 +1,12 @@
 import { cn } from "@alliance/shared/styles/util";
-import { startOfDay } from "date-fns";
 import React from "react";
 import { useNavigate } from "react-router";
 import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
-import type { PhaseSegment, TimelineRow } from "../lib/actionTimelineData";
+import {
+  phaseBarBounds,
+  type PhaseSegment,
+  type TimelineRow,
+} from "../lib/actionTimelineData";
 import { swatchColors } from "../lib/identitySwatch";
 
 interface ActionTimelineBarProps {
@@ -105,13 +108,10 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
       }}
     >
       {phases.map((phase, phaseIndex) => {
-        // A week-wide column can't show the time of day an event fires, so
-        // bars span whole days and start on the gridline for their first one.
-        const barLeft = xForTime(startOfDay(phase.startDate));
-        const barWidth = Math.max(
-          2,
-          xForTime(startOfDay(phase.endDate)) - barLeft - 2,
-        ); // Min 2px width, reduced spacing
+        const { left: barLeft, width: barWidth } = phaseBarBounds(
+          phase,
+          xForTime,
+        );
         const labelText = ACTION_STATUS_LABELS[phase.status];
         const stickyLabel = calculateStickyLabelPosition(
           barLeft,
@@ -165,7 +165,10 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
               width: `${barWidth}px`,
               top: "12px",
               height: "40px",
-              minWidth: "20px",
+              boxShadow:
+                phaseIndex > 0
+                  ? "inset 1px 0 0 rgba(255, 255, 255, 0.9)"
+                  : undefined,
               ...backgroundStyle,
             }}
             title={`${action.name}: ${

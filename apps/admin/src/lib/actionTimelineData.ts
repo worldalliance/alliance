@@ -342,10 +342,23 @@ export const buildTimelineData = ({
   };
 };
 
+export const MIN_PHASE_BAR_WIDTH_PX = 20;
+
 export const timelineScale =
   (globalStartDate: Date, pixelsPerDay: number) => (time: Date | number) =>
     ((new Date(time).getTime() - globalStartDate.getTime()) * pixelsPerDay) /
     millisecondsInDay;
+
+export const phaseBarBounds = (
+  phase: Pick<PhaseSegment, "startDate" | "endDate">,
+  xForTime: (time: Date) => number,
+) => {
+  const left = xForTime(phase.startDate);
+  return {
+    left,
+    width: Math.max(MIN_PHASE_BAR_WIDTH_PX, xForTime(phase.endDate) - left),
+  };
+};
 
 // globalStartDate falls at an arbitrary time of day, so ticks anchor to
 // midnight rather than to it.
@@ -381,8 +394,8 @@ export const firstRowActiveInWeek = (
     phases.some(
       (phase) =>
         SHOWS_BAR[phase.status] &&
-        startOfDay(phase.startDate) < weekEnd &&
-        startOfDay(phase.endDate) > weekStart,
+        phase.startDate < weekEnd &&
+        phase.endDate > weekStart,
     ),
   );
 };

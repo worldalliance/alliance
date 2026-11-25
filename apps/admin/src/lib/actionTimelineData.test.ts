@@ -16,8 +16,10 @@ import { milliseconds } from "date-fns";
 import {
   buildTimelineData,
   firstRowActiveInWeek,
+  MIN_PHASE_BAR_WIDTH_PX,
   normalizeReminders,
   parseReminderDate,
+  phaseBarBounds,
   timelineScale,
   weekTicks,
 } from "./actionTimelineData";
@@ -298,6 +300,49 @@ describe("timelineScale", () => {
   });
 });
 
+describe("phaseBarBounds", () => {
+  const xForTime = timelineScale(new Date("2026-03-01T08:00:00Z"), 16);
+
+  it("starts and ends a bar at its phase's exact instants", () => {
+    const { left, width } = phaseBarBounds(
+      {
+        startDate: new Date("2026-03-02T02:00:00Z"),
+        endDate: new Date("2026-03-04T20:00:00Z"),
+      },
+      xForTime,
+    );
+
+    expect(left).toBe(12);
+    expect(left + width).toBe(56);
+  });
+
+  it("meets the next phase's bar at the same x", () => {
+    const boundary = new Date("2026-03-03T03:00:00Z");
+    const before = phaseBarBounds(
+      { startDate: new Date("2026-03-01T20:00:00Z"), endDate: boundary },
+      xForTime,
+    );
+    const after = phaseBarBounds(
+      { startDate: boundary, endDate: new Date("2026-03-05T08:00:00Z") },
+      xForTime,
+    );
+
+    expect(before.left + before.width).toBe(after.left);
+  });
+
+  it("draws a very short phase at the minimum bar width", () => {
+    expect(
+      phaseBarBounds(
+        {
+          startDate: new Date("2026-03-02T02:00:00Z"),
+          endDate: new Date("2026-03-02T03:00:00Z"),
+        },
+        xForTime,
+      ),
+    ).toEqual({ left: 12, width: MIN_PHASE_BAR_WIDTH_PX });
+  });
+});
+
 describe("weekTicks", () => {
   it("places a tick at each local-midnight Tuesday in range", () => {
     const globalStartDate = new Date(2026, 2, 1, 15);
@@ -354,6 +399,19 @@ describe("firstRowActiveInWeek", () => {
         weekStart,
       ),
     ).toBe(2);
+  });
+
+  it("counts a phase that ends partway through the week's first day", () => {
+    expect(
+      firstRowActiveInWeek(
+        [
+          row(1, [
+            phase("planned", new Date(2026, 1, 1), new Date(2026, 2, 3, 6)),
+          ]),
+        ],
+        weekStart,
+      ),
+    ).toBe(0);
   });
 
   it("returns -1 when no row is active that week", () => {
