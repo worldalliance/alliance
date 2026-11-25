@@ -31,7 +31,7 @@ import { usePlaceTabs, withQueueCounts } from "./usePlaceTabs";
 afterEach(cleanup);
 
 const query = (
-  over: Partial<Parameters<typeof RefreshFailedBanner>[0]["query"]> = {},
+  over: { isRefetchError?: boolean; isFetching?: boolean } = {},
 ) => ({
   isRefetchError: true,
   isFetching: false,
@@ -52,6 +52,28 @@ describe("RefreshFailedBanner", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(failed.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("names only the parts that failed, in one banner, and retries them", () => {
+    const stats = query();
+    const rates = query();
+    const tasks = query({ isRefetchError: false });
+    render(
+      <RefreshFailedBanner
+        parts={[
+          { things: "the stats", query: stats },
+          { things: "the rates", query: rates },
+          { things: "the tasks", query: tasks },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Couldn't refresh the stats and the rates.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      [stats, rates, tasks].map((q) => q.refetch.mock.calls.length),
+    ).toEqual([1, 1, 0]);
   });
 
   it("renders nothing unless a refetch failed", () => {

@@ -490,7 +490,7 @@ Charts come from `apps/admin/src/ui/charts`, and the pieces of the panels around
 - While the queue counts load, Home shows one skeleton line, and the list appears whole once all four settle. Its landing pushes the stats down; it is the one load allowed to move content on Home.
 - A count that couldn't load keeps its row, showing "—" and saying the count couldn't load: a failed count is not an empty queue.
 - Each row shows the exact number, not a `CountBadge` (which caps at 99+), then `QUEUES[id].label` and a button reading `QUEUES[id].open` to `queueHref(id)`, all from `places.ts`.
-- A stat tile whose number comes from a query still loading or failed to load says so in its `note` ("Loading…", "Couldn't load"), so a "—" in the value is never left to say it alone. A failed refetch keeps the number and shows `RefreshFailedBanner inline` above the tiles.
+- A stat tile whose number comes from a query still loading or failed to load says so in its `note` ("Loading…", "Couldn't load"), so a "—" in the value is never left to say it alone. A failed refetch keeps the number and shows `RefreshFailedBanner inline` above the tiles: one banner, with `parts={[{ things, query }, …]}` when several queries feed them.
 - Stats stay on Home under the queues. Panels that compare well side by side take half the grid (`col-span-12 @4xl:col-span-6`); wide charts and tables take the row.
 
 ## Keyboard

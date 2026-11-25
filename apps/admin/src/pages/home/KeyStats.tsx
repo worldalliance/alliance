@@ -100,13 +100,10 @@ export function KeyStats({
     <>
       <RefreshFailedBanner
         inline
-        things="the organization's stats"
-        query={aggregate}
-      />
-      <RefreshFailedBanner
-        inline
-        things="the churn rates"
-        query={historyQuery}
+        parts={[
+          { things: "the organization's stats", query: aggregate },
+          { things: "the churn rates", query: historyQuery },
+        ]}
       />
       <RefreshFailedBanner
         inline

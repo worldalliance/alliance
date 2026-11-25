@@ -150,23 +150,29 @@ type RefreshableQuery = {
   refetch: () => unknown;
 };
 
+type RefreshPart = {
+  /** What went stale, lower case: "groups". */
+  things: string;
+  query: RefreshableQuery;
+};
+
+const LIST = new Intl.ListFormat("en-US");
+
 /**
  * Says that content on screen is stale because its refetch failed, and offers
  * the retry. Renders nothing otherwise, so it can always be mounted: as
  * `Page`'s `banner`, as the first child of a tab body that owns the query, or
- * `inline` in a panel.
+ * `inline` in a panel. Content fed by several queries passes them as `parts`,
+ * for one banner naming those that failed.
  */
 export function RefreshFailedBanner({
-  things,
-  query,
   inline = false,
-}: {
-  /** What went stale, lower case: "groups". */
-  things: string;
-  query: RefreshableQuery;
-  inline?: boolean;
-}) {
-  if (!query.isRefetchError) return null;
+  ...props
+}: (RefreshPart | { parts: readonly RefreshPart[] }) & { inline?: boolean }) {
+  const parts = "parts" in props ? props.parts : [props];
+  const failed = parts.filter((part) => part.query.isRefetchError);
+  const first = failed[0];
+  if (!first) return null;
   return (
     <Banner
       tone={BannerTone.Danger}
@@ -175,16 +181,16 @@ export function RefreshFailedBanner({
         <Button
           size="small"
           variant={ButtonVariant.Ghost}
-          busy={query.isFetching}
-          onClick={() => void query.refetch()}
+          busy={failed.some((part) => part.query.isFetching)}
+          onClick={() => failed.forEach((part) => void part.query.refetch())}
         >
           Try again
         </Button>
       }
     >
-      Couldn't refresh {things}.{" "}
-      {adminRefusalMessage(query.error, LOAD_FAILED_FALLBACK)} Showing what
-      loaded before.
+      Couldn't refresh {LIST.format(failed.map((part) => part.things))}.{" "}
+      {adminRefusalMessage(first.query.error, LOAD_FAILED_FALLBACK)} Showing
+      what loaded before.
     </Banner>
   );
 }
