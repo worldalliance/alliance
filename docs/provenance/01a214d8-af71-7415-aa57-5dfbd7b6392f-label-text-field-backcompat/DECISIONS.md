@@ -1,0 +1,6 @@
+# Decisions
+
+- The `text` input sits partway through step 4 (ratchet) of root `AGENTS.md` **Breaking changes**: the form builder no longer offers it (`FIELD_KIND_ADDABLE`, list sub-field kinds), but `textFieldSchema` still accepts it, so a save from outside the builder menu can write a new one. Migration (step 5) has not started. Evidence: read-only queries against staging, a pruned copy of production, on 2026-11-25 found 8 `text` inputs on 4 live forms and 96 form snapshots holding one. (agent decision)
+- The removal condition names form snapshots, not only live forms, because responses render against the snapshot they were submitted on, so dropping the schema before snapshots are migrated breaks reading old responses. (agent decision)
+- Finishing the ratchet server-side and migrating existing `text` inputs to `textarea` are left out of this task; the user approved only the labels. `textarea` lacks `minLength` and `pattern`, so a migration first checks whether the 8 fields use them. (agent decision)
+- The remaining steps (finish the ratchet, migrate, contract) are filed as ALL-2514, which the field-schema marker names so the removal condition leads to the plan; this PR is part of it, not its fix. (agent decision)

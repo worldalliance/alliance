@@ -58,7 +58,7 @@ export const DISPLAY_KINDS = Object.keys(DISPLAY_KIND_NAMES) as DisplayKind[];
 
 /** Whether the form builder offers this kind when adding a new field. */
 const FIELD_KIND_ADDABLE = {
-  text: false, // superseded by `textarea`
+  text: false, // BACKCOMPAT(text-field)
   textarea: true,
   email: true,
   phone: true,
