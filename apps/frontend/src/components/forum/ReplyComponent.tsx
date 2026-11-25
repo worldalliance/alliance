@@ -8,6 +8,7 @@ import { canReplyAtDepth } from "@alliance/shared/lib/commentTree";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
@@ -173,20 +174,20 @@ const ReplyContent = ({
               <span className="text-sm text-zinc-500">
                 Drag an image to attach
               </span>
-              <button
-                onClick={editing.saveEdit}
-                disabled={editing.isUpdating || !editing.editContent.trim()}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {editing.isUpdating ? "Saving..." : "Save"}
-              </button>
-              <button
+              <Button
+                color={ButtonColor.Grey}
                 onClick={editing.cancelEdit}
                 disabled={editing.isUpdating}
-                className="px-3 py-1 bg-zinc-300 text-zinc-700 text-sm rounded hover:bg-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
-              </button>
+              </Button>
+              <Button
+                color={ButtonColor.Stone}
+                onClick={editing.saveEdit}
+                disabled={editing.isUpdating || !editing.editContent.trim()}
+              >
+                {editing.isUpdating ? "Saving..." : "Save"}
+              </Button>
             </div>
           </div>
         ) : (
