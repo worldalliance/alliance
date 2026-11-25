@@ -32,8 +32,9 @@ export function PersonCell({
 }) {
   const shown = personName({ userId, name });
   return (
-    <TableCell className={cn("max-w-64", className)}>
-      <span className="flex min-w-0 items-center gap-2.5">
+    <TableCell className={className}>
+      {/* A table cell ignores max-width, so the cap is on its content. */}
+      <span className="flex max-w-64 min-w-0 items-center gap-2.5">
         <AvatarProfile pfp={profilePicture} size="small" alt="" />
         <Link
           to={memberHref(userId)}
