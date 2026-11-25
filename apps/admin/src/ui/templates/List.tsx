@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type HTMLAttributes,
   type ReactNode,
   type Ref,
 } from "react";
@@ -102,6 +103,8 @@ export function SearchField({
   value,
   onChange,
   className,
+  inputMode,
+  maxLength,
   ref: outer,
 }: {
   /** The accessible name and the placeholder: "Filter suites". */
@@ -109,6 +112,10 @@ export function SearchField({
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  /** The on-screen keyboard to show, such as `tel` for phone numbers. */
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  /** The longest term the server accepts. */
+  maxLength?: number;
   /** For `useFocusAfterRemoval`'s fallback in a list with no add control. */
   ref?: Ref<{ focus: () => void }>;
 }) {
@@ -137,6 +144,8 @@ export function SearchField({
       <Input
         ref={ref}
         type="search"
+        inputMode={inputMode}
+        maxLength={maxLength}
         aria-label={label}
         placeholder={label}
         value={draft}
