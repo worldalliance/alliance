@@ -38,6 +38,7 @@ import {
   type TaskFlowHost,
   type TaskFlowViewer,
 } from "./host";
+import { previewFormResponse } from "./previewFormResponse";
 import TaskAnswersCard from "./TaskAnswersCard";
 import TaskFlowComplete, {
   COMPLETION_TONE,
@@ -87,6 +88,8 @@ type TaskFlowProps = {
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   /** Where a guest's completion screen offers to sign up. */
   signupHref?: string;
+  /** Receives a preview's answers as an unsaved response once its completion screen closes. */
+  onPreviewCompleted?: (response: FormResponseDto) => void;
 };
 
 /**
@@ -114,6 +117,7 @@ export default function TaskFlow({
   onFormStarted,
   onAbandonAction,
   signupHref,
+  onPreviewCompleted,
 }: TaskFlowProps) {
   const { user, isAuthenticated, isImpersonation, userLoading, previewUserId } =
     viewer;
@@ -249,11 +253,27 @@ export default function TaskFlow({
     flow.close();
     then?.();
   };
-  const finish = (then?: () => void) =>
-    close(() => {
+  const finish = (then?: () => void) => {
+    const previewed =
+      !records && onPreviewCompleted && flow.submittedAnswers
+        ? previewFormResponse({
+            schema: form.schema,
+            formId,
+            formSnapshotId: formSnapshotId ?? 0,
+            answers: flow.submittedAnswers,
+            fieldLookup: form.fieldLookup,
+            publicAnswers: form.publicAnswers,
+            options: form.resolvedOptions,
+            visibilityValidatorResults: form.visibilityValidatorResults,
+            deviceType: form.deviceType,
+          })
+        : null;
+    return close(() => {
       completeAction();
+      if (previewed) onPreviewCompleted?.(previewed);
       then?.();
     });
+  };
   const finishFlow: FinishFlow = (then) => void finish(then);
 
   const onWithdraw: FlowWithdrawHandler | null = withdraw
