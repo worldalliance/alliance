@@ -75,7 +75,7 @@ const ResponsesToolbar: React.FC<{ table: ResponsesTableState }> = ({
             onClick={() => void table.copyViewLink()}
           >
             <Link2 aria-hidden="true" className="size-4" />
-            {table.copied ? "Copied" : "Copy view link"}
+            Copy link
           </Button>
         </>
       }

@@ -208,8 +208,8 @@ const ResponsesGrid: React.FC<ResponsesGridProps> = ({
                     to={{ search: responseSearch(row.response.id) }}
                     className={cn(
                       nameLinkClass,
-                      "min-w-0",
-                      !expanded && "truncate",
+                      "block min-w-0",
+                      expanded ? "wrap-break-word" : "truncate",
                     )}
                   >
                     <Highlighted text={openerText} query={query} />

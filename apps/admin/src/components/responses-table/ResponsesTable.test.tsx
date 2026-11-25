@@ -335,9 +335,9 @@ it("copies a link to the view that carries its hidden columns", async () => {
   fireEvent.click(screen.getByRole("button", { name: /^Columns/ }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Submitted" }));
 
-  fireEvent.click(screen.getByRole("button", { name: "Copy view link" }));
+  fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
 
-  expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
+  expect(await screen.findByText("Copied link")).toBeTruthy();
   const link = new URL(String(writeText.mock.lastCall?.[0]));
   expect(link.searchParams.get("r_hidden")).toBe("responseId,userId,submitted");
 });
@@ -348,12 +348,12 @@ it("says so when the view link cannot be copied", async () => {
     .mockRejectedValue(new DOMException("denied"));
   renderTable();
 
-  fireEvent.click(screen.getByRole("button", { name: "Copy view link" }));
+  fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
 
   expect(
     await screen.findByText("Could not copy the view link to the clipboard"),
   ).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Copy view link" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Copy link" })).toBeTruthy();
 });
 
 it("narrows the rows to a version until its filter is cleared", () => {

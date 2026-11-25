@@ -71,7 +71,7 @@ export function useResponsesTable({
   paramKey,
 }: ResponsesTableParams) {
   const [params, setParams] = useSearchParams();
-  const { error: pushError } = useToast();
+  const { error: pushError, success } = useToast();
   const formId = form?.id ?? null;
 
   // `setParams` hands its updater the params of the render that created it and
@@ -341,7 +341,6 @@ export function useResponsesTable({
 
   const [versionsOpen, setVersionsOpen] = useState(false);
 
-  const [copied, setCopied] = useState(false);
   const copyViewLink = useCallback(async () => {
     const url = new URL(window.location.href);
     url.searchParams.set(paramKey("hidden"), view.hiddenColumns.join(","));
@@ -349,9 +348,8 @@ export function useResponsesTable({
       pushError("Could not copy the view link to the clipboard");
       return;
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [paramKey, pushError, view.hiddenColumns]);
+    success("Copied link");
+  }, [paramKey, pushError, success, view.hiddenColumns]);
 
   const visibleColumns = table.getVisibleLeafColumns().flatMap((leaf) => {
     const column = columnsById.get(leaf.id);
@@ -404,7 +402,6 @@ export function useResponsesTable({
     versionsOpen,
     openVersions: () => setVersionsOpen(true),
     closeVersions: () => setVersionsOpen(false),
-    copied,
     copyViewLink,
   };
 }
