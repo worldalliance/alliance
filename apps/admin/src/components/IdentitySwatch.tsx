@@ -1,47 +1,58 @@
-import { cn } from "@alliance/shared/styles/util";
 import type React from "react";
-import { swatchGradient } from "../lib/identitySwatch";
+import { hashString } from "../lib/identitySwatch";
+import Badge from "../ui/Badge";
+import { cn } from "../ui/cn";
+
+const CATEGORY_COLORS = [
+  "var(--color-cat-1)",
+  "var(--color-cat-2)",
+  "var(--color-cat-3)",
+  "var(--color-cat-4)",
+  "var(--color-cat-5)",
+  "var(--color-cat-6)",
+] as const;
+
+// Two category colours split on the diagonal: 36 marks from six tokens. Marks
+// repeat within a form, so one always sits beside its name.
+const swatchBackground = (seed: string): string => {
+  const hash = hashString(seed);
+  const first = CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
+  const second = CATEGORY_COLORS[(hash >>> 8) % CATEGORY_COLORS.length];
+  return `linear-gradient(135deg, ${first} 50%, ${second} 50%)`;
+};
 
 export type IdentitySwatchProps = {
   seed: string;
   className?: string;
 };
 
+/** A mark that is the same for the same seed everywhere. It goes beside the thing's name, never alone. */
 export const IdentitySwatch: React.FC<IdentitySwatchProps> = ({
   seed,
   className,
 }) => (
   <span
     aria-hidden="true"
-    style={{ backgroundImage: swatchGradient(seed) }}
-    className={cn(
-      "inline-block size-3 shrink-0 rounded-[3px] border border-black/10",
-      className,
-    )}
+    style={{ backgroundImage: swatchBackground(seed) }}
+    className={cn("inline-block size-3 shrink-0 rounded-sm", className)}
   />
 );
 
 export type IdentityChipProps = {
   seed: string;
   label: string;
-  title?: string;
   className?: string;
 };
 
 export const IdentityChip: React.FC<IdentityChipProps> = ({
   seed,
   label,
-  title,
   className,
 }) => (
-  <span
-    title={title}
-    className={cn(
-      "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700",
-      className,
-    )}
-  >
-    <IdentitySwatch seed={seed} className="size-2.5" />
-    {label}
-  </span>
+  <Badge className={cn("self-auto", className)}>
+    <span className="inline-flex items-center gap-1.5 text-fg">
+      <IdentitySwatch seed={seed} className="size-2.5" />
+      {label}
+    </span>
+  </Badge>
 );

@@ -29,8 +29,3 @@ export function swatchColors(seed: string): SwatchColors {
     to: chroma.hsl((hue + spread) % 360, saturation, lightness - 0.08).hex(),
   };
 }
-
-export function swatchGradient(seed: string): string {
-  const { from, to } = swatchColors(seed);
-  return `linear-gradient(135deg, ${from}, ${to})`;
-}

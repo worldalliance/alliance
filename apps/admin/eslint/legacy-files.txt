@@ -56,7 +56,6 @@ src/components/FormulaResultPreview.tsx
 src/components/GeneralUpdateCard.tsx
 src/components/HistoryControls.tsx
 src/components/HomePlacementBadges.tsx
-src/components/IdentitySwatch.tsx
 src/components/InsertableTokenButton.tsx
 src/components/NewActionTimeline.tsx
 src/components/NumberSample.tsx
@@ -85,7 +84,6 @@ src/components/VariableSamples.tsx
 src/components/VariableTextField.tsx
 src/components/VisibilityGroupContext.tsx
 src/components/VisibilityProfilePicker.tsx
-src/components/WithdrawalInfo.tsx
 src/components/display-blocks/BlockPreview.tsx
 src/components/display-blocks/DisplayBlockWrapper.tsx
 src/components/display-blocks/EditableAccordionBlock.tsx

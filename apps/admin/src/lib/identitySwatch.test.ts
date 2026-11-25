@@ -1,5 +1,5 @@
 import chroma from "chroma-js";
-import { swatchColors, swatchGradient } from "./identitySwatch";
+import { swatchColors } from "./identitySwatch";
 
 const SEEDS = [
   "field-1774033897472",
@@ -53,15 +53,5 @@ describe("swatchColors", () => {
       expect(chroma(from).luminance()).toBeGreaterThan(0.3);
       expect(chroma(to).luminance()).toBeGreaterThan(0.2);
     }
-  });
-});
-
-describe("swatchGradient", () => {
-  it("builds a css gradient from the seed's colours", () => {
-    const { from, to } = swatchColors("field-1");
-
-    expect(swatchGradient("field-1")).toBe(
-      `linear-gradient(135deg, ${from}, ${to})`,
-    );
   });
 });
