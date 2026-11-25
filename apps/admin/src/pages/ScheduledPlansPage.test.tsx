@@ -38,7 +38,7 @@ describe("scheduled plans", () => {
       (await screen.findByRole("link", { name: "Forum action" })).getAttribute(
         "href",
       ),
-    ).toBe("/actions/7");
+    ).toBe("/tasks/7");
   });
 });
 

@@ -112,7 +112,7 @@ const ContractPage: React.FC = () => {
           };
           if (!(await confirmSave(body))) return;
           const created = await createContract(body);
-          navigate(`/contracts/${created.id}`);
+          navigate(`/tasks/contracts/${created.id}`);
         } else if (id != null) {
           const body: UpdateContractDto = {
             name: form.name.trim(),
@@ -162,7 +162,7 @@ const ContractPage: React.FC = () => {
             : "Failed to load contract"}
         </p>
         <button
-          onClick={() => navigate("/contracts")}
+          onClick={() => navigate("/tasks/contracts")}
           className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
         >
           ← Back
@@ -184,7 +184,7 @@ const ContractPage: React.FC = () => {
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{pageTitle}</h1>
         <button
-          onClick={() => navigate("/contracts")}
+          onClick={() => navigate("/tasks/contracts")}
           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
         >
           ← Back to Contracts
@@ -450,7 +450,7 @@ const ContractPage: React.FC = () => {
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => navigate("/contracts")}
+              onClick={() => navigate("/tasks/contracts")}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium"
               disabled={saving}
             >

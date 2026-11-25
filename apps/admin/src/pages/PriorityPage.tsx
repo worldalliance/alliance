@@ -383,8 +383,8 @@ const PriorityPage: React.FC = () => {
                     <Link
                       to={
                         item.type === "action"
-                          ? `/actions/${item.id}`
-                          : `/general-updates/${item.id}`
+                          ? `/tasks/${item.id}`
+                          : `/content/general-updates/${item.id}`
                       }
                       onClick={(e) => e.stopPropagation()}
                       className="ml-auto shrink-0 rounded px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900 transition-colors"

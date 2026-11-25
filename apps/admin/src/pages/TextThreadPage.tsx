@@ -31,7 +31,7 @@ function NumberThread({ threadId }: { threadId: string }) {
     <div className="flex flex-col gap-4 p-5 max-w-3xl">
       <title>{`${contactName} - Texts - Admin`}</title>
       <Link
-        to={href("/texts")}
+        to={"/inbox?tab=all"}
         className="text-sm underline text-zinc-700 self-start"
       >
         All texts
@@ -79,7 +79,7 @@ function ThreadPeople({ thread }: { thread: NumberThreadDto }) {
       {thread.members.map((member) => (
         <li key={member.id}>
           <Link
-            to={href("/member/:userId", { userId: String(member.id) })}
+            to={href("/members/:userId", { userId: String(member.id) })}
             className="underline text-zinc-800"
           >
             {member.name}&apos;s member page

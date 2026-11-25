@@ -134,13 +134,19 @@ const DraftProbe = () => {
   );
 };
 
+const Waitlist = () =>
+  useLocation().search === "?tab=emails" ? (
+    <WaitlistEmailsPage />
+  ) : (
+    <DraftProbe />
+  );
+
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={["/waitlist-emails"]}>
+    <MemoryRouter initialEntries={["/growth/waitlist?tab=emails"]}>
       <ToastProvider>
         <Routes>
-          <Route path="/waitlist-emails" element={<WaitlistEmailsPage />} />
-          <Route path="/waitlist" element={<DraftProbe />} />
+          <Route path="/growth/waitlist" element={<Waitlist />} />
         </Routes>
       </ToastProvider>
     </MemoryRouter>,

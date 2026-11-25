@@ -253,7 +253,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               {timelineData.map(({ action }) => (
                 <Link
                   key={action.id}
-                  to={`/actions/${action.id}`}
+                  to={`/tasks/${action.id}`}
                   className={cn(
                     "border-b border-zinc-100 py-3 pr-4 flex flex-col justify-center bg-white hover:bg-zinc-50 pl-5",
                     isProjectHovered(action) && "bg-zinc-50",

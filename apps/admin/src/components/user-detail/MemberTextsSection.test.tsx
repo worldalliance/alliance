@@ -144,7 +144,7 @@ it("links to the number's thread once it has one", async () => {
     (
       await screen.findByRole("link", { name: "Open this number's thread" })
     ).getAttribute("href"),
-  ).toBe("/texts/00000000-0000-4000-8000-000000000001");
+  ).toBe("/inbox/00000000-0000-4000-8000-000000000001");
 });
 
 it("links to the number's thread once the first send creates it", async () => {

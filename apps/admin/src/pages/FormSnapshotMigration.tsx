@@ -133,7 +133,11 @@ const FormSnapshotMigration: React.FC = () => {
   const isFormIdValid = !Number.isNaN(numericFormId);
 
   const returnTo = useMemo(
-    () => getReturnTo(location.state, `/forms/${numericFormId}/responses`),
+    () =>
+      getReturnTo(
+        location.state,
+        `/tasks/forms/${numericFormId}?tab=responses`,
+      ),
     [location.state, numericFormId],
   );
 

@@ -116,7 +116,7 @@ export const ProgramMemberCard: React.FC<{
           <AvatarProfile pfp={member.user.profilePicture} size="medium" />
           <div className="min-w-0">
             <Link
-              to={`/member/${member.userId}`}
+              to={`/members/${member.userId}`}
               className="font-semibold text-zinc-900 hover:underline"
             >
               {memberDisplayName(member.user)}

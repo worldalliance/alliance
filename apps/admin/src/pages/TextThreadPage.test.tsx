@@ -125,9 +125,9 @@ const renderPage = (live = OFFLINE) => {
     <MmsThreadsLiveContext.Provider value={live}>
       <Wrapper>
         <ToastProvider>
-          <MemoryRouter initialEntries={[`/texts/${THREAD_ID}`]}>
+          <MemoryRouter initialEntries={[`/inbox/${THREAD_ID}`]}>
             <Routes>
-              <Route path="/texts/:threadId" element={<TextThreadPage />} />
+              <Route path="/inbox/:threadId" element={<TextThreadPage />} />
             </Routes>
           </MemoryRouter>
         </ToastProvider>
@@ -221,7 +221,7 @@ it("links to the page of each member on the number", async () => {
     screen
       .getByRole("link", { name: "Sam's member page" })
       .getAttribute("href"),
-  ).toBe("/member/7");
+  ).toBe("/members/7");
   expect(screen.getByText("Their local time is unknown")).toBeTruthy();
 });
 

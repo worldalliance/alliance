@@ -70,7 +70,7 @@ const DESCRIBE: Record<
       ) : (
         <Link
           className="underline"
-          to={`/kora-participants/assignments/${e.assignmentId}`}
+          to={`/research/assignments/${e.assignmentId}`}
         >
           View its export
         </Link>

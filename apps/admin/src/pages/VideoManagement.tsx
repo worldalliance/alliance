@@ -101,7 +101,9 @@ const VideoManagement: React.FC = () => {
                 {videos.map((video) => (
                   <tr
                     key={video.id}
-                    onClick={() => navigate(`/videos/${video.id}`)}
+                    onClick={() =>
+                      navigate(`/content/media/videos/${video.id}`)
+                    }
                     className="border-b hover:bg-zinc-50 cursor-pointer"
                   >
                     <td className="py-3 px-2 font-medium">

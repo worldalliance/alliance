@@ -72,7 +72,7 @@ const LoadedList: React.FC<{ listId: string }> = ({ listId }) => {
           <p className="text-sm text-zinc-700">
             This list doesn&apos;t exist, or was deleted.
           </p>
-          <Link to="/member-lists" className="text-sm underline">
+          <Link to="/members/lists" className="text-sm underline">
             Back to member lists
           </Link>
         </div>
@@ -183,7 +183,7 @@ const ListEditor: React.FC<{
         onSuccess: (saved) => {
           success("Saved.");
           if (stored === undefined) {
-            navigateUnprompted(() => navigate(`/member-lists/${saved.id}`));
+            navigateUnprompted(() => navigate(`/members/lists/${saved.id}`));
             return;
           }
           setStored(saved);
@@ -215,7 +215,7 @@ const ListEditor: React.FC<{
           if (refused.length > 0) return;
           success(`Deleted ${list.name}.`);
           forget(list.id);
-          navigateUnprompted(() => navigate("/member-lists"));
+          navigateUnprompted(() => navigate("/members/lists"));
           await invalidateFormulas();
         },
         onError: (error) => {
@@ -243,7 +243,7 @@ const ListEditor: React.FC<{
     <div className="p-5 space-y-6">
       <title>{`${stored?.name ?? "New list"} - Admin`}</title>
       <div className="space-y-1">
-        <Link to="/member-lists" className="text-sm underline text-zinc-600">
+        <Link to="/members/lists" className="text-sm underline text-zinc-600">
           Member lists
         </Link>
         <h1 className="text-lg font-bold text-zinc-900">

@@ -470,7 +470,9 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
               version: snapshotId === null ? null : String(snapshotId),
             })
           }
-          snapshotsHref={formId === null ? null : `/forms/${formId}/snapshots`}
+          snapshotsHref={
+            formId === null ? null : `/tasks/forms/${formId}?tab=versions`
+          }
         />
       </Sheet>
 

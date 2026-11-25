@@ -52,7 +52,7 @@ const FormulaFields: React.FC<{
           A TypeScript expression. Use <code>isMissing(x)</code> to test whether
           a value is missing, and <code>isOnList(&quot;List name&quot;)</code>{" "}
           to check whether the member is on a{" "}
-          <Link to="/member-lists" className="underline">
+          <Link to="/members/lists" className="underline">
             member list
           </Link>
           .

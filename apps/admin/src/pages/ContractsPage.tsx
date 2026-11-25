@@ -73,7 +73,7 @@ const ContractsPage: React.FC = () => {
       <div className="flex items-center gap-x-2">
         <p className="font-bold text-lg">Contracts</p>
         <Button
-          onClick={() => navigate("/contracts/new")}
+          onClick={() => navigate("/tasks/contracts/new")}
           className="hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
           color={ButtonColor.Green}
         >

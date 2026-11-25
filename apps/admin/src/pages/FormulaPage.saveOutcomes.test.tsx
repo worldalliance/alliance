@@ -15,7 +15,7 @@ serveFormulas();
 
 test("shows what a save would break, and saves the fix with it", async () => {
   api.answers = [[breaksDoubled], []];
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -66,7 +66,7 @@ test("saves a part's fix with the formula", async () => {
     },
   };
   api.answers = [[gated], []];
-  const { client } = renderPage(`/formulas/${base.id}`);
+  const { client } = renderPage(`/tasks/formulas/${base.id}`);
   const partition = queryKeys.suitePartitionAdmin(7);
   client.setQueryData(partition, {});
   await screen.findByRole("heading", { name: "base" });
@@ -104,7 +104,7 @@ test("saves a part's fix with the formula", async () => {
 
 test("opens a fix with the names the save gives", async () => {
   api.answers = [[{ ...breaksDoubled, text: "bar * 2" }]];
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Name", "bar");
   typeText("Formula", '"two"');
@@ -120,7 +120,7 @@ test("opens a fix with the names the save gives", async () => {
 
 test("says to reload when someone else saved first", async () => {
   api.answers = [409];
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -133,13 +133,13 @@ test("says to reload when someone else saved first", async () => {
     .spyOn(window.location, "assign")
     .mockImplementation(() => {});
   fireEvent.click(screen.getByRole("button", { name: "Reload" }));
-  expect(assign).toHaveBeenCalledWith(`/formulas/${base.id}`);
+  expect(assign).toHaveBeenCalledWith(`/tasks/formulas/${base.id}`);
   assign.mockRestore();
 });
 
 test("reloads an unsaved new formula to a blank one", async () => {
   api.answers = [[breaksDoubled], 409];
-  renderPage("/formulas/new");
+  renderPage("/tasks/formulas/new");
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
@@ -152,13 +152,15 @@ test("reloads an unsaved new formula to a blank one", async () => {
     .spyOn(window.location, "assign")
     .mockImplementation(() => {});
   fireEvent.click(await screen.findByRole("button", { name: "Reload" }));
-  await waitFor(() => expect(assign).toHaveBeenCalledWith("/formulas/new"));
+  await waitFor(() =>
+    expect(assign).toHaveBeenCalledWith("/tasks/formulas/new"),
+  );
   assign.mockRestore();
 });
 
 test("reloads a new formula to its page when a lost answer hid its save", async () => {
   api.answers = [500, 409];
-  renderPage("/formulas/new");
+  renderPage("/tasks/formulas/new");
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
@@ -174,13 +176,15 @@ test("reloads a new formula to its page when a lost answer hid its save", async 
     .spyOn(window.location, "assign")
     .mockImplementation(() => {});
   fireEvent.click(await screen.findByRole("button", { name: "Reload" }));
-  await waitFor(() => expect(assign).toHaveBeenCalledWith(`/formulas/${id}`));
+  await waitFor(() =>
+    expect(assign).toHaveBeenCalledWith(`/tasks/formulas/${id}`),
+  );
   assign.mockRestore();
 });
 
 test("offers no reload for a save refused for another reason", async () => {
   api.answers = [400];
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -189,7 +193,7 @@ test("offers no reload for a save refused for another reason", async () => {
 });
 
 test("keeps unsaved edits when the list refreshes with a newer version", async () => {
-  const { client } = renderPage(`/formulas/${base.id}`);
+  const { client } = renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   api.stored = [{ ...base, text: "7", versionId: 5 }, doubled];
@@ -204,14 +208,14 @@ test("keeps unsaved edits when the list refreshes with a newer version", async (
 test("links a problem in a formula newer than the page to its own page", async () => {
   const newer = "00000000-0000-4000-8000-00000000000c";
   api.answers = [[{ ...breaksDoubled, id: newer }]];
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   const link = await screen.findByRole("link", {
     name: `${newer} opens in new tab`,
   });
-  expect(link.getAttribute("href")).toBe(`/formulas/${newer}`);
+  expect(link.getAttribute("href")).toBe(`/tasks/formulas/${newer}`);
   expect(
     screen.getByText(
       "Added since this page opened, so fix it on its own page.",
@@ -224,7 +228,7 @@ test("links a problem in a formula newer than the page to its own page", async (
 
 test("says to delete again when a delete is refused", async () => {
   api.answers = [[breaksDoubled], []];
-  const { router } = renderPage(`/formulas/${base.id}`);
+  const { router } = renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   fireEvent.click(screen.getByRole("button", { name: "Delete formula" }));
   const confirm = () =>
@@ -245,7 +249,9 @@ test("says to delete again when a delete is refused", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Delete formula" }));
   await screen.findByRole("dialog");
   confirm();
-  await waitFor(() => expect(router.state.location.pathname).toBe("/formulas"));
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe("/tasks/formulas"),
+  );
   expect(api.saves[1]).toEqual({
     edits: [expect.objectContaining({ id: doubled.id, text: "2" })],
     deletions: [{ id: base.id, baseVersionId: 1 }],
@@ -255,7 +261,7 @@ test("says to delete again when a delete is refused", async () => {
 
 test("drops a fix's problems when the admin stops fixing it", async () => {
   api.answers = [[breaksDoubled], [{ ...breaksDoubled, text: "base + oops" }]];
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
   fireEvent.click(screen.getByRole("button", { name: "Save" }));

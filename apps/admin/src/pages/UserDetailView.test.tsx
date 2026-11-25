@@ -434,7 +434,7 @@ it("lists the member's friends with their status", async () => {
 
   expect(await screen.findByText("Friends (1)")).toBeTruthy();
   expect(screen.getByRole("link", { name: /Alex/ }).getAttribute("href")).toBe(
-    "/member/8",
+    "/members/8",
   );
   expect(screen.getByText("Signed · Ambassador")).toBeTruthy();
 });
@@ -480,8 +480,8 @@ it("lists the member's form submissions newest first", async () => {
       .getAllByRole("link", { name: /^Form #/ })
       .map((link) => [link.textContent, link.getAttribute("href")]),
   ).toEqual([
-    ["Form #9", "/forms/9/responses"],
-    ["Form #4", "/forms/4/responses"],
+    ["Form #9", "/tasks/forms/9?tab=responses"],
+    ["Form #4", "/tasks/forms/4?tab=responses"],
   ]);
   expect(screen.getByText("ios")).toBeTruthy();
 });

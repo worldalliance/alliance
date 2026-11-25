@@ -87,7 +87,7 @@ export function EditableVideoBlock({
             </label>
             {activeBlock.videoId && (
               <Link
-                to={href(`/videos/:videoId`, {
+                to={href(`/content/media/videos/:videoId`, {
                   videoId: activeBlock.videoId.toString(),
                 })}
                 className="text-xs text-blue-600"

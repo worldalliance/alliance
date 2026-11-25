@@ -192,7 +192,7 @@ const ActionUpdatePage: React.FC = () => {
               : "Failed to load update"}
         </p>
         <button
-          onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
+          onClick={() => navigate(`/tasks/${actionId}?tab=updates`)}
           className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
         >
           ← Back
@@ -390,7 +390,7 @@ const ActionUpdatePage: React.FC = () => {
       <div className="p-5 pb-0 flex flex-row justify-between w-full">
         <h1 className="text-[#111] text-[16pt] font-bold">{update.title}</h1>
         <button
-          onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
+          onClick={() => navigate(`/tasks/${actionId}?tab=updates`)}
           className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap mr-5"
         >
           ← Back to updates

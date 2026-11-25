@@ -126,11 +126,11 @@ const renderPage = (id = "4", cached?: CommunityDto[]) => {
   const query = queryWrapper();
   if (cached) query.client.setQueryData(queryKeys.communitiesAdmin(), cached);
   render(
-    <MemoryRouter initialEntries={[`/groups/${id}`]}>
+    <MemoryRouter initialEntries={[`/members/groups/${id}`]}>
       <ToastProvider>
         <Routes>
-          <Route path="/groups/:id" element={<GroupDetailPage />} />
-          <Route path="/groups" element={<p>All groups</p>} />
+          <Route path="/members/groups/:id" element={<GroupDetailPage />} />
+          <Route path="/members/groups" element={<p>All groups</p>} />
         </Routes>
       </ToastProvider>
     </MemoryRouter>,
@@ -190,12 +190,12 @@ it("never says a just-deleted group is missing", async () => {
     throw new Promise(() => {});
   };
   render(
-    <MemoryRouter initialEntries={["/groups/4"]}>
+    <MemoryRouter initialEntries={["/members/groups/4"]}>
       <ToastProvider>
         <Suspense>
           <Routes>
-            <Route path="/groups/:id" element={<GroupDetailPage />} />
-            <Route path="/groups" element={<LoadingGroups />} />
+            <Route path="/members/groups/:id" element={<GroupDetailPage />} />
+            <Route path="/members/groups" element={<LoadingGroups />} />
           </Routes>
         </Suspense>
       </ToastProvider>

@@ -38,8 +38,8 @@ export const EditActionLink = ({
   <NewTabLink
     to={
       select
-        ? `/actions/${actionId}?tab=details&${selectionSearch(select)}`
-        : `/actions/${actionId}`
+        ? `/tasks/${actionId}?tab=details&${selectionSearch(select)}`
+        : `/tasks/${actionId}`
     }
     label={select ? "Edit this text" : "Edit action"}
   >
@@ -56,7 +56,9 @@ export const EditTaskFormLink = ({
   elementId?: string | null;
 }) => (
   <NewTabLink
-    to={elementId ? formEditorPath(formId, elementId) : `/forms/${formId}`}
+    to={
+      elementId ? formEditorPath(formId, elementId) : `/tasks/forms/${formId}`
+    }
     label={elementId ? "Edit this text in the form" : "Edit task form"}
   >
     <FileText className="size-4" />

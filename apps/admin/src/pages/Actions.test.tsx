@@ -156,7 +156,7 @@ it("lists an archived action, marked in the timeline, once archived ones are sho
 
 it("keeps archived actions shown when the page opens from a link that shows them", async () => {
   served = [adminActionListItem(2, "Old petition", { archived: true })];
-  renderPage(queryWrapper(), "/actions?archived=1");
+  renderPage(queryWrapper(), "/tasks?view=list&archived=1");
 
   expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
     0,
@@ -177,7 +177,7 @@ it("keeps archived actions shown when the page opens from a link that shows them
 });
 
 it("steps back through archived toggles with Back", async () => {
-  const router = renderPage(queryWrapper(), "/actions");
+  const router = renderPage(queryWrapper(), "/tasks?view=list");
   fireEvent.click(
     await screen.findByRole("checkbox", { name: "Show archived" }),
   );
@@ -290,10 +290,10 @@ it("links an in-progress suite card to its suite and each action to itself, nest
     link.getAttribute("href"),
   );
   expect(hrefs).toEqual([
-    "/suites/5",
-    "/actions/1",
-    "/actions/3",
-    "/actions/4",
+    "/tasks/suites/5",
+    "/tasks/1",
+    "/tasks/3",
+    "/tasks/4",
   ]);
   expect(section.querySelector("a a")).toBeNull();
   expect(section.textContent).toContain("1 active · 2 draft");
@@ -301,7 +301,7 @@ it("links an in-progress suite card to its suite and each action to itself, nest
 
 it("keeps the selected statuses when the page opens from a link", async () => {
   served = [adminActionListItem(4, "Rally", { status: "completed" })];
-  renderPage(queryWrapper(), "/actions?status=completed");
+  renderPage(queryWrapper(), "/tasks?view=list&status=completed");
 
   expect(await screen.findAllByText("Rally")).toHaveLength(2);
   expect(
@@ -314,7 +314,7 @@ it("writes the status filter to the URL, leaving it out at the defaults and keep
     adminActionListItem(1, "Call your rep"),
     adminActionListItem(4, "Rally", { status: "completed" }),
   ];
-  const router = renderPage(queryWrapper(), "/actions?other=1");
+  const router = renderPage(queryWrapper(), "/tasks?view=list&other=1");
   // The list below the timeline always names Rally; the timeline only when shown.
   const rallyShownInTimeline = () => screen.getAllByText("Rally").length === 2;
   const toggleCompleted = async () => {
@@ -329,17 +329,17 @@ it("writes the status filter to the URL, leaving it out at the defaults and keep
 
   await toggleCompleted();
   expect(router.state.location.search).toBe(
-    "?other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
+    "?view=list&other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
   );
   expect(rallyShownInTimeline()).toBe(true);
 
   await toggleCompleted();
-  expect(router.state.location.search).toBe("?other=1");
+  expect(router.state.location.search).toBe("?view=list&other=1");
   expect(rallyShownInTimeline()).toBe(false);
 
   await act(() => router.navigate(-1));
   expect(router.state.location.search).toBe(
-    "?other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
+    "?view=list&other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
   );
   expect(rallyShownInTimeline()).toBe(true);
 });

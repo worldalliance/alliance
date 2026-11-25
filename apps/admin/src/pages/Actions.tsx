@@ -253,7 +253,7 @@ const ActionsList: React.FC = () => {
               >
                 <div>
                   <Link
-                    to={`/suites/${suite.id}`}
+                    to={`/tasks/suites/${suite.id}`}
                     className="font-semibold after:absolute after:inset-0"
                   >
                     {suite.name}
@@ -277,7 +277,7 @@ const ActionsList: React.FC = () => {
                   {suite.actions.map((action) => (
                     <li key={action.id}>
                       <Link
-                        to={`/actions/${action.id}`}
+                        to={`/tasks/${action.id}`}
                         className={cn(
                           "relative flex items-start gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 hover:border-green hover:bg-white",
                           zIndex.raised,
@@ -313,7 +313,7 @@ const ActionsList: React.FC = () => {
                 <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-100">
                   {suite.id ? (
                     <Link
-                      to={`/suites/${suite.id}`}
+                      to={`/tasks/suites/${suite.id}`}
                       className="text-sm font-semibold text-black hover:text-green"
                     >
                       {suite.name}

@@ -43,6 +43,7 @@ const FormResponses: React.FC = () => {
 
   return (
     <FormResponsesView
+      paramNamespace="resp"
       title={form?.title ?? "Form Responses"}
       form={form}
       responses={responses}

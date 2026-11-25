@@ -216,7 +216,7 @@ export function ActionProjectSteps({
               <span className="font-medium">{step.actionName}</span>
             ) : (
               <Link
-                to={`/actions/${step.actionId}?tab=overview`}
+                to={`/tasks/${step.actionId}?tab=overview`}
                 className="text-blue-600 hover:underline"
               >
                 {step.actionName}

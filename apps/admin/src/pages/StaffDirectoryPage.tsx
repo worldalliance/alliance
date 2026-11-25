@@ -195,7 +195,7 @@ const StaffDirectoryPage: React.FC = () => {
                 )}
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <Link
-                    to={`/member/${item.id}`}
+                    to={`/members/${item.id}`}
                     className="text-sm font-medium text-zinc-900 hover:underline truncate"
                     onClick={(e) => e.stopPropagation()}
                   >

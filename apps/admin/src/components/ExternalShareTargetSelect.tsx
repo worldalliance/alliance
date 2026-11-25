@@ -80,7 +80,10 @@ export function ExternalShareTargetSelect({
       <p className="text-xs text-gray-500">
         {description}
         {description ? " " : ""}
-        <Link to="/share-targets" className="text-blue-600 hover:underline">
+        <Link
+          to="/growth/links?tab=share-targets"
+          className="text-blue-600 hover:underline"
+        >
           Manage targets →
         </Link>
       </p>

@@ -31,7 +31,7 @@ const ContractCard = ({ contract, navigate }: ContractCardProps) => {
   return (
     <div
       className="p-4 cursor-pointer hover:bg-zinc-50 transition-colors"
-      onClick={() => navigate(`/contracts/${contract.id}`)}
+      onClick={() => navigate(`/tasks/contracts/${contract.id}`)}
     >
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-y-1">

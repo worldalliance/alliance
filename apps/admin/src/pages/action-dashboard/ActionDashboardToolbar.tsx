@@ -58,7 +58,7 @@ const ActionDashboardToolbar: React.FC<ActionDashboardToolbarProps> = ({
       {action.suite !== undefined && (
         <Button
           onClick={() => {
-            navigate(`/suites/${action.suite!.id}`);
+            navigate(`/tasks/suites/${action.suite!.id}`);
           }}
           color={ButtonColor.White}
           className="!px-3 !text-sm gap-x-1"

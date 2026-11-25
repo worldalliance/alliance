@@ -124,9 +124,9 @@ beforeEach(() => {
 const renderPage = (path: string, cachedFormulas?: FormulaDto[]) => {
   const router = createMemoryRouter(
     [
-      { path: "/member-lists", element: <p>All lists</p> },
+      { path: "/members/lists", element: <p>All lists</p> },
       {
-        path: "/member-lists/:listId",
+        path: "/members/lists/:listId",
         element: (
           <LeaveGuard>
             <MemberListPage />
@@ -151,7 +151,7 @@ const renderPage = (path: string, cachedFormulas?: FormulaDto[]) => {
 
 test("creates a list from pasted ids and emails, listing what didn't match", async () => {
   lists = [];
-  const router = renderPage("/member-lists/new");
+  const router = renderPage("/members/lists/new");
   await screen.findByRole("heading", { name: "New list" });
   fireEvent.change(screen.getByLabelText(/^Name/), {
     target: { value: "Volunteers" },
@@ -188,7 +188,7 @@ test("creates a list from pasted ids and emails, listing what didn't match", asy
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() =>
     expect(router.state.location.pathname).toBe(
-      `/member-lists/${volunteers.id}`,
+      `/members/lists/${volunteers.id}`,
     ),
   );
   expect(listSaves).toEqual([{ name: "Volunteers", userIds: [7, 12] }]);
@@ -196,7 +196,7 @@ test("creates a list from pasted ids and emails, listing what didn't match", asy
 
 test("saves an edit against the version it opened, and offers Reload on a conflict", async () => {
   updateStatus = 409;
-  renderPage(`/member-lists/${volunteers.id}`);
+  renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   fireEvent.change(screen.getByLabelText(/^Name/), {
     target: { value: "Helpers" },
@@ -214,7 +214,7 @@ test("saves an edit against the version it opened, and offers Reload on a confli
 });
 
 test("saves entries left in the paste box without Add members", async () => {
-  renderPage(`/member-lists/${volunteers.id}`);
+  renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   fireEvent.change(screen.getByLabelText(/^Add by id or email/), {
     target: { value: "12" },
@@ -240,7 +240,7 @@ test("saves entries left in the paste box without Add members", async () => {
 test("keeps members removed while a save is in flight", async () => {
   const { promise, resolve } = Promise.withResolvers<void>();
   updateHeld = promise;
-  renderPage(`/member-lists/${volunteers.id}`);
+  renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   fireEvent.change(screen.getByLabelText(/^Name/), {
     target: { value: "Helpers" },
@@ -255,7 +255,7 @@ test("keeps members removed while a save is in flight", async () => {
 });
 
 test("clears the unmatched entries alert once the paste box is emptied", async () => {
-  renderPage(`/member-lists/${volunteers.id}`);
+  renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   const box = screen.getByLabelText(/^Add by id or email/);
   fireEvent.change(box, { target: { value: "nobody@example.com" } });
@@ -272,7 +272,7 @@ test("clears the unmatched entries alert once the paste box is emptied", async (
 
 test("shows the formulas a delete would break, and deletes with the fix", async () => {
   formulaAnswers = [[readsVolunteers], []];
-  const router = renderPage(`/member-lists/${volunteers.id}`);
+  const router = renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   fireEvent.click(screen.getByRole("button", { name: "Delete list" }));
   fireEvent.click(
@@ -300,7 +300,7 @@ test("shows the formulas a delete would break, and deletes with the fix", async 
     }),
   );
   await waitFor(() =>
-    expect(router.state.location.pathname).toBe("/member-lists"),
+    expect(router.state.location.pathname).toBe("/members/lists"),
   );
   expect(formulaSaves[1]).toEqual({
     edits: [
@@ -343,7 +343,7 @@ const remove = async () => {
 
 test("deletes a list with the fix of a part that reads it", async () => {
   formulaAnswers = [[partReadsVolunteers], []];
-  const router = renderPage(`/member-lists/${volunteers.id}`);
+  const router = renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   await remove();
   fireEvent.click(
@@ -355,7 +355,7 @@ test("deletes a list with the fix of a part that reads it", async () => {
   await remove();
 
   await waitFor(() =>
-    expect(router.state.location.pathname).toBe("/member-lists"),
+    expect(router.state.location.pathname).toBe("/members/lists"),
   );
   expect(formulaSaves[1].partFixes).toEqual([
     {
@@ -371,7 +371,7 @@ test("deletes a list with the fix of a part that reads it", async () => {
 test("asks before leaving while a part's fix differs from how it opened", async () => {
   formulaAnswers = [[partReadsVolunteers]];
   const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
-  const router = renderPage(`/member-lists/${volunteers.id}`);
+  const router = renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   await remove();
   fireEvent.click(
@@ -379,16 +379,18 @@ test("asks before leaving while a part's fix differs from how it opened", async 
   );
   const condition = () => screen.getByRole("textbox", { name: "Condition" });
   fireEvent.change(condition(), { target: { value: "false" } });
-  await act(() => router.navigate("/member-lists"));
+  await act(() => router.navigate("/members/lists"));
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(router.state.location.pathname).toBe(`/member-lists/${volunteers.id}`);
+  expect(router.state.location.pathname).toBe(
+    `/members/lists/${volunteers.id}`,
+  );
 
   fireEvent.change(condition(), {
     target: { value: partReadsVolunteers.text },
   });
-  await act(() => router.navigate("/member-lists"));
+  await act(() => router.navigate("/members/lists"));
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(router.state.location.pathname).toBe("/member-lists");
+  expect(router.state.location.pathname).toBe("/members/lists");
   confirm.mockRestore();
 });
 
@@ -396,7 +398,7 @@ test("opens on fetched formulas, not cached ones a fix would conflict with", asy
   let release = () => {};
   formulasHeld = new Promise((resolve) => (release = resolve));
   formulaAnswers = [[readsVolunteers]];
-  renderPage(`/member-lists/${volunteers.id}`, [
+  renderPage(`/members/lists/${volunteers.id}`, [
     { ...onVolunteers, versionId: 8 },
   ]);
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -423,7 +425,7 @@ test("opens on fetched formulas, not cached ones a fix would conflict with", asy
 
 test("refuses to save pasted entries when members couldn't load", async () => {
   usersStatus = 500;
-  renderPage(`/member-lists/${volunteers.id}`);
+  renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   fireEvent.change(screen.getByLabelText(/^Add by id or email/), {
     target: { value: "12" },

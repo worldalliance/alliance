@@ -95,7 +95,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         "absolute border-b border-gray-100 hover:bg-gray-50 cursor-pointer",
         projectHovered && "bg-gray-50",
       )}
-      onClick={() => navigate(`/actions/${action.id}`)}
+      onClick={() => navigate(`/tasks/${action.id}`)}
       onMouseEnter={() => onProjectHover(action.project?.id ?? null)}
       onMouseLeave={() => onProjectHover(null)}
       style={{

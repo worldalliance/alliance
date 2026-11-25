@@ -165,8 +165,8 @@ const FormulaEditor: React.FC<{
     !saved &&
     (changed(primary) || fixes.some(changed) || partFixes.some(partFixChanged));
   const navigateUnprompted = useLeaveGuard(hasUnsavedChanges);
-  const newHref = useHref(`/formulas/${NEW}`);
-  const ownHref = useHref(`/formulas/${primary.id}`);
+  const newHref = useHref(`/tasks/formulas/${NEW}`);
+  const ownHref = useHref(`/tasks/formulas/${primary.id}`);
   const reload = async () => {
     if (!isNew) return window.location.assign(ownHref);
     // A save can commit and lose its answer, so the new formula may be stored.
@@ -182,7 +182,7 @@ const FormulaEditor: React.FC<{
         <p className="text-sm text-zinc-700">
           This formula doesn&apos;t exist, or was deleted.
         </p>
-        <Link to="/formulas" className="text-sm underline">
+        <Link to="/tasks/formulas" className="text-sm underline">
           Back to formulas
         </Link>
       </div>
@@ -220,13 +220,13 @@ const FormulaEditor: React.FC<{
           success(deleting ? `Deleted ${stored?.name}.` : "Saved.");
           if (deleting) {
             forget(primary.id);
-            navigateUnprompted(() => navigate("/formulas"));
+            navigateUnprompted(() => navigate("/tasks/formulas"));
             await invalidate();
             return;
           }
           if (isNew) {
             // Its page fetches the list afresh, so it finds the new formula.
-            navigateUnprompted(() => navigate(`/formulas/${primary.id}`));
+            navigateUnprompted(() => navigate(`/tasks/formulas/${primary.id}`));
             requestFocus();
             return;
           }
@@ -259,7 +259,7 @@ const FormulaEditor: React.FC<{
     <div className="p-5 space-y-6">
       <title>{`${isNew ? "New formula" : stored.name} - Admin`}</title>
       <div className="space-y-1">
-        <Link to="/formulas" className="text-sm underline text-zinc-600">
+        <Link to="/tasks/formulas" className="text-sm underline text-zinc-600">
           Formulas
         </Link>
         <h1 className="text-lg font-bold text-zinc-900">
@@ -383,7 +383,7 @@ const FormulaLinks: React.FC<{
         {formulas.map((formula) => (
           <li key={formula.id}>
             <Link
-              to={`/formulas/${formula.id}`}
+              to={`/tasks/formulas/${formula.id}`}
               className="font-mono underline"
             >
               {formula.name}

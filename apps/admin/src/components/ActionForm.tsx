@@ -181,7 +181,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
           <div>
             <p className="text-sm font-medium text-gray-700">Priority</p>
             <Link
-              to="/priority"
+              to="/tasks?view=priority"
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Manage priority
@@ -215,7 +215,9 @@ const ActionForm: React.FC<ActionFormProps> = ({
             gets this action and whether it&apos;s optional.{" "}
             <Link
               className="underline"
-              to={href("/suites/:suiteId", { suiteId: String(form.suiteId) })}
+              to={href("/tasks/suites/:suiteId", {
+                suiteId: String(form.suiteId),
+              })}
             >
               Edit the suite&apos;s partition
             </Link>

@@ -126,7 +126,7 @@ function formatInvitedBy(user: UserAdminDetailDto) {
       return invitedBy.userId ? (
         <>
           <Link
-            to={`/member/${invitedBy.userId}`}
+            to={`/members/${invitedBy.userId}`}
             className="text-blue-600 hover:underline"
           >
             {invitedBy.label}

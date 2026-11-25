@@ -79,11 +79,14 @@ beforeEach(() => {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={["/projects"]}>
+    <MemoryRouter initialEntries={["/tasks/projects"]}>
       <ToastProvider>
         <Routes>
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:projectId" element={<p>Project page</p>} />
+          <Route path="/tasks/projects" element={<ProjectsPage />} />
+          <Route
+            path="/tasks/projects/:projectId"
+            element={<p>Project page</p>}
+          />
         </Routes>
       </ToastProvider>
     </MemoryRouter>,

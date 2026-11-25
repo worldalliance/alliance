@@ -99,11 +99,11 @@ afterEach(() => {
 });
 
 const renderPage = (
-  path = "/general-updates/1",
+  path = "/content/general-updates/1",
   cached?: ReturnType<typeof generalUpdateAdmin>,
 ) => {
   const router = createMemoryRouter(
-    [{ path: "/general-updates/:id", element: <GeneralUpdatePage /> }],
+    [{ path: "/content/general-updates/:id", element: <GeneralUpdatePage /> }],
     { initialEntries: [path] },
   );
   const query = queryWrapper();
@@ -138,7 +138,7 @@ it("saves an untouched schedule unchanged", async () => {
 });
 
 it("refreshes the general updates list after creating one", async () => {
-  const { client, router } = renderPage("/general-updates/new");
+  const { client, router } = renderPage("/content/general-updates/new");
   fireEvent.change(screen.getByLabelText("Title"), {
     target: { value: "New" },
   });
@@ -147,13 +147,13 @@ it("refreshes the general updates list after creating one", async () => {
   );
 
   await waitFor(() =>
-    expect(router.state.location.pathname).toBe("/general-updates/2"),
+    expect(router.state.location.pathname).toBe("/content/general-updates/2"),
   );
   expect(listInvalidated(client)).toBe(true);
 });
 
 it("creates a general update with the entered details", async () => {
-  renderPage("/general-updates/new");
+  renderPage("/content/general-updates/new");
   fireEvent.change(screen.getByLabelText("Title"), {
     target: { value: "New" },
   });
@@ -195,7 +195,10 @@ it("keeps unsaved edits when the general update reloads", async () => {
 });
 
 it("saves the reloaded details over a copy cached by an earlier visit", async () => {
-  renderPage("/general-updates/1", generalUpdateAdmin(1, "Old cached name"));
+  renderPage(
+    "/content/general-updates/1",
+    generalUpdateAdmin(1, "Old cached name"),
+  );
   await screen.findByRole("heading", { name: "Weekly note" });
   await waitFor(() =>
     expect(screen.getByLabelText("Title")).toHaveProperty(
@@ -212,7 +215,10 @@ it("saves the reloaded details over a copy cached by an earlier visit", async ()
 
 it("reports a failed reload over a copy cached by an earlier visit", async () => {
   findStatus = 500;
-  renderPage("/general-updates/1", generalUpdateAdmin(1, "Old cached name"));
+  renderPage(
+    "/content/general-updates/1",
+    generalUpdateAdmin(1, "Old cached name"),
+  );
 
   expect(
     await screen.findByText("Failed to load general update"),
@@ -248,7 +254,7 @@ it("reports a failed load", async () => {
 });
 
 it("assigns the suite named in the link to a new general update", async () => {
-  renderPage("/general-updates/new?suiteId=3");
+  renderPage("/content/general-updates/new?suiteId=3");
 
   expect(
     await screen.findByRole("button", { name: "Remove Suite #3" }),
@@ -297,7 +303,7 @@ it("saves without a tag that was unticked", async () => {
 });
 
 it("removes a suite and brings back the schedule", async () => {
-  renderPage("/general-updates/new?suiteId=7");
+  renderPage("/content/general-updates/new?suiteId=7");
   fireEvent.click(await screen.findByRole("button", { name: "Remove Spring" }));
 
   expect(await screen.findByLabelText("Start date")).toBeDefined();

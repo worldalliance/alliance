@@ -17,7 +17,7 @@ const MemberListsPage: React.FC = () => {
             one with <code>isOnList(&quot;List name&quot;)</code>.
           </p>
         </div>
-        <Button to="/member-lists/new" color={ButtonColor.Black} size="small">
+        <Button to="/members/lists/new" color={ButtonColor.Black} size="small">
           New list
         </Button>
       </div>
@@ -46,7 +46,7 @@ const MemberListsPage: React.FC = () => {
               <tr key={list.id} className="border-b border-zinc-100">
                 <td className="py-2 pr-4">
                   <Link
-                    to={`/member-lists/${list.id}`}
+                    to={`/members/lists/${list.id}`}
                     className="underline text-zinc-900"
                   >
                     {list.name}

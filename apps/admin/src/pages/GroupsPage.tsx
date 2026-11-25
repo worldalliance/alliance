@@ -393,7 +393,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
 
   return (
     <Link
-      to={href("/groups/:id", { id: community.id.toString() })}
+      to={href("/members/groups/:id", { id: community.id.toString() })}
       className="p-4 hover:bg-zinc-100 cursor-pointer"
     >
       <div className="flex flex-col gap-4">

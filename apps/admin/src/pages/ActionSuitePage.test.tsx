@@ -13,9 +13,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, jest, spyOn } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import SuiteRecord from "../places/SuiteRecord";
 import { ToastProvider } from "../ui/ToastProvider";
-import ActionSuitePage from "./ActionSuitePage";
-import SuiteLaunchPage from "./SuiteLaunchPage";
 
 const failure = () => Response.json({}, { status: 500 });
 const loadSuite = () =>
@@ -81,18 +80,17 @@ afterEach(() => {
   eventEdit = failure;
 });
 
-const renderPage = (initialEntry = "/suites/3") => {
+const renderPage = (initialEntry = "/tasks/suites/3") => {
   const router = createMemoryRouter(
     [
       {
-        path: "/suites/:suiteId",
+        path: "/tasks/suites/:suiteId",
         element: (
           <LeaveGuard>
-            <ActionSuitePage />
+            <SuiteRecord />
           </LeaveGuard>
         ),
       },
-      { path: "/suites/:suiteId/launch", element: <SuiteLaunchPage /> },
     ],
     { initialEntries: [initialEntry] },
   );
@@ -215,16 +213,16 @@ it("offers the parts in place of a launch for a suite that uses parts", async ()
 
 it("drops one suite's unsaved parts on moving to another", async () => {
   suiteLoad = unlaunchedSuite([], true);
-  const router = renderPage("/suites/4");
+  const router = renderPage("/tasks/suites/4");
   await screen.findByRole("heading", { name: "1. Everyone else" });
-  await act(() => router.navigate("/suites/3"));
+  await act(() => router.navigate("/tasks/suites/3"));
   fireEvent.click(await screen.findByRole("button", { name: "Add part" }));
   expect(
     screen.getByRole("heading", { name: "2. Everyone else" }),
   ).toBeTruthy();
 
   spyOn(window, "confirm").mockReturnValue(true);
-  await act(() => router.navigate("/suites/4"));
+  await act(() => router.navigate("/tasks/suites/4"));
 
   expect(
     await screen.findByRole("heading", { name: "1. Everyone else" }),

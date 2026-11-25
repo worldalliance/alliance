@@ -25,7 +25,7 @@ const ActionListCard = ({ action }: ActionListCardProps) => {
   const lastEventDate = getLastPastEventDate(action);
   return (
     <div className="p-4 group">
-      <Link to={`/actions/${action.id}`} className="relative block">
+      <Link to={`/tasks/${action.id}`} className="relative block">
         <div className="flex justify-between mb-2 ">
           <div className="flex flex-row items-center gap-x-2">
             {action?.archived && (

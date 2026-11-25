@@ -72,7 +72,7 @@ export default function ActionFormVariantCoverage({
                 {s.formId != null ? (
                   <button
                     className="text-blue-600 hover:underline"
-                    onClick={() => navigate(`/forms/${s.formId}`)}
+                    onClick={() => navigate(`/tasks/forms/${s.formId}`)}
                   >
                     {formLabel(displaySlugs, s.formId)}
                   </button>

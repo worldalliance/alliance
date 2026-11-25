@@ -406,7 +406,7 @@ export const pickMenuItem = async (menu: string, item: string) => {
 export const renderPage = (routerState?: unknown, beside?: ReactNode) =>
   render(
     <MemoryRouter
-      initialEntries={[{ pathname: "/waitlist", state: routerState }]}
+      initialEntries={[{ pathname: "/growth/waitlist", state: routerState }]}
     >
       <ToastProvider>
         <WaitlistPage />

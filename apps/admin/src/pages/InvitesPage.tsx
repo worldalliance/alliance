@@ -168,7 +168,7 @@ const InvitesPage = () => {
         <div className="flex flex-row justify-between items-center my-5">
           <p className="font-bold">Past Invites</p>
           <Link
-            to="/invites/graph"
+            to="/growth/invites?tab=graph"
             className="text-sm text-blue-600 hover:underline"
           >
             View Invite Graph

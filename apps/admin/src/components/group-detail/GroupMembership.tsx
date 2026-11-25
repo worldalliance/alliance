@@ -273,7 +273,7 @@ const GroupMembership: React.FC<GroupMembershipProps> = ({
         members={sortedMembers}
         amLeader={true}
         communityId={community.id}
-        memberHref={(id) => href("/member/:userId", { userId: id.toString() })}
+        memberHref={(id) => href("/members/:userId", { userId: id.toString() })}
         userActionRelations={userActionRelations ?? undefined}
         actions={actionSummaries}
         maxActionsPerWeek={maxActionsPerWeek}

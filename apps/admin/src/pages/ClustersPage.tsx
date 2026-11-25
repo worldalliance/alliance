@@ -220,7 +220,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster }) => {
             {cluster.members.map((m) => (
               <Link
                 key={m.id}
-                to={`/member/${m.id}`}
+                to={`/members/${m.id}`}
                 className="flex flex-row items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 pl-1 pr-3 py-1 text-sm"
               >
                 <AvatarProfile pfp={m.profilePicture ?? null} size="small" />

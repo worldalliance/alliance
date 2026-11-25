@@ -227,7 +227,7 @@ export default function ActionFormVariantsTab({
         <div className="flex gap-2">
           <BaseButton
             variant={BaseButtonVariant.White}
-            onClick={() => navigate(`/actions/${action.id}?tab=responses`)}
+            onClick={() => navigate(`/tasks/${action.id}?tab=responses`)}
           >
             View responses
           </BaseButton>
@@ -353,7 +353,7 @@ export default function ActionFormVariantsTab({
                   </span>
                   <BaseButton
                     variant={BaseButtonVariant.BlueOutline}
-                    onClick={() => navigate(`/forms/${v.formId}`)}
+                    onClick={() => navigate(`/tasks/forms/${v.formId}`)}
                   >
                     Edit form
                   </BaseButton>

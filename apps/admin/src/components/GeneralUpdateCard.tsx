@@ -29,7 +29,7 @@ const GeneralUpdateCard = ({ update, navigate }: GeneralUpdateCardProps) => {
   return (
     <div
       className="p-4 cursor-pointer hover:bg-zinc-50 transition-colors"
-      onClick={() => navigate(`/general-updates/${update.id}`)}
+      onClick={() => navigate(`/content/general-updates/${update.id}`)}
     >
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-y-1">

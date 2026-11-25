@@ -76,7 +76,7 @@ const MissedActionsCard: React.FC = () => {
                       className="flex justify-between gap-3"
                     >
                       <a
-                        href={`/member/${member.userId}`}
+                        href={`/members/${member.userId}`}
                         className="min-w-0 truncate text-link hover:underline"
                       >
                         {member.name}

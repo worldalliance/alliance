@@ -36,7 +36,7 @@ test("lists each list with its member count, linking to it", async () => {
   expect(within(row).getByText("2")).toBeTruthy();
   expect(
     within(row).getByRole("link", { name: "Volunteers" }).getAttribute("href"),
-  ).toBe(`/member-lists/${id}`);
+  ).toBe(`/members/lists/${id}`);
 });
 
 test("says when there are no lists yet", async () => {

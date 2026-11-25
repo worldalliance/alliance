@@ -51,7 +51,7 @@ const ProjectHeader = ({
     onError: onError("Could not update the project"),
   });
   const remove = useDeleteProjectAdmin({
-    onSuccess: () => navigate("/projects"),
+    onSuccess: () => navigate("/tasks/projects"),
     onError: onError("Could not delete the project"),
   });
 
@@ -180,7 +180,7 @@ const ProjectDetailPage: React.FC = () => {
     return (
       <div className="flex flex-col gap-y-2 p-5">
         <p className="text-red-500">Project not found.</p>
-        <Link to="/projects" className="text-blue-600 hover:underline">
+        <Link to="/tasks/projects" className="text-blue-600 hover:underline">
           Back to projects
         </Link>
       </div>
@@ -196,7 +196,7 @@ const ProjectDetailPage: React.FC = () => {
     <div className="flex max-w-6xl flex-col gap-y-5 p-5">
       <title>{`${project.name} - Admin`}</title>
       <Link
-        to="/projects"
+        to="/tasks/projects"
         className="flex w-fit items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-900"
       >
         <ArrowLeft size={14} />

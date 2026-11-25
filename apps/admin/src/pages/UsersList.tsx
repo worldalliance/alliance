@@ -386,7 +386,7 @@ const UsersList: React.FC = () => {
             members={displayedProfiles}
             amLeader={true}
             memberHref={(id) =>
-              href("/member/:userId", { userId: id.toString() })
+              href("/members/:userId", { userId: id.toString() })
             }
             userActionRelations={userActionRelations}
             memberContactInfo={memberContactInfo}

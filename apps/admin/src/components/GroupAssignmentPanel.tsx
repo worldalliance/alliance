@@ -394,7 +394,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                     <AvatarProfile pfp={member.profilePicture} size="medium" />
                     <div className="flex flex-col gap-1">
                       <Link
-                        to={`/member/${member.id}`}
+                        to={`/members/${member.id}`}
                         className="font-semibold text-zinc-900 hover:underline"
                       >
                         {member.name}
@@ -414,7 +414,9 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                               color={ButtonColor.Light}
                               className="text-xs"
                               onClick={() =>
-                                navigate(`/groups/${community.id}?from=groups`)
+                                navigate(
+                                  `/members/groups/${community.id}?from=groups`,
+                                )
                               }
                             >
                               {community.name}
@@ -466,7 +468,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                         className="text-xs self-end"
                         onClick={() =>
                           navigate(
-                            `/groups/${selectedCommunity.id}?from=groups`,
+                            `/members/groups/${selectedCommunity.id}?from=groups`,
                           )
                         }
                       >

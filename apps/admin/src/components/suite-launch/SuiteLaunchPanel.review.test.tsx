@@ -35,12 +35,12 @@ it("links a task form finding to the form and a body finding to its text in the 
     formFinding
       ?.querySelector('[aria-label="Edit this text in the form"]')
       ?.getAttribute("href"),
-  ).toBe("/forms/5?select=p1");
+  ).toBe("/tasks/forms/5?select=p1");
   expect(
     bodyFinding
       ?.querySelector('[aria-label="Edit this text"]')
       ?.getAttribute("href"),
-  ).toBe("/actions/1?tab=details&field=body&from=4&to=6&text=++");
+  ).toBe("/tasks/1?tab=details&field=body&from=4&to=6&text=++");
 });
 
 it("previews the actions assigned to a picked member", async () => {
@@ -70,7 +70,7 @@ it("previews the actions assigned to a picked member", async () => {
     row
       ?.querySelector('[aria-label="Preview task form as this member"]')
       ?.getAttribute("href"),
-  ).toBe("/forms/5?previewAs=10");
+  ).toBe("/tasks/forms/5?previewAs=10");
 });
 
 it("previews each of an action's variant forms as a picked member", async () => {
@@ -97,7 +97,7 @@ it("previews each of an action's variant forms as a picked member", async () => 
         name: "Preview variant “Variant 9” as this member",
       })
     ).getAttribute("href"),
-  ).toBe("/forms/9?previewAs=10");
+  ).toBe("/tasks/forms/9?previewAs=10");
 });
 
 it("groups members by the actions they get and previews one from a group", async () => {
@@ -152,7 +152,7 @@ it("shows each action's audience, task form link, and what to look at before che
   expect(write?.textContent).toContain("Archived");
   expect(
     write?.querySelector('[aria-label="Edit task form"]')?.getAttribute("href"),
-  ).toBe("/forms/5");
+  ).toBe("/tasks/forms/5");
   expect(screen.getByText(/^2 members ·/)).toBeTruthy();
 });
 
@@ -273,7 +273,7 @@ it("checks the text of each variant form, linking to that form", async () => {
     variantFinding
       ?.querySelector('[aria-label="Edit this text in the form"]')
       ?.getAttribute("href"),
-  ).toBe("/forms/9?select=p1");
+  ).toBe("/tasks/forms/9?select=p1");
 });
 
 it("notes reading time from the longest variant form", async () => {
@@ -432,7 +432,7 @@ it("previews a task form as each kind of member among the action's own recipient
   });
   expect(api.visibilityProfileRequests).toEqual([{ userIds: [10, 11] }]);
   expect(screen.queryByText("Write", { selector: "summary" })).toBeNull();
-  expect(cards[1].getAttribute("href")).toBe("/forms/7?previewAs=11");
+  expect(cards[1].getAttribute("href")).toBe("/tasks/forms/7?previewAs=11");
   expect(cards[1].getAttribute("target")).toBe("_blank");
 });
 
@@ -482,7 +482,7 @@ it("lists each variant form whose conditions tell members apart as its own entry
   const cards = await within(entry).findAllByRole("link", {
     name: /1 member.*has city/,
   });
-  expect(cards[1].getAttribute("href")).toBe("/forms/9?previewAs=11");
+  expect(cards[1].getAttribute("href")).toBe("/tasks/forms/9?previewAs=11");
 });
 
 it("leaves out task forms that show every member the same thing", async () => {

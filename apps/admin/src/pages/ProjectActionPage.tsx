@@ -51,8 +51,8 @@ const ProjectActionPage = () => {
         replace
         to={
           action.project
-            ? `/projects/${action.project.id}/action/${action.id}`
-            : `/actions/${action.id}`
+            ? `/tasks/projects/${action.project.id}/tasks/${action.id}`
+            : `/tasks/${action.id}`
         }
       />
     );
@@ -65,7 +65,7 @@ const ProjectActionPage = () => {
     <div className="flex max-w-6xl flex-col gap-y-5 p-5">
       <title>{`${action.name} - Admin`}</title>
       <Link
-        to={`/projects/${projectId}`}
+        to={`/tasks/projects/${projectId}`}
         className="flex w-fit items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-900"
       >
         <ArrowLeft size={14} />
@@ -74,7 +74,7 @@ const ProjectActionPage = () => {
       <div className="flex items-center justify-between gap-x-3">
         <h1 className="text-xl font-bold">{action.name}</h1>
         <Link
-          to={`/actions/${action.id}`}
+          to={`/tasks/${action.id}`}
           className="flex items-center gap-x-1 text-sm text-blue-600 hover:underline"
         >
           Full dashboard

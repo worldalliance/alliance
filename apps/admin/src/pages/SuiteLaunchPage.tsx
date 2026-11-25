@@ -21,7 +21,7 @@ const SuiteLaunchPage = () => {
           suite={suite}
           addEvent={addEvent.mutateAsync}
           fetchSuite={() => refetchFresh(suiteQuery.refetch)}
-          onClose={() => navigate(`/suites/${suiteId}`)}
+          onClose={() => navigate(`/tasks/suites/${suiteId}`)}
         />
       ) : suiteQuery.isError ? (
         <p className="text-red-500">{suiteLoadError(suiteQuery.error)}</p>

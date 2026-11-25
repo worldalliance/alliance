@@ -103,7 +103,7 @@ export const adminSearchResults = ({
           [action.suite?.name, action.archived && "Archived"]
             .filter(Boolean)
             .join(" · ") || null,
-        to: href("/actions/:actionId", { actionId: String(action.id) }),
+        to: href("/tasks/:actionId", { actionId: String(action.id) }),
       }),
     ),
     ...startsFirst(suites.filter(matches), (s) => s.name, query).map(
@@ -111,7 +111,7 @@ export const adminSearchResults = ({
         kind: SearchKind.Suite,
         label: suite.name,
         detail: null,
-        to: href("/suites/:suiteId", { suiteId: String(suite.id) }),
+        to: href("/tasks/suites/:suiteId", { suiteId: String(suite.id) }),
       }),
     ),
     ...startsFirst(
@@ -124,7 +124,7 @@ export const adminSearchResults = ({
       kind: SearchKind.Member,
       label: member.name,
       detail: member.email,
-      to: href("/member/:userId", { userId: String(member.id) }),
+      to: href("/members/:userId", { userId: String(member.id) }),
     })),
     ...startsFirst(
       forms.filter((form) => matches({ id: form.id, name: form.title })),
@@ -134,14 +134,14 @@ export const adminSearchResults = ({
       kind: SearchKind.Form,
       label: form.title,
       detail: form.usedInAction?.name ?? null,
-      to: href("/forms/:formId", { formId: String(form.id) }),
+      to: href("/tasks/forms/:formId", { formId: String(form.id) }),
     })),
     ...startsFirst(groups.filter(matches), (g) => g.name, query).map(
       (group) => ({
         kind: SearchKind.Group,
         label: group.name,
         detail: null,
-        to: href("/groups/:id", { id: String(group.id) }),
+        to: href("/members/groups/:id", { id: String(group.id) }),
       }),
     ),
   ];

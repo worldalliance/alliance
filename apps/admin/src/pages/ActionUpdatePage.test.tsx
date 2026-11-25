@@ -63,16 +63,16 @@ const renderPage = (
   const router = createMemoryRouter(
     [
       {
-        path: "/actions/:actionId/updates/:updateId",
+        path: "/tasks/:actionId/updates/:updateId",
         element: (
           <LeaveGuard>
             <ActionUpdatePage />
           </LeaveGuard>
         ),
       },
-      { path: "/actions/:actionId", element: <p>Action page</p> },
+      { path: "/tasks/:actionId", element: <p>Action page</p> },
     ],
-    { initialEntries: [params.path ?? "/actions/2/updates/1"] },
+    { initialEntries: [params.path ?? "/tasks/2/updates/1"] },
   );
   render(
     <QueryClientProvider client={client}>
@@ -98,7 +98,7 @@ describe("ActionUpdatePage", () => {
   });
 
   it("says an update id that isn't a number is invalid", async () => {
-    renderPage({ path: "/actions/2/updates/abc" });
+    renderPage({ path: "/tasks/2/updates/abc" });
 
     expect(await screen.findByText("Invalid update id")).toBeTruthy();
   });
@@ -241,7 +241,7 @@ describe("ActionUpdatePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
     expect(await screen.findByText("Send notification?")).toBeTruthy();
 
-    await router.navigate("/actions/2/updates/2");
+    await router.navigate("/tasks/2/updates/2");
 
     await waitFor(() =>
       expect(screen.queryByText("Send notification?")).toBeNull(),
@@ -425,13 +425,13 @@ describe("ActionUpdatePage", () => {
       target: { value: "Hearing moved" },
     });
 
-    await router.navigate("/actions/2/updates/2");
+    await router.navigate("/tasks/2/updates/2");
     expect(await screen.findByText("Update not found")).toBeTruthy();
     expect(leaveAsked).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: /back/i }));
     expect(await screen.findByText("Action page")).toBeTruthy();
-    expect(router.state.location.pathname).toBe("/actions/2");
+    expect(router.state.location.pathname).toBe("/tasks/2");
     expect(leaveAsked).toHaveBeenCalledTimes(1);
   });
 });

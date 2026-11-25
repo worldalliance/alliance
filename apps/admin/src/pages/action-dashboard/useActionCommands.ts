@@ -13,7 +13,7 @@ export const useNavigateToCreatedAction = () => {
   const navigate = useNavigate();
   return useCallback(
     (action: ActionDto) => {
-      navigate(`/actions/${action.id}`);
+      navigate(`/tasks/${action.id}`);
     },
     [navigate],
   );

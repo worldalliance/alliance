@@ -58,6 +58,10 @@ export default function TextsPage() {
         </p>
       </div>
       <Form role="search" className="flex items-end gap-2">
+        {/* A search replaces the query, which also names this tab of the inbox. */}
+        {params.get("tab") && (
+          <input type="hidden" name="tab" value={params.get("tab") ?? ""} />
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor={searchId} className="text-xs text-zinc-600">
             Phone number
@@ -128,7 +132,7 @@ function ThreadRow({ thread }: { thread: ThreadSummaryDto }) {
   const at = new Date(thread.lastMessageAt);
   return (
     <Link
-      to={href("/texts/:threadId", { threadId: thread.threadId })}
+      to={href("/inbox/:threadId", { threadId: thread.threadId })}
       className="flex flex-col gap-0.5 px-3 py-2 hover:bg-zinc-50"
     >
       <div className="flex justify-between gap-2 text-sm">

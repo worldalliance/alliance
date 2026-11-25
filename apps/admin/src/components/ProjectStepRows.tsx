@@ -26,8 +26,8 @@ const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
 
 export const stepPath = (step: Pick<ProjectStep, "id" | "project">) =>
   step.project
-    ? `/projects/${step.project.id}/action/${step.id}`
-    : `/actions/${step.id}`;
+    ? `/tasks/projects/${step.project.id}/tasks/${step.id}`
+    : `/tasks/${step.id}`;
 
 const NextStep = ({
   step,

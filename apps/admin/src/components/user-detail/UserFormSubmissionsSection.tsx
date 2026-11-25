@@ -36,7 +36,7 @@ export default function UserFormSubmissionsSection({
             >
               <div className="flex items-center justify-between">
                 <Link
-                  to={`/forms/${response.formId}/responses`}
+                  to={`/tasks/forms/${response.formId}?tab=responses`}
                   className="font-medium text-blue-600 hover:underline"
                 >
                   {formLabel(displaySlugs, response.formId)}

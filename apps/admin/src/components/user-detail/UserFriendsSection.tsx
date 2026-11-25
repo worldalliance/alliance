@@ -38,7 +38,7 @@ export default function UserFriendsSection({ userId }: { userId: number }) {
 function FriendRow({ friend }: { friend: ProfileDto }) {
   return (
     <Link
-      to={`/member/${friend.id}`}
+      to={`/members/${friend.id}`}
       className="flex items-center gap-2 rounded px-1 py-1.5 hover:bg-zinc-50"
     >
       <AvatarProfile pfp={friend.profilePicture} size="small" />

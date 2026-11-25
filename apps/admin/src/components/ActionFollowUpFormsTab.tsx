@@ -208,7 +208,9 @@ export default function ActionFollowUpFormsTab({
                 <BaseButton
                   variant={BaseButtonVariant.BlueOutline}
                   onClick={() =>
-                    navigate(`/forms/${selectedForm.formId}/responses`)
+                    navigate(
+                      `/tasks/forms/${selectedForm.formId}?tab=responses`,
+                    )
                   }
                 >
                   View responses

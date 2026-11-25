@@ -121,7 +121,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 
   const goToSnapshots = useCallback(
     (formId: number) => {
-      navigate(`/forms/${formId}/snapshots`, {
+      navigate(`/tasks/forms/${formId}?tab=versions`, {
         state: {
           returnTo: `${location.pathname}${location.search}`,
         } satisfies ReturnToState,

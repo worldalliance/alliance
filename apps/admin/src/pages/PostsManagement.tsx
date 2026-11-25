@@ -120,7 +120,7 @@ const PostsManagementPage: React.FC = () => {
     setNotifyForReplies(post.notifyForReplies ?? false);
     setShowClusterTags(post.showClusterTags ?? false);
     setTagDrafts(toTagDrafts(post));
-    navigate(href(`/posts/:postId?`, { postId: post.id.toString() }));
+    navigate(href(`/content/posts/:postId?`, { postId: post.id.toString() }));
   };
 
   const handleSave = async () => {

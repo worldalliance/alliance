@@ -82,7 +82,7 @@ it("links each waiting number to its thread with its last text", async () => {
   renderPage();
 
   const sam = await screen.findByRole("link", { name: /Sam/ });
-  expect(sam.getAttribute("href")).toBe(`/texts/${threadIdOf(7)}`);
+  expect(sam.getAttribute("href")).toBe(`/inbox/${threadIdOf(7)}`);
   expect(sam.textContent).toContain("Is it still on?");
   expect(screen.getByRole("link", { name: /Kim/ }).textContent).toContain(
     "Sent an attachment",
@@ -102,7 +102,7 @@ it("names a waiting number no member has by its phone number", async () => {
   renderPage();
 
   const row = await screen.findByRole("link", { name: /\(415\) 555-0109/ });
-  expect(row.getAttribute("href")).toBe(`/texts/${threadIdOf(9)}`);
+  expect(row.getAttribute("href")).toBe(`/inbox/${threadIdOf(9)}`);
 });
 
 it("names an admin replying to a waiting number on its row, member or not", async () => {

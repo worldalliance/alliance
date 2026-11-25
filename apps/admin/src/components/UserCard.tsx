@@ -84,7 +84,7 @@ const UserCard = ({
       <div className="flex flex-row items-center gap-x-3 border-b pb-2 mb-2 border-zinc-200">
         <div className="flex flex-row items-center gap-x-3">
           <AvatarProfile pfp={user.profilePicture} size="large" />
-          <Link to={`/member/${user.id}`} className="text-base">
+          <Link to={`/members/${user.id}`} className="text-base">
             {user.name}
           </Link>
         </div>

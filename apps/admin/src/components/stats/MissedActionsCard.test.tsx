@@ -36,7 +36,7 @@ describe("MissedActionsCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "View actions" }));
 
     const member = await screen.findByRole("link", { name: "Ada Member" });
-    expect(member.getAttribute("href")).toBe("/member/7");
+    expect(member.getAttribute("href")).toBe("/members/7");
     expect(screen.getByText("Missed last two actions")).toBeTruthy();
     expect(screen.getByText("No members.")).toBeTruthy();
   });

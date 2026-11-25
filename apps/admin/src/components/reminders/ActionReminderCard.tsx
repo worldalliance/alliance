@@ -352,7 +352,7 @@ const ActionReminderCard = ({
                   key={plan.user.id}
                   className="p-3 flex flex-row gap-2 items-center"
                 >
-                  <Link to={`/member/${plan.user.id}`} target="_blank">
+                  <Link to={`/members/${plan.user.id}`} target="_blank">
                     {plan.user.name}
                   </Link>
                   <p className="text-xs text-gray-500">
@@ -395,7 +395,7 @@ const ActionReminderCard = ({
                       {notif.pushes?.length ? "push " : null}
                       {notif.notificationId != null && "in-app "}
                     </p>
-                    <Link to={`/member/${notif.user.id}`} target="_blank">
+                    <Link to={`/members/${notif.user.id}`} target="_blank">
                       {notif.user.displayName}
                     </Link>
                     <p className="text-sm text-zinc-500">

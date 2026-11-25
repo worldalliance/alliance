@@ -64,7 +64,7 @@ const GeneralUpdatesPage: React.FC = () => {
       <div className="flex items-center gap-x-2">
         <p className="font-bold text-lg">General Updates</p>
         <Button
-          onClick={() => navigate("/general-updates/new")}
+          onClick={() => navigate("/content/general-updates/new")}
           className="hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
           color={ButtonColor.Green}
         >

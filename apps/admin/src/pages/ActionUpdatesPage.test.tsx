@@ -45,5 +45,5 @@ it("groups every update into drafts, scheduled, and published", async () => {
   expect(screen.getByText(/^Publishes /)).toBeTruthy();
   expect(
     screen.getByRole("link", { name: "Still writing" }).getAttribute("href"),
-  ).toBe("/actions/4/updates/1");
+  ).toBe("/tasks/4/updates/1");
 });

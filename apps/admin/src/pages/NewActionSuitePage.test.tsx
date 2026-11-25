@@ -35,10 +35,10 @@ beforeEach(() => {
 const submit = (name = "Autumn") => {
   const router = createMemoryRouter(
     [
-      { path: "/new-suite", element: <NewActionSuitePage /> },
-      { path: "/suites/:suiteId", element: null },
+      { path: "/tasks/suites/new", element: <NewActionSuitePage /> },
+      { path: "/tasks/suites/:suiteId", element: null },
     ],
-    { initialEntries: ["/new-suite"] },
+    { initialEntries: ["/tasks/suites/new"] },
   );
   render(<RouterProvider router={router} />, queryWrapper());
   fireEvent.change(screen.getByLabelText("Suite name"), {
@@ -51,7 +51,9 @@ const submit = (name = "Autumn") => {
 it("opens the created suite", async () => {
   const router = submit();
 
-  await waitFor(() => expect(router.state.location.pathname).toBe("/suites/4"));
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe("/tasks/suites/4"),
+  );
 });
 
 it("shows the server's reason for refusing the suite", async () => {
@@ -69,7 +71,7 @@ it("asks for a name instead of creating a nameless suite", async () => {
   const router = submit("  ");
 
   expect(await screen.findByText("Give the suite a name.")).toBeTruthy();
-  expect(router.state.location.pathname).toBe("/new-suite");
+  expect(router.state.location.pathname).toBe("/tasks/suites/new");
 });
 
 it("clears the missing-name error once a name is typed", async () => {

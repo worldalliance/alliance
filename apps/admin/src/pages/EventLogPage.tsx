@@ -231,7 +231,7 @@ const EventLogPage: React.FC = () => {
                         <td className="py-3 px-2 whitespace-nowrap">
                           {event.user ? (
                             <Link
-                              to={`/member/${event.userId ?? event.user.id}`}
+                              to={`/members/${event.userId ?? event.user.id}`}
                               className="text-blue-600 hover:underline"
                             >
                               {event.user.displayName}

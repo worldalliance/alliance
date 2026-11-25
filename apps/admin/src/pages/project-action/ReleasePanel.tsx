@@ -34,7 +34,10 @@ const SuiteRelease = ({
       <p className="text-sm text-zinc-700">
         This action shares its suite with other actions, so scheduling it here
         would move them too.{" "}
-        <Link to={`/suites/${suiteId}`} className="text-blue-600 underline">
+        <Link
+          to={`/tasks/suites/${suiteId}`}
+          className="text-blue-600 underline"
+        >
           Schedule it from the suite page
         </Link>
         .
@@ -78,7 +81,7 @@ const ReleasePanel = (props: {
         <p className="text-sm text-zinc-700">
           This action has no suite. Schedule it from{" "}
           <Link
-            to={`/actions/${props.action.id}?tab=events`}
+            to={`/tasks/${props.action.id}?tab=events`}
             className="text-blue-600 underline"
           >
             Events

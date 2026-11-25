@@ -19,7 +19,7 @@ afterEach(() => {
 const renderMenu = () => {
   const router = createMemoryRouter([
     { path: "/", element: <CreateActionMenu /> },
-    { path: "/actions/:id", element: <p>Opened the pasted action</p> },
+    { path: "/tasks/:id", element: <p>Opened the pasted action</p> },
   ]);
   render(
     <QueryClientProvider client={new QueryClient()}>

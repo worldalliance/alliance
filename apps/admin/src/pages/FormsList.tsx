@@ -85,9 +85,9 @@ const FormsList: React.FC = () => {
   const handleEditForm = useCallback(
     (formId: number, actionId: number | undefined) => {
       if (actionId) {
-        navigate(`/actions/${actionId}?tab=form`);
+        navigate(`/tasks/${actionId}?tab=form`);
       } else {
-        navigate(`/forms/${formId}`);
+        navigate(`/tasks/forms/${formId}`);
       }
     },
     [navigate],
@@ -152,7 +152,9 @@ const FormsList: React.FC = () => {
                     <ResponsesButton
                       counts={responseCounts}
                       formId={form.id}
-                      onClick={() => navigate(`/forms/${form.id}/responses`)}
+                      onClick={() =>
+                        navigate(`/tasks/forms/${form.id}?tab=responses`)
+                      }
                     />
                   </div>
                 </div>

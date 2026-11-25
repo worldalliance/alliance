@@ -137,7 +137,7 @@ const ScheduledPlansPage = () => {
                             <div className="text-sm text-gray-600">
                               Auto-complete for{" "}
                               <Link
-                                to={`/actions/${item.action.id}`}
+                                to={`/tasks/${item.action.id}`}
                                 className="font-medium text-gray-900 hover:underline"
                               >
                                 {item.action.name}
@@ -169,7 +169,7 @@ const ScheduledPlansPage = () => {
                             <Link
                               key={user.id}
                               className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 hover:bg-zinc-100"
-                              to={`/member/${user.id}`}
+                              to={`/members/${user.id}`}
                             >
                               <AvatarProfile
                                 pfp={user.profilePicture ?? null}

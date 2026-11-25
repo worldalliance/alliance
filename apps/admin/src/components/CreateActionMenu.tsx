@@ -33,7 +33,7 @@ const CreateActionMenu = () => {
     );
     setPasteJsonLoading(false);
     if (result.ok) {
-      navigate(`/actions/${result.value.id}`);
+      navigate(`/tasks/${result.value.id}`);
       success("Action pasted");
     } else {
       error(result.error);
@@ -47,10 +47,10 @@ const CreateActionMenu = () => {
         Create
       </Menu.Trigger>
       <DropdownMenuContent align="end" className="min-w-36">
-        <DropdownMenuItem onClick={() => navigate("/actions/new")}>
+        <DropdownMenuItem onClick={() => navigate("/tasks/new")}>
           New action
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate("/new-suite")}>
+        <DropdownMenuItem onClick={() => navigate("/tasks/suites/new")}>
           New suite
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handlePasteJson} disabled={pasteJsonLoading}>

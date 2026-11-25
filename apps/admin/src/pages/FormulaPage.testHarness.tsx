@@ -118,9 +118,9 @@ export const serveFormulas = () => {
 export const renderPage = (path: string, cached?: FormulaDto[]) => {
   const router = createMemoryRouter(
     [
-      { path: "/formulas", element: <p>All formulas</p> },
+      { path: "/tasks/formulas", element: <p>All formulas</p> },
       {
-        path: "/formulas/:formulaId",
+        path: "/tasks/formulas/:formulaId",
         element: (
           <LeaveGuard>
             <FormulaPage />

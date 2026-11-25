@@ -91,7 +91,7 @@ const ActionSuitePage = () => {
         <Button
           color={ButtonColor.Black}
           onClick={() => {
-            navigate(`/actions/new?suiteId=${suiteId}`);
+            navigate(`/tasks/new?suiteId=${suiteId}`);
           }}
         >
           Add new action
@@ -122,7 +122,7 @@ const ActionSuitePage = () => {
             color={ButtonColor.Green}
             size="large"
             className="w-full text-lg"
-            onClick={() => navigate(`/suites/${suiteId}/launch`)}
+            onClick={() => navigate(`/tasks/suites/${suiteId}?tab=launch`)}
           >
             Begin launch process
           </Button>
@@ -150,7 +150,9 @@ const ActionSuitePage = () => {
           <h2 className="font-semibold text-sm">General updates</h2>
           <Button
             color={ButtonColor.Black}
-            onClick={() => navigate(`/general-updates/new?suiteId=${suiteId}`)}
+            onClick={() =>
+              navigate(`/content/general-updates/new?suiteId=${suiteId}`)
+            }
           >
             Create general update
           </Button>

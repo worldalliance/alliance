@@ -203,9 +203,7 @@ test("lists the history newest first and filters it", async () => {
   renderBatches();
 
   const link = await screen.findByRole("link", { name: "View its export" });
-  expect(link.getAttribute("href")).toBe(
-    "/kora-participants/assignments/a-live",
-  );
+  expect(link.getAttribute("href")).toBe("/research/assignments/a-live");
   expect(
     screen.getByText(/The assignment has since been deleted/),
   ).toBeTruthy();

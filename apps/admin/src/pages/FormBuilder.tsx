@@ -8,7 +8,7 @@ const FormBuilder: React.FC = () => {
   const navigate = useNavigate();
 
   const setFormId = (formId: number) => {
-    navigate(`/forms/${formId}`);
+    navigate(`/tasks/forms/${formId}`);
   };
 
   return (

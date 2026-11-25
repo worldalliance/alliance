@@ -28,7 +28,7 @@ const FILE_FIELD =
 function PreviewLink({ batchId }: { batchId: string }) {
   return (
     <Link
-      to={`/kora-participants/preview/${batchId}`}
+      to={`/research/preview/${batchId}`}
       aria-label="Preview a random transcript"
       title="Preview a random transcript"
       className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 text-zinc-700 hover:bg-zinc-50"

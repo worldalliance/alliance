@@ -14,7 +14,7 @@ const NewActionSuitePage = () => {
   const { createSuite } = useActionSuitesAdmin();
 
   const handleCancel = () => {
-    navigate("/actions");
+    navigate("/tasks?view=list");
   };
 
   const handleCreateSuite = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -31,7 +31,7 @@ const NewActionSuitePage = () => {
       setError(created.error);
       return;
     }
-    navigate(`/suites/${created.value.id}`);
+    navigate(`/tasks/suites/${created.value.id}`);
   };
 
   const nameError = submitted && !name.trim() ? "Give the suite a name." : null;

@@ -54,7 +54,7 @@ const PriorityFollowUps: React.FC<{
               </span>
               <HomePlacementBadges placement={placement} />
               <Link
-                to={`/actions/${parent.id}`}
+                to={`/tasks/${parent.id}`}
                 className="text-sm text-zinc-600 hover:text-zinc-900 underline"
               >
                 {parent.name}

@@ -56,7 +56,7 @@ const CommunityDetailPage: React.FC = () => {
   } = useDeleteCommunityAdmin({
     onSuccess: () => {
       if (community) success("Community deleted", community.name);
-      navigate(href("/groups"));
+      navigate(href("/members/groups"));
     },
     onError: (err) =>
       reportError(err, "Unable to delete community. Please try again."),
@@ -90,7 +90,7 @@ const CommunityDetailPage: React.FC = () => {
   }
 
   const backToGroupsLink = (
-    <Link to={href("/groups")} className="text-link hover:underline">
+    <Link to={href("/members/groups")} className="text-link hover:underline">
       ← Back to Groups
     </Link>
   );

@@ -77,7 +77,7 @@ const AwayMembersPage = () => {
                 <tr key={range.id}>
                   <td className="py-2 pr-4">
                     <Link
-                      to={href("/member/:userId", {
+                      to={href("/members/:userId", {
                         userId: String(range.userId),
                       })}
                       className="text-blue-600 hover:underline"

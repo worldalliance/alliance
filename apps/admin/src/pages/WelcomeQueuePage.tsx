@@ -146,7 +146,7 @@ const WelcomeQueuePage: React.FC = () => {
                           <AvatarProfile pfp={entry.user.profilePicture} />
                           <div>
                             <Link
-                              to={`/member/${entry.user.id}`}
+                              to={`/members/${entry.user.id}`}
                               className="font-medium text-blue-600 hover:underline"
                             >
                               {entry.user.displayName}

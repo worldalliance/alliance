@@ -83,7 +83,7 @@ export default function KoraAssignmentExportPage() {
   return (
     <div className="space-y-4 p-6 text-sm">
       <title>Kora assignment export - Admin</title>
-      <Link className="underline" to="/kora-participants">
+      <Link className="underline" to="/research">
         Back to Kora participants
       </Link>
       <h1 className="text-lg font-semibold">Assignment export</h1>

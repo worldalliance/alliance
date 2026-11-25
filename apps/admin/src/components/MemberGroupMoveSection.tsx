@@ -197,7 +197,7 @@ export default function MemberGroupMoveSection({
           {memberCommunities.map((community) => (
             <Link
               key={community.id}
-              to={`/groups/${community.id}`}
+              to={`/members/groups/${community.id}`}
               className="block text-sm text-blue-600 hover:underline"
             >
               {community.name}
@@ -212,7 +212,7 @@ export default function MemberGroupMoveSection({
               className="flex items-center gap-1.5 text-xs"
             >
               <Link
-                to={`/groups/${community.id}`}
+                to={`/members/groups/${community.id}`}
                 className="text-blue-600 hover:underline"
               >
                 {community.name}

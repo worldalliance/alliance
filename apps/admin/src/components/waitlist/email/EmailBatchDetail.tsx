@@ -40,7 +40,7 @@ const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
           title="Use again as a new draft"
           className={BORDERED_ICON_BUTTON_CLASS}
           onClick={() =>
-            navigate("/waitlist", { state: emailDraftState(draft) })
+            navigate("/growth/waitlist", { state: emailDraftState(draft) })
           }
         >
           <CopyPlus size={16} />

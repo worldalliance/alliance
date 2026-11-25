@@ -12,14 +12,14 @@ import {
 serveFormulas();
 
 test("saves a new formula and moves to its page, focusing Save", async () => {
-  const { router } = renderPage("/formulas/new");
+  const { router } = renderPage("/tasks/formulas/new");
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() =>
     expect(router.state.location.pathname).toBe(
-      `/formulas/${api.saves[0].edits[0].id}`,
+      `/tasks/formulas/${api.saves[0].edits[0].id}`,
     ),
   );
   expect(api.saves[0]).toEqual({
@@ -42,7 +42,7 @@ test("saves a new formula and moves to its page, focusing Save", async () => {
 
 test("opens on the fetched list rather than an older cached one", async () => {
   api.stored = [{ ...base, text: "3", versionId: 50 }, doubled];
-  renderPage(`/formulas/${base.id}`, [base, doubled]);
+  renderPage(`/tasks/formulas/${base.id}`, [base, doubled]);
   await screen.findByRole("heading", { name: "base" });
   expect(screen.getByLabelText(/^Formula/)).toHaveProperty("value", "3");
   typeText("Formula", "4");
@@ -53,13 +53,13 @@ test("opens on the fetched list rather than an older cached one", async () => {
 
 test("shows a failed fetch rather than opening on a cached list", async () => {
   api.listFails = true;
-  renderPage(`/formulas/${base.id}`, [base, doubled]);
+  renderPage(`/tasks/formulas/${base.id}`, [base, doubled]);
   await screen.findByText("Couldn't load formulas.");
   expect(screen.queryByLabelText(/^Formula/)).toBeNull();
 });
 
 test("opens a linked formula on a list fetched for it", async () => {
-  renderPage(`/formulas/${doubled.id}`);
+  renderPage(`/tasks/formulas/${doubled.id}`);
   await screen.findByRole("heading", { name: "doubled" });
   api.stored = [{ ...base, text: "3", versionId: 50 }, doubled];
   fireEvent.click(screen.getByRole("link", { name: "base" }));
@@ -72,7 +72,7 @@ test("opens a linked formula on a list fetched for it", async () => {
 });
 
 test("keeps unsaved edits through a refresh that fails", async () => {
-  const { client } = renderPage(`/formulas/${base.id}`);
+  const { client } = renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   api.listFails = true;
@@ -83,7 +83,7 @@ test("keeps unsaved edits through a refresh that fails", async () => {
 });
 
 test("keeps the fields read-only while the list reloads after a save", async () => {
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   let release = () => {};
@@ -99,7 +99,7 @@ test("keeps the fields read-only while the list reloads after a save", async () 
 });
 
 test("gives focus back to Save once a save remounts the editor", async () => {
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -109,7 +109,7 @@ test("gives focus back to Save once a save remounts the editor", async () => {
 });
 
 test("stays where the admin went while a new formula's page loads", async () => {
-  const { router } = renderPage("/formulas/new");
+  const { router } = renderPage("/tasks/formulas/new");
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
@@ -117,16 +117,16 @@ test("stays where the admin went while a new formula's page loads", async () => 
   api.listHeld = new Promise((resolve) => (release = resolve));
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await screen.findByText("Loading formula…");
-  await act(() => router.navigate("/formulas"));
+  await act(() => router.navigate("/tasks/formulas"));
   await act(async () => {
     release();
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
-  expect(router.state.location.pathname).toBe("/formulas");
+  expect(router.state.location.pathname).toBe("/tasks/formulas");
 });
 
 test("keeps the saved text when the list can't load after a save", async () => {
-  renderPage(`/formulas/${base.id}`);
+  renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   api.listFails = true;
@@ -145,7 +145,7 @@ test("keeps the saved text when the list can't load after a save", async () => {
 
 test("leaves without asking when the list can't load after a save", async () => {
   const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
-  const { router } = renderPage(`/formulas/${base.id}`);
+  const { router } = renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
   api.listFails = true;
@@ -153,14 +153,14 @@ test("leaves without asking when the list can't load after a save", async () => 
   await screen.findByText("Saved, but couldn't load it again.", {
     exact: false,
   });
-  await act(() => router.navigate("/formulas"));
-  expect(router.state.location.pathname).toBe("/formulas");
+  await act(() => router.navigate("/tasks/formulas"));
+  expect(router.state.location.pathname).toBe("/tasks/formulas");
   expect(confirm).not.toHaveBeenCalled();
   confirm.mockRestore();
 });
 
 test("moves to a new formula's page even when the list can't load after its save", async () => {
-  renderPage("/formulas/new");
+  renderPage("/tasks/formulas/new");
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
@@ -171,7 +171,7 @@ test("moves to a new formula's page even when the list can't load after its save
 });
 
 test("deletes after confirmation and returns to the list", async () => {
-  const { router, client } = renderPage(`/formulas/${doubled.id}`);
+  const { router, client } = renderPage(`/tasks/formulas/${doubled.id}`);
   await screen.findByRole("heading", { name: "doubled" });
   typeText("Name", "half_typed");
   api.listHeld = new Promise(() => {});
@@ -182,7 +182,9 @@ test("deletes after confirmation and returns to the list", async () => {
       (button) => button.textContent === "Delete formula",
     ) ?? dialog,
   );
-  await waitFor(() => expect(router.state.location.pathname).toBe("/formulas"));
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe("/tasks/formulas"),
+  );
   expect(screen.getByText("Deleted doubled.")).toBeTruthy();
   expect(client.getQueryData(queryKeys.formulasAdmin())).toEqual([base]);
   expect(api.saves).toEqual([
@@ -195,14 +197,14 @@ test("deletes after confirmation and returns to the list", async () => {
 });
 
 test("lists what it uses and what reads it", async () => {
-  renderPage(`/formulas/${doubled.id}`);
+  renderPage(`/tasks/formulas/${doubled.id}`);
   await screen.findByRole("heading", { name: "doubled" });
   expect(screen.getByRole("link", { name: "base" })).toBeTruthy();
   expect(screen.getByText("Nothing reads this formula yet.")).toBeTruthy();
 });
 
 test("says so for a formula that doesn't exist", async () => {
-  renderPage("/formulas/00000000-0000-4000-8000-0000000000ff");
+  renderPage("/tasks/formulas/00000000-0000-4000-8000-0000000000ff");
   expect(
     await screen.findByText("This formula doesn't exist, or was deleted."),
   ).toBeTruthy();

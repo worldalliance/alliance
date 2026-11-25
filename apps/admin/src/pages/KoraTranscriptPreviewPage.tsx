@@ -53,7 +53,7 @@ export default function KoraTranscriptPreviewPage() {
         >
           Show another transcript
         </button>
-        <Link className="underline" to="/kora-participants">
+        <Link className="underline" to="/research">
           Back to Kora participants
         </Link>
       </div>

@@ -82,7 +82,7 @@ const renderTab = (
               )
             }
           />
-          <Route path="/actions/4/updates/9" element={<p>Update 9</p>} />
+          <Route path="/tasks/4/updates/9" element={<p>Update 9</p>} />
         </Routes>
       </MemoryRouter>
     </ToastProvider>,
@@ -471,5 +471,5 @@ it("names each update's edit link after its update", () => {
 
   expect(
     screen.getByRole("link", { name: "Edit Older news" }).getAttribute("href"),
-  ).toBe("/actions/4/updates/8");
+  ).toBe("/tasks/4/updates/8");
 });

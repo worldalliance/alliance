@@ -54,7 +54,7 @@ export default function MemberTextsSection({
       headerLink={
         threadId && (
           <Link
-            to={href("/texts/:threadId", { threadId })}
+            to={href("/inbox/:threadId", { threadId })}
             className="text-sm underline text-zinc-700"
           >
             Open this number&apos;s thread

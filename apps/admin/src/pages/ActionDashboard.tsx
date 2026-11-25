@@ -119,7 +119,7 @@ const ActionDashboard: React.FC = () => {
   });
 
   const handleCancel = useCallback(() => {
-    navigate("/actions");
+    navigate("/tasks?view=list");
   }, [navigate]);
 
   const [checklistCollapsed, setChecklistCollapsed] = useState(true);
@@ -195,7 +195,7 @@ const ActionDashboard: React.FC = () => {
               </a>
             )}
             <Link
-              to="/actions"
+              to="/tasks?view=list"
               className="py-1 text-gray-600 hover:text-gray-800"
             >
               ← Back to actions

@@ -42,7 +42,7 @@ const renderSearch = () =>
       <AdminSearch />
       <Routes>
         <Route path="/" element={null} />
-        <Route path="/member/:userId" element={<p>Member page</p>} />
+        <Route path="/members/:userId" element={<p>Member page</p>} />
       </Routes>
     </MemoryRouter>,
     queryWrapper(),

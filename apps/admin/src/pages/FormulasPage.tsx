@@ -23,7 +23,7 @@ const FormulasPage: React.FC = () => {
             both.
           </p>
         </div>
-        <Button to="/formulas/new" color={ButtonColor.Black} size="small">
+        <Button to="/tasks/formulas/new" color={ButtonColor.Black} size="small">
           New formula
         </Button>
       </div>
@@ -55,7 +55,7 @@ const FormulasPage: React.FC = () => {
               <tr key={formula.id} className="border-b border-zinc-100">
                 <td className="py-2 pr-4">
                   <Link
-                    to={`/formulas/${formula.id}`}
+                    to={`/tasks/formulas/${formula.id}`}
                     className="font-mono underline text-zinc-900"
                   >
                     {formula.name}

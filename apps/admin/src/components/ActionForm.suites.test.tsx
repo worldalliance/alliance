@@ -59,7 +59,7 @@ describe("ActionForm suites", () => {
       screen
         .getByRole("link", { name: "Edit the suite's partition" })
         .getAttribute("href"),
-    ).toBe("/suites/3");
+    ).toBe("/tasks/suites/3");
   });
 
   it("shows no optional work, prerequisites or participants until the suites load", () => {

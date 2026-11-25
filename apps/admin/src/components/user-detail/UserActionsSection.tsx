@@ -53,7 +53,7 @@ export default function UserActionsSection({ userId }: { userId: number }) {
                   <tr key={action.id} className="hover:bg-zinc-50">
                     <td className="px-3 py-2">
                       <Link
-                        to={`/actions/${action.id}`}
+                        to={`/tasks/${action.id}`}
                         className="text-blue-600 hover:underline"
                       >
                         {action.name}

@@ -25,7 +25,7 @@ const PartitionPartProblem: React.FC<{
 }> = ({ problem, onFix }) => (
   <div className="flex items-center gap-3">
     <Link
-      to={`/suites/${problem.partition.suiteId}`}
+      to={`/tasks/suites/${problem.partition.suiteId}`}
       target="_blank"
       className="text-sm underline"
     >
@@ -78,7 +78,7 @@ const OtherFormulaProblems: React.FC<{
               ) : (
                 <div className="flex items-center gap-3">
                   <Link
-                    to={`/formulas/${problem.id}`}
+                    to={`/tasks/formulas/${problem.id}`}
                     target="_blank"
                     className="font-mono text-sm underline"
                   >

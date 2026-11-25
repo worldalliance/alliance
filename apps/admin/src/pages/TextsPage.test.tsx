@@ -66,10 +66,10 @@ beforeEach(() => {
   failPage = null;
 });
 
-const renderPage = (path = "/texts", live = OFFLINE) => {
+const renderPage = (path = "/inbox?tab=all", live = OFFLINE) => {
   const { wrapper: Wrapper } = queryWrapper();
   const router = createMemoryRouter(
-    [{ path: "/texts", element: <TextsPage /> }],
+    [{ path: "/inbox", element: <TextsPage /> }],
     { initialEntries: [path] },
   );
   render(
@@ -83,7 +83,7 @@ const renderPage = (path = "/texts", live = OFFLINE) => {
 };
 
 it("names an admin replying on that number's row", async () => {
-  renderPage("/texts", {
+  renderPage("/inbox?tab=all", {
     ...OFFLINE,
     composers: [
       { phoneNumber: summary(2).phoneNumber, adminId: 2, adminName: "Priya" },
@@ -102,7 +102,7 @@ it("lists threads by member name or number, linking to each", async () => {
 
   const sam = await screen.findByRole("link", { name: /Sam/ });
   expect(sam.getAttribute("href")).toBe(
-    "/texts/00000000-0000-4000-8000-000000000001",
+    "/inbox/00000000-0000-4000-8000-000000000001",
   );
   expect(sam.textContent).toContain("(415) 555-0101");
   expect(sam.textContent).toContain("Staff: See you there");
@@ -121,24 +121,24 @@ it("searches by the number typed, keeping it in the URL", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
   await waitFor(() => expect(requests.at(-1)?.get("search")).toBe("(415) 555"));
-  expect(router.state.location.search).toBe("?search=%28415%29+555");
+  expect(router.state.location.search).toBe("?tab=all&search=%28415%29+555");
 });
 
 it("pages to older texts and back", async () => {
-  renderPage("/texts?page=2");
+  renderPage("/inbox?tab=all&page=2");
 
   expect(await screen.findByText("Text 3")).toBeTruthy();
   expect(requests.at(-1)?.get("page")).toBe("2");
   expect(
     screen.getByRole("link", { name: "Newer texts" }).getAttribute("href"),
-  ).toBe("/texts?page=1");
+  ).toBe("/inbox?tab=all&page=1");
   expect(
     screen.getByRole("link", { name: "Older texts" }).getAttribute("href"),
-  ).toBe("/texts?page=3");
+  ).toBe("/inbox?tab=all&page=3");
 });
 
 it("says when a search matches nothing", async () => {
-  renderPage("/texts?search=999");
+  renderPage("/inbox?tab=all&search=999");
 
   expect(
     await screen.findByText("No phone number matches that search."),
@@ -156,14 +156,14 @@ it("keeps the current page up while the next loads, offering no page past it", a
   );
   expect(
     screen.getByRole("link", { name: "Newer texts" }).getAttribute("href"),
-  ).toBe("/texts?page=1");
+  ).toBe("/inbox?tab=all&page=1");
   expect(screen.queryByRole("link", { name: "Older texts" })).toBeNull();
   expect(await screen.findByText("Text 3")).toBeTruthy();
   expect(screen.queryByText("Loading texts…")).toBeNull();
 });
 
 it("asks for digits instead of listing every thread for a name", async () => {
-  renderPage("/texts?search=Sam");
+  renderPage("/inbox?tab=all&search=Sam");
 
   expect(
     await screen.findByText("Search by the digits of a phone number."),
@@ -190,20 +190,20 @@ it("drops the previous rows while a new search loads", async () => {
 });
 
 it("says no more texts past the last page of a search", async () => {
-  renderPage("/texts?search=999&page=3");
+  renderPage("/inbox?tab=all&search=999&page=3");
 
   expect(await screen.findByText("No more texts.")).toBeTruthy();
 });
 
 it("offers the newer page when a page fails to load", async () => {
   failPage = "5";
-  renderPage("/texts?page=5");
+  renderPage("/inbox?tab=all&page=5");
 
   expect(
     (await screen.findByRole("link", { name: "Newer texts" })).getAttribute(
       "href",
     ),
-  ).toBe("/texts?page=4");
+  ).toBe("/inbox?tab=all&page=4");
 });
 
 it("dates a row from yesterday once the page stays open past midnight", () => {
@@ -216,8 +216,8 @@ it("dates a row from yesterday once the page stays open past midnight", () => {
     hasMore: false,
   });
   const router = createMemoryRouter(
-    [{ path: "/texts", element: <TextsPage /> }],
-    { initialEntries: ["/texts"] },
+    [{ path: "/inbox", element: <TextsPage /> }],
+    { initialEntries: ["/inbox?tab=all"] },
   );
   render(
     <Wrapper>

@@ -58,7 +58,7 @@ const VideoDetail: React.FC = () => {
         <div className="flex items-center gap-4">
           <Button
             color={ButtonColor.Transparent}
-            onClick={() => navigate("/videos")}
+            onClick={() => navigate("/content/media?tab=videos")}
             className="!px-2"
           >
             &larr; Back

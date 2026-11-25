@@ -59,7 +59,7 @@ describe("FormBuilder saving a new form", () => {
     const router = createMemoryRouter(
       [
         {
-          path: "/forms/:formId",
+          path: "/tasks/forms/:formId",
           element: (
             <LeaveGuard>
               <FormBuilderPage />
@@ -67,7 +67,7 @@ describe("FormBuilder saving a new form", () => {
           ),
         },
       ],
-      { initialEntries: ["/forms/new"] },
+      { initialEntries: ["/tasks/forms/new"] },
     );
     render(
       <SiteOriginLinkProvider origin="https://worldalliance.org">
@@ -84,7 +84,7 @@ describe("FormBuilder saving a new form", () => {
     fireEvent.click(screen.getByText("Save Form"));
 
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/forms/5"),
+      expect(router.state.location.pathname).toBe("/tasks/forms/5"),
     );
     expect(leaveAsked).not.toHaveBeenCalled();
   });

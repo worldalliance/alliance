@@ -34,7 +34,7 @@ const UpdateRow = ({
   <tr className="border-t border-zinc-200">
     <td className="px-3 py-2">
       <Link
-        to={href("/actions/:actionId/updates/:updateId", {
+        to={href("/tasks/:actionId/updates/:updateId", {
           actionId: String(update.actionId),
           updateId: String(update.id),
         })}
@@ -45,7 +45,7 @@ const UpdateRow = ({
     </td>
     <td className="px-3 py-2">
       <Link
-        to={href("/actions/:actionId", { actionId: String(update.actionId) })}
+        to={href("/tasks/:actionId", { actionId: String(update.actionId) })}
         className="text-zinc-700 hover:underline"
       >
         {update.actionName ?? `Action #${update.actionId}`}

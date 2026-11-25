@@ -21,7 +21,7 @@ const MakeProject = ({
   const navigate = useNavigate();
   const [naming, setNaming] = useState(false);
   const create = useCreateProjectAdmin({
-    onSuccess: (created) => navigate(`/projects/${created.id}`),
+    onSuccess: (created) => navigate(`/tasks/projects/${created.id}`),
     onError: (error) =>
       toast.error(
         errorMessage({ error, fallback: "Could not create the project" }),
@@ -62,8 +62,8 @@ const ProjectCardTile = ({
 }) => {
   const href =
     card.kind === ProjectCardKind.Project
-      ? `/projects/${card.project.id}`
-      : `/actions/${card.action.id}`;
+      ? `/tasks/projects/${card.project.id}`
+      : `/tasks/${card.action.id}`;
   return (
     <article className="relative flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 hover:border-zinc-300 hover:shadow-sm">
       <header className="flex flex-col gap-1.5">

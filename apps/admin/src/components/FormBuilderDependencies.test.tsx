@@ -193,7 +193,7 @@ describe("FormBuilder dependency links", () => {
     const source = links("Depends on").getByRole("link", {
       name: "x (form 7), opens in a new tab",
     });
-    expect(source.getAttribute("href")).toBe("/forms/7?select=x");
+    expect(source.getAttribute("href")).toBe("/tasks/forms/7?select=x");
     expect(source.getAttribute("target")).toBe("_blank");
   });
 

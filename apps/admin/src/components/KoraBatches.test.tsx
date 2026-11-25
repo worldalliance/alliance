@@ -105,9 +105,7 @@ test("uploads the transcripts file with the settings, then offers a preview", as
   const links = await screen.findAllByRole("link", {
     name: "Preview a random transcript",
   });
-  expect(links[0].getAttribute("href")).toBe(
-    "/kora-participants/preview/b-new",
-  );
+  expect(links[0].getAttribute("href")).toBe("/research/preview/b-new");
   await waitFor(() =>
     expect(screen.queryByText(/No transcripts yet/)).toBeNull(),
   );

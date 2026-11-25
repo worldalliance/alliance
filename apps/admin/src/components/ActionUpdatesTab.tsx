@@ -104,7 +104,7 @@ const ActionUpdatesTab = ({
     }
     setNewUpdate(defaultNewUpdate);
     setSubmitAttempted(false);
-    navigate(`/actions/${actionId}/updates/${created.value.id}`);
+    navigate(`/tasks/${actionId}/updates/${created.value.id}`);
   };
 
   const handleDelete = async (update: ActionUpdateDto, button: HTMLElement) => {
@@ -326,7 +326,7 @@ const ActionUpdatesTab = ({
                   </span>
                 )}
                 <Link
-                  to={`/actions/${actionId}/updates/${update.id}`}
+                  to={`/tasks/${actionId}/updates/${update.id}`}
                   aria-label={`Edit ${update.title}`}
                   className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900"
                 >

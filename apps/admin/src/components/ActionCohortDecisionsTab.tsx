@@ -89,7 +89,7 @@ export default function ActionCohortDecisionsTab({
               className="border-t border-gray-2 align-top [&>td]:py-2"
             >
               <td>
-                <Link to={`/member/${row.userId}`} className="hover:underline">
+                <Link to={`/members/${row.userId}`} className="hover:underline">
                   {row.userName}
                 </Link>
                 {row.corrections.map((correction) => (
