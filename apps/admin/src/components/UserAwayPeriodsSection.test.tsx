@@ -6,7 +6,13 @@ import type {
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import UserAwayPeriodsSection from "./UserAwayPeriodsSection";
 
 const trip: UserAwayRangeDto = {
@@ -215,5 +221,39 @@ it("deletes a range once confirmed", async () => {
     expect(writes).toEqual([
       { method: "DELETE", path: "/user/admin/7/awayranges/1", body: null },
     ]),
+  );
+});
+
+it("opens the edit form unclipped, in view, with focus on its first field", async () => {
+  const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+  renderSection();
+  await screen.findByText(/Family trip/);
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit away period" }));
+
+  const form = screen.getByRole("group", { name: "Edit away period" });
+  const save = within(form).getByRole("button", { name: "Save" });
+  expect(save.closest(".overflow-y-auto")).toBe(null);
+  expect(scroll.mock.contexts).toContain(form);
+  expect(document.activeElement).toBe(within(form).getByLabelText("Start"));
+  scroll.mockRestore();
+});
+
+it("returns focus to the period's edit button when its form closes", async () => {
+  renderSection();
+  await screen.findByText(/Family trip/);
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit away period" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Edit away period" }),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit away period" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Edit away period" }),
+    ),
   );
 });

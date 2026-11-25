@@ -26,7 +26,7 @@ import FormInput from "@alliance/sharedweb/ui/FormInput";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Pencil, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 
@@ -62,6 +62,9 @@ export default function UserAwayPeriodsSection({
     UserAwayRangeReason | ""
   >("");
   const [editAwayNote, setEditAwayNote] = useState("");
+  const editFormRef = useRef<HTMLDivElement>(null);
+  const editButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const returnFocusToId = useRef<number | null>(null);
   const { confirm, success } = useToast();
   const isAwayMutationPending =
     createAwayRange.isPending ||
@@ -76,12 +79,30 @@ export default function UserAwayPeriodsSection({
   }, []);
 
   const cancelAwayEdit = useCallback(() => {
+    returnFocusToId.current = editingAwayRangeId;
     setEditingAwayRangeId(null);
     setEditAwayStartDate("");
     setEditAwayEndDate("");
     setEditAwayReason("");
     setEditAwayNote("");
-  }, []);
+  }, [editingAwayRangeId]);
+
+  useEffect(() => {
+    const form = editFormRef.current;
+    if (!form) return;
+    form.scrollIntoView({ block: "nearest" });
+    form.querySelector("input")?.focus({ preventScroll: true });
+  }, [editingAwayRangeId]);
+
+  // Edit buttons stay disabled until the mutation settles, and a disabled
+  // button can't take focus.
+  useEffect(() => {
+    const id = returnFocusToId.current;
+    if (id === null || editingAwayRangeId !== null || isAwayMutationPending)
+      return;
+    editButtonRefs.current.get(id)?.focus();
+    returnFocusToId.current = null;
+  }, [editingAwayRangeId, isAwayMutationPending]);
 
   const startAwayEdit = useCallback((range: UserAwayRangeDto) => {
     const opened = {
@@ -235,7 +256,12 @@ export default function UserAwayPeriodsSection({
       {awayRangesQuery.isPending ? (
         <Spinner size="small" />
       ) : !awayRangesQuery.data ? null : sortedAwayRanges.length ? (
-        <div className="space-y-2 max-h-48 overflow-y-auto">
+        <div
+          className={cn(
+            "space-y-2",
+            editingAwayRangeId === null && "max-h-48 overflow-y-auto",
+          )}
+        >
           {sortedAwayRanges.map((range) => {
             const status = awayRangeStatus(range);
             return (
@@ -258,7 +284,12 @@ export default function UserAwayPeriodsSection({
                   </span>
                 </div>
                 {editingAwayRangeId === range.id ? (
-                  <div className="mt-2 space-y-2">
+                  <div
+                    ref={editFormRef}
+                    role="group"
+                    aria-label="Edit away period"
+                    className="mt-2 space-y-2 scroll-mb-3"
+                  >
                     <div className="grid grid-cols-2 gap-2">
                       <label className="text-xs text-zinc-600">
                         <span className="block mb-1">Start</span>
@@ -331,6 +362,11 @@ export default function UserAwayPeriodsSection({
                     </p>
                     <div className="flex items-center gap-1">
                       <button
+                        ref={(button) => {
+                          if (button)
+                            editButtonRefs.current.set(range.id, button);
+                          else editButtonRefs.current.delete(range.id);
+                        }}
                         type="button"
                         className="p-1 text-zinc-500 hover:text-zinc-800 disabled:opacity-50"
                         onClick={() => startAwayEdit(range)}
