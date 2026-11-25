@@ -366,6 +366,34 @@ it("keeps the text and asks again when newer texts arrived while writing", async
   expect(document.activeElement).toBe(screen.getByLabelText("Text Sam"));
 });
 
+it("keeps focus in the box when Send anyway is pressed as the warning appears", async () => {
+  const sent: string[] = [];
+  let refuse = true;
+  renderComposer({
+    send: async (body) => {
+      if (refuse) {
+        refuse = false;
+        throw { statusCode: 409, error: "newer_texts" };
+      }
+      sent.push(body);
+    },
+    now: NOON_IN_LA,
+  });
+  // Clicks right after the commit that shows the warning, before React's passive effects run.
+  const observer = new MutationObserver(() => {
+    const sendAnyway = screen.queryByRole("button", { name: "Send anyway" });
+    if (!sendAnyway) return;
+    observer.disconnect();
+    fireEvent.click(sendAnyway);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  await waitFor(() => expect(sent).toEqual(["See you Tuesday"]));
+  expect(document.activeElement).toBe(screen.getByLabelText("Text Sam"));
+});
+
 it("asks about quiet hours when they began while staff read the newer texts", async () => {
   jest.useFakeTimers();
   const beforeEight = new Date("2026-11-12T03:59:00Z");

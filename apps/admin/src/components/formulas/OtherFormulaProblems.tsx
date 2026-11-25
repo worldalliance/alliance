@@ -1,8 +1,8 @@
 import type {
   FormulaDto,
   FormulaProblemDto,
+  PartitionPartRefDto,
   SaveProblemKind,
-  SplitGroupRefDto,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import NewTabMark from "@alliance/sharedweb/ui/NewTabMark";
@@ -17,17 +17,20 @@ const IN_A_FORMULA: Record<SaveProblemKind, boolean> = {
   dependent: false,
 };
 
-const SplitGroupProblem: React.FC<{
-  problem: FormulaProblemDto & { split: SplitGroupRefDto };
-  onFix: (problem: FormulaProblemDto & { split: SplitGroupRefDto }) => void;
+const PartitionPartProblem: React.FC<{
+  problem: FormulaProblemDto & { partition: PartitionPartRefDto };
+  onFix: (
+    problem: FormulaProblemDto & { partition: PartitionPartRefDto },
+  ) => void;
 }> = ({ problem, onFix }) => (
   <div className="flex items-center gap-3">
     <Link
-      to={`/suites/${problem.split.suiteId}`}
+      to={`/suites/${problem.partition.suiteId}`}
       target="_blank"
       className="text-sm underline"
     >
-      Group &quot;{problem.split.groupName}&quot; of {problem.split.suiteName}
+      Part &quot;{problem.partition.partName}&quot; of{" "}
+      {problem.partition.suiteName}
       <NewTabMark />
     </Link>
     <Button
@@ -41,19 +44,19 @@ const SplitGroupProblem: React.FC<{
 );
 
 /**
- * Problems refusing a save in formulas the page isn't editing or in split
- * groups, each with a way to fix it in the same save. A formula the save reads
+ * Problems refusing a save in formulas the page isn't editing or in partition
+ * parts, each with a way to fix it in the same save. A formula the save reads
  * can be listed without the save having broken it.
  */
 const OtherFormulaProblems: React.FC<{
   problems: FormulaProblemDto[];
   formulas: FormulaDto[];
   onFix: (formula: FormulaDto, problem: FormulaProblemDto) => void;
-  onFixGroup: (
-    problem: FormulaProblemDto & { split: SplitGroupRefDto },
+  onFixPart: (
+    problem: FormulaProblemDto & { partition: PartitionPartRefDto },
   ) => void;
   heading: string;
-}> = ({ problems, formulas, onFix, onFixGroup, heading }) => {
+}> = ({ problems, formulas, onFix, onFixPart, heading }) => {
   if (problems.length === 0) return null;
   return (
     <section className="border border-red-300 rounded p-4 space-y-4 max-w-3xl">
@@ -64,12 +67,12 @@ const OtherFormulaProblems: React.FC<{
           return (
             <li key={`${problem.kind}:${problem.id}`} className="space-y-2">
               {!IN_A_FORMULA[problem.kind] ? (
-                problem.split === undefined ? (
+                problem.partition === undefined ? (
                   <p className="font-mono text-sm">{problem.id}</p>
                 ) : (
-                  <SplitGroupProblem
-                    problem={{ ...problem, split: problem.split }}
-                    onFix={onFixGroup}
+                  <PartitionPartProblem
+                    problem={{ ...problem, partition: problem.partition }}
+                    onFix={onFixPart}
                   />
                 )
               ) : (

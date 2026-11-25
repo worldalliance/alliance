@@ -1,5 +1,4 @@
 import { expect, type Page, test } from "@playwright/test";
-import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -8,7 +7,6 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import path from "node:path";
 import { CaptureRecordKind } from "../src/main/agent/claude/testing/capture";
 import { AgentKind } from "../src/shared/agent-kind";
 import { IpcChannel } from "../src/shared/ipc";
@@ -342,25 +340,23 @@ test("a failed sign-in whose check then fails keeps both errors under Details", 
   await app.close();
 });
 
-test("Check again, but not a held Enter's repeats, finds Claude Code installed while the app runs", async () => {
-  const bin = test.info().outputPath("bin");
-  mkdirSync(bin);
+test("Check again, but not a held Enter's repeats, finds a Claude Code that appears at its executable path while the app runs", async () => {
+  const claude = test.info().outputPath("claude");
   const { app, page } = await launch({
     captures: [authStatusCapture(false)],
-    path: [bin, "/usr/bin", "/bin"].join(path.delimiter),
+    claude,
   });
   await expect(
     page.getByRole("heading", { name: "Claude isn't available" }),
   ).toBeVisible();
-  // The narrowed PATH has no bun, so the worktree list shows an alert of its own.
   const signIn = page
     .getByRole("alert")
-    .filter({ hasText: "check your Claude sign-in" });
+    .filter({ hasText: "signed in to Claude" });
   await expect(signIn.locator("p")).toHaveText(
-    "Alliance agent couldn't check your Claude sign-in. Make sure Claude Code is installed and runs, then check again.",
+    "Alliance agent couldn't check whether you're signed in to Claude.",
   );
   await expect(signIn.locator("pre")).toContainText(
-    "couldn't find Claude Code. Install Claude Code",
+    `couldn't find Claude Code at ${claude}`,
   );
   const checkAgain = page.getByRole("button", { name: "Check again" });
   await expect(checkAgain).toBeFocused();
@@ -372,15 +368,11 @@ test("Check again, but not a held Enter's repeats, finds Claude Code installed w
     page.locator("button:not([data-pressed])", { hasText: "Check again" }),
   ).toBeFocused();
 
-  // The stub's shebang needs bun, which the narrowed PATH leaves out.
-  const bun = execFileSync("sh", ["-c", "command -v bun"], {
-    encoding: "utf8",
-  }).trim();
   writeFileSync(
-    path.join(bin, "claude"),
-    `#!/bin/sh\nsleep 1\nexec "${bun}" "${process.env[claudeExecutableVariable]}" "$@"\n`,
+    claude,
+    `#!/bin/sh\nsleep 1\nexec "${process.env[claudeExecutableVariable]}" "$@"\n`,
   );
-  chmodSync(path.join(bin, "claude"), 0o755);
+  chmodSync(claude, 0o755);
   await page.keyboard.down("Enter");
   await page.keyboard.up("Enter");
   // The found CLI's check takes a second, so the wait lets a wrong one show.

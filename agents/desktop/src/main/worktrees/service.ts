@@ -57,7 +57,7 @@ export class WorktreeService {
       checkout: () => string | undefined;
       repositoryUrl: string;
       findGit: () => Promise<Result<Git, string>>;
-      findBun: () => Result<Bun, Error>;
+      findBun: () => Promise<Result<Bun, Error>>;
       store: WorktreeStore;
       /** Closes the app's sessions in folder, resolving once their CLIs have exited. */
       closeSessionsIn: (folder: string) => Promise<void>;
@@ -128,11 +128,11 @@ export class WorktreeService {
     });
   }
 
-  private list(checkout: string): Promise<Result<ListedWorktree[], Error>> {
-    const bun = this.params.findBun();
-    return bun.ok
-      ? listWorktrees({ bun: bun.value, checkout })
-      : Promise.resolve(bun);
+  private async list(
+    checkout: string,
+  ): Promise<Result<ListedWorktree[], Error>> {
+    const bun = await this.params.findBun();
+    return bun.ok ? listWorktrees({ bun: bun.value, checkout }) : bun;
   }
 
   /** Creates a worktree named after input.name. Fails when that has no letter from a to z or digit, or when the worktree couldn't be created, leaving the creation in the list with what went wrong until it is retried or dismissed. */

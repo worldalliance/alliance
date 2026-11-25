@@ -13,9 +13,9 @@ import {
 } from "src/datasources/soft-delete";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import {
-  assertNoSplitLaunch,
-  followSplitGrid,
-} from "src/suite-splits/split-guards";
+  assertNoPartitionLaunch,
+  followGrid,
+} from "src/suite-partitions/partition-guards";
 import { Form } from "src/tasks/entities/form.entity";
 import { User } from "src/user/entities/user.entity";
 import type {
@@ -159,8 +159,8 @@ export class ActionsService {
       write: async (em) => {
         const inserted = await em.save(Action, action);
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
-        await followSplitGrid(em, { actionIds: [inserted.id], entering: true });
-        // A split suite's grid may have set the optional flag.
+        await followGrid(em, { actionIds: [inserted.id], entering: true });
+        // A partitioned suite's grid may have set the optional flag.
         inserted.optional = (
           await em.findOneByOrFail(Action, { id: inserted.id })
         ).optional;
@@ -401,7 +401,7 @@ export class ActionsService {
 
     const suiteAfter = suiteId === undefined ? oldSuiteId : suiteId;
     // One transaction keeps a failed save from dropping replaced reviewers.
-    // The suite is locked before the action, the order a split save takes.
+    // The suite is locked before the action, the order a partition save takes.
     await writeUnderLive(this.actionRepository.manager, {
       parents: [
         ...(suiteAfter == null
@@ -429,11 +429,11 @@ export class ActionsService {
           });
         }
         await em.save(Action, action);
-        await followSplitGrid(em, {
+        await followGrid(em, {
           actionIds: [id],
           entering: suiteId != null && suiteId !== oldSuiteId,
         });
-        await assertNoSplitLaunch(em, [id]);
+        await assertNoPartitionLaunch(em, [id]);
         if (newName !== undefined && suiteId != null) {
           await renameSoleActionSuite(em, {
             suiteId,

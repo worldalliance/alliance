@@ -1,12 +1,19 @@
-import { SPLIT_LAUNCH_REFUSED } from "@alliance/common/suite-split";
-import type { ActionSuiteDto, SuiteSplitDto } from "@alliance/shared/client";
+import { NodeEnv } from "@alliance/common/node-env";
+import { PARTITION_LAUNCH_REFUSED } from "@alliance/common/suite-partition";
+import type {
+  ActionSuiteDto,
+  SuitePartitionDto,
+} from "@alliance/shared/client";
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
+import { deployedWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, jest, spyOn } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../components/LeaveGuard";
 import ActionSuitePage from "./ActionSuitePage";
 import SuiteLaunchPage from "./SuiteLaunchPage";
 
@@ -19,10 +26,10 @@ const loadSuite = () =>
     events: [makeEvent({ id: 1, title: "Launch" })],
     reminderGroups: [],
     generalUpdates: [],
-    usesGroups: false,
+    isPartitioned: false,
   } satisfies ActionSuiteDto);
 const unlaunchedSuite =
-  (events: ActionSuiteDto["events"], usesGroups = false) =>
+  (events: ActionSuiteDto["events"], isPartitioned = false) =>
   () =>
     Response.json({
       id: 3,
@@ -31,11 +38,11 @@ const unlaunchedSuite =
       events,
       reminderGroups: [],
       generalUpdates: [],
-      usesGroups,
+      isPartitioned,
     } satisfies ActionSuiteDto);
-const split = {
+const partition = {
   versionId: 1,
-  groups: [
+  parts: [
     {
       id: "00000000-0000-4000-8000-0000000000e1",
       name: "Everyone else",
@@ -49,7 +56,7 @@ const split = {
   launched: false,
   launchFailedAt: null,
   launchFailure: null,
-} satisfies SuiteSplitDto;
+} satisfies SuitePartitionDto;
 let suiteLoad = loadSuite;
 let eventDelete = failure;
 let eventEdit = failure;
@@ -58,7 +65,7 @@ serveApi(
   routes(
     {
       "GET /actions/suite/:id": () => suiteLoad(),
-      "GET /actions/suite/:suiteId/split": () => Response.json(split),
+      "GET /actions/suite/:suiteId/partition": () => Response.json(partition),
       "DELETE /actions/suite/:suiteId/events/:eventId": () => eventDelete(),
       "PATCH /actions/suite/:suiteId/batchUpdateSuiteEvents/:eventId": () =>
         eventEdit(),
@@ -77,7 +84,14 @@ afterEach(() => {
 const renderPage = (initialEntry = "/suites/3") => {
   const router = createMemoryRouter(
     [
-      { path: "/suites/:suiteId", element: <ActionSuitePage /> },
+      {
+        path: "/suites/:suiteId",
+        element: (
+          <LeaveGuard>
+            <ActionSuitePage />
+          </LeaveGuard>
+        ),
+      },
       { path: "/suites/:suiteId/launch", element: <SuiteLaunchPage /> },
     ],
     { initialEntries: [initialEntry] },
@@ -119,6 +133,8 @@ it("says why an edit was refused", async () => {
   renderPage();
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit for all" }));
+  expect(screen.getByLabelText("Title")).toBeTruthy();
+  expect(screen.getByLabelText("Date")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
   expect(await screen.findByText("Title is too long")).toBeTruthy();
@@ -162,11 +178,33 @@ it("offers no launch once the suite has launched", async () => {
   expect(screen.queryByText(/already has/)).toBeNull();
 });
 
-it("offers the groups in place of a launch for a suite that uses groups", async () => {
+it.each([
+  [NodeEnv.Production, true],
+  [NodeEnv.Staging, false],
+] as const)(
+  "offers partitioning only outside production, where partitioned suites can't launch yet: %s",
+  async (environment, off) => {
+    setWebRuntimeConfig(deployedWebRuntimeConfig(environment));
+    suiteLoad = unlaunchedSuite([]);
+    renderPage();
+
+    const button = await screen.findByRole("button", {
+      name: "Partition this suite",
+    });
+    expect(button.hasAttribute("disabled")).toBe(off);
+    expect(
+      screen.queryByText(
+        "Partitioning is off in production until partitioned suites can launch.",
+      ) !== null,
+    ).toBe(off);
+  },
+);
+
+it("offers the parts in place of a launch for a suite that uses parts", async () => {
   suiteLoad = unlaunchedSuite([], true);
   renderPage();
 
-  expect(await screen.findByText(SPLIT_LAUNCH_REFUSED)).toBeTruthy();
+  expect(await screen.findByText(PARTITION_LAUNCH_REFUSED)).toBeTruthy();
   expect(
     screen.queryByRole("button", { name: "Begin launch process" }),
   ).toBeNull();
@@ -175,12 +213,12 @@ it("offers the groups in place of a launch for a suite that uses groups", async 
   ).toBeTruthy();
 });
 
-it("drops one suite's unsaved groups on moving to another", async () => {
+it("drops one suite's unsaved parts on moving to another", async () => {
   suiteLoad = unlaunchedSuite([], true);
   const router = renderPage("/suites/4");
   await screen.findByRole("heading", { name: "1. Everyone else" });
   await act(() => router.navigate("/suites/3"));
-  fireEvent.click(await screen.findByRole("button", { name: "Add group" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Add part" }));
   expect(
     screen.getByRole("heading", { name: "2. Everyone else" }),
   ).toBeTruthy();

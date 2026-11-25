@@ -26,7 +26,7 @@ import { printExpression } from "./print";
 import { ExprKind, type Expr } from "./tree";
 
 /**
- * An expression other than a named one, such as a split group's condition or a
+ * An expression other than a named one, such as a part's condition or a
  * form rule: its stored tree, or the admin's text or tree when fixed in this
  * save.
  */

@@ -293,6 +293,9 @@ export const openFirstQuestionScreen = async () => {
 /** Long enough for the completion card's whole closing animation. */
 export const CLOSE_TIMEOUT = 3000;
 
+/** Long enough for a lazy form part, such as the phone input, to load and render. */
+export const LAZY_PART_TIMEOUT = 4000;
+
 export const submitFlow = async () => {
   await openFirstQuestionScreen();
   fireEvent.change(screen.getByRole("textbox", { name: /First impression/ }), {

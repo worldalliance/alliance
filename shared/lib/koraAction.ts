@@ -10,4 +10,6 @@ export const KORA_ACTION_COPY = {
   continueNote:
     "Thank you. You can keep reviewing chat transcripts if you’d like.",
   reviewMore: "Review more transcripts",
+  noneLeft: "No conversations to review right now. This task is done.",
+  backToAction: "Back to the action",
 };

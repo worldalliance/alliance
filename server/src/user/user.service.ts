@@ -205,9 +205,7 @@ export class UserService {
             // Read under the row lock: a save writes back every column that
             // differs, so a copy read earlier would undo a concurrent write.
             const user = await em.findOneByOrFail(User, { id });
-            // BACKCOMPAT(phone-verification): saves a number without a code,
-            // as unverified; remove once no client older than the code step
-            // is in use.
+            // A number saved without a code is unverified, by design.
             if (
               data.phoneNumber !== undefined &&
               data.phoneNumber !== user.phoneNumber

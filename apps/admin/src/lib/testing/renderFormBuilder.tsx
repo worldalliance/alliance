@@ -5,13 +5,24 @@ import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { FormBuilder } from "../../components/FormBuilder";
+import LeaveGuard from "../../components/LeaveGuard";
 
 function renderBuilder(builder: ReactNode, url = "/") {
-  const router = createMemoryRouter([{ path: "/", element: builder }], {
-    initialEntries: [url],
-  });
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <LeaveGuard>
+            <Outlet />
+          </LeaveGuard>
+        ),
+        children: [{ path: "/", element: builder }],
+      },
+    ],
+    { initialEntries: [url] },
+  );
   render(
     <SiteOriginLinkProvider origin="https://worldalliance.org">
       <ToastProvider>

@@ -6,6 +6,7 @@ import type {
   Page,
   PageItem,
 } from "@alliance/common/forms/form-schema";
+import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useState } from "react";
 import {
   collectSchemaIds,
@@ -13,15 +14,23 @@ import {
   copyPageWithUniqueIds,
   createUniqueFormBuilderId,
 } from "../../lib/copyWithUniqueIds";
+import { settleInserted } from "../../lib/formGroups";
+import {
+  moveElements,
+  repeatedIds,
+  type ElementDrop,
+  type ElementSpan,
+} from "../../lib/moveElements";
 import { reorderPages } from "../../lib/reorderPages";
 import { updatePageElement } from "../../lib/updatePageElement";
-import { moveItem } from "../../lib/useDragReorder";
+import { itemMove, type ListMove } from "../../lib/useDragReorder";
 import {
   deriveVisibilityGroups,
   type GroupedPages,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
 import { createDisplayBlock } from "../display-blocks";
+import type { ElementExpressionsMove } from "../form-fields/conditions/expressionBuffers";
 import { createField } from "../form-fields/createField";
 import {
   CanvasTargetKind,
@@ -34,16 +43,17 @@ import {
   type AvailableElement,
   type InsertLoc,
 } from "./InsertPoint";
+import { selectedSpan } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 import type { CanvasSelectionState } from "./useCanvasSelection";
 import { useGuardedDeletion } from "./useGuardedDeletion";
-import type { ListMove } from "./useListDrag";
 
 export function useCanvasEdits({
   schema,
   visibilityGroups,
   canvasGroups,
   updateSchema,
+  moveExpressions,
   canvas,
 }: {
   schema: FormSchema;
@@ -51,6 +61,7 @@ export function useCanvasEdits({
   /** The groups the canvas shows, which a display-only builder has none of. */
   canvasGroups: VisibilityGroups;
   updateSchema: (schema: FormSchema, groups?: VisibilityGroups) => void;
+  moveExpressions: (move: ElementExpressionsMove) => void;
   canvas: CanvasSelectionState;
 }) {
   const {
@@ -64,6 +75,7 @@ export function useCanvasEdits({
     showPage,
     selectFromOutline,
     setFocusPending,
+    reveal,
   } = canvas;
 
   const [insertion, setInsertion] = useState<{
@@ -72,6 +84,7 @@ export function useCanvasEdits({
   } | null>(null);
   const closeInsertion = useCallback(() => setInsertion(null), []);
 
+  const { showToast } = useToast();
   const { guard: guardDeletion, dialog: deletionDialog } = useGuardedDeletion({
     pages: schema.pages,
     groups: canvasGroups,
@@ -87,8 +100,14 @@ export function useCanvasEdits({
       groupFormula && item.id
         ? { ...item, visibleIfFormula: groupFormula }
         : item;
-    const newFields = [...currentPage.fields];
-    newFields.splice(index, 0, inserted);
+    const newFields = settleInserted(
+      [
+        ...currentPage.fields.slice(0, index),
+        inserted,
+        ...currentPage.fields.slice(index),
+      ],
+      index,
+    );
     updateSchema(
       {
         ...schema,
@@ -206,21 +225,19 @@ export function useCanvasEdits({
     });
   };
 
-  const replaceFields = (fields: PageItem[], pageIndex = selectedPageIndex) => {
-    const before = schema.pages[pageIndex];
-    if (!before) return;
+  const replaceFields = (fields: PageItem[]) => {
     updateSchema({
       ...schema,
       pages: schema.pages.map((page, idx) =>
-        idx === pageIndex ? { ...page, fields } : page,
+        idx === selectedPageIndex ? { ...page, fields } : page,
       ),
     });
     setSelection((current) =>
-      current.pageId === before.id
+      current.pageId === currentPage.id
         ? {
             ...current,
             target: followElement({
-              before: before.fields,
+              before: currentPage.fields,
               after: fields,
               target: current.target,
             }),
@@ -245,17 +262,75 @@ export function useCanvasEdits({
       () => removeElement(index),
     );
 
-  const moveElement = (
-    { from, dropIndex, position }: ListMove,
-    pageIndex = selectedPageIndex,
-  ) => {
-    const moved = moveItem({
-      items: schema.pages[pageIndex]?.fields ?? [],
-      draggedIndex: from,
-      dropIndex,
-      position,
+  const moveElementsTo = (from: ElementSpan, to: ElementDrop) => {
+    const pages = moveElements({ pages: schema.pages, from, to });
+    if (!pages) return;
+    // Selection and unfinished expression text find an element by its page's
+    // id and its own, so a repeated one could carry them to the wrong element.
+    const repeated =
+      from.pageIndex === to.pageIndex ? [] : repeatedIds(schema.pages);
+    if (repeated.length > 0) {
+      showToast({
+        variant: ToastVariant.Error,
+        message: `Moving to another page needs unique ids, and these repeat: ${repeated.map((id) => JSON.stringify(id)).join(", ")}`,
+        durationMs: null,
+      });
+      return;
+    }
+    updateSchema({ ...schema, pages });
+    const source = schema.pages[from.pageIndex]!;
+    if (from.pageIndex !== to.pageIndex) {
+      moveExpressions({
+        from: source.id,
+        to: pages[to.pageIndex]!.id,
+        ids: source.fields
+          .slice(from.start, from.end)
+          .flatMap((element) => (element.id ? [element.id] : [])),
+      });
+    }
+    const span = selectedSpan(resolvedTarget);
+    const carried =
+      from.pageIndex !== to.pageIndex &&
+      selectedPageIndex === from.pageIndex &&
+      span !== null &&
+      span.start >= from.start &&
+      span.end <= from.end;
+    if (carried) {
+      setSelectedPageIndex(to.pageIndex);
+      reveal();
+      setSelection((current) => ({
+        pageId: pages[to.pageIndex]!.id,
+        target: followElement({
+          before: source.fields,
+          after: pages[to.pageIndex]!.fields,
+          target: current.target,
+        }),
+      }));
+      return;
+    }
+    setSelection((current) => {
+      const at = [from.pageIndex, to.pageIndex].find(
+        (index) => schema.pages[index]!.id === current.pageId,
+      );
+      return at === undefined
+        ? current
+        : {
+            ...current,
+            target: followElement({
+              before: schema.pages[at]!.fields,
+              after: pages[at]!.fields,
+              target: current.target,
+            }),
+          };
     });
-    if (moved) replaceFields(moved.items, pageIndex);
+  };
+
+  const moveElement = (move: ListMove) => {
+    const { start, end, index } = itemMove(move);
+    moveElementsTo(
+      { pageIndex: selectedPageIndex, start, end },
+      { pageIndex: selectedPageIndex, index },
+    );
   };
 
   const duplicateElement = (index: number) => {
@@ -307,6 +382,7 @@ export function useCanvasEdits({
     removePage,
     deleteElement,
     moveElement,
+    moveElementsTo,
     duplicateElement,
     applyGrouped,
     updateElementAt,

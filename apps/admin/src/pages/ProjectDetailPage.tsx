@@ -194,7 +194,7 @@ const ProjectDetailPage: React.FC = () => {
 
   return (
     <div className="flex max-w-6xl flex-col gap-y-5 p-5">
-      <title>{project.name}</title>
+      <title>{`${project.name} - Admin`}</title>
       <Link
         to="/projects"
         className="flex w-fit items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-900"

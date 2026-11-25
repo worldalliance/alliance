@@ -1,3 +1,4 @@
+import { conversationNoteId } from "@alliance/common/forms/conversation";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
@@ -12,6 +13,7 @@ import {
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
+import { withFreshGroupIds } from "./formGroups";
 import { formSchemaIds } from "./formJson";
 
 export const createUniqueFormBuilderId = (
@@ -186,7 +188,9 @@ const assignCopiedFieldIds = <T extends AnyField>(
     };
   }
 
-  return { ...field, id: nextId };
+  return field.kind === "conversation"
+    ? { ...field, id: nextId, noteId: conversationNoteId(nextId) }
+    : { ...field, id: nextId };
 };
 
 export const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
@@ -213,7 +217,7 @@ export const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
     ...copiedPage,
     id: copyPageId,
     title: copiedPage.title ? `${copiedPage.title} (Copy)` : "Copied page",
-    fields: assignCopiedElementIds(copiedPage.fields),
+    fields: withFreshGroupIds(assignCopiedElementIds(copiedPage.fields)),
   };
 
   return remapCopiedPageReferences(pageWithCopiedIds, idMap);

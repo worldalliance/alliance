@@ -25,7 +25,7 @@ describe("reminderSendWindows", () => {
       ]),
     ).toEqual([
       [
-        "Member Action announcement",
+        "Member action announcement",
         "2026-11-01T02:00:00.000Z",
         "2026-11-01T02:00:00.000Z",
       ],
@@ -153,7 +153,7 @@ describe("renderLaunchReminder", () => {
   };
 
   it("fills the announcement with the member's actions and time to finish", () => {
-    const announcement = rendered("Member Action announcement");
+    const announcement = rendered("Member action announcement");
     expect(announcement.textMessage).toBe(
       "New Alliance tasks: Call, Write. Complete within 7 days (https://example.org/tasks)",
     );

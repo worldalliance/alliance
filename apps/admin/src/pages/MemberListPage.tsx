@@ -15,9 +15,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormulaFixes from "../components/formulas/FormulaFixes";
 import {
-  groupFixChanged,
-  type GroupFixDraft,
-} from "../components/formulas/GroupFixFields";
+  partFixChanged,
+  type PartFixDraft,
+} from "../components/formulas/PartFixFields";
 import SaveRefusal, { type Refusal } from "../components/formulas/SaveRefusal";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { asDraft } from "../lib/formulaDraft";
@@ -27,12 +27,12 @@ import {
   useInvalidateFormulasAdmin,
   useSaveFormulasAdmin,
 } from "../lib/useFormulasAdmin";
+import { useLeaveGuard } from "../lib/useLeaveGuard";
 import {
   useForgetMemberListAdmin,
   useMemberListsAdmin,
   useSaveMemberListAdmin,
 } from "../lib/useMemberListsAdmin";
-import { useUnsavedChangesPrompt } from "../lib/useUnsavedChangesPrompt";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const NEW = "new";
@@ -119,7 +119,7 @@ const ListEditor: React.FC<{
   /** Why the last delete was refused, by formula. */
   const [problems, setProblems] = useState<FormulaProblemDto[]>([]);
   const [fixes, setFixes] = useState<FormulaEditDto[]>([]);
-  const [groupFixes, setGroupFixes] = useState<GroupFixDraft[]>([]);
+  const [partFixes, setPartFixes] = useState<PartFixDraft[]>([]);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const busy = saveList.isPending || saveFormulas.isPending;
 
@@ -132,8 +132,8 @@ const ListEditor: React.FC<{
     !sameMembers(userIds, stored?.userIds ?? []) ||
     pasted.trim() !== "" ||
     fixes.some(fixChanged) ||
-    groupFixes.some(groupFixChanged);
-  const navigateUnprompted = useUnsavedChangesPrompt({ hasUnsavedChanges });
+    partFixes.some(partFixChanged);
+  const navigateUnprompted = useLeaveGuard(hasUnsavedChanges);
 
   const refuse = (error: unknown, fallback: string) =>
     setRefusal({
@@ -206,7 +206,7 @@ const ListEditor: React.FC<{
         edits: fixes,
         deletions: [],
         deletedLists: [{ id: list.id, baseVersionId: list.versionId }],
-        groupFixes: groupFixes.map((draft) => draft.fix),
+        partFixes: partFixes.map((draft) => draft.fix),
       },
       {
         onSuccess: async (refused) => {
@@ -364,8 +364,8 @@ const ListEditor: React.FC<{
           <FormulaFixes
             fixes={fixes}
             onFixesChange={setFixes}
-            groupFixes={groupFixes}
-            onGroupFixesChange={setGroupFixes}
+            partFixes={partFixes}
+            onPartFixesChange={setPartFixes}
             problems={problems}
             formulas={formulas}
             readOnly={busy}

@@ -4,6 +4,10 @@ import { constants, homedir } from "node:os";
 import path from "node:path";
 import { R } from "../../../../../../common/src/result";
 import { type AgentEvent, AgentEventKind } from "../../../shared/agent-event";
+import type { AgentKind } from "../../../shared/agent-kind";
+import { findExecutable } from "../../cli-executable";
+import { devClaudeConfigDir, devCodexHome } from "../../dev-app-data";
+import type { AgentFolders } from "../agent-environment";
 import { type AgentBackend, ImageMediaType } from "../session";
 import type { Machine } from "./redact-lines";
 import { kinds, onFifthDelta, text, turn } from "./turn";
@@ -13,12 +17,32 @@ export const repo = execFileSync("git", ["rev-parse", "--show-toplevel"], {
 }).trim();
 
 /** Electron's appData, which takes any non-empty XDG_CONFIG_HOME, a relative one included. */
-export const appData =
+const appData =
   process.platform === "darwin"
     ? path.join(homedir(), "Library/Application Support")
     : process.env.XDG_CONFIG_HOME
       ? path.resolve(process.env.XDG_CONFIG_HOME)
       : path.join(homedir(), ".config");
+
+/** The development app's CLI folders, with an unused bin, since the scripted task starts no CLI by bare name. */
+export const devFolders = (scratch: string): AgentFolders => ({
+  claudeConfigDir: devClaudeConfigDir(appData),
+  codexHome: devCodexHome(appData),
+  bin: path.join(scratch, "bin"),
+});
+
+/** The CLI a development build bundles, or the one its variable names. */
+export const devExecutable = (agent: AgentKind): string =>
+  R.unwrap(
+    findExecutable({
+      agent,
+      env: process.env,
+      packaged: false,
+      root: path.join(import.meta.dirname, "../../../.."),
+      platform: process.platform,
+      arch: process.arch,
+    }),
+  );
 
 /** A fresh scratch folder for one capture run, with recordDir for its raw recordings, removed when the run ends, since those hold what redaction removes. */
 export function captureScratch(name: string): {
@@ -119,6 +143,13 @@ export async function runScriptedTask(params: {
       `Use ${params.editWith} to change the word hello to goodbye in ${path.relative(repo, params.workFile)}, then reply with one short sentence.`,
     ),
   });
+  const editErrors = edit.flatMap((e) =>
+    e.kind === AgentEventKind.Error ? [e.message] : [],
+  );
+  check(
+    editErrors.length === 0,
+    `the edit turn had no error, but it had: ${editErrors.join("; ")}`,
+  );
   check(
     readFileSync(params.workFile, "utf8").includes("goodbye"),
     "the file was edited",
@@ -131,10 +162,6 @@ export async function runScriptedTask(params: {
       AgentEventKind.AssistantText,
     ].every((k) => kinds(edit).includes(k)),
     "the edit turn streamed text and called a tool",
-  );
-  check(
-    !kinds(edit).includes(AgentEventKind.Error),
-    "the edit turn had no error",
   );
   const interrupted = await turn({
     session: first,

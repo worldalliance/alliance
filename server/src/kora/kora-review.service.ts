@@ -25,10 +25,11 @@ import { KoraAssignment } from "./entities/kora-assignment.entity";
 import { KoraBatch } from "./entities/kora-batch.entity";
 import { KoraReviewer } from "./entities/kora-reviewer.entity";
 import { KoraTranscript } from "./entities/kora-transcript.entity";
+import { actionTimeUp, recordActiveTime } from "./kora-active-time";
 import {
   completionOf,
-  emitMemberReviewed,
-  type KoraCompletion,
+  emitActionReviewed,
+  finishAssignment,
   logCompletion,
 } from "./kora-completion";
 import {
@@ -37,12 +38,8 @@ import {
   resultTranscriptIds,
   withoutResultsFor,
 } from "./kora-export-check";
-import {
-  type KoraAssignmentProgress,
-  type KoraHome,
-  koraHome,
-  type KoraOffer,
-} from "./kora-home";
+import { type KoraHome, koraHome } from "./kora-home";
+import { koraOffer, koraProgress } from "./kora-home-queries";
 import {
   bindNext,
   candidates,
@@ -98,7 +95,7 @@ export class KoraReviewService {
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NotActive);
       }
-      return this.assign(manager, reviewer);
+      return this.assign(manager, { reviewer });
     });
   }
 
@@ -113,19 +110,87 @@ export class KoraReviewService {
       if (status !== KoraProjectStatus.Active) {
         return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
       }
-      return this.assign(manager, reviewer);
+      return this.assign(manager, { reviewer });
     });
   }
 
-  /** Reads only: an offer reserves nothing until `more` starts it. */
+  /**
+   * The member's assignment for a Kora review action, starting it on the first
+   * visit. `NoneLeft` means there is nothing for them to review for it.
+   */
+  async forAction(params: {
+    userId: number;
+    actionId: number;
+  }): Promise<KoraReviewState> {
+    const reviewer = await this.reviewerFor({ userId: params.userId });
+    const status = (await this.projectService.project()).status;
+    return this.dataSource.transaction(async (manager) => {
+      await lockReviewer(manager, reviewer.id);
+      const assignment = await manager.findOneBy(KoraAssignment, {
+        reviewerId: reviewer.id,
+        actionId: params.actionId,
+      });
+      if (assignment?.completedAt) {
+        const held = await heldRows(manager, assignment.id);
+        return this.summary(
+          manager,
+          reviewer,
+          held.length > 0 ? KoraReviewPhase.Finished : KoraReviewPhase.NoneLeft,
+        );
+      }
+      const closed =
+        assignment?.closesAt != null && assignment.closesAt <= new Date();
+      if (assignment && !closed) {
+        return this.reviewing(manager, reviewer, assignment);
+      }
+      if (assignment) {
+        // Unlinked so the action can start a new one; it no longer completes the action.
+        await manager.update(
+          KoraAssignment,
+          { id: assignment.id },
+          { actionId: null },
+        );
+      }
+      if (status !== KoraProjectStatus.Active) {
+        return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
+      }
+      return this.assign(manager, {
+        reviewer,
+        action: {
+          id: params.actionId,
+          activeSeconds: assignment?.activeSeconds ?? 0,
+        },
+      });
+    });
+  }
+
+  /** Adds the client's report of active review time, capped by the time since its last report. */
+  async reportActiveTime(params: {
+    identity: KoraIdentity;
+    assignmentId: string;
+    seconds: number;
+  }): Promise<Result<void, KoraSaveError.NotFound>> {
+    const reviewer = await this.reviewerFor(params.identity);
+    return this.dataSource.transaction(async (manager) => {
+      await lockReviewer(manager, reviewer.id);
+      const assignment = await manager.findOneBy(KoraAssignment, {
+        id: params.assignmentId,
+        reviewerId: reviewer.id,
+      });
+      if (!assignment) return R.failure(KoraSaveError.NotFound);
+      await recordActiveTime(manager, { assignment, seconds: params.seconds });
+      return R.success(undefined);
+    });
+  }
+
   async home(identity: KoraIdentity): Promise<KoraHome> {
     const reviewer = await this.reviewerFor(identity);
     const manager = this.dataSource.manager;
     const status = (await this.projectService.project()).status;
-    const assignments = await this.progress(manager, reviewer.id);
+    const assignments = await koraProgress(manager, reviewer.id);
     const offer =
       status === KoraProjectStatus.Active
-        ? await this.offer(manager, reviewer.id)
+        ? await koraOffer(manager, reviewer.id)
         : null;
     return koraHome({ now: new Date(), assignments, offer });
   }
@@ -180,7 +245,7 @@ export class KoraReviewService {
       const size = await this.sizeOf(manager, assignment);
       const completed =
         assignment.completedAt !== null ||
-        (held.length >= size &&
+        ((held.length >= size || actionTimeUp(assignment)) &&
           [...statuses.values()].every((s) => s !== KoraReviewStatus.Pending));
       const completion =
         completed && assignment.completedAt === null
@@ -226,7 +291,7 @@ export class KoraReviewService {
     });
     if (!outcome.ok) return outcome;
     if (outcome.value.completion) {
-      emitMemberReviewed(this.events, outcome.value.completion);
+      emitActionReviewed(this.events, outcome.value.completion);
     }
     return R.success(outcome.value.saved);
   }
@@ -248,42 +313,20 @@ export class KoraReviewService {
       });
       if (!assignment) return null;
       if (assignment.completedAt) return { transcript: null, completion: null };
-      const transcript = await bindNext(manager, {
-        assignment,
-        size: await this.sizeOf(manager, assignment),
-      });
+      const transcript = actionTimeUp(assignment)
+        ? null
+        : await bindNext(manager, {
+            assignment,
+            size: await this.sizeOf(manager, assignment),
+          });
       const completion = transcript
         ? null
-        : await this.finish(manager, { assignment, reviewer });
+        : await finishAssignment(manager, { assignment, reviewer });
       return { transcript, completion };
     });
     if (!outcome) return R.failure(KoraSaveError.NotFound);
-    if (outcome.completion) emitMemberReviewed(this.events, outcome.completion);
+    if (outcome.completion) emitActionReviewed(this.events, outcome.completion);
     return R.success(outcome.transcript);
-  }
-
-  /**
-   * Marks an assignment with nothing more to give finished, once none of its
-   * transcripts is pending. Only one that holds a transcript credits the
-   * member, as finishing it themselves would.
-   */
-  private async finish(
-    manager: EntityManager,
-    params: { assignment: KoraAssignment; reviewer: KoraReviewer },
-  ): Promise<KoraCompletion | null> {
-    const held = await heldRows(manager, params.assignment.id);
-    if (held.some((r) => r.status === KoraReviewStatus.Pending)) return null;
-    await manager.update(
-      KoraAssignment,
-      { id: params.assignment.id },
-      { completedAt: new Date() },
-    );
-    const completion = completionOf({
-      ...params,
-      statuses: held.map((r) => r.status),
-    });
-    await logCompletion(manager, completion);
-    return held.length > 0 ? completion : null;
   }
 
   private async sizeOf(
@@ -403,7 +446,7 @@ export class KoraReviewService {
     await bindNext(manager, { assignment, size });
     const held = await heldRows(manager, assignment.id);
     if (held.length === 0) {
-      await this.finish(manager, { assignment, reviewer });
+      await finishAssignment(manager, { assignment, reviewer });
       return this.summary(manager, reviewer, KoraReviewPhase.NoneLeft);
     }
     const loaded: KoraLoadedAssignment = {
@@ -419,10 +462,15 @@ export class KoraReviewService {
     };
   }
 
+  /** `action` carries active time over from the action's earlier, closed assignment. */
   private async assign(
     manager: EntityManager,
-    reviewer: KoraReviewer,
+    params: {
+      reviewer: KoraReviewer;
+      action?: { id: number; activeSeconds: number };
+    },
   ): Promise<KoraReviewState> {
+    const { reviewer, action } = params;
     const newest = await newestOpenBatch(manager);
     const available = newest ? await candidates(manager, reviewer.id) : [];
     if (!newest || available.length === 0) {
@@ -430,7 +478,9 @@ export class KoraReviewService {
     }
     const assignment = await manager.save(KoraAssignment, {
       reviewerId: reviewer.id,
-      extra: await this.hasCompleted(manager, reviewer.id),
+      extra: !action && (await this.hasCompleted(manager, reviewer.id)),
+      actionId: action?.id ?? null,
+      activeSeconds: action?.activeSeconds ?? 0,
       schemaBatchId: newest.id,
       export: null,
       lastActivityAt: new Date(),
@@ -438,48 +488,6 @@ export class KoraReviewService {
       completedAt: null,
     });
     return this.reviewing(manager, reviewer, assignment);
-  }
-
-  private async offer(
-    manager: EntityManager,
-    reviewerId: string,
-  ): Promise<KoraOffer | null> {
-    const newest = await newestOpenBatch(manager);
-    if (!newest) return null;
-    const available = await candidates(manager, reviewerId);
-    if (available.length === 0) return null;
-    return {
-      releasedAt: newest.createdAt,
-      closesAt: earliestClose(available),
-      size: Math.min(newest.transcriptsPerAssignment, available.length),
-    };
-  }
-
-  private async progress(
-    manager: EntityManager,
-    reviewerId: string,
-  ): Promise<KoraAssignmentProgress[]> {
-    return manager.query(
-      `SELECT a."id", a."createdAt", a."closesAt", a."completedAt",
-         MAX(b."createdAt") AS "releasedAt",
-         CASE WHEN a."completedAt" IS NULL THEN MAX(sb."transcriptsPerAssignment")
-           ELSE COUNT(at."transcriptId") FILTER (WHERE at."status" <> $4) END::int AS "total",
-         COUNT(at."transcriptId") FILTER (WHERE at."status" NOT IN ($2, $4))::int AS "progress",
-         COUNT(at."transcriptId") FILTER (WHERE at."status" = $3)::int AS "ranked"
-       FROM "kora_assignment" a
-       JOIN "kora_batch" sb ON sb."id" = a."schemaBatchId"
-       LEFT JOIN "kora_assignment_transcript" at ON at."assignmentId" = a."id"
-       LEFT JOIN "kora_transcript" t ON t."id" = at."transcriptId"
-       LEFT JOIN "kora_batch" b ON b."id" = t."batchId"
-       WHERE a."reviewerId" = $1 AND a."deletedAt" IS NULL
-       GROUP BY a."id"`,
-      [
-        reviewerId,
-        KoraReviewStatus.Pending,
-        KoraReviewStatus.Done,
-        KoraReviewStatus.Released,
-      ],
-    );
   }
 }
 function loadedTranscript(row: KoraAssignmentTranscript): KoraTranscript {

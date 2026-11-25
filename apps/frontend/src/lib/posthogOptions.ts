@@ -1,5 +1,4 @@
-import { webEnv } from "@alliance/sharedweb/lib/env";
-import { webEnvironment } from "@alliance/sharedweb/lib/runtimeConfig";
+import { posthogBuildProperties } from "@alliance/sharedweb/lib/posthogBuildProperties";
 import type { PostHog, PostHogConfig } from "posthog-js";
 import { registerArrival } from "./linkOpenings";
 
@@ -9,10 +8,7 @@ function tagBuild(posthog: Pick<PostHog, "register" | "unregister">) {
   // an older build still send app_version. Remove a year after this reaches
   // production: events stop carrying it at once, so no query can tell when.
   posthog.unregister("app_version");
-  posthog.register({
-    git_sha: webEnv("VITE_APP_GIT_SHA") ?? "unknown",
-    environment: webEnvironment(),
-  });
+  posthog.register(posthogBuildProperties());
 }
 
 export const posthogOptions: Partial<PostHogConfig> = {

@@ -190,6 +190,7 @@ export class ActionDto extends PickType(Action, [
     this.shortDescription = action.shortDescription;
     this.timeEstimate = action.timeEstimate;
     this.taskFormId = action.taskFormId;
+    this.taskKind = action.taskKind;
     this.createdAt = action.createdAt;
     this.updatedAt = action.updatedAt;
     this.isContractSigningAction = action.isContractSigningAction;

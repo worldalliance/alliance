@@ -1,6 +1,7 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import {
+  answersToStore,
   applyDefaultValues,
   clampPageIndex,
   readStoredFormDraft,
@@ -43,6 +44,40 @@ describe("restorableAnswers", () => {
       { places: [] },
     );
   });
+
+  it("keeps a conversation's note, which has an answer key of its own", () => {
+    const aware: AnyField = {
+      id: "aware",
+      type: "input",
+      kind: "conversation",
+      label: "Aware",
+      expert: null,
+      message: "Were you aware?",
+      options: [{ label: "No", value: "no", note: {} }],
+      noteId: "aware_note",
+    };
+    expect(
+      restorableAnswers(
+        { aware: "no", aware_note: "Never heard of it", gone: "x" },
+        new Map([["aware", aware]]),
+      ),
+    ).toEqual({ aware: "no", aware_note: "Never heard of it" });
+  });
+});
+
+describe("answersToStore", () => {
+  it("leaves out an answer equal to its default, arrays included", () => {
+    const defaults = new Map<string, FormValue>([
+      ["zone", "Europe/London"],
+      ["places", ["ny", "la"]],
+    ]);
+    expect(
+      answersToStore(
+        { zone: "Europe/London", places: ["ny", "la"], name: "Ada" },
+        defaults,
+      ),
+    ).toEqual({ name: "Ada" });
+  });
 });
 
 describe("readStoredFormDraft", () => {
@@ -65,6 +100,7 @@ describe("readStoredFormDraft", () => {
       publicAnswers: { name: true, gone: false },
       currentPageIndex: 2,
       syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+      edited: true,
     });
     expect(read(raw)).toEqual(
       R.success({
@@ -72,6 +108,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: { name: true },
         currentPageIndex: 2,
         syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+        edited: true,
       }),
     );
   });
@@ -84,6 +121,7 @@ describe("readStoredFormDraft", () => {
           publicAnswers: { name: "yes" },
           currentPageIndex: "1",
           syncedUpdatedAt: null,
+          edited: "yes",
         }),
       ),
     ).toEqual(
@@ -92,6 +130,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: {},
         currentPageIndex: undefined,
         syncedUpdatedAt: undefined,
+        edited: false,
       }),
     );
   });

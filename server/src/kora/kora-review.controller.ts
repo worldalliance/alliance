@@ -15,7 +15,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse } from "@nestjs/swagger";
+import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
 import type { Response } from "express";
 import { AllowedOriginGuard } from "src/auth/guards/allowed-origin.guard";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
@@ -25,6 +25,7 @@ import {
   KoraHomeDto,
   KoraNextTranscriptDto,
   KoraReviewStateDto,
+  ReportKoraActiveTimeDto,
   SaveKoraExportDto,
 } from "./dto/kora-review.dto";
 import {
@@ -134,5 +135,23 @@ export class KoraReviewController {
     });
     if (!next.ok) throw new NotFoundException("Assignment not found");
     return new KoraNextTranscriptDto(next.value);
+  }
+
+  @Post("assignments/:id/active-time")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AllowedOriginGuard)
+  @ApiNoContentResponse()
+  async reportActiveTime(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: ReportKoraActiveTimeDto,
+    @Req() req: JwtRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    const reported = await this.reviewService.reportActiveTime({
+      identity: await this.identity(req, res),
+      assignmentId: id,
+      seconds: body.seconds,
+    });
+    if (!reported.ok) throw new NotFoundException("Assignment not found");
   }
 }

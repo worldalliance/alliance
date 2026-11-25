@@ -123,7 +123,7 @@ export class ActionSuspensionService {
       ),
     );
 
-    // A split group's row can make an action optional for some members only.
+    // A part's row can make an action optional for some members only.
     const optionalRows =
       await this.cohortAdmissionService.loadOptionalRowMemberIds(actionIds);
 

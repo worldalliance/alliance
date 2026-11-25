@@ -8,7 +8,7 @@ import {
 } from "@alliance/shared/lib/useClockMinute";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ToastVariant, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { SegmentedMessage } from "sms-segments-calculator";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
@@ -77,7 +77,7 @@ export default function TextComposer({
   const now = minuteStart(useClockMinute());
   useReportComposing(phoneNumber, body);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (warning) sendAnyway.current?.focus();
   }, [warning]);
 

@@ -2,9 +2,10 @@ import { z } from "zod";
 import { R, type Result } from "../../../../../../common/src/result";
 import { AgentEventKind, type TurnEvent } from "../../../shared/agent-event";
 import { describeError } from "../../describe-error";
+import { claudePackage, pinnedVersions } from "../cli-versions";
 import type { AgentMessage } from "../session";
 
-export const CLAUDE_CODE_VERSION = "2.1.322";
+export const CLAUDE_CODE_VERSION = pinnedVersions[claudePackage];
 
 export const claudeSessionArgs = [
   "-p",

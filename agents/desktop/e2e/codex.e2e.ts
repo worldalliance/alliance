@@ -71,7 +71,7 @@ test("a Codex conversation streams replies, shows tool calls, stops, and resumes
   await expect(page.getByText(/^Codex works in the main copy/)).toBeVisible();
   await sendToCodex(page, "Change hello to goodbye in a.txt");
   await expect(status(page)).toHaveText("Codex finished.");
-  await expect(page.locator(".tool")).toHaveCount(2);
+  await expect(page.locator(".tool")).toHaveCount(1);
   await expect(page.locator(".tool").first()).toContainText("command");
   await expect(page.locator(".tool").first()).toContainText("Done");
   await expect(page.locator(".assistant").last()).toHaveText(

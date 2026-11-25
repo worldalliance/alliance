@@ -4,7 +4,7 @@ import { Bell } from "lucide-react";
 export const TextMockup = ({ message }: { message: string }) => (
   <figure className="flex w-80 flex-col gap-1 rounded-3xl bg-zinc-100 p-3">
     <figcaption className="text-center text-xs text-zinc-500">
-      Text Message
+      Text message
     </figcaption>
     <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-zinc-300 px-3 py-2 text-sm text-black">
       {message}
@@ -30,8 +30,8 @@ export const PushMockup = ({ message }: { message: string }) => (
   </figure>
 );
 
-// The img rule is customactionreminder.pug's, which wraps the sent email. The
-// base target opens a clicked link in a new tab, not in the preview's frame.
+// The img rule is the server's mail layout.pug's, which wraps the sent email.
+// The base target opens a clicked link in a new tab, not in the preview's frame.
 const emailHtml = (body: string) =>
   `<base target="_blank"><style>img{max-width:100%;height:auto}</style><body style="margin:0;font:14px Arial,sans-serif;color:#18181b">${reminderEmailHtml(body)}</body>`;
 

@@ -7,9 +7,9 @@ import { Formula } from "../src/formulas/entities/formula.entity";
 import { FormulasModule } from "../src/formulas/formulas.module";
 import { MemberListVersion } from "../src/member-lists/entities/member-list-version.entity";
 import { MemberList } from "../src/member-lists/entities/member-list.entity";
-import { SuiteSplitVersion } from "../src/suite-splits/entities/suite-split-version.entity";
-import { SuiteSplit } from "../src/suite-splits/entities/suite-split.entity";
-import { EVERYONE_ELSE } from "../src/suite-splits/split-groups";
+import { SuitePartitionVersion } from "../src/suite-partitions/entities/suite-partition-version.entity";
+import { SuitePartition } from "../src/suite-partitions/entities/suite-partition.entity";
+import { EVERYONE_ELSE } from "../src/suite-partitions/partition-parts";
 import {
   closeTestApp,
   createTestApp,
@@ -44,8 +44,8 @@ describe("Stored formula re-check (e2e)", () => {
     ctx = await createTestApp([FormulasModule]);
   }, 50000);
   beforeEach(async () => {
-    await ctx.dataSource.getRepository(SuiteSplitVersion).deleteAll();
-    await ctx.dataSource.getRepository(SuiteSplit).deleteAll();
+    await ctx.dataSource.getRepository(SuitePartitionVersion).deleteAll();
+    await ctx.dataSource.getRepository(SuitePartition).deleteAll();
     await ctx.dataSource.getRepository(FormulaVersion).deleteAll();
     await ctx.dataSource.getRepository(Formula).deleteAll();
     await ctx.dataSource.getRepository(MemberListVersion).deleteAll();
@@ -62,7 +62,7 @@ describe("Stored formula re-check (e2e)", () => {
       tree: { kind: "input", id: "missing" },
       deleted: true,
     });
-    expect(await check()).toEqual(R.success({ formulas: 1, groups: 0 }));
+    expect(await check()).toEqual(R.success({ formulas: 1, parts: 0 }));
   });
 
   it("checks formulas against the member lists stored now", async () => {
@@ -73,7 +73,7 @@ describe("Stored formula re-check (e2e)", () => {
       .getRepository(MemberListVersion)
       .insert({ listId: list.id, savedById: null });
     await store({ name: "onList", tree: { kind: "onList", listId: list.id } });
-    expect(await check()).toEqual(R.success({ formulas: 1, groups: 0 }));
+    expect(await check()).toEqual(R.success({ formulas: 1, parts: 0 }));
     await ctx.dataSource.getRepository(MemberList).softDelete(list.id);
     const result = await check();
     expect(result.ok).toBe(false);
@@ -127,7 +127,7 @@ describe("Stored formula re-check (e2e)", () => {
     }
   });
 
-  it("names a draft split's group that reads a list deleted since", async () => {
+  it("names a draft partition's part that reads a list deleted since", async () => {
     const list = await ctx.dataSource
       .getRepository(MemberList)
       .save({ name: "Volunteers" });
@@ -138,12 +138,9 @@ describe("Stored formula re-check (e2e)", () => {
       .getRepository(ActionSuite)
       .save({ name: "Climate" });
     await ctx.dataSource
-      .getRepository(SuiteSplit)
+      .getRepository(SuitePartition)
       .insert({ suiteId: suite.id, createdById: null });
-    const group = (
-      name: string,
-      condition: Record<string, unknown> | null,
-    ) => ({
+    const part = (name: string, condition: Record<string, unknown> | null) => ({
       id: randomUUID(),
       name,
       condition,
@@ -151,41 +148,41 @@ describe("Stored formula re-check (e2e)", () => {
       noRequiredWorkTick: null,
       cells: [],
     });
-    await ctx.dataSource.getRepository(SuiteSplitVersion).insert({
+    await ctx.dataSource.getRepository(SuitePartitionVersion).insert({
       suiteId: suite.id,
-      groups: [
-        group("On it", { kind: "onList", listId: list.id }),
-        group(EVERYONE_ELSE, null),
+      parts: [
+        part("On it", { kind: "onList", listId: list.id }),
+        part(EVERYONE_ELSE, null),
       ],
       savedById: null,
     });
-    expect(await check()).toEqual(R.success({ formulas: 0, groups: 1 }));
+    expect(await check()).toEqual(R.success({ formulas: 0, parts: 1 }));
     await ctx.dataSource.getRepository(MemberList).softDelete(list.id);
     const result = await check();
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toContain(
-        `Group "On it" of suite "Climate" (${suite.id})`,
+        `Part "On it" of suite "Climate" (${suite.id})`,
       );
     }
   });
 
-  it("stops on a draft split version the release can't parse", async () => {
+  it("stops on a draft partition version the release can't parse", async () => {
     const suite = await ctx.dataSource
       .getRepository(ActionSuite)
       .save({ name: "Climate" });
     await ctx.dataSource
-      .getRepository(SuiteSplit)
+      .getRepository(SuitePartition)
       .insert({ suiteId: suite.id, createdById: null });
     const { identifiers } = await ctx.dataSource
-      .getRepository(SuiteSplitVersion)
+      .getRepository(SuitePartitionVersion)
       .insert({
         suiteId: suite.id,
-        groups: [{ unknown: true }],
+        parts: [{ unknown: true }],
         savedById: null,
       });
     await expect(check()).rejects.toThrow(
-      `split version ${identifiers[0].id} doesn't parse`,
+      `partition version ${identifiers[0].id} doesn't parse`,
     );
   });
 });

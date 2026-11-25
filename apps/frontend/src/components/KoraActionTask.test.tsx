@@ -1,4 +1,4 @@
-import { KORA_REVIEW_PATH } from "@alliance/common/kora";
+import { KORA_REVIEW_PATH, koraActionReviewPath } from "@alliance/common/kora";
 import { KORA_ACTION_COPY } from "@alliance/shared/lib/koraAction";
 import { makeAction, makeViewer } from "@alliance/shared/lib/testFixtures";
 import { render, screen } from "@testing-library/react";
@@ -13,15 +13,16 @@ const renderTask = (action: ReturnType<typeof makeAction>) =>
     </MemoryRouter>,
   );
 
-test("sends a member who hasn't finished to the review page", () => {
-  renderTask(makeAction({ taskKind: "kora_review", timeEstimate: 15 }));
+test("sends a member who hasn't finished to the action's review page", () => {
+  const action = makeAction({ taskKind: "kora_review", timeEstimate: 15 });
+  renderTask(action);
 
   screen.getByText(KORA_ACTION_COPY.intro(15));
   expect(
     screen
       .getByRole("link", { name: KORA_ACTION_COPY.start })
       .getAttribute("href"),
-  ).toBe(KORA_REVIEW_PATH);
+  ).toBe(koraActionReviewPath(action.id));
 });
 
 test("offers to keep reviewing once the action is complete", () => {

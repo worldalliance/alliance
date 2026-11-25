@@ -5,9 +5,12 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 import apiClientRules from "../../eslint/api-client-rules.mjs";
 import sharedRules, {
+  blockerImport,
   envReadsOnlyIn,
   webEnvReads,
 } from "../../eslint/shared-rules.mjs";
+
+const SHARED_IMPORT_PATTERNS = ["../../../shared/*"];
 
 export default defineConfig([
   {
@@ -38,9 +41,16 @@ export default defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          patterns: ["../../../shared/*"],
+          patterns: SHARED_IMPORT_PATTERNS,
+          paths: [blockerImport("apps/admin/src/components/LeaveGuard.tsx")],
         },
       ],
+    },
+  },
+  {
+    files: ["src/components/LeaveGuard.tsx"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: SHARED_IMPORT_PATTERNS }],
     },
   },
 ]);

@@ -35,19 +35,19 @@ import {
 import { analyze, type Excused } from "./undecided";
 import {
   NOT_ASSIGNABLE,
-  groupFallbackMessage,
+  partFallbackMessage,
   undecidedMessage,
   type Culprit,
 } from "./undecided-messages";
 import { isNullableType, isYesNoType } from "./undecided-source";
 
 export enum Undecided {
-  /** The consumer handles an unknown result itself, as a split group with a fallback picked does. */
+  /** The consumer handles an unknown result itself, as a part with a fallback picked does. */
   Allowed = "allowed",
   /** An unknown result needs an inline `??`, as visibility and required-if do. */
   NeedsFallback = "needsFallback",
-  /** An unknown result needs the split group's own fallback, which isn't picked. */
-  NeedsGroupFallback = "needsGroupFallback",
+  /** An unknown result needs the part's own fallback, which isn't picked. */
+  NeedsPartFallback = "needsPartFallback",
 }
 
 const UNDECIDED_MESSAGE: Record<
@@ -56,7 +56,7 @@ const UNDECIDED_MESSAGE: Record<
 > = {
   [Undecided.Allowed]: undefined,
   [Undecided.NeedsFallback]: undecidedMessage,
-  [Undecided.NeedsGroupFallback]: groupFallbackMessage,
+  [Undecided.NeedsPartFallback]: partFallbackMessage,
 };
 
 export type ResultRule = {

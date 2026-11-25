@@ -3,7 +3,7 @@ import {
   NEEDLESS,
   UNDECIDED_STATE,
   condition,
-  groupCondition,
+  partCondition,
   passes,
   problems,
   variable,
@@ -24,8 +24,7 @@ describe("isMissing guards", () => {
     );
     expect(passes("!isMissing(count) && count > 5").mayBeUnknown).toBe(false);
     expect(
-      passes("isMissing(count) ? null : count > 5", groupCondition)
-        .mayBeUnknown,
+      passes("isMissing(count) ? null : count > 5", partCondition).mayBeUnknown,
     ).toBe(true);
     expect(
       passes("(isMissing(count) ? null : count > 5) ?? false").mayBeUnknown,
@@ -57,7 +56,7 @@ describe("isMissing guards", () => {
     "marks.indexOf( 3 ) === 1 || isMissing(marks.indexOf(3))",
     `items.find(item => item.name === 'a')?.score === 1 || isMissing(items.find(item => item.name === "a")?.score)`,
   ])("a guard on the other side decides %s", (text) => {
-    expect(passes(text, groupCondition).mayBeUnknown).toBe(false);
+    expect(passes(text, partCondition).mayBeUnknown).toBe(false);
   });
 
   test.each([
@@ -132,7 +131,7 @@ describe("isMissing guards", () => {
   ])(
     "a fallback after a read `&&` or `||` narrowed isn't needless: %s",
     (text) => {
-      passes(text, groupCondition);
+      passes(text, partCondition);
     },
   );
 
@@ -148,10 +147,7 @@ describe("isMissing guards", () => {
 
   test("a fallback after a read narrowed to nothing gets tsc's message alone", () => {
     expect(
-      problems(
-        "count === 1 && count === 2 && (count ?? 0) > 0",
-        groupCondition,
-      ),
+      problems("count === 1 && count === 2 && (count ?? 0) > 0", partCondition),
     ).toEqual([
       {
         message:

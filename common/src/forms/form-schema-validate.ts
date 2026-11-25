@@ -1,4 +1,6 @@
+import { conversationFieldErrors } from "./conversation";
 import type { DisplayBlock } from "./display-blocks";
+import { splitGroupRuns } from "./form-groups";
 import {
   collectFieldLookup,
   isQuestionField,
@@ -80,7 +82,14 @@ export function validateFormSchema(
         });
       }
     }
-    for (const item of page.fields ?? []) {
+    const fields = page.fields ?? [];
+    for (const { start } of splitGroupRuns(fields)) {
+      errors.push({
+        blockId: fields[start].id ?? "<unnamed>",
+        message: "Elements in a group must be next to each other",
+      });
+    }
+    for (const item of fields) {
       collectInputErrors(item, errors);
       collectDisplayContentErrors(item, undefined, errors);
       collectQuestionFieldIds(item, earlierFieldIds);
@@ -88,6 +97,7 @@ export function validateFormSchema(
   }
   collectVisibilityCycleErrors(schema, errors);
   errors.push(...pairedToggleErrors(collectFieldLookup(schema.pages ?? [])));
+  errors.push(...conversationFieldErrors(schema.pages ?? []));
 
   collectVariableErrors(schema, context, errors);
   errors.push(...rowListErrors(schema));
@@ -263,6 +273,20 @@ function collectDisplayContentErrors(
 ): void {
   if (!("type" in item) || item.type !== "display") return;
   const blockId = item.id ?? "<unnamed>";
+  if (item.kind === "expertMessage" && item.text.trim() === "") {
+    errors.push({
+      viewId,
+      blockId,
+      message: "Expert message has no text. Write what the expert says",
+    });
+  }
+  if (item.kind === "expertMessage" && item.expert === null) {
+    errors.push({
+      viewId,
+      blockId,
+      message: "Expert message has no expert. Pick one",
+    });
+  }
   if (item.kind === "images" && item.images.length === 0) {
     errors.push({
       viewId,

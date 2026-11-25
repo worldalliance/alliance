@@ -27,7 +27,7 @@ export class Formula {
   @UpdateDateColumnTz()
   updatedAt: Date;
 
-  /** Versions outlive it, since a live split or fill session may pin one. */
+  /** Versions outlive it, since a live partition or fill session may pin one. */
   @DeleteDateColumnTz()
   deletedAt: Date | null;
 

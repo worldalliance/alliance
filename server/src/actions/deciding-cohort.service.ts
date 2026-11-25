@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { SplitPlacementService } from "src/suite-splits/split-placement.service";
+import { PartitionPlacementService } from "src/suite-partitions/partition-placement.service";
 import type { User } from "src/user/entities/user.entity";
 import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import {
+  partitionCohort,
   ruleCohort,
-  splitCohort,
   type DecidingCohort,
 } from "./deciding-cohort";
 import type { ParsedAction } from "./entities/action.entity";
@@ -14,12 +14,12 @@ import type { ParsedAction } from "./entities/action.entity";
 export class DecidingCohortService {
   constructor(
     private readonly cohortResolverService: CohortResolverService,
-    private readonly splitPlacement: SplitPlacementService,
+    private readonly partitionPlacement: PartitionPlacementService,
   ) {}
 
   /**
-   * The cohort deciding `users` on the action: its split's groups, placing
-   * those not placed yet, or its cohort rule. `undefined` when its split
+   * The cohort deciding `users` on the action: its partition's parts, placing
+   * those not placed yet, or its cohort rule. `undefined` when its partition
    * failed to go live, which decides nobody.
    */
   async cohortFor(params: {
@@ -28,7 +28,7 @@ export class DecidingCohortService {
     session: CohortResolutionSession;
   }): Promise<DecidingCohort | undefined> {
     const { action, users, session } = params;
-    const suiteId = await this.splitPlacement.splitSuiteId(action.id);
+    const suiteId = await this.partitionPlacement.partitionSuiteId(action.id);
     if (suiteId === undefined) {
       return ruleCohort({
         memberIds: await this.cohortResolverService.resolveCohortMemberIds(
@@ -38,10 +38,10 @@ export class DecidingCohortService {
         optional: action.optional,
       });
     }
-    const groups = await this.splitPlacement.place({
+    const parts = await this.partitionPlacement.place({
       suiteId,
       userIds: users.map((user) => user.id),
     });
-    return groups && splitCohort({ actionId: action.id, groups });
+    return parts && partitionCohort({ actionId: action.id, parts });
   }
 }

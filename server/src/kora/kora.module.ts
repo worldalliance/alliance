@@ -78,5 +78,6 @@ import { KoraController } from "./kora.controller";
     KoraReviewController,
     KoraResultsController,
   ],
+  exports: [KoraReviewService],
 })
 export class KoraModule {}

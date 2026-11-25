@@ -251,7 +251,7 @@ test("deleting a list blocks on each formula that reads it, printed with its old
   );
 });
 
-test("deleting a list blocks on a form rule or split reading it, directly or through a formula", () => {
+test("deleting a list blocks on a form rule or partition reading it, directly or through a formula", () => {
   const rule = (id: string, text: string) => ({
     id,
     stored: R.unwrap(parseExpression(text, { catalog, named: [onCa] })),

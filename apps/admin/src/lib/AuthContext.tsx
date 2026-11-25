@@ -21,6 +21,7 @@ import React, {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: UserDto | undefined;
+  isImpersonation: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = memo(({ children }: React.PropsWithChildren) => {
   const [user, setUser] = useState<UserDto | undefined>();
+  const [isImpersonation, setIsImpersonation] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +41,10 @@ export const AuthProvider = memo(({ children }: React.PropsWithChildren) => {
       try {
         const { data } = await authMe();
         if (data) {
-          if (!cancelled) setUser(data.user);
+          if (!cancelled) {
+            setUser(data.user);
+            setIsImpersonation(data.isImpersonation ?? false);
+          }
         } else {
           throw new Error("No user data");
         }
@@ -49,6 +54,7 @@ export const AuthProvider = memo(({ children }: React.PropsWithChildren) => {
           const { data } = await authMe();
           if (data && !cancelled) {
             setUser(data.user);
+            setIsImpersonation(data.isImpersonation ?? false);
           }
         } catch (error) {
           console.log("AuthContext", "refresh failed", error);
@@ -100,11 +106,12 @@ export const AuthProvider = memo(({ children }: React.PropsWithChildren) => {
     () => ({
       isAuthenticated: !!user,
       user,
+      isImpersonation,
       login,
       logout,
       loading,
     }),
-    [user, loading, login, logout],
+    [user, isImpersonation, loading, login, logout],
   );
 
   return (
@@ -124,6 +131,7 @@ export const useAuth = () => {
     return {
       isAuthenticated: true,
       user: undefined,
+      isImpersonation: false,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,

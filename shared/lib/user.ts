@@ -31,9 +31,9 @@ import {
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
-import { queryKeys } from "./queryKeys";
 import { useUserForumPosts } from "./useForumPosts";
 import { myLocationCache } from "./useMyLocation";
+import { reloadAfterPhoneSave } from "./usePhoneCode";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export const userQueryKeys = {
@@ -429,9 +429,7 @@ export const useUpdateProfileMutation = (
         void myLocationCache(queryClient).invalidate();
       }
       if (variables.phoneNumber !== undefined) {
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.notificationSettings(),
-        });
+        void reloadAfterPhoneSave(queryClient);
       }
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },

@@ -170,13 +170,13 @@ describe("resolveUserActionStatus", () => {
     };
   });
 
-  it("is optional for the split group when the member's decision row says so", () => {
+  it("is optional for the part when the member's decision row says so", () => {
     const status = resolve({
       cohort: { admitted: true, eligible: true, optionalRow: true },
     });
     expect(status.assigned).toBe(true);
     expect(status.optional).toBe(true);
-    expect(status.optionalReason).toBe(ViewerOptionalReason.SplitGroup);
+    expect(status.optionalReason).toBe(ViewerOptionalReason.PartitionPart);
   });
 
   it("is entirely unassigned outside the cohort", () => {

@@ -29,7 +29,7 @@ const suiteWith = (events: ActionEventDto[]): ActionSuiteDto => ({
   events,
   reminderGroups: [],
   generalUpdates: [],
-  usesGroups: false,
+  isPartitioned: false,
 });
 
 const appendingAddEvent = (initial: ActionEventDto[]) => {

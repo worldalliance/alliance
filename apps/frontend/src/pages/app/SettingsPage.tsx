@@ -1,8 +1,10 @@
+import { PHONE_NUMBER_TAKEN_FACT } from "@alliance/common/phone";
 import {
   CitySearchDto,
   PublicFormResponseDefault,
 } from "@alliance/shared/client";
 import { useMyLocation } from "@alliance/shared/lib/useMyLocation";
+import { isConfirmedPhoneNumber } from "@alliance/shared/lib/usePhoneCode";
 import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -16,6 +18,7 @@ import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
 import React, { useCallback, useEffect } from "react";
 import { href, useLocation, useNavigate } from "react-router";
 import CityAutosuggest from "../../components/CityAutosuggest";
+import PhoneConfirm from "../../components/phone/PhoneConfirm";
 import AccountSettings, {
   ACCOUNT_SECTION_ID,
 } from "../../components/settings/AccountSettings";
@@ -34,11 +37,18 @@ const SettingsPage: React.FC = () => {
     phoneNumberCountry,
     setPhoneNumberCountry,
     setPhoneNumberEditing,
+    refusedPhoneNumber,
+    confirmablePhoneNumber,
+    phoneNumberConfirmed,
     saveStatus,
     saveStatusText,
     saveError,
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
+
+  const offeredPhoneNumber = isImpersonation ? null : confirmablePhoneNumber;
+  const phoneNumberUnconfirmed =
+    !!offeredPhoneNumber && !isConfirmedPhoneNumber(user, offeredPhoneNumber);
 
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -173,7 +183,7 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="flex flex-col md:flex-row w-full items-center gap-4 *:gap-x-1">
+            <div className="flex flex-col md:flex-row w-full items-start gap-4 *:gap-x-1">
               <div className="flex-1 flex flex-col w-full">
                 <label className="block mb-1">Location</label>
                 <CityAutosuggest
@@ -196,8 +206,30 @@ const SettingsPage: React.FC = () => {
                   country={phoneNumberCountry}
                   onCountryChange={setPhoneNumberCountry}
                   onEditingChange={setPhoneNumberEditing}
-                  error={phoneNumberError ?? undefined}
+                  error={
+                    // The server's message says to enter another number,
+                    // which the confirm control below makes untrue.
+                    phoneNumberError && refusedPhoneNumber && !isImpersonation
+                      ? PHONE_NUMBER_TAKEN_FACT
+                      : (phoneNumberError ?? undefined)
+                  }
                 />
+                {/* Mounted before the note appears, so it is announced. */}
+                <p role="status" className="text-sm text-zinc-600">
+                  {phoneNumberUnconfirmed && (
+                    <span className="mt-1 block">
+                      {refusedPhoneNumber
+                        ? "Confirm it’s your number to move it to this account."
+                        : "Not confirmed"}
+                    </span>
+                  )}
+                </p>
+                {offeredPhoneNumber && (
+                  <PhoneConfirm
+                    phoneNumber={offeredPhoneNumber}
+                    onConfirmed={phoneNumberConfirmed}
+                  />
+                )}
               </div>
             </div>
           </div>

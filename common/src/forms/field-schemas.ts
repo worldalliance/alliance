@@ -1,10 +1,15 @@
 import { z } from "zod";
+import { conversationExpertSchema } from "./expert-schema";
+import { formGroupSchema } from "./form-groups";
 import { formValueSchema } from "./form-value";
 import {
   categorizedOptionsShape,
   checkOptionCategories,
   checkOptionsFormula,
+  hasUniqueValues,
   optionListSchema,
+  optionSchema,
+  uniqueValuesMessage,
 } from "./options-schema";
 import { rowConditionSchema } from "./row-list-schema";
 import { optionsFormulaSchema } from "./variables";
@@ -31,6 +36,7 @@ const baseFieldSchema = z.object({
   width: widthSchema.optional(),
   output: fieldOutputConfigSchema.optional(),
   rowCondition: rowConditionSchema.optional(),
+  group: formGroupSchema.optional(),
 });
 
 const textFieldSchema = z.strictObject({
@@ -284,7 +290,11 @@ export type ListSubField = z.infer<typeof listSubFieldSchema>;
 const listFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("list"),
-  fields: z.array(listSubFieldSchema),
+  fields: z
+    .array(listSubFieldSchema)
+    .refine((fields) => fields.every((field) => field.group === undefined), {
+      message: "List sub-fields can't be in a group",
+    }),
   defaultNumber: z.number().optional(),
   min: z.number().optional(),
   max: z.number().optional(),
@@ -331,6 +341,36 @@ const timePickerFieldSchema = z.strictObject({
 });
 export type TimePickerField = z.infer<typeof timePickerFieldSchema>;
 
+const conversationOptionSchema = z.strictObject({
+  ...optionSchema.shape,
+  /** Markdown the expert replies with after this option is picked. */
+  reply: z.string().optional(),
+  /** Present when picking this option shows the note box. */
+  note: z
+    .strictObject({
+      required: z.boolean().optional(),
+      /** Shown above the note box; blank falls back to "Your note". */
+      label: z.string().optional(),
+      placeholder: z.string().optional(),
+    })
+    .optional(),
+});
+export type ConversationOption = z.infer<typeof conversationOptionSchema>;
+
+const conversationFieldSchema = z.strictObject({
+  ...baseFieldSchema.shape,
+  kind: z.literal("conversation"),
+  expert: conversationExpertSchema.nullable(),
+  /** Markdown the expert asks with. */
+  message: z.string(),
+  options: z
+    .array(conversationOptionSchema)
+    .refine(hasUniqueValues, uniqueValuesMessage),
+  /** The answer key the member's note is stored under. */
+  noteId: z.string(),
+});
+export type ConversationField = z.infer<typeof conversationFieldSchema>;
+
 export const anyFieldSchema = z.discriminatedUnion("kind", [
   ...listSubFieldSchema.options,
   listFieldSchema,
@@ -338,6 +378,7 @@ export const anyFieldSchema = z.discriminatedUnion("kind", [
   imageFieldSchema,
   toggleFieldSchema,
   timePickerFieldSchema,
+  conversationFieldSchema,
 ]);
 export type AnyField = z.infer<typeof anyFieldSchema>;
 export type FieldKind = AnyField["kind"];
@@ -347,6 +388,7 @@ const OPTION_FIELD_KINDS = {
   select: true,
   multiselect: true,
   ranking: true,
+  conversation: true,
 } as const satisfies Partial<Record<FieldKind, true>>;
 
 export type OptionField = Extract<

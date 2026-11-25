@@ -7,7 +7,7 @@ import { View } from "react-native";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
 
-/** The task panel of a Kora review action: reviews open in a webview, not a form. */
+/** The task panel of a Kora review action: the action's review opens in a webview, not a form. */
 export default function KoraActionTask({
   action,
   onReturn,
@@ -23,9 +23,12 @@ export default function KoraActionTask({
       away.current = false;
     }, [onReturn]),
   );
-  const openReviews = () => {
+  const openReviews = (forAction: boolean) => {
     away.current = true;
-    router.push("/kora-review");
+    router.push({
+      pathname: "/kora-review",
+      params: forAction ? { actionId: String(action.id) } : {},
+    });
   };
 
   if (action.viewer?.relation === "completed") {
@@ -38,7 +41,7 @@ export default function KoraActionTask({
         <Button
           title={KORA_ACTION_COPY.reviewMore}
           color={ButtonColor.Black}
-          onPress={openReviews}
+          onPress={() => openReviews(false)}
         />
       </View>
     );
@@ -53,7 +56,7 @@ export default function KoraActionTask({
         <Button
           title={KORA_ACTION_COPY.start}
           color={ButtonColor.Black}
-          onPress={openReviews}
+          onPress={() => openReviews(true)}
         />
       )}
     </View>

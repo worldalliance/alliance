@@ -1,0 +1,303 @@
+name: Desktop CLI bump, one CLI
+
+on:
+  workflow_call:
+    inputs:
+      cli:
+        description: claude or codex.
+        type: string
+        required: true
+
+# The open job commits as this identity, and the record job tells its commits from people's by it.
+env:
+  GIT_AUTHOR_NAME: github-actions[bot]
+  GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+  GIT_COMMITTER_NAME: github-actions[bot]
+  GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
+jobs:
+  # Runs the new CLI with model credentials, so it can't push; the open job does.
+  record:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: agents/desktop
+    env:
+      CLI: ${{ inputs.cli }}
+      ALLIANCE_AGENT_CHATS: "off"
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+      branch: ${{ steps.pick.outputs.branch }}
+      package: ${{ steps.pick.outputs.package }}
+      open: ${{ steps.pick.outputs.open }}
+      passed: ${{ steps.record.outputs.passed }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Dependencies
+        run: |
+          (cd ../.. && bun install --frozen-lockfile)
+          bun install --frozen-lockfile
+
+      # The development app's folders, which src/main/dev-app-data.ts names and the capture scripts sign in from.
+      - name: Name the development app's folders
+        run: echo "DEV_APP_DATA=$HOME/Library/Application Support/Alliance agent (dev)" >> "$GITHUB_ENV"
+
+      - name: Pick the version
+        id: pick
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "$CLI" in
+            claude) package=@anthropic-ai/claude-code ;;
+            codex) package=@openai/codex ;;
+            *) echo "::error::unknown CLI $CLI"; exit 1 ;;
+          esac
+          version=$(bun scripts/bump-cli.ts "$package")
+          if [ -z "$version" ]; then
+            echo "$package is at the version it follows."
+            exit 0
+          fi
+          branch="desktop-cli/$CLI/$version"
+          pushed=$(../../.github/scripts/desktop-cli-bump-pushed.sh "$CLI")
+          if [ -n "$pushed" ]; then
+            echo "::warning::Someone has pushed to #$pushed, so no $CLI bump is pushed or opened until it merges or closes."
+            exit 0
+          fi
+          # A fork's pull request shares the name without sharing the branch.
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/pulls?head=$GITHUB_REPOSITORY_OWNER:$branch&state=all")
+          if [ -n "$(jq -r -f ../../.github/scripts/pr-declined.jq <<< "$prs")" ]; then
+            echo "$branch was merged or declined."
+            exit 0
+          fi
+          # The other CLI's bump, merged first, conflicts with this one in package.json and bun.lock, so a conflicting one is recorded again onto its branch.
+          open=$(jq -r '[.[] | select(.state == "open") | .number] | first // empty' <<< "$prs")
+          if [ -n "$open" ]; then
+            # GitHub computes mergeability lazily, answering UNKNOWN until it has.
+            for _ in 1 2 3 4 5 6; do
+              mergeable=$(gh pr view "$open" --json mergeable --jq .mergeable)
+              [ "$mergeable" != UNKNOWN ] && break
+              sleep 10
+            done
+            if [ "$mergeable" != CONFLICTING ]; then
+              echo "$branch already has pull request #$open ($mergeable)."
+              exit 0
+            fi
+          fi
+          {
+            echo "package=$package"
+            echo "version=$version"
+            echo "branch=$branch"
+            echo "open=$open"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bump
+        if: steps.pick.outputs.version != ''
+        env:
+          PACKAGE: ${{ steps.pick.outputs.package }}
+          VERSION: ${{ steps.pick.outputs.version }}
+        run: bun add --dev --exact "$PACKAGE@$VERSION"
+
+      - name: Regenerate the Codex protocol types
+        if: steps.pick.outputs.version != '' && inputs.cli == 'codex'
+        run: bun scripts/codex-protocol.ts generate
+
+      - name: Read CI secrets
+        id: aws
+        if: steps.pick.outputs.version != ''
+        uses: ./.github/actions/aws
+        with:
+          role: review
+          parameters: ${{ inputs.cli == 'claude' && 'ci/review/CLAUDE_CODE_OAUTH_TOKEN' || 'ci/review/OPENAI_API_KEY' }}
+
+      # The app strips CLAUDE_* from the environment it runs Claude Code with, so the token goes in the config folder's settings, which Claude Code applies to itself.
+      - name: Sign in to Claude Code
+        if: steps.pick.outputs.version != '' && inputs.cli == 'claude'
+        env:
+          TOKEN: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          mkdir -p "$DEV_APP_DATA/claude"
+          umask 077
+          jq -n --arg token "$TOKEN" '{env: {CLAUDE_CODE_OAUTH_TOKEN: $token}}' > "$DEV_APP_DATA/claude/settings.json"
+
+      - name: Sign in to Codex
+        if: steps.pick.outputs.version != '' && inputs.cli == 'codex'
+        env:
+          OPENAI_API_KEY: ${{ fromJSON(steps.aws.outputs.secrets || '{}').OPENAI_API_KEY }}
+        run: |
+          mkdir -p "$DEV_APP_DATA/codex"
+          printenv OPENAI_API_KEY | CODEX_HOME="$DEV_APP_DATA/codex" node_modules/.bin/codex login --with-api-key
+
+      # Model behaviour varies between runs, so a recording whose tests fail is made once more.
+      - name: Record captures and test
+        id: record
+        if: steps.pick.outputs.version != ''
+        run: |
+          log="$RUNNER_TEMP/test.log"
+          # A failed recording leaves the last one's captures in place.
+          recorded=false
+          for attempt in 1 2; do
+            echo "::group::Recording, attempt $attempt"
+            if ! bun "src/main/agent/$CLI/testing/capture-$CLI.ts"; then
+              echo "::endgroup::"
+              continue
+            fi
+            echo "::endgroup::"
+            recorded=true
+            if (bun run typecheck && bun scripts/codex-protocol.ts check && bun run test) 2>&1 | tee "$log"; then
+              echo "passed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          if [ "$recorded" = false ]; then
+            echo "::error::Recording $CLI failed, so no captures were written."
+            exit 1
+          fi
+          echo "passed=false" >> "$GITHUB_OUTPUT"
+
+      - name: Save the change
+        if: steps.pick.outputs.version != ''
+        env:
+          SECRET: ${{ fromJSON(steps.aws.outputs.secrets || '{}').CLAUDE_CODE_OAUTH_TOKEN || fromJSON(steps.aws.outputs.secrets || '{}').OPENAI_API_KEY }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "::error::No credential to check the recorded change for."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/bump"
+          git add -A -- package.json bun.lock src/main/agent/codex/protocol "src/main/agent/$CLI/testing/captures"
+          git diff --cached --binary > "$RUNNER_TEMP/bump/change.patch"
+          if [ -f "$RUNNER_TEMP/test.log" ]; then
+            tail -n 80 "$RUNNER_TEMP/test.log" > "$RUNNER_TEMP/bump/test-tail.log"
+          fi
+          # The artifact's patch and test output become a public pull request.
+          if grep -rqF "$SECRET" "$RUNNER_TEMP/bump"; then
+            echo "::error::The recorded change or its test output holds the credential it was recorded with."
+            exit 1
+          fi
+
+      - name: Upload the change
+        if: steps.pick.outputs.version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-cli-${{ inputs.cli }}
+          path: ${{ runner.temp }}/bump/
+
+  open:
+    needs: record
+    if: needs.record.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download the change
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-cli-${{ inputs.cli }}
+          path: ${{ runner.temp }}/bump
+
+      - name: Apply the change and describe it
+        id: describe
+        env:
+          CLI: ${{ inputs.cli }}
+          PACKAGE: ${{ needs.record.outputs.package }}
+          VERSION: ${{ needs.record.outputs.version }}
+          PASSED: ${{ needs.record.outputs.passed }}
+        run: |
+          git apply "$RUNNER_TEMP/bump/change.patch"
+          # The record job ran the new CLI, so its patch may touch only what a bump changes; without renames, a file renamed into an allowed folder shows as its deletion too.
+          git add -A
+          outside=$(git diff --cached --name-only --no-renames \
+            | grep -vE '^agents/desktop/(package\.json|bun\.lock|src/main/agent/codex/protocol/.*|src/main/agent/'"$CLI"'/testing/captures/.*)$' || true)
+          if [ -n "$outside" ]; then
+            echo "::error::The recorded change touches files a bump doesn't change: $outside"
+            exit 1
+          fi
+          case "$CLI" in
+            claude) notes="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md" ;;
+            codex) notes="https://github.com/openai/codex/releases/tag/rust-v$VERSION" ;;
+          esac
+          {
+            delimiter=$(openssl rand -hex 16)
+            echo "body<<$delimiter"
+            echo "Bumps \`$PACKAGE\`, which the Alliance agent bundles, to $VERSION: $notes"
+            echo
+            case "$CLI" in
+              claude) echo "The job that opened this recorded the new version's captures in real sessions on macOS, signed in with the CI Claude subscription token." ;;
+              codex) echo "The job that opened this regenerated the Codex protocol types and recorded the new version's captures in real sessions on macOS, signed in with the CI OpenAI API key." ;;
+            esac
+            echo
+            if [ "$PASSED" = true ]; then
+              echo "The Alliance agent's typecheck and tests passed on those captures in that job."
+            else
+              echo "The Alliance agent's tests fail on the captures this carries, after the workflow tried recording twice. Model behaviour varies between recordings, so a test may assert on something this one did differently; fix it on this branch, or re-record with \`bun src/main/agent/$CLI/testing/capture-$CLI.ts\` from \`agents/desktop\`. The end of the last run's output:"
+              echo
+              echo '````````'
+              cat "$RUNNER_TEMP/bump/test-tail.log"
+              echo '````````'
+            fi
+            echo
+            echo "CI hasn't run: close and reopen this pull request to start it."
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+      # Someone may have pushed to a bump while the record job ran.
+      - name: Check no one has pushed to a bump since
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLI: ${{ inputs.cli }}
+        run: |
+          pushed=$(.github/scripts/desktop-cli-bump-pushed.sh "$CLI")
+          if [ -n "$pushed" ]; then
+            echo "::error::Someone pushed to #$pushed while this recorded, so nothing is pushed or opened."
+            exit 1
+          fi
+
+      - name: Push onto the conflicting pull request
+        if: needs.record.outputs.open != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPEN: ${{ needs.record.outputs.open }}
+          BRANCH: ${{ needs.record.outputs.branch }}
+          TITLE: bump the Alliance agent's ${{ needs.record.outputs.package }} to ${{ needs.record.outputs.version }}
+          BODY: ${{ steps.describe.outputs.body }}
+        run: |
+          git switch -c "$BRANCH"
+          git add -A
+          git commit -m "$TITLE"
+          git push --force origin "$BRANCH"
+          gh pr edit "$OPEN" --body "$BODY"
+
+      - name: Open a pull request
+        if: needs.record.outputs.open == ''
+        uses: ./.github/actions/open-superseding-pr
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ needs.record.outputs.branch }}
+          title: bump the Alliance agent's ${{ needs.record.outputs.package }} to ${{ needs.record.outputs.version }}
+          body: ${{ steps.describe.outputs.body }}
+          supersedes: desktop-cli/${{ inputs.cli }}/

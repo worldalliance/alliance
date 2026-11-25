@@ -24,11 +24,7 @@ type ActionAdmin = ReturnType<typeof useActionAdmin>;
 export function useActionCommands(params: {
   admin: Pick<
     ActionAdmin,
-    | "action"
-    | "createAction"
-    | "removeAction"
-    | "archiveAction"
-    | "unarchiveAction"
+    "action" | "createAction" | "archiveAction" | "unarchiveAction"
   >;
   actionId: number | null;
   form: CreateActionDto;
@@ -37,23 +33,17 @@ export function useActionCommands(params: {
   setError: (error: string | null) => void;
 }) {
   const {
-    admin: {
-      action,
-      createAction,
-      removeAction,
-      archiveAction,
-      unarchiveAction,
-    },
+    admin: { action, createAction, archiveAction, unarchiveAction },
     actionId,
     form,
     imageKey,
     imageUploading,
     setError,
   } = params;
-  const navigate = useNavigate();
   const { createForm } = useCreateFormAdmin();
   const { fetchLatest } = useAdminTaskFormActions();
   const handleActionCreated = useNavigateToCreatedAction();
+  const { confirm, success } = useToast();
 
   const handleDuplicate = useCallback(async () => {
     if (imageUploading) {
@@ -97,6 +87,9 @@ export function useActionCommands(params: {
       setError(result.error);
       return;
     }
+    // Edits made while the copy was created hold the navigation at the leave
+    // prompt, so the copy is announced on its own.
+    success("Action duplicated");
     handleActionCreated(result.value);
   }, [
     form,
@@ -107,21 +100,17 @@ export function useActionCommands(params: {
     createForm,
     fetchLatest,
     handleActionCreated,
+    success,
     setError,
   ]);
-
-  const handleActionDeleted = useCallback(() => {
-    navigate("/actions");
-  }, [navigate]);
-
-  const { confirm } = useToast();
 
   const handleArchive = useCallback(async () => {
     const confirmed =
       action?.archived ||
       (await confirm({
-        title: "Confirm Archive",
-        message: "Are you sure you want to archive this action?",
+        title: "Archive this action?",
+        message: `${action?.publicOnly ? "Its public page stays open to anyone with the link." : "Only admins can open it."} It also leaves the actions list unless archived actions are shown.`,
+        confirmLabel: "Archive",
       }));
     if (confirmed && actionId) {
       const archived = action?.archived;
@@ -136,29 +125,12 @@ export function useActionCommands(params: {
   }, [
     actionId,
     action?.archived,
+    action?.publicOnly,
     confirm,
     archiveAction,
     unarchiveAction,
     setError,
   ]);
 
-  const handleDelete = async () => {
-    if (!actionId) return;
-
-    if (
-      window.confirm(
-        "Are you sure you want to delete this action? This cannot be undone.",
-      )
-    ) {
-      const result = await R.fromPromise(removeAction());
-      if (!result.ok) {
-        setError("Failed to delete action");
-        console.error(result.error);
-        return;
-      }
-      handleActionDeleted();
-    }
-  };
-
-  return { handleDuplicate, handleArchive, handleDelete };
+  return { handleDuplicate, handleArchive };
 }

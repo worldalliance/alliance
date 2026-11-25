@@ -32,7 +32,7 @@ export function service(params: { checkout?: () => string | undefined } = {}) {
     repositoryUrl: source,
     findGit: async () =>
       R.success(gitAt({ executable: "git", env: process.env })),
-    findBun: () =>
+    findBun: async () =>
       R.success({ executable: bunExecutable ?? "", env: gitEnvironment() }),
     store: new WorktreeStore(path.join(dir, "user-data", "worktrees.json")),
     closeSessionsIn: async (folder) => {

@@ -1,6 +1,13 @@
+import { Features, isEnabled } from "@alliance/common/features";
 import { NodeEnv } from "@alliance/common/node-env";
 import { describe, expect, it } from "bun:test";
-import { getApiUrl, getInviteBaseUrl, isProduction, isStaging } from "./config";
+import {
+  getApiUrl,
+  getInviteBaseUrl,
+  isFeatureEnabled,
+  isProduction,
+  isStaging,
+} from "./config";
 import { setWebRuntimeConfig } from "./runtimeConfig";
 import {
   deployedWebRuntimeConfig,
@@ -45,4 +52,17 @@ describe("isStaging and isProduction", () => {
   it("are both false in tests", () => {
     expect([isStaging(), isProduction()]).toEqual([false, false]);
   });
+});
+
+describe("isFeatureEnabled", () => {
+  it.each([NodeEnv.Staging, NodeEnv.Production])(
+    "follows the runtime environment, not the build mode: %s",
+    (environment) => {
+      setWebRuntimeConfig(deployedWebRuntimeConfig(environment));
+
+      for (const feature of Object.values(Features)) {
+        expect(isFeatureEnabled(feature)).toBe(isEnabled(feature, environment));
+      }
+    },
+  );
 });

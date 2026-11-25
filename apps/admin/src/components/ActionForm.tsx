@@ -10,7 +10,7 @@ import { href, Link } from "react-router";
 import {
   actionFieldDefs,
   ActionFieldSection,
-  inGroupSuite,
+  inPartitionedSuite,
   suiteKindUnknown,
   type ActionFieldDef,
 } from "../lib/actionFieldDefs";
@@ -37,7 +37,6 @@ interface ActionFormProps extends ActionFieldInputs {
   saving: boolean;
   saveDisabled?: boolean;
   onCancel?: () => void;
-  onDelete?: () => void;
   availableTags?: TagDto[];
   tagsLoading: boolean;
   tagsError: boolean;
@@ -78,7 +77,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onCancelImageUpload,
   isNew,
   onCancel,
-  //   onDelete,
   baseUrl,
   availableTags = [],
   tagsLoading,
@@ -140,8 +138,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
     { loading: suitesLoading, failed: suitesError },
     form.suiteId,
   );
-  const groupSuite = inGroupSuite(availableSuites, form.suiteId);
-  // Shown in a suite with groups once they hold values, which the suite
+  const partitionedSuite = inPartitionedSuite(availableSuites, form.suiteId);
+  // Shown in a partitioned suite once they hold values, which the suite
   // refuses, such as on an action just moved into it. They stay shown after
   // being cleared, so the control that cleared them keeps focus.
   const ownRules =
@@ -168,7 +166,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
             onChange={onAuthorsChange}
             loading={usersLoading}
             loadFailed={usersError}
-            label="Action Authors"
+            label="Action authors"
           />
           <ActionReviewersEditor
             reviewers={reviewers}
@@ -182,12 +180,12 @@ const ActionForm: React.FC<ActionFormProps> = ({
         <div className="space-y-4">
           <div>
             <p className="text-sm font-medium text-gray-700">Priority</p>
-            <a
-              href="/priority"
+            <Link
+              to="/priority"
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Manage priority
-            </a>
+            </Link>
           </div>
           <ActionFormFields fields={settingsFields} {...fieldInputs} />
         </div>
@@ -210,16 +208,16 @@ const ActionForm: React.FC<ActionFormProps> = ({
         );
       })}
 
-      {groupSuite && (
-        <FormSection title="Groups">
+      {partitionedSuite && (
+        <FormSection title="Partition">
           <p className="text-sm text-gray-700">
-            This action&apos;s suite uses groups, which decide who takes part
-            and whether it&apos;s optional.{" "}
+            This action&apos;s suite is partitioned: its partition decides who
+            gets this action and whether it&apos;s optional.{" "}
             <Link
               className="underline"
               to={href("/suites/:suiteId", { suiteId: String(form.suiteId) })}
             >
-              Edit the suite&apos;s groups
+              Edit the suite&apos;s partition
             </Link>
           </p>
           {ownRules && (
@@ -241,7 +239,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
             Optional work, prerequisites and participants show once suites load.
           </p>
         ))}
-      {!kindUnknown && (!groupSuite || heldRulesIn === rulesScope) && (
+      {!kindUnknown && (!partitionedSuite || heldRulesIn === rulesScope) && (
         <>
           <FormSection
             title="Prerequisites"
@@ -300,16 +298,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
             Cancel
           </button>
         )}
-        {/* {!isNew && onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded-md hover:bg-red-200 text-sm font-medium"
-            disabled={saving}
-          >
-            Delete
-          </button>
-        )} */}
         <button
           type="submit"
           className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
@@ -322,8 +310,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
                 ? "Creating..."
                 : "Saving..."
               : isNew
-                ? "Create Action"
-                : "Save Changes"}
+                ? "Create action"
+                : "Save changes"}
         </button>
       </div>
     </form>

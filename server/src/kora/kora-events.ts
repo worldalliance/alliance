@@ -1,4 +1,4 @@
-/** A member finished their first Kora assignment. */
-export const KORA_MEMBER_REVIEWED = "kora.member.reviewed";
+/** A member finished the Kora assignment they started from a Kora review action. */
+export const KORA_ACTION_REVIEWED = "kora.action.reviewed";
 
-export type KoraMemberReviewed = { userId: number };
+export type KoraActionReviewed = { userId: number; actionId: number };

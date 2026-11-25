@@ -53,10 +53,10 @@ export class ActionCohortDecision {
   included: boolean;
 
   /**
-   * True when the member's split group has the action as optional work. False
+   * True when the member's part has the action as optional work. False
    * and null leave the action's own flag in force, which the grid keeps false
-   * wherever a group requires the action. Null on rows of suites without a
-   * split (BACKCOMPAT(split-row-optional): until no suite without a split is
+   * wherever a part requires the action. Null on rows of suites without a
+   * partition (BACKCOMPAT(partition-row-optional): until no suite without a partition is
    * still read).
    */
   @ApiProperty({ type: Boolean, nullable: true })

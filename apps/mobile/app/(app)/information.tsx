@@ -1,4 +1,5 @@
-import { isEnabled } from "@alliance/shared/lib/features";
+import { isEnabled } from "@alliance/common/features";
+import { NodeEnv } from "@alliance/common/node-env";
 import {
   INFO_CONTACTS,
   InfoEntryId,
@@ -95,7 +96,7 @@ function ResourceCard({
 
 export default function InformationScreen() {
   const resources: InformationResource[] = visibleInfoResources((feature) =>
-    isEnabled(feature, __DEV__ ? "development" : releaseTarget().env),
+    isEnabled(feature, __DEV__ ? NodeEnv.Development : releaseTarget().env),
   ).map(({ id, title, description, path }) => ({
     id,
     title,

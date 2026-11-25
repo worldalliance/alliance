@@ -32,7 +32,8 @@ const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
 
-const suiteSplitsAdminAll = () => ["suiteSplitsSplitAdmin"] as const;
+const suitePartitionsAdminAll = () =>
+  ["suitePartitionsPartitionAdmin"] as const;
 
 const memberTextThreadsAdminAll = () => ["mmsThreadGetThreadAdmin"] as const;
 const numberTextThreadsAdminAll = () =>
@@ -159,6 +160,8 @@ export const queryKeys = {
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   koraParticipantCount: () => ["koraParticipantCount"] as const,
   koraReview: () => ["koraReviewState"] as const,
+  koraActionReview: (actionId: number) =>
+    ["koraActionReviewState", actionId] as const,
   koraHome: () => ["koraReviewHome"] as const,
   koraState: () => ["koraState"] as const,
   webHandoff: () => ["webHandoffCreate"] as const,
@@ -232,9 +235,9 @@ export const queryKeys = {
   actionSuiteAdmin: (suiteId: number) =>
     ["actionSuitesSuiteAdmin", suiteId] as const,
   actionSuitesAdmin: () => ["actionSuitesSuitesAdmin"] as const,
-  suiteSplitsAdminAll,
-  suiteSplitAdmin: (suiteId: number) =>
-    [...suiteSplitsAdminAll(), suiteId] as const,
+  suitePartitionsAdminAll,
+  suitePartitionAdmin: (suiteId: number) =>
+    [...suitePartitionsAdminAll(), suiteId] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,

@@ -59,6 +59,7 @@ export default [
   route("/actions/completed", "pages/app/PublicActionCompletedPage.tsx"),
   route("/mobile/oauth-callback", "pages/app/MobileOAuthCallbackPage.tsx"),
   layout("applayout.tsx", [
+    route("/actions/:id/review", "pages/app/KoraActionReviewPage.tsx"),
     layout("navbar.tsx", [
       ...prefix("/actions", [
         route("/", "pages/app/ActionsListPage.tsx"),

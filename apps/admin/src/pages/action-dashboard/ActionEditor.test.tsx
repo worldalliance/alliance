@@ -1,29 +1,16 @@
-import { makeAction } from "@alliance/shared/lib/testFixtures";
-import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
-import { MemoryRouter } from "react-router";
+import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
+import { makeParsedAction } from "../../lib/testing/parsedAction";
 import ActionEditor from "./ActionEditor";
 import { useActionEditor } from "./useActionEditor";
 
-const action: ParsedActionDto = {
-  ...makeAction({
-    id: 7,
-    shortDescription: "Short",
-    body: "[Settings](https://worldalliance.org/settings)",
-  }),
-  slug: "seven",
-  followUpForms: [],
-  staffPreview: false,
-  prerequisiteActionIds: [],
-  memberActionStart: null,
-  memberActionDeadline: null,
-  storedImage: null,
-  storedSquareThumbnailImage: null,
-  cohortExpression: null,
-};
+const action = makeParsedAction({
+  shortDescription: "Short",
+  body: "[Settings](https://worldalliance.org/settings)",
+});
 
 const lookups = {
   tagsLoading: false,
@@ -45,7 +32,6 @@ const renderActionEditor = (isNew: boolean) => {
     : {
         isNew: false as const,
         cohortParseFailed: false,
-        onDelete: jest.fn(),
         checklist: null,
       };
   const Harness = () => {
@@ -76,7 +62,7 @@ const renderActionEditor = (isNew: boolean) => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={new QueryClient()}>
       <ToastProvider>
-        <MemoryRouter>{children}</MemoryRouter>
+        <LeaveGuardRouter>{children}</LeaveGuardRouter>
       </ToastProvider>
     </QueryClientProvider>
   );
@@ -99,7 +85,7 @@ it.each([
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: isNew ? "Create Action" : "Save Changes",
+      name: isNew ? "Create action" : "Save changes",
     }),
   );
   fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));

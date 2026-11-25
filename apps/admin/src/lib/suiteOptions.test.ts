@@ -9,7 +9,7 @@ const suites: ActionSuiteDto[] = [
     events: [],
     reminderGroups: [],
     generalUpdates: [],
-    usesGroups: false,
+    isPartitioned: false,
   },
 ];
 

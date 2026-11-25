@@ -1,4 +1,4 @@
-import { KORA_REVIEW_PATH } from "@alliance/common/kora";
+import { KORA_REVIEW_PATH, koraActionReviewPath } from "@alliance/common/kora";
 import type { ActionDto } from "@alliance/shared/client";
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { KORA_ACTION_COPY } from "@alliance/shared/lib/koraAction";
@@ -29,7 +29,7 @@ export default function KoraActionTask({ action }: { action: ActionDto }) {
       </h2>
       <p>{KORA_ACTION_COPY.intro(action.timeEstimate)}</p>
       {canCompleteAction(action) && (
-        <Link to={KORA_REVIEW_PATH} className={LINK}>
+        <Link to={koraActionReviewPath(action.id)} className={LINK}>
           {KORA_ACTION_COPY.start}
         </Link>
       )}

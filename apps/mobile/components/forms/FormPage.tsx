@@ -1,3 +1,4 @@
+import { elementRuns } from "@alliance/common/forms/form-groups";
 import {
   isQuestionField,
   type AnyField,
@@ -47,36 +48,54 @@ export default function FormPage({
       resolvedPageElements.map((element) => isElementCurrentlyVisible(element)),
     [resolvedPageElements, isElementCurrentlyVisible],
   );
-  const hasRenderedNeighborAbove = (idx: number): boolean => {
-    for (let j = idx - 1; j >= 0; j--) {
-      if (pageElementVisible[j]) return true;
+  const hasRenderedNeighbor = (from: number, to: number): boolean =>
+    pageElementVisible.slice(from, to).some(Boolean);
+
+  const renderElement = (
+    element: PageItem,
+    idx: number,
+    scope: { start: number; end: number },
+  ) => {
+    if (!pageElementVisible[idx]) {
+      return null;
     }
-    return false;
-  };
-  const hasRenderedNeighborBelow = (idx: number): boolean => {
-    for (let j = idx + 1; j < pageElementVisible.length; j++) {
-      if (pageElementVisible[j]) return true;
+    if (isQuestionField(element)) {
+      return <View key={element.id}>{renderField(element)}</View>;
     }
-    return false;
+    return (
+      <View key={element.id ?? `block-${idx}`}>
+        <RenderDisplayBlockMobile
+          {...blockProps}
+          block={interpolateDisplayBlock(element, variableValues)}
+          hasRenderedNeighborAbove={hasRenderedNeighbor(scope.start, idx)}
+          hasRenderedNeighborBelow={hasRenderedNeighbor(idx + 1, scope.end)}
+        />
+      </View>
+    );
   };
 
+  const page = { start: 0, end: resolvedPageElements.length };
   return (
     <View className={cn("gap-y-4", className)}>
-      {resolvedPageElements.map((element, idx) => {
-        if (!pageElementVisible[idx]) {
-          return null;
-        }
-        if (isQuestionField(element)) {
-          return <View key={element.id}>{renderField(element)}</View>;
-        }
+      {elementRuns(resolvedPageElements).flatMap((run) => {
+        const { group, start, end } = run;
+        // A group's box pads its members, so their neighbours are only the
+        // other members.
+        const scope = group === undefined ? page : run;
+        const rendered = resolvedPageElements
+          .slice(start, end)
+          .map((element, offset) =>
+            renderElement(element, start + offset, scope),
+          )
+          .filter((node) => node !== null);
+        if (group === undefined) return rendered;
+        if (rendered.length === 0) return [];
         return (
-          <View key={element.id ?? `block-${idx}`}>
-            <RenderDisplayBlockMobile
-              {...blockProps}
-              block={interpolateDisplayBlock(element, variableValues)}
-              hasRenderedNeighborAbove={hasRenderedNeighborAbove(idx)}
-              hasRenderedNeighborBelow={hasRenderedNeighborBelow(idx)}
-            />
+          <View
+            key={`group-${group}-${start}`}
+            className="gap-y-4 rounded-lg bg-zinc-100 p-4"
+          >
+            {rendered}
           </View>
         );
       })}

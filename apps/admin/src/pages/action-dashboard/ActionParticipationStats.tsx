@@ -48,7 +48,7 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
                   : 0}
                 %
               </p>
-              <p className="text-xs text-gray-500">Completion Rate</p>
+              <p className="text-xs text-gray-500">Completion rate</p>
             </div>
           </div>
         </Card>
@@ -132,7 +132,7 @@ const ActionParticipationStats: React.FC<ActionParticipationStatsProps> = ({
     {incompleteUsersExpanded && incompleteUsers.length > 0 && (
       <Card style={CardStyle.White}>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
-          Users Who Failed to Complete
+          Users who failed to complete
         </h3>
         <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
           {incompleteUsers.map((user) => (

@@ -1,4 +1,6 @@
+import { conversationNoteId } from "@alliance/common/forms/conversation";
 import type {
+  ConversationField,
   FormSchema,
   ListField,
   Page,
@@ -77,5 +79,23 @@ describe("copyElementWithUniqueIds", () => {
     expect(subId).not.toBe("person");
     expect(copy.outputViewHiddenFieldIds).toEqual([subId]);
     expect(copy.visibleIfFormula).toEqual(shownWhen("name"));
+  });
+
+  it("gives a conversation's note an answer key of its own", () => {
+    const conversation: ConversationField = {
+      id: "aware",
+      type: "input",
+      kind: "conversation",
+      label: "Aware",
+      expert: null,
+      message: "Were you aware?",
+      options: [],
+      noteId: "aware_note",
+    };
+    const copy = copyElementWithUniqueIds(conversation, schema);
+    if (copy.kind !== "conversation")
+      throw new Error("expected a conversation");
+
+    expect(copy.noteId).toBe(conversationNoteId(copy.id));
   });
 });

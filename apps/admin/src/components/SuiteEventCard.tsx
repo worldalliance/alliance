@@ -1,8 +1,8 @@
 import { ActionEventDto, UpdateActionEventDto } from "@alliance/shared/client";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { formatDate } from "date-fns";
 import { useState } from "react";
 
 export type SuiteEventCardProps = {
@@ -10,6 +10,9 @@ export type SuiteEventCardProps = {
   onEdit: (body: UpdateActionEventDto) => void;
   onDelete: (eventId: number) => void;
 };
+
+const FIELD =
+  "mt-1 mb-2 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-normal";
 
 const SuiteEventCard = ({ event, onEdit, onDelete }: SuiteEventCardProps) => {
   const [editing, setEditing] = useState(false);
@@ -47,25 +50,36 @@ const SuiteEventCard = ({ event, onEdit, onDelete }: SuiteEventCardProps) => {
   return (
     <Card className="relative">
       {editing ? (
-        <div>
-          <input
-            type="text"
-            value={editingValues.title}
-            onChange={(e) =>
-              setEditingValues({ ...editingValues, title: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            value={editingValues.description}
-            onChange={(e) =>
-              setEditingValues({
-                ...editingValues,
-                description: e.target.value,
-              })
-            }
-          />
+        <div className="sm:min-w-64">
+          <label className="block text-sm font-medium">
+            Title
+            <input
+              type="text"
+              className={FIELD}
+              value={editingValues.title}
+              onChange={(e) =>
+                setEditingValues({ ...editingValues, title: e.target.value })
+              }
+            />
+          </label>
+          <label className="block text-sm font-medium">
+            Description
+            <input
+              type="text"
+              className={FIELD}
+              value={editingValues.description}
+              onChange={(e) =>
+                setEditingValues({
+                  ...editingValues,
+                  description: e.target.value,
+                })
+              }
+            />
+          </label>
           <DateTimePicker
+            id={`suite-event-${event.id}-date`}
+            label="Date"
+            showTimezoneHint
             value={editingValues.date}
             onChange={(date) =>
               setEditingValues({ ...editingValues, date: date.utcValue! })
@@ -75,7 +89,7 @@ const SuiteEventCard = ({ event, onEdit, onDelete }: SuiteEventCardProps) => {
             <Button color={ButtonColor.Black} onClick={handleSave}>
               Save
             </Button>
-            <Button color={ButtonColor.Black} onClick={handleCancel}>
+            <Button color={ButtonColor.White} onClick={handleCancel}>
               Cancel
             </Button>
           </div>
@@ -86,7 +100,7 @@ const SuiteEventCard = ({ event, onEdit, onDelete }: SuiteEventCardProps) => {
             <p className="font-bold">{event.title}</p>
           </div>
           <p>{event.description}</p>
-          <p>{formatDate(event.date, "MM/dd/yyyy hh:mm a")}</p>
+          <p>{formatDateTimeWithZone(new Date(event.date))}</p>
           <div className="flex flex-row gap-2">
             <Button color={ButtonColor.Black} onClick={handleEdit}>
               Edit for all
@@ -101,7 +115,7 @@ const SuiteEventCard = ({ event, onEdit, onDelete }: SuiteEventCardProps) => {
         <div className="absolute bg-white/60 backdrop-blur-sm top-0 left-0 w-full h-full flex flex-col gap-2 items-center justify-center">
           <p>Delete for all suite actions?</p>
           <div className="flex flex-row gap-2">
-            <Button color={ButtonColor.Black} onClick={handleCancelDelete}>
+            <Button color={ButtonColor.White} onClick={handleCancelDelete}>
               Cancel
             </Button>
             <Button color={ButtonColor.Red} onClick={handleDelete}>

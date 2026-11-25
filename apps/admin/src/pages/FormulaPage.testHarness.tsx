@@ -10,6 +10,7 @@ import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../components/LeaveGuard";
 import FormulaPage from "./FormulaPage";
 
 export const base: FormulaDto = {
@@ -118,7 +119,14 @@ export const renderPage = (path: string, cached?: FormulaDto[]) => {
   const router = createMemoryRouter(
     [
       { path: "/formulas", element: <p>All formulas</p> },
-      { path: "/formulas/:formulaId", element: <FormulaPage /> },
+      {
+        path: "/formulas/:formulaId",
+        element: (
+          <LeaveGuard>
+            <FormulaPage />
+          </LeaveGuard>
+        ),
+      },
     ],
     { initialEntries: [path] },
   );

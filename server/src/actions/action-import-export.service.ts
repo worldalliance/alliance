@@ -4,9 +4,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { writeUnderLive } from "src/datasources/soft-delete";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import {
-  assertNoSplitLaunch,
-  followSplitGrid,
-} from "src/suite-splits/split-guards";
+  assertNoPartitionLaunch,
+  followGrid,
+} from "src/suite-partitions/partition-guards";
 import { Form } from "src/tasks/entities/form.entity";
 import { User } from "src/user/entities/user.entity";
 import type { IsRelation, Relations } from "src/utils/Repository";
@@ -87,8 +87,9 @@ export class ActionImportExportService {
       followUpForms: _followUpForms,
       reviewers,
       project: _project,
-      // Action ids name different actions in another environment.
+      // Ids name different rows in another environment; `taskForm` carries the form itself.
       prerequisiteActionIds: _prerequisiteActionIds,
+      taskFormId: _taskFormId,
       // Regenerated, so importing a copy beside its original can't conflict.
       slug: _slug,
       ...actionCols
@@ -192,8 +193,8 @@ export class ActionImportExportService {
             })),
           );
         }
-        await followSplitGrid(em, { actionIds: [actionId], entering: true });
-        await assertNoSplitLaunch(em, [actionId]);
+        await followGrid(em, { actionIds: [actionId], entering: true });
+        await assertNoPartitionLaunch(em, [actionId]);
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },

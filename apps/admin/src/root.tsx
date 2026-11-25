@@ -20,7 +20,12 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
-import { AuthProvider } from "./lib/AuthContext";
+import {
+  boundaryNeedsStaffIdentity,
+  useAnalytics,
+  useBoundaryStaffIdentity,
+} from "./lib/analytics";
+import { AuthProvider, useAuth } from "./lib/AuthContext";
 import { getSiteUrl } from "./lib/config";
 
 registerErrorStatus(client);
@@ -38,6 +43,24 @@ export function HydrateFallback() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <>
+      {boundaryNeedsStaffIdentity() && (
+        <AuthProvider>
+          <StaffIdentity />
+        </AuthProvider>
+      )}
+      <ErrorDetails error={error} />
+    </>
+  );
+}
+
+function StaffIdentity() {
+  useBoundaryStaffIdentity(useAuth());
+  return null;
+}
+
+function ErrorDetails({ error }: { error: unknown }) {
   if (!import.meta.env.PROD) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -96,6 +119,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function Analytics() {
+  useAnalytics(useAuth());
+  return null;
+}
+
 // The providers read the runtime config, which entry.client loads before
 // hydrating, so they stay out of Layout, which the build prerenders.
 export default function Root() {
@@ -103,6 +131,7 @@ export default function Root() {
     <SiteOriginLinkProvider origin={getSiteUrl()}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <Analytics />
           <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
             <ToastProvider>
               <Outlet />

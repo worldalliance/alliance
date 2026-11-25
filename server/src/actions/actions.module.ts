@@ -8,6 +8,7 @@ import { Comment } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumModule } from "src/forum/forum.module";
+import { KoraModule } from "src/kora/kora.module";
 import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
@@ -25,7 +26,7 @@ import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
-import { SplitPlacementModule } from "src/suite-splits/split-placement.module";
+import { PartitionPlacementModule } from "src/suite-partitions/partition-placement.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -99,6 +100,7 @@ import { GeneralUpdatesController } from "./general-updates.controller";
 import { GeneralUpdatesService } from "./general-updates.service";
 import { GlobalFeedService } from "./global-feed.service";
 import { HomeFeedService } from "./home-feed.service";
+import { KoraActionReviewController } from "./kora-action-review.controller";
 import { KoraActionListener } from "./kora-action.listener";
 import { MemberActionsService } from "./member-actions.service";
 import { ProjectActionsController } from "./project-actions.controller";
@@ -158,10 +160,12 @@ import { WelcomeQueueService } from "./welcome-queue.service";
     FacepileModule,
     EventLogModule,
     FormSnapshotModule,
-    SplitPlacementModule,
+    PartitionPlacementModule,
     forwardRef(() => ShareUrlsModule),
+    KoraModule,
   ],
   controllers: [
+    KoraActionReviewController,
     ActionsController,
     GeneralUpdatesController,
     ActionUpdatesController,

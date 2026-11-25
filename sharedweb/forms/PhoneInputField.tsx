@@ -1,10 +1,12 @@
 import type { PhoneField } from "@alliance/common/forms/form-schema";
+import { useContext } from "react";
 import {
   type FieldInputProps,
   RenderLabel,
   useQuestionLabelId,
 } from "./fieldParts";
 import { LazyPhoneNumberInput } from "./lazyFieldInputs";
+import { PhoneConfirmSlot } from "./phoneConfirmSlot";
 
 export function PhoneInputField({
   field,
@@ -19,6 +21,8 @@ export function PhoneInputField({
 }: FieldInputProps<PhoneField>) {
   const labelId = useQuestionLabelId(field);
   const answer = typeof value === "string" ? value : "";
+  const confirmSlot = useContext(PhoneConfirmSlot);
+  const confirmable = field.autoExtractUserData && onChange && !disabled;
 
   return (
     <div className="space-y-1">
@@ -40,6 +44,7 @@ export function PhoneInputField({
         required={required}
         placeholder={field.placeholder || "Enter phone number"}
         error={errorMessage ?? undefined}
+        underWholeNumber={(confirmable && confirmSlot) || undefined}
       />
     </div>
   );

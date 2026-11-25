@@ -42,7 +42,7 @@ import { PushModule } from "./push/push.module";
 import { S3Module } from "./s3/s3.module";
 import { SearchModule } from "./search/search.module";
 import { ShareUrlsModule } from "./share-urls/share-urls.module";
-import { SuiteSplitsModule } from "./suite-splits/suite-splits.module";
+import { SuitePartitionsModule } from "./suite-partitions/suite-partitions.module";
 import { TasksModule } from "./tasks/tasks.module";
 import { ReferralSource } from "./user/entities/user.entity";
 import { UserModule } from "./user/user.module";
@@ -109,7 +109,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     CustomLinksModule,
     FormulasModule,
     MemberListsModule,
-    SuiteSplitsModule,
+    SuitePartitionsModule,
     HostedDocsModule,
     CampaignModule,
     TasksModule,

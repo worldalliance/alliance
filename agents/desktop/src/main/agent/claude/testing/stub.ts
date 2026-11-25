@@ -7,7 +7,11 @@ export const stubCapturesVariable = "ALLIANCE_AGENT_CLAUDE_STUB_CAPTURES";
 
 export const stubCli: ClaudeCli = {
   executable: fileURLToPath(new URL("./stub-claude.ts", import.meta.url)),
-  configDir: "/nonexistent/claude",
+  folders: {
+    claudeConfigDir: "/nonexistent/claude",
+    codexHome: "/nonexistent/codex",
+    bin: "/nonexistent/bin",
+  },
 };
 
 const { writeScratch, ...helpers } = stubReplay({
@@ -19,6 +23,6 @@ export const { replay, stopReplay, writeCapture } = helpers;
 export function hangingCli(): ClaudeCli {
   return {
     executable: writeScratch(randomUUID(), "#!/bin/sh\nexec sleep 30\n", 0o755),
-    configDir: "/config",
+    folders: stubCli.folders,
   };
 }

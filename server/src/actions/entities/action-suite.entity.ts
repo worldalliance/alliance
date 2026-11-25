@@ -6,7 +6,7 @@ import {
   DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
-import { SuiteSplit } from "src/suite-splits/entities/suite-split.entity";
+import { SuitePartition } from "src/suite-partitions/entities/suite-partition.entity";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -72,11 +72,11 @@ export class ActionSuite {
   @Type(() => ReminderGroup)
   reminderGroups?: Relation<ReminderGroup>[];
 
-  /** Set when the suite's groups decide its actions' cohorts; null when they don't. */
-  @OneToOne(() => SuiteSplit, (split) => split.suite)
+  /** Set when the suite's partition decides its actions' cohorts; null when they don't. */
+  @OneToOne(() => SuitePartition, (partition) => partition.suite)
   @IsOptional()
   @Allow()
-  split?: Relation<SuiteSplit> | null;
+  partition?: Relation<SuitePartition> | null;
 
   // Methods
 

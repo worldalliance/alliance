@@ -88,7 +88,7 @@ describe("a captured session", () => {
     const session = R.unwrap(
       await createCodexBackend(cli).resume({
         cwd: repo,
-        sessionId: "01a1f059-900f-7110-ac11-064988711f2e",
+        sessionId: "01a20a45-f07e-7220-95e8-244300888a3f",
       }),
     );
     expect(

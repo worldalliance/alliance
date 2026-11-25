@@ -37,6 +37,7 @@ export function choiceAnswerText(params: {
 
   switch (field.kind) {
     case "radio":
+    case "conversation":
     case "select": {
       const normalized =
         value === null || value === undefined ? "" : String(value);

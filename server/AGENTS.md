@@ -4,6 +4,7 @@ Read before the matching task:
 
 - Editing any `*.dto.ts` or `*.controller.ts` → `(root)/agents/skills/dto-return-types/SKILL.md`
 - Generating or writing a migration → `(root)/agents/skills/migrations/SKILL.md`
+- Adding or changing an automatic email → `server/src/mail/templates/README.md`
 
 ## Entities
 
