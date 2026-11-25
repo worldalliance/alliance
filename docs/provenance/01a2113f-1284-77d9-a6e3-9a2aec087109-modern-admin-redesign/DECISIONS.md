@@ -260,3 +260,14 @@ All agent judgement; the user was asleep and has not seen these. They replace th
 - **Daily stats' cumulative columns say "(total)"**, the task bar tip says "Completed of joined" for its rate, and an empty tenure cohort shows "—" for its rates.
 - **Home stays one page, stats under the queues, laid out to scan**: Time to churn beside Task completion and churn after joining, Recent missed tasks beside Member reliability, and the two completion rate charts side by side, each half the width; wide time series, the cohort grid, task bars and tables keep the full width. The page is about 10,000 px at 1280 wide, from about 12,000.
 - **Lint reports colour literals in `fill`, `stroke` and `style`, and fixed lengths in `style`.** A value computed from data passes; the static parts of a template string are what the rule reads.
+
+## Home joined to the revised system
+
+All agent judgement; the user was asleep and has not seen these. They replace the daily stats and tile lines of the section above where they differ.
+
+- **Home's words follow the server** (`server/src/analytics/`). Daily stats is one snapshot a day (`analytics.service.ts`, `calculateDailyStats`): tasks completed, anonymous form responses, invites created and invites accepted are totals to that day and say "(total)"; "Members signed (total)" was the members with an active contract that day and is now "Active members", beside "Suspended members". "Last month churn" is "Churn in the last 30 days" (`contractStatusHistory.ts`). Recent missed tasks, Member reliability and Time to churn say what their endpoints count (`getMissedActions`, `getMemberReliabilityWindow`, `getTimeToChurnSamples`).
+- **Every stat tile has a note saying what its number counts**, replaced by "Loading…" or "Couldn't load" while its query loads or after it fails, so the row is one height in every state.
+- **A panel whose background refetch fails keeps its chart and shows `RefreshFailedBanner inline`.** Time to churn hid its histogram on a failed refetch before; it now follows the guide.
+- **The three panels staff load with a button** (Recent missed tasks, Member reliability, Task completion and churn after joining) **still replace the earlier result with the failed state when a reload fails**, as today's tests require: the reader asked for a fresh answer, and the old one beside a failure would read as it.
+- **Skeletons above the Tasks section have their content's height**, so nothing in the first screens moves when the stats land. Cohort completion, the task bars and the task table are as tall as their data, so what sits under them still moves on first load.
+- **A failed recalculation shows in its panel with "Dismiss"**, not as a toast or a page banner: the button is in that panel.
