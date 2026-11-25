@@ -36,42 +36,44 @@ export function TimelineGroupHeader({
   const left = span ? x(span.start) : 0;
   const width = span ? Math.max(x(span.end) - left, 4) : 0;
   return (
-    <div className="flex h-10 border-b border-line bg-canvas">
+    <div className="flex h-14 border-b border-line bg-canvas">
       <div
         className={cn(
-          "sticky left-0 flex w-80 shrink-0 items-center gap-2 border-r border-line bg-canvas px-page",
+          "sticky left-0 flex w-80 shrink-0 flex-col justify-center gap-1 border-r border-line bg-canvas px-page",
           zIndex.raised,
         )}
       >
-        {cat && (
-          <span
-            aria-hidden="true"
-            className={cn("size-3 shrink-0 rounded-sm", cat.solid)}
-          />
-        )}
-        {group.id === null ? (
-          <span className="truncate font-semibold text-fg-muted">
-            {group.name}
-          </span>
-        ) : (
-          <Link
-            to={HREF[group.kind](group.id)}
-            title={group.name}
-            className={cn(nameLinkClass, "truncate font-semibold")}
-          >
-            {group.name}
-          </Link>
-        )}
-        {group.phase && <PhaseBadge status={group.phase} />}
-        <span className="ml-auto shrink-0 text-caption whitespace-nowrap text-fg-muted tabular-nums">
+        <div className="flex min-w-0 items-center gap-2">
+          {cat && (
+            <span
+              aria-hidden="true"
+              className={cn("size-3 shrink-0 rounded-sm", cat.solid)}
+            />
+          )}
+          {group.id === null ? (
+            <span className="truncate font-semibold text-fg-muted">
+              {group.name}
+            </span>
+          ) : (
+            <Link
+              to={HREF[group.kind](group.id)}
+              title={group.name}
+              className={cn(nameLinkClass, "truncate font-semibold")}
+            >
+              {group.name}
+            </Link>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-caption text-fg-muted tabular-nums">
+          {group.phase && <PhaseBadge status={group.phase} />}
           {countOf(group.rows.length, "task")}
-        </span>
+        </div>
       </div>
       {span && (
         <div className="relative flex-1">
           {group.kind === GroupBy.Suite ? (
             <div
-              className="absolute inset-y-2.5 flex items-center"
+              className="absolute inset-y-3 flex items-center"
               style={{ left: `${left}px` }}
               title={`${phaseLabel("member_action")}: ${formatDateTime(span.start, { timeZone: LAUNCH_TIME_ZONE })} – ${formatDateTime(span.end, { timeZone: LAUNCH_TIME_ZONE })}`}
             >
@@ -90,7 +92,7 @@ export function TimelineGroupHeader({
             cat && (
               <span
                 aria-hidden="true"
-                className={cn("absolute inset-y-3.5 rounded-full", cat.soft)}
+                className={cn("absolute inset-y-5 rounded-full", cat.soft)}
                 style={{ left: `${left}px`, width: `${width}px` }}
               />
             )

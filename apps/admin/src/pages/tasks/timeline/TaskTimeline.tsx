@@ -1,4 +1,4 @@
-import { addWeeks, getDayOfYear, milliseconds } from "date-fns";
+import { addWeeks, milliseconds } from "date-fns";
 import {
   type ReactNode,
   useLayoutEffect,
@@ -14,9 +14,7 @@ import {
   weekTicks,
 } from "../../../lib/actionTimelineData";
 import type { CohortSegment } from "../../../lib/describeCohortExpression";
-import { formatDate, formatDateTime } from "../../../lib/formatDate";
 import { taskHref } from "../../../lib/hrefs";
-import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import { cn } from "../../../ui/cn";
 import { nameLinkClass } from "../../../ui/styles";
 import { zIndex } from "../../../ui/zIndex";
@@ -24,6 +22,7 @@ import TaskRowMeta from "./TaskRowMeta";
 import { TimelineBars } from "./TimelineBars";
 import { TimelineGroupHeader } from "./TimelineGroupHeader";
 import { TimelineReminders } from "./TimelineReminders";
+import { TimelineWeeks } from "./TimelineWeeks";
 import {
   GROUP_PX,
   NAME_COLUMN_PX,
@@ -71,11 +70,10 @@ export function TaskTimeline({
   const [now] = useState(() => new Date());
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const start = range.start;
-  // Room for a last phase drawn a week past its start.
+  // Room for a last phase drawn a week past now, and for now to sit centred on a wide screen.
   const endTime =
-    Math.max(range.end.getTime(), now.getTime()) + milliseconds({ days: 14 });
+    Math.max(range.end.getTime(), now.getTime()) + milliseconds({ weeks: 6 });
   const x = useMemo(() => timelineScale(start, PIXELS_PER_DAY), [start]);
-  const chartPx = Math.ceil(x(endTime));
   const nowPx = x(now);
   const ticks = useMemo(
     () =>
@@ -86,6 +84,8 @@ export function TaskTimeline({
       }),
     [start, endTime],
   );
+  const lastTick = ticks.at(-1);
+  const chartPx = Math.ceil(x(lastTick ? addWeeks(lastTick.date, 1) : endTime));
   const rows = groups.flatMap((group) => group.rows);
   const isEmpty = rows.length === 0 && reminders.length === 0;
   const tops = rowTops({ groups, withHeaders: groupHeaders });
@@ -130,11 +130,11 @@ export function TaskTimeline({
     >
       <div
         className="relative"
-        style={{ width: `${NAME_COLUMN_PX + chartPx}px` }}
+        style={{ width: `max(100%, ${NAME_COLUMN_PX + chartPx}px)` }}
       >
         <div
           className={cn(
-            "sticky top-0 flex h-12 border-b border-line bg-surface-2",
+            "sticky top-0 flex h-16 border-b border-line bg-surface-2",
             zIndex.nav,
           )}
         >
@@ -147,36 +147,13 @@ export function TaskTimeline({
             {corner}
           </div>
           <div className="relative shrink-0" style={{ width: `${chartPx}px` }}>
-            {ticks.map(({ date, left }) => {
-              const week = Math.ceil(getDayOfYear(date) / 7) + 1;
-              const day = formatDate(date, { timeZone: LAUNCH_TIME_ZONE });
-              return (
-                <button
-                  type="button"
-                  key={date.getTime()}
-                  onClick={() => jumpToWeek(date)}
-                  aria-label={`Jump to the first task active in week ${week}, ${day}`}
-                  className="absolute inset-y-0 flex scroll-ml-80 flex-col justify-center border-l border-line px-2 text-left text-caption text-fg-muted focus-ring hover:bg-surface hover:text-fg"
-                  style={{
-                    left: `${left}px`,
-                    width: `${x(addWeeks(date, 1)) - left}px`,
-                  }}
-                >
-                  <span className="font-medium text-fg">{day}</span>
-                  <span>Week {week}</span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={centreOnNow}
-              aria-label="Scroll to now"
-              title={`Now: ${formatDateTime(now, { timeZone: LAUNCH_TIME_ZONE })}`}
-              className="absolute bottom-1 -translate-x-1/2 rounded-sm bg-fg px-1 text-caption font-medium text-surface focus-ring"
-              style={{ left: `${nowPx}px` }}
-            >
-              Now
-            </button>
+            <TimelineWeeks
+              ticks={ticks}
+              x={x}
+              now={now}
+              onJump={jumpToWeek}
+              onNow={centreOnNow}
+            />
           </div>
         </div>
 
@@ -223,7 +200,7 @@ export function TaskTimeline({
                         to={taskHref(row.action.id)}
                         data-task-link={row.action.id}
                         title={row.action.name}
-                        className={cn(nameLinkClass, "scroll-mt-12 truncate")}
+                        className={cn(nameLinkClass, "scroll-mt-16 truncate")}
                       >
                         {row.action.name}
                       </Link>

@@ -19,8 +19,7 @@ export const readGroupBy = (param: string | null): GroupBy =>
 
 export const PIXELS_PER_DAY = 16;
 export const NAME_COLUMN_PX = 320;
-export const HEADER_PX = 48;
-export const GROUP_PX = 40;
+export const GROUP_PX = 56;
 export const ROW_PX = 56;
 
 export type XForTime = (time: Date | number) => number;

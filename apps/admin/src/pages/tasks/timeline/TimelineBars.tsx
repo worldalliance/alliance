@@ -38,7 +38,7 @@ const memberActionClass = (project: TimelineRow["action"]["project"]) => {
   return cn(cat.border, cat.soft, "text-fg");
 };
 
-const barClass = "focus-ring scroll-mt-12 scroll-ml-80";
+const barClass = "focus-ring scroll-mt-16 scroll-ml-80";
 
 /**
  * One phase from its event's instant to the next's, so touching phases share an

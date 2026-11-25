@@ -6,7 +6,7 @@ const BARS = ["ml-24 w-40", "ml-48 w-56", "ml-10 w-32", "ml-64 w-44"];
 export function TimelineSkeleton() {
   return (
     <div className="flex flex-col">
-      <div className="flex h-12 border-b border-line bg-surface-2">
+      <div className="flex h-16 border-b border-line bg-surface-2">
         <div className="w-80 shrink-0 border-r border-line" />
       </div>
       {Array.from({ length: 8 }, (_, index) => (
