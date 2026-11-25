@@ -10,8 +10,8 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import { KoraBatches } from "./KoraBatches";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { TranscriptsSection } from "./TranscriptsSection";
 
 let batches: KoraBatchDto[];
 let events: KoraBatchEventDto[];
@@ -19,15 +19,22 @@ let calls: string[];
 let retireStatus: number;
 let eventsStatus: number;
 
-const batch = (id: string, retiredAt: string | null = null): KoraBatchDto => ({
+const batch = (
+  id: string,
+  retiredAt: string | null = null,
+  closesAt: string | null = null,
+): KoraBatchDto => ({
   id,
   transcriptCount: 4,
   transcriptsPerAssignment: 2,
   reviewsPerTranscript: 3,
   retiredAt,
-  closesAt: null,
+  closesAt,
   createdAt: "2026-11-10T10:00:00.000Z",
 });
+
+const PAST = "2026-01-01T00:00:00.000Z";
+const FUTURE = "2999-01-01T00:00:00.000Z";
 
 const event = (
   overrides: Partial<KoraBatchEventDto> & { kind: KoraBatchEventDto["kind"] },
@@ -101,7 +108,7 @@ const renderBatches = () =>
   render(
     <ToastProvider>
       <MemoryRouter>
-        <KoraBatches />
+        <TranscriptsSection />
       </MemoryRouter>
     </ToastProvider>,
     queryWrapper(),
@@ -109,7 +116,7 @@ const renderBatches = () =>
 
 test("retires only after confirming, warning when it's the last batch being assigned", async () => {
   renderBatches();
-  fireEvent.click(await screen.findByRole("button", { name: "Retire" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Retire: / }));
   const dialog = screen.getByRole("dialog");
   expect(within(dialog).getByText(/^Retire the batch uploaded/)).toBeTruthy();
   expect(
@@ -119,16 +126,16 @@ test("retires only after confirming, warning when it's the last batch being assi
 
   fireEvent.click(within(dialog).getByRole("button", { name: "Retire batch" }));
 
-  await screen.findByRole("button", { name: "Reactivate" });
+  await screen.findByRole("button", { name: /^Reactivate: / });
   expect(calls).toEqual(["retire b1"]);
-  expect(screen.getByText(/^Retired /)).toBeTruthy();
+  expect(screen.getByText("Retired")).toBeTruthy();
 });
 
 test("leaves out the last-batch warning while another batch is still assigned", async () => {
   batches = [batch("b1"), batch("b2")];
   renderBatches();
   fireEvent.click(
-    (await screen.findAllByRole("button", { name: "Retire" }))[0],
+    (await screen.findAllByRole("button", { name: /^Retire: / }))[0],
   );
   expect(
     within(screen.getByRole("dialog")).queryByText(
@@ -137,35 +144,74 @@ test("leaves out the last-batch warning while another batch is still assigned", 
   ).toBeNull();
 });
 
+test("shows a batch past its closing time as closed", async () => {
+  batches = [batch("b1", null, PAST), batch("b2", null, FUTURE)];
+  renderBatches();
+  const rows = (await screen.findAllByRole("row")).slice(1);
+  expect(within(rows[0]).getByText("Closed")).toBeTruthy();
+  expect(within(rows[1]).getByText("Open")).toBeTruthy();
+});
+
+test("warns on retiring the last open batch when the others are closed", async () => {
+  batches = [batch("b1", null, PAST), batch("b2", null, FUTURE)];
+  renderBatches();
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: /^Retire: / }))[1],
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByText(
+      /no chat pairs will be left to assign/,
+    ),
+  ).toBeTruthy();
+});
+
+test("doesn't say a closed batch stops being assigned", async () => {
+  batches = [batch("b1", null, PAST)];
+  renderBatches();
+  fireEvent.click(await screen.findByRole("button", { name: /^Retire: / }));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).queryByText(/stop being assigned/)).toBeNull();
+  expect(within(dialog).queryByText(/no chat pairs will be left/)).toBeNull();
+  expect(
+    within(dialog).getByText(/pairs not yet rated leave assignments/),
+  ).toBeTruthy();
+});
+
 test("reports a failed retire and leaves the batch as it was", async () => {
   retireStatus = 404;
   renderBatches();
-  fireEvent.click(await screen.findByRole("button", { name: "Retire" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Retire: / }));
   fireEvent.click(screen.getByRole("button", { name: "Retire batch" }));
 
   await screen.findByText("Batch not found");
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByText("Assigning")).toBeTruthy();
+  expect(screen.getByText("Open")).toBeTruthy();
 });
 
 test("reactivates straight away, since it can be undone", async () => {
   batches = [batch("b1", "2026-11-11T12:00:00.000Z")];
   renderBatches();
-  fireEvent.click(await screen.findByRole("button", { name: "Reactivate" }));
-  await screen.findByRole("button", { name: "Retire" });
+  fireEvent.click(await screen.findByRole("button", { name: /^Reactivate: / }));
+  await screen.findByRole("button", { name: /^Retire: / });
   expect(calls).toEqual(["reactivate b1"]);
-  expect(screen.getByText("Assigning")).toBeTruthy();
+  expect(screen.getByText("Open")).toBeTruthy();
 });
 
 test("deletes after showing how much goes with the batch", async () => {
   renderBatches();
-  fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Delete: / }));
   const dialog = await screen.findByRole("dialog");
   expect(
     within(dialog).getByText(
       /removes 4 chat pairs, 1 rating and 2 volunteer assignments/,
     ),
   ).toBeTruthy();
+
+  const rowDelete = screen.getByRole("button", {
+    name: /^Delete: .*, 4 transcripts$/,
+    hidden: true,
+  });
+  expect(rowDelete.getAttribute("aria-busy")).toBeNull();
 
   fireEvent.click(within(dialog).getByRole("button", { name: "Delete batch" }));
 
@@ -229,10 +275,12 @@ test("lists the history newest first and filters it", async () => {
 test("says when the history can't load", async () => {
   eventsStatus = 500;
   renderBatches();
-  await screen.findByText("Couldn't load the history. Reload to try again.");
+  const title = await screen.findByText("Couldn't load the history");
+  expect(title.closest('[role="alert"]')).not.toBeNull();
 });
 
 test("says the history is empty", async () => {
   renderBatches();
-  await screen.findByText(/^Nothing yet\. Uploads, retires/);
+  await screen.findByText("Nothing yet");
+  expect(screen.getByText(/^Uploads, retires/)).toBeTruthy();
 });

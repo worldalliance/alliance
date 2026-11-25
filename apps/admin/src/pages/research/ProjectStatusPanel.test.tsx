@@ -5,8 +5,9 @@ import {
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { ToastProvider } from "../ui/ToastProvider";
-import { KoraProjectStatusControl } from "./KoraProjectStatusControl";
+import { MemoryRouter } from "react-router";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { ProjectStatusPanel } from "./ProjectStatusPanel";
 
 let status = KoraProjectStatus.Pending;
 let loadStatus = 200;
@@ -51,7 +52,9 @@ beforeEach(() => {
 const renderControl = () =>
   render(
     <ToastProvider>
-      <KoraProjectStatusControl />
+      <MemoryRouter>
+        <ProjectStatusPanel />
+      </MemoryRouter>
     </ToastProvider>,
     queryWrapper(),
   );
@@ -107,7 +110,7 @@ test("says so when the change fails", async () => {
       name: "Make Closed",
     }),
   );
-  await screen.findByText("Couldn't change the status. Try again.");
+  await screen.findByText("Couldn't change the project status.");
   expect(radio("Pending").checked).toBe(true);
 });
 
@@ -115,8 +118,6 @@ test("says so when the status can't load", async () => {
   loadStatus = 500;
   renderControl();
 
-  const message = await screen.findByText(
-    "Couldn't load the project status. Reload to try again.",
-  );
-  expect(message.getAttribute("role")).toBe("alert");
+  const title = await screen.findByText("Couldn't load the project status");
+  expect(title.closest('[role="alert"]')).not.toBeNull();
 });

@@ -5,7 +5,10 @@ import { FORUM_POST_PATH } from "./places";
 export default [
   layout("adminlayout.tsx", [
     route("/growth/invites/feed", "pages/InviteFeedPage.tsx"),
-    route("/research/preview/:batchId", "pages/KoraTranscriptPreviewPage.tsx"),
+    route(
+      "/research/preview/:batchId",
+      "pages/research/TranscriptPreviewPage.tsx",
+    ),
     layout("shell/ShellLayout.tsx", [
       route("/", "pages/home/HomePage.tsx"),
 
@@ -65,10 +68,10 @@ export default [
       route("/activity", "pages/event-log/EventLogPage.tsx"),
       route("/activity/scheduled", "pages/scheduled/ScheduledJobsPage.tsx"),
 
-      route("/research", "pages/KoraParticipantsPage.tsx"),
+      route("/research", "pages/research/KoraParticipantsPage.tsx"),
       route(
         "/research/assignments/:assignmentId",
-        "pages/KoraAssignmentExportPage.tsx",
+        "pages/research/AssignmentPage.tsx",
       ),
 
       route("/settings", "pages/TestPushNotification.tsx"),

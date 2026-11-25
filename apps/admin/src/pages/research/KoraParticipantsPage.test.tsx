@@ -3,7 +3,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
+import { ToastProvider } from "../../ui/ToastProvider";
 import KoraParticipantsPage from "./KoraParticipantsPage";
 
 let overview: KoraAdminOverviewDto;
@@ -96,10 +96,10 @@ beforeEach(() => {
   };
 });
 
-const renderPage = () =>
+const renderPage = (url = "/research") =>
   render(
     <ToastProvider>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[url]}>
         <KoraParticipantsPage />
       </MemoryRouter>
     </ToastProvider>,
@@ -125,8 +125,36 @@ it("shows totals, newest participants first, and filters by search", async () =>
   });
   expect(await participantRows()).toEqual(["Grace"]);
   expect(
-    screen.getByText("No abandoned signups match your search."),
+    within(screen.getByRole("region", { name: "Abandoned signups" })).getByText(
+      "No results",
+    ),
   ).toBeTruthy();
+});
+
+it("counts who came back among the abandoned signups the search shows", async () => {
+  overview = {
+    ...overview,
+    abandonedSignups: [
+      ...overview.abandonedSignups,
+      {
+        id: "a2",
+        channel: "email",
+        destination: "back@example.com",
+        provider: null,
+        verifiedAt: "2026-11-04T11:00:00.000Z",
+        recovered: true,
+      },
+    ],
+  };
+  renderPage();
+  const panel = await screen.findByRole("region", {
+    name: "Abandoned signups",
+  });
+  await within(panel).findByText(/· 1 came back$/);
+  fireEvent.change(screen.getByLabelText("Search by name, email or phone"), {
+    target: { value: "left@" },
+  });
+  await within(panel).findByText(/· 0 came back$/);
 });
 
 it("sorts by name when its header is clicked", async () => {
@@ -142,12 +170,14 @@ it("deletes a participant only after confirming", async () => {
   renderPage();
   await participantRows();
   const adaRow = screen.getByText("ada@example.com").closest("tr")!;
-  fireEvent.click(within(adaRow).getByRole("button", { name: "Delete" }));
+  fireEvent.click(within(adaRow).getByRole("button", { name: /^Delete/ }));
   expect(await screen.findByText("Delete Ada?")).toBeTruthy();
   expect(deleted).toEqual([]);
 
   const dialog = screen.getByRole("dialog");
-  fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Delete participant" }),
+  );
   expect(await screen.findByText("Deleted Ada")).toBeTruthy();
   expect(deleted).toEqual(["participant:p-ada"]);
   expect(await participantRows()).toEqual(["Grace"]);
@@ -156,21 +186,23 @@ it("deletes a participant only after confirming", async () => {
 it("deletes an abandoned signup after confirming", async () => {
   renderPage();
   const row = (await screen.findByText("left@example.com")).closest("tr")!;
-  fireEvent.click(within(row).getByRole("button", { name: "Delete" }));
+  fireEvent.click(within(row).getByRole("button", { name: /^Delete/ }));
   const dialog = await screen.findByRole("dialog");
   expect(
     within(dialog).getByText(
       "Delete the abandoned signup for left@example.com?",
     ),
   ).toBeTruthy();
-  fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Delete signup" }),
+  );
   expect(
     await screen.findByText(
       "Deleted the abandoned signup for left@example.com",
     ),
   ).toBeTruthy();
   expect(deleted).toEqual(["abandoned:a1"]);
-  expect(await screen.findByText("No abandoned signups.")).toBeTruthy();
+  expect(await screen.findByText("No abandoned signups")).toBeTruthy();
 });
 
 it("treats a participant another admin already deleted as deleted", async () => {
@@ -182,10 +214,10 @@ it("treats a participant another admin already deleted as deleted", async () => 
     participants: overview.participants.filter((p) => p.id !== "p-ada"),
   };
   const adaRow = screen.getByText("ada@example.com").closest("tr")!;
-  fireEvent.click(within(adaRow).getByRole("button", { name: "Delete" }));
+  fireEvent.click(within(adaRow).getByRole("button", { name: /^Delete/ }));
   fireEvent.click(
     within(await screen.findByRole("dialog")).getByRole("button", {
-      name: "Delete",
+      name: "Delete participant",
     }),
   );
   expect(await screen.findByText("Deleted Ada")).toBeTruthy();
@@ -197,13 +229,15 @@ it("reports a failed delete, closes the dialog and refreshes the list", async ()
   await participantRows();
   deleteStatus = 500;
   const adaRow = screen.getByText("ada@example.com").closest("tr")!;
-  fireEvent.click(within(adaRow).getByRole("button", { name: "Delete" }));
+  fireEvent.click(within(adaRow).getByRole("button", { name: /^Delete/ }));
   fireEvent.click(
     within(await screen.findByRole("dialog")).getByRole("button", {
-      name: "Delete",
+      name: "Delete participant",
     }),
   );
-  expect(await screen.findByText("Couldn't delete. Try again.")).toBeTruthy();
+  expect(
+    await screen.findByText("Couldn't delete the participant."),
+  ).toBeTruthy();
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(await participantRows()).toEqual(["Grace", "Ada"]);
 });
@@ -211,15 +245,27 @@ it("reports a failed delete, closes the dialog and refreshes the list", async ()
 it("says when no one has signed up, rather than showing an empty table", async () => {
   overview = { participants: [], abandonedSignups: [] };
   renderPage();
-  expect(await screen.findByText("No one has signed up yet.")).toBeTruthy();
+  expect(await screen.findByText("No one has signed up yet")).toBeTruthy();
   expect(
-    screen.getByRole("button", { name: "export csv" }).hasAttribute("disabled"),
+    screen.getByRole("button", { name: "Export CSV" }).hasAttribute("disabled"),
   ).toBe(true);
 });
 
 it("shows a load failure instead of an empty list", async () => {
   loadStatus = 500;
   renderPage();
-  expect(await screen.findByRole("alert")).toBeTruthy();
-  expect(screen.queryByText("No one has signed up yet.")).toBeNull();
+  const title = await screen.findByText("Couldn't load participants");
+  expect(title.closest('[role="alert"]')).not.toBeNull();
+  expect(screen.queryByText("No one has signed up yet")).toBeNull();
+});
+
+it("keeps the project's operations on the Assignments tab", async () => {
+  renderPage("/research?tab=assignments");
+  expect(
+    await screen.findByRole("region", { name: "Project status" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("region", { name: "Transcript batches" }),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText("Search by name, email or phone")).toBeNull();
 });

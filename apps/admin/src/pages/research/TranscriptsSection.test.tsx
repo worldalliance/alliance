@@ -1,10 +1,16 @@
 import type { KoraBatchDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import { KoraBatches } from "./KoraBatches";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { TranscriptsSection } from "./TranscriptsSection";
 
 let batches: KoraBatchDto[];
 let uploadResponse: () => Response;
@@ -57,21 +63,16 @@ const renderBatches = () =>
   render(
     <ToastProvider>
       <MemoryRouter>
-        <KoraBatches />
+        <TranscriptsSection />
       </MemoryRouter>
     </ToastProvider>,
     queryWrapper(),
   );
 
 const fillAndUpload = () => {
-  fireEvent.change(
-    screen.getByLabelText(
-      "Transcripts file from KORA (.jsonl, .json or .yaml)",
-    ),
-    {
-      target: { files: [new File(['{"pair_id":"P1"}'], "pairs.jsonl")] },
-    },
-  );
+  fireEvent.change(screen.getByLabelText("Transcripts file from KORA"), {
+    target: { files: [new File(['{"pair_id":"P1"}'], "pairs.jsonl")] },
+  });
   fireEvent.change(screen.getByLabelText("Transcripts per assignment"), {
     target: { value: "8" },
   });
@@ -83,9 +84,12 @@ const fillAndUpload = () => {
 
 test("says why the list is empty and what to do", async () => {
   renderBatches();
-  await screen.findByText(
-    "No transcripts yet. Upload KORA's file to make the project active.",
-  );
+  await screen.findByText("No transcripts yet");
+  expect(
+    screen.getByText(
+      "Upload KORA's file below. The project can be made Active once it has transcripts.",
+    ),
+  ).toBeTruthy();
 });
 
 test("uploads the transcripts file with the settings, then offers a preview", async () => {
@@ -152,15 +156,23 @@ test("lists every rejected line by number", async () => {
   expect(alert.textContent).toContain("Line 5: couldn't be read");
 });
 
-test("saves a batch's closing date in place, as the end of that day", async () => {
+test("changes a batch's closing date, as the end of that day", async () => {
   batches = [batch("b-old", 4)];
   renderBatches();
-  const input = await screen.findByLabelText(/^Closing date of the batch/);
-  expect(screen.getByText("Not set")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  const row = (
+    await screen.findByRole("button", { name: /^Change closing date: / })
+  ).closest("tr");
+  if (!row) throw new Error("the change button isn't in a row");
+  expect(within(row).getByText("Not set")).toBeTruthy();
 
-  fireEvent.change(input, { target: { value: "2099-12-01" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(
+    within(row).getByRole("button", { name: /^Change closing date: / }),
+  );
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Closes on"), {
+    target: { value: "2099-12-01" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
   await waitFor(() =>
     expect(closings).toEqual([
       {
@@ -171,4 +183,18 @@ test("saves a batch's closing date in place, as the end of that day", async () =
       },
     ]),
   );
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+test("asks for a closing day before saving one", async () => {
+  batches = [batch("b-old", 4)];
+  renderBatches();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /^Change closing date: / }),
+  );
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }),
+  );
+  await screen.findByText("Choose the day the batch closes");
+  expect(closings).toEqual([]);
 });

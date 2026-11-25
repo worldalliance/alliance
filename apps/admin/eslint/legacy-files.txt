@@ -63,14 +63,6 @@ src/components/HistoryControls.tsx
 src/components/HomePlacementBadges.tsx
 src/components/IdentitySwatch.tsx
 src/components/InsertableTokenButton.tsx
-src/components/KoraBatchActions.tsx
-src/components/KoraBatchClosesAt.tsx
-src/components/KoraBatchEvents.tsx
-src/components/KoraBatches.tsx
-src/components/KoraConversations.tsx
-src/components/KoraNotify.tsx
-src/components/KoraProjectStatusControl.tsx
-src/components/KoraResults.tsx
 src/components/MarkedDiagnostics.tsx
 src/components/MemberFilterDropdown.tsx
 src/components/MemberGroupMoveSection.tsx
@@ -309,9 +301,6 @@ src/pages/InviteGraphPage.tsx
 src/pages/InviteLinksPage.tsx
 src/pages/InviteMessageTemplatePage.tsx
 src/pages/InvitesPage.tsx
-src/pages/KoraAssignmentExportPage.tsx
-src/pages/KoraParticipantsPage.tsx
-src/pages/KoraTranscriptPreviewPage.tsx
 src/pages/LoginPage.tsx
 src/pages/MemberListPage.tsx
 src/pages/MemberListsPage.tsx

@@ -1,7 +1,7 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen, within } from "@testing-library/react";
-import { KoraConversations } from "./KoraConversations";
+import { ConversationsPanel } from "./ConversationsPanel";
 
 serveApi(
   routes({
@@ -34,7 +34,7 @@ serveApi(
 );
 
 it("lists each conversation with its reviews against the target and its review times", async () => {
-  render(<KoraConversations />, queryWrapper());
+  render(<ConversationsPanel />, queryWrapper());
   const table = await screen.findByRole("table");
   const rows = within(table)
     .getAllByRole("row")

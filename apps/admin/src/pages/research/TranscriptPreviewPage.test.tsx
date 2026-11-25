@@ -2,8 +2,8 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import sample from "../../../../kora-review/samples/transcript.json";
-import KoraTranscriptPreviewPage from "./KoraTranscriptPreviewPage";
+import sample from "../../../../../kora-review/samples/transcript.json";
+import TranscriptPreviewPage from "./TranscriptPreviewPage";
 
 let fetched = 0;
 
@@ -21,11 +21,11 @@ serveApi(
 
 test("mounts the review tool with a random transcript and says nothing is saved", async () => {
   const { container } = render(
-    <MemoryRouter initialEntries={["/kora-participants/preview/b1"]}>
+    <MemoryRouter initialEntries={["/research/preview/b1"]}>
       <Routes>
         <Route
-          path="/kora-participants/preview/:batchId"
-          element={<KoraTranscriptPreviewPage />}
+          path="/research/preview/:batchId"
+          element={<TranscriptPreviewPage />}
         />
       </Routes>
     </MemoryRouter>,

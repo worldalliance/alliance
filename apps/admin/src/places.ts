@@ -640,6 +640,7 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.KoraParticipants,
     label: "Assignment",
     path: "/research/assignments/:assignmentId",
+    tab: "assignments",
   },
   {
     id: RecordId.KoraTranscriptPreview,

@@ -139,8 +139,12 @@ export function useKoraBatchEvents() {
   });
 }
 
-export function useKoraAssignmentExport(assignmentId: string) {
+export function useKoraAssignmentExport(
+  assignmentId: string,
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled: options.enabled,
     queryKey: queryKeys.koraAssignmentExport(assignmentId),
     queryFn: () =>
       koraResultsAssignment({

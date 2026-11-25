@@ -1,9 +1,9 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen, within } from "@testing-library/react";
-import { exportsJsonl } from "../lib/useKoraResultsAdmin";
-import { ToastProvider } from "../ui/ToastProvider";
-import { KoraResults } from "./KoraResults";
+import { exportsJsonl } from "../../lib/useKoraResultsAdmin";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { ResultsPanel } from "./ResultsPanel";
 
 serveApi(
   routes({
@@ -30,7 +30,7 @@ serveApi(
 test("shows answer counts, never individual answers", async () => {
   render(
     <ToastProvider>
-      <KoraResults />
+      <ResultsPanel />
     </ToastProvider>,
     queryWrapper(),
   );
