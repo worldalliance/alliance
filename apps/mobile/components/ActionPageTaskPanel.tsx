@@ -11,6 +11,7 @@ import {
   taskHeaders,
   type TitledCopy,
 } from "@alliance/shared/lib/copy";
+import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import {
   buildShareText,
   getCompletedShareableTextTemplate,
@@ -27,6 +28,7 @@ import { copyOrAlert } from "../lib/clipboard";
 import { getSiteUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import ActionTaskPanel from "./ActionTaskPanel";
+import TaskTimeInfo from "./TaskTimeInfo";
 import CheckIcon from "./system/CheckIcon";
 import StackedCard from "./system/StackedCard";
 import Text, { FontWeight } from "./system/Text";
@@ -194,6 +196,16 @@ const ActionPageTaskPanel = ({
       : taskPanelTopByState[state];
   const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
 
+  const timeInfo = (
+    <TaskTimeInfo
+      action={action}
+      nextEvent={getNextEvent(action)}
+      absoluteDeadline
+      className="mb-4 flex-row flex-wrap items-start gap-1"
+      filled
+    />
+  );
+
   const panelHandlers = {
     onCompleteAction,
     onOptOutAction,
@@ -219,12 +231,15 @@ const ActionPageTaskPanel = ({
           top={taskPanelHeader}
           topCardStyle={headerStyle}
           bottom={
-            <ActionTaskPanel
-              action={action}
-              disabled
-              formResponse={formResponse ?? undefined}
-              {...panelHandlers}
-            />
+            <>
+              {timeInfo}
+              <ActionTaskPanel
+                action={action}
+                disabled
+                formResponse={formResponse ?? undefined}
+                {...panelHandlers}
+              />
+            </>
           }
           bottomCardStyle={bodyStyle}
         />
@@ -240,7 +255,12 @@ const ActionPageTaskPanel = ({
         <StackedCard
           top={taskPanelHeader}
           topCardStyle={headerStyle}
-          bottom={<ActionTaskPanel action={action} {...panelHandlers} />}
+          bottom={
+            <>
+              {timeInfo}
+              <ActionTaskPanel action={action} {...panelHandlers} />
+            </>
+          }
           bottomCardStyle={bodyStyle}
         />
       );

@@ -5,7 +5,6 @@ import {
   type FormValue,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getFallbackVisiblePageIndex,
@@ -20,13 +19,12 @@ import {
   buildFlowScreens,
   flowProgress,
   flowResumeIndex,
-  flowScreenHeading,
   visibleFlowScreenIndices,
   withoutEmptySections,
 } from "./flowScreens";
 import { type SubmitOutcome } from "./submitOutcome";
 import { type FlowPosition } from "./useFlowPosition";
-import { SourceHistoriesStatus } from "./useVariableSourceHistories";
+import { useTaskOutline } from "./useTaskOutline";
 import { type VariableInputsGate } from "./variableInputsGate";
 
 export enum FlowStage {
@@ -136,24 +134,6 @@ export type TaskFlowFormState = Pick<
   validateScreenFields: (fields: AnyField[]) => Promise<boolean>;
   submit: () => Promise<SubmitOutcome>;
 };
-
-function outlineInputFailed(form: TaskFlowFormState): boolean {
-  if (form.draftFailed) return true;
-  // Variables report an error while their inputs load, so the gate goes first.
-  switch (form.gate.status) {
-    case SourceHistoriesStatus.Loading:
-      return false;
-    case SourceHistoriesStatus.Failed:
-    case SourceHistoriesStatus.SourceDeleted:
-      return true;
-    case SourceHistoriesStatus.Ready:
-      return form.variablesError !== null || form.visibilityFailed;
-    default:
-      throw new Error(
-        `unknown variable inputs status: ${form.gate satisfies never}`,
-      );
-  }
-}
 
 /**
  * The full-screen task flow's stage and screen, over the form's own answer
@@ -309,34 +289,35 @@ export function useTaskFlow(params: {
     }
   };
 
+  const savedScreen = position.screenIndex;
+  // Begin reopens here once visibility settles, and the outline marks the
+  // steps before it done, so the green steps match the screen Begin opens.
+  const resumeAt =
+    savedScreen !== null && visibleIndices.includes(savedScreen)
+      ? savedScreen
+      : flowResumeIndex({
+          screens,
+          visibleIndices,
+          pageIndex: form.currentPageIndex,
+        });
+
   /** Opens the flow where the member left off; it never submits on its own. */
   const begin = () => {
     if (!position.loaded) {
       console.error("Task flow began before its saved screen loaded");
       return;
     }
-    const saved = position.screenIndex;
-    // Until visibility settles the saved screen may not show as visible yet,
-    // and falling back would save over it.
-    if (
-      saved !== null &&
-      screens[saved] !== undefined &&
-      (visibleIndices.includes(saved) || !form.visibilitySettled)
-    ) {
-      goTo(saved, { forward: false });
-      return;
-    }
-    // The draft's page may not show as visible yet either, and the fallback
-    // would move the draft off it.
     if (!form.visibilitySettled) {
-      setBeginOnSettle(true);
+      // Until visibility settles the saved screen may not show as visible yet,
+      // and falling back would save over it. The draft's page may not show as
+      // visible yet either, and the fallback would move the draft off it.
+      if (savedScreen !== null && screens[savedScreen] !== undefined) {
+        goTo(savedScreen, { forward: false });
+      } else {
+        setBeginOnSettle(true);
+      }
       return;
     }
-    const resumeAt = flowResumeIndex({
-      screens,
-      visibleIndices,
-      pageIndex: form.currentPageIndex,
-    });
     if (resumeAt === null) {
       console.error("Task flow has no visible screen to open");
       return;
@@ -371,43 +352,13 @@ export function useTaskFlow(params: {
   }, [stranded]);
 
   const nextIsLast = nextIndex === null;
-  // A failure before the outline lists shows the begin row without one. One
-  // arriving after the input recovers would push begin down, so it stays empty
-  // for this mount. Once listed, the outline keeps its last listing while an
-  // input fails or reloads, since emptying it would move begin up.
-  const inputFailed = outlineInputFailed(form);
-  const [outlineFailed, setOutlineFailed] = useState(false);
-  const [listedOutline, setListedOutline] = useState<string[] | null>(null);
-  if (inputFailed && listedOutline === null && !outlineFailed) {
-    setOutlineFailed(true);
-  }
-  const inputsReady =
-    !inputFailed &&
-    !outlineFailed &&
-    form.gate.status === SourceHistoriesStatus.Ready &&
-    form.visibilitySettled &&
-    form.draftSettled;
-  const liveOutline = inputsReady
-    ? [
-        ...new Set(
-          visibleIndices.flatMap((index) => {
-            const heading = flowScreenHeading({ screen: screens[index], form });
-            const text = heading?.trim();
-            return text ? [text] : [];
-          }),
-        ),
-      ]
-    : null;
-  if (liveOutline && !isEqual(liveOutline, listedOutline)) {
-    setListedOutline(liveOutline);
-  }
-  const outline = (): string[] | null => {
-    // An outline that can't list anything is empty rather than pending, so the
-    // begin row doesn't wait on it.
-    if (!rules.outline || !screens.some((screen) => screen.heading)) return [];
-    if (outlineFailed || (inputFailed && listedOutline === null)) return [];
-    return liveOutline ?? listedOutline;
-  };
+  const outline = useTaskOutline({
+    enabled: rules.outline && form.schema.taskOutline !== false,
+    form,
+    screens,
+    visibleIndices,
+    resumeAt: position.loaded ? resumeAt : undefined,
+  });
 
   const next = () =>
     advance(async () => {
@@ -425,14 +376,7 @@ export function useTaskFlow(params: {
     open: IS_OPEN[stage],
     screen: visibleScreen,
     screenIndex,
-    /**
-     * The distinct non-blank headers of the visible pages, null until
-     * visibility, variables and the draft settle. Empty when the mode shows no
-     * outline, no page has a header, or visibility, variables or a draft fetch
-     * fail before it lists; once listed, it keeps its last listing while they
-     * fail or reload.
-     */
-    outline: outline(),
+    outline,
     progressSaved:
       rules.records && stage === FlowStage.Screens && pastFirstStep,
     nextLabel: nextIsLast ? rules.lastLabel : taskFlow.next,

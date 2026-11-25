@@ -5,11 +5,14 @@ import { View, ViewProps } from "react-native";
 interface TimelineProps extends ViewProps {
   children: ReactNode[];
   currentIdx?: number;
+  /** Steps shown green. */
+  doneIndices?: number[];
 }
 
 export default function Timeline({
   children,
   currentIdx,
+  doneIndices = [],
   className,
   ...props
 }: TimelineProps) {
@@ -26,8 +29,10 @@ export default function Timeline({
             )}
             <View
               className={cn(
-                "absolute left-[-11px] top-1 w-[18px] h-[18px] rounded-full border-[3px] border-white",
-                index === currentIdx ? "bg-green" : "bg-zinc-200",
+                "absolute left-[-11px] top-1 h-[18px] w-[18px] rounded-full border-[3px] border-white",
+                index === currentIdx || doneIndices.includes(index)
+                  ? "bg-green"
+                  : "bg-zinc-200",
               )}
             />
             <View className="pl-3">{child}</View>

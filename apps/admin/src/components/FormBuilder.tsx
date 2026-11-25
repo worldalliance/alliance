@@ -472,6 +472,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     override={override}
                     onEditJson={setJsonScope}
                     taskFlow={taskFlow}
+                    onSchemaChange={updateSchema}
                   />
                 )}
               </div>

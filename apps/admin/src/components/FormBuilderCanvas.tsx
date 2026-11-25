@@ -1,3 +1,4 @@
+import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { flowStepPreviews } from "@alliance/shared/forms/flowScreens";
 import type { ComponentProps } from "react";
@@ -35,6 +36,7 @@ export function FormBuilderCanvas({
   override,
   onEditJson,
   taskFlow,
+  onSchemaChange,
 }: Omit<
   ComponentProps<typeof FormBuilderSettings>,
   "conditionFieldOf" | "summarize"
@@ -43,6 +45,7 @@ export function FormBuilderCanvas({
   override: ContentOverride | null;
   /** Shows how each page maps onto the full-screen task flow. */
   taskFlow: boolean;
+  onSchemaChange: (schema: FormSchema) => void;
 }) {
   const {
     selectedPageIndex,
@@ -103,47 +106,70 @@ export function FormBuilderCanvas({
       drawer={drawer}
       onDrawerChange={setDrawer}
       outline={
-        <FormOutline
-          pages={schema.pages}
-          groups={canvasGroups}
-          displayOnly={displayOnly}
-          pageIndex={selectedPageIndex}
-          selected={resolvedTarget}
-          selectionKey={selectionKey}
-          onSelect={(pageIndex, target) =>
-            selectFromOutline({
-              page: schema.pages[pageIndex]!,
-              pageIndex,
-              target,
-            })
-          }
-          onExtend={
-            displayOnly
-              ? null
-              : (clicked, alone) =>
-                  selectFromOutline({
-                    page: currentPage,
-                    pageIndex: selectedPageIndex,
-                    target: extendTo(clicked, alone),
-                    keepOutline: true,
+        <>
+          {taskFlow && (
+            <label className="flex items-start gap-2 border-b border-gray-200 px-3 py-2 text-xs text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={schema.taskOutline !== false}
+                onChange={(event) =>
+                  onSchemaChange({
+                    ...schema,
+                    taskOutline: event.target.checked ? undefined : false,
                   })
-          }
-          onCheck={
-            displayOnly
-              ? null
-              : (pageIndex, target) =>
-                  selectFromOutline({
-                    page: schema.pages[pageIndex]!,
-                    pageIndex,
-                    target,
-                    keepOutline: true,
-                  })
-          }
-          issues={issueIndex}
-          onAddPage={addPage}
-          onMovePage={movePage}
-          onMoveElements={moveElementsTo}
-        />
+                }
+              />
+              <span>
+                Show the step outline on the task card
+                <span className="block text-gray-500">
+                  Turn it off for long tasks.
+                </span>
+              </span>
+            </label>
+          )}
+          <FormOutline
+            pages={schema.pages}
+            groups={canvasGroups}
+            displayOnly={displayOnly}
+            pageIndex={selectedPageIndex}
+            selected={resolvedTarget}
+            selectionKey={selectionKey}
+            onSelect={(pageIndex, target) =>
+              selectFromOutline({
+                page: schema.pages[pageIndex]!,
+                pageIndex,
+                target,
+              })
+            }
+            onExtend={
+              displayOnly
+                ? null
+                : (clicked, alone) =>
+                    selectFromOutline({
+                      page: currentPage,
+                      pageIndex: selectedPageIndex,
+                      target: extendTo(clicked, alone),
+                      keepOutline: true,
+                    })
+            }
+            onCheck={
+              displayOnly
+                ? null
+                : (pageIndex, target) =>
+                    selectFromOutline({
+                      page: schema.pages[pageIndex]!,
+                      pageIndex,
+                      target,
+                      keepOutline: true,
+                    })
+            }
+            issues={issueIndex}
+            onAddPage={addPage}
+            onMovePage={movePage}
+            onMoveElements={moveElementsTo}
+          />
+        </>
       }
       revealPending={revealPending}
       onRevealed={revealed}

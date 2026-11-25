@@ -231,16 +231,7 @@ const ActionContents = () => {
                 ))}
               </div>
             )}
-            {loggedInMode && (
-              <div className="flex flex-col lg:flex-row justify-between lg:items-center mb-4 gap-x-4">
-                <p className="text-title-small flex-1">Task</p>
-                <TaskTimeInfo
-                  action={action}
-                  nextEvent={nextEvent}
-                  absoluteDeadline={true}
-                />
-              </div>
-            )}
+            {loggedInMode && <h2 className="text-title-small mb-4">Task</h2>}
             <Outlet context={context} />
           </div>
         )}
@@ -312,7 +303,7 @@ const ActionContents = () => {
             {isAuthenticated && (
               <div>
                 <p className="text-title-small mb-4">Discussion</p>
-                <p className="mb-8">
+                <p className="mb-4">
                   Questions and comments about this action that other members
                   would find helpful.
                 </p>
