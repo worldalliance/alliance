@@ -1,6 +1,6 @@
 # Growth, content, activity, research and shell: functionality inventory
 
-Read from the code at c722280863. This inventory is the checklist the redesign is verified against, so that nothing staff can do today is lost. It was written against the prototype's page map before the corrections in this directory's `PLACES.md`: a `PLACES.md:<line>` citation refers to that earlier version, and where a note here says the map lacks something or adds something new, `PLACES.md` is the current answer.
+Read from the code at c722280863, then refreshed at ff886c540b after the rebase onto `main` took in #1028, #1088, #1089 and #1090. Line citations in the entries those PRs touched are to that revision, an entry they added or changed names the PR, and what they removed is marked **Removed** in place with its ID kept. This inventory is the checklist the redesign is verified against, so that nothing staff can do today is lost. It was written against the prototype's page map before the corrections in this directory's `PLACES.md`: a `PLACES.md:<line>` citation refers to that earlier version, and where a note here says the map lacks something or adds something new, `PLACES.md` is the current answer.
 
 Paths are relative to `apps/admin/src/` unless they start with `sharedweb/`, `shared/`, `common/` or `kora-review/`. "Toast" means `useToast` from `sharedweb/ui/ToastProvider`. "Refusal toast" means `lib/useRefusalToast`, which shows the server's refusal message or a fallback. "ConfirmDialog" is `components/ConfirmDialog.tsx`. "InlineTextInput" (`components/InlineTextInput.tsx:34-37`) saves on blur, blurs on Enter and cancels on Escape.
 
@@ -31,7 +31,8 @@ Paths are relative to `apps/admin/src/` unless they start with `sharedweb/`, `sh
 - `logout()`: `authLogout`, then a full-page redirect to `/login` (`:99-103`).
 - Wraps children in `ViewerAuthenticationProvider` from `sharedweb/ui` (`:119`).
 - **Guard:** `adminlayout.tsx:9-14` logs out (and so redirects to `/login`) when the signed-in user isn't an admin, or when loading has finished with no session. `sidebar.tsx:34-38` repeats the non-admin check.
-- **Staging banner:** on staging, a fixed green strip repeating "staging" across the top of every page (`adminlayout.tsx:19-32`).
+- **Staging banner:** on staging, a fixed green strip repeating "staging" across the top of every page (`adminlayout.tsx:22-35`).
+- **Leave guard host** (added in #1028, refined in #1090): `adminlayout.tsx:19-21` wraps every signed-in route in `components/LeaveGuard.tsx`, the single router blocker behind every page's unsaved-changes prompt (`lib/useLeaveGuard.ts`). An editor anywhere in the shell registers with it; `useLeaveGuard` throws outside it. A redesigned shell has to keep one such host above its routes. The pages that use it are in the Tasks, Forms and Members inventories; none of this group's pages do.
 - `loggedoutonly.tsx` is a bare `<Outlet />`; despite its name it doesn't redirect a signed-in user away from `/login`.
 
 ### `/login` → Login, unchanged (outside the shell)
@@ -46,11 +47,11 @@ Paths are relative to `apps/admin/src/` unless they start with `sharedweb/`, `sh
 
 ### Sidebar (`sidebar.tsx`, `components/SidebarNav.tsx`, `components/adminNavEntries.tsx`, `lib/sidebarFolders.ts`)
 
-- Wraps every sidebar route in `MmsThreadsLiveProvider` (`sidebar.tsx:126-130`). Routes outside the sidebar layout: `/invite-feed`, `/kora-participants/preview/:batchId`, `/login` (`routes.ts:4-10`, `:83`).
-- Header "Alliance Admin", **red in production**, grey elsewhere (`sidebar.tsx:71-78`).
-- **Collapse toggle** (PanelLeft icon): 220px open, 48px collapsed; collapsing hides the nav and footer (`sidebar.tsx:31-48`, `:100-109`). Not persisted.
-- Footer: the signed-in staff member's email and a **Log out** icon button (`sidebar.tsx:86-99`).
-- Main area width is `100vw − sidebar width` (`sidebar.tsx:113-117`).
+- Wraps every sidebar route in `MmsThreadsLiveProvider` (`sidebar.tsx:136-140`). Routes outside the sidebar layout: `/invite-feed`, `/kora-participants/preview/:batchId`, `/login` (`routes.ts:4-10`, `:83`).
+- Header "Alliance Admin", **red in production**, grey elsewhere, and since #1028 a red **"Production" badge** under it in production, so the environment is named in text and not by colour alone (`sidebar.tsx:72-84`).
+- **Collapse toggle** (PanelLeft icon): 220px open, 48px collapsed; collapsing hides the nav and footer. Since #1028 it is a real button named "Collapse sidebar" / "Expand sidebar" with `aria-expanded`, and the collapsed nav is `inert`, out of the tab order (`sidebar.tsx:31-48`, `:64`, `:106-119`). Not persisted.
+- Footer: the signed-in staff member's email and a **Log out** icon button (`sidebar.tsx:92-105`).
+- Main area width is `100vw − sidebar width` (`sidebar.tsx:123-130`).
 - **Nav entries, in order** (`adminNavEntries.tsx:59-235`): Stats `/`; Projects; Kora participants; Actions; folder **Action Planning** (Priority, Scheduled Plans, Contracts, Formulas, Member lists); folder **Activity** (Live Invite Feed `/invite-feed`, Event Log); folder **Links** (Custom Links, Hosted Docs, Invite Links, User Invites `/invites`, Invitation Message, Share Links, Share Targets); folder **Waitlist** (Entries, Emails, Organizations); Members; Needs reply (badge); Texts; Groups (badge); folder **Community** (Welcome Queue, Staff Directory, Member Map, Away Members, Clusters, Friend Graph); folder **Outreach** (Ambassador Program, Outreach Partnerships (badge)); folder **Content** (Action Updates, General Updates, Forum Posts `/posts`, Image Upload, Videos).
 - **Not in the nav** from this group (reachable only by URL or in-page links): `/test-push`, `/invites/graph` (linked from `/invites`), and the Kora assignment and preview routes (linked from `/kora-participants`).
 - Active link: exact match, or a path under it (except `/`), with `aria-current="page"` (`SidebarNav.tsx:18-19`, `:42-52`).
@@ -494,7 +495,7 @@ Paths are relative to `apps/admin/src/` unless they start with `sharedweb/`, `sh
 - **Purpose:** create or edit a general update's details, audience and content.
 - **Page:** `pages/GeneralUpdatePage.tsx`; `components/general-update/{GeneralUpdateScheduleFields, GeneralUpdateAudienceFields, generalUpdateForm}.tsx`; `components/FormBuilder` (displayOnly); `components/useContentConfirm.tsx`.
 - `:id` of `new` (or missing) creates; `?suiteId=` on new **preassigns that suite** (`:52-54`, `:99-106`).
-- **Tabs** (existing only), in URL `?tab=details|content` (`lib/useSearchParamTab.ts:9-16`): "General Update Details", "Content" (`:310-337`).
+- **Tabs** (existing only), in URL `?tab=details|content` (`lib/useSearchParamTab.ts:9-16`): "General update details", "Content" (`:310-337`).
 - **Details form:**
   - Title (required) (`:158-175`).
   - Priority: **Manage priority** link to `/priority` (plain `<a>`) (`:177-184`).
@@ -502,12 +503,12 @@ Paths are relative to `apps/admin/src/` unless they start with `sharedweb/`, `sh
   - **Schedule** (no suite): Start and End datetime-local (`:106-154`).
   - **Participating Tags**: checkbox grid with public display names; note that untagged updates show to nobody unless the manual cohort is on (`GeneralUpdateAudienceFields.tsx:50-101`).
   - **Manual User Cohort**: Enable checkbox (count shown), then a multi `UserSelect`; disabling clears it (`:103-143`).
-  - **Cancel** (back to list) and **Create General Update** / **Save Changes**, disabled while saving (`:199-221`).
+  - **Cancel** (back to list) and **Create general update** / **Save changes**, disabled while saving (`:199-221`).
 - **Content check on save:** `useContentConfirm` opens "Save anyway?" listing absolute links to the site (should be paths) and mentions of "worldalliance" (`useContentConfirm.tsx:191-238`; `GeneralUpdatePage.tsx:132`).
 - Create navigates to the new record; failure shows "Failed to save general update" (`:133-142`).
 - **Content tab:** the block editor (`FormBuilder displayOnly`) with snapshot id, saving through `saveSchema`; if the stored content can't be parsed by this build, an amber alert "This update can't be edited here" instead (`:259-287`). The builder's capabilities belong to the forms inventory.
 - Fills the form only from a fetch made after mount (not a stale cache) (`:72-93`).
-- Loading; "General update not found" (404) or "Failed to load general update" with **← Back** (`:225-253`); **← Back to General Updates** in the header (`:295-300`).
+- Loading; "General update not found" (404) or "Failed to load general update" with **← Back** (`:225-253`); **← Back to general updates** in the header (`:295-300`).
 - **Data:** `lib/useGeneralUpdateAdmin.ts` → `generalUpdatesFindOneGeneralUpdateAdmin`, `generalUpdatesCreateGeneralUpdateAdmin`, `generalUpdatesUpdateGeneralUpdateAdmin` (details and schema); `lib/useActionSuitesAdmin`; `lib/useTagsAdmin`; `sharedweb/ui/UserSelect` (`useSelectableUsers`).
 - **Shared code:** `common/forms/display-only-schema`, `shared/lib/hey-api`, `sharedweb/ui/{DateTimePicker, UserSelect}`, `components/FormSection`.
 - **Tests:** none for this page; `components/useContentConfirm.test.tsx` covers the content check (nested strings, excerpts, emoji cuts, dedupe, site links on either domain, link vs worldalliance precedence, destination parsing, CommonMark vs GFM, replace resolves earlier call false, sectioned message).
@@ -517,15 +518,15 @@ Paths are relative to `apps/admin/src/` unless they start with `sharedweb/`, `sh
 
 - **Purpose:** per-post forum settings: authors, Q&A, notifications, cluster tags, comment tags, export.
 - **Page:** `pages/PostsManagement.tsx`.
-- Posts list: title, "by <author>", badges "Q&A Mode Active", "Reply Notifications On", "Cluster Tags On", "N authors" (> 1), "N expert(s) assigned"; selected highlighted; **selecting puts the id in the URL** and `/posts/:id` preselects it (`:67-81`, `:114-124`, `:211-268`).
-- **Post Settings** for the selected post (`:270-435`):
+- Posts list: title, "by <author>", badges "Q&A mode active", "Reply notifications on", "Cluster tags on", "N authors" (> 1), "N expert(s) assigned"; selected highlighted; **selecting puts the id in the URL** and `/posts/:id` preselects it (`:67-81`, `:114-124`, `:211-268`).
+- **Post settings** for the selected post (`:270-435`):
   - **Authors** multi `UserSelect` (all are notified of new comments).
-  - **Enable Q&A Mode**; when on, **Expert Badge Label** (max 64, default "Expert") and **Designated Experts** multi `UserSelect`.
-  - **Notify for Replies**.
-  - **Show Cluster Tags**.
-  - **Comment Tags**: editable list, **Add tag**, remove per tag; names trimmed, blanks dropped, **duplicates refused** ("Tag names must be unique within a post"); tags sent only if changed (with known ids); **deleting a saved tag asks a fullscreen confirm** "Delete "x"? Comments filed under that tag lose their label. This cannot be undone." (Delete / Keep) (`:126-157`, `:347-404`).
+  - **Enable Q&A mode**; when on, **Expert badge label** (max 64, default "Expert") and **Designated experts** multi `UserSelect`.
+  - **Notify for replies**.
+  - **Show cluster tags**.
+  - **Comment tags**: editable list, **Add tag**, remove per tag; names trimmed, blanks dropped, **duplicates refused** ("Tag names must be unique within a post"); tags sent only if changed (with known ids); **deleting a saved tag asks a fullscreen confirm** "Delete "x"? Comments filed under that tag lose their label. This cannot be undone." (Delete / Keep) (`:126-157`, `:347-404`).
   - **Download as .html**: the post, comments and attachments as one page, filename from Content-Disposition or `post-<id>.html`; "Preparing..."; error toast (`:83-112`, `:406-418`).
-  - **Save Changes**, "Saving..."; toast "Post updated"; refusal toast (`:158-181`, `:420-428`).
+  - **Save changes**, "Saving..."; toast "Post updated"; refusal toast (`:158-181`, `:420-428`).
 - "Select a post from the list to configure settings." Loading; load failure (`:184-198`).
 - **Data:** `lib/usePostsAdmin.ts` → `forumGetPostsForAdmin`, `forumUpdatePostSettingsAdmin`; `forumExportPostAdmin` (blob); `lib/useUsersAdmin`.
 - **Shared code:** `common/errorMessage`, `sharedweb/ui/{Button, Card, ToastProvider (ConfirmMode.Fullscreen), UserSelect}`, `shared/styles/card`.

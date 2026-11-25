@@ -1,8 +1,8 @@
 # Forms: functionality inventory
 
-Read from the code at c722280863. This inventory is the checklist the redesign is verified against, so that nothing staff can do today is lost. It was written against the prototype's page map before the corrections in this directory's `PLACES.md`: a `PLACES.md:<line>` citation refers to that earlier version, and where a note here says the map lacks something or adds something new, `PLACES.md` is the current answer.
+Read from the code at c722280863, then refreshed at ff886c540b after the rebase onto `main` took in #1028, #1088, #1089 and #1090. Line citations in the entries those PRs touched are to that revision, an entry they added or changed names the PR, and what they removed is marked **Removed** in place with its ID kept. This inventory is the checklist the redesign is verified against, so that nothing staff can do today is lost. It was written against the prototype's page map before the corrections in this directory's `PLACES.md`: a `PLACES.md:<line>` citation refers to that earlier version, and where a note here says the map lacks something or adds something new, `PLACES.md` is the current answer.
 
-Scope: `/forms`, `/forms/:formId` (builder), `/forms/:formId/responses`, `/forms/:formId/snapshots`, plus the action tabs that embed the builder or responses view (Task Form, Form Variants, Follow-up Forms, Responses). Every capability has an ID so the redesign can be checked off against it. Paths are relative to `apps/admin/src/` unless they start with `shared/`, `sharedweb/` or `common/`.
+Scope: `/forms`, `/forms/:formId` (builder), `/forms/:formId/responses`, `/forms/:formId/snapshots`, plus the action tabs that embed the builder or responses view (Task form, Form variants, Follow-up forms, Responses; sentence case since #1028). Every capability has an ID so the redesign can be checked off against it. Paths are relative to `apps/admin/src/` unless they start with `shared/`, `sharedweb/` or `common/`.
 
 Routes: `routes.ts:41` (`/forms`), `:46` (`/forms/:formId/responses`), `:47` (`/forms/:formId/snapshots`), `:48` (`/forms/:formId`).
 
@@ -23,10 +23,10 @@ There are no feature flags anywhere in `apps/admin/src` (grep for `FeatureFlag|u
 - **L3** Shows "Linked in action: {name}" in green when `form.usedInAction` is set (`:137-141`).
 - **L4** Shows "{n} pages • {n} fields" from `schemaCounts`, or a red "Unreadable schema" when the server could not count (`:144-151`).
 - **L5** A "Responses ({count})" button per form, with the count loaded in one batch for all ids. It shows "…" (title "Counting responses") while pending, and "?" (title "Could not load the response count") on error or when the batch returned no row for the form (`:17-41`, `:152-156`). Clicking opens `/forms/:id/responses` and doesn't open the card (`stopPropagation`, `:51-53`).
-- **L6** Clicking a card opens the builder. A form linked to an action goes to `/actions/:actionId?tab=form` (the action's Task Form tab), and any other form goes to `/forms/:id` (`:85-94`, `:116`).
+- **L6** Clicking a card opens the builder. A form linked to an action goes to `/actions/:actionId?tab=form` (the action's Task form tab), and any other form goes to `/forms/:id` (`:85-94`, `:116`).
 - **L7** Delete: the "×" button on each card asks `confirm("Are you sure you want to delete this form?")`, then calls DELETE. A failure toasts the server's message, or "Failed to delete form" (`:70-83`, `:125-133`). Nothing stops you deleting a form that is linked to an action or has responses.
 - **L8** States: "Loading forms...", "Failed to load forms" (red), "No forms found.", and a stale-data banner, "Could not refresh. Showing the list as of the last successful load.", shown when a refetch fails but rows exist (`:98-110`).
-- **L9** **There is no "New form" button.** A new standalone form is only reachable by typing `/forms/new` (`pages/FormBuilder.tsx:16` treats `new` as no id). Forms are otherwise created by an action's Task Form tab, by a follow-up form, or by variant cloning.
+- **L9** **There is no "New form" button.** A new standalone form is only reachable by typing `/forms/new` (`pages/FormBuilder.tsx:16` treats `new` as no id). Forms are otherwise created by an action's Task form tab, by a follow-up form, or by variant cloning.
 
 ### Data
 
@@ -56,7 +56,7 @@ None: there is no `FormsList.test.tsx`.
   - `formId === "new"`, or no id, opens a blank form.
   - The first save of a new form navigates to `/forms/{newId}` (`pages/FormBuilder.tsx:10-12`).
 
-The same component is embedded in the action Task Form tab (`pages/ActionDashboard.tsx:289-294`, with `taskFlow`), in `ProjectActionPage.tsx:145-150` (without `taskFlow`), in the follow-up form card (`ActionFollowUpFormsTab.tsx:448-452`), and in display-only mode in `ActionUpdatePage.tsx:336` and `GeneralUpdatePage.tsx:278`. The display-only uses belong to other inventories, but they share every canvas capability below except where marked "not in display-only".
+The same component is embedded in the action Task form tab (`pages/ActionDashboard.tsx:303-308`, with `taskFlow`), in `ProjectActionPage.tsx:135-140` (without `taskFlow`), in the follow-up form card (`ActionFollowUpFormsTab.tsx:448-452`), and in display-only mode in `ActionUpdatePage.tsx:350` and `GeneralUpdatePage.tsx:278`. The display-only uses belong to other inventories, but they share every canvas capability below except where marked "not in display-only".
 
 ### 2.1 Header, tabs, URL state and keyboard (`FormBuilderHeader.tsx`, `FormBuilder.tsx`)
 
@@ -92,10 +92,10 @@ The same component is embedded in the action Task Form tab (`pages/ActionDashboa
 - **B12** Deep link `?previewAs={userId}`: opens straight into Preview as that member once the form and its source forms load. The parameter is removed from the URL (`formEditorLink.ts:12-19,39`, `FormBuilder.tsx:205-209,281-286`).
   - Used by suite-launch task form previews.
   - Says "Member #{id} isn't in the user list." when the member is missing.
-- **B13** Leave guard (`lib/useUnsavedChangesPrompt.ts`):
+- **B13** Leave guard (`lib/useLeaveGuard.ts`, asked by the one `components/LeaveGuard.tsx` that wraps every admin route; `lib/useSavedForm.ts:138-148`; changed in #1028 and #1090, which replaced `lib/useUnsavedChangesPrompt.ts`):
   - With unsaved changes, in-app navigation prompts "You have unsaved changes. Are you sure you want to leave this page?" through `window.confirm`.
   - A browser unload triggers `beforeunload`.
-  - The builder's own post-save navigation skips the prompt.
+  - The builder's own post-save navigation skips the prompt, for this builder's guard only: another dirty editor on the page (for example the action details beside an embedded task form) is still asked. Once that navigation lands, the page it left no longer blocks the next one (#1090).
 - **B14** Embedded builders report their unsaved state through `onUnsavedChangesChange`, which `ProjectActionPage` uses to disable its Release panel (`FormBuilder.tsx:143-145`).
 
 ### 2.2 Canvas layout, outline and selection
@@ -107,9 +107,10 @@ The same component is embedded in the action Task Form tab (`pages/ActionDashboa
 - **B16** Outline (`form-canvas/FormOutline.tsx`):
   - lists pages ("Pages" heading), each page's elements, visibility groups ("Shared visibility · N elements", amber) with their members, list sub-fields, and accordion sections with their blocks;
   - pages and groups expand and collapse; the selected page and every group start expanded; containers start collapsed and expand to reveal a selection;
-  - each row shows an issue-count marker; empty pages show "No elements".
+  - each row shows an issue-count marker; empty pages show "No elements";
+  - the members of a grey box sit on a grey band (B107).
   - Display-only builders show only the current page's blocks.
-- **B17** Add page with the "+" in the outline. The new page is titled "Page {n}", gets a unique id, and opens selected with its title focused (`useCanvasEdits.ts:164-181`).
+- **B17** Add page with the "+" in the outline. The new page is titled "Page {n}", gets a unique id, and opens selected with its title focused (`useCanvasEdits.ts:171-188`).
 - **B18** Drag and drop in the outline (`useOutlineDrag.ts`):
   - reorder pages;
   - move an element within its page, to a gap on another page, or onto a page row (which appends it at the end);
@@ -121,7 +122,7 @@ The same component is embedded in the action Task Form tab (`pages/ActionDashboa
   - clicking the title selects the page; Enter or the pencil edits the title inline;
   - shows an issue marker and a conditions indicator ("Edit page conditions: shown when …");
   - empty state: "This page is empty. Add a question or some content to get started." (display-only: "This update is empty…").
-- **B21** Task-flow step note (Task Form tab only, `taskFlow`): each page shows the task-flow step it becomes, with amber warnings about what to fix (`FormCanvas.tsx:77-95,263`, `shared/forms/flowScreens`). It does not appear in `ProjectActionPage`.
+- **B21** Task-flow step note (Task form tab only, `taskFlow`): each page shows the task-flow step it becomes, with amber warnings about what to fix (`FormCanvas.tsx:78-96,292`, `shared/forms/flowScreens`). It does not appear in `ProjectActionPage`.
 - **B22** Element on the canvas (`CanvasElement.tsx`):
   - click to select, Shift-click to extend a range;
   - drag handle to reorder;
@@ -132,33 +133,33 @@ The same component is embedded in the action Task Form tab (`pages/ActionDashboa
 - **B23** Inline text editing on the selected element (`InlineText.tsx`), opened by Enter or the pencil and closed by Enter (single-line), Escape or blur:
   - headers and labels are single-line; text, quote and expert message blocks are multi-line; question labels and list labels can also be edited;
   - variable tokens can be typed, and IME composition is respected.
-- **B24** Visibility groups on the canvas: a dashed amber "Shared visibility · N elements" section showing "Shown when {summary}" and "Shared rule has N issues". Clicking it selects the group (`FormCanvas.tsx:282-345`).
+- **B24** Visibility groups on the canvas: a dashed amber "Shared visibility · N elements" section showing "Shown when {summary}" and "Shared rule has N issues". Clicking it selects the group (`FormCanvas.tsx:311-374`).
 - **B25** Insert points (`InsertPoint.tsx`):
   - a hover "+" between every element, and a prominent "Add element" button at the end;
   - the picker searches "questions and content", with Field, Block and Copy badges; Enter picks the first match and Escape closes it;
   - "Copy Existing Element" opens a select grouped by page, with Insert and Cancel;
   - copying isn't offered inside a group;
-  - the inserted element is selected and its first control focused (`useCanvasEdits.ts:116-121`);
-  - an element inserted into a group inherits the group's condition (`:92-115`).
+  - the inserted element is selected and its first control focused (`useCanvasEdits.ts:123-128`);
+  - an element inserted into a visibility group inherits the group's condition, and one inserted between two members of a grey box joins the box (B108) (`:93-122`).
 - **B26** Addable question kinds (`common/forms/element-descriptors.ts:12-88`): Text Area, Email, Phone, Number, Range, Checkbox, Radio, Select, Multi-select, Ranking, Date, Time, Timezone, City, File, Contract, List, Custom Component, Image Upload, Toggle, Time Picker and Conversation. Legacy `text` exists but can't be added.
 - **B27** Addable display blocks (`element-descriptors.ts:38-57`): Header, Text, Label, Divider, Spacer, HTML, Images, Video, Quote, Big Link, Copy Text, Previous Answer, User Location, Chat Transcript, Expert Message and Accordion. Display-only builders offer a subset (`isDisplayOnlyBlockKind`).
 - **B28** Element boundary: an element that can't render is flagged on the canvas ("Select it to change its settings or JSON.") and in the sidebar ("Edit its JSON, or delete it, under Advanced.") but stays editable (`ElementBoundary.tsx`).
 
 ### 2.3 Settings sidebar: shared structure
 
-- **B29** Sections "Content", "Conditions" and "Advanced", switched with the arrow keys. Each mounts when first opened and stays mounted (`sidebarSections.tsx:26-28,78`). Display-only builders drop Conditions.
+- **B29** Sections "Content", "Conditions" and "Advanced", switched with the arrow keys. Each mounts when first opened and stays mounted (`sidebarSections.tsx:26-28,82,150-169`). Display-only builders drop Conditions. For an element or a range, Content ends with the Grey box panel (B106).
 - **B30** "Issues here" list above the settings for the selection (`IssueList.tsx:341-359`).
 - **B31** Page settings (`PageSettings.tsx`):
   - page title;
   - page-level conditions, which can reference only fields on earlier pages; the first page warns "Conditions on the first page can only reference other forms or validators…";
   - Move page up and down;
   - "Page ID";
-  - Edit page JSON, Copy page (inserted after it with unique ids, keeping its groups), and Delete page (disabled when it's the only page; guarded, B37).
+  - Edit page JSON, Copy page (inserted after it with unique ids, keeping its visibility groups and giving its grey boxes fresh ids, `lib/copyWithUniqueIds.ts:220`), and Delete page (disabled when it's the only page; guarded, B37).
 - **B32** Element settings (`ElementSettings.tsx`):
   - a heading describing the element;
   - Move to page (B35), and Move up/down, which steps past a whole group;
   - "Element ID";
-  - "Edit element JSON", "Duplicate" (unique ids, selects the copy, stays in the same group), and "Delete question" or "Delete block" (guarded, B37).
+  - "Edit element JSON", "Duplicate" (unique ids, selects the copy, stays in the same visibility group and the same grey box), and "Delete question" or "Delete block" (guarded, B37).
 - **B33** Dependency links (`DependencyLinks.tsx`, not in display-only):
   - "Depends on" lists the questions this item's formulas read, with roles. Each is linked: same-form ones select the place; other forms' ones open `/forms/{id}?select=…` in a new tab; a missing source shows "Missing question {id}".
   - "Used by" lists what on this form reads the question, with group members gathered. When nothing does it says "No conditions on this form read this question."
@@ -166,9 +167,9 @@ The same component is embedded in the action Task Form tab (`pages/ActionDashboa
   - breadcrumb back to the parent; move up/down; an id label;
   - "Delete question", "Delete section" or "Delete block"; undo restores the deleted child;
   - a sub-field kind with no editor (contract, custom) says "No settings to edit for this kind of question."
-- **B35** "Move to page" menu: moves the element, range or group to the end of another page, keeping it selected and in view. It refuses, with a sticky toast, if element ids repeat on the form (`useCanvasEdits.ts:258-319`). Not offered on one-page forms or in display-only.
+- **B35** "Move to page" menu: moves the element, range or group to the end of another page, keeping it selected and in view. It refuses, with a sticky toast, if element ids repeat on the form (`useCanvasEdits.ts:265-326`). Grey boxes settle after the move (B108). Not offered on one-page forms or in display-only.
 - **B36** Range selection settings ("N elements selected", `RangeSettings.tsx`):
-  - lists the members;
+  - lists the members; Content also holds the Grey box panel for the range (B106);
   - Conditions offers "Share: shown when …" for each existing formula, showing who holds it, and "Always shown now: …";
   - "Or share new rules" with a full rule editor and a "Share new rules" button;
   - refuses with a reason when sharing would create a visibility cycle or names undefined rules;
@@ -185,6 +186,24 @@ The same component is embedded in the action Task Form tab (`pages/ActionDashboa
   - a shared rule editor that writes to every member.
   - A grouped member's own Conditions section points to the group (`SharedVisibilityNotice`).
   - Groups are derived when the form loads, and manual boundaries survive the first save.
+
+### 2.3a Grey boxes (added in #1088)
+
+A grey box is a visual group: consecutive top-level elements on one page that members see inside one grey rounded box. It is stored as a shared `group` id on each element (`common/forms/form-groups.ts`) and is separate from visibility groups (B24, B38), which share a condition. The UI calls it "grey box" throughout.
+
+- **B106** Grey box panel, at the end of the Content section for a selected element or range (`form-canvas/GreyBoxPanel.tsx`; `FormBuilderSettings.tsx:130-153,376,443`). Not in display-only builders.
+  - Status line: "In a grey box with N elements.", "Some of these elements are in a grey box." or "Not in a grey box."
+  - **Put in a grey box**: boxes the selected element or range (offered unless the selection already lies inside one box).
+  - **Remove grey box**: when the selection is exactly one whole box.
+  - **Select grey box**: from a single member, selects the whole box as a range (or the element, for a box of one).
+  - **Remove from grey box**: takes the selected members out; a box cut through the middle splits in two.
+- **B107** The canvas draws a box's members, and the insert points between them, on one grey band with rounded ends, and the outline bands the same rows, so the builder shows the box members will see (`form-canvas/FormCanvas.tsx:134-159`; `form-canvas/FormOutline.tsx:191-199`).
+- **B108** Boxes stay whole through edits (`lib/formGroups.ts`; `lib/moveElements.ts:45-70`; `form-canvas/useCanvasEdits.ts:103-110`):
+  - an element inserted or dropped between two members of a box joins it; one placed beside a box stays out;
+  - a duplicate stays in its source's box;
+  - a member moved away from the rest, on its page or to another, leaves the box; a whole box moved together, to another page too, stays a box;
+  - a copied page's boxes get fresh ids.
+- **B109** What members see (`sharedweb/forms/FormPage.tsx:58-73`, also what Preview shows, B91): each run of consecutive members renders inside one grey rounded box; back-to-back boxes are separate; members hidden by their conditions are left out, and a box whose members are all hidden isn't drawn.
 
 ### 2.4 Question editors (`form-fields/*`)
 
@@ -321,16 +340,17 @@ Block-specific settings:
 
 ### 2.7 Preview (`FormBuilderPreview.tsx`)
 
-- **B91** Renders the page currently selected, through the member renderer, as a placeholder preview user.
+- **B91** Renders the page currently selected, through the member renderer, as a placeholder preview user. Grey boxes render as members see them (B109).
 - **B92** "Preview as" picks any user (`PreviewAsUserBar.tsx`). Users load only when Preview opens, and a failure says "Could not load users".
 - **B93** Visibility profile picker: groups contracted members by how they would see the form's conditions (collapsible), and picking a card previews as that member (`VisibilityProfilePicker.tsx`).
 - **B94** "Preview as row" select, shown when the form has a row list.
 - **B95** Preview waits for the forms that formulas read. The selection survives a trip to Preview.
+- **B110** Phone prefill in Preview (added in #1089; `shared/forms/useFormSchemaMaps.ts:20-23,60-74`; `FormBuilderPreview.tsx:103-106`): a Phone question set to "Extract response into user data" (B41) opens prefilled with the previewed member's phone number, over the field's own default, as it does for that member on the site. The site's "confirm this number by code" control under that question is supplied by the member app (`sharedweb/forms/phoneConfirmSlot.ts`) and does not appear in the admin preview.
 
 ### 2.8 JSON editing (`FormJsonModal.tsx`, `lib/formJson.ts`)
 
 - **B96** Element, Page and Form JSON modals: an editable textarea, "Copy JSON", Cancel and Apply ("Checking..." while it runs).
-  - Apply validates against the schema and lists errors with their paths; it rejects id collisions (including with output-view blocks) and unknown validator ids.
+  - Apply validates against the schema and lists errors with their paths; it rejects id collisions (including with output-view blocks) and unknown validator ids. Since #1088 the schema also carries each element's grey-box `group`: a box whose members aren't next to each other is rejected ("Elements in a group must be next to each other"), as is a `group` on a list sub-field ("List sub-fields can't be in a group"); nested accordion blocks don't take one (`common/forms/form-schema-validate.ts`, `field-schemas.ts`, `display-blocks.ts`).
   - Changes to ids or kinds need a second confirmation, "Apply id and kind changes", with Back.
   - Display-only builders are held to the display-only schema and one page.
   - Applying form JSON regroups the visibility groups.
@@ -399,7 +419,7 @@ Block-specific settings:
 
 ### Tests
 
-There are about 30 `FormBuilder*.test.tsx` files plus `form-canvas/*`, `form-fields/*`, `display-blocks/*`, `conditions/*`, `VariableBuilder*.test.tsx`, `RowListBuilder.test.tsx`, `ShareableTextBuilder.test.tsx`, `FormJson*.test.tsx`, `FormSlugEditor.test.tsx`, and `lib/{formJson,formIssues,formDependencies,formSchemaMerge,useFormDraft}.test.ts`. Assertions the list above might not make explicit:
+There are about 30 `FormBuilder*.test.tsx` files plus `form-canvas/*` (including `GreyBoxPanel.test.tsx`), `lib/formGroups.test.ts`, `common/forms/form-groups.test.ts`, `sharedweb/forms/FormPage.test.tsx` (grey boxes as members see them), `lib/useLeaveGuard.test.tsx`, `form-fields/*`, `display-blocks/*`, `conditions/*`, `VariableBuilder*.test.tsx`, `RowListBuilder.test.tsx`, `ShareableTextBuilder.test.tsx`, `FormJson*.test.tsx`, `FormSlugEditor.test.tsx`, and `lib/{formJson,formIssues,formDependencies,formSchemaMerge,useFormDraft}.test.ts`. Assertions the list above might not make explicit:
 
 - An id-less block keeps its selection by position through moves, undo and deletion. With repeated ids, the selection follows the right twin (`FormBuilderRepeatedIdsHistory.test.tsx`, `canvasSelection.test.ts`).
 - Focus management: drawers return focus; focus stays in the sidebar or issue list after a delete or retry.
@@ -419,6 +439,7 @@ There are about 30 `FormBuilder*.test.tsx` files plus `form-canvas/*`, `form-fie
 - **Interaction model:**
   - Display blocks render two different editor shells: the sidebar `SectionPanels`, and the older canvas-card form with its own "…" menu and drag handle, which output views still use.
   - Destructive confirms are a mix of `window.confirm` (Take theirs, leave guard), `ConfirmDialog`, and toast `confirm`.
+  - Two kinds of group now share the canvas: visibility groups (dashed amber, a shared condition) and grey boxes (grey band, a shared look). An element can be in both.
 - **Missing:** "Publish" doesn't exist for forms. A save is immediately live: the PUT creates a new snapshot, and members get it on next load. Publishing lives on actions, outside this group.
 
 ---
@@ -595,15 +616,15 @@ There are about 30 `FormBuilder*.test.tsx` files plus `form-canvas/*`, `form-fie
 ## 5. Form tabs inside an action (`/actions/:actionId`)
 
 - **New place:** the task record (`#/task/:id`), whose tabs are Overview, Form, Variants, Messages, Responses and Activity (PLACES.md:25, :125).
-- The action's own tabs (`pages/ActionDashboard.tsx:124-140`): "Task Form", "Form Variants", "Follow-up Forms" and "Responses".
+- The action's own tabs (`pages/ActionDashboard.tsx:128-144`): "Task form", "Form variants", "Follow-up forms" and "Responses" (title case before #1028).
 
-### 5.1 Task Form tab (`ActionDashboard.tsx:288-295`)
+### 5.1 Task form tab (`ActionDashboard.tsx:302-309`)
 
 - **A1** The full builder (all B-items) on `action.taskFormId`, with `taskFlow` step notes (B21).
 - **A2** The first save of a new form calls `editor.setTaskFormId`, which links it to the action. The title is "{action name} form".
 - **A3** `/forms` sends linked forms here (`?tab=form`, L6).
 
-### 5.2 Form Variants tab (`ActionFormVariantsTab.tsx`, `ActionFormVariantCoverage.tsx`)
+### 5.2 Form variants tab (`ActionFormVariantsTab.tsx`, `ActionFormVariantCoverage.tsx`)
 
 This tab doesn't use the builder or responses components, but links to both.
 
@@ -617,7 +638,7 @@ This tab doesn't use the builder or responses components, but links to both.
   - an over-100% warning, or "Default form covers the remaining X%";
   - a table with Group (Default first), Form (display slug, linking to `/forms/{id}`), Split ("remainder" for the default), Assigned, Submitted, and a Total row.
 
-### 5.3 Follow-up Forms tab (`ActionFollowUpFormsTab.tsx`)
+### 5.3 Follow-up forms tab (`ActionFollowUpFormsTab.tsx`)
 
 - **A10** Follow-up form select (label from `followUpFormLabel`), and "View responses", which opens the standalone `/forms/{formId}/responses`.
 - **A11** "Create follow-up form" creates a form titled "{action} - follow-up" with an empty one-page schema, then links it (`:94-110`).
@@ -631,7 +652,7 @@ This tab doesn't use the builder or responses components, but links to both.
 
 ### 5.4 Responses tab (`ActionMergedResponsesTab.tsx`)
 
-- **A14** The whole responses view (R1–R30) over the merged responses of the default form and every variant form, with search params namespaced `resp_` (for example `resp_tab` and `resp_q`) so they don't collide with the action's `tab` (`ActionDashboard.tsx:328-331`, `FormResponsesView.tsx:94-99,137-140`).
+- **A14** The whole responses view (R1–R30) over the merged responses of the default form and every variant form, with search params namespaced `resp_` (for example `resp_tab` and `resp_q`) so they don't collide with the action's `tab` (`ActionDashboard.tsx:341-346`, `FormResponsesView.tsx:94-99,137-140`).
 - **A15** With more than one variant: the title "{title} — all variants", the variant filter (R3), a Variant column, CSV variant column and HTML variant grouping, and per-response variant chips. Reassign snapshots asks which variant's form (R5).
 - **A16** Withdrawals and share links are loaded through the default form. Refresh reloads the variants, responses and withdrawals.
 
@@ -641,7 +662,7 @@ This tab doesn't use the builder or responses components, but links to both.
 
 **Notes:**
 
-- **The task record's tabs in PLACES.md have no Follow-up Forms tab**, so A10–A13 have no new home yet.
+- **The task record's tabs in PLACES.md have no Follow-up forms tab**, so A10–A13 have no new home yet.
 - Follow-up forms' responses only open in the standalone responses page (A10), never merged into the task's Responses tab.
 - Variant forms are edited through the standalone builder (A8), not inside the task.
 
@@ -649,7 +670,7 @@ This tab doesn't use the builder or responses components, but links to both.
 
 ## Summary
 
-The inventory covers four routes (`/forms`, `/forms/:formId`, `/forms/:formId/responses`, `/forms/:formId/snapshots`) and the four action tabs that embed or link the builder and responses view. It lists 167 capabilities: L1–L9 (9), B1–B105 (105), R1–R30 (30), S1–S7 (7), A1–A16 (16).
+The inventory covers four routes (`/forms`, `/forms/:formId`, `/forms/:formId/responses`, `/forms/:formId/snapshots`) and the four action tabs that embed or link the builder and responses view. It lists 172 capabilities: L1–L9 (9), B1–B110 (110), R1–R30 (30), S1–S7 (7), A1–A16 (16). The refresh at ff886c540b added B106–B109 (grey boxes, #1088) and B110 (phone prefill in Preview, #1089), and removed no ID.
 
 What a redesign is most likely to lose:
 
@@ -657,6 +678,7 @@ What a redesign is most likely to lose:
 - **Easily overlooked:** the second confirmation for JSON id and kind changes (B96), the save gates for site links, "worldalliance" and unmatched references (B103), and the conflict merge flow (B104).
 - **Per-user display-block content** and clipboard import (B60, B61).
 - **Visibility groups and range sharing** (B36, B38), outline drag between pages (B18), and the expression editor (B88).
+- **Grey boxes** (B106–B109): the panel, the band on the canvas and outline, and the rules that keep a box whole through inserts, moves, duplicates and page copies.
 - **The less-visited builder tabs:** Rows, Aggregate Views and Shareable Text (B97, B99, B101).
 - **On the responses side:**
   - the self-contained HTML export with its raw/labels toggle and in-file CSV (R7);

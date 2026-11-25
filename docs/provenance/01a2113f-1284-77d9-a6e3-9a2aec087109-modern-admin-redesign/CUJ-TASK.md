@@ -1,6 +1,6 @@
 # Today's journey: creating a task and taking it to launch
 
-Derived from code on `modern-admin` at c722280863. PR #1028 ("Guard launches and unsaved edits in the admin action flow") merged to `main` after this commit (merge 5c44acdf5c, not an ancestor of c722280863), so none of its changes are in this checkout; where its description or its `DECISIONS.md` says behaviour changes, it is marked **#1028:**. "Action" in code is "task" here. Admin paths are under `apps/admin/src/`, server paths under `server/src/`.
+Derived from code on `modern-admin` at ff886c540b: `origin/main` after PRs #1028 ("Guard launches and unsaved edits in the admin action flow, and tidy its UI"), #1088, #1089 and #1090, onto which the branch was rebased from c722280863. A guard #1028 added is marked **#1028:**, since the earlier revision of this file described the code without it. "Action" in code is "task" here. Admin paths are under `apps/admin/src/`, server paths under `server/src/`.
 
 Everything below was read in the code unless marked *(plausible, not traced)*.
 
@@ -17,11 +17,11 @@ Everything below was read in the code unless marked *(plausible, not traced)*.
 
 | Entry | Where | What it pre-fills | Server call |
 |---|---|---|---|
-| New Action | `/actions` Create menu (`components/CreateActionMenu.tsx:56`) → `/actions/new` | `emptyActionDraft` (`pages/action-dashboard/useActionEditor.ts:24-45`): blank name, description and body; **`visibilityMode: "public"`**; no cohort; `staffPreview`, `publicOnly`, `optional`, `onboarding` false; no task form | `POST actions/create` on "Create Action" (`useActionEditor.ts:345-353`) |
-| Add new action (suite) | Empty suite page only (`pages/ActionSuitePage.tsx:85-100`) → `/actions/new?suiteId=N` | Same, plus `suiteId` (`useActionEditor.ts:151-166`). Once a suite has tasks, the page offers no "add task"; the task's Suite field is the only way | same |
+| New action | `/actions` Create menu (`components/CreateActionMenu.tsx:53`) → `/actions/new` | `emptyActionDraft` (`pages/action-dashboard/useActionEditor.ts:27-49`): blank name, description and body; **`visibilityMode: "public"`**; no cohort; `staffPreview`, `publicOnly`, `optional`, `onboarding` false; no task form | `POST actions/create` on "Create action" (`useActionEditor.ts:393-406`). **#1028:** a non-blank name is the only thing required (:366-369); short description and body are no longer required fields (`lib/actionFieldDefs.ts:104-115`) |
+| Add new action (suite) | Empty suite page only (`pages/ActionSuitePage.tsx:85-101`) → `/actions/new?suiteId=N` | Same, plus `suiteId` (`useActionEditor.ts:174-196`). Once a suite has tasks, the page offers no "add task"; the task's Suite field is the only way | same |
 | New action (project) | `/projects/:id` "New action" modal: name and short description (`components/NewProjectActionDialog.tsx`) | Server-side (`actions/project-actions.service.ts:76-139`): **creates a new suite named after the task**, an empty task form "<name> form", `visibilityMode: Public`, cohort copied from the previous project step or `{type: "Staff"}`, the project's categories, and assigns the project | `POST project-actions…` |
-| Duplicate Action | Task Overview toolbar (`pages/action-dashboard/useActionCommands.ts:58-111`) | Clones the task form as "<title> (Copy)", then creates "<name> (Copy)" from **the editor's current `form` state, unsaved edits included**: suite, visibility mode, stored cohort, prerequisites, `staffPreview`, `publicOnly`, optional, onboarding, images (`useActionEditor.ts:210-245` seeds `form` from the whole action). It copies no events, variants, follow-ups, updates or reminders | `POST actions/create` |
-| Paste JSON | `/actions` Create menu (`CreateActionMenu.tsx:17-40`): reads the clipboard, no confirm | Server `importAction` (`actions/action-import-export.service.ts:76-206`): every exported column (visibility, cohort, `publicOnly`, `staffPreview`, `archived`, priority…), reviewers, the task form, **the suite matched by name, or a new one with that name**, and **every event in the JSON, with its original dates** | `POST actions/pasteJson` |
+| Duplicate action | Task Overview toolbar (`pages/action-dashboard/useActionCommands.ts:48-105`) | Clones the task form as "<title> (Copy)", then creates "<name> (Copy)" from the editor's `form` state: suite, visibility mode, stored cohort, prerequisites, `staffPreview`, `publicOnly`, optional, onboarding, images (`useActionEditor.ts:235-278` seeds `form` from the whole action). **#1028:** the button is disabled while Details has unsaved edits (`pages/action-dashboard/ActionDashboardToolbar.tsx:71`), so the copy is of the saved task. It copies no events, variants, follow-ups, updates or reminders | `POST actions/create` |
+| Paste JSON | `/actions` Create menu (`CreateActionMenu.tsx:21-44`): reads the clipboard, no confirm | Server `importAction` (`actions/action-import-export.service.ts:76-206`): every exported column (visibility, cohort, `publicOnly`, `staffPreview`, `archived`, priority…), reviewers, the task form, **the suite matched by name, or a new one with that name**, and **every event in the JSON, with its original dates** | `POST actions/pasteJson` |
 | Make a project from this action | `/projects` standalone card (`components/ProjectCardTile.tsx:13-54`) | Not a new task: makes a project and assigns the existing one | — |
 
 Export (`useActionExport.ts:13-15`) has Events off, Task form on and Suite off by default, so a paste usually carries no events. **If Events was ticked, the pasted task is created already in the status of its past events, so it is live to its audience the moment it is pasted, with no confirmation** (`action-import-export.service.ts:186-195`). If Suite was ticked and a suite with that name exists, the paste joins it.
@@ -32,24 +32,25 @@ Export (`useActionExport.ts:13-15`) has Events off, Task form on and Suite off b
 - Priority: `shiftPrioritiesAfterInsertion` puts it above the "new items" divider (`actions.service.ts:186-191`). This only affects order on the home page.
 - If it has a suite: `syncGeneralUpdateDatesForSuites` runs. A suite's general updates take their dates from the suite's *first* task's member action phase (`general-updates.service.ts:225-265`). For a new draft this usually changes nothing.
 - **A suite's existing events are not copied** to a task that joins it. Copying happens only when a suite event is added (`action-suites.service.ts:214-233`). A task added to an already-launched suite stays Draft, with none of the suite's dates.
-- Task form: none from `/actions/new` (the Task Form tab creates "<name> form" on first save, `ActionDashboard.tsx:288-295`, `useActionEditor.ts:168-182`); an empty one for project-created tasks; a copy for Duplicate and Paste.
+- Task form: none from `/actions/new` (the Task form tab creates "<name> form" on first save, `ActionDashboard.tsx:302-309`, `useActionEditor.ts:198-213`); an empty one for project-created tasks; a copy for Duplicate and Paste.
 - No event emitter, entity subscriber or listener reacts to creating or saving a task (the only entity subscriber is `datasources/slug.subscriber.ts`; the only listener in `actions/` handles Kora reviews). **Nothing is sent to anyone.**
 
 ## 3. Building it: each step and what its save does
 
-The dashboard `/actions/:id` has tabs (`pages/ActionDashboard.tsx:26-145`): Overview, Details, Event Management (**#1028:** renamed "Events"), Updates, Task Form, Form Variants, Follow-up Forms, Responses, Cohort Decisions. `/projects/:p/action/:id` is a shorter editor with a phase header, checklist, details, task form and release panel (`pages/ProjectActionPage.tsx`).
+The dashboard `/actions/:id` has tabs (`pages/ActionDashboard.tsx:26-144`), labelled Status overview, Action details, Events (**#1028:** renamed from "Event Management"), Updates, Task form, Form variants, Follow-up forms, Responses, Cohort decisions; below they are Overview, Details, Events and so on. `/projects/:p/action/:id` is a shorter editor with a phase header, checklist, details, task form and release panel (`pages/ProjectActionPage.tsx`).
 
-**Details** (`components/ActionForm.tsx`, saved by `handleSubmit`, `useActionEditor.ts:300-394`): one `PATCH actions/:id` (`actions.service.ts:347-470`) with name, descriptions, body, images, authors, reviewers, category, suite, visibility mode, task kind, time estimate, `staffPreview` (only a field here, saved with everything else), audience (onboarding, `publicOnly`), completion (complete after deadline, prevent completion, optional), forum, custom stat, prerequisites, cohort.
-- Client guards: the "Save anyway?" content confirm for site links and "worldalliance" (`components/useContentConfirm.tsx:191`); save disabled when the stored cohort can't be parsed (`useActionEditor.ts:303-310`). There is no leave guard (**#1028:** adds one, and requires a non-blank name).
+**Details** (`components/ActionForm.tsx`, saved by `handleSubmit`, `useActionEditor.ts:348-451`): one `PATCH actions/:id` (`actions.service.ts:347-470`) with name, descriptions, body, images, authors, reviewers, category, suite, visibility mode, task kind, time estimate, `staffPreview` (only a field here, saved with everything else), audience (onboarding, `publicOnly`), completion (complete after deadline, prevent completion, optional), forum, custom stat, prerequisites, cohort.
+- Client guards: the "Save anyway?" content confirm for site links and "worldalliance" (`components/useContentConfirm.tsx:191`); save disabled when the stored cohort can't be parsed (`useActionEditor.ts:354-359`); **#1028:** a blank name is refused (:366-369), and a save that succeeds shows a "Saved …" toast (:403, :433).
+- **#1028: leave guard.** Leaving the page with unsaved Details edits, or while a cover image is uploading, asks "You have unsaved changes. Are you sure you want to leave this page?" (`useActionEditor.ts:337-346`); a reload or closed tab gets the browser's own prompt. Switching tabs on the same task does not ask and keeps the edits (`allowSamePath`). One `LeaveGuard` in the admin layout owns the router's single blocker and asks every registered guard (`components/LeaveGuard.tsx`, `lib/useLeaveGuard.ts`, `adminlayout.tsx`); it replaced `lib/useUnsavedChangesPrompt.ts`, which the form builder, formulas, member lists and the suite partition editor already used. **#1090:** a page its own save has navigated away from no longer blocks the admin's next navigation (`useLeaveGuard.ts:55-73`). The guard is a `window.confirm` in the client; nothing on the server depends on it.
 - Server checks: cohort parsed and its references validated; **optional → mandatory refused once cohort decisions exist** (`actions.service.ts:375-384`); a task form already used as a variant refused; prerequisites valid; partition grid followed; `assertNoPartitionLaunch`. Renaming a task renames its own sole suite (`renameSoleActionSuite`, :433-438).
 - Effect on members: none while Draft. **On a live task every field applies at once**: body and description on the next load, visibility mode and cohort to who can see it, `publicOnly` to who can open it, prevent completion and complete after deadline to who can submit.
 - **Suite field**: moves the task between suites; general update dates are re-synced for both suites (`actions.service.ts:461-465`). Moving into a launched suite doesn't give the task the suite's dates.
 - **Project**: assigned straight away from the toolbar picker (`components/ActionProjectControls.tsx:35-144`). It doesn't affect visibility.
 - **Priority**: lives on `/priority`, a separate page (`pages/PriorityPage.tsx`); it affects only home-page order.
 
-**Staff preview / staff testing.** Dashboard: the Staff Preview switch saves with Details, with no gate (`lib/actionFieldDefs.ts:191`). Project page: "Start staff testing" saves `staffPreview: true` straight away. It is gated in the UI on short description, body, task form and cohort (`lib/staffTestingGate.ts`; `components/ProjectStepRows.tsx:75-88`; `pages/project-action/PhaseHeader.tsx`). Server effect: **staff accounts see the task while it is Draft** (`staff-preview.ts`), and form submissions, activity, likes and comments are refused while preview is active (`tasks/form-submission.service.ts:124, 372`, `action-activity.service.ts:114`). It sends nothing. Preview switches itself off when member action starts.
+**Staff preview / staff testing.** Dashboard: the Staff preview switch saves with Details, with no gate (`lib/actionFieldDefs.ts:189`). Project page: "Start staff testing" saves `staffPreview: true` straight away (`setStaffPreview`, `useActionEditor.ts:215-229`, called from `pages/ProjectActionPage.tsx:90`). It is gated in the UI on short description, body, task form and cohort (`lib/staffTestingGate.ts`; `components/ProjectStepRows.tsx:75-88`; `pages/project-action/PhaseHeader.tsx`). Server effect: **staff accounts see the task while it is Draft** (`staff-preview.ts`), and form submissions, activity, likes and comments are refused while preview is active (`tasks/form-submission.service.ts:124, 372`, `action-activity.service.ts:114`). It sends nothing. Preview switches itself off when member action starts.
 
-**Task form** (Task Form tab, full builder): `PUT tasks/updateForm/:id` makes a new snapshot that is **live on members' next load; forms have no publish step** (inventory `forms.md` §2.10, B102 and its notes). The first save of a new form links it to the task (`useActionEditor.ts:168-182`).
+**Task form** (Task form tab, full builder): `PUT tasks/updateForm/:id` makes a new snapshot that is **live on members' next load; forms have no publish step** (inventory `forms.md` §2.10, B102 and its notes). The first save of a new form links it to the task (`useActionEditor.ts:198-213`). Unsaved builder edits are guarded on leave by the same `LeaveGuard` (`lib/useSavedForm.ts:138`). **#1088:** the builder can put consecutive elements in a grey box that members see around them (`components/form-canvas/GreyBoxPanel.tsx`, `lib/formGroups.ts`); it is a display change saved like any other form edit.
 
 **Variants (A/B)** (`components/ActionFormVariantsTab.tsx`):
 - Staged rows exist only in the browser and are lost on refresh. "Publish drafts" sends one `createVariant` per row, in order, stopping at the first refusal (:123-150).
@@ -64,16 +65,25 @@ The dashboard `/actions/:id` has tabs (`pages/ActionDashboard.tsx:26-145`): Over
 - Create (`action-updates.service.ts:55-120`) makes an empty, unpublished update (`visibleAt` null) and sends nothing.
 - **The first content save that has blocks publishes it**: `visibleAt = max(now, date)` (`action-updates.service.ts:232-237`). There is no confirm. On a live task, members see it at once (or on its date).
 - "Unpublish until displayed date" and "Publish now" are explicit buttons (:271-317).
-- "Send notification" (`pages/ActionUpdatePage.tsx:128-140`) uses `window.confirm`. Server (`action-update-notify.service.ts:55-150`) refuses with no audience, an empty body, an already-sent update, an archived task, or **a task still Draft when the entries arrive** (`action-update-visibility.ts:34-57`). Sending is once only (claimed on `notifiedAt`).
+- "Send notification" (`pages/ActionUpdatePage.tsx:140-157`). **#1028:** a full-screen confirm that needs the typed phrase `I am going to notify many real members` (`lib/notifyRealMembers.ts`); it was a `window.confirm`. The confirm closes, declined, if the admin leaves the page while it is open, so the send can't land on another update (`lib/useConfirmOnPage.ts`). Server (`action-update-notify.service.ts:55-150`) refuses with no audience, an empty body, an already-sent update, an archived task, or **a task still Draft when the entries arrive** (`action-update-visibility.ts:34-57`). Sending is once only (claimed on `notifiedAt`).
 - Audiences: task cohort, **all members**, or a tag. Recognition-mode copy is prepared by a worker after the claim.
-- **#1028:** Send asks for the typed phrase `I am going to notify many real members`.
+- **#1028:** unsaved edits to an update's details are guarded on leave (`ActionUpdatePage.tsx:101-103`), and a details save shows a "Saved …" toast (:118).
 
 **Reminders.** There is no reminders UI on the task. Reminders live on the suite page and work only on the suite's **first** task's member action events (`components/reminders/ActionRemindersTab.tsx:46-67`, TODO).
 - Server: a group can only be attached to a member action event (`notifs/reminder-group.service.ts:239`), so **no reminder can exist before a member action event does**.
 - Create a group: typed confirm with the live count, outside development mode (`ActionRemindersTab.tsx:212-232`). "Populate default reminders": typed confirm, `many` (:166-186).
 - **Editing a group has no confirm** (:255-278), even when it moves the send time.
-- Sending (`notifs/action-event-notif.worker.ts:96-103`, every 3 minutes; groups chosen by timing in `action-event-reminder.service.ts:237-311`) **does not check that the task has launched, isn't archived, or isn't in staff preview**: none of `archived`, `Draft` or `staffPreview` appears in the worker, the delivery service or the recipient service. *(Plausible, not traced end to end:* an Absolute or Range reminder timed before its member action event's date would go to the live cohort before launch.) The suite launch panel blocks reminders that would send before members start (`components/suite-launch/launchReminders.ts`). The suite page's reminder form does not; its plan summary only says "(immediately)".
-- With a suite, recipients are chosen from the cohorts of **all** the suite's tasks (`notifs/action-event-recipient.service.ts:153-270`). The send-time task list drops Draft tasks (`member-actions.service.ts:414-440`). *(Not traced: whether an empty list suppresses the send.)*
+- Sending (`notifs/action-event-notif.worker.ts:96-103`, every 3 minutes; groups chosen by timing in `action-event-reminder.service.ts:237-311`) **has no test that the task has launched, isn't archived, or isn't in staff preview**: none of `archived`, `Draft` or `staffPreview` appears in the worker, the delivery service, the recipient service or the missed-suite code. What stops a send before launch is a side effect at send time, traced below. The suite launch panel blocks reminders that would send before members start (`components/suite-launch/launchReminders.ts`). The suite page's reminder form does not; its plan summary only says "(immediately)".
+- With a suite, recipients are chosen from the cohorts of **all** the suite's tasks (`notifs/action-event-recipient.service.ts:153-270`). The send-time task list drops Draft tasks (`member-actions.service.ts:415-442`).
+
+**Can a reminder go out for a task that has not launched?** Traced at ff886c540b, including the two paths `STAGING-CHECK.md` §7 left open. A group must hang on a member action event, so "not launched" means that event is still in the future; "all its tasks drafts" is the same case for a suite.
+- Each due plan goes one of two ways (`action-event-notif.worker.ts:128-160`). A group whose email subject or body contains `#{missedactioncontext}` or `#{secondmisswarning}` is a missed-suite group (`common/src/missedSuiteNotice.ts:9-18`) and goes to `processMissedSuite`; every other group goes to `processOne`.
+- **Ordinary path (`processOne`, `action-event-notif.worker.ts:219-349`): usually no, sometimes yes.** The only stop is the return when the member's uncompleted-task list is empty (:243-249). With `useSuiteTaskCount` on (the default) and every task in the suite Draft, the list is empty and nothing is sent. It sends before launch when another task in the suite is already live and uncompleted for the member; when `useSuiteTaskCount` is off and the member has any open task anywhere (:171-174); or when the group is `group_leads_with_uncompleted` without `excludePreviouslyNotified`, which skips the empty-list return (:243-247).
+- **Missed-suite path (`processMissedSuite`, `action-event-notif.worker.ts:366-495`): no.** It runs only once the group's suite has closed (`notifs/missed-suite-notice.ts:46-62`); until then the plan is skipped and logged (:139-147), whatever the group's send time. A suite closes only when every required task in it (not optional, not onboarding) has a deadline event dated at or before now (`actions/action-suspension.service.ts:59-78`), and a task's deadline event is the next event after its member action event (`common/src/actionEvent.ts:34-45`). So a required task with no member action event, or with one in the future, keeps the suite open and the notice unsent; a suite with no required tasks never closes. The notice names only required tasks the member left without a completion or withdrawal (`action-suspension.service.ts:144-178`, `actions/missed-suite-streak.ts:61-81`); a member who missed nothing, or is on a third consecutive miss, gets a claimed row and no message (`action-event-notif.worker.ts:372-388, 411, 426`).
+- Two things the missed-suite path does not check. Optional and onboarding tasks do not hold a suite open, so the notice can go out while such a task in the suite is still a draft; that task is not named in it. And `archived` is not read: an archived required task whose deadline passed still counts as missed and is named.
+- **Delivery service (`notifs/action-event-notif-delivery.service.ts:50-118`): adds no check and no path.** `prepare` renders the push, text and email the member's channel preferences allow and returns the function that sends them; it never reads the task, its status or its events. Its only callers are the two worker methods (`action-event-notif.worker.ts:331, 473`), so whether anything is sent is settled before it runs. The whole run is skipped when delivery is switched off for the environment (:99-101).
+- Creating a group does not prevent a pre-launch time either: the server requires a member action event (`reminder-group.service.ts:239`) and, for Absolute timing, only that a send time exists (`notifs/assert-reminder-group-sendable.ts:46-51`).
+- *(Not traced:* whether a task with a non-Draft status from an earlier event, such as Planned, and a member action event still in the future counts as assigned in the send-time list.)
 
 **Prerequisites**: part of Details. The server validates them on every save and on every event write (`prerequisite-validation`). Open-reference warnings appear under the cohort (`components/OpenReferenceWarning.tsx`).
 
@@ -84,52 +94,53 @@ The dashboard `/actions/:id` has tabs (`pages/ActionDashboard.tsx:26-145`): Over
 - It gates nothing on the dashboard's Events tab.
 
 **Archive** (Overview toolbar, `useActionCommands.ts:119-143`):
-- Archive asks "Confirm Archive"; unarchive asks nothing.
+- Archive asks "Archive this action?" and, since #1028, says who can still open it: "Its public page stays open to anyone with the link" for a public-only task, otherwise "Only admins can open it" (`useActionCommands.ts:107-133`). Unarchive asks nothing.
+- **#1028:** `/actions` hides archived tasks unless "Show archived" is ticked, kept in the URL as `?archived=1` (`pages/Actions.tsx:54-61`).
 - Server: a plain flag write (`actions.service.ts:504-531`). Archived tasks are hidden from members and refuse update notifications.
 - **Reminders still send for archived tasks** (no check, above).
 - **Unarchiving a launched task shows it again at once, with no confirm.**
 
-**Delete**: unreachable. The button is commented out (`components/ActionForm.tsx:303-312`; **#1028** removes the dead path). `DELETE actions/:id` still exists and refuses if the task is a prerequisite or referenced by a cohort (`actions.service.ts:472-485`).
+**Delete**: not in the admin. #1028 removed the commented-out button, the `onDelete` prop on `ActionForm` and `ActionEditor`, and the client's `removeAction` mutation (`shared/lib/useActionAdmin.ts`). `DELETE actions/:id` still exists on the server and refuses if the task is a prerequisite or referenced by a cohort (`actions.service.ts:472-485`).
 
 **Cohort Decisions tab**: "Correct decision" assigns or excludes one member, with a required reason, in a modal (`components/CohortDecisionCorrectionModal.tsx`). It acts on a real member at once.
 
 ## 4. Operations that expose, notify or act on members
 
-| Operation | Effect | Guard today (c722280863) | Where | #1028 |
-|---|---|---|---|---|
-| **Add event** on a task (Events tab, `components/CreateEventForm.tsx`) | A **non-Draft event exposes the task** once its date passes. The form is open by default (`EventManagementTab.tsx:26`), status defaults to Members taking action and **"Launch now" defaults to on** (`CreateEventForm.tsx:54, 74-78, 126-128`) | **None: one click on "Add Event" launches now.** The server takes any date, past included (`action-suites.service.ts:45-127`). Only a 409 when a deadline moves earlier on a launched task (`cohortDecisionStaffService.guardDeadlineShortening`); one member action event per task (unique index) | — / server | Typed confirm ("launch to real members") for **Members taking action only**. Planned, Office action, Completed, Failed or Abandoned still take a draft live with no confirm (left to ALL-2424) |
-| Add **suite event** (suite page "+", same form in suite mode) | Added to **every task in the suite** (`action-suites.service.ts:214-233`) | Same as above: none | — | Same typed confirm for Members taking action |
-| **Edit suite event "for all"** (`components/SuiteEventCard.tsx`) | Moves dates on every matching task. Matching is by sorted position and `suiteManaged` (`action-suites.service.ts:156-212`); moving the launch into the past launches now | None besides the deadline-shortening 409; no check against past dates | server (409 only) | **Not fixed** (ALL-2328) |
-| Delete suite event | Removes it from every task; deleting the launch returns tasks to Draft | Overlay confirm; the server refuses if reminders depend on it | UI + server | — |
-| Suite launch (`/suites/:id/launch`) | Creates the member event, office event and default reminders | Blockers, then a typed confirm with the count, a start-in-future re-check, and a re-read of the suite to refuse if it already launched (`SuiteLaunchPanel.tsx:186-228`, `launchSuite.ts`). Partitioned suites are refused on the server (`assertNoPartitionLaunch`) | UI, partition refusal on server | — |
-| Project "Schedule release" (`pages/project-action/ScheduleReleaseForm.tsx:54-85`) | Member event, optional deadline, optional default reminders, in one transaction (`project-actions.service.ts:142-192`) | Typed confirm `many`. The server refuses past dates, an existing member event, and a shared suite (`:41-58, 149-161, 276-286`). **Staff testing first is UI-only**; the server doesn't check `staffPreview` | UI + server | — |
-| Reschedule / unschedule release (`ScheduledReleaseEditor.tsx`) | Moves or deletes launch and deadline (and reminders) | Unschedule confirms. The server locks a passed launch (`project-actions.service.ts:201-214, 252-254`) | UI + server | — |
-| Paste JSON with events | A task live at once | None | — | — |
-| Duplicate | Copies `staffPreview`, `publicOnly`, visibility and suite. No events, so Draft, but **staff see it at once if preview was on**, and **anyone with the link can open it if `publicOnly`** | None (disabled while an image uploads) | — | Disabled while there are unsaved edits |
-| Save Details on a live task | Content, cohort, visibility mode and `publicOnly` apply at once | Content confirm only. Server refuses optional → mandatory after decisions | UI + server | Leave guard, saved toast |
-| Set `publicOnly` | **Page opens to anyone, even as Draft** | None | — | — |
-| Visibility mode Public (the default) | Once launched, visible to everyone, cohort ignored | None; it is the default for new and project tasks | — | — |
-| Staff preview on | Staff see the draft | None on the dashboard; four-item gate on the project page | UI | — |
-| Save task form or variant form | Members get the new snapshot on next load | Builder gates (site links, formula refs, conflicts) | UI | — |
-| Publish variants / change split | Assignment of members not yet assigned | Over-100% block (UI + server) | both | — |
-| Update: first content save | Publishes the update to members who can see the task | None (a banner explains) | — | — |
-| Update: Send notification | Push/inbox/email to the audience (all members possible) | `window.confirm`; the server refuses draft-at-arrival, archived, no body, a second send | UI + server | Typed confirm `many` |
-| Create reminder group / populate defaults | Schedules sends | Typed confirm (skipped in development) | UI | — |
-| **Edit reminder group** | Re-times or re-targets sends | **None** | — | — |
-| Delete reminder group | Stops sends | Anchored confirm | UI | — |
-| Archive / unarchive | Hide / **re-show** | Confirm on archive only. Reminders keep sending when archived | UI | Archived list toggle |
-| Correct cohort decision | Assigns or excludes a member | Modal with required reason | UI | — |
-| Member-action start (automatic) | Cohort decisions written (5-minute worker); **app-icon badge pushes** to members' devices from the per-minute sweep (`actions/task-badge.service.ts:33-140`); EventLaunch reminders fire | Nothing: it follows from the event | — | — |
+| Operation | Effect | Guard today (ff886c540b) | Where |
+|---|---|---|---|
+| **Add event** on a task (Events tab, `components/CreateEventForm.tsx`) | A **non-Draft event exposes the task** once its date passes. The form is open by default (`EventManagementTab.tsx:27`), status defaults to Members taking action and **"Launch now" defaults to on** (`CreateEventForm.tsx:69, 91`) | **#1028, Members taking action only:** a full-screen confirm needing the typed phrase `launch to real members` (`CreateEventForm.tsx:24-35, 147-160`), titled "Launch to members now?" or "Schedule this launch?". After it, a launch time that passed while the confirm was open is refused (:161-168), and a deadline event must come after the launch (:133-142, 169-172). **Planned, Office action, Resolution, Completed, Failed or Abandoned still take a draft live with one click and no confirm** (`OPENS_TO_MEMBERS`, :26-35; left to ALL-2424). The server takes any date, past included (`action-suites.service.ts:45-127`). Only a 409 when a deadline moves earlier on a launched task (`cohortDecisionStaffService.guardDeadlineShortening`); one member action event per task (unique index) | UI (typed phrase) / server |
+| Add **suite event** (suite page "Add event", closed until clicked, `components/SuiteEventList.tsx:29, 47-66`; same form in suite mode) | Added to **every task in the suite** (`action-suites.service.ts:214-233`) | Same typed confirm for Members taking action; its message adds "This skips the suite launch checks." (`CreateEventForm.tsx:152`). Other statuses: none | UI |
+| **Edit suite event "for all"** (`components/SuiteEventCard.tsx`) | Moves dates on every matching task. Matching is by sorted position and `suiteManaged` (`action-suites.service.ts:156-212`); moving the launch into the past launches now | None besides the deadline-shortening 409; no check against past dates. **#1028 did not change this** (ALL-2328): Save writes at once (`SuiteEventCard.tsx:32-35`, `pages/ActionSuitePage.tsx:66-74`) | server (409 only) |
+| Delete suite event | Removes it from every task; deleting the launch returns tasks to Draft | Overlay confirm; the server refuses if reminders depend on it | UI + server |
+| Suite launch (`/suites/:id/launch`) | Creates the member event, office event and default reminders | Blockers, then a typed confirm with the count, a start-in-future re-check, and a re-read of the suite to refuse if it already launched (`SuiteLaunchPanel.tsx:186-228`, `launchSuite.ts`). Partitioned suites are refused on the server (`assertNoPartitionLaunch`) | UI, partition refusal on server |
+| Project "Schedule release" (`pages/project-action/ScheduleReleaseForm.tsx:54-85`) | Member event, optional deadline, optional default reminders, in one transaction (`project-actions.service.ts:142-192`) | Typed confirm `many`. The server refuses past dates, an existing member event, and a shared suite (`:41-58, 149-161, 276-286`). **Staff testing first is UI-only**; the server doesn't check `staffPreview` | UI + server |
+| Reschedule / unschedule release (`ScheduledReleaseEditor.tsx`) | Moves or deletes launch and deadline (and reminders) | Unschedule confirms. The server locks a passed launch (`project-actions.service.ts:201-214, 252-254`) | UI + server |
+| Paste JSON with events | A task live at once | None | — |
+| Duplicate | Copies `staffPreview`, `publicOnly`, visibility and suite. No events, so Draft, but **staff see it at once if preview was on**, and **anyone with the link can open it if `publicOnly`** | No confirm. **#1028:** disabled while Details has unsaved edits, as well as while an image uploads (`ActionDashboardToolbar.tsx:71`) | UI |
+| Save Details on a live task | Content, cohort, visibility mode and `publicOnly` apply at once | Content confirm; **#1028:** non-blank name, leave guard on unsaved edits, saved toast. Server refuses optional → mandatory after decisions | UI + server |
+| Set `publicOnly` | **Page opens to anyone, even as Draft** | None | — |
+| Visibility mode Public (the default) | Once launched, visible to everyone, cohort ignored | None; it is the default for new and project tasks | — |
+| Staff preview on | Staff see the draft | None on the dashboard; four-item gate on the project page | UI |
+| Save task form or variant form | Members get the new snapshot on next load | Builder gates (site links, formula refs, conflicts); leave guard on unsaved edits | UI |
+| Publish variants / change split | Assignment of members not yet assigned | Over-100% block (UI + server) | both |
+| Update: first content save | Publishes the update to members who can see the task | None (a banner explains) | — |
+| Update: Send notification | Push/inbox/email to the audience (all members possible) | **#1028:** typed confirm `I am going to notify many real members`, closed if the admin leaves the page; the server refuses draft-at-arrival, archived, no body, a second send | UI + server |
+| Create reminder group / populate defaults | Schedules sends | Typed confirm (skipped in development) | UI |
+| **Edit reminder group** | Re-times or re-targets sends | **None** | — |
+| Delete reminder group | Stops sends | Anchored confirm | UI |
+| Archive / unarchive | Hide / **re-show** | Confirm on archive only (#1028: it says who can still open the page). Reminders keep sending when archived. #1028: `/actions` hides archived tasks unless "Show archived" is on | UI |
+| Correct cohort decision | Assigns or excludes a member | Modal with required reason | UI |
+| Member-action start (automatic) | Cohort decisions written (5-minute worker); **app-icon badge pushes** to members' devices from the per-minute sweep (`actions/task-badge.service.ts:33-140`); EventLaunch reminders fire | Nothing: it follows from the event | — |
 
 ## 5. Launching a task outside a suite vs. a suite launch
 
 There are three ways a task outside a shared suite goes live:
 
-1. **Events tab, Members taking action.** Usually "Launch now", optionally with "Automatically create deadline event" (off by default, `CreateEventForm.tsx:55`). It has no member count, no checks, no reminders (a task with no suite has no reminders UI at all) and, at this commit, no confirm. Any other non-Draft status also launches it.
+1. **Events tab, Members taking action.** Usually "Launch now", optionally with "Automatically create deadline event" (off by default, `CreateEventForm.tsx:70`). It has no member count, no checks and no reminders (a task with no suite has no reminders UI at all). **#1028:** it asks for the typed phrase `launch to real members`. Any other non-Draft status also launches it, with no confirm.
 2. **Project page "Schedule release".** Only for a task that is alone in its suite, which every project-created task is. The UI requires staff testing first (`pages/project-action/ReleasePanel.tsx:20-60`). It shows a live "Notify N members", needs the typed confirm, and can add default reminders. The server requires future dates.
 3. **Paste JSON with dated events.**
 
-A suite launch (see `cuj-suite.md`) adds blockers, per-task readiness, contract-violation acceptance, a member preview, text checks, a typed count, a re-read against a concurrent launch, and reminders that never send before members start. A task outside a suite gets none of that through route 1. Route 2 has the typed confirm and future-date refusal but no readiness review. If the task's suite holds other tasks, ReleasePanel and the server send staff to the suite page (`project-actions.service.ts:280-284`).
+A suite launch (see `CUJ-SUITE.md`) adds blockers, per-task readiness, contract-violation acceptance, a member preview, text checks, a typed count, a re-read against a concurrent launch, and reminders that never send before members start. A task outside a suite gets none of that through route 1, only the fixed typed phrase. Route 2 has the typed confirm and future-date refusal but no readiness review. If the task's suite holds other tasks, ReleasePanel and the server send staff to the suite page (`project-actions.service.ts:280-284`).
 
 ## 6. Once a task is live
 
@@ -154,7 +165,8 @@ A suite launch (see `cuj-suite.md`) adds blockers, per-task readiness, contract-
 **Enforced by the UI only**
 - Staff testing before Schedule release, and its four-item gate.
 - Suite launch blockers and readiness ticks.
-- Typed confirms (reminders, suite launch, release; #1028: event add and update send).
+- Typed confirms (reminders, suite launch, release, adding a Members taking action event, update send).
+- Leave guards on unsaved Details, update and task form edits.
 - Launch time in the future in the suite panel.
 - Reminders not before members start (launch panel only).
 - The task form saved before toggling it (project page).
@@ -183,19 +195,20 @@ A suite launch (see `cuj-suite.md`) adds blockers, per-task readiness, contract-
 
 ## 9. Traps for a redesign
 
-1. **Any non-Draft event exposes a draft.** A merged "status" control (the prototype's Status dropdown), an "Abandon" command or a "Planned" marker implemented as an event takes a draft live. Only Members taking action gets a typed confirm, even after #1028.
-2. **"Launch now" as the default date.** If a new Events dialog or a merged schedule step defaults to now, saving it launches. The server takes past dates on the generic event endpoint.
+1. **Any non-Draft event exposes a draft.** A merged "status" control (the prototype's Status dropdown), an "Abandon" command or a "Planned" marker implemented as an event takes a draft live. Only Members taking action gets a typed confirm (#1028); the other statuses have none (ALL-2424).
+2. **"Launch now" as the default date.** If a new Events dialog or a merged schedule step defaults to now, saving it launches. Today only the typed phrase stands between that default and a launch, and only for Members taking action. The server takes past dates on the generic event endpoint.
 3. **Merging create and launch** (for example a "New task" wizard ending in a schedule step): the server will create the event before readiness, cohort or visibility are set. Defaults are Public visibility and no cohort, so the task would be visible to everyone, signed in or not.
 4. **Making `publicOnly` an early, harmless-looking setting**: it opens the draft's page to anyone.
 5. **Turning staff preview into an implicit preview** (e.g. enabled by "Preview as member"): staff see the draft, and staff are members.
 6. **Treating update content and update sending as one step**: the first content save already publishes. A composer that saves as you type publishes on a live task. A "send now" with only an undo countdown drops the server's claim-once semantics if it retries.
-7. **Moving reminders onto the task**: the server sends regardless of archived, Draft or preview state. The launch panel's "not before start" check is client-only, and editing a group has no confirm.
+7. **Moving reminders onto the task**: the server has no launched, archived or preview test. An all-draft suite is spared only because the send-time task list is empty, which `useSuiteTaskCount` off, a live sibling task or a group-leads group gets around (see Reminders). The launch panel's "not before start" check is client-only, and editing a group has no confirm.
 8. **Adding tasks to a launched suite from a pool**: the task gets no suite dates (stays Draft), but suite-scoped reminder recipients are computed from every suite task's cohort. Being in the suite can also change which task is "first", which drives general update dates and the reminders tab.
-9. **Duplicate and Paste carrying flags**: Duplicate copies `staffPreview`, `publicOnly` and visibility (and unsaved edits). Paste can carry dated events, the suite by name, and `archived`.
+9. **Duplicate and Paste carrying flags**: Duplicate copies `staffPreview`, `publicOnly` and visibility. Paste can carry dated events, the suite by name, and `archived`.
 10. **Unarchive with no confirm** re-exposes a launched task, and archive doesn't stop reminders.
-11. **Suite-event edits launch unconfirmed** (ALL-2328 still open after #1028). An editable date cell in a table makes this one keystroke.
+11. **Suite-event edits launch unconfirmed** (ALL-2328, still open at ff886c540b). An editable date cell in a table makes this one keystroke.
 12. **Forms have no publish step.** An inline Form tab that autosaves changes the live task for members on their next load.
 13. **Server checks are thinner than UI checks.** Staff testing, readiness, typed phrases and launch blockers all live in the client. A redesign that drops a screen drops the guard; the server won't catch it.
+14. **#1028's guards live in the components, not the mutations.** The typed phrases are in `CreateEventForm.tsx` and `ActionUpdatePage.tsx`, and the leave guard in `useActionEditor.ts`; `addEvent` and the update's `notify` mutation carry none. A new screen that calls the mutation directly has no confirm, and a new editor that keeps its own draft state has no leave guard until it calls `useLeaveGuard`.
 
 ## 10. Prototype comparison (`prototypes/ref/screens-task.js`, `screens-tasks.js`, `screens-suites-projects.js`, `app.js`, `NOTES.md`)
 
@@ -205,7 +218,7 @@ Differences from today's order, or dropped guards:
 2. **No project-page task creation, staff testing or Schedule release.** The project-scoped editor's gated phase header and typed release confirm have no equivalent, so the only standalone launch is the Events dialog.
 3. **Paste JSON is gone.** Duplicate is a palette command that toasts (`screens-task.js:160`), with no statement of what it copies.
 4. **Events tab "Add event" dialog** (`screens-task.js:47-58`):
-   - a warning banner and a plain "Add event" button, with **no typed confirm**. #1028 adds one for Members taking action; the prototype doesn't have it;
+   - a warning banner and a plain "Add event" button, with **no typed confirm**. Today's form asks for `launch to real members` on Members taking action (#1028); the prototype doesn't have it;
    - the status list (`PHASES.slice(1)`) offers Office action, Resolution and Completed with the same weight as Members taking action, all of which take a draft live;
    - no "deadline event" option;
    - the default date is a fixed future date (safer than today's "Launch now"), but a past date isn't refused.
@@ -215,7 +228,7 @@ Differences from today's order, or dropped guards:
 8. **"Post update" is the primary header button and `u` shortcut on every task, drafts included** (`screens-task.js:158-167`). The composer (`screens-task.js:129-144, 200-204`):
    - merges create, write and send into one step;
    - offers "Now";
-   - sends after a **10-second cancel countdown with no typed confirm**. Today it is `window.confirm`, and #1028 makes it a typed phrase;
+   - sends after a **10-second cancel countdown with no typed confirm**. Today it is the typed phrase `I am going to notify many real members` (#1028);
    - leaves out the server's draft-at-arrival refusal, the once-only rule, and the separate publish-on-content step;
    - "Save draft" has no stated visibility.
 9. **Reminders and follow-ups become "messages" on the task** (Messages tab, composer type "Reminder" or "Follow-up", edit pencils, `screens-task.js:12-20, 80-92`). Today reminders are suite-level groups (first task only), creation needs a typed confirm with the count, and follow-ups are forms with a cohort and dates, not messages. The prototype drops the typed confirm, and puts editing a scheduled reminder one click away, which is already unguarded today.
@@ -237,20 +250,21 @@ Kept from today: the suite Launch tab's gates and typed phrase (`NOTES.md` §4),
 4. Follow-ups, updates (draft until a body is written) and project or priority are side steps.
 5. Staff testing: an ungated toggle on the dashboard; gated on the project page.
 6. Readiness checklist: advisory on the dashboard, a blocker only in the suite launch.
-7. Launch: the suite Launch page (gated, typed), project Schedule release (typed, future dates), or the Events tab (one click, "Launch now" default).
-8. Reminders exist only after a member event, live on the suite page, and send with no launched or archived check.
-9. Update notifications: once only, refused while Draft at arrival; `window.confirm` today, typed after #1028.
+7. Launch: the suite Launch page (gated, typed), project Schedule release (typed, future dates), or the Events tab ("Launch now" default; a typed phrase for Members taking action, one click for any other status).
+8. Reminders exist only after a member event, live on the suite page, and send with no launched or archived test; before launch an all-draft suite is spared only by its empty task list, and the missed-suite notice waits for every required task's deadline.
+9. Update notifications: once only, refused while Draft at arrival, behind a typed phrase.
 10. Live: everything stays editable and applies at once; the server refuses only a few changes (optional → mandatory, assigned-variant delete, passed launch).
 
 **Traps:**
-- any non-Draft event exposes a draft, and "Launch now" is the default;
+- any non-Draft event exposes a draft, "Launch now" is the default, and only Members taking action asks for a typed phrase;
 - Public visibility is the default, and it ignores the cohort;
 - `publicOnly` drafts open by id;
 - staff preview exposes to staff;
 - the first update content save publishes;
-- reminders have no server launch or archive check, and editing them has no confirm;
+- reminders have no server launch or archive test (three configurations send before launch), and editing them has no confirm;
 - suite-event edits launch unconfirmed (ALL-2328);
 - Duplicate and Paste carry flags and events;
+- #1028's typed phrases and leave guards sit in components, not mutations;
 - unarchive re-exposes with no confirm;
 - form saves are live;
 - most guards are client-only.
@@ -259,7 +273,7 @@ Kept from today: the suite Launch tab's gates and typed phrase (`NOTES.md` §4),
 - New task with no form or stated defaults; no project release or staff testing; Paste is gone;
 - the Add-event dialog has no typed confirm and offers every status;
 - task events and Status are editable, and "Abandon" is a command;
-- "Post update" on drafts, with a 10-second countdown instead of a typed confirm;
+- "Post update" on drafts, with a 10-second countdown instead of the typed phrase;
 - reminders and follow-ups merged into task messages without confirms;
 - variants without staging or limits;
 - no Details, readiness, `publicOnly`, visibility, cohort or archive on the task;
