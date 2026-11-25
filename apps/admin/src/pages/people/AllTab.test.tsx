@@ -10,16 +10,10 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import UsersList from "./UsersList";
+import { ToastProvider } from "../../ui/ToastProvider";
+import PeoplePage from "./PeoplePage";
 
 const ada = makeUser({
   id: 1,
@@ -45,15 +39,20 @@ let users: UserDto[] = [];
 let tags: TagDto[] = [];
 let addUserStatus = 200;
 let timeSpentTotal: () => Response;
+let relationsStatus = 200;
+let tagsStatus = 200;
 const tagCalls: { path: string; body: unknown }[] = [];
 
 serveApi(
   routes({
     "GET /user/list": () => Response.json(users),
     "GET /analytics/time-spent-per-user-total": () => timeSpentTotal(),
-    "GET /user/tags": () => Response.json(tags),
+    "GET /user/tags": () => Response.json(tags, { status: tagsStatus }),
     "GET /actions/action-relations": () =>
-      Response.json({ actions: [], suites: [], users: [] }),
+      Response.json(
+        { actions: [], suites: [], users: [] },
+        { status: relationsStatus },
+      ),
     "GET /community/memberContactInfo": () => Response.json([]),
     "POST /user/tags/:tagId/addUser": async ({ request, params }) => {
       if (addUserStatus !== 200) {
@@ -75,22 +74,33 @@ serveApi(
   }),
 );
 
+// The list opens on signed members.
+const signed: ContractEventDto = {
+  type: "signed",
+  date: "2026-01-01T00:00:00.000Z",
+  automatic: false,
+  contractId: null,
+};
+const signedUp = (user: UserDto) => ({ ...user, lastContractEvent: signed });
+
 beforeEach(() => {
-  users = [ada, sam, lee];
+  users = [ada, sam, lee].map(signedUp);
   tags = [
     makeTag({ id: "t1", name: "Volunteers", users: [makeProfile(lee.id)] }),
     makeTag({ id: "t2", name: "Donors", users: [makeProfile(sam.id)] }),
   ];
   addUserStatus = 200;
   timeSpentTotal = () => Response.json([]);
+  relationsStatus = 200;
+  tagsStatus = 200;
   tagCalls.length = 0;
 });
 
-const renderPage = (viewMode = "cards") =>
+const renderPage = (url = "/members") =>
   render(
     <ToastProvider>
-      <MemoryRouter initialEntries={[`/members?viewMode=${viewMode}`]}>
-        <UsersList />
+      <MemoryRouter initialEntries={[url]}>
+        <PeoplePage />
       </MemoryRouter>
     </ToastProvider>,
     queryWrapper(),
@@ -107,7 +117,7 @@ const openFilter = (label: string) =>
 
 const search = (query: string) =>
   fireEvent.change(
-    screen.getByPlaceholderText("Search by name, email, or phone..."),
+    screen.getByRole("searchbox", { name: "Search by name, email or phone" }),
     { target: { value: query } },
   );
 
@@ -129,19 +139,17 @@ it("says members aren't sorted when time spent fails to load", async () => {
   renderPage();
 
   expect(
-    (
-      await screen.findByText(
-        "Unable to load time spent, so members aren't sorted by it.",
-      )
-    ).role,
-  ).toBe("alert");
+    (await screen.findByText(/^Couldn't load time spent\./)).closest(
+      '[role="alert"]',
+    ),
+  ).toBeTruthy();
   expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
 });
 
 it("filters by role and names the selection on the button", async () => {
   renderPage();
   await screen.findByText("Ada");
-  openFilter("All roles");
+  openFilter("Roles: All roles");
   expect(
     screen.getByRole("checkbox", { name: /Admin.*1 member$/ }),
   ).toBeTruthy();
@@ -151,38 +159,52 @@ it("filters by role and names the selection on the button", async () => {
 
   fireEvent.click(screen.getByRole("checkbox", { name: /Admin/ }));
   expect(shownNames()).toEqual(["Ada"]);
-  expect(screen.getByRole("button", { name: "Admin" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Roles: Admin" })).toBeTruthy();
 
   fireEvent.click(screen.getByRole("checkbox", { name: /Staff/ }));
   expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
-  expect(screen.getByRole("button", { name: "2 roles" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Roles: 2 roles" })).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: "Clear" }));
   expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
-  expect(screen.getByRole("button", { name: "All roles" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Roles: All roles" })).toBeTruthy();
 });
 
 it("filters by tag and names the selection on the button", async () => {
   renderPage();
   await screen.findByText("Ada");
-  openFilter("All tags");
+  openFilter("Tags: All tags");
 
   fireEvent.click(screen.getByRole("checkbox", { name: /Volunteers/ }));
   expect(shownNames()).toEqual(["Lee"]);
-  expect(screen.getByRole("button", { name: "Volunteers" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Reset filters" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Tags: Volunteers" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Clear filters" })).toBeTruthy();
 
   fireEvent.click(screen.getByRole("checkbox", { name: /Donors/ }));
   expect(shownNames()).toEqual(["Sam", "Lee"]);
-  expect(screen.getByRole("button", { name: "2 tags" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Tags: 2 tags" })).toBeTruthy();
 });
 
 it("says so when there are no tags to filter by", async () => {
   tags = [];
   renderPage();
   await screen.findByText("Ada");
-  openFilter("All tags");
+  openFilter("Tags: All tags");
   expect(screen.getByText("No tags yet")).toBeTruthy();
+});
+
+it("doesn't apply the caught-up filter while task records failed to load", async () => {
+  relationsStatus = 500;
+  renderPage("/members?status=caught_up");
+  await screen.findByText(/^Couldn't load the members' task records\./);
+  expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
+});
+
+it("doesn't apply the tags filter while tags failed to load", async () => {
+  tagsStatus = 500;
+  renderPage("/members?tag=t1");
+  await screen.findByText(/^Couldn't load tags\./);
+  expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
 });
 
 it("searches by name, email, and phone digits", async () => {
@@ -200,33 +222,24 @@ it("searches by name, email, and phone digits", async () => {
 it("resets every filter at once", async () => {
   renderPage();
   await screen.findByText("Ada");
-  expect(screen.queryByRole("button", { name: "Reset filters" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
 
-  openFilter("All roles");
+  openFilter("Roles: All roles");
   fireEvent.click(screen.getByRole("checkbox", { name: /Staff/ }));
-  expect(screen.getByRole("button", { name: "Reset filters" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Clear filters" })).toBeTruthy();
   search("lee");
-  openFilter("All tags");
+  openFilter("Tags: All tags");
   fireEvent.click(screen.getByRole("checkbox", { name: /Volunteers/ }));
   expect(shownNames()).toEqual(["Lee"]);
 
-  fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
-  expect(screen.getByRole("button", { name: "All roles" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "All tags" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Reset filters" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Roles: All roles" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Tags: All tags" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
 });
 
-const cardOf = (name: HTMLElement) => {
-  let card: HTMLElement | null = name;
-  while (card && !within(card).queryByRole("button", { name: "Manage" })) {
-    card = card.parentElement;
-  }
-  if (!card) throw new Error(`no card holds ${name.textContent}`);
-  return card;
-};
-
-const toggleTagOnCard = async ({
+const toggleTagInRow = async ({
   member,
   tagName,
 }: {
@@ -234,15 +247,17 @@ const toggleTagOnCard = async ({
   tagName: string;
 }) => {
   renderPage();
-  const card = cardOf(await screen.findByText(member));
-  fireEvent.click(within(card).getByRole("button", { name: "Manage" }));
   fireEvent.click(
-    within(card).getByRole("checkbox", { name: new RegExp(tagName) }),
+    await screen.findByRole("button", { name: `Details: ${member}` }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: `Edit tags: ${member}` }));
+  fireEvent.click(
+    await screen.findByRole("menuitemcheckbox", { name: new RegExp(tagName) }),
   );
 };
 
-it("adds a member to a tag from their card", async () => {
-  await toggleTagOnCard({ member: "Ada", tagName: "Donors" });
+it("adds a member to a tag from their row", async () => {
+  await toggleTagInRow({ member: "Ada", tagName: "Donors" });
   await waitFor(() =>
     expect(tagCalls).toEqual([
       { path: "t2/addUser", body: { userId: ada.id } },
@@ -250,8 +265,8 @@ it("adds a member to a tag from their card", async () => {
   );
 });
 
-it("removes a member from a tag from their card", async () => {
-  await toggleTagOnCard({ member: "Lee", tagName: "Volunteers" });
+it("removes a member from a tag from their row", async () => {
+  await toggleTagInRow({ member: "Lee", tagName: "Volunteers" });
   await waitFor(() =>
     expect(tagCalls).toEqual([
       { path: "t1/removeUser", body: { userId: lee.id } },
@@ -261,17 +276,17 @@ it("removes a member from a tag from their card", async () => {
 
 it("shows an error when a tag change fails", async () => {
   addUserStatus = 500;
-  const errors = jest.spyOn(console, "error").mockImplementation(() => {});
-  await toggleTagOnCard({ member: "Ada", tagName: "Donors" });
+  await toggleTagInRow({ member: "Ada", tagName: "Donors" });
   expect(
-    await screen.findByText("Failed to update tag membership. Try again."),
+    (await screen.findByText(/^Couldn't update the tags of Ada\./)).closest(
+      '[role="alert"]',
+    ),
   ).toBeTruthy();
-  errors.mockRestore();
 });
 
-it("pages the cards and returns to the first page on a new search", async () => {
+it("pages the members and returns to the first page on a new search", async () => {
   users = Array.from({ length: 51 }, (_, index) =>
-    makeUser({ id: index + 1, name: `Member ${index + 1}` }),
+    signedUp(makeUser({ id: index + 1, name: `Member ${index + 1}` })),
   );
   renderPage();
   await screen.findByText("Member 1");
@@ -285,17 +300,32 @@ it("pages the cards and returns to the first page on a new search", async () => 
   expect(shownNames()[0]).toBe("Member 1");
 });
 
-it("lists the filtered members in the table", async () => {
-  // The table shows only signed members until its contract filter changes.
-  const signed: ContractEventDto = {
-    type: "signed",
-    date: "2026-01-01T00:00:00.000Z",
-    automatic: false,
-    contractId: null,
-  };
-  users = users.map((user) => ({ ...user, lastContractEvent: signed }));
-  renderPage("rows");
+it("shows only signed members until the contract filter changes", async () => {
+  users = [signedUp(ada), sam, lee];
+  renderPage();
   await screen.findByText("Ada");
-  search("example.com");
-  expect(shownNames()).toEqual(["Ada", "Sam"]);
+  expect(shownNames()).toEqual(["Ada"]);
+  expect(screen.getByRole("option", { name: "Signed (1)" })).toBeTruthy();
+
+  fireEvent.change(screen.getByRole("combobox", { name: "Contract" }), {
+    target: { value: "not_signed" },
+  });
+  expect(shownNames()).toEqual(["Sam", "Lee"]);
+});
+
+it("says no member has signed, with a way to all members, when none has", async () => {
+  users = [sam, lee];
+  renderPage();
+  expect(await screen.findByText("No signed members")).toBeTruthy();
+  expect(screen.queryByText("No members yet")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Show all members" }));
+  expect(shownNames()).toEqual(["Sam", "Lee"]);
+});
+
+it("says there are no members yet when there are none", async () => {
+  users = [];
+  renderPage();
+  expect(await screen.findByText("No members yet")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Show all members" })).toBeNull();
 });

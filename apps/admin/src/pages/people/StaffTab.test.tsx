@@ -8,10 +8,11 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { ToastProvider } from "../ui/ToastProvider";
-import StaffDirectoryPage from "./StaffDirectoryPage";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
+import LeaveGuard from "../../components/LeaveGuard";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { StaffTab } from "./StaffTab";
 
 const entry = (id: number, displayName: string) =>
   ({
@@ -28,6 +29,7 @@ let loadStatus = 200;
 let saveStatus = 200;
 const puts: unknown[] = [];
 let putRequests = 0;
+let putGate: Promise<void> | null = null;
 
 serveApi(
   routes({
@@ -39,6 +41,7 @@ serveApi(
     },
     "PUT /user/staff-directory-admin": async ({ request }) => {
       putRequests += 1;
+      await putGate;
       if (saveStatus !== 200) {
         return Response.json({}, { status: saveStatus });
       }
@@ -55,17 +58,34 @@ beforeEach(() => {
   saveStatus = 200;
   puts.length = 0;
   putRequests = 0;
+  putGate = null;
 });
 
-const renderPage = (query = queryWrapper()) =>
-  render(
+const renderPage = (query = queryWrapper()) => {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <LeaveGuard>
+            <Outlet />
+          </LeaveGuard>
+        ),
+        children: [{ path: "/members", element: <StaffTab /> }],
+      },
+    ],
+    { initialEntries: ["/members?tab=staff"] },
+  );
+  return render(
     <ToastProvider>
-      <MemoryRouter>
-        <StaffDirectoryPage />
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </ToastProvider>,
     query,
   );
+};
+
+const loaded = () => screen.findAllByPlaceholderText("Brief title");
+const save = () =>
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
 const editFirstTitle = async (title: string) => {
   const [firstTitle] = await screen.findAllByPlaceholderText("Brief title");
@@ -74,16 +94,12 @@ const editFirstTitle = async (title: string) => {
 
 it("saves an edited title and settles on the saved directory", async () => {
   renderPage();
-  expect(
-    await screen.findByRole("button", { name: "No changes to save" }),
-  ).toBeTruthy();
+  await loaded();
 
   await editFirstTitle("Founder");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  save();
 
-  expect(
-    await screen.findByRole("button", { name: "No changes to save" }),
-  ).toBeTruthy();
+  expect(await screen.findByText("Saved")).toBeTruthy();
   expect(puts).toEqual([
     {
       items: [
@@ -98,34 +114,101 @@ it("saves an edited title and settles on the saved directory", async () => {
   );
 });
 
+it("keeps an edit made while a save runs", async () => {
+  let releasePut = () => {};
+  putGate = new Promise((resolve) => {
+    releasePut = resolve;
+  });
+  renderPage();
+  await editFirstTitle("Founder");
+  save();
+  await waitFor(() => expect(putRequests).toBe(1));
+
+  const grace = screen.getAllByPlaceholderText("Brief title")[1];
+  fireEvent.change(grace, { target: { value: "Engineer" } });
+  // A second save can't start while the first runs.
+  expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  save();
+  await act(async () => releasePut());
+  expect(putRequests).toBe(1);
+  expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty(
+    "disabled",
+    false,
+  );
+
+  await waitFor(() =>
+    expect(screen.getAllByPlaceholderText("Brief title")[0]).toHaveProperty(
+      "value",
+      "Founder",
+    ),
+  );
+  expect(screen.getAllByPlaceholderText("Brief title")[1]).toHaveProperty(
+    "value",
+    "Engineer",
+  );
+  expect(screen.queryByText("Saved")).toBeNull();
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
+});
+
 it("keeps the edits when the save fails", async () => {
   saveStatus = 500;
   renderPage();
   await editFirstTitle("Founder");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  save();
 
   expect(
-    await screen.findByText("Failed to save staff directory"),
+    await screen.findByText(
+      "Couldn't save: The server didn't answer.",
+    ),
   ).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
   expect(screen.getAllByPlaceholderText("Brief title")[0]).toHaveProperty(
     "value",
     "Founder",
   );
 });
 
+it("still says it is saving, then why it failed, after an edit made during the save", async () => {
+  let releasePut = () => {};
+  putGate = new Promise((resolve) => {
+    releasePut = resolve;
+  });
+  saveStatus = 500;
+  renderPage();
+  await editFirstTitle("Founder");
+  save();
+  await waitFor(() => expect(putRequests).toBe(1));
+
+  fireEvent.change(screen.getAllByPlaceholderText("Brief title")[1], {
+    target: { value: "Engineer" },
+  });
+  expect(screen.getByText("Saving…")).toBeTruthy();
+  await act(async () => releasePut());
+
+  expect(
+    await screen.findByText("Couldn't save: The server didn't answer."),
+  ).toBeTruthy();
+  expect(screen.getAllByPlaceholderText("Brief title")[1]).toHaveProperty(
+    "value",
+    "Engineer",
+  );
+});
+
 it("saves a reordered directory", async () => {
   renderPage();
-  await screen.findByRole("button", { name: "No changes to save" });
+  await loaded();
 
   const [ada, grace] = screen.getAllByRole("listitem");
   const dataTransfer = { effectAllowed: "", dropEffect: "" };
   fireEvent.dragStart(ada, { dataTransfer });
   fireEvent.dragOver(grace, { dataTransfer });
   fireEvent.drop(grace, { dataTransfer });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  save();
 
-  await screen.findByRole("button", { name: "No changes to save" });
+  await screen.findByText("Saved");
   expect(puts).toEqual([
     {
       items: [
@@ -136,12 +219,27 @@ it("saves a reordered directory", async () => {
   ]);
 });
 
+it("reorders without dragging", async () => {
+  renderPage();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "Move down: Ada" }));
+  save();
+
+  await screen.findByText("Saved");
+  expect(puts).toMatchObject([
+    {
+      items: [
+        { id: 2, staffDisplayOrder: 0 },
+        { id: 1, staffDisplayOrder: 1 },
+      ],
+    },
+  ]);
+});
+
 it("says the directory failed to load", async () => {
   loadStatus = 500;
   renderPage();
-  expect(
-    await screen.findByText("Failed to load staff directory"),
-  ).toBeTruthy();
+  expect(await screen.findByText("Couldn't load staff")).toBeTruthy();
   expect(screen.queryByRole("list")).toBeNull();
 });
 
@@ -153,9 +251,7 @@ it("keeps the loaded directory beside a refetch error", async () => {
   loadStatus = 500;
   await act(() => query.client.refetchQueries());
 
-  expect(
-    await screen.findByText("Failed to load staff directory"),
-  ).toBeTruthy();
+  expect(await screen.findByText(/^Couldn't refresh staff\./)).toBeTruthy();
   expect(screen.getByRole("link", { name: "Ada" })).toBeTruthy();
 });
 
@@ -175,7 +271,7 @@ it.each([
     const [first] = await screen.findAllByPlaceholderText(placeholder);
     const saveAs = async (value: string, choice: string) => {
       fireEvent.change(first, { target: { value } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      save();
       fireEvent.click(await screen.findByRole("button", { name: choice }));
     };
 
@@ -198,7 +294,7 @@ it("asks before saving an absolute site link, not a site path or a title", async
 
   fireEvent.change(title, { target: { value: "https://thealliance.org/x" } });
   fireEvent.change(link, { target: { value: "//thealliance.org/team" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  save();
   const dialog = await screen.findByRole("dialog");
   expect(dialog.textContent).toContain("//thealliance.org/team");
   expect(dialog.textContent).not.toContain("https://thealliance.org/x");
@@ -206,7 +302,7 @@ it("asks before saving an absolute site link, not a site path or a title", async
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
   fireEvent.change(link, { target: { value: "/team" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  save();
   await waitFor(() => expect(putRequests).toBe(1));
   expect(screen.queryByRole("dialog")).toBeNull();
 });

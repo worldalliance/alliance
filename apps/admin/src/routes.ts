@@ -34,7 +34,7 @@ export default [
       route("/tasks/contracts", "pages/ContractsPage.tsx"),
       route("/tasks/contracts/:id", "pages/ContractPage.tsx"),
 
-      route("/members", "places/PeoplePlace.tsx"),
+      route("/members", "pages/people/PeoplePage.tsx"),
       route("/members/:userId", "pages/people/MemberPage.tsx"),
       route("/members/welcome", "pages/WelcomeQueuePage.tsx"),
       route("/members/groups", "pages/groups/GroupsPage.tsx"),

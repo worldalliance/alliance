@@ -2,7 +2,7 @@ import type { UserCityCountDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
-import MemberMapPage from "./MemberMapPage";
+import { MapView } from "./MapView";
 
 let respond: () => Response;
 
@@ -16,7 +16,7 @@ const renderPage = () => {
   const { wrapper: QueryProvider } = queryWrapper();
   render(
     <QueryProvider>
-      <MemberMapPage />
+      <MapView />
     </QueryProvider>,
   );
 };
@@ -34,10 +34,12 @@ it("summarizes the loaded counts", async () => {
 
   renderPage();
 
-  expect(await screen.findByText("Total members")).toBeTruthy();
-  expect(statValue("Total members")).toBe("6");
-  expect(statValue("Members with location")).toBe("4");
-  expect(statValue("Non-US members")).toBe("1");
+  expect(
+    await screen.findByText("Members with an active contract"),
+  ).toBeTruthy();
+  expect(statValue("Members with an active contract")).toBe("6");
+  expect(statValue("With a location")).toBe("4");
+  expect(statValue("Outside the US")).toBe("1");
 });
 
 it("reports a failed load instead of the no-data message or zero counts", async () => {
@@ -45,11 +47,10 @@ it("reports a failed load instead of the no-data message or zero counts", async 
 
   renderPage();
 
-  expect((await screen.findByRole("alert")).textContent).toBe(
-    "Unable to load member locations. Please try again later.",
-  );
-  expect(screen.queryByText("No member location data available yet.")).toBe(
-    null,
-  );
-  expect(screen.queryByText("Total members")).toBe(null);
+  expect(
+    await screen.findByText("Couldn't load member locations"),
+  ).toBeTruthy();
+  expect(screen.getByText("The server didn't answer. Try again.")).toBeTruthy();
+  expect(screen.queryByText("No member locations yet")).toBe(null);
+  expect(screen.queryByText("Members with an active contract")).toBe(null);
 });

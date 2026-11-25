@@ -62,7 +62,6 @@ src/components/HomePlacementBadges.tsx
 src/components/IdentitySwatch.tsx
 src/components/InsertableTokenButton.tsx
 src/components/MarkedDiagnostics.tsx
-src/components/MemberFilterDropdown.tsx
 src/components/NewActionTimeline.tsx
 src/components/NewProjectActionDialog.tsx
 src/components/NumberSample.tsx
@@ -86,7 +85,6 @@ src/components/SuiteEventCard.tsx
 src/components/SuiteEventList.tsx
 src/components/TextareaWithHighlights.tsx
 src/components/UpdatePreview.tsx
-src/components/UserCard.tsx
 src/components/UserPicker.tsx
 src/components/VariableBuilder.sourceForms.test.tsx
 src/components/VariableBuilder.tsx
@@ -269,7 +267,6 @@ src/pages/ActionUpdatePage.tsx
 src/pages/ActionUpdatesPage.tsx
 src/pages/Actions.tsx
 src/pages/AmbassadorProgramPage.tsx
-src/pages/AwayMembersPage.tsx
 src/pages/ClustersPage.tsx
 src/pages/ContractPage.tsx
 src/pages/ContractsPage.tsx
@@ -288,7 +285,6 @@ src/pages/InviteMessageTemplatePage.tsx
 src/pages/InvitesPage.tsx
 src/pages/MemberListPage.tsx
 src/pages/MemberListsPage.tsx
-src/pages/MemberMapPage.tsx
 src/pages/NeedsReplyPage.tsx
 src/pages/NewActionSuitePage.tsx
 src/pages/OrganizationsPage.tsx
@@ -299,12 +295,10 @@ src/pages/ProjectActionPage.tsx
 src/pages/ProjectDetailPage.tsx
 src/pages/ProjectsPage.tsx
 src/pages/ShareLinksPage.tsx
-src/pages/StaffDirectoryPage.tsx
 src/pages/SuiteLaunchPage.tsx
 src/pages/TagManagement.tsx
 src/pages/TextThreadPage.tsx
 src/pages/TextsPage.tsx
-src/pages/UsersList.tsx
 src/pages/WaitlistEmailsPage.tsx
 src/pages/WaitlistPage.tsx
 src/pages/WelcomeQueuePage.tsx

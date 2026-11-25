@@ -16,10 +16,9 @@ export function useStaffDirectoryAdmin() {
 }
 
 /** Saves rows in their given order, then caches the saved directory. */
-export function useSaveStaffDirectoryAdmin(params: {
-  onSuccess: () => void;
-  onError: (err: Error) => void;
-}) {
+export function useSaveStaffDirectoryAdmin(
+  params: { onSuccess?: () => void; onError?: (err: Error) => void } = {},
+) {
   const { onSuccess, onError } = params;
   const storeQueryData = useStoreQueryData();
   return useMutation({
@@ -37,7 +36,7 @@ export function useSaveStaffDirectoryAdmin(params: {
       }).then((r) => r.data),
     onSuccess: async (data) => {
       await storeQueryData(queryKeys.staffDirectoryAdmin(), data);
-      onSuccess();
+      onSuccess?.();
     },
     onError,
   });
