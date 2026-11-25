@@ -237,7 +237,7 @@ export default function UserAwayPeriodsSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
+    <section className="@container border border-zinc-200 rounded p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
         Away Periods
         {awayRangesQuery.data && ` (${sortedAwayRanges.length})`}
@@ -290,7 +290,7 @@ export default function UserAwayPeriodsSection({
                     aria-label="Edit away period"
                     className="mt-2 space-y-2 scroll-mb-3"
                   >
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 @sm:grid-cols-2 gap-2">
                       <label className="text-xs text-zinc-600">
                         <span className="block mb-1">Start</span>
                         <FormInput
@@ -400,7 +400,7 @@ export default function UserAwayPeriodsSection({
         <p className="text-xs font-semibold text-zinc-700">
           Schedule time away
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 @sm:grid-cols-2 gap-2">
           <label className="text-xs text-zinc-600">
             <span className="block mb-1">Start</span>
             <FormInput
