@@ -85,8 +85,8 @@ const ActionCompletionBarsChart: React.FC<{
       margin.top + margin.bottom + chartActionStats.length * (barHeight + gap);
 
     const maxCompleted = max(chartActionStats, (d) => d.usersCompleted) ?? 0;
-    const maxTotalExpected = max(chartActionStats, (d) => d.usersJoined) ?? 0;
-    const maxValue = Math.max(maxCompleted, maxTotalExpected, 10);
+    const maxJoined = max(chartActionStats, (d) => d.usersJoined) ?? 0;
+    const maxValue = Math.max(maxCompleted, maxJoined, 10);
 
     const xScale = scaleLinear()
       .domain([0, maxValue * 1.1])
@@ -215,22 +215,22 @@ const ActionCompletionBarsChart: React.FC<{
                 actionBarsGeometry.margin.top +
                 idx * (actionBarsGeometry.barHeight + actionBarsGeometry.gap);
               const usersWithdrawn = action.usersWithdrawn;
-              const totalExpected = action.usersJoined + usersWithdrawn;
-              const expectedWidth =
-                actionBarsGeometry.xScale(totalExpected) -
+              const trackTotal = action.usersJoined + usersWithdrawn;
+              const displayRate = completionPercent(action);
+              const trackWidth =
+                actionBarsGeometry.xScale(trackTotal) -
                 actionBarsGeometry.margin.left;
               const completedWidth =
                 actionBarsGeometry.xScale(action.usersCompleted) -
+                actionBarsGeometry.margin.left;
+              const joinedWidth =
+                actionBarsGeometry.xScale(action.usersJoined) -
                 actionBarsGeometry.margin.left;
               const withdrawnWidth =
                 actionBarsGeometry.xScale(usersWithdrawn) -
                 actionBarsGeometry.margin.left;
               const isHovered =
                 hoveredActionBar?.action.actionId === action.actionId;
-              const displayRate =
-                totalExpected > 0
-                  ? Math.round((action.usersCompleted / totalExpected) * 100)
-                  : 0;
 
               return (
                 <g
@@ -272,7 +272,7 @@ const ActionCompletionBarsChart: React.FC<{
                   <rect
                     x={actionBarsGeometry.margin.left}
                     y={y}
-                    width={Math.max(expectedWidth, 0)}
+                    width={Math.max(trackWidth, 0)}
                     height={actionBarsGeometry.barHeight}
                     rx={4}
                     fill={
@@ -314,7 +314,7 @@ const ActionCompletionBarsChart: React.FC<{
                   {usersWithdrawn > 0 && withdrawnWidth > 0 && (
                     <path
                       d={buildRoundedRightPath(
-                        actionBarsGeometry.margin.left + completedWidth,
+                        actionBarsGeometry.margin.left + joinedWidth,
                         y,
                         Math.max(withdrawnWidth, 0),
                         actionBarsGeometry.barHeight,
@@ -327,15 +327,15 @@ const ActionCompletionBarsChart: React.FC<{
                   <text
                     x={
                       actionBarsGeometry.margin.left +
-                      Math.max(expectedWidth, completedWidth + withdrawnWidth) +
+                      Math.max(trackWidth, 0) +
                       8
                     }
                     y={y + actionBarsGeometry.barHeight / 2}
                     dominantBaseline="middle"
                     className="fill-gray-600 text-xs"
                   >
-                    {action.usersCompleted}/{totalExpected}{" "}
-                    {totalExpected > 0 ? `(${displayRate}%)` : ""}
+                    {action.usersCompleted}/{action.usersJoined}{" "}
+                    {displayRate !== null ? `(${displayRate}%)` : ""}
                   </text>
                 </g>
               );
@@ -395,7 +395,7 @@ const ActionCompletionBarsChart: React.FC<{
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-gray-300" />
-          <span className="text-sm text-gray-600">Expected total</span>
+          <span className="text-sm text-gray-600">Joined, not completed</span>
         </div>
         <div className="flex items-center gap-2">
           <svg className="w-4 h-4 rounded" viewBox="0 0 16 16">

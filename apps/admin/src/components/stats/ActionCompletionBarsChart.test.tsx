@@ -41,7 +41,7 @@ const renderChart = (
 };
 
 describe("ActionCompletionBarsChart", () => {
-  it("counts withdrawals toward each charted action's expected total", () => {
+  it("labels each charted action's bar with completed over joined", () => {
     renderChart([
       actionStat({
         actionId: 1,
@@ -49,12 +49,13 @@ describe("ActionCompletionBarsChart", () => {
         usersCompleted: 3,
         usersJoined: 4,
         usersWithdrawn: 1,
+        completionRate: 0.75,
       }),
       actionStat({ actionId: 2, actionName: "Hidden", showInChart: false }),
     ]);
 
     expect(screen.getByText("Call a rep")).toBeTruthy();
-    expect(screen.getByText(/3\/5/).textContent).toContain("(60%)");
+    expect(screen.getByText(/3\/4/).textContent).toContain("(75%)");
     expect(screen.queryByText("Hidden")).toBeNull();
   });
 
@@ -78,6 +79,45 @@ describe("ActionCompletionBarsChart", () => {
 
     fireEvent.mouseLeave(row);
     expect(screen.queryByText("Rate:")).toBeNull();
+  });
+
+  it("ends the joined part of a bar where its withdrawn part starts, keying the rest as not completed", () => {
+    renderChart([
+      actionStat({
+        usersCompleted: 1,
+        usersJoined: 4,
+        usersWithdrawn: 1,
+        completionRate: 0.25,
+      }),
+    ]);
+
+    const row = screen.getByText("Call a rep").closest("g");
+    const track = row?.querySelector("rect[rx]");
+    const withdrawn = row?.querySelector('path[fill="#f97316"]');
+    if (!track || !withdrawn) throw new Error("no bar");
+    const x = Number(track.getAttribute("x"));
+    const width = Number(track.getAttribute("width"));
+    const start = Number(withdrawn.getAttribute("d")?.split(" ")[1]);
+    expect(start).toBeCloseTo(x + (width * 4) / 5);
+    expect(screen.getByText("Joined, not completed")).toBeTruthy();
+  });
+
+  it("gives no rate when nobody is still in an action", () => {
+    renderChart([
+      actionStat({
+        actionName: "Call a rep",
+        usersCompleted: 0,
+        usersJoined: 0,
+        usersWithdrawn: 1,
+      }),
+    ]);
+
+    expect(screen.getByText(/0\/0/).textContent).not.toContain("%");
+    const row = screen.getByText("Call a rep").closest("g");
+    if (!row) throw new Error("no row");
+    fireEvent.mouseEnter(row);
+
+    expect(screen.getByText("Rate:").nextSibling?.textContent).toBe("N/A");
   });
 
   it("prompts a recalculation when there are no stats", () => {
