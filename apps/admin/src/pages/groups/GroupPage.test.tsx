@@ -575,3 +575,29 @@ it("says when the members' contact info fails to refresh", async () => {
     ),
   ).toBeTruthy();
 });
+
+it("says nothing of the contact details' refresh while progress has failed", async () => {
+  memberInfoStatus = 500;
+  const client = renderPage({ tab: "progress" });
+  await screen.findByText("Couldn't load progress");
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.communityMemberContactInfoAdmin(4))
+        ?.status,
+    ).toBe("success"),
+  );
+  contactInfoStatus = 403;
+  await act(() =>
+    client.refetchQueries({
+      queryKey: queryKeys.communityMemberContactInfoAdmin(4),
+    }),
+  );
+
+  await waitFor(() =>
+    expect(
+      client.getQueryState(queryKeys.communityMemberContactInfoAdmin(4))
+        ?.status,
+    ).toBe("error"),
+  );
+  expect(screen.queryByText(/Couldn't refresh the members' contact/)).toBeNull();
+});
