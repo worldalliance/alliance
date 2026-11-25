@@ -4,9 +4,15 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
+import { ToastProvider } from "../../ui/ToastProvider";
 import OrganizationsPage from "./OrganizationsPage";
 
 const campaign = (
@@ -107,7 +113,7 @@ beforeEach(() => {
 
 const renderPage = () =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/growth/organizations"]}>
       <ToastProvider>
         <OrganizationsPage />
       </ToastProvider>
@@ -124,17 +130,36 @@ it("lists organizations with their links, and notes a missing group", async () =
   expect(screen.getAllByText(/No group assigned/)).toHaveLength(1);
 });
 
-it("creates an organization and makes a campaign one", async () => {
+it("creates an organization and makes a campaign one, focusing each dialog's field", async () => {
   renderPage();
   await screen.findByDisplayValue("Acme");
-  fireEvent.change(screen.getByPlaceholderText("Name"), {
+  fireEvent.click(screen.getByRole("button", { name: "New organization…" }));
+  const creating = await screen.findByRole("dialog");
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      within(creating).getByLabelText("Name"),
+    ),
+  );
+  fireEvent.change(within(creating).getByLabelText("Name"), {
     target: { value: " Coop " },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create" }));
-  fireEvent.change(screen.getByLabelText("Existing campaign"), {
+  fireEvent.click(
+    within(creating).getByRole("button", { name: "Create organization" }),
+  );
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  fireEvent.click(screen.getByRole("button", { name: "Make organization…" }));
+  const making = await screen.findByRole("dialog");
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      within(making).getByLabelText("Existing campaign"),
+    ),
+  );
+  fireEvent.change(within(making).getByLabelText("Existing campaign"), {
     target: { value: "3" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Make organization" }));
+  fireEvent.click(
+    within(making).getByRole("button", { name: "Make organization" }),
+  );
 
   await waitFor(() =>
     expect(requests).toEqual([
@@ -157,7 +182,10 @@ it("locks the new name while the create is pending", async () => {
   await screen.findByDisplayValue("Acme");
   let respond = () => {};
   createGate = new Promise((resolve) => (respond = resolve));
-  const input = screen.getByPlaceholderText<HTMLInputElement>("Name");
+  fireEvent.click(screen.getByRole("button", { name: "New organization…" }));
+  const input = within(
+    await screen.findByRole("dialog"),
+  ).getByLabelText<HTMLInputElement>("Name");
   input.focus();
   fireEvent.change(input, { target: { value: "Coop" } });
   fireEvent.submit(input);
@@ -165,9 +193,7 @@ it("locks the new name while the create is pending", async () => {
   await waitFor(() => expect(input.readOnly).toBe(true));
   expect(document.activeElement).toBe(input);
   respond();
-  await waitFor(() => expect(input.readOnly).toBe(false));
-  expect(input.value).toBe("");
-  expect(document.activeElement).toBe(input);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
 it("assigns a group, offering none another organization has", async () => {
@@ -207,9 +233,11 @@ it("adds a link and archives one after confirming", async () => {
     }),
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-  expect(await screen.findByText("Archive this link?")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  fireEvent.click(screen.getByRole("button", { name: "Archive: Newsletter" }));
+  expect(
+    await screen.findByText("Archive the link “Newsletter”?"),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Archive link" }));
   await waitFor(() =>
     expect(requests).toContainEqual({
       method: "PATCH",
@@ -248,7 +276,7 @@ it("can create and update a link with referral messaging disabled", async () => 
     })[0].checked,
   ).toBe(true);
   fireEvent.click(
-    screen.getByRole("checkbox", {
+    screen.getByRole("switch", {
       name: "Show referral message for Newsletter",
     }),
   );
@@ -336,7 +364,9 @@ it("restores an archived link without confirming", async () => {
   link.archivedAt = "2026-09-02T00:00:00.000Z";
   try {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Restore" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Restore: Newsletter" }),
+    );
     await waitFor(() =>
       expect(requests).toEqual([
         {
@@ -354,7 +384,7 @@ it("restores an archived link without confirming", async () => {
 it("uploads a logo and saves its key", async () => {
   renderPage();
   await screen.findByDisplayValue("Bolt");
-  const [, boltLogo] = screen.getAllByLabelText("Upload logo");
+  const [, boltLogo] = screen.getAllByLabelText("Logo");
   fireEvent.change(boltLogo, {
     target: { files: [new File(["png"], "logo.png", { type: "image/png" })] },
   });
@@ -374,7 +404,7 @@ it("says why a logo upload failed", async () => {
   uploadStatus = 400;
   renderPage();
   await screen.findByDisplayValue("Bolt");
-  const [, boltLogo] = screen.getAllByLabelText("Upload logo");
+  const [, boltLogo] = screen.getAllByLabelText("Logo");
   fireEvent.change(boltLogo, {
     target: { files: [new File(["png"], "logo.png", { type: "image/png" })] },
   });
@@ -382,18 +412,47 @@ it("says why a logo upload failed", async () => {
   expect(requests).toEqual([]);
 });
 
+it("clears a refused logo so the same file can be chosen again", async () => {
+  uploadStatus = 400;
+  renderPage();
+  await screen.findByDisplayValue("Bolt");
+  const [, boltLogo] = screen.getAllByLabelText("Logo");
+  const choose = () =>
+    fireEvent.change(boltLogo, {
+      target: { files: [new File(["png"], "logo.png", { type: "image/png" })] },
+    });
+  choose();
+  expect(screen.getByText("logo.png")).toBeTruthy();
+  expect(await screen.findByText("Image too large")).toBeTruthy();
+  await waitFor(() => expect(screen.queryByText("logo.png")).toBeNull());
+
+  uploadStatus = 200;
+  choose();
+  await waitFor(() =>
+    expect(requests).toContainEqual({
+      method: "PATCH",
+      path: "/campaigns/2",
+      body: { picture: "logo-key" },
+    }),
+  );
+});
+
 it("copies a link's URL, and says when copying fails", async () => {
   const writeText = jest
     .spyOn(navigator.clipboard, "writeText")
     .mockResolvedValue(undefined);
   renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Copy link: Newsletter" }),
+  );
   expect(await screen.findByText("Link copied")).toBeTruthy();
   expect(writeText).toHaveBeenCalledWith(
     expect.stringMatching(/\?link=news-code$/),
   );
 
   writeText.mockRejectedValue(new DOMException("denied", "NotAllowedError"));
-  fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
-  expect(await screen.findByText("Could not copy the link.")).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Copy link: Newsletter" }),
+  );
+  expect(await screen.findByText("Couldn't copy the link.")).toBeTruthy();
 });

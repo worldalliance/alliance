@@ -13,8 +13,6 @@ import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-export const campaignsLoadFailed = "Unable to load organizations.";
-
 export function useCampaignsAdmin(params?: {
   refetchOnWindowFocus?: boolean;
   refetchOnReconnect?: boolean;

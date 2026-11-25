@@ -175,8 +175,6 @@ src/components/form-responses/FormResponsesHeader.tsx
 src/components/form-responses/QuestionResponses.tsx
 src/components/form-responses/ResponseReplay.tsx
 src/components/form-responses/ResponseReplayNavigator.tsx
-src/components/organizations/OrganizationCard.tsx
-src/components/organizations/OrganizationLinks.tsx
 src/components/output-builder/EditableOutputFieldBlock.tsx
 src/components/output-builder/OutputBlockList.tsx
 src/components/output-builder/OutputPreview.tsx
@@ -226,7 +224,6 @@ src/pages/AmbassadorProgramPage.tsx
 src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
 src/pages/NewActionSuitePage.tsx
-src/pages/OrganizationsPage.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/SuiteLaunchPage.tsx
