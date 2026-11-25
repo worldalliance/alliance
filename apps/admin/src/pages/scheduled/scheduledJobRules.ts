@@ -3,7 +3,8 @@ import type {
   ProfileDto,
   ScheduledPlansOverviewDto,
 } from "@alliance/shared/client/types.gen";
-import { href } from "react-router";
+import { formatDate, formatDateTime } from "../../lib/formatDate";
+import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 
 export enum ScheduledJobKind {
   Suspension = "suspension",
@@ -24,20 +25,23 @@ export type ScheduledJob = {
   task: ActionSummaryDto | null;
 };
 
-/** Every job the server plans to run, soonest first. */
+/**
+ * Every job due, soonest first. A suspension's date moves with each fetch, so
+ * its key is its members, whom the server puts in one suspension only.
+ */
 export function scheduledJobs(
   plans: ScheduledPlansOverviewDto,
 ): ScheduledJob[] {
   return [
-    ...plans.suspensionPlans.map((plan, index) => ({
-      key: `suspension-${plan.date}-${index}`,
+    ...plans.suspensionPlans.map((plan) => ({
+      key: `suspension-${plan.users.map((user) => user.id).join("-")}`,
       kind: ScheduledJobKind.Suspension,
       date: plan.date,
       users: plan.users,
       task: null,
     })),
-    ...plans.forumAutocompletePlans.map((plan, index) => ({
-      key: `forum-${plan.date}-${plan.action.id}-${index}`,
+    ...plans.forumAutocompletePlans.map((plan) => ({
+      key: `forum-${plan.action.id}`,
       kind: ScheduledJobKind.ForumAutocomplete,
       date: plan.date,
       users: plan.users,
@@ -46,8 +50,36 @@ export function scheduledJobs(
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
-export const taskHref = (task: { id: number }) =>
-  href("/tasks/:actionId", { actionId: task.id.toString() });
+const utcDateTime = (date: string) =>
+  `${formatDate(date, { weekday: true, timeZone: "UTC" })}, ${new Intl.DateTimeFormat(
+    "en-US",
+    { hour: "numeric", minute: "2-digit", timeZone: "UTC" },
+  ).format(new Date(date))} UTC`;
 
-export const memberHref = (user: { id: number }) =>
-  href("/members/:userId", { userId: user.id.toString() });
+/**
+ * When a job is due, at the server's precision, with the rest as a tooltip.
+ * The endpoint samples suspensions every 6 hours from the range's start; a
+ * forum auto-complete's date is 5 minutes before the task's deadline, and its
+ * worker runs every 5 minutes.
+ */
+export function jobWhen(job: Pick<ScheduledJob, "kind" | "date">): {
+  text: string;
+  detail: string;
+} {
+  const zoned = { weekday: true, timeZone: LAUNCH_TIME_ZONE };
+  const utc = utcDateTime(job.date);
+  switch (job.kind) {
+    case ScheduledJobKind.Suspension:
+      return {
+        text: `By ${formatDate(job.date, zoned)}`,
+        detail: `Due by ${formatDateTime(job.date, zoned)} (${utc}). This list checks every 6 hours, so the suspension can come up to 6 hours sooner.`,
+      };
+    case ScheduledJobKind.ForumAutocomplete:
+      return {
+        text: formatDateTime(job.date, zoned),
+        detail: `${utc}. 5 minutes before the task's deadline; the server runs it within 5 minutes of this time.`,
+      };
+    default:
+      throw new Error(`unknown job kind: ${job.kind satisfies never}`);
+  }
+}

@@ -1,42 +1,41 @@
-import { withCount } from "@alliance/common/plural";
-import { ChevronDown } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
-import { formatDateTime } from "../../lib/formatDate";
-import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
+import { countOf } from "../../lib/formatNumber";
+import { memberHref, taskHref } from "../../lib/hrefs";
 import { useScheduledPlansAdmin } from "../../lib/useScheduledPlansAdmin";
 import { PlaceId } from "../../places";
 import { AvatarProfile } from "../../ui/Avatar";
 import Badge from "../../ui/Badge";
-import Button, { ButtonVariant } from "../../ui/Button";
 import { cn } from "../../ui/cn";
+import { personName } from "../../ui/PersonCell";
 import { linkClass } from "../../ui/styles";
 import {
+  ExpandToggle,
   Table,
   TableBody,
   TableCell,
+  TableDetailRow,
   TableHead,
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { Banner, BannerTone } from "../../ui/templates/Banner";
-import { FilterBar, ListContent } from "../../ui/templates/List";
+import { ListContent, listCount } from "../../ui/templates/List";
 import { Page } from "../../ui/templates/Page";
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
 import {
   JOB_KIND_LABELS,
-  memberHref,
+  jobWhen,
   type ScheduledJob,
   scheduledJobs,
-  taskHref,
 } from "./scheduledJobRules";
 
-const COLUMNS = 5;
+const COLUMNS = 4;
 
 export default function ScheduledJobsPage() {
   const plans = useScheduledPlansAdmin();
@@ -51,30 +50,19 @@ export default function ScheduledJobsPage() {
       if (!next.delete(key)) next.add(key);
       return next;
     });
+  const count = listCount({
+    shown: jobs.length,
+    total: plans.data && jobs.length,
+    noun: "job",
+  });
 
   return (
     <Page
       fill
       place={PlaceId.ScheduledJobs}
-      description="Member suspensions and forum task auto-completes the server will run in the next 7 days, soonest first."
-      banner={
-        plans.isRefetchError && (
-          <Banner
-            tone={BannerTone.Danger}
-            action={
-              <Button size="small" onClick={() => void plans.refetch()}>
-                Try again
-              </Button>
-            }
-          >
-            {"Couldn't refresh scheduled jobs."}{" "}
-            {adminRefusalMessage(plans.error, LOAD_FAILED_FALLBACK)} The list
-            shows what loaded before.
-          </Banner>
-        )
-      }
+      description={`Member suspensions and forum task auto-completes due in the next 7 days, soonest first.${count ? ` ${count}.` : ""}`}
+      banner={<RefreshFailedBanner things="scheduled jobs" query={plans} />}
     >
-      <FilterBar count={plans.data && withCount(jobs.length, "job")} />
       <ListContent>
         <ContentState
           loading={plans.isPending}
@@ -86,18 +74,18 @@ export default function ScheduledJobsPage() {
           }
           errorTitle="Couldn't load scheduled jobs"
           onRetry={() => void plans.refetch()}
+          retrying={plans.isFetching}
           empty={jobs.length === 0}
           emptyTitle="No scheduled jobs"
-          emptyDescription="No suspension or forum auto-complete is due in the next 7 days."
+          emptyDescription="No member is due a suspension or a forum auto-complete in the next 7 days."
         >
           <Table bleed>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-64">When</TableHead>
-                <TableHead className="w-48">Job</TableHead>
+                <TableHead>When</TableHead>
+                <TableHead>Job</TableHead>
                 <TableHead>Task</TableHead>
-                <TableHead className="w-56">UTC</TableHead>
-                <TableHead className="w-44 text-right">Members</TableHead>
+                <TableHead>Members</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,87 +115,70 @@ function JobRows({
   onToggle: () => void;
 }) {
   const membersId = useId();
-  const when = formatDateTime(job.date, {
-    weekday: true,
-    timeZone: LAUNCH_TIME_ZONE,
-  });
+  const when = jobWhen(job);
   const kind = JOB_KIND_LABELS[job.kind];
-  const count = withCount(job.users.length, "member");
+  const members = countOf(job.users.length, "member");
   return (
     <>
       <TableRow>
         <TableCell className="font-medium whitespace-nowrap">
-          <time dateTime={job.date}>{when}</time>
+          <time dateTime={job.date} title={when.detail}>
+            {when.text}
+          </time>
         </TableCell>
         <TableCell>
           <Badge>{kind}</Badge>
         </TableCell>
-        <TableCell className="max-w-64 truncate" title={job.task?.name}>
+        <TableCell truncate title={job.task?.name}>
           {job.task ? (
-            <Link to={taskHref(job.task)} className={linkClass}>
+            <Link to={taskHref(job.task.id)} className={linkClass}>
               {job.task.name}
             </Link>
           ) : (
             "—"
           )}
         </TableCell>
-        <TableCell className="font-mono text-xs whitespace-nowrap text-fg-muted">
-          {new Date(job.date).toISOString()}
-        </TableCell>
         <TableCell>
-          <Button
-            variant={ButtonVariant.Ghost}
-            size="small"
-            className="ml-auto whitespace-nowrap tabular-nums"
-            aria-expanded={expanded}
-            aria-controls={expanded ? membersId : undefined}
-            aria-label={`${count}: ${kind}, ${when}`}
-            onClick={onToggle}
+          <ExpandToggle
+            expanded={expanded}
+            controls={membersId}
+            onToggle={onToggle}
+            aria-label={`${members}: ${kind}, ${when.text}`}
           >
-            {count}
-            <ChevronDown
-              aria-hidden="true"
-              className={cn(
-                "size-4 text-fg-muted transition-transform duration-fast",
-                expanded && "-rotate-180",
-              )}
-            />
-          </Button>
+            <span className="tabular-nums">{members}</span>
+          </ExpandToggle>
         </TableCell>
       </TableRow>
       {expanded && (
-        <TableRow>
-          <TableCell
-            id={membersId}
-            colSpan={COLUMNS}
-            className="h-auto bg-surface-2 py-3"
+        <TableDetailRow id={membersId} colSpan={COLUMNS}>
+          <ul
+            aria-label={`Members: ${kind}, ${when.text}`}
+            className="grid grid-cols-2 gap-x-6 gap-y-2 @4xl:grid-cols-3 @7xl:grid-cols-4"
           >
-            {job.users.length === 0 ? (
-              <p className="text-fg-muted">No members on this job.</p>
-            ) : (
-              <ul
-                aria-label={`Members: ${kind}, ${when}`}
-                className="grid grid-cols-2 gap-2 @4xl:grid-cols-3 @7xl:grid-cols-4"
-              >
-                {job.users.map((user) => (
-                  <li key={user.id} className="min-w-0">
-                    <Link
-                      to={memberHref(user)}
-                      className="flex items-center gap-2 rounded-md border border-line bg-surface px-2 py-1.5 font-medium focus-ring hover:border-line-strong"
-                    >
-                      <AvatarProfile
-                        pfp={user.profilePicture}
-                        size="small"
-                        alt=""
-                      />
-                      <span className="truncate">{user.displayName}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </TableCell>
-        </TableRow>
+            {job.users.map((user) => {
+              const name = personName({
+                userId: user.id,
+                name: user.displayName,
+              });
+              return (
+                <li key={user.id} className="flex min-w-0 items-center gap-2">
+                  <AvatarProfile
+                    pfp={user.profilePicture}
+                    size="small"
+                    alt=""
+                  />
+                  <Link
+                    to={memberHref(user.id)}
+                    title={name}
+                    className={cn(linkClass, "truncate")}
+                  >
+                    {name}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </TableDetailRow>
       )}
     </>
   );

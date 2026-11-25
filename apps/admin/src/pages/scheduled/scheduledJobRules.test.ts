@@ -8,7 +8,7 @@ describe("scheduledJobs", () => {
     const jobs = scheduledJobs({
       suspensionPlans: [
         { date: "2026-01-03T08:00:00.000Z", users: [sam] },
-        { date: "2026-01-01T08:00:00.000Z", users: [] },
+        { date: "2026-01-01T08:00:00.000Z", users: [makeProfile(4)] },
       ],
       forumAutocompletePlans: [
         {
@@ -29,5 +29,17 @@ describe("scheduledJobs", () => {
       [ScheduledJobKind.Suspension, "2026-01-03T08:00:00.000Z", undefined],
     ]);
     expect(new Set(jobs.map((job) => job.key)).size).toBe(3);
+  });
+
+  it("keeps a suspension's key when a refetch moves its sampled date", () => {
+    const suspension = (date: string) =>
+      scheduledJobs({
+        suspensionPlans: [{ date, users: [makeProfile(3), makeProfile(4)] }],
+        forumAutocompletePlans: [],
+      })[0]?.key;
+
+    expect(suspension("2026-01-03T08:00:00.000Z")).toBe(
+      suspension("2026-01-03T08:07:00.000Z"),
+    );
   });
 });

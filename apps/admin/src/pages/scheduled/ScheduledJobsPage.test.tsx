@@ -5,6 +5,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
 import ScheduledJobsPage from "./ScheduledJobsPage";
 
@@ -46,6 +47,17 @@ describe("scheduled plans", () => {
       ),
     ).toBe("/tasks/7");
   });
+
+  it("shows when a forum auto-complete runs in Pacific time, with UTC as its tooltip", async () => {
+    renderPage();
+    const when = await screen.findByText(/^Thu, Jan 1(, 2026)?, 4:00 PM PT$/);
+    expect(when.title).toMatch(/^Fri, Jan 2(, 2026)?, 12:00 AM UTC\./);
+  });
+
+  it("counts the jobs in the description", async () => {
+    renderPage();
+    expect(await screen.findByText(/soonest first\. 1 job\.$/)).toBeTruthy();
+  });
 });
 
 describe("scheduled jobs with members", () => {
@@ -59,10 +71,11 @@ describe("scheduled jobs with members", () => {
     }),
   );
 
-  it("shows when a job runs in Pacific time and in UTC", async () => {
+  it("shows the day a suspension is due by, with the sampled time in Pacific time and UTC as its tooltip", async () => {
     renderPage();
-    expect(await screen.findByText("Fri, Jan 2, 12:00 AM PT")).toBeTruthy();
-    expect(screen.getByText("2026-01-02T08:00:00.000Z")).toBeTruthy();
+    const when = await screen.findByText(/^By Fri, Jan 2(, 2026)?$/);
+    expect(when.title).toMatch(/Fri, Jan 2(, 2026)?, 12:00 AM PT/);
+    expect(when.title).toMatch(/Fri, Jan 2(, 2026)?, 8:00 AM UTC/);
   });
 
   it("expands a job to its members, each linked to their record", async () => {
@@ -113,10 +126,11 @@ for (const status of [401, 500]) {
     it("says the load failed instead of claiming no plans", async () => {
       renderPage();
       expect(
-        await screen.findByText(
-          status === 401
-            ? sessionExpiredMessage
-            : "Couldn't load scheduled jobs",
+        await screen.findByText("Couldn't load scheduled jobs"),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          status === 401 ? sessionExpiredMessage : LOAD_FAILED_FALLBACK,
         ),
       ).toBeTruthy();
       expect(screen.queryByText("No scheduled jobs")).toBeNull();
@@ -144,7 +158,9 @@ describe("scheduled plans refetch failure", () => {
     await act(() => query.client.refetchQueries());
 
     expect(
-      await screen.findByText(/Couldn't refresh scheduled jobs\./),
+      await screen.findByText(
+        `Couldn't refresh scheduled jobs. ${LOAD_FAILED_FALLBACK} Showing what loaded before.`,
+      ),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "Forum action" })).toBeTruthy();
   });
