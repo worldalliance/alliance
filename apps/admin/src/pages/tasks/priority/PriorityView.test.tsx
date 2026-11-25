@@ -13,13 +13,16 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { adminActionListItem } from "../lib/testing/adminActionListItem";
-import { generalUpdateAdmin } from "../lib/testing/generalUpdateAdmin";
-import { ToastProvider } from "../ui/ToastProvider";
-import PriorityPage from "./PriorityPage";
+import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../../../components/LeaveGuard";
+import { sessionExpiredMessage } from "../../../lib/sessionExpired";
+import { adminActionListItem } from "../../../lib/testing/adminActionListItem";
+import { generalUpdateAdmin } from "../../../lib/testing/generalUpdateAdmin";
+import { answerLeaveGuard } from "../../../lib/testing/leaveGuard";
+import { ToastProvider } from "../../../ui/ToastProvider";
+import { PriorityView } from "./PriorityView";
 
 const loaded = [
   adminActionListItem(1, "Call your rep", { priority: 2 }),
@@ -34,6 +37,7 @@ let servedGeneralUpdates: GeneralUpdateAdminDto[] = [];
 let actionLoads = 0;
 let generalUpdateLoads = 0;
 let saved: SetPriorityDto | null = null;
+let saveGate: Promise<void> = Promise.resolve();
 
 serveApi(
   routes({
@@ -50,6 +54,7 @@ serveApi(
         : Response.json({}, { status: generalUpdatesStatus });
     },
     "POST /actions/priorities": async ({ request }) => {
+      await saveGate;
       if (saveStatus !== 200) {
         return Response.json({}, { status: saveStatus });
       }
@@ -76,17 +81,36 @@ beforeEach(() => {
   actionLoads = 0;
   generalUpdateLoads = 0;
   saved = null;
+  saveGate = Promise.resolve();
 });
 
-const renderPage = (query = queryWrapper()) =>
+const renderPage = (query = queryWrapper()) => {
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/tasks",
+        element: (
+          <LeaveGuard>
+            <PriorityView />
+          </LeaveGuard>
+        ),
+      },
+      { path: "/tasks/:id", element: <p>Task</p> },
+    ],
+    { initialEntries: ["/tasks?view=priority"] },
+  );
   render(
-    <MemoryRouter>
-      <ToastProvider>
-        <PriorityPage />
-      </ToastProvider>
-    </MemoryRouter>,
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
     query,
   );
+  return router;
+};
+
+const LOAD_FAILED = "Couldn't load tasks and general updates";
+
+const saveButton = () => screen.getByRole("button", { name: "Save order" });
 
 const rowOf = (name: string) => {
   const row = screen.getByText(name).closest("[draggable]");
@@ -126,17 +150,15 @@ it("lists the loaded actions and general updates", async () => {
 it("says the list failed to load instead of showing none", async () => {
   loadStatus = 500;
   renderPage();
-  expect(
-    await screen.findByText("Failed to load actions and general updates"),
-  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Save order" })).toBeNull();
+  expect(await screen.findByText(LOAD_FAILED)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Save order" })).toBeNull();
 });
 
 it("says the general updates failed to load instead of loading forever", async () => {
   generalUpdatesStatus = 500;
   renderPage();
-  expect(
-    await screen.findByText("Failed to load actions and general updates"),
-  ).toBeTruthy();
+  expect(await screen.findByText(LOAD_FAILED)).toBeTruthy();
 });
 
 it("keeps the loaded list beside a refetch error", async () => {
@@ -147,9 +169,7 @@ it("keeps the loaded list beside a refetch error", async () => {
   loadStatus = 500;
   await act(() => query.client.refetchQueries());
 
-  expect(
-    await screen.findByText("Failed to load actions and general updates"),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh tasks/)).toBeTruthy();
   expect(screen.getByText("Call your rep")).toBeTruthy();
 });
 
@@ -164,14 +184,14 @@ it("keeps an unsaved reorder through a background refetch", async () => {
   renderPage(query);
   await screen.findByText("Call your rep");
   dragBelow("Call your rep", "Sign the petition");
-  expect(screen.getByText("Save")).toBeTruthy();
+  expect(screen.getByText("Unsaved changes")).toBeTruthy();
 
   await refetchWith(query, [
     ...loaded,
     adminActionListItem(3, "Join the call", { priority: 0 }),
   ]);
 
-  expect(screen.getByText("Save")).toBeTruthy();
+  expect(screen.getByText("Unsaved changes")).toBeTruthy();
 });
 
 it("compares a reorder with the order it started from after a refetch", async () => {
@@ -195,8 +215,9 @@ it("drops an unsaved reorder when Show all is toggled", async () => {
   dragBelow("Call your rep", "Sign the petition");
 
   fireEvent.click(screen.getByLabelText("Show all"));
+  fireEvent.click(await screen.findByRole("button", { name: "Discard order" }));
 
-  expect(screen.getByText("No changes to save")).toBeTruthy();
+  expect(await screen.findByText("No changes to save")).toBeTruthy();
 });
 
 it("saves the reorder and reloads the list", async () => {
@@ -206,9 +227,9 @@ it("saves the reorder and reloads the list", async () => {
   await screen.findByText("Call your rep");
   dragBelow("Call your rep", "Sign the petition");
 
-  fireEvent.click(screen.getByText("Save"));
+  fireEvent.click(saveButton());
 
-  expect(await screen.findByText("No changes to save")).toBeTruthy();
+  expect(await screen.findByText("Saved")).toBeTruthy();
   await waitFor(() => expect(generalUpdateLoads).toBe(2));
   expect(saved?.actionPriorities).toEqual([
     { id: 2, priority: 3 },
@@ -230,16 +251,14 @@ it("keeps showing the saved order when the reload after a save fails", async () 
   dragBelow("Call your rep", "Sign the petition");
 
   loadStatus = 500;
-  fireEvent.click(screen.getByText("Save"));
+  fireEvent.click(saveButton());
 
-  expect(
-    await screen.findByText("Failed to load actions and general updates"),
-  ).toBeTruthy();
-  expect(screen.getByText("No changes to save")).toBeTruthy();
-  const names = Array.from(document.querySelectorAll("li"), (li) =>
-    li.textContent?.includes("Call your rep")
+  expect(await screen.findByText(/Couldn't refresh tasks/)).toBeTruthy();
+  expect(screen.getByText("Saved")).toBeTruthy();
+  const names = Array.from(document.querySelectorAll("tr"), (tr) =>
+    tr.textContent?.includes("Call your rep")
       ? "Call your rep"
-      : li.textContent?.includes("Sign the petition")
+      : tr.textContent?.includes("Sign the petition")
         ? "Sign the petition"
         : null,
   ).filter(Boolean);
@@ -252,10 +271,14 @@ it("keeps the reorder and says why when the save is refused", async () => {
   await screen.findByText("Call your rep");
   dragBelow("Call your rep", "Sign the petition");
 
-  fireEvent.click(screen.getByText("Save"));
+  fireEvent.click(saveButton());
 
-  expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
-  expect(screen.getByText("Save")).toBeTruthy();
+  expect(
+    await screen.findByText(`Couldn't save: ${sessionExpiredMessage}`),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Discard" }).hasAttribute("disabled"),
+  ).toBe(false);
 });
 
 const pastDate = "2026-01-01T00:00:00.000Z";
@@ -322,13 +345,14 @@ it("lists follow-ups read-only with their parent", async () => {
   expect(await screen.findByText("Weekly check-in")).toBeTruthy();
   const names = () =>
     Array.from(
-      document.querySelectorAll("section li span:first-child"),
+      document.querySelectorAll("section tbody td:first-child"),
       (el) => el.textContent,
     );
   expect(names()).toEqual(["Later check-in", "Weekly check-in"]);
-  expect(screen.getAllByRole("link", { name: "Call your rep" })).toHaveLength(
-    2,
-  );
+  const followUps = screen.getByRole("region", { name: "Follow-up forms" });
+  expect(
+    within(followUps).getAllByRole("link", { name: "Call your rep" }),
+  ).toHaveLength(2);
   expect(document.querySelector("section [draggable]")).toBeNull();
 
   fireEvent.click(screen.getByLabelText("Show all"));
@@ -339,4 +363,93 @@ it("lists follow-ups read-only with their parent", async () => {
     "Unscheduled check-in",
   ]);
   expect(screen.getByText("Not on home pages: No start date")).toBeTruthy();
+});
+
+it("moves a row by its buttons, keeps focus on it and announces where it went", async () => {
+  renderPage();
+  await screen.findByText("Call your rep");
+
+  const down = screen.getByRole("button", { name: "Move down: Call your rep" });
+  down.focus();
+  fireEvent.click(down);
+
+  expect(
+    screen.getByText(
+      "Call your rep is now 2 of 2, above the line for new items.",
+    ),
+  ).toBeTruthy();
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Move down: Call your rep" }),
+    ),
+  );
+  expect(screen.getByText("Down 1")).toBeTruthy();
+  expect(screen.getByText("Unsaved changes")).toBeTruthy();
+});
+
+it("leaves focus on Discard after a move by the row's buttons", async () => {
+  renderPage();
+  await screen.findByText("Call your rep");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Move down: Call your rep" }),
+  );
+
+  const discard = screen.getByRole("button", { name: "Discard" });
+  discard.focus();
+  fireEvent.click(discard);
+
+  expect(await screen.findByText("No changes to save")).toBeTruthy();
+  expect(document.activeElement).toBe(discard);
+});
+
+it("holds the rows still while a save runs", async () => {
+  renderPage();
+  await screen.findByText("Call your rep");
+  const down = () =>
+    screen.getByRole("button", { name: "Move down: Sign the petition" });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Move down: Call your rep" }),
+  );
+  let release = () => {};
+  saveGate = new Promise((resolve) => (release = resolve));
+  fireEvent.click(saveButton());
+
+  await waitFor(() => expect(down()).toHaveProperty("disabled", true));
+  release();
+  expect(await screen.findByText("Saved")).toBeTruthy();
+  expect(down()).toHaveProperty("disabled", false);
+});
+
+it("moves the line for new items by its buttons and saves from it", async () => {
+  renderPage();
+  await screen.findByText("Call your rep");
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Move up: The line for new items" }),
+  );
+  fireEvent.click(saveButton());
+
+  expect(await screen.findByText("Saved")).toBeTruthy();
+  expect(saved?.actionPriorities).toEqual([
+    { id: 1, priority: 1 },
+    { id: 2, priority: -1 },
+  ]);
+});
+
+it("asks before leaving with an unsaved order", async () => {
+  const asked = answerLeaveGuard(false);
+  try {
+    const router = renderPage();
+    await screen.findByText("Call your rep");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Move down: Call your rep" }),
+    );
+
+    await act(() => router.navigate("/tasks/1"));
+
+    expect(asked).toHaveBeenCalledTimes(1);
+    expect(router.state.location.pathname).toBe("/tasks");
+  } finally {
+    asked.mockRestore();
+  }
 });

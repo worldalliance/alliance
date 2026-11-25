@@ -12,9 +12,6 @@ src/components/ActionTimeline.tsx
 src/components/ActionTimelineBar.tsx
 src/components/ActionTimelineRowMeta.tsx
 src/components/FormSection.tsx
-src/components/HomePlacementBadges.tsx
 src/components/NewActionTimeline.tsx
-src/components/PriorityFollowUps.tsx
-src/pages/PriorityPage.tsx
 src/pages/action-dashboard/ActionEditor.tsx
 src/pages/action-dashboard/ActionReadinessChecklist.tsx
