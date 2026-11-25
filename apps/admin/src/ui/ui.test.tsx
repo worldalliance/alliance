@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { MemoryRouter } from "react-router";
 import Button, { ButtonColor, ButtonVariant } from "./Button";
 import DateTimePicker from "./DateTimePicker";
@@ -169,6 +169,50 @@ describe("Modal", () => {
     render(<Named />);
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByLabelText("Name")),
+    );
+  });
+
+  it("returns focus to its opener, or to finalFocus once the opener is gone", async () => {
+    function Rows() {
+      const [open, setOpen] = useState(false);
+      const [rowGone, setRowGone] = useState(false);
+      const add = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button ref={add}>Add period</button>
+          {!rowGone && <button onClick={() => setOpen(true)}>Edit</button>}
+          <Modal
+            open={open}
+            onClose={() => setOpen(false)}
+            finalFocus={() => add.current}
+          >
+            <ModalTitle>Away period</ModalTitle>
+            <button onClick={() => setOpen(false)}>Close it</button>
+            <button
+              onClick={() => {
+                setRowGone(true);
+                setOpen(false);
+              }}
+            >
+              Delete
+            </button>
+          </Modal>
+        </>
+      );
+    }
+    render(<Rows />);
+    const edit = screen.getByRole("button", { name: "Edit" });
+    edit.focus();
+    fireEvent.click(edit);
+    fireEvent.click(await screen.findByRole("button", { name: "Close it" }));
+    await waitFor(() => expect(document.activeElement).toBe(edit));
+
+    fireEvent.click(edit);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Add period" }),
+      ),
     );
   });
 });

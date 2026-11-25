@@ -47,6 +47,12 @@ export type ModalProps = {
    * default the panel does, so opening never pre-arms an action.
    */
   initialFocus?: React.RefObject<HTMLElement | null>;
+  /**
+   * Where focus goes on close when the control that opened the modal has
+   * left the page, such as the row of an item the dialog deleted. While the
+   * opener is still there, focus returns to it.
+   */
+  finalFocus?: () => HTMLElement | null;
 };
 
 /**
@@ -141,6 +147,11 @@ export type ModalFooterProps = {
   /** A refusal or a failed write, above the buttons; the dialog stays open. */
   error?: string | null;
   /**
+   * The shown error, for a dialog that must move focus to it because the
+   * control that had focus is gone.
+   */
+  errorRef?: React.Ref<HTMLDivElement>;
+  /**
    * Footer classes. Padding, borders and inner layout stay with the caller;
    * these merge over the shell's defaults.
    */
@@ -150,10 +161,11 @@ export type ModalFooterProps = {
 export const ModalFooter: React.FC<ModalFooterProps> = ({
   children,
   error,
+  errorRef,
   className,
 }) => (
   <div className={cn("border-t border-line p-card", className)}>
-    <InlineError message={error} className="mb-3" />
+    <InlineError ref={errorRef} message={error} className="mb-3" />
     {children}
   </div>
 );
@@ -215,9 +227,15 @@ const Modal: React.FC<ModalProps> = ({
   showClose = true,
   dismissDisabled = false,
   initialFocus,
+  finalFocus,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   useAccessibleNameWarning(panelRef, open);
+
+  const opener = useRef<Element | null>(null);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current) opener.current = document.activeElement;
+  wasOpen.current = open;
 
   return (
     <Dialog.Root
@@ -263,6 +281,10 @@ const Modal: React.FC<ModalProps> = ({
             <Dialog.Popup
               ref={panelRef}
               initialFocus={initialFocus ?? panelRef}
+              finalFocus={
+                finalFocus &&
+                (() => (opener.current?.isConnected ? true : finalFocus()))
+              }
               onKeyDown={onKeyDown}
               aria-label={ariaLabel}
               className={cn(
