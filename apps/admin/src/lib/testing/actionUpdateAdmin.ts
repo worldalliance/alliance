@@ -7,6 +7,7 @@ export const actionUpdateAdmin = (
   actionId: 2,
   title: "Hearing",
   schemaSnapshotId: 3,
+  cardImage: null,
   date: "2026-10-01T00:00:00.000Z",
   visibleAt: null,
   shortNotifString: "a hearing on the bill",

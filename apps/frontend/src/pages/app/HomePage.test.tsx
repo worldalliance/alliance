@@ -7,7 +7,6 @@ import {
   makeEvent,
   makeViewer,
 } from "@alliance/shared/lib/testFixtures";
-import * as globalFeedModule from "@alliance/shared/lib/useGlobalFeed";
 import * as aggregateViewsModule from "@alliance/shared/lib/useTaskFormAggregateViews";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,7 +16,8 @@ import { useEffect } from "react";
 import { MemoryRouter } from "react-router";
 import * as followUpFormPanelModule from "../../components/FollowUpFormPanel";
 import * as homeFeedModule from "../../components/HomeFeed";
-import * as homeUpdatesRowModule from "../../components/HomeUpdatesRow";
+import * as homeUpdatesCarouselModule from "../../components/HomeUpdatesCarousel";
+import * as homeUpdatesSidebarModule from "../../components/HomeUpdatesSidebar";
 import { type LoadFailure } from "../../components/LoadFailed";
 import { AuthContext } from "../../lib/AuthContext";
 import * as taskActionsDataModule from "../../lib/useTaskActionsData";
@@ -49,11 +49,13 @@ beforeEach(() => {
       handleDismissGeneralUpdate: async () => {},
     }));
   jest.spyOn(utilsModule, "useSidFromParams").mockImplementation(() => {});
-  jest
-    .spyOn(globalFeedModule, "default")
-    .mockReturnValue({ items: [], loading: false, failure: null });
   jest.spyOn(homeFeedModule, "default").mockImplementation(() => <div />);
-  jest.spyOn(homeUpdatesRowModule, "default").mockImplementation(() => <div />);
+  jest
+    .spyOn(homeUpdatesCarouselModule, "default")
+    .mockImplementation(() => <p>Updates carousel</p>);
+  jest
+    .spyOn(homeUpdatesSidebarModule, "default")
+    .mockImplementation(() => <p>Updates sidebar</p>);
   jest
     .spyOn(largeActionCardModule, "default")
     .mockImplementation(() => <div />);
@@ -125,7 +127,7 @@ describe("HomePage task list", () => {
 });
 
 describe("HomePage resizing", () => {
-  it("keeps the current task card mounted when the window crosses the two-column width", () => {
+  it("keeps the current task card mounted and moves updates to the sidebar when the window crosses the two-column width", () => {
     happyDOM.setViewport({ width: 1024 });
     let mounts = 0;
     jest.spyOn(largeActionCardModule, "default").mockImplementation(() => {
@@ -138,13 +140,15 @@ describe("HomePage resizing", () => {
 
     renderHomePage();
     expect(mounts).toBe(1);
-    expect(screen.queryByText("No recent activity")).toBeNull();
+    expect(screen.queryByText("Updates carousel")).not.toBeNull();
+    expect(screen.queryByText("Updates sidebar")).toBeNull();
 
     try {
       act(() => happyDOM.setViewport({ width: 1280 }));
-      // The sidebar's feed, so a breakpoint that moved out of 1024..1280
+      // The sidebar's updates, so a breakpoint that moved out of 1024..1280
       // fails here rather than leaving the test exercising nothing.
-      expect(screen.queryByText("No recent activity")).not.toBeNull();
+      expect(screen.queryByText("Updates sidebar")).not.toBeNull();
+      expect(screen.queryByText("Updates carousel")).toBeNull();
       expect(mounts).toBe(1);
     } finally {
       happyDOM.setViewport({ width: 1024 });

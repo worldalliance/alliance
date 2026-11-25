@@ -25,6 +25,7 @@ const existing: ActionUpdateDto = {
   actionId: 4,
   title: "Old news",
   schemaSnapshotId: 1,
+  cardImage: null,
   date: "2026-10-01T00:00:00.000Z",
   visibleAt: "2026-10-01T00:00:00.000Z",
   shortNotifString: "old news",

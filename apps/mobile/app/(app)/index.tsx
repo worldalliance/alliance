@@ -18,6 +18,7 @@ import {
   useHomePageActions,
 } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
+import { useInvalidateHomeActionUpdates } from "@alliance/shared/lib/useActionUpdates";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import useHomeFeed, {
@@ -40,6 +41,7 @@ import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import FeedSeparator from "../../components/FeedSeparator";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import HomeFeedItem from "../../components/HomeFeedItem";
+import HomeUpdatesCarousel from "../../components/HomeUpdatesCarousel";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import LargeActionCard from "../../components/LargeActionCard";
 import LargeGeneralUpdateCard from "../../components/LargeGeneralUpdateCard";
@@ -69,6 +71,7 @@ const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
 export default function HomeScreen() {
   const resetHomeFeed = useResetHomeFeed();
   const invalidateTaskForms = useInvalidateTaskForms();
+  const invalidateHomeActionUpdates = useInvalidateHomeActionUpdates();
   const [refreshing, setRefreshing] = useState(false);
   const actionsQuery = useActionsQuery();
   const {
@@ -157,7 +160,7 @@ export default function HomeScreen() {
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
   const legendListRef = useRef<LegendListRef>(null);
   const walkthroughScroll = useWalkthroughScroll();
-  const legendListHeightRef = useRef(0);
+  const viewportHeightRef = useRef(0);
   const homeBodyHeightRef = useRef(0);
 
   const onRefresh = useCallback(async () => {
@@ -167,11 +170,17 @@ export default function HomeScreen() {
         refetch(),
         refetchGeneralUpdates(),
         invalidateTaskForms(),
+        invalidateHomeActionUpdates(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, refetchGeneralUpdates, invalidateTaskForms]);
+  }, [
+    refetch,
+    refetchGeneralUpdates,
+    invalidateTaskForms,
+    invalidateHomeActionUpdates,
+  ]);
 
   const scrollPageTo = useCallback((y: number, animated = true) => {
     scrollViewRef.current?.scrollTo({ y, animated });
@@ -189,20 +198,20 @@ export default function HomeScreen() {
     scrollToTop();
   }, [refetch, resetHomeFeed, scrollToTop]);
 
-  const scrollToEnd = useCallback((animated = true) => {
-    scrollViewRef.current?.scrollToEnd({ animated });
-
-    requestAnimationFrame(() => {
-      const offset = Math.max(
-        0,
-        homeBodyHeightRef.current - legendListHeightRef.current,
+  const scrollToEnd = useCallback(
+    (animated = true) => {
+      requestAnimationFrame(() =>
+        scrollPageTo(
+          Math.max(0, homeBodyHeightRef.current - viewportHeightRef.current),
+          animated,
+        ),
       );
-      legendListRef.current?.scrollToOffset({ offset, animated });
-    });
-  }, []);
+    },
+    [scrollPageTo],
+  );
 
-  const handleHomeFeedLayout = useCallback((event: LayoutChangeEvent) => {
-    legendListHeightRef.current = event.nativeEvent.layout.height;
+  const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
+    viewportHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
   const handleHomeBodyLayout = useCallback((event: LayoutChangeEvent) => {
@@ -415,7 +424,7 @@ export default function HomeScreen() {
             }}
             className="flex-1"
             onScroll={walkthroughScroll.onScroll}
-            onLayout={handleHomeFeedLayout}
+            onLayout={handleViewportLayout}
             data={homeFeedItems}
             keyExtractor={(item) =>
               item.type === "activity"
@@ -435,9 +444,14 @@ export default function HomeScreen() {
               paddingBottom: 40,
             }}
             ListHeaderComponent={
-              <FeedSeparator onLayout={handleHomeBodyLayout}>
-                {homeBody}
-              </FeedSeparator>
+              <>
+                <FeedSeparator onLayout={handleHomeBodyLayout}>
+                  {homeBody}
+                </FeedSeparator>
+                <FeedSeparator>
+                  <HomeUpdatesCarousel />
+                </FeedSeparator>
+              </>
             }
             ListFooterComponent={
               homeFeedFetchingNextPage ? (
@@ -458,6 +472,7 @@ export default function HomeScreen() {
               walkthroughScroll.ref(node);
             }}
             onScroll={walkthroughScroll.onScroll}
+            onLayout={handleViewportLayout}
             scrollEventThrottle={walkthroughScroll.scrollEventThrottle}
             contentContainerStyle={fullScreen ? { flex: 1 } : undefined}
             refreshControl={
@@ -465,7 +480,10 @@ export default function HomeScreen() {
             }
             testID="vr-home-ready"
           >
-            {homeBody}
+            <FeedSeparator onLayout={handleHomeBodyLayout}>
+              {homeBody}
+            </FeedSeparator>
+            <HomeUpdatesCarousel />
           </KeyboardAwareScrollView>
         )}
       </Anchor>

@@ -81,13 +81,19 @@ const fontFamilies: Record<FontFamily, Partial<Record<FontWeight, string>>> = {
   },
 };
 
+// CSS drops an unquoted family name with a word starting with a digit, such
+// as "Source Sans 3 Semibold", so react-native-web needs the quotes.
+const cssFontFamily = (name: string | undefined) =>
+  Platform.OS === "web" && name?.includes(" ") ? `"${name}"` : name;
+
 export function resolveFontFamily(family: FontFamily, weight: FontWeight) {
   const familyMap = fontFamilies[family];
   return {
-    fontFamily:
+    fontFamily: cssFontFamily(
       familyMap[weight] ??
-      familyMap[FontWeight.Regular] ??
-      fontFamilies[FontFamily.Sans][FontWeight.Regular],
+        familyMap[FontWeight.Regular] ??
+        fontFamilies[FontFamily.Sans][FontWeight.Regular],
+    ),
   };
 }
 

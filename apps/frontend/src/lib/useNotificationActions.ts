@@ -6,8 +6,6 @@ import type React from "react";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
 
-export const NOTIFICATIONS_PREVIEW_LIMIT = 20;
-
 function getWebAppLocation(webAppLocation: string) {
   return webAppLocation.startsWith("/") ? webAppLocation : "/" + webAppLocation;
 }

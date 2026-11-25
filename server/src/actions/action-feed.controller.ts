@@ -84,6 +84,10 @@ export class ActionFeedController {
     );
   }
 
+  // BACKCOMPAT(global-feed): only web bundles from before the tasks page's
+  // update cards call this and the three globalFeed/* endpoints below. Remove
+  // all four, and the service code only they use, once they get no traffic
+  // (ALL-2504).
   @Get("globalFeed")
   @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: [GlobalFeedItemDto] })

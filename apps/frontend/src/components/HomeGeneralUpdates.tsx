@@ -2,7 +2,6 @@ import { homePagePriorityComparator } from "@alliance/shared/lib/actionUtils";
 import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
 import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
 import { useMemo } from "react";
-import HomeUpdatesRow from "./HomeUpdatesRow";
 import LoadFailed, { type LoadFailure } from "./LoadFailed";
 
 export default function HomeGeneralUpdates({
@@ -21,7 +20,6 @@ export default function HomeGeneralUpdates({
 
   return (
     <>
-      <HomeUpdatesRow />
       {failure && (
         <LoadFailed message="Couldn't load general updates." {...failure} />
       )}

@@ -10,11 +10,12 @@ import {
 } from "@alliance/shared/lib/copy";
 import { homeItemKey, useHomePageActions } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
+import {
+  HOME_UPDATES_LIMIT,
+  recentActionUpdatesQuery,
+} from "@alliance/shared/lib/useActionUpdates";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import { unreadGeneralUpdatesQuery } from "@alliance/shared/lib/useGeneralUpdates";
-import useGlobalFeed, {
-  globalFeedQuery,
-} from "@alliance/shared/lib/useGlobalFeed";
 import { useResetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { prefetchFromLoader } from "@alliance/sharedweb/lib/queryClient";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
@@ -23,9 +24,10 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useEffect, useMemo, useRef } from "react";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
-import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
 import HomeGeneralUpdates from "../../components/HomeGeneralUpdates";
+import HomeUpdatesCarousel from "../../components/HomeUpdatesCarousel";
+import HomeUpdatesSidebar from "../../components/HomeUpdatesSidebar";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import LoadFailed from "../../components/LoadFailed";
 import SidebarProgressBars from "../../components/SidebarProgressBars";
@@ -40,15 +42,13 @@ import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import LargeActionCard from "./LargeActionCard";
 import TaskNavigatorList, { type TaskNavigatorItem } from "./TaskNavigatorList";
 
-const GLOBAL_FEED_LIMIT = 10;
-
 // AppLayout mounts this page only once /auth/me answers; starting the queries
 // here runs them alongside it instead. The home feed is left to HomeFeed:
 // served alongside the tasks, it roughly doubles their response time.
 export function clientLoader() {
   prefetchFromLoader(actionsQuery);
   prefetchFromLoader(unreadGeneralUpdatesQuery);
-  prefetchFromLoader(globalFeedQuery(GLOBAL_FEED_LIMIT));
+  prefetchFromLoader(recentActionUpdatesQuery(HOME_UPDATES_LIMIT));
   return null;
 }
 
@@ -83,12 +83,6 @@ const HomePage = () => {
   }, [user, refreshUser]);
 
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
-
-  const {
-    items: globalFeedItems,
-    loading: globalFeedLoading,
-    failure: globalFeedFailure,
-  } = useGlobalFeed({ limit: GLOBAL_FEED_LIMIT });
 
   useSidFromParams();
 
@@ -156,24 +150,8 @@ const HomePage = () => {
           "flex flex-col gap-y-8 sm:gap-y-12 lg:gap-y-16 py-4 sm:py-8 px-4 xl:px-0 max-w-3xl mx-auto relative"
         }
       >
-        <div className="flex flex-col gap-4">
-          {isLargeScreen && (
-            <HomeGeneralUpdates
-              generalUpdates={generalUpdates}
-              failure={generalUpdatesFailure}
-              onDismiss={handleDismissGeneralUpdate}
-            />
-          )}
-
-          {!isLargeScreen && (
-            <div>
-              <SidebarProgressBars entries={sidebarProgressBarEntries} />
-            </div>
-          )}
-        </div>
-
         <div className="flex flex-col gap-4 flex-1">
-          <p className="text-title">Tasks</p>
+          <p className="text-base font-semibold text-black">Tasks</p>
           <TaskNavigatorList
             actions={actions}
             completedActions={completedActions}
@@ -280,14 +258,17 @@ const HomePage = () => {
           )}
         </div>
 
+        <div className="flex flex-col gap-4">
+          {!isLargeScreen && <HomeUpdatesCarousel />}
+          <HomeGeneralUpdates
+            generalUpdates={generalUpdates}
+            failure={generalUpdatesFailure}
+            onDismiss={handleDismissGeneralUpdate}
+          />
+        </div>
+
         {!isLargeScreen && (
-          <div className="flex flex-col gap-4">
-            <HomeGeneralUpdates
-              generalUpdates={generalUpdates}
-              failure={generalUpdatesFailure}
-              onDismiss={handleDismissGeneralUpdate}
-            />
-          </div>
+          <SidebarProgressBars entries={sidebarProgressBarEntries} />
         )}
 
         <HomeFeed />
@@ -318,26 +299,15 @@ const HomePage = () => {
     sidebarProgressBarEntries,
   ]);
 
-  const sidebarContent = useMemo(() => {
-    return (
+  const sidebarContent = useMemo(
+    () => (
       <div className="pt-6 px-4 flex flex-col *:pb-4 *:px-2 h-[calc(100vh-var(--navbar-top-bar-height))]">
         <SidebarProgressBars entries={sidebarProgressBarEntries} />
-        <div className="flex-1 min-h-0 flex flex-col">
-          <GlobalFeed
-            items={globalFeedItems}
-            loading={globalFeedLoading}
-            failure={globalFeedFailure}
-            fitToHeight
-          />
-        </div>
+        <HomeUpdatesSidebar />
       </div>
-    );
-  }, [
-    globalFeedItems,
-    globalFeedLoading,
-    globalFeedFailure,
-    sidebarProgressBarEntries,
-  ]);
+    ),
+    [sidebarProgressBarEntries],
+  );
 
   useWhiteBackground();
 

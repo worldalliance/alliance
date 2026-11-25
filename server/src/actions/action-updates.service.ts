@@ -1,3 +1,4 @@
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import { emptyDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { run } from "@alliance/common/run";
 import {
@@ -16,6 +17,7 @@ import { NotifsService } from "src/notifs/notifs.service";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { Tag } from "src/user/entities/tag.entity";
+import { sqlUserHasProfilePicture } from "src/user/profile-picture";
 import { EntityManager, type Repository } from "typeorm";
 import {
   actionUpdateEntrySendTime,
@@ -34,6 +36,8 @@ import {
 } from "./entities/action-update.entity";
 import { Action } from "./entities/action.entity";
 import { SchemaWriteService } from "./schema-write.service";
+
+const PARTICIPANT_PICTURES_LIMIT = 3;
 
 @Injectable()
 export class ActionUpdatesService {
@@ -347,6 +351,8 @@ export class ActionUpdatesService {
       select: {
         action: {
           name: true,
+          image: true,
+          usersCompleted: true,
         },
       },
     });
@@ -356,5 +362,49 @@ export class ActionUpdatesService {
     });
     const visible = updates.filter((update) => visibleIds.has(update.actionId));
     return limit != null ? visible.slice(0, limit) : visible;
+  }
+
+  /**
+   * Up to `PARTICIPANT_PICTURES_LIMIT` profile pictures per action, from the
+   * members who most recently completed it. Anonymous members are left out.
+   */
+  async participantPicturesByAction(
+    actionIds: number[],
+  ): Promise<Map<number, string[]>> {
+    if (actionIds.length === 0) return new Map();
+    const rows: { actionId: number; profilePicture: string }[] =
+      await this.actionUpdateRepository.manager.query(
+        `SELECT "actionId", "profilePicture" FROM (
+          SELECT activity."actionId", u."profilePicture",
+            ROW_NUMBER() OVER (
+              PARTITION BY activity."actionId"
+              ORDER BY MAX(activity."createdAt") DESC, u.id
+            ) AS rank
+          FROM action_activity activity
+          JOIN "user" u ON u.id = activity."userId"
+          WHERE activity."actionId" = ANY($1)
+            AND activity.type = $2
+            AND activity."deletedAt" IS NULL
+            AND u."deletedAt" IS NULL
+            AND NOT u.anonymous
+            AND ${sqlUserHasProfilePicture('u."profilePicture"')}
+          GROUP BY activity."actionId", u.id
+        ) ranked
+        WHERE rank <= $3
+        ORDER BY "actionId", rank`,
+        [
+          actionIds,
+          ActionActivityType.USER_COMPLETED,
+          PARTICIPANT_PICTURES_LIMIT,
+        ],
+      );
+    const pictures = new Map<number, string[]>();
+    for (const { actionId, profilePicture } of rows) {
+      pictures.set(actionId, [
+        ...(pictures.get(actionId) ?? []),
+        profilePicture,
+      ]);
+    }
+    return pictures;
   }
 }

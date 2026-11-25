@@ -1,6 +1,7 @@
 import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { NAV_BAR_ICON_HEIGHT } from "@alliance/shared/lib/constants";
 import {
+  NOTIFICATIONS_PREVIEW_LIMIT,
   useNotificationsList,
   useUnreadNotificationCount,
 } from "@alliance/shared/lib/useNotificationsCache";
@@ -11,10 +12,7 @@ import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Bell } from "lucide-react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { href, useNavigate } from "react-router";
-import {
-  NOTIFICATIONS_PREVIEW_LIMIT,
-  useNotificationActions,
-} from "../lib/useNotificationActions";
+import { useNotificationActions } from "../lib/useNotificationActions";
 import NotificationList from "./NotificationList";
 
 const VIEWPORT_EDGE_PX = 8;

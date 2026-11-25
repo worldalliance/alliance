@@ -14,7 +14,14 @@ const USES_RECOGNITION: Record<ActionUpdateNotificationMode, boolean> = {
 export const usesRecognition = (mode: ActionUpdateNotificationMode) =>
   USES_RECOGNITION[mode];
 
+/** A card image edit: a new upload key to save, a removal, or neither. */
+export type CardImageChoice =
+  | { kind: "unchanged" }
+  | { kind: "set"; key: string }
+  | { kind: "cleared" };
+
 export type ActionUpdateForm = CollectiveResultTexts & {
+  cardImage: CardImageChoice;
   title: string;
   notifyType: ActionUpdateNotifyType;
   tagId: string;
@@ -24,6 +31,7 @@ export type ActionUpdateForm = CollectiveResultTexts & {
 };
 
 export const formOf = (update: AdminActionUpdateDto): ActionUpdateForm => ({
+  cardImage: { kind: "unchanged" },
   title: update.title,
   shortNotifString: update.shortNotifString,
   nonCompleterResult: update.nonCompleterResult ?? "",
@@ -48,7 +56,23 @@ export const detailsBody = (form: ActionUpdateForm): UpdateActionUpdateDto => ({
   ...(usesRecognition(form.notificationMode) && {
     nonCompleterResult: form.nonCompleterResult || null,
   }),
+  ...cardImageBody(form.cardImage),
 });
+
+function cardImageBody(
+  choice: CardImageChoice,
+): Pick<UpdateActionUpdateDto, "cardImage"> {
+  switch (choice.kind) {
+    case "unchanged":
+      return {};
+    case "set":
+      return { cardImage: choice.key };
+    case "cleared":
+      return { cardImage: null };
+    default:
+      throw new Error(`unknown card image choice: ${choice satisfies never}`);
+  }
+}
 
 // The notification carries the saved texts and audience, so an unsaved edit
 // to either would send something other than what's on screen.

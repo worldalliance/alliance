@@ -13,7 +13,6 @@ import type {
 import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
-const globalFeedAll = () => ["actionFeedGetGlobalFeed"] as const;
 const forumPostsAll = () => ["forumPosts"] as const;
 const forumPostListsAll = () => [...forumPostsAll(), "list"] as const;
 const forumPostDetailsAll = () => [...forumPostsAll(), "post"] as const;
@@ -141,8 +140,6 @@ export const queryKeys = {
     [...forumPostListsAll(), "user", userId] as const,
   generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
-  globalFeedAll,
-  globalFeed: (limit: number) => [...globalFeedAll(), limit] as const,
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
   koraParticipantsAdmin: () => ["koraAdminOverview"] as const,

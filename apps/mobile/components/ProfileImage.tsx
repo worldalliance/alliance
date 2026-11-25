@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { User } from "lucide-react-native";
+import { useState } from "react";
 import { Image, View } from "react-native";
 import { profileImageUri, type ProfileImageSize } from "../lib/profileImageUri";
 import { colors } from "../lib/style/colors";
@@ -50,12 +51,14 @@ export default function ProfileImage({
     borderRadius: radius,
   };
 
-  const uri = pfp && profileImageUri(pfp, size);
+  const uri = pfp ? profileImageUri(pfp, size) : null;
+  const [failedUri, setFailedUri] = useState<string | null>(null);
 
-  if (uri) {
+  if (uri && uri !== failedUri) {
     return (
       <Image
         source={{ uri }}
+        onError={() => setFailedUri(uri)}
         resizeMode="cover"
         style={baseStyle}
         className={cn("bg-white shrink-0", className)}

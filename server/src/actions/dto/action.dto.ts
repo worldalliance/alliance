@@ -228,7 +228,9 @@ export class ActionDto extends PickType(Action, [
     this.events =
       action.events?.map((event) => new ActionEventDto(event)) || [];
     this.updates =
-      action.updates?.map((update) => new ActionUpdateDto(update)) || [];
+      action.updates?.map(
+        (actionUpdate) => new ActionUpdateDto({ actionUpdate }),
+      ) || [];
     this.canParticipate = extra?.canParticipate;
     this.shouldParticipate = extra?.shouldParticipate;
     this.userRelation = extra?.userRelation;

@@ -1,4 +1,5 @@
 import { mock } from "bun:test";
+import { createElement } from "react";
 
 // Metro defines this and bun doesn't. It runs as a preload, rather than per
 // test file, because `bun test` shares one `globalThis` across the run: a file
@@ -25,6 +26,13 @@ mock.module("react-native", () => ({
   Text: Passthrough,
   TouchableOpacity: Passthrough,
   ActivityIndicator: () => null,
+  Image: ({
+    source,
+    onError,
+  }: {
+    source?: { uri?: string };
+    onError?: () => void;
+  }) => createElement("img", { src: source?.uri, onError }),
   AccessibilityInfo: { announceForAccessibility: () => {} },
   AppState: {
     currentState: "active",
@@ -49,4 +57,7 @@ mock.module("expo-secure-store", () => ({
     void secureStore.set(key, value),
   deleteItemAsync: async (key: string) => void secureStore.delete(key),
 }));
+// lucide-react-native pulls in react-native-svg, which bun can't load. Add an
+// icon here when a component test renders it.
+mock.module("lucide-react-native", () => ({ User: () => null }));
 /* eslint-enable no-restricted-properties */

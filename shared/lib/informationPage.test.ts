@@ -6,10 +6,10 @@ const ids = (isFeatureEnabled: (feature: Features) => boolean) =>
   visibleInfoResources(isFeatureEnabled).map((resource) => resource.id);
 
 describe("visibleInfoResources", () => {
-  it("lists General updates between Action updates and Priorities when its flag is on", () => {
+  it("lists General updates between How to design actions and Priorities when its flag is on", () => {
     const visible = ids((feature) => feature === Features.GeneralUpdatesLink);
     const index = visible.indexOf(InfoEntryId.GeneralUpdates);
-    expect(visible[index - 1]).toBe(InfoEntryId.ActionUpdates);
+    expect(visible[index - 1]).toBe(InfoEntryId.HowToDesignActions);
     expect(visible[index + 1]).toBe(InfoEntryId.Priorities);
   });
 

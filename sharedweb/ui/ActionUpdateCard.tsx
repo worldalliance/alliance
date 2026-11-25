@@ -5,7 +5,6 @@ import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentR
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import DisplayOnlyRenderer from "../forms/DisplayOnlyRenderer";
 import Button, { ButtonColor } from "./Button";
 
@@ -13,7 +12,6 @@ export interface ActionUpdateCardProps {
   update: ActionUpdateDto;
   onDelete?: (button: HTMLElement) => void;
   actions?: React.ReactNode;
-  onActionPageTimeline?: boolean;
   border?: boolean;
   marksNotificationsRead?: boolean;
   /** For staff: an update that can't be displayed shows why, unreported. */
@@ -24,7 +22,6 @@ const ActionUpdateCard = ({
   update,
   onDelete,
   actions,
-  onActionPageTimeline = true, // if not on action page timeline, need to have action title and link
   border = false,
   marksNotificationsRead = true,
   staffView = false,
@@ -53,9 +50,7 @@ const ActionUpdateCard = ({
         <div className="flex flex-col">
           <div className="flex flex-col md:flex-row md:gap-x-2 items-start">
             <p className="font-semibold">
-              {onActionPageTimeline && (
-                <span className="text-green">Update: </span>
-              )}
+              <span className="text-green">Update: </span>
 
               {update.title}
             </p>
@@ -78,11 +73,6 @@ const ActionUpdateCard = ({
               </Button>
             )}
           </div>
-          {!onActionPageTimeline && (
-            <Link to={`/actions/${update.actionId}`}>
-              <p className="text-link">{update.actionName}</p>
-            </Link>
-          )}
         </div>
       </div>
       {!(schema.ok && schema.value.blocks.length === 0) && (

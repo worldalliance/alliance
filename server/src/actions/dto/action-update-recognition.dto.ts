@@ -45,7 +45,7 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
   notificationHeldReason: string | null;
 
   constructor(input: ActionUpdate) {
-    super(input);
+    super({ actionUpdate: input });
     this.notificationMode = input.notificationMode;
     this.splitCollectiveResult = input.splitCollectiveResult;
     this.nonCompleterResult = input.nonCompleterResult;

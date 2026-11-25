@@ -39,7 +39,9 @@ const HomeFeed = () => {
 
   return (
     <div className="flex flex-col">
-      <p className="text-title font-serif mb-4">Activity</p>
+      <p className="text-base font-semibold text-zinc-500 mb-4">
+        Recent activity
+      </p>
       <div className="flex flex-col gap-y-2 *:p-4">
         <FeedItems
           items={items}
