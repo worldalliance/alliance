@@ -1,6 +1,5 @@
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import VideoPlayer from "@alliance/sharedweb/forms/VideoPlayer";
-import { Fragment } from "react";
 import { useParams } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDateTime } from "../../lib/formatDate";
@@ -84,20 +83,7 @@ export default function VideoPage() {
                   <Fact label="Output size">
                     {formatSize(video.totalOutputSize)}
                   </Fact>
-                  <Fact label="MIME type">
-                    <span className="min-w-0 wrap-anywhere">
-                      {video.mime.split("/").map((part, index) => (
-                        <Fragment key={index}>
-                          {index > 0 && (
-                            <>
-                              /<wbr />
-                            </>
-                          )}
-                          {part}
-                        </Fragment>
-                      ))}
-                    </span>
-                  </Fact>
+                  <Fact label="MIME type">{video.mime}</Fact>
                   <Fact label="Created">
                     {formatDateTime(video.dateCreated)}
                   </Fact>

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 /**
  * A Record's body: the main column, with the side panel at a fixed width on
@@ -44,6 +44,23 @@ export function FactList({ children }: { children: ReactNode }) {
   return <dl className="flex flex-col">{children}</dl>;
 }
 
+/** Lets a path or MIME type break after each "/" before breaking mid-word. */
+const breakAfterSlashes = (text: string) => (
+  <span>
+    {text.split("/").map((part, index) => (
+      <Fragment key={index}>
+        {index > 0 && (
+          <>
+            /<wbr />
+          </>
+        )}
+        {part}
+      </Fragment>
+    ))}
+  </span>
+);
+
+/** A long value wraps, after a "/" where a string has one, else anywhere. */
 export function Fact({
   label,
   children,
@@ -55,8 +72,8 @@ export function Fact({
   return (
     <div className="flex min-h-9 items-center">
       <dt className="w-27 shrink-0 pr-2 text-fg-muted">{label}</dt>
-      <dd className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        {children}
+      <dd className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 wrap-anywhere">
+        {typeof children === "string" ? breakAfterSlashes(children) : children}
       </dd>
     </div>
   );

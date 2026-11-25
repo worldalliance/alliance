@@ -4,6 +4,7 @@ import { countOf } from "../../lib/formatNumber";
 import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
 import { useReplaceVideoAdmin } from "../../lib/useVideosAdmin";
+import { CodeBlock } from "../../ui/CodeBlock";
 import { FileInput } from "../../ui/FileInput";
 import {
   Field,
@@ -97,9 +98,7 @@ export function ReplaceVideoSection({
       >
         <div className="flex flex-col gap-1.5">
           <p>Process the video with a command like:</p>
-          <code className="block rounded-md bg-surface-2 p-3 font-mono text-xs">
-            {FFMPEG_COMMAND}
-          </code>
+          <CodeBlock>{FFMPEG_COMMAND}</CodeBlock>
         </div>
         <Field
           label="Replacement files"
