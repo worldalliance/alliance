@@ -23,6 +23,19 @@ All entries are agent decisions (agent judgement) unless marked otherwise. The b
 - `MemberFilterDropdown` is deleted; nothing else used it.
 - `UsersList.test.tsx` passed 500 lines once its progress tests served a member who is caught up, so it splits like `WaitlistPage`'s tests: `UsersList.testHarness.tsx` (served API, fixtures, render and filter helpers), `UsersList.filters.test.tsx` (search and filters) and `UsersList.test.tsx` (loading, sorting, cards, table). The root `AGENTS.md` asks for a read-only codex consult on splits first; the `codex` CLI isn't installed on this machine, so the split is this agent's choice alone.
 
+## Member page
+
+- `PageShell` with the back link to Members, the member's name as the title, and pills in `meta` (from the brief): contract status, Away when they are away, then their roles, each a `StatusPill` in the tones the action pages use (contract status positive, negative or neutral, Away attention, roles neutral), so a status looks the same on every page. Email, phone and ID are the description.
+- The sections are grouped under four views kept as `?view=` (from the brief): Profile (member info, roles, tags, notification settings, plus contract and away periods, which describe the member), Activity (actions, notifications, form submissions), Messages (texts) and Connections (groups, friends). Profile is the default: a URL without `view` opens it, and its tab writes `?view=profile`.
+- The views are the shared URL `Tabs`, links styled as underlined tabs, so each opens in a new tab and Back returns to the last one. The current one has `aria-current="page"` and a bar under it, not colour alone.
+- Every view stays mounted and only the current one shows, so a draft reply, an unsaved away period or a group move survives switching views, as it did when every section sat on one page. The sections load together, as they did then. The text thread scrolls to its latest text when its view first shows, since it mounted hidden with no height to scroll.
+- Needs reply links to each number's text thread page, as main made it do while this was in review, so it no longer opens a member's Messages view. The Texts section that view shows is shared with that thread page, and a pane mounted hidden in a view not yet opened keeps its scroll place once shown, through a resize observer in the shared `TextHistory`.
+- "Suspend contract" and "Delete account" are destructive `menu` items behind their existing confirmations (from the brief). Suspend is disabled with "This member has no active contract." where it used to be a disabled button with a tooltip. "Log in as user" stays a visible header action, renamed "Log in as member" and made a real link, since it opens a new tab.
+- Every block is a `Section` (from the brief). Sections that used to show only a loading line now keep their heading while loading. Headings follow sentence case: "Member Info" is "Member info", "Away Periods" is "Away periods", and "Invited Submissions" is "Form submissions", the name the brief and the page's own empty state use. Counts moved from "(n)" to the section's `meta`. The contract block moved to its own `UserContractSection`, and the avatar moved into Member info.
+- In the actions table, "User Status" is "Member status", "Last Activity" is "Last activity", and the column of activity pickers is "Record activity" rather than a second "Actions".
+- Loading shows the page shell titled "Member" with "Loading member…"; not found and failed loads show the shell with the message as an alert. A route-level `HydrateFallback` would cover the first load too, but React Router allows `HydrateFallback` only on the root route in SPA mode, and the page crashes with "No result returned from dataStrategy" when one is exported; so the first load of the app still shows the root spinner.
+- Role and tag errors became alerts and `red-600`, which meets text contrast where `red-500` didn't.
+
 ## Search params
 
 Found while verifying in the browser (dev build, 761 members): typing quickly into a `FilterBar` search dropped characters, and a second URL update before the first rendered undid the first. Both are fixed in PR 3's own commits and recorded in `01a1ed4a-beb8-7000-a427-43be3a7c0c5c-admin-redesign-core-pages`.
@@ -32,3 +45,7 @@ Found while verifying in the browser (dev build, 761 members): typing quickly in
 ## Contract status
 
 `contractStatus` and `CONTRACT_STATUS_LABEL` in `shared/lib/contract.ts` replace three copies of the "Signed / Suspended / Not signed" mapping (the members table, the member card and the member page). The text colours live in `lib/contractStatusStyle.ts` for the card and the contract section.
+
+## File sizes
+
+`UserDetailView.test.tsx` passed its 550-line waiver with the new tests, so it was split by view, following the `WaitlistPage` pattern: `UserDetailView.testHarness.tsx` (served API, fixtures, render helper), `UserDetailView.test.tsx` (shell, views, menu, profile sections) and `UserDetailView.activity.test.tsx` (activity and connections sections). The root `AGENTS.md` asks for a read-only codex consult on splits first; the `codex` CLI isn't installed on this machine, so the split is this agent's choice alone.

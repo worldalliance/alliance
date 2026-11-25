@@ -1,206 +1,105 @@
-/* alliance/max-lines 550 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
-import type {
-  CreateActionActivityDto,
-  FormResponseDto,
-  NotificationSettingsAdminDto,
-  UserActionRelationsResponseDto,
-  UserAdminDetailDto,
-} from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import {
-  makeFormResponse,
-  makeProfile,
-  makeTag,
-  makeUser,
-} from "@alliance/shared/lib/testFixtures";
-import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { userQueryKeys } from "@alliance/shared/lib/user";
 import { queryClient } from "@alliance/sharedweb/lib/queryClient";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
-import { omit } from "es-toolkit";
-import { createMemoryRouter, RouterProvider } from "react-router";
-import { AuthProvider } from "../lib/AuthContext";
-import UserDetailView, { clientLoader } from "./UserDetailView";
+  api,
+  cacheSam,
+  renderPage,
+  serveUserDetailApi,
+  volunteers,
+} from "./UserDetailView.testHarness";
 
-const sam: UserAdminDetailDto = {
-  ...makeUser({ id: 7, name: "Sam", hasActiveContract: true }),
-  communities: [],
-  tags: [],
-  location: {},
-  invitedBy: null,
-};
-
-const alex = { ...makeProfile(8), displayName: "Alex", ambassador: true };
-
-const tagDto = makeTag();
-const volunteers = omit(tagDto, ["users"]);
-
-let stored: UserAdminDetailDto;
-let notificationSettings: NotificationSettingsAdminDto | null;
-let detailStatus: number;
-let addTagStatus: number;
-let relations: UserActionRelationsResponseDto;
-let relationsStatus: number;
-let tagSummariesStatus: number;
-let friendsStatus: number;
-let formResponses: FormResponseDto[];
-let notifsStatus: number;
-let formResponsesStatus: number;
-let createdActivities: CreateActionActivityDto[];
-
-serveApi(
-  routes(
-    {
-      "GET /user/userdetail/:id": () =>
-        detailStatus === 200
-          ? Response.json(stored)
-          : Response.json(
-              { message: "User not found" },
-              { status: detailStatus },
-            ),
-      "GET /user/userdetail/:id/notification-settings": () =>
-        notificationSettings
-          ? Response.json(notificationSettings)
-          : Response.json({}, { status: 500 }),
-      "PATCH /user/userdetail/:id/roles": () =>
-        Response.json({ message: "Forbidden" }, { status: 400 }),
-      "POST /contract/admin/suspend/:userId": () =>
-        Response.json(
-          { message: "Member does not have an active contract." },
-          { status: 400 },
-        ),
-      "GET /user/tag-summaries": () =>
-        tagSummariesStatus === 200
-          ? Response.json([volunteers])
-          : Response.json({}, { status: tagSummariesStatus }),
-      "POST /user/tags/:tagId/addUser": () => {
-        if (addTagStatus !== 200) {
-          return Response.json(
-            { message: "Tag is archived" },
-            { status: addTagStatus },
-          );
-        }
-        stored = { ...stored, tags: [volunteers] };
-        return Response.json(tagDto);
-      },
-      "GET /actions/action-relations/:userId": () =>
-        relationsStatus === 200
-          ? Response.json(relations)
-          : Response.json({}, { status: relationsStatus }),
-      "POST /actions/createActivity": async ({ request }) => {
-        const body: CreateActionActivityDto = await request.json();
-        createdActivities.push(body);
-        relations = relationsFor("completed");
-        return Response.json({});
-      },
-      "GET /notifs/for-user/:id": () =>
-        notifsStatus === 200
-          ? Response.json([])
-          : Response.json({}, { status: notifsStatus }),
-      "POST /tasks/formsForUserSID/:userId": () =>
-        formResponsesStatus === 200
-          ? Response.json(formResponses)
-          : Response.json({}, { status: formResponsesStatus }),
-      "GET /user/listfriends/:id": () =>
-        friendsStatus === 200
-          ? Response.json([alex])
-          : Response.json({}, { status: friendsStatus }),
-    },
-    // The sections a loaded member renders load their own data.
-    () => Response.json({}, { status: 404 }),
-  ),
-);
-
-beforeAll(() => queryClient.setDefaultOptions({ queries: { retry: false } }));
-
-beforeEach(() => {
-  stored = sam;
-  notificationSettings = null;
-  detailStatus = 404;
-  addTagStatus = 200;
-  relations = { actions: [], suites: [], users: [] };
-  relationsStatus = 200;
-  tagSummariesStatus = 200;
-  friendsStatus = 200;
-  formResponses = [];
-  notifsStatus = 200;
-  formResponsesStatus = 200;
-  createdActivities = [];
-});
-
-afterEach(() => {
-  cleanup();
-  queryClient.clear();
-});
-
-const renderPage = () => {
-  const router = createMemoryRouter(
-    [
-      {
-        path: "/members/:userId",
-        Component: UserDetailView,
-        loader: (args) =>
-          clientLoader({
-            ...args,
-            params: { userId: args.params.userId ?? "" },
-          }),
-      },
-    ],
-    { initialEntries: ["/members/7"] },
-  );
-  render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
-      </AuthProvider>
-    </QueryClientProvider>,
-  );
-};
-
-const relationsFor = (
-  status: "todo" | "completed",
-): UserActionRelationsResponseDto => ({
-  actions: [
-    {
-      id: 5,
-      name: "Call your representative",
-      status: "member_action",
-      weekNumber: 1,
-      allMembersParticipating: false,
-      memberActionDeadline: null,
-    },
-  ],
-  suites: [],
-  users: [{ userId: 7, relations: [{ actionId: 5, status }] }],
-});
-
-const cacheSam = (overrides: Partial<UserAdminDetailDto> = {}) =>
-  queryClient.setQueryData(queryKeys.userDetailAdmin(7), {
-    ...sam,
-    ...overrides,
-  });
+serveUserDetailApi();
 
 it("loads the member alongside the rest of the page", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   renderPage();
 
   expect(await screen.findByRole("heading", { name: "Sam" })).toBeTruthy();
 });
 
+it("shows the page shell while the member loads", async () => {
+  api.detailStatus = 200;
+  let release = () => {};
+  api.detailGate = new Promise((resolve) => (release = resolve));
+  renderPage();
+
+  expect(
+    (await screen.findByText("Loading member…")).getAttribute("role"),
+  ).toBe("status");
+  expect(screen.getByRole("heading", { name: "Member" })).toBeTruthy();
+
+  release();
+  expect(await screen.findByRole("heading", { name: "Sam" })).toBeTruthy();
+});
+
+it("groups the sections under views that link to each other", async () => {
+  api.detailStatus = 200;
+  renderPage("?view=connections");
+
+  const views = within(
+    await screen.findByRole("navigation", { name: "Member views" }),
+  );
+  expect(
+    views
+      .getAllByRole("link")
+      .map((link) => [link.textContent, link.getAttribute("href")]),
+  ).toEqual([
+    ["Profile", "/member/7?view=profile"],
+    ["Activity", "/member/7?view=activity"],
+    ["Messages", "/member/7?view=messages"],
+    ["Connections", "/member/7?view=connections"],
+  ]);
+  expect(
+    views
+      .getByRole("link", { name: "Connections" })
+      .getAttribute("aria-current"),
+  ).toBe("page");
+  expect(screen.queryByRole("region", { name: "Roles" })).toBeNull();
+
+  fireEvent.click(views.getByRole("link", { name: "Profile" }));
+  expect(await screen.findByRole("region", { name: "Roles" })).toBeTruthy();
+});
+
+it("keeps a draft reply across view switches", async () => {
+  api.detailStatus = 200;
+  renderPage("?view=messages");
+
+  const views = within(
+    await screen.findByRole("navigation", { name: "Member views" }),
+  );
+  const draft = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+    name: /^Text /,
+  });
+  fireEvent.change(draft, { target: { value: "See you Tuesday" } });
+  fireEvent.click(views.getByRole("link", { name: "Profile" }));
+  await screen.findByRole("region", { name: "Roles" });
+  fireEvent.click(views.getByRole("link", { name: "Messages" }));
+
+  expect(
+    (
+      await screen.findByRole<HTMLTextAreaElement>("textbox", {
+        name: /^Text /,
+      })
+    ).value,
+  ).toBe("See you Tuesday");
+});
+
+it("puts destructive commands in the More menu behind a confirmation", async () => {
+  api.detailStatus = 200;
+  renderPage();
+
+  fireEvent.click(await screen.findByRole("button", { name: "More" }));
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "Delete account" }),
+  );
+
+  expect(await screen.findByRole("dialog")).toBeTruthy();
+});
+
 it("shows each channel default and each override with its source and whether it is in effect", async () => {
-  detailStatus = 200;
-  notificationSettings = {
+  api.detailStatus = 200;
+  api.notificationSettings = {
     defaults: { inApp: false, push: false, text: true, email: true },
     overrides: [
       {
@@ -241,8 +140,8 @@ it("shows each channel default and each override with its source and whether it 
 });
 
 it("says when every notification follows the defaults", async () => {
-  detailStatus = 200;
-  notificationSettings = {
+  api.detailStatus = 200;
+  api.notificationSettings = {
     defaults: { inApp: true, push: true, text: true, email: true },
     overrides: [],
   };
@@ -258,7 +157,7 @@ it("says when every notification follows the defaults", async () => {
 });
 
 it("keeps cached notification settings it could not refresh and says so", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   queryClient.setQueryData(queryKeys.userNotificationSettingsAdmin(7), {
     defaults: { inApp: true, push: true, text: true, email: true },
     overrides: [],
@@ -274,7 +173,7 @@ it("keeps cached notification settings it could not refresh and says so", async 
 });
 
 it("says when the member's notification settings fail to load", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   renderPage();
 
   expect(
@@ -283,7 +182,7 @@ it("says when the member's notification settings fail to load", async () => {
 });
 
 it("loads the member afresh over one cached moments ago", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   cacheSam({ name: "Sam Before" });
   renderPage();
 
@@ -297,10 +196,15 @@ it("says a member that does not exist was not found", async () => {
 });
 
 it("says the member failed to load", async () => {
-  detailStatus = 500;
+  api.detailStatus = 500;
   renderPage();
 
-  expect(await screen.findByText("Failed to load member")).toBeTruthy();
+  expect(
+    (
+      await screen.findByText("Failed to load member. Reload to try again.")
+    ).getAttribute("role"),
+  ).toBe("alert");
+  expect(screen.getByRole("link", { name: "Members" })).toBeTruthy();
 });
 
 it("replaces a cached member who has since been deleted", async () => {
@@ -311,7 +215,7 @@ it("replaces a cached member who has since been deleted", async () => {
 });
 
 it("keeps a cached member it could not refresh and says so", async () => {
-  detailStatus = 500;
+  api.detailStatus = 500;
   cacheSam();
   renderPage();
 
@@ -323,8 +227,87 @@ it("keeps a cached member it could not refresh and says so", async () => {
   expect(screen.getByRole("heading", { name: "Sam" })).toBeTruthy();
 });
 
+it("names the member's contract status and roles beside their name", async () => {
+  api.detailStatus = 200;
+  api.stored = { ...api.stored, admin: true, staff: true };
+  renderPage("?view=messages");
+
+  const pills = within(
+    await screen.findByRole("list", { name: "Status and roles" }),
+  );
+  expect(
+    pills.getAllByRole("listitem").map((pill) => pill.textContent),
+  ).toEqual(["Not signed", "Admin", "Staff"]);
+  expect(await screen.findByRole("region", { name: "Texts" })).toBeTruthy();
+});
+
+it("says a member is away after their contract status", async () => {
+  api.detailStatus = 200;
+  api.stored = { ...api.stored, admin: true };
+  const day = 24 * 60 * 60 * 1000;
+  api.awayRanges = [
+    {
+      id: 1,
+      startDate: new Date(Date.now() - day).toISOString(),
+      endDate: new Date(Date.now() + day).toISOString(),
+      createdAt: new Date(Date.now() - 2 * day).toISOString(),
+      reason: "vacation",
+      note: null,
+    },
+  ];
+  renderPage();
+
+  const pills = within(
+    await screen.findByRole("list", { name: "Status and roles" }),
+  );
+  await pills.findByText("Away");
+  expect(
+    pills.getAllByRole("listitem").map((pill) => pill.textContent),
+  ).toEqual(["Not signed", "Away", "Admin"]);
+});
+
+it("logs in as the member in a new tab", async () => {
+  api.detailStatus = 200;
+  renderPage();
+
+  const link = await screen.findByRole("link", { name: "Log in as member" });
+  expect(link.getAttribute("href")).toMatch(/\/auth\/impersonate\/7$/);
+  expect(link.getAttribute("target")).toBe("_blank");
+});
+
+it("lists the member's contract events newest first", async () => {
+  api.detailStatus = 200;
+  api.stored = {
+    ...api.stored,
+    contractEvents: [
+      {
+        type: "signed",
+        date: "2026-01-01T12:00:00Z",
+        automatic: false,
+        contractId: 1,
+      },
+      {
+        type: "suspended",
+        date: "2026-02-01T12:00:00Z",
+        automatic: true,
+        contractId: null,
+      },
+    ],
+  };
+  renderPage();
+
+  const contract = within(
+    await screen.findByRole("region", { name: "Contract" }),
+  );
+  expect(
+    contract
+      .getAllByText(/^(signed|suspended)$/)
+      .map((type) => type.textContent),
+  ).toEqual(["suspended", "signed"]);
+});
+
 it("says why a role change was refused", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   renderPage();
 
   fireEvent.click(await screen.findByRole("checkbox", { name: "Staff" }));
@@ -338,11 +321,12 @@ it("says why a role change was refused", async () => {
 });
 
 it("says why a suspension was refused instead of confirming it", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   renderPage();
 
+  fireEvent.click(await screen.findByRole("button", { name: "More" }));
   fireEvent.click(
-    await screen.findByRole("button", { name: "Suspend contract" }),
+    await screen.findByRole("menuitem", { name: "Suspend contract" }),
   );
   fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
 
@@ -350,6 +334,19 @@ it("says why a suspension was refused instead of confirming it", async () => {
     await screen.findByText("Member does not have an active contract."),
   ).toBeTruthy();
   expect(screen.queryByText("Contract suspended")).toBeNull();
+});
+
+it("disables Suspend contract with the reason when there is no active contract", async () => {
+  api.detailStatus = 200;
+  api.stored = { ...api.stored, hasActiveContract: false };
+  renderPage();
+
+  fireEvent.click(await screen.findByRole("button", { name: "More" }));
+  const item = await screen.findByRole("menuitem", {
+    name: /^Suspend contract/,
+  });
+  expect(item.getAttribute("aria-disabled")).toBe("true");
+  expect(item.textContent).toContain("This member has no active contract.");
 });
 
 const toggleVolunteers = async () => {
@@ -360,7 +357,7 @@ const volunteersBox = () =>
   screen.getByRole<HTMLInputElement>("checkbox", { name: "Volunteers" });
 
 it("checks a tag once the member has it", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   renderPage();
 
   await toggleVolunteers();
@@ -370,8 +367,8 @@ it("checks a tag once the member has it", async () => {
 });
 
 it("says when a tag change is refused", async () => {
-  detailStatus = 200;
-  addTagStatus = 500;
+  api.detailStatus = 200;
+  api.addTagStatus = 500;
   renderPage();
 
   await toggleVolunteers();
@@ -383,8 +380,8 @@ it("says when a tag change is refused", async () => {
 });
 
 it("says why a tag change was refused", async () => {
-  detailStatus = 200;
-  addTagStatus = 400;
+  api.detailStatus = 200;
+  api.addTagStatus = 400;
   renderPage();
 
   await toggleVolunteers();
@@ -396,10 +393,10 @@ it("says why a tag change was refused", async () => {
 });
 
 it("says it could not refresh the member after a tag change", async () => {
-  detailStatus = 200;
+  api.detailStatus = 200;
   renderPage();
   await screen.findByRole("checkbox", { name: "Volunteers" });
-  detailStatus = 500;
+  api.detailStatus = 500;
 
   await toggleVolunteers();
 
@@ -411,16 +408,16 @@ it("says it could not refresh the member after a tag change", async () => {
 });
 
 it("says when the tags fail to load", async () => {
-  detailStatus = 200;
-  tagSummariesStatus = 500;
+  api.detailStatus = 200;
+  api.tagSummariesStatus = 500;
   renderPage();
 
   expect(await screen.findByText("Failed to load tags")).toBeTruthy();
 });
 
 it("keeps cached tags it could not refresh and says so", async () => {
-  detailStatus = 200;
-  tagSummariesStatus = 500;
+  api.detailStatus = 200;
+  api.tagSummariesStatus = 500;
   queryClient.setQueryData(queryKeys.tagSummariesAdmin(), [volunteers]);
   renderPage();
 
@@ -430,172 +427,4 @@ it("keeps cached tags it could not refresh and says so", async () => {
     ),
   ).toBeTruthy();
   expect(volunteersBox()).toBeTruthy();
-});
-
-it("lists the member's friends with their status", async () => {
-  detailStatus = 200;
-  renderPage();
-
-  expect(
-    await screen.findByRole("heading", { name: "Friends 1" }),
-  ).toBeTruthy();
-  expect(screen.getByRole("link", { name: /Alex/ }).getAttribute("href")).toBe(
-    "/member/8",
-  );
-  expect(screen.getByText("Signed · Ambassador")).toBeTruthy();
-});
-
-it("says when the friends fail to load", async () => {
-  detailStatus = 200;
-  friendsStatus = 500;
-  renderPage();
-
-  expect(await screen.findByText("Failed to load friends")).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Friends" })).toBeTruthy();
-});
-
-it("keeps cached friends it could not refresh and says so", async () => {
-  detailStatus = 200;
-  friendsStatus = 500;
-  queryClient.setQueryData(userQueryKeys.friends(7), [alex]);
-  renderPage();
-
-  expect(
-    await screen.findByText(
-      "Could not refresh friends. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Friends 1" })).toBeTruthy();
-});
-
-it("lists the member's form submissions newest first", async () => {
-  detailStatus = 200;
-  formResponses = [
-    makeFormResponse({ id: 1, formId: 4, createdAt: "2026-03-01T12:00:00Z" }),
-    makeFormResponse({
-      id: 2,
-      formId: 9,
-      createdAt: "2026-05-01T12:00:00Z",
-      deviceType: "ios",
-    }),
-  ];
-  renderPage();
-
-  expect(
-    await screen.findByRole("heading", { name: "Form submissions 2" }),
-  ).toBeTruthy();
-  expect(
-    screen
-      .getAllByRole("link", { name: /^Form #/ })
-      .map((link) => [link.textContent, link.getAttribute("href")]),
-  ).toEqual([
-    ["Form #9", "/forms/9/responses"],
-    ["Form #4", "/forms/4/responses"],
-  ]);
-  expect(screen.getByText("ios")).toBeTruthy();
-});
-
-it("says when the member has no form submissions", async () => {
-  detailStatus = 200;
-  renderPage();
-
-  expect(await screen.findByText("No form submissions.")).toBeTruthy();
-});
-
-it("says when the member's notifications fail to load", async () => {
-  detailStatus = 200;
-  notifsStatus = 500;
-  renderPage();
-
-  expect(await screen.findByText("Failed to load notifications")).toBeTruthy();
-});
-
-it("keeps cached notifications it could not refresh and says so", async () => {
-  detailStatus = 200;
-  notifsStatus = 500;
-  queryClient.setQueryData(queryKeys.userNotifsAdmin(7), []);
-  renderPage();
-
-  expect(
-    await screen.findByText(
-      "Could not refresh notifications. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Notifications 0" })).toBeTruthy();
-});
-
-it("says when the member's form submissions fail to load", async () => {
-  detailStatus = 200;
-  formResponsesStatus = 500;
-  renderPage();
-
-  expect(
-    await screen.findByText("Failed to load form submissions"),
-  ).toBeTruthy();
-  expect(screen.queryByText("No form submissions.")).toBeNull();
-});
-
-it("keeps cached form submissions it could not refresh and says so", async () => {
-  detailStatus = 200;
-  formResponsesStatus = 500;
-  queryClient.setQueryData(queryKeys.userFormResponsesAdmin(7), []);
-  renderPage();
-
-  expect(
-    await screen.findByText(
-      "Could not refresh form submissions. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(
-    screen.getByRole("heading", { name: "Form submissions 0" }),
-  ).toBeTruthy();
-});
-
-it("says when the member's actions fail to load", async () => {
-  detailStatus = 200;
-  relationsStatus = 500;
-  renderPage();
-
-  expect(await screen.findByText("Failed to load actions")).toBeTruthy();
-});
-
-it("records an activity for the member and shows their new status", async () => {
-  detailStatus = 200;
-  relations = relationsFor("todo");
-  renderPage();
-
-  const row = (await screen.findByText("Call your representative")).closest(
-    "tr",
-  );
-  fireEvent.change(within(row!).getByRole("combobox"), {
-    target: { value: "user_completed" },
-  });
-
-  expect(
-    await screen.findByText("Completed", { selector: "span" }),
-  ).toBeTruthy();
-  expect(createdActivities).toEqual([
-    { actionId: 5, userId: 7, type: "user_completed" },
-  ]);
-});
-
-it("says it could not refresh the member's actions after recording one", async () => {
-  detailStatus = 200;
-  relations = relationsFor("todo");
-  renderPage();
-  const row = (await screen.findByText("Call your representative")).closest(
-    "tr",
-  );
-  relationsStatus = 500;
-
-  fireEvent.change(within(row!).getByRole("combobox"), {
-    target: { value: "user_completed" },
-  });
-
-  expect(
-    await screen.findByText(
-      "Could not refresh actions. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByText("Not started", { selector: "span" })).toBeTruthy();
 });
