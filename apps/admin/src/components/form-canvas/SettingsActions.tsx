@@ -1,7 +1,9 @@
-import { cn } from "@alliance/shared/styles/util";
 import { ArrowDown, ArrowUp, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { ReadOnlyId } from "../../pages/forms/builder/kit/ReadOnlyId";
+import Button, { ButtonVariant } from "../../ui/Button";
 
+/** An item's id and the actions its own settings still offer, closing its Advanced section. */
 export function SettingsActions({
   idLabel,
   id,
@@ -12,15 +14,8 @@ export function SettingsActions({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-3 border-t border-gray-200 pt-4">
-      {id && (
-        <p className="text-xs text-gray-500">
-          {idLabel}{" "}
-          <code className="select-all rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-gray-700">
-            {id}
-          </code>
-        </p>
-      )}
+    <div className="flex flex-col gap-4 border-t border-line pt-5">
+      {id && <ReadOnlyId label={idLabel} value={id} />}
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -40,26 +35,23 @@ export function SettingsAction({
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant={
+        destructive ? ButtonVariant.DangerOutline : ButtonVariant.Default
+      }
+      size="small"
       onClick={onClick}
       disabled={disabled}
-      className={cn(
-        "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
-        destructive
-          ? "border-red-200 text-red-700 hover:bg-red-50"
-          : "border-gray-200 text-gray-700 hover:bg-gray-50",
-      )}
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
+      <Icon aria-hidden="true" className="size-4" />
       {children}
-    </button>
+    </Button>
   );
 }
 
 /**
- * An icon button that stays focusable while unavailable, so a keyboard user
- * who moves an element to the page's edge keeps their place.
+ * A move button that stays focusable while unavailable, so a keyboard user
+ * who moves an item to its list's edge keeps their place.
  */
 export function SettingsIconAction({
   label,
@@ -73,16 +65,17 @@ export function SettingsIconAction({
   disabled?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={disabled ? undefined : onClick}
-      aria-disabled={disabled}
+    <Button
+      variant={ButtonVariant.Ghost}
+      size="small"
       aria-label={label}
+      aria-disabled={disabled}
       title={label}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 aria-disabled:cursor-not-allowed aria-disabled:text-gray-300 aria-disabled:hover:bg-transparent"
+      onClick={disabled ? () => {} : onClick}
+      className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </button>
+      <Icon aria-hidden="true" className="size-4" />
+    </Button>
   );
 }
 

@@ -1,7 +1,12 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen } from "@testing-library/react";
-import { heading, openSection, selectElement } from "../lib/testing/formCanvas";
+import {
+  fromSelectionMenu,
+  heading,
+  openSection,
+  selectElement,
+} from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 serveApi(routes({}, () => Response.json([])));
@@ -30,7 +35,7 @@ const button = (name: string) =>
 it("returns the selection to its element through undo when another shares its id", async () => {
   renderFormBuilder(twins);
   selectElement("Second");
-  fireEvent.click(button("Move down"));
+  fromSelectionMenu("Move down");
   await nextTask();
   fireEvent.click(button("Undo"));
   expect(heading()).toBe("Text Field: Second");
@@ -40,7 +45,7 @@ it("brings the selection back to a deleted element through undo and redo when an
   renderFormBuilder(twins);
   selectElement("Second");
   openSection("Advanced");
-  fireEvent.click(button("Delete question"));
+  fromSelectionMenu("Delete question");
   await nextTask();
   fireEvent.click(button("Undo"));
   expect(heading()).toBe("Text Field: Second");
@@ -53,7 +58,7 @@ it("brings the selection back to the first of two elements sharing an id once it
   renderFormBuilder(twins);
   selectElement("First");
   openSection("Advanced");
-  fireEvent.click(button("Delete question"));
+  fromSelectionMenu("Delete question");
   await nextTask();
   fireEvent.click(button("Undo"));
   expect(heading()).toBe("Text Field: First");
@@ -63,10 +68,10 @@ it("returns the selection to a deleted element through undo after its twin moved
   renderFormBuilder(twins);
   selectElement("Second");
   openSection("Advanced");
-  fireEvent.click(button("Delete question"));
+  fromSelectionMenu("Delete question");
   await nextTask();
   expect(heading()).toBe("Text Field: First");
-  fireEvent.click(button("Move down"));
+  fromSelectionMenu("Move down");
   await nextTask();
   fireEvent.click(button("Undo"));
   fireEvent.click(button("Undo"));

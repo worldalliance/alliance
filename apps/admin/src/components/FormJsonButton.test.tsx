@@ -3,8 +3,10 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen } from "@testing-library/react";
 import {
   fromMainMenu,
+  fromSelectionMenu,
   openSection,
   selectElement,
+  selectionMenuItems,
   settings,
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
@@ -79,7 +81,7 @@ describe("FormBuilder element JSON buttons", () => {
       selectElement(label);
       openSection("Advanced");
       expect(
-        screen.getAllByRole("button", { name: "Edit element JSON" }),
+        selectionMenuItems().filter((item) => item === "Edit element JSON…"),
       ).toHaveLength(1);
     }
     await screen.findAllByText("Contract body");
@@ -112,7 +114,7 @@ describe("FormBuilder JSON buttons open their own scope", () => {
 
     selectElement("B");
     openSection("Advanced");
-    fireEvent.click(screen.getByRole("button", { name: "Edit element JSON" }));
+    fromSelectionMenu("Edit element JSON…");
     expect(openedJson("Element JSON").id).toBe("b");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -170,7 +172,7 @@ describe("FormBuilder element JSON Apply", () => {
     });
     selectElement("City");
     openSection("Advanced");
-    fireEvent.click(screen.getByRole("button", { name: "Edit element JSON" }));
+    fromSelectionMenu("Edit element JSON…");
     fireEvent.change(screen.getByRole("textbox", { name: "Element JSON" }), {
       target: {
         value: JSON.stringify({

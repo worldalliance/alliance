@@ -1,25 +1,18 @@
-import { PlaceKind } from "@alliance/common/forms/form-conditions";
-import {
-  isQuestionField,
-  type PageItem,
-} from "@alliance/common/forms/form-schema";
-import { Copy, FileJson, Trash2 } from "lucide-react";
+import type { PageItem } from "@alliance/common/forms/form-schema";
 import type { ReactNode } from "react";
+import { ReadOnlyId } from "../../pages/forms/builder/kit/ReadOnlyId";
 import { describeHeading } from "./canvasSelection";
-import {
-  SettingsAction,
-  SettingsActions,
-  SettingsMoveActions,
-} from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import {
   ALL_SECTIONS,
   SidebarSection,
   UNCONDITIONAL_SECTIONS,
 } from "./sidebarSections";
-import { DELETION } from "./useGuardedDeletion";
 
-/** The selected element's settings, around its editor. */
+/**
+ * The selected element's settings, around its editor. Its actions are in the
+ * header's More menu; Advanced closes with its id.
+ */
 export function ElementSettings({
   element,
   displayOnly,
@@ -27,12 +20,6 @@ export function ElementSettings({
   onSection,
   focusPending,
   onFocused,
-  onMoveUp,
-  onMoveDown,
-  moveToPage,
-  onEditJson,
-  onDuplicate,
-  onDelete,
   layout,
   dependencies,
   children,
@@ -43,13 +30,6 @@ export function ElementSettings({
   onSection: (section: SidebarSection) => void;
   focusPending: boolean;
   onFocused: () => void;
-  /** Null where the element can't move that way. */
-  onMoveUp: (() => void) | null;
-  onMoveDown: (() => void) | null;
-  moveToPage: ReactNode;
-  onEditJson: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
   layout?: ReactNode;
   dependencies: ReactNode;
   children: ReactNode;
@@ -57,12 +37,6 @@ export function ElementSettings({
   return (
     <SettingsSidebar
       heading={describeHeading(element)}
-      headingActions={
-        <>
-          {moveToPage}
-          <SettingsMoveActions onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
-        </>
-      }
       sections={displayOnly ? UNCONDITIONAL_SECTIONS : ALL_SECTIONS}
       section={section}
       onSection={onSection}
@@ -71,19 +45,7 @@ export function ElementSettings({
       dependencies={dependencies}
       layout={layout}
       actions={
-        <SettingsActions idLabel="Element ID" id={element.id}>
-          <SettingsAction Icon={FileJson} onClick={onEditJson}>
-            Edit element JSON
-          </SettingsAction>
-          <SettingsAction Icon={Copy} onClick={onDuplicate}>
-            Duplicate
-          </SettingsAction>
-          <SettingsAction Icon={Trash2} destructive onClick={onDelete}>
-            {isQuestionField(element)
-              ? DELETION[PlaceKind.Element].action
-              : "Delete block"}
-          </SettingsAction>
-        </SettingsActions>
+        element.id && <ReadOnlyId label="Element ID" value={element.id} />
       }
     >
       {children}

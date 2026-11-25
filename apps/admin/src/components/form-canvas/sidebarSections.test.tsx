@@ -1,7 +1,7 @@
 import type { PageItem } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
 import { ToastProvider } from "../../ui/ToastProvider";
@@ -96,11 +96,13 @@ describe("an editor in the settings sidebar", () => {
     expect(panel().getByText("Delete question")).toBeTruthy();
   });
 
-  it("moves between sections with the arrow keys", () => {
+  it("moves between sections with the arrow keys", async () => {
     renderSidebar({ id: "t", type: "input", kind: "text", label: "Town" });
+    act(() => screen.getByRole("tab", { name: "Content" }).focus());
     fireEvent.keyDown(screen.getByRole("tab", { name: "Content" }), {
       key: "ArrowLeft",
     });
+    await act(async () => {});
     expect(
       screen
         .getByRole("tab", { name: "Advanced" })

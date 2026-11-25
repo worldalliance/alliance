@@ -136,27 +136,6 @@ export type LoadFailure = {
   onRetry: () => void;
 };
 
-/** The selected item's issues, above its settings. */
-export function SidebarIssues({ messages }: { messages: readonly string[] }) {
-  if (messages.length === 0) return null;
-  return (
-    <ul
-      aria-label="Issues here"
-      className="flex flex-col gap-1 border-b border-line bg-danger-soft px-card py-2 text-caption text-danger"
-    >
-      {messages.map((message, index) => (
-        <li key={index} className="flex gap-1.5">
-          <CircleAlert
-            aria-hidden="true"
-            className="mt-0.5 size-3.5 shrink-0"
-          />
-          {message}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** The canvas and outline marker on an entry with issues. */
 export function IssueMarker({
   count,

@@ -6,6 +6,7 @@ import {
   canvas,
   canvasButton,
   formJson,
+  fromSelectionMenu,
   openSection,
   selectElement,
 } from "../../lib/testing/formCanvas";
@@ -113,8 +114,7 @@ describe("importing per-user content from the clipboard", () => {
 
   it("says so when the block is deleted while the clipboard is read", async () => {
     startImport();
-    openSection("Advanced");
-    fireEvent.click(screen.getByRole("button", { name: "Delete block" }));
+    fromSelectionMenu("Delete block");
     await act(async () => paste('{"7": "Dear Ana"}'));
 
     expect(

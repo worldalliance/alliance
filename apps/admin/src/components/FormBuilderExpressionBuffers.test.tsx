@@ -3,6 +3,7 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { act, fireEvent, screen } from "@testing-library/react";
 import {
   fromMainMenu,
+  fromSelectionMenu,
   openSection,
   selectElement,
 } from "../lib/testing/formCanvas";
@@ -309,8 +310,7 @@ it("keeps an element's expression text when it moves to another page, and back o
   openSection("Conditions");
   editAsExpression();
   await typeExpression("c1 AND");
-  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
+  fromSelectionMenu("Move to page 2: Two");
   await act(async () => {});
   openSection("Conditions");
   expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);

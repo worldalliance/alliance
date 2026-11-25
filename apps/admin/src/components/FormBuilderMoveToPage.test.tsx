@@ -3,9 +3,11 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import {
   canvas,
+  fromSelectionMenu,
   heading,
   outline,
   selectElement,
+  selectionMenuItems,
 } from "../lib/testing/formCanvas";
 import { entries } from "../lib/testing/formOutline";
 import {
@@ -41,11 +43,10 @@ it("moves the selected element to the end of the page picked, keeping it selecte
   const reveals = spyOnReveals();
   renderFormBuilder(schema);
   selectElement("Town");
-  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
   expect(
-    (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
-  ).toEqual(["2. Two"]);
-  fireEvent.click(screen.getByRole("menuitem", { name: "2. Two" }));
+    selectionMenuItems().filter((item) => item.startsWith("Move to page")),
+  ).toEqual(["Move to page 2: Two"]);
+  fromSelectionMenu("Move to page 2: Two");
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   expect(entries()).toEqual([
     "One",
@@ -63,8 +64,7 @@ it("follows the moved element between pages on Undo and Redo, keeping it selecte
   const reveals = spyOnReveals();
   renderFormBuilder(schema);
   selectElement("Town");
-  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
+  fromSelectionMenu("Move to page 2: Two");
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   reveals.clear();
   fireEvent.click(screen.getByRole("button", { name: "Undo" }));
@@ -93,8 +93,7 @@ it("moves a selected range together", async () => {
     outline().getByRole("button", { name: "Text Block: Welcome" }),
     { shiftKey: true },
   );
-  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
+  fromSelectionMenu("Move to page 2: Two");
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   expect(entries()).toEqual([
     "One",
@@ -122,8 +121,7 @@ it("moves nothing while an element id repeats in the form, naming it", async () 
     ],
   });
   selectElement("Town");
-  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
+  fromSelectionMenu("Move to page 2: Two");
   expect(
     await screen.findByText(
       'Moving to another page needs unique ids, and these repeat: "town"',
@@ -136,7 +134,9 @@ it("moves nothing while an element id repeats in the form, naming it", async () 
 it("offers no move on a one-page form", () => {
   renderFormBuilder({ ...schema, pages: [schema.pages[0]!] });
   selectElement("Town");
-  expect(screen.queryByRole("button", { name: "Move to page" })).toBeNull();
+  expect(
+    selectionMenuItems().filter((item) => item.startsWith("Move to page")),
+  ).toEqual([]);
 });
 
 it("moves a shared-visibility group together, keeping it selected and shown, even onto a page closed in the outline", async () => {
@@ -165,8 +165,7 @@ it("moves a shared-visibility group together, keeping it selected and shown, eve
   fireEvent.click(
     outline().getByRole("button", { name: "Shared visibility · 2 elements" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Move to page" }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "2. Two" }));
+  fromSelectionMenu("Move to page 2: Two");
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   expect(entries()).toEqual([
     "One",
@@ -201,5 +200,7 @@ it("offers no move in a display-only builder", () => {
     outline().getByRole("button", { name: "Header Block: News" }),
   );
   expect(heading()).toBe("Header Block: News");
-  expect(screen.queryByRole("button", { name: "Move to page" })).toBeNull();
+  expect(
+    selectionMenuItems().filter((item) => item.startsWith("Move to page")),
+  ).toEqual([]);
 });

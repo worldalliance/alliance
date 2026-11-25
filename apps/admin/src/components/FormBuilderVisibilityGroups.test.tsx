@@ -16,8 +16,10 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import {
   canvasGroups,
   fromMainMenu,
+  fromSelectionMenu,
   heading,
   insertElement,
+  issuesHere,
   openSection,
   saveState,
   selectElement,
@@ -241,7 +243,7 @@ describe("FormBuilder visibility groups", () => {
       within(canvasGroups()[0]!).getByText("Shared rule has 1 issue"),
     ).toBeTruthy();
     openGroup(0);
-    expect(screen.getByRole("list", { name: "Issues here" }).textContent).toBe(
+    expect(issuesHere().textContent).toBe(
       'Visibility of "a" depends on its own answer',
     );
   });
@@ -263,7 +265,7 @@ describe("FormBuilder visibility groups", () => {
     });
     renderFormBuilder(schemaWith([requiredWhenBad("a"), requiredWhenBad("b")]));
     openGroup(0);
-    const items = within(screen.getByRole("list", { name: "Issues here" }))
+    const items = within(issuesHere())
       .getAllByRole("listitem")
       .map((item) => item.textContent?.split(":")[0]);
     expect(items).toEqual(["Label a", "Label b"]);
@@ -340,7 +342,7 @@ describe("FormBuilder visibility groups across loads", () => {
   const applyElementJson = async (element: PageItem) => {
     selectElement("Label a");
     openSection("Advanced");
-    fireEvent.click(screen.getByRole("button", { name: "Edit element JSON" }));
+    fromSelectionMenu("Edit element JSON…");
     fireEvent.change(screen.getByRole("textbox", { name: "Element JSON" }), {
       target: { value: JSON.stringify(element) },
     });

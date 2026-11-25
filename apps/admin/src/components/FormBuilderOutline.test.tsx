@@ -126,7 +126,7 @@ describe("the form outline", () => {
     ]);
     expect(pageTitle().value).toBe("One");
     openSection("Advanced");
-    expect(settings().getByText("p1")).toBeTruthy();
+    expect(settings().getByDisplayValue("p1")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Move page up" }));
     expect(entries().slice(0, 2)).toEqual(["One", "Text Field: Town"]);

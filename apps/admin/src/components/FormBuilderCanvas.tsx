@@ -16,7 +16,6 @@ import {
   sameInsertLoc,
   type InsertLoc,
 } from "./form-canvas/InsertPoint";
-import { selectionIssues, SidebarIssues } from "./form-canvas/IssueList";
 import { SECTION_ON_SELECT } from "./form-canvas/useCanvasSelection";
 import { FormBuilderSettings } from "./FormBuilderSettings";
 
@@ -172,30 +171,20 @@ export function FormBuilderCanvas({
       />
     ),
     settings: (
-      <>
-        <SidebarIssues
-          messages={selectionIssues({
-            index: issueIndex,
-            page: currentPage,
-            pageIndex: selectedPageIndex,
-            target: resolvedTarget,
-          })}
-        />
-        <FormBuilderSettings
-          schema={schema}
-          displayOnly={displayOnly}
-          visibilityGroups={visibilityGroups}
-          setGroups={setGroups}
-          canvasGroups={canvasGroups}
-          canvas={canvas}
-          edits={edits}
-          updateBlockById={updateBlockById}
-          conditionFieldOf={conditionFieldOf}
-          summarize={summarize}
-          overrideTarget={overrideTarget}
-          onEditJson={onEditJson}
-        />
-      </>
+      <FormBuilderSettings
+        schema={schema}
+        displayOnly={displayOnly}
+        visibilityGroups={visibilityGroups}
+        setGroups={setGroups}
+        canvasGroups={canvasGroups}
+        canvas={canvas}
+        edits={edits}
+        updateBlockById={updateBlockById}
+        conditionFieldOf={conditionFieldOf}
+        summarize={summarize}
+        overrideTarget={overrideTarget}
+        onEditJson={onEditJson}
+      />
     ),
   });
 }

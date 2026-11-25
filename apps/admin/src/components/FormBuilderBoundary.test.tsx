@@ -3,8 +3,10 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
+  fromSelectionMenu,
   openSection,
   selectElement,
+  selectionMenuState,
   settings,
 } from "../lib/testing/formCanvas";
 import { nestedSchema } from "../lib/testing/nestedForm";
@@ -53,9 +55,7 @@ describe("FormBuilder render failures", () => {
 
     selectElement("Join us");
     openSection("Advanced");
-    fireEvent.click(
-      settings().getByRole("button", { name: "Edit element JSON" }),
-    );
+    fromSelectionMenu("Edit element JSON…");
     const { externalTargetId: _dropped, ...repaired } = unrenderableLink;
     fireEvent.change(screen.getByRole("textbox", { name: /JSON/ }), {
       target: { value: JSON.stringify(repaired) },
@@ -125,9 +125,7 @@ describe("FormBuilder render failures", () => {
     openSection("Conditions");
     expect(openPanel().getByText("editor broke")).toBeTruthy();
     openSection("Advanced");
-    expect(
-      settings().getByRole("button", { name: "Edit element JSON" }),
-    ).toBeTruthy();
+    expect(selectionMenuState("Edit element JSON…")).toBe("enabled");
   });
 
   it("flags a selected nested block whose settings can't render, keeping Delete", () => {

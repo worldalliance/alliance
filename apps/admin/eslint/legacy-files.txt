@@ -39,7 +39,6 @@ src/components/EventManagementTab.tsx
 src/components/ExpressionNodeEditor.tsx
 src/components/ExternalShareTargetSelect.tsx
 src/components/FormBuilderPreview.tsx
-src/components/FormBuilderSettings.tsx
 src/components/FormConflictModal.tsx
 src/components/FormJsonModal.tsx
 src/components/FormPickerError.tsx
@@ -103,15 +102,11 @@ src/components/form-canvas/FormOutline.tsx
 src/components/form-canvas/GreyBoxPanel.tsx
 src/components/form-canvas/InlineText.tsx
 src/components/form-canvas/InsertPoint.tsx
-src/components/form-canvas/MoveToPageMenu.tsx
 src/components/form-canvas/OutlineContents.tsx
 src/components/form-canvas/OutlineRow.tsx
 src/components/form-canvas/PageSettings.tsx
 src/components/form-canvas/RangeSettings.tsx
-src/components/form-canvas/SettingsActions.tsx
-src/components/form-canvas/SettingsSidebar.tsx
 src/components/form-canvas/VisibilityGroupPanel.tsx
-src/components/form-canvas/sidebarSections.tsx
 src/components/form-fields/CommonControls.tsx
 src/components/form-fields/CustomValidatorSelect.tsx
 src/components/form-fields/EditableCheckboxField.tsx

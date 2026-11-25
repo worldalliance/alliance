@@ -5,11 +5,13 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { dragOverAt } from "../lib/testing/dragOverAt";
 import {
   canvasOrder,
+  fromSelectionMenu,
   heading,
   inNarrowWindow,
   insertElement,
   openSection,
   selectElement,
+  selectionMenuState,
   settings,
 } from "../lib/testing/formCanvas";
 import {
@@ -108,14 +110,14 @@ describe("the form canvas", () => {
   it("moves the selected element with its keyboard controls", () => {
     renderFormBuilder(schema);
     selectElement("Town");
-    fireEvent.click(button("Move down"));
+    fromSelectionMenu("Move down");
     expect(canvasOrder()).toEqual([
       "Select Text Block: Welcome",
       "Select Text Field: Town",
       "Select Radio Field: Pet",
     ]);
     expect(heading()).toBe("Text Field: Town");
-    expect(button("Move up").getAttribute("aria-disabled")).toBe("false");
+    expect(selectionMenuState("Move up")).toBe("enabled");
   });
 
   it("moves an id-less block, keeping it selected by its new position", () => {
@@ -132,13 +134,13 @@ describe("the form canvas", () => {
       ],
     });
     selectElement("Loose");
-    fireEvent.click(button("Move down"));
+    fromSelectionMenu("Move down");
     expect(canvasOrder()).toEqual([
       "Select Text Field: Town",
       "Select Text Block: Loose",
     ]);
     expect(heading()).toBe("Text Block: Loose");
-    fireEvent.click(button("Move up"));
+    fromSelectionMenu("Move up");
     expect(heading()).toBe("Text Block: Loose");
     expect(canvasOrder()[0]).toBe("Select Text Block: Loose");
   });
@@ -227,7 +229,7 @@ describe("the form canvas", () => {
       ],
     });
     selectElement("Label free");
-    fireEvent.click(button("Move down"));
+    fromSelectionMenu("Move down");
     expect(canvasOrder()).toEqual([
       "Select Text Field: Label g1",
       "Select Text Field: Label g2",
@@ -239,8 +241,8 @@ describe("the form canvas", () => {
         screen.getByRole("region", { name: "Visibility group" }),
       ).getByText("Shared visibility · 3 elements"),
     ).toBeTruthy();
-    expect(button("Move down").getAttribute("aria-disabled")).toBe("true");
-    fireEvent.click(button("Move up"));
+    expect(selectionMenuState("Move down")).toBe("disabled");
+    fromSelectionMenu("Move up");
     expect(canvasOrder()[0]).toBe("Select Text Field: Label free");
   });
 
@@ -363,7 +365,7 @@ describe("the form canvas", () => {
     });
     selectElement("Town");
     openSection("Advanced");
-    fireEvent.click(button("Delete question"));
+    fromSelectionMenu("Delete question");
     await act(async () => {});
     selectElement("Second");
     fireEvent.click(button("Undo"));
@@ -385,7 +387,7 @@ describe("the form canvas", () => {
     });
     selectElement("First");
     openSection("Advanced");
-    fireEvent.click(button("Delete block"));
+    fromSelectionMenu("Delete block");
     expect(heading()).toBe("Page settings");
     expect(
       screen
@@ -398,9 +400,7 @@ describe("the form canvas", () => {
     renderFormBuilder(schema);
     selectElement("Town");
     openSection("Advanced");
-    const remove = button("Delete question");
-    remove.focus();
-    fireEvent.click(remove);
+    fromSelectionMenu("Delete question");
     confirmDeletion();
     expect(heading()).toBe("Page settings");
     expect(
@@ -504,7 +504,7 @@ describe("the form canvas", () => {
     renderFormBuilder(schema);
     selectElement("Town");
     openSection("Advanced");
-    fireEvent.click(button("Duplicate"));
+    fromSelectionMenu("Duplicate");
     expect(canvasOrder().slice(0, 2)).toEqual([
       "Select Text Field: Town",
       "Select Text Field: Town",
@@ -522,7 +522,7 @@ describe("the form canvas", () => {
     renderFormBuilder(schema);
     selectElement("Welcome");
     openSection("Advanced");
-    fireEvent.click(button("Delete block"));
+    fromSelectionMenu("Delete block");
     expect(heading()).toBe("Page settings");
     await act(async () => {});
     fireEvent.click(button("Undo"));

@@ -11,13 +11,10 @@ import { conditionSourceFields } from "../lib/conditionSourceFields";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { DropPosition } from "../lib/useDragReorder";
-import {
-  NeighborDirection,
-  stepPast,
-  type VisibilityGroups,
-} from "../lib/visibilityGroups";
+import { type VisibilityGroups } from "../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../lib/visibilitySummary";
 import { FormScopeInspector } from "../pages/forms/builder/inspector/FormScopeInspector";
+import { InspectorHeader } from "../pages/forms/builder/inspector/InspectorHeader";
 import { PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import {
@@ -40,7 +37,6 @@ import {
 } from "./form-canvas/ElementBoundary";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { GreyBoxPanel } from "./form-canvas/GreyBoxPanel";
-import { MoveToPageMenu } from "./form-canvas/MoveToPageMenu";
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
@@ -112,9 +108,6 @@ export function FormBuilderSettings({
     copyPage,
     removePage,
     deleteElement,
-    moveElement,
-    moveElementsTo,
-    duplicateElement,
     applyGrouped,
     updateElementAt,
     selectChildOf,
@@ -229,20 +222,6 @@ export function FormBuilderSettings({
       />
     );
 
-  const moveToPage = (start: number, end: number) =>
-    !displayOnly && (
-      <MoveToPageMenu
-        pages={schema.pages}
-        pageIndex={selectedPageIndex}
-        onMove={(pageIndex) =>
-          moveElementsTo(
-            { pageIndex: selectedPageIndex, start, end },
-            { pageIndex, index: schema.pages[pageIndex]!.fields.length },
-          )
-        }
-      />
-    );
-
   if (canvas.inspectorScope === InspectorScope.Form) {
     return <FormScopeInspector />;
   }
@@ -250,9 +229,12 @@ export function FormBuilderSettings({
   switch (resolvedTarget.kind) {
     case CanvasTargetKind.Page:
       return displayOnly ? (
-        <p className="p-4 text-sm text-gray-500">
-          Select a block on the canvas to edit it.
-        </p>
+        <>
+          <InspectorHeader title="Content" />
+          <p className="px-card py-4 text-fg-muted">
+            Select a block on the canvas to edit it.
+          </p>
+        </>
       ) : (
         <PageSettingsSidebar
           pageId={currentPage.id}
@@ -352,15 +334,6 @@ export function FormBuilderSettings({
           </ElementExpressionScope>
         );
       }
-      const stepTo = (direction: NeighborDirection) => {
-        const step = stepPast({
-          fields: currentPage.fields,
-          groups: canvasGroups,
-          index,
-          direction,
-        });
-        return step && (() => moveElement({ from: index, ...step }));
-      };
       return (
         <ElementSettings
           element={element}
@@ -369,18 +342,6 @@ export function FormBuilderSettings({
           onSection={setSection}
           focusPending={focusPending}
           onFocused={focused}
-          onMoveUp={stepTo(NeighborDirection.Previous)}
-          onMoveDown={stepTo(NeighborDirection.Next)}
-          moveToPage={moveToPage(index, index + 1)}
-          onEditJson={() =>
-            onEditJson({
-              kind: JsonScopeKind.Element,
-              pageIndex: selectedPageIndex,
-              index,
-            })
-          }
-          onDuplicate={() => duplicateElement(index)}
-          onDelete={() => deleteElement(index)}
           layout={greyBox(index, index + 1)}
           dependencies={renderDependencies(
             element,
@@ -409,7 +370,6 @@ export function FormBuilderSettings({
       return (
         <SettingsSidebar
           heading="Shared visibility"
-          headingActions={moveToPage(resolvedTarget.start, resolvedTarget.end)}
           sections={GROUP_SECTIONS}
           section={section}
           onSection={setSection}
@@ -446,7 +406,6 @@ export function FormBuilderSettings({
       return (
         <SettingsSidebar
           heading={`${withCount(end - start, "element")} selected`}
-          headingActions={moveToPage(start, end)}
           sections={RANGE_SECTIONS}
           layout={greyBox(start, end)}
           section={section}

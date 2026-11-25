@@ -5,6 +5,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
+  fromSelectionMenu,
   heading,
   inNarrowWindow,
   openSection,
@@ -356,15 +357,10 @@ describe("FormBuilder dependency links", () => {
 
 describe("FormBuilder deleting a source", () => {
   const dialog = () => within(screen.getByRole("dialog"));
-  const deleteFromAdvanced = (name: string) => {
-    openSection("Advanced");
-    fireEvent.click(settings().getByRole("button", { name }));
-  };
-
   it("lists what reads a question before deleting it, then undoes", () => {
     renderFormBuilder(schema);
     selectElement("Label a");
-    deleteFromAdvanced("Delete question");
+    fromSelectionMenu("Delete question");
     expect(
       dialog().getByText(
         /Shared visibility · 2 elements: Text Field: Label b, Text Field: Label c/,
@@ -375,7 +371,7 @@ describe("FormBuilder deleting a source", () => {
     fireEvent.click(dialog().getByRole("button", { name: "Cancel" }));
     expect(canvasButton("Select Text Field: Label a")).toBeTruthy();
 
-    deleteFromAdvanced("Delete question");
+    fromSelectionMenu("Delete question");
     fireEvent.click(dialog().getByRole("button", { name: "Delete question" }));
     expect(
       canvas().queryByRole("button", { name: "Select Text Field: Label a" }),
@@ -392,7 +388,7 @@ describe("FormBuilder deleting a source", () => {
   it("deletes an unread question at once", () => {
     renderFormBuilder(schema);
     selectElement("Label e");
-    deleteFromAdvanced("Delete question");
+    fromSelectionMenu("Delete question");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(
       canvas().queryByRole("button", { name: "Select Text Field: Label e" }),
@@ -402,7 +398,8 @@ describe("FormBuilder deleting a source", () => {
   it("lists the sub-fields reading a deleted sub-field", () => {
     renderFormBuilder(listSchema);
     selectElement("Text Field: Name");
-    deleteFromAdvanced("Delete question");
+    openSection("Advanced");
+    fireEvent.click(settings().getByRole("button", { name: "Delete question" }));
     expect(
       dialog().getByText(/List Field: Kids › Number Field: Age/),
     ).toBeTruthy();
@@ -416,7 +413,7 @@ describe("FormBuilder deleting a source", () => {
       pages: [{ id: "p0", title: "Zero", fields: [] }, ...schema.pages],
     });
     fireEvent.click(outline().getByRole("button", { name: "One" }));
-    deleteFromAdvanced("Delete page");
+    fromSelectionMenu("Delete page");
     expect(dialog().getByText(/Page: Two/)).toBeTruthy();
     expect(dialog().queryByText(/Label b/)).toBeNull();
     fireEvent.click(dialog().getByRole("button", { name: "Delete page" }));

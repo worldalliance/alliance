@@ -1,14 +1,5 @@
-import { cn } from "@alliance/shared/styles/util";
-import {
-  createContext,
-  useContext,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
-import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "../../ui/Tabs";
 
 export enum SidebarSection {
   Content = "content",
@@ -32,7 +23,6 @@ const SECTION_LABELS: Record<SidebarSection, string> = {
 type SidebarSectionsValue = {
   sections: readonly SidebarSection[];
   active: SidebarSection;
-  idPrefix: string;
   /** Builder layout controls closing the Content section, after the editor's own settings. */
   layout: ReactNode;
   /** Builder actions closing the Advanced section, after the editor's own settings. */
@@ -54,11 +44,6 @@ const SidebarSectionsContext = createContext<SidebarSectionsValue | null>(null);
  */
 export const useSidebarSections = () => useContext(SidebarSectionsContext);
 
-const tabId = (prefix: string, section: SidebarSection) =>
-  `${prefix}-${section}-tab`;
-const panelId = (prefix: string, section: SidebarSection) =>
-  `${prefix}-${section}-panel`;
-
 export function SidebarSections({
   sections,
   active,
@@ -76,59 +61,27 @@ export function SidebarSections({
   dependencies?: ReactNode;
   children: ReactNode;
 }) {
-  const idPrefix = useId();
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  const handleKeyDown = (event: KeyboardEvent) => {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-    if (!step) return;
-    event.preventDefault();
-    const next =
-      sections[
-        (sections.indexOf(active) + step + sections.length) % sections.length
-      ];
-    if (!next) return;
-    onSelect(next);
-    focusInPlace(
-      tabsRef.current?.querySelector<HTMLElement>(
-        `#${CSS.escape(tabId(idPrefix, next))}`,
-      ),
-    );
-  };
-
   return (
     <SidebarSectionsContext.Provider
-      value={{ sections, active, idPrefix, layout, actions, dependencies }}
+      value={{ sections, active, layout, actions, dependencies }}
     >
-      <div
-        ref={tabsRef}
-        role="tablist"
-        aria-label="Settings sections"
-        className="flex border-b border-gray-200 px-4"
-        onKeyDown={handleKeyDown}
+      <Tabs
+        value={active}
+        onValueChange={(section: SidebarSection) => onSelect(section)}
       >
-        {sections.map((section) => (
-          <button
-            key={section}
-            type="button"
-            role="tab"
-            id={tabId(idPrefix, section)}
-            aria-selected={section === active}
-            aria-controls={panelId(idPrefix, section)}
-            tabIndex={section === active ? 0 : -1}
-            onClick={() => onSelect(section)}
-            className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-              section === active
-                ? "border-blue-600 text-blue-700"
-                : "border-transparent text-gray-500 hover:text-gray-700",
-            )}
-          >
-            {SECTION_LABELS[section]}
-          </button>
-        ))}
-      </div>
-      {children}
+        <TabsList
+          aria-label="Settings sections"
+          activateOnFocus
+          className="sticky top-12 z-10 bg-canvas px-card"
+        >
+          {sections.map((section) => (
+            <TabsTab key={section} value={section}>
+              {SECTION_LABELS[section]}
+            </TabsTab>
+          ))}
+        </TabsList>
+        {children}
+      </Tabs>
     </SidebarSectionsContext.Provider>
   );
 }
@@ -149,19 +102,17 @@ export function SectionPanels(
   if (!context) {
     throw new Error("SectionPanels renders inside SidebarSections");
   }
-  const { sections, active, idPrefix, layout, actions, dependencies } = context;
+  const { sections, active, layout, actions, dependencies } = context;
   if (!visited.has(active)) setVisited(new Set([...visited, active]));
   const dependenciesSection = sections.includes(SidebarSection.Conditions)
     ? SidebarSection.Conditions
     : SidebarSection.Content;
   return sections.map((section) => (
-    <div
+    <TabsPanel
       key={section}
-      role="tabpanel"
-      id={panelId(idPrefix, section)}
-      aria-labelledby={tabId(idPrefix, section)}
-      hidden={section !== active}
-      className="space-y-4 p-4"
+      value={section}
+      keepMounted
+      className="flex flex-col gap-5 px-card py-4"
     >
       {visited.has(section) && (
         <>
@@ -173,6 +124,6 @@ export function SectionPanels(
           {section === dependenciesSection && dependencies}
         </>
       )}
-    </div>
+    </TabsPanel>
   ));
 }

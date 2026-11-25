@@ -252,6 +252,7 @@ export function useCanvasEdits({
       resolvedTarget.index === index
     ) {
       setSection(SidebarSection.Content);
+      setFocusPending(true);
     }
     replaceFields(currentPage.fields.filter((_, i) => i !== index));
   };

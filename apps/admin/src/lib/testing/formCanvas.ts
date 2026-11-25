@@ -26,6 +26,46 @@ export const previewing = () =>
     .getByRole("button", { name: "Preview" })
     .getAttribute("aria-pressed") === "true";
 
+/** The selection's issues, opened from the settings header. */
+export const issuesHere = () => {
+  fireEvent.click(settings().getByRole("button", { name: /issues? here$/ }));
+  return screen.getByRole("list", { name: "Issues here" });
+};
+
+const openSelectionMenu = () =>
+  fireEvent.click(settings().getByRole("button", { name: /^More: / }));
+
+/** Runs `item` from the selection's More menu in the settings header. */
+export const fromSelectionMenu = (item: string) => {
+  openSelectionMenu();
+  fireEvent.click(screen.getByRole("menuitem", { name: item }));
+};
+
+/** The labels the selection's More menu offers now, a disabled one with its reason after it. */
+export const selectionMenuItems = () => {
+  openSelectionMenu();
+  const items = screen
+    .getAllByRole("menuitem")
+    .map((item) => item.textContent ?? "");
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  return items;
+};
+
+/** Whether the selection's More menu offers `item`, and whether it can be used now. */
+export const selectionMenuState = (item: string) => {
+  openSelectionMenu();
+  const found = screen
+    .getAllByRole("menuitem")
+    .find((entry) => entry.textContent?.startsWith(item));
+  const state = !found
+    ? "absent"
+    : found.getAttribute("aria-disabled") === "true"
+      ? "disabled"
+      : "enabled";
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  return state;
+};
+
 /** What the toolbar says about saving: "Unsaved changes", "Saved", "" and the like. */
 export const saveState = () => screen.getByLabelText("Save state").textContent;
 

@@ -1,15 +1,17 @@
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
+import { InspectorHeader } from "../../pages/forms/builder/inspector/InspectorHeader";
 import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
+import Button, { ButtonVariant } from "../../ui/Button";
 import { SidebarSection, SidebarSections } from "./sidebarSections";
 
 const EDITING_CONTROL =
   'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
 
 /**
- * The selected item's settings under a heading. While `focusPending`, focuses
- * the first editing control of the active section, as after inserting an
- * element, whether the sidebar was already showing or appeared with it.
+ * The selected item's settings under its header. While `focusPending`,
+ * focuses the first editing control of the active section, as after inserting
+ * an element, whether the inspector already showed it or not.
  */
 export function SettingsSidebar({
   parent,
@@ -53,27 +55,20 @@ export function SettingsSidebar({
   return (
     <div ref={ref}>
       {parent && (
-        <button
-          type="button"
-          onClick={parent.onSelect}
-          aria-label={`Back to ${parent.label}`}
-          title={`Back to ${parent.label}`}
-          className="mx-2 mt-2 flex max-w-full items-center gap-1 rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <ChevronLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">{parent.label}</span>
-        </button>
+        <div className="px-card pt-2">
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
+            aria-label={`Back to ${parent.label}`}
+            onClick={parent.onSelect}
+            className="max-w-full"
+          >
+            <ChevronLeft aria-hidden="true" className="size-4 shrink-0" />
+            <span className="truncate">Back to {parent.label}</span>
+          </Button>
+        </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-gray-200 px-4 py-3">
-        <h2 className="max-w-full truncate text-sm font-semibold text-gray-900">
-          {heading}
-        </h2>
-        {headingActions && (
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            {headingActions}
-          </div>
-        )}
-      </div>
+      <InspectorHeader title={heading} extra={headingActions} />
       <SidebarSections
         sections={sections}
         active={sections.includes(section) ? section : sections[0]!}

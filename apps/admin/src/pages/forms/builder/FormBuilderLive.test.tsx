@@ -2,7 +2,10 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "bun:test";
-import { openSection, selectElement } from "../../../lib/testing/formCanvas";
+import {
+  fromSelectionMenu,
+  selectElement,
+} from "../../../lib/testing/formCanvas";
 import { makeParsedAction } from "../../../lib/testing/parsedAction";
 import { renderSavedFormBuilder } from "../../../lib/testing/renderFormBuilder";
 
@@ -75,8 +78,7 @@ beforeEach(() => {
 
 const removeTown = () => {
   selectElement("Town");
-  openSection("Advanced");
-  fireEvent.click(screen.getByRole("button", { name: "Delete question" }));
+  fromSelectionMenu("Delete question");
 };
 const save = () =>
   act(async () => {

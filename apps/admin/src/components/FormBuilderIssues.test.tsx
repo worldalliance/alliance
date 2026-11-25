@@ -12,7 +12,9 @@ import {
 import {
   canvas,
   fromMainMenu,
+  fromSelectionMenu,
   heading,
+  issuesHere,
   openSection,
   outline,
   previewing,
@@ -209,7 +211,7 @@ describe("FormBuilder issues", () => {
     );
 
     expect(
-      screen.getByRole("list", { name: "Issues here" }).textContent,
+      issuesHere().textContent,
     ).toContain("uses c2, which no rule defines");
     fireEvent.change(settings().getByRole("textbox", { name: "Expression" }), {
       target: { value: "c1" },
@@ -259,7 +261,7 @@ describe("FormBuilder issues", () => {
       "Conditions",
     );
     expect(
-      screen.getByRole("list", { name: "Issues here" }).textContent,
+      issuesHere().textContent,
     ).toContain('reads question "gone"');
     expect(canvas().getByRole("img", { name: "1 issue" })).toBeTruthy();
   });
@@ -568,9 +570,7 @@ describe("FormBuilder issues", () => {
     fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
     selectElement("Label a");
     openSection("Advanced");
-    const remove = screen.getByRole("button", { name: "Delete question" });
-    remove.focus();
-    fireEvent.click(remove);
+    fromSelectionMenu("Delete question");
     expect(heading()).toBe("Page settings");
     expect(
       screen
