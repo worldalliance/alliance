@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { ToastProvider } from "../../ui/ToastProvider";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import HomePage from "./HomePage";
 
 let needsReplyThreads: unknown[] = [];
@@ -182,6 +183,7 @@ describe("HomePage reminder click rates", () => {
     renderPage();
 
     await screen.findByText("Couldn't load reminder click rates");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(
       screen.queryByText(/No sent reminder groups with email or text link/),
     ).toBeNull();
@@ -197,6 +199,7 @@ describe("HomePage daily stats", () => {
     renderPage();
 
     await screen.findByText("Couldn't load daily stats");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(screen.queryByText("No daily stats for this range")).toBeNull();
   });
 
@@ -212,7 +215,7 @@ describe("HomePage daily stats", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
 
-    await screen.findByText("Start date must be before the end date.");
+    await screen.findByText("Choose a start date on or before the end date");
     expect(
       dailyStatsRequests.some(
         (url) => url.searchParams.get("date") === "2026-02-10T00:00:00.000Z",
@@ -226,13 +229,11 @@ describe("HomePage daily stats", () => {
 
     fireEvent.change(dateInput("Start date"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
-    await screen.findByText("Please provide valid start and end dates.");
+    await screen.findByText("Enter a start date and an end date");
 
     fireEvent.click(screen.getByRole("button", { name: "Last 30 days" }));
 
-    expect(
-      screen.queryByText("Please provide valid start and end dates."),
-    ).toBeNull();
+    expect(screen.queryByText("Enter a start date and an end date")).toBeNull();
   });
 
   it("requests a valid range once applied", async () => {
@@ -272,6 +273,7 @@ describe("HomePage invite funnel", () => {
     renderPage();
 
     await screen.findByText("Couldn't load the invite funnel");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(within(funnelPanel()).queryByRole("status")).toBeNull();
   });
 });
@@ -289,6 +291,7 @@ describe("HomePage members over time", () => {
     renderPage();
 
     await screen.findByText("Couldn't load members over time");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(
       screen.queryByText("No contract status data in this date range"),
     ).toBeNull();
@@ -379,7 +382,7 @@ describe("HomePage platform tenure cohort", () => {
 
     viewCohort("-1");
 
-    await screen.findByText("Weeks on platform must be a whole number.");
+    await screen.findByText("Enter a whole number of weeks, 0 or more");
     expect(platformTenureCohortRequests).toEqual([]);
   });
 
@@ -388,6 +391,7 @@ describe("HomePage platform tenure cohort", () => {
     renderPage();
     viewCohort("4");
     await screen.findByText("Couldn't load this cohort");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
 
     platformTenureCohortStatus = 200;
     viewCohort("4");

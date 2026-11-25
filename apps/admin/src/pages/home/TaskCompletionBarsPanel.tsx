@@ -11,8 +11,13 @@ import { ChartLegend, LegendItem } from "../../ui/charts/ChartLegend";
 import { ChartTip, TipRow } from "../../ui/charts/ChartTip";
 import { Skeleton } from "../../ui/Skeleton";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import { Panel, PanelStack } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 
 type TaskStats = ActionStatsWithOnboardingDto;
 
@@ -254,11 +259,24 @@ export function TaskCompletionBarsPanel({
     >
       <PanelStack>
         {recalculate.isError && (
-          <Banner inline tone={BannerTone.Danger}>
-            {"Couldn't recalculate task stats. "}
-            {adminRefusalMessage(recalculate.error, LOAD_FAILED_FALLBACK)}
+          <Banner
+            inline
+            tone={BannerTone.Danger}
+            action={
+              <Button
+                variant={ButtonVariant.Ghost}
+                size="small"
+                onClick={() => recalculate.reset()}
+              >
+                Dismiss
+              </Button>
+            }
+          >
+            Couldn't recalculate task stats.{" "}
+            {adminRefusalMessage(recalculate.error, SAVE_FAILED_FALLBACK)}
           </Banner>
         )}
+        <RefreshFailedBanner inline things="task stats" query={stats} />
         <ContentState
           loading={stats.isPending}
           skeleton={<Skeleton className="h-64 w-full" />}
@@ -269,6 +287,7 @@ export function TaskCompletionBarsPanel({
           }
           errorTitle="Couldn't load task stats"
           onRetry={() => void stats.refetch()}
+          retrying={stats.isFetching}
           empty={(stats.data ?? []).length === 0}
           emptyTitle="No task stats yet"
           emptyDescription="Select Recalculate to generate them."

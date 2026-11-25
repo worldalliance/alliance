@@ -2,6 +2,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, render, screen } from "@testing-library/react";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { TimeToChurnPanel } from "./TimeToChurnPanel";
 
 let samples: { daysToChurn: number }[] = [];
@@ -44,10 +45,11 @@ describe("TimeToChurnPanel", () => {
     render(<TimeToChurnPanel />, queryWrapper());
 
     await screen.findByText("Couldn't load time to churn");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(screen.queryByText("No churned members yet")).toBeNull();
   });
 
-  it("hides the shown histogram when a refetch fails", async () => {
+  it("keeps the shown histogram when a refetch fails, and says it may be stale", async () => {
     samples = [{ daysToChurn: 2 }];
     const query = queryWrapper();
     render(<TimeToChurnPanel />, query);
@@ -60,8 +62,11 @@ describe("TimeToChurnPanel", () => {
       }),
     );
 
-    await screen.findByText("Couldn't load time to churn");
-    expect(screen.queryByText("0 to 1 weeks: 1 churned member")).toBeNull();
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Couldn't refresh time to churn.",
+    );
+    expect(screen.getByText("0 to 1 weeks: 1 churned member")).toBeTruthy();
+    expect(screen.queryByText("Couldn't load time to churn")).toBeNull();
   });
 
   it("says why a refused load failed", async () => {

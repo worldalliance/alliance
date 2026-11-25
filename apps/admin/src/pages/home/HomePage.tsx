@@ -70,8 +70,7 @@ export default function HomePage() {
                 (contractStatus.isPlaceholderData && history.length === 0)
               }
               updating={contractStatus.isPlaceholderData}
-              error={contractStatus.error}
-              onRetry={() => void contractStatus.refetch()}
+              query={contractStatus}
               range={membersRange}
               onRangeChange={setMembersRange}
             />

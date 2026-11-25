@@ -2,12 +2,11 @@ import type { MemberCompletionRetentionCohortDto } from "@alliance/shared/client
 import { max, range } from "d3";
 import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { formatDate } from "../../lib/formatDate";
-import { formatCount } from "../../lib/formatNumber";
+import { countOf, formatCount } from "../../lib/formatNumber";
 import { heatCellClass } from "../../ui/charts/chartColor";
 import { ChartTip, TipRow } from "../../ui/charts/ChartTip";
 import { cn } from "../../ui/cn";
 import { PanelNote } from "../../ui/templates/Overview";
-import { countLabel } from "./homeRules";
 
 type Cohort = MemberCompletionRetentionCohortDto;
 type Point = Cohort["points"][number];
@@ -136,7 +135,7 @@ export function CohortCompletionGrid({
                     Week of {cohortDate(cohort.cohortStart)}
                   </span>
                   <span className="block text-fg-muted">
-                    {countLabel(cohort.cohortSize, "member")}
+                    {countOf(cohort.cohortSize, "member")}
                   </span>
                 </th>
                 {weeks.map((week, col) => {

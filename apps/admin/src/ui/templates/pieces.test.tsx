@@ -320,7 +320,7 @@ describe("Overview controls", () => {
       <DateRangeFields
         range={{ start: "2026-01-01", end: "2026-02-01" }}
         onChange={onChange}
-        error="Start date must be before the end date."
+        error="Choose a start date on or before the end date"
       />,
     );
     fireEvent.change(screen.getByLabelText("To"), {

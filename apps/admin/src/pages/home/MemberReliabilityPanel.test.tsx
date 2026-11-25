@@ -1,6 +1,7 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { MemberReliabilityPanel } from "./MemberReliabilityPanel";
 
 let reliabilityStatus = 200;
@@ -65,7 +66,7 @@ describe("MemberReliabilityPanel", () => {
     if (!form) throw new Error("no form");
     fireEvent.submit(form);
 
-    await screen.findByText("Weeks must be a whole number of at least 1.");
+    await screen.findByText("Enter a whole number of weeks, 1 or more");
     expect(reliabilityRequests).toEqual([]);
   });
 
@@ -76,6 +77,7 @@ describe("MemberReliabilityPanel", () => {
     submit();
 
     await screen.findByText("Couldn't load member reliability");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   });
 
   it("loads the same week count again when reapplied after a failure", async () => {

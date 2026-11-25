@@ -25,7 +25,11 @@ import {
   PanelControls,
   PanelStack,
 } from "../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../ui/templates/States";
 
 const ALL = "all";
 const DURATION_SLACK_DAYS = 3;
@@ -214,9 +218,14 @@ export default function ActionCompletionCurveChart({
             onChange={setMaxDays}
           />
         </PanelControls>
+        <RefreshFailedBanner
+          inline
+          things="task completion curves"
+          query={curvesQuery}
+        />
         <ContentState
           loading={curvesQuery.isPending}
-          skeleton={<Skeleton className="h-96 w-full" />}
+          skeleton={<Skeleton className="h-98 w-full" />}
           error={
             curvesQuery.isLoadingError
               ? adminRefusalMessage(curvesQuery.error, LOAD_FAILED_FALLBACK)
@@ -224,6 +233,7 @@ export default function ActionCompletionCurveChart({
           }
           errorTitle="Couldn't load task completion curves"
           onRetry={() => void curvesQuery.refetch()}
+          retrying={curvesQuery.isFetching}
           empty={chart.multiLineData.length === 0}
           filtered={filtered}
           onClearFilters={() => {

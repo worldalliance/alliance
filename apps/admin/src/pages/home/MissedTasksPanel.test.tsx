@@ -2,6 +2,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { MissedTasksPanel } from "./MissedTasksPanel";
 
 let missedActionsStatus = 200;
@@ -67,6 +68,7 @@ describe("MissedTasksPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "View members" }));
 
     await screen.findByText("Couldn't load missed tasks");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   });
 
   it("says the load failed when a reload fails", async () => {

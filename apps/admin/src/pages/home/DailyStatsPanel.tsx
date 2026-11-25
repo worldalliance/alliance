@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
-import { formatCount } from "../../lib/formatNumber";
+import { countOf, formatCount } from "../../lib/formatNumber";
 import { useDailyStatsAdmin } from "../../lib/useDailyStatsAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import {
@@ -20,18 +20,20 @@ import {
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
-import { countLabel, invalidRangeMessage, lastDays } from "./homeRules";
+import { invalidRangeMessage, lastDays } from "./homeRules";
 
-// Tasks completed and members signed are each day's running total, not that day's count.
+// Each day's row is a snapshot taken that morning: the four totals count
+// everything up to then, the two member columns count members in that state then.
 const COLUMNS = [
   "Tasks completed (total)",
-  "Anonymous forms",
-  "Members signed (total)",
-  "Invites created",
-  "Invites accepted",
-  "Suspended",
+  "Anonymous form responses (total)",
+  "Active members",
+  "Invites created (total)",
+  "Invites accepted (total)",
+  "Suspended members",
 ] as const;
 const NUMBER = "text-right tabular-nums";
 
@@ -63,13 +65,13 @@ export function DailyStatsPanel({ className }: { className?: string }) {
   return (
     <Panel
       title="Daily stats"
-      description={daily.data ? countLabel(days.length, "day") : undefined}
+      description={daily.data ? countOf(days.length, "day") : undefined}
       flush
       className={className}
     >
       <form
         noValidate
-        className="border-b border-line p-card"
+        className="flex flex-col gap-4 border-b border-line p-card"
         onSubmit={(event) => {
           event.preventDefault();
           apply();
@@ -110,10 +112,15 @@ export function DailyStatsPanel({ className }: { className?: string }) {
             error={rangeError}
           />
         </PanelControls>
+        <RefreshFailedBanner inline things="daily stats" query={daily} />
       </form>
       <ContentState
         loading={daily.isPending}
-        skeleton={<TableSkeleton columns={COLUMNS.length + 1} rows={6} />}
+        skeleton={
+          <div className="h-96 overflow-hidden">
+            <TableSkeleton columns={COLUMNS.length + 1} />
+          </div>
+        }
         error={
           daily.isLoadingError
             ? adminRefusalMessage(daily.error, LOAD_FAILED_FALLBACK)
@@ -121,6 +128,7 @@ export function DailyStatsPanel({ className }: { className?: string }) {
         }
         errorTitle="Couldn't load daily stats"
         onRetry={() => void daily.refetch()}
+        retrying={daily.isFetching}
         empty={days.length === 0}
         emptyTitle="No daily stats for this range"
       >

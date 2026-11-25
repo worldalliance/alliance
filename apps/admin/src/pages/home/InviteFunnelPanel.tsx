@@ -13,7 +13,11 @@ import {
   PanelControls,
   PanelStack,
 } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 
 type Funnel = NonNullable<ReturnType<typeof useInviteFunnelAdmin>["data"]>;
 
@@ -136,6 +140,7 @@ export function InviteFunnelPanel({ className }: { className?: string }) {
         >
           <DateRangeFields range={range} onChange={setRange} />
         </PanelControls>
+        <RefreshFailedBanner inline things="the invite funnel" query={funnel} />
         <ContentState
           loading={funnel.isPending}
           skeleton={<Skeleton className="h-72 w-full" />}
@@ -146,6 +151,7 @@ export function InviteFunnelPanel({ className }: { className?: string }) {
           }
           errorTitle="Couldn't load the invite funnel"
           onRetry={() => void funnel.refetch()}
+          retrying={funnel.isFetching}
           empty={!funnel.data}
           emptyTitle="No invites in this date range"
         >

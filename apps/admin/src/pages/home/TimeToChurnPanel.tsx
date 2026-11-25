@@ -1,16 +1,19 @@
 import { bin, max, range, scaleLinear } from "d3";
 import { useMemo } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
-import { formatCount } from "../../lib/formatNumber";
+import { countOf, formatCount } from "../../lib/formatNumber";
 import { useTimeToChurnSamplesAdmin } from "../../lib/useTimeToChurnSamplesAdmin";
 import { YGrid } from "../../ui/charts/axes";
 import { axisTextClass, chartColor, SERIES } from "../../ui/charts/chartColor";
 import { ChartFrame, useChartCursor } from "../../ui/charts/ChartFrame";
 import { ChartTip, TipRow } from "../../ui/charts/ChartTip";
 import { Skeleton } from "../../ui/Skeleton";
-import { Panel } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
-import { countLabel } from "./homeRules";
+import { Panel, PanelStack } from "../../ui/templates/Overview";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 
 const HEIGHT = 320;
 const MARGIN = { top: 28, right: 24, bottom: 56, left: 56 };
@@ -77,7 +80,7 @@ function Histogram({ weeks }: { weeks: number[] }) {
             height={HEIGHT}
             viewBox={`0 0 ${width} ${HEIGHT}`}
             role="img"
-            aria-label="Churned members by weeks since signing. Arrow keys read each week."
+            aria-label="Churned members by weeks from signing to their last completed task. Arrow keys read each week."
             {...cursor.markProps}
             onMouseLeave={() => cursor.setIndex(null)}
           >
@@ -109,7 +112,7 @@ function Histogram({ weeks }: { weeks: number[] }) {
                     strokeWidth={2}
                     rx={3}
                   >
-                    <title>{`${from} to ${to} weeks: ${countLabel(weekBin.length, "churned member")}`}</title>
+                    <title>{`${from} to ${to} weeks: ${countOf(weekBin.length, "churned member")}`}</title>
                   </rect>
                   {index % labelEvery === 0 && (
                     <text
@@ -142,8 +145,7 @@ function Histogram({ weeks }: { weeks: number[] }) {
 /** Churned members by whole weeks from signing to their last completed task. */
 export function TimeToChurnPanel({ className }: { className?: string }) {
   const samples = useTimeToChurnSamplesAdmin();
-  // A failed refetch hides the histogram: its numbers may no longer hold.
-  const data = samples.error ? undefined : samples.data;
+  const { data } = samples;
   const weeks = useMemo(
     () =>
       (data ?? [])
@@ -157,26 +159,30 @@ export function TimeToChurnPanel({ className }: { className?: string }) {
       title="Time to churn"
       description={
         data && data.length > 0
-          ? countLabel(data.length, "churned member")
+          ? countOf(data.length, "churned member")
           : undefined
       }
       className={className}
     >
-      <ContentState
-        loading={samples.isPending}
-        skeleton={<Skeleton className="h-80 w-full" />}
-        error={
-          samples.error
-            ? adminRefusalMessage(samples.error, LOAD_FAILED_FALLBACK)
-            : null
-        }
-        errorTitle="Couldn't load time to churn"
-        onRetry={() => void samples.refetch()}
-        empty={weeks.length === 0}
-        emptyTitle="No churned members yet"
-      >
-        <Histogram weeks={weeks} />
-      </ContentState>
+      <PanelStack>
+        <RefreshFailedBanner inline things="time to churn" query={samples} />
+        <ContentState
+          loading={samples.isPending}
+          skeleton={<Skeleton className="h-80 w-full" />}
+          error={
+            samples.isLoadingError
+              ? adminRefusalMessage(samples.error, LOAD_FAILED_FALLBACK)
+              : null
+          }
+          errorTitle="Couldn't load time to churn"
+          onRetry={() => void samples.refetch()}
+          retrying={samples.isFetching}
+          empty={weeks.length === 0}
+          emptyTitle="No churned members yet"
+        >
+          <Histogram weeks={weeks} />
+        </ContentState>
+      </PanelStack>
     </Panel>
   );
 }

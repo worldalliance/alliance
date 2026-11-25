@@ -3,6 +3,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useActionStats } from "../../lib/useActionStats";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { TaskCompletionBarsPanel } from "./TaskCompletionBarsPanel";
 import { actionStat } from "./actionStatFixture";
 
@@ -97,6 +98,7 @@ describe("TaskCompletionBarsPanel", () => {
     renderChart([], { loadFailed: true });
 
     await screen.findByText("Couldn't load task stats");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
     expect(screen.queryByText(/Select Recalculate to generate/)).toBeNull();
   });
 

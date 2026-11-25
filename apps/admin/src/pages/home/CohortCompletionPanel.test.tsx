@@ -2,6 +2,7 @@ import type { MemberCompletionRetentionCohortDto } from "@alliance/shared/client
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { cohortDate } from "./CohortCompletionGrid";
 import { CohortCompletionPanel } from "./CohortCompletionPanel";
 
@@ -54,5 +55,6 @@ describe("CohortCompletionPanel", () => {
     render(<CohortCompletionPanel />, queryWrapper());
 
     await screen.findByText("Couldn't load cohort completion");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   });
 });

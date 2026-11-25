@@ -8,7 +8,11 @@ import {
   PanelControls,
   PanelStack,
 } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 import { lastMonths } from "./homeRules";
 import { ReminderClickRateBarChart } from "./ReminderClickRateBarChart";
 import {
@@ -45,6 +49,11 @@ export function ReminderClickRatePanel({ className }: { className?: string }) {
         <PanelControls>
           <DateRangeFields range={range} onChange={setRange} />
         </PanelControls>
+        <RefreshFailedBanner
+          inline
+          things="reminder click rates"
+          query={clickRates}
+        />
         <ContentState
           loading={clickRates.isPending}
           skeleton={<Skeleton className="h-80 w-full" />}
@@ -55,6 +64,7 @@ export function ReminderClickRatePanel({ className }: { className?: string }) {
           }
           errorTitle="Couldn't load reminder click rates"
           onRetry={() => void clickRates.refetch()}
+          retrying={clickRates.isFetching}
           empty={inRange.length === 0}
           emptyTitle="No sent reminder groups with email or text link clicks in this date range"
         >

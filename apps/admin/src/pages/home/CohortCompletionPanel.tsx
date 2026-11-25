@@ -14,7 +14,11 @@ import {
   PanelControls,
   PanelStack,
 } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 import { CohortCompletionGrid, cohortDate } from "./CohortCompletionGrid";
 
 const HEIGHT = 360;
@@ -92,6 +96,11 @@ export function CohortCompletionPanel({ className }: { className?: string }) {
             }
           />
         </PanelControls>
+        <RefreshFailedBanner
+          inline
+          things="cohort completion"
+          query={retention}
+        />
         <ContentState
           loading={retention.isPending}
           skeleton={<Skeleton className="h-80 w-full" />}
@@ -102,6 +111,7 @@ export function CohortCompletionPanel({ className }: { className?: string }) {
           }
           errorTitle="Couldn't load cohort completion"
           onRetry={() => void retention.refetch()}
+          retrying={retention.isFetching}
           empty={cohorts.length === 0}
           emptyTitle="No cohorts have completions yet"
         >

@@ -54,7 +54,7 @@ export function MemberReliabilityPanel({ className }: { className?: string }) {
   const view = () => {
     const weeks = Number(weeksInput);
     if (!Number.isInteger(weeks) || weeks < 1) {
-      setWeeksError("Weeks must be a whole number of at least 1.");
+      setWeeksError("Enter a whole number of weeks, 1 or more");
       return;
     }
     setWeeksError(null);
@@ -85,7 +85,7 @@ export function MemberReliabilityPanel({ className }: { className?: string }) {
             }
           >
             <NumberField
-              label="Completed task weeks"
+              label="Latest task weeks"
               min={1}
               value={weeksInput}
               onChange={setWeeksInput}
@@ -95,8 +95,10 @@ export function MemberReliabilityPanel({ className }: { className?: string }) {
         </form>
         {!asked ? (
           <PanelNote>
-            Completed tasks only. New members begin with the first member-action
-            week after signing. Select View reliability to load the rates.
+            Counts required tasks whose member deadline has passed, over the
+            latest weeks that had one. A member's first week is the first such
+            week to start after the week they signed. Select View reliability to
+            load the rates.
           </PanelNote>
         ) : (
           <ContentState

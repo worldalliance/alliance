@@ -2,6 +2,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen, within } from "@testing-library/react";
 import { useActionStats } from "../../lib/useActionStats";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { actionStat } from "./actionStatFixture";
 import { KeyStats } from "./KeyStats";
 
@@ -48,6 +49,7 @@ describe("KeyStats", () => {
     render(<Stats />, queryWrapper());
 
     await screen.findByText("Couldn't load the organization's stats");
+    expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
   });
 
   it("says a tile's number couldn't load instead of showing none", async () => {
@@ -63,7 +65,7 @@ describe("KeyStats", () => {
       await within(tile("All-time churn")).findByText("Couldn't load"),
     ).toBeTruthy();
     expect(
-      within(tile("Last month churn")).getByText("Couldn't load"),
+      within(tile("Churn in the last 30 days")).getByText("Couldn't load"),
     ).toBeTruthy();
   });
 });

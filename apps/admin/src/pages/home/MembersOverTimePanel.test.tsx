@@ -15,8 +15,13 @@ const renderChart = () =>
       history={[point("2026-01-01", 10, 0), point("2026-02-01", 12, 3)]}
       loading={false}
       updating={false}
-      error={null}
-      onRetry={() => {}}
+      query={{
+        isLoadingError: false,
+        isRefetchError: false,
+        isFetching: false,
+        error: null,
+        refetch: () => {},
+      }}
       range={{ start: "2026-01-01", end: "2026-02-01" }}
       onRangeChange={() => {}}
     />,

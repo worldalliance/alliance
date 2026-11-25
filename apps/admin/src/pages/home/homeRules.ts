@@ -1,6 +1,4 @@
-import { forCount } from "@alliance/common/plural";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
-import { formatCount } from "../../lib/formatNumber";
 import { CountId } from "../../places";
 import type { QueueCount } from "../../shell/useQueueCounts";
 import type { DateRange } from "../../ui/templates/Overview";
@@ -29,10 +27,6 @@ export function waitingQueues(
   return queues;
 }
 
-/** "1,204 members": the count with separators and its noun. */
-export const countLabel = (count: number, noun: string) =>
-  `${formatCount(count)} ${forCount(count, noun)}`;
-
 export const lastDays = (days: number, now = new Date()): DateRange => {
   const start = new Date(now);
   start.setDate(start.getDate() - (days - 1));
@@ -50,8 +44,8 @@ export const invalidRangeMessage = (range: DateRange): string | null => {
   const start = new Date(range.start);
   const end = new Date(range.end);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return "Please provide valid start and end dates.";
+    return "Enter a start date and an end date";
   }
-  if (start > end) return "Start date must be before the end date.";
+  if (start > end) return "Choose a start date on or before the end date";
   return null;
 };

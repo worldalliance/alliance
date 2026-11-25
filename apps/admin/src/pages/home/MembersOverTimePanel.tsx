@@ -22,7 +22,11 @@ import {
   PanelControls,
   PanelStack,
 } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 import type { ParsedContractStatusPoint } from "./contractStatusHistory";
 
 const HEIGHT = 350;
@@ -176,8 +180,7 @@ export function MembersOverTimePanel({
   history,
   loading,
   updating,
-  error,
-  onRetry,
+  query,
   range,
   onRangeChange,
   className,
@@ -187,8 +190,14 @@ export function MembersOverTimePanel({
   loading: boolean;
   /** A range change is loading over the chart on screen. */
   updating: boolean;
-  error: Error | null;
-  onRetry: () => void;
+  /** The history's query, for its failures and its retry. */
+  query: {
+    isLoadingError: boolean;
+    isRefetchError: boolean;
+    isFetching: boolean;
+    error: unknown;
+    refetch: () => unknown;
+  };
   range: DateRange;
   onRangeChange: (range: DateRange) => void;
   className?: string;
@@ -199,14 +208,18 @@ export function MembersOverTimePanel({
         <PanelControls>
           <DateRangeFields range={range} onChange={onRangeChange} />
         </PanelControls>
+        <RefreshFailedBanner inline things="members over time" query={query} />
         <ContentState
           loading={loading}
-          skeleton={<Skeleton className="h-96 w-full" />}
+          skeleton={<Skeleton className="h-95.5 w-full" />}
           error={
-            error ? adminRefusalMessage(error, LOAD_FAILED_FALLBACK) : null
+            query.isLoadingError
+              ? adminRefusalMessage(query.error, LOAD_FAILED_FALLBACK)
+              : null
           }
           errorTitle="Couldn't load members over time"
-          onRetry={onRetry}
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
           empty={history.length === 0}
           emptyTitle="No contract status data in this date range"
         >

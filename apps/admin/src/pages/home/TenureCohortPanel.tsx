@@ -83,7 +83,7 @@ export function TenureCohortPanel({ className }: { className?: string }) {
   const view = () => {
     const weeks = Number(weeksInput);
     if (!Number.isInteger(weeks) || weeks < 0) {
-      setWeeksError("Weeks on platform must be a whole number.");
+      setWeeksError("Enter a whole number of weeks, 0 or more");
       return;
     }
     setWeeksError(null);
@@ -118,7 +118,7 @@ export function TenureCohortPanel({ className }: { className?: string }) {
           >
             <NumberField
               label="Weeks after joining"
-              help="Joined exactly this many weeks ago."
+              help="Members who first signed this many whole weeks ago."
               min={0}
               value={weeksInput}
               onChange={setWeeksInput}

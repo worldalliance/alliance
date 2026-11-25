@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useId } from "react";
 import { cn } from "../cn";
+import { DateField } from "../DateField";
 import { Input } from "../Input";
 import { Field } from "./Form";
 
@@ -195,14 +196,11 @@ export function DateRangeFields({
   ) => (
     <Field label={label} error={fieldError} className="w-40">
       {(control) => (
-        <Input
+        <DateField
           {...control}
-          type="date"
           className="h-control-sm"
           value={range[key]}
-          onChange={(event) =>
-            onChange({ ...range, [key]: event.target.value })
-          }
+          onChange={(value) => onChange({ ...range, [key]: value })}
         />
       )}
     </Field>

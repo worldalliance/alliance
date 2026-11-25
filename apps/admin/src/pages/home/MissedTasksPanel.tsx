@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { href, Link } from "react-router";
+import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatCount } from "../../lib/formatNumber";
+import { memberHref } from "../../lib/hrefs";
 import { useMissedActionsAdmin } from "../../lib/useMissedActionsAdmin";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { cn } from "../../ui/cn";
@@ -34,9 +35,7 @@ function MemberGroup({
           {members.map((member) => (
             <li key={member.userId} className="flex justify-between gap-3">
               <Link
-                to={href("/members/:userId", {
-                  userId: member.userId.toString(),
-                })}
+                to={memberHref(member.userId)}
                 className={cn(linkClass, "min-w-0 truncate")}
               >
                 {member.name}
@@ -78,8 +77,8 @@ export function MissedTasksPanel({ className }: { className?: string }) {
     >
       {!requested ? (
         <PanelNote>
-          Active members whose most recent completed non-optional task was
-          missed. Select View members to load them.
+          Active members who missed their most recent required task whose
+          deadline has passed. Select View members to load them.
         </PanelNote>
       ) : (
         <ContentState

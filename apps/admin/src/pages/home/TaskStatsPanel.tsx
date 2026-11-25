@@ -1,6 +1,7 @@
-import { href, Link } from "react-router";
+import { Link } from "react-router";
 import { formatDate } from "../../lib/formatDate";
-import { formatCount } from "../../lib/formatNumber";
+import { countOf, formatCount } from "../../lib/formatNumber";
+import { taskHref } from "../../lib/hrefs";
 import type { useActionStats } from "../../lib/useActionStats";
 import { nameLinkClass } from "../../ui/styles";
 import {
@@ -12,7 +13,6 @@ import {
   TableRow,
 } from "../../ui/Table";
 import { Panel } from "../../ui/templates/Overview";
-import { countLabel } from "./homeRules";
 
 const NUMBER = "text-right tabular-nums";
 
@@ -32,7 +32,7 @@ export function TaskStatsPanel({
   return (
     <Panel
       title="Task stats"
-      description={countLabel(tasks.length, "task")}
+      description={countOf(tasks.length, "task")}
       flush
       className={className}
     >
@@ -50,14 +50,8 @@ export function TaskStatsPanel({
           <TableBody>
             {tasks.map((task) => (
               <TableRow key={task.actionId}>
-                <TableCell className="max-w-64 truncate">
-                  <Link
-                    to={href("/tasks/:actionId", {
-                      actionId: task.actionId.toString(),
-                    })}
-                    className={nameLinkClass}
-                    title={task.actionName}
-                  >
+                <TableCell truncate title={task.actionName}>
+                  <Link to={taskHref(task.actionId)} className={nameLinkClass}>
                     {task.actionName}
                   </Link>
                 </TableCell>

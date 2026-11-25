@@ -16,7 +16,11 @@ import {
   PanelNote,
   PanelStack,
 } from "../../ui/templates/Overview";
-import { ContentState, LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "../../ui/templates/States";
 import {
   cumulativeCompletionPoints,
   paddedRateDomain,
@@ -120,9 +124,10 @@ export function CompletionRatePanel({
         >
           <DateRangeFields range={range} onChange={setRange} />
         </PanelControls>
+        <RefreshFailedBanner inline things="completion rates" query={stats} />
         <ContentState
           loading={stats.isPending}
-          skeleton={<Skeleton className="h-80 w-full" />}
+          skeleton={<Skeleton className="h-82.25 w-full" />}
           error={
             stats.isLoadingError
               ? adminRefusalMessage(stats.error, LOAD_FAILED_FALLBACK)
@@ -130,8 +135,7 @@ export function CompletionRatePanel({
           }
           errorTitle="Couldn't load completion rates"
           onRetry={() => void stats.refetch()}
-          empty={false}
-          emptyTitle=""
+          retrying={stats.isFetching}
         >
           <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-2">
             <Chart
