@@ -50,12 +50,6 @@ export function scheduledJobs(
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
-const utcDateTime = (date: string) =>
-  `${formatDate(date, { weekday: true, timeZone: "UTC" })}, ${new Intl.DateTimeFormat(
-    "en-US",
-    { hour: "numeric", minute: "2-digit", timeZone: "UTC" },
-  ).format(new Date(date))} UTC`;
-
 /**
  * When a job is due, at the server's precision, with the rest as a tooltip.
  * The endpoint samples suspensions every 6 hours from the range's start; a
@@ -67,7 +61,7 @@ export function jobWhen(job: Pick<ScheduledJob, "kind" | "date">): {
   detail: string;
 } {
   const zoned = { weekday: true, timeZone: LAUNCH_TIME_ZONE };
-  const utc = utcDateTime(job.date);
+  const utc = formatDateTime(job.date, { weekday: true, timeZone: "UTC" });
   switch (job.kind) {
     case ScheduledJobKind.Suspension:
       return {

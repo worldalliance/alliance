@@ -13,6 +13,7 @@ export type FormatDateOptions = {
 };
 
 const LOCALE = "en-US";
+const UTC_ZONES = new Set(["UTC", "Etc/UTC"]);
 
 /** "Nov 30", with the year only when it isn't this year: "Nov 30, 2025". */
 export function formatDate(
@@ -31,7 +32,7 @@ export function formatDate(
   }).format(date);
 }
 
-/** "7:00 PM", or "7:00 PM PT" in a named zone. */
+/** "7:00 PM", or "7:00 PM PT" in a named zone ("7:00 PM UTC" in UTC). */
 export function formatTime(
   input: DateInput,
   { timeZone }: Pick<FormatDateOptions, "timeZone"> = {},
@@ -40,7 +41,12 @@ export function formatTime(
     hour: "numeric",
     minute: "2-digit",
     timeZone,
-    timeZoneName: timeZone ? "shortGeneric" : undefined,
+    // UTC has no generic name, so "shortGeneric" calls it "GMT+0".
+    timeZoneName: timeZone
+      ? UTC_ZONES.has(timeZone)
+        ? "short"
+        : "shortGeneric"
+      : undefined,
   }).format(new Date(input));
 }
 

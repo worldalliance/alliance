@@ -34,6 +34,12 @@ describe("formatTime", () => {
   it("names the zone it was asked to show", () => {
     expect(formatTime("2026-11-25T03:00:00Z", { timeZone })).toBe("7:00 PM PT");
   });
+
+  it("calls UTC UTC", () => {
+    expect(formatTime("2026-11-25T03:00:00Z", { timeZone: "UTC" })).toBe(
+      "3:00 AM UTC",
+    );
+  });
 });
 
 describe("formatDateTime", () => {
