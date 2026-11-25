@@ -30,6 +30,13 @@ const schema: FormSchema = {
           label: "Agree",
           defaultValue: true,
         },
+        {
+          id: "phone",
+          type: "input",
+          kind: "phone",
+          label: "Phone",
+          autoExtractUserData: true,
+        },
       ],
     },
     {
@@ -58,6 +65,7 @@ const storeDraft = (
   );
 
 let draftFetched = false;
+let serverAnswers: Record<string, string> = {};
 let syncedAnswers: unknown[] = [];
 let renders: { settled: boolean; name: unknown }[] = [];
 
@@ -70,7 +78,7 @@ serveApi(
           formId: 1,
           actionId: 1,
           formSnapshotId: 1,
-          answers: { name: "Server" },
+          answers: serverAnswers,
           publicAnswers: { story: false },
           currentPageIndex: 1,
           updatedAt: "2026-02-02T00:00:00.000Z",
@@ -91,6 +99,7 @@ const renderDraftState = (
     guestDraftFetch?: DraftFetchState;
     syncDraftToServer?: boolean;
     timeZone?: string;
+    profilePhoneNumber?: string | null;
   } = {},
 ) =>
   renderHook(
@@ -99,11 +108,13 @@ const renderDraftState = (
       guestDraftFetch,
       syncDraftToServer,
       timeZone = "UTC",
+      profilePhoneNumber = null,
     }) => {
       const maps = useFormSchemaMaps({
         schema,
         userDefaultPublic: true,
         timeZone,
+        profilePhoneNumber,
       });
       const state = useFormDraftState({
         ...maps,
@@ -126,6 +137,7 @@ const renderDraftState = (
 beforeEach(() => {
   window.localStorage.clear();
   draftFetched = false;
+  serverAnswers = { name: "Server" };
   syncedAnswers = [];
   renders = [];
 });
@@ -229,6 +241,23 @@ it("restores an answer left at its default from the current default", () => {
   });
 });
 
+it("restores a prefilled number the member left alone as their current one", () => {
+  const first = renderDraftState({ profilePhoneNumber: "+14155550100" });
+  act(() =>
+    first.result.current.setFormData((prev) => ({ ...prev, name: "Saved" })),
+  );
+  first.unmount();
+
+  const hook = renderDraftState({ profilePhoneNumber: "+14155552671" });
+
+  expect(hook.result.current.formData).toEqual({
+    name: "Saved",
+    zone: "UTC",
+    agree: true,
+    phone: "+14155552671",
+  });
+});
+
 it("stores a share choice only while it differs from the default", () => {
   const hook = renderDraftState();
   const storedPublicAnswers = () =>
@@ -253,8 +282,11 @@ it("restores a draft another device saved to the account", async () => {
   expect(hook.result.current.publicAnswers.story).toBe(false);
 });
 
-it("syncs every answer, those at their default included", async () => {
-  const hook = renderDraftState({ syncDraftToServer: true });
+it("syncs every answer, a prefilled number still at the member's as empty", async () => {
+  const hook = renderDraftState({
+    syncDraftToServer: true,
+    profilePhoneNumber: "+14155552671",
+  });
   await waitFor(() => expect(hook.result.current.formData.name).toBe("Server"));
 
   act(() => {
@@ -268,9 +300,23 @@ it("syncs every answer, those at their default included", async () => {
         name: "Edited",
         zone: "UTC",
         agree: true,
+        phone: "",
       }),
     { timeout: 3000 },
   );
+});
+
+it("reads another device's empty prefilled number as the member's current one", async () => {
+  storeDraft({ phone: "+14155550100" }, 0, "2026-01-01T00:00:00.000Z");
+  serverAnswers = { name: "Server", phone: "" };
+
+  const hook = renderDraftState({
+    syncDraftToServer: true,
+    profilePhoneNumber: "+14155552671",
+  });
+
+  await waitFor(() => expect(hook.result.current.formData.name).toBe("Server"));
+  expect(hook.result.current.formData.phone).toBe("+14155552671");
 });
 
 it("settles the draft in the same render that restores another device's answers", async () => {

@@ -191,6 +191,33 @@ export function answersToStore(
   );
 }
 
+/**
+ * The answers a synced draft carries: a prefilled phone answer still at the
+ * member's number goes as "", which `answersFromSync` reads back as the number
+ * on file then, so a number changed since doesn't come back stale.
+ */
+export function answersToSync(
+  answers: Record<string, FormValue>,
+  profilePhoneDefaults: Map<string, FormValue>,
+): Record<string, FormValue> {
+  const synced = { ...answers };
+  for (const [id, phone] of profilePhoneDefaults) {
+    if (synced[id] === phone) synced[id] = "";
+  }
+  return synced;
+}
+
+export function answersFromSync(
+  synced: Record<string, FormValue>,
+  profilePhoneDefaults: Map<string, FormValue>,
+): Record<string, FormValue> {
+  const answers = { ...synced };
+  for (const [id, phone] of profilePhoneDefaults) {
+    if (answers[id] === "") answers[id] = phone;
+  }
+  return answers;
+}
+
 export function filterAnswersByFieldIds(
   answers: Record<string, FormValue> | null,
   allowedFields: Map<string, AnyField>,

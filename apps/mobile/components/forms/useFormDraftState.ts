@@ -1,7 +1,9 @@
 import { type FormValue } from "@alliance/common/forms/form-schema";
 import { type FormResponseDto } from "@alliance/shared/client";
 import {
+  answersFromSync,
   answersToStore,
+  answersToSync,
   applyDefaultValues,
   clampPageIndex,
   computeFormStorageKey,
@@ -31,6 +33,7 @@ export function useFormDraftState({
   edited,
   fieldLookup,
   defaultValueMap,
+  profilePhoneDefaultMap,
   outputFieldDefaultPublic,
   outputFieldIds,
   maxPageIndex,
@@ -48,6 +51,7 @@ export function useFormDraftState({
   SchemaMaps,
   | "fieldLookup"
   | "defaultValueMap"
+  | "profilePhoneDefaultMap"
   | "outputFieldDefaultPublic"
   | "outputFieldIds"
   | "maxPageIndex"
@@ -156,6 +160,10 @@ export function useFormDraftState({
     () => answersToStore(formData, defaultValueMap),
     [formData, defaultValueMap],
   );
+  const syncedAnswers = useMemo(
+    () => answersToSync(formData, profilePhoneDefaultMap),
+    [formData, profilePhoneDefaultMap],
+  );
   const {
     serverDraft,
     settled: serverDraftSettled,
@@ -172,7 +180,7 @@ export function useFormDraftState({
     // builds keep their own value for an answer a synced draft leaves out;
     // leave out answers at their default once every installed build resets
     // them to it.
-    answers: formData,
+    answers: syncedAnswers,
     publicAnswers,
     currentPageIndex,
     edited,
@@ -192,7 +200,10 @@ export function useFormDraftState({
       fieldLookup,
     );
     setFormData((prev) =>
-      applyDefaultValues({ ...prev, ...answers }, defaultValueMap),
+      applyDefaultValues(
+        { ...prev, ...answersFromSync(answers, profilePhoneDefaultMap) },
+        defaultValueMap,
+      ),
     );
     setPublicAnswers((prev) => ({
       ...prev,
@@ -210,6 +221,7 @@ export function useFormDraftState({
     syncedUpdatedAt,
     fieldLookup,
     defaultValueMap,
+    profilePhoneDefaultMap,
     outputFieldIds,
   ]);
 

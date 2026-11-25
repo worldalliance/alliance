@@ -11,6 +11,7 @@ import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import FollowUpFormPanel from "./FollowUpFormPanel";
+import { LAZY_PART_TIMEOUT } from "./taskflow/TaskFlow.testing";
 
 const reported = recordExceptions();
 
@@ -118,4 +119,49 @@ it("seeds a timezone field from a member whose session loads after the form", as
   );
 
   expect(await screen.findByRole("combobox", { name: /Chatham/ })).toBeTruthy();
+});
+
+it("seeds a profile phone field over its default from a member whose session loads after the form", async () => {
+  let formLoaded = false;
+  api.alsoServing({
+    "GET /tasks/slug/:id": () => {
+      formLoaded = true;
+      return Response.json({
+        id: 5,
+        title: "Follow-up",
+        formSnapshotId: 6,
+        schema: {
+          pages: [
+            {
+              id: "p1",
+              fields: [
+                {
+                  id: "phone",
+                  type: "input",
+                  kind: "phone",
+                  label: "Phone",
+                  autoExtractUserData: true,
+                  defaultValue: "+14155550100",
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        },
+      });
+    },
+  });
+
+  const { rerender } = renderPanel(authValue({ loading: true }));
+  await waitFor(() => expect(formLoaded).toBe(true));
+  rerender(
+    panel(authValue({ user: makeUser({ phoneNumber: "+14155552671" }) })),
+  );
+
+  const field = await screen.findByRole(
+    "textbox",
+    { name: /Phone/ },
+    { timeout: LAZY_PART_TIMEOUT },
+  );
+  expect((field as HTMLInputElement).value).toContain("2671");
 });

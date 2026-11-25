@@ -14,6 +14,13 @@ const schema: FormSchema = {
       fields: [
         { id: "name", type: "input", kind: "text", label: "Name" },
         { id: "zone", type: "input", kind: "timezone", label: "Zone" },
+        {
+          id: "phone",
+          type: "input",
+          kind: "phone",
+          label: "Phone",
+          autoExtractUserData: true,
+        },
       ],
     },
   ],
@@ -55,6 +62,7 @@ const renderDraftState = ({
         schema,
         userDefaultPublic: true,
         timeZone,
+        profilePhoneNumber: "+14155552671",
       });
       return useFormDraftState({
         ...maps,
@@ -100,11 +108,12 @@ it("restores an answer left at its default from the current default", async () =
     expect(second.result.current.formData).toEqual({
       name: "Saved",
       zone: "Asia/Kolkata",
+      phone: "+14155552671",
     }),
   );
 });
 
-it("syncs every answer, those at their default included", async () => {
+it("syncs every answer, a prefilled number still at the member's as empty", async () => {
   const hook = renderDraftState();
   await waitFor(() => expect(hook.result.current.formData.name).toBe("Server"));
 
@@ -114,7 +123,21 @@ it("syncs every answer, those at their default included", async () => {
   );
 
   await waitFor(
-    () => expect(syncedAnswers.at(-1)).toEqual({ name: "Edited", zone: "UTC" }),
+    () =>
+      expect(syncedAnswers.at(-1)).toEqual({
+        name: "Edited",
+        zone: "UTC",
+        phone: "",
+      }),
     { timeout: 3000 },
   );
+});
+
+it("reads another device's empty prefilled number as the member's current one", async () => {
+  serverAnswers = { name: "Server", phone: "" };
+
+  const hook = renderDraftState();
+
+  await waitFor(() => expect(hook.result.current.formData.name).toBe("Server"));
+  expect(hook.result.current.formData.phone).toBe("+14155552671");
 });
