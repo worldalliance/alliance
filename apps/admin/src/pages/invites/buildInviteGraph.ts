@@ -4,7 +4,10 @@ import type {
   OnetimeInviteEdgeDto,
   UserDto,
 } from "@alliance/shared/client";
-import type { ForceGraphLink, ForceGraphNode } from "../force-graph/ForceGraph";
+import type {
+  ForceGraphLink,
+  ForceGraphNode,
+} from "../../components/force-graph/ForceGraph";
 
 export enum NodeKind {
   User = "user",

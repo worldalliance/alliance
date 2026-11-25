@@ -1,27 +1,44 @@
-import { AlertTriangle } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { EnumFilterSelect } from "../components/force-graph/EnumFilterSelect";
+import { EnumFilterSelect } from "../../components/force-graph/EnumFilterSelect";
 import {
   type DrawnGraph,
   ForceGraph,
   KEEP_LAYOUT,
   linkEnd,
-  type NodeStyle,
-} from "../components/force-graph/ForceGraph";
+} from "../../components/force-graph/ForceGraph";
 import {
   type UserFilterOption,
   UserGraphFilterControls,
   useUserGraphFilters,
-} from "../components/force-graph/UserGraphFilters";
+} from "../../components/force-graph/UserGraphFilters";
+import { countOf, formatCount } from "../../lib/formatNumber";
+import { useCampaignsAdmin } from "../../lib/useCampaignsAdmin";
+import { useGraphUsersAdmin } from "../../lib/useGraphUsersAdmin";
+import { useOnetimeInviteGraphEdgesAdmin } from "../../lib/useOnetimeInviteGraphEdgesAdmin";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { Skeleton } from "../../ui/Skeleton";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { CheckboxField } from "../../ui/templates/Form";
+import { ContentState } from "../../ui/templates/States";
+import {
+  PaneHeader,
+  Workspace,
+  WorkspaceToolbar,
+} from "../../ui/templates/Workspace";
 import {
   buildInviteGraph,
   type GraphLink,
   type GraphNode,
   NodeKind,
-} from "../components/invite-graph/buildInviteGraph";
-import { useCampaignsAdmin } from "../lib/useCampaignsAdmin";
-import { useGraphUsersAdmin } from "../lib/useGraphUsersAdmin";
-import { useOnetimeInviteGraphEdgesAdmin } from "../lib/useOnetimeInviteGraphEdgesAdmin";
+} from "./buildInviteGraph";
+import { GraphLegend } from "./InviteGraphLegend";
+import {
+  LINK_TONE,
+  LinkTone,
+  NODE_RADIUS,
+  NODE_STYLE,
+  SELECTED_STROKE,
+} from "./inviteGraphStyle";
 
 enum ContractFilter {
   All = "all",
@@ -41,48 +58,7 @@ const CONTRACT_FILTERS: Record<ContractFilter, UserFilterOption> = {
   },
 };
 
-const NODE_RADIUS = 20;
-const HUB_RADIUS = 14;
-
-const NODE_STYLE: Record<NodeKind, NodeStyle> = {
-  [NodeKind.User]: {
-    radius: NODE_RADIUS,
-    fill: "#e5e7eb",
-    stroke: "#d1d5db",
-    strokeWidth: 1.5,
-    glyph: () => "?",
-    glyphFontSize: 16,
-    glyphColor: "#9ca3af",
-    label: { color: "#374151", weight: "normal" },
-  },
-  [NodeKind.Unattributed]: {
-    radius: HUB_RADIUS,
-    fill: "#f3f4f6",
-    stroke: "#9ca3af",
-    strokeWidth: 2,
-    glyph: () => "NONE",
-    glyphFontSize: 9,
-    glyphColor: "#6b7280",
-    label: null,
-  },
-  [NodeKind.Campaign]: {
-    radius: NODE_RADIUS,
-    fill: "#ede9fe",
-    stroke: "#8b5cf6",
-    strokeWidth: 2,
-    glyph: (node) => node.displayName.charAt(0).toUpperCase(),
-    glyphFontSize: 16,
-    glyphColor: "#6d28d9",
-    label: { color: "#6d28d9", weight: "bold" },
-  },
-};
-
-const LEGEND: { kind: NodeKind; label: string }[] = [
-  { kind: NodeKind.Campaign, label: "Campaign" },
-  { kind: NodeKind.Unattributed, label: "NONE = no attribution" },
-];
-
-/** Only user nodes are subject to the contract/role/community/tag filters. */
+/** Only user nodes are subject to the contract, role, group and tag filters. */
 const FILTERABLE: Record<NodeKind, boolean> = {
   [NodeKind.User]: true,
   [NodeKind.Unattributed]: false,
@@ -91,22 +67,9 @@ const FILTERABLE: Record<NodeKind, boolean> = {
 
 const nodeStyle = (node: GraphNode) => NODE_STYLE[node.kind];
 
-enum LinkTone {
-  Plain = "plain",
-  Descendant = "descendant",
-  Ancestor = "ancestor",
-}
+type Selected = { name: string; ancestors: number; descendants: number };
 
-const LINK_TONE: Record<LinkTone, { color: string; markerId: string }> = {
-  [LinkTone.Plain]: { color: "#ccc", markerId: "arrowhead" },
-  [LinkTone.Descendant]: {
-    color: "#3b82f6",
-    markerId: "arrowhead-highlight",
-  },
-  [LinkTone.Ancestor]: { color: "#f59e0b", markerId: "arrowhead-ancestor" },
-};
-
-const InviteGraphPage = () => {
+export function InviteGraphTab() {
   const usersQuery = useGraphUsersAdmin(KEEP_LAYOUT);
   const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
   const campaignsQuery = useCampaignsAdmin(KEEP_LAYOUT);
@@ -120,13 +83,12 @@ const InviteGraphPage = () => {
     [edgesQuery.isError, edgesQuery.data],
   );
 
-  // Filters
   const [contractFilter, setContractFilter] = useState(ContractFilter.Active);
   const [isolateSubgraph, setIsolateSubgraph] = useState(false);
+  const [selected, setSelected] = useState<Selected | null>(null);
 
   // A failed request leaves a whole class of edges out of the graph, which
-  // reads as "no attribution" rather than as a failure — so name what is
-  // missing instead of drawing a wrong graph.
+  // reads as "no attribution" rather than as a failure.
   const failed = [
     { name: "users", failed: usersQuery.isError },
     { name: "used invites", failed: edgesQuery.isError },
@@ -134,15 +96,10 @@ const InviteGraphPage = () => {
   ]
     .filter((load) => load.failed)
     .map((load) => load.name);
-  const loadError =
-    failed.length > 0
-      ? `Could not load ${failed.join(", ")}. The graph below is incomplete — attribution from the missing data shows as "no attribution".`
-      : null;
 
   const filters = useUserGraphFilters(users);
   const { matches: matchesUserFilters, clear: clearUserFilters } = filters;
 
-  // Build a set of user IDs that pass the filters
   const filteredUserIds = useMemo(() => {
     const ids = new Set<number>();
     for (const u of users) {
@@ -165,6 +122,10 @@ const InviteGraphPage = () => {
     () => buildInviteGraph({ users, campaigns, inviteEdges }),
     [users, inviteEdges, campaigns],
   );
+  const nodesById = useMemo(
+    () => new Map(nodes.map((node) => [node.id, node])),
+    [nodes],
+  );
 
   const applyStyles = useCallback(
     ({ node, link }: DrawnGraph<GraphNode>, sid: string | null) => {
@@ -174,10 +135,28 @@ const InviteGraphPage = () => {
       }
 
       const descendants = sid ? getDescendants(sid) : new Set<string>();
-      const ancestors = sid ? getAncestors(sid) : new Set<string>();
+      // The "no attribution" hub is drawn above everyone nobody invited, but
+      // it isn't anyone who led to them.
+      const ancestors = new Set(
+        sid
+          ? [...getAncestors(sid)].filter(
+              (id) => nodesById.get(id)?.kind !== NodeKind.Unattributed,
+            )
+          : [],
+      );
       const allHighlighted = sid
         ? new Set([sid, ...descendants, ...ancestors])
         : null;
+      const selectedNode = sid ? nodesById.get(sid) : undefined;
+      setSelected(
+        selectedNode
+          ? {
+              name: selectedNode.displayName,
+              ancestors: ancestors.size,
+              descendants: descendants.size,
+            }
+          : null,
+      );
 
       const opacity = (d: GraphNode) => {
         if (!nodePassesFilter(d)) return hasActiveFilters ? 0.08 : 1;
@@ -191,9 +170,10 @@ const InviteGraphPage = () => {
         .attr("opacity", opacity)
         .attr("stroke", (d) => {
           if (!allHighlighted) return NODE_STYLE[d.kind].stroke;
-          if (d.id === sid) return "#3b82f6";
-          if (ancestors.has(d.id)) return "#f59e0b";
-          if (descendants.has(d.id)) return "#60a5fa";
+          if (d.id === sid) return SELECTED_STROKE;
+          if (ancestors.has(d.id)) return LINK_TONE[LinkTone.Ancestor].color;
+          if (descendants.has(d.id))
+            return LINK_TONE[LinkTone.Descendant].color;
           return NODE_STYLE[d.kind].stroke;
         })
         .attr("stroke-width", (d) => {
@@ -228,6 +208,7 @@ const InviteGraphPage = () => {
 
       link
         .attr("stroke", (d) => LINK_TONE[linkTone(d)].color)
+        .attr("stroke-dasharray", (d) => LINK_TONE[linkTone(d)].dash)
         .attr("stroke-width", (d) =>
           linkTone(d) === LinkTone.Plain ? 1.5 : 2.5,
         )
@@ -246,6 +227,7 @@ const InviteGraphPage = () => {
         .attr("marker-end", (d) => `url(#${LINK_TONE[linkTone(d)].markerId})`);
     },
     [
+      nodesById,
       getDescendants,
       getAncestors,
       filteredUserIds,
@@ -265,114 +247,115 @@ const InviteGraphPage = () => {
     ).length;
   }, [users, campaigns]);
 
-  const matchCount = useMemo(() => {
-    if (!hasActiveFilters) return null;
-    return users.filter((u) => filteredUserIds.has(u.id)).length;
-  }, [users, filteredUserIds, hasActiveFilters]);
+  const matchCount = hasActiveFilters
+    ? users.filter((u) => filteredUserIds.has(u.id)).length
+    : null;
 
-  if (
+  const loading =
     !usersQuery.isFetchedAfterMount ||
     !campaignsQuery.isFetchedAfterMount ||
-    !edgesQuery.isFetchedAfterMount
-  ) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Loading graph...</p>
-      </div>
-    );
-  }
+    !edgesQuery.isFetchedAfterMount;
 
   return (
-    <div className="flex flex-col w-full h-screen">
-      <div className="p-4 border-b border-gray-200 shrink-0">
-        <h2 className="text-lg font-bold">Invite Graph</h2>
-        <p className="text-sm text-gray-500">
-          {users.length} users, {inviteEdges.length} used invites,{" "}
-          {campaignAttributedCount} from campaigns
-          {matchCount !== null && ` \u2014 ${matchCount} matching filters`}
-        </p>
-      </div>
-
-      {loadError && (
-        <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 shrink-0">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <span>{loadError}</span>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="px-4 py-2 border-b border-gray-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
-        <EnumFilterSelect
-          label="Contract"
-          values={ContractFilter}
-          options={CONTRACT_FILTERS}
-          value={contractFilter}
-          onChange={setContractFilter}
-        />
-
-        <UserGraphFilterControls filters={filters} />
-
-        <label className="flex items-center gap-1.5 ml-2">
-          <input
-            type="checkbox"
-            checked={isolateSubgraph}
-            onChange={(e) => setIsolateSubgraph(e.target.checked)}
-            className="rounded border-gray-300"
-          />
-          <span className="text-xs font-medium text-gray-600">
-            Isolate subgraph
-          </span>
-        </label>
-
-        {hasActiveFilters && (
-          <button
-            type="button"
+    <Workspace
+      toolbar={
+        <WorkspaceToolbar>
+          <p className="min-w-0 flex-1 text-fg-muted">
+            {loading
+              ? ""
+              : `${countOf(users.length, "user")}, ${countOf(inviteEdges.length, "used invite")}, ${countOf(campaignAttributedCount, "user")} from campaigns`}
+            {!loading && matchCount !== null && (
+              <span className="font-medium text-fg">
+                {" "}
+                · {formatCount(matchCount)} matching filters
+              </span>
+            )}
+          </p>
+          <Button
+            size="small"
+            variant={ButtonVariant.Default}
             onClick={clearFilters}
-            className="text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
+            disabled={!hasActiveFilters}
           >
             Reset filters
-          </button>
-        )}
-
-        <div className="ml-auto flex items-center gap-3 text-xs text-gray-500">
-          {LEGEND.map((item) => (
-            <span key={item.kind} className="flex items-center gap-1">
-              <span
-                className="inline-block h-3 w-3 rounded-full border-2"
-                style={{
-                  backgroundColor: NODE_STYLE[item.kind].fill,
-                  borderColor: NODE_STYLE[item.kind].stroke,
-                }}
-              />
-              {item.label}
-            </span>
+          </Button>
+        </WorkspaceToolbar>
+      }
+      inspector={
+        <>
+          <PaneHeader title="Selection" />
+          <div className="flex min-h-24 flex-col gap-1 px-card py-4">
+            {selected ? (
+              <>
+                <p className="font-medium">{selected.name}</p>
+                <p className="text-fg-muted">
+                  {formatCount(selected.ancestors)} up the chain,{" "}
+                  {formatCount(selected.descendants)} down it
+                </p>
+              </>
+            ) : (
+              <p className="text-fg-muted">
+                Select a member or campaign to trace who led to them and whom
+                they invited. Select it again, or the background, to clear.
+              </p>
+            )}
+            <CheckboxField
+              label="Isolate subgraph"
+              help="Hides everyone outside the selection's chain."
+              checked={isolateSubgraph}
+              onChange={(event) => setIsolateSubgraph(event.target.checked)}
+              className="mt-3"
+            />
+          </div>
+          <PaneHeader title="Filters" />
+          <div className="flex flex-col items-start gap-3 px-card py-4">
+            <EnumFilterSelect
+              label="Contract"
+              values={ContractFilter}
+              options={CONTRACT_FILTERS}
+              value={contractFilter}
+              onChange={setContractFilter}
+            />
+            <UserGraphFilterControls filters={filters} />
+          </div>
+          <PaneHeader title="Legend" />
+          <GraphLegend />
+        </>
+      }
+    >
+      {failed.length > 0 && (
+        <Banner tone={BannerTone.Warning}>
+          Couldn't load {failed.join(", ")}. The graph is incomplete:
+          attribution from the missing data shows as no attribution.
+        </Banner>
+      )}
+      <ContentState
+        loading={loading}
+        skeleton={<Skeleton className="m-card h-96" />}
+        errorTitle="Couldn't load the invite graph"
+      >
+        <ForceGraph
+          nodes={nodes}
+          links={links}
+          nodeStyle={nodeStyle}
+          chargeStrength={-120}
+          applyStyles={applyStyles}
+          defs={Object.values(LINK_TONE).map(({ color, markerId }) => (
+            <marker
+              key={markerId}
+              id={markerId}
+              viewBox="0 -5 10 10"
+              refX={NODE_RADIUS + 10}
+              refY={0}
+              markerWidth={6}
+              markerHeight={6}
+              orient="auto"
+            >
+              <path d="M0,-5L10,0L0,5" fill={color} />
+            </marker>
           ))}
-        </div>
-      </div>
-
-      <ForceGraph
-        nodes={nodes}
-        links={links}
-        nodeStyle={nodeStyle}
-        chargeStrength={-120}
-        applyStyles={applyStyles}
-        defs={Object.values(LINK_TONE).map(({ color, markerId }) => (
-          <marker
-            key={markerId}
-            id={markerId}
-            viewBox="0 -5 10 10"
-            refX={NODE_RADIUS + 10}
-            refY={0}
-            markerWidth={6}
-            markerHeight={6}
-            orient="auto"
-          >
-            <path d="M0,-5L10,0L0,5" fill={color} />
-          </marker>
-        ))}
-      />
-    </div>
+        />
+      </ContentState>
+    </Workspace>
   );
-};
-
-export default InviteGraphPage;
+}

@@ -5,7 +5,7 @@ import { PlaceId } from "../../places";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Page } from "../../ui/templates/Page";
 import { usePlaceTabs } from "../../ui/templates/usePlaceTabs";
-import InviteGraphPage from "../InviteGraphPage";
+import { InviteGraphTab } from "./InviteGraphTab";
 import { InviteLinksTab } from "./InviteLinksTab";
 import { InvitesTab } from "./InvitesTab";
 import { LiveFeedTab } from "./LiveFeedTab";
@@ -51,7 +51,7 @@ export default function InvitesPage() {
       <InvitesTab key={listKey} onNewInvite={() => setCreating(true)} />
     ),
     links: () => <InviteLinksTab />,
-    graph: () => <InviteGraphPage />,
+    graph: () => <InviteGraphTab />,
     feed: () => <LiveFeedTab />,
     template: () => <MessageTemplateTab />,
   };

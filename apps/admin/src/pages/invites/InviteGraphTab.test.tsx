@@ -10,13 +10,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import {
   drawnCircleStroke,
   drawnLinks,
   drawnNode,
   user,
-} from "../components/force-graph/graphTesting";
-import InviteGraphPage from "./InviteGraphPage";
+} from "../../components/force-graph/graphTesting";
+import { ToastProvider } from "../../ui/ToastProvider";
+import InvitesPage from "./InvitesPage";
 
 const api = serveApi(
   routes({
@@ -34,8 +36,16 @@ const api = serveApi(
 
 const HUB = "No attribution (2)";
 
+const graphPage = (
+  <MemoryRouter initialEntries={["/growth/invites?tab=graph"]}>
+    <ToastProvider>
+      <InvitesPage />
+    </ToastProvider>
+  </MemoryRouter>
+);
+
 const renderPage = async (query = queryWrapper()) => {
-  const view = render(<InviteGraphPage />, query);
+  const view = render(graphPage, query);
   await waitFor(() => drawnNode(view.container, "sam"));
   const markerEnds = () =>
     Object.fromEntries(
@@ -64,15 +74,43 @@ it("tones the selected node's ancestors and descendants", async () => {
   fireEvent.click(drawnNode(container, "sam"));
 
   expect(markerEnds()).toEqual({
-    [`${HUB}->ada`]: "url(#arrowhead-ancestor)",
+    [`${HUB}->ada`]: "url(#arrowhead)",
     "ada->sam": "url(#arrowhead-ancestor)",
     "sam->ren": "url(#arrowhead-highlight)",
     [`${HUB}->lee`]: "url(#arrowhead)",
   });
-  expect(drawnCircleStroke(container, "sam")).toBe("#3b82f6");
-  expect(drawnCircleStroke(container, "ada")).toBe("#f59e0b");
-  expect(drawnCircleStroke(container, "ren")).toBe("#60a5fa");
-  expect(drawnCircleStroke(container, "lee")).toBe("#d1d5db");
+  expect(drawnCircleStroke(container, "sam")).toBe("var(--color-accent)");
+  expect(drawnCircleStroke(container, "ada")).toBe("var(--color-chart-2)");
+  expect(drawnCircleStroke(container, "ren")).toBe("var(--color-chart-4)");
+  expect(drawnCircleStroke(container, "lee")).toBe("var(--color-line-strong)");
+  const dash = (name: string) =>
+    drawnLinks(container).get(name)?.getAttribute("stroke-dasharray");
+  expect(dash("ada->sam")).toBe("5 3");
+  expect(dash("sam->ren")).toBeNull();
+  expect(dash(`${HUB}->ada`)).toBeNull();
+  expect(drawnCircleStroke(container, HUB)).not.toBe("var(--color-chart-2)");
+  expect(screen.getByText("1 up the chain, 1 down it")).toBeTruthy();
+});
+
+it("counts no one up the chain of a member nobody invited", async () => {
+  const { container } = await renderPage();
+
+  fireEvent.click(drawnNode(container, "ada"));
+
+  expect(screen.getByText("ada", { selector: "p" })).toBeTruthy();
+  expect(screen.getByText("0 up the chain, 2 down it")).toBeTruthy();
+});
+
+it("clears the selection when the background is clicked", async () => {
+  const { container } = await renderPage();
+  fireEvent.click(drawnNode(container, "sam"));
+
+  const svg = drawnNode(container, "sam").closest("svg");
+  if (!svg) throw new Error("the graph is not drawn");
+  fireEvent.click(svg);
+
+  expect(screen.queryByText(/up the chain,/)).toBeNull();
+  expect(screen.getByText(/Select a member or campaign/)).toBeTruthy();
 });
 
 it("defines every marker a link points at", async () => {
@@ -112,10 +150,10 @@ it("names the users when they fail to load", async () => {
   api.alsoServing({
     "GET /user/list-graph": () => Response.json({}, { status: 500 }),
   });
-  render(<InviteGraphPage />, queryWrapper());
+  render(graphPage, queryWrapper());
 
   expect(
-    await screen.findByText("Could not load users.", { exact: false }),
+    await screen.findByText("Couldn't load users.", { exact: false }),
   ).toBeTruthy();
 });
 
@@ -124,10 +162,10 @@ it("names the used invites when they fail to load", async () => {
     "GET /user/onetimeInvites/graphEdges": () =>
       Response.json({}, { status: 500 }),
   });
-  render(<InviteGraphPage />, queryWrapper());
+  render(graphPage, queryWrapper());
 
   expect(
-    await screen.findByText("Could not load used invites.", { exact: false }),
+    await screen.findByText("Couldn't load used invites.", { exact: false }),
   ).toBeTruthy();
 });
 
@@ -144,7 +182,7 @@ it("draws no cached used invites once a reload of them fails", async () => {
   const { container } = await renderPage(query);
 
   expect(
-    screen.getByText("Could not load used invites.", { exact: false }),
+    screen.getByText("Couldn't load used invites.", { exact: false }),
   ).toBeTruthy();
   expect(drawnLinks(container).has("ada->lee")).toBe(false);
 });
@@ -163,11 +201,11 @@ it("waits for a fresh used-invite list before drawing cached used invites", asyn
     { invitingUserId: 1, invitedUserId: 4 },
   ]);
 
-  const view = render(<InviteGraphPage />, query);
+  const view = render(graphPage, query);
   await waitFor(() =>
     expect(query.client.getQueryData(queryKeys.graphUsersAdmin())).toBeTruthy(),
   );
-  expect(screen.getByText("Loading graph...")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
 
   release();
   await waitFor(() => drawnNode(view.container, "lee"));
@@ -189,9 +227,9 @@ it("waits for a fresh user list before drawing cached users", async () => {
     user({ id: 2, name: "sam" }),
   ]);
 
-  const view = render(<InviteGraphPage />, query);
+  const view = render(graphPage, query);
   await act(async () => {});
-  expect(screen.getByText("Loading graph...")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
 
   release();
   await waitFor(() => drawnNode(view.container, "ada"));
@@ -205,7 +243,7 @@ it("names the campaigns when they fail to load", async () => {
   await renderPage();
 
   expect(
-    screen.getByText("Could not load campaigns.", { exact: false }),
+    screen.getByText("Couldn't load campaigns.", { exact: false }),
   ).toBeTruthy();
 });
 
@@ -242,7 +280,7 @@ it("draws cached campaigns and names them when their refetch fails", async () =>
 
   expect(drawnNode(container, "Spring drive")).toBeTruthy();
   expect(
-    screen.getByText("Could not load campaigns.", { exact: false }),
+    screen.getByText("Couldn't load campaigns.", { exact: false }),
   ).toBeTruthy();
 });
 
@@ -266,10 +304,10 @@ it.each([
 
   const query = queryWrapper();
   if (cached) query.client.setQueryData(queryKeys.campaignsAdmin(), cached);
-  const view = render(<InviteGraphPage />, query);
+  const view = render(graphPage, query);
   await waitFor(() => expect(usersServed).toBe(true));
   await act(async () => {});
-  expect(screen.getByText("Loading graph...")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
 
   release();
   await waitFor(() => drawnNode(view.container, "Spring drive"));
