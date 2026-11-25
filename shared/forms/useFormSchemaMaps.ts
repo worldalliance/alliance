@@ -15,6 +15,12 @@ import {
 } from "../formrenderer";
 import { resolveFieldDefaultValue } from "./formDrafts";
 
+/** Whether the form seeds answers from the member, so a host mounting it before the member loads would seed them without the member's values. */
+export const seedsFromMember = (schema: FormSchema): boolean =>
+  schema.pages.some((page) =>
+    page.fields.some((item) => item.kind === "timezone"),
+  );
+
 export function useFormSchemaMaps(args: {
   schema: FormSchema;
   userDefaultPublic: boolean;
