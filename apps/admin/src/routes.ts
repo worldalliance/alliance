@@ -52,7 +52,10 @@ export default [
       route("/growth/waitlist", "pages/waitlist/WaitlistPage.tsx"),
       route("/growth/links", "pages/links/LinksPage.tsx"),
       route("/growth/organizations", "pages/OrganizationsPage.tsx"),
-      route("/growth/partnerships", "pages/OutreachPartnershipsPage.tsx"),
+      route(
+        "/growth/partnerships",
+        "pages/partnerships/OutreachPartnershipsPage.tsx",
+      ),
       route("/growth/ambassadors", "pages/AmbassadorProgramPage.tsx"),
 
       route(

@@ -14,7 +14,10 @@ import {
   waitFor,
   waitForElementToBeRemoved,
 } from "@testing-library/react";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { MemoryRouter } from "react-router";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { ToastProvider } from "../../ui/ToastProvider";
 import OutreachPartnershipsPage from "./OutreachPartnershipsPage";
 
 const partnership = (id: number, organizationName: string) =>
@@ -33,6 +36,16 @@ const partnership = (id: number, organizationName: string) =>
     updatedAt: "2026-01-02T00:00:00.000Z",
     notesHistory: [],
   }) satisfies ActionPartnershipResponseDto;
+
+const note = (id: number, responseId: number) =>
+  ({
+    id,
+    responseId,
+    noteDate: "2026-01-03T00:00:00.000Z",
+    body: "Earlier note",
+    createdAt: "2026-01-03T00:00:00.000Z",
+    updatedAt: "2026-01-03T00:00:00.000Z",
+  }) satisfies ActionPartnershipNoteDto;
 
 let stored: ActionPartnershipResponseDto[] = [];
 let loadStatus = 200;
@@ -88,15 +101,24 @@ beforeEach(() => {
   loadGate = Promise.resolve();
   noteGate = Promise.resolve();
   writeStatus = 200;
-  jest.spyOn(window, "confirm").mockReturnValue(true);
 });
 
 const renderPage = (query = queryWrapper()) =>
-  render(<OutreachPartnershipsPage />, query);
+  render(
+    <MemoryRouter initialEntries={["/growth/partnerships"]}>
+      <ToastProvider>
+        <OutreachPartnershipsPage />
+      </ToastProvider>
+    </MemoryRouter>,
+    query,
+  );
 
 const deleteFirst = async () => {
-  const [first] = await screen.findAllByRole("button", { name: "Delete" });
+  const [first] = await screen.findAllByRole("button", { name: /^Delete: / });
   fireEvent.click(first);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete response" }),
+  );
 };
 
 const noteFirst = async (body: string) => {
@@ -173,7 +195,7 @@ it("asks for a note before saving an empty one", async () => {
   renderPage();
   await noteFirst("   ");
 
-  expect(await screen.findByText("Write a note before saving.")).toBeTruthy();
+  expect(await screen.findByText("Write a note before saving")).toBeTruthy();
 });
 
 it("removes a deleted response from the list", async () => {
@@ -182,6 +204,29 @@ it("removes a deleted response from the list", async () => {
 
   await waitForElementToBeRemoved(() => screen.queryByText("Org A"));
   expect(stored.map((r) => r.id)).toEqual([2]);
+});
+
+it("moves focus to the next response's Delete after a delete", async () => {
+  renderPage();
+  await deleteFirst();
+
+  await waitFor(() =>
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "Delete: Org B",
+    ),
+  );
+});
+
+it("moves focus to the search after deleting the last response on screen", async () => {
+  stored = [partnership(1, "Org A")];
+  renderPage();
+  await deleteFirst();
+
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("Filter responses"),
+    ),
+  );
 });
 
 it("keeps the delete when a refetch started before it lands after it", async () => {
@@ -212,12 +257,16 @@ it("keeps the response and says so when the delete fails", async () => {
   renderPage();
   await deleteFirst();
 
-  expect(await screen.findByText("Failed to delete response.")).toBeTruthy();
+  expect(
+    await screen.findByText("Couldn't delete the response from Org A."),
+  ).toBeTruthy();
   expect(screen.getByText("Org A")).toBeTruthy();
 
   writeStatus = 200;
   await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(2),
+    expect(screen.getAllByRole("button", { name: /^Delete: / })).toHaveLength(
+      2,
+    ),
   );
   await deleteFirst();
   await waitForElementToBeRemoved(() => screen.queryByText("Org A"));
@@ -236,14 +285,10 @@ it("says the responses failed to load instead of listing none", async () => {
   loadStatus = 500;
   renderPage();
   expect(
-    await screen.findByText("Failed to load outreach partnership responses."),
+    await screen.findByText("Couldn't load partnership responses"),
   ).toBeTruthy();
-  expect(
-    screen.queryByText(
-      "No outreach partnership responses have been submitted yet.",
-    ),
-  ).toBeNull();
-  expect(screen.queryByText("No responses yet")).toBeNull();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
+  expect(screen.queryByText("No partnership responses yet")).toBeNull();
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
@@ -262,8 +307,45 @@ it("keeps the loaded responses beside a refetch error", async () => {
 
   await waitFor(() =>
     expect(
-      screen.getByText("Failed to load outreach partnership responses."),
+      screen.getByText(/^Couldn't refresh partnership responses\./),
     ).toBeTruthy(),
   );
   expect(screen.getByText("Org A")).toBeTruthy();
+});
+
+it("keeps the server's order and marks the responses with no note", async () => {
+  stored = [
+    { ...partnership(1, "Org A"), notesHistory: [note(60, 1)] },
+    partnership(2, "Org B"),
+  ];
+  renderPage();
+  await screen.findByText("Org A");
+
+  expect(
+    screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+  ).toEqual(["Org A", "Org B"]);
+  expect(screen.getAllByText("To review")).toHaveLength(1);
+  expect(screen.getByText(/^1 response has no note yet\. /)).toBeTruthy();
+});
+
+it("drops the To review mark once a response's first note is saved", async () => {
+  renderPage();
+  await noteFirst("Called them back");
+
+  await screen.findByText("Called them back");
+  expect(screen.getAllByText("To review")).toHaveLength(1);
+});
+
+it("filters the responses by organization name", async () => {
+  render(
+    <MemoryRouter initialEntries={["/growth/partnerships?q=org b"]}>
+      <ToastProvider>
+        <OutreachPartnershipsPage />
+      </ToastProvider>
+    </MemoryRouter>,
+    queryWrapper(),
+  );
+  expect(await screen.findByText("Org B")).toBeTruthy();
+  expect(screen.queryByText("Org A")).toBeNull();
+  expect(screen.getByText("1 of 2 responses")).toBeTruthy();
 });

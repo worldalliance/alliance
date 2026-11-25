@@ -227,7 +227,6 @@ src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
 src/pages/NewActionSuitePage.tsx
 src/pages/OrganizationsPage.tsx
-src/pages/OutreachPartnershipsPage.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/SuiteLaunchPage.tsx
