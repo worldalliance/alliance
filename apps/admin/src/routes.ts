@@ -24,7 +24,7 @@ export default [
       route("/tasks/suites", "places/SuitesPlace.tsx"),
       route("/tasks/suites/new", "pages/NewActionSuitePage.tsx"),
       route("/tasks/suites/:suiteId", "places/SuiteRecord.tsx"),
-      route("/tasks/projects", "pages/ProjectsPage.tsx"),
+      route("/tasks/projects", "pages/projects/ProjectsPage.tsx"),
       route("/tasks/projects/:projectId", "pages/ProjectDetailPage.tsx"),
       route(
         "/tasks/projects/:projectId/tasks/:actionId",

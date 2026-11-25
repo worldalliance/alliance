@@ -28,6 +28,7 @@ serveApi(
         }),
         adminActionListItem(2, "Plant trees", { status: "planned" }),
       ]),
+    "GET /actions/updates/admin": () => Response.json([]),
     "GET /projects": () => Response.json([cleanAir]),
     "GET /user/tags": () => Response.json([]),
     "GET /tasks/listForms": () => Response.json([]),

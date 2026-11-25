@@ -70,9 +70,7 @@ src/components/PrerequisitePicker.tsx
 src/components/PreviewAsUserBar.tsx
 src/components/PriorityFollowUps.tsx
 src/components/ProjectCardBody.tsx
-src/components/ProjectCardTile.tsx
 src/components/ProjectMiniTimeline.tsx
-src/components/ProjectNameInput.tsx
 src/components/ProjectStepRows.tsx
 src/components/ReferralUrlNotice.tsx
 src/components/SelectableCards.tsx
@@ -281,7 +279,6 @@ src/pages/PostsManagement.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/ProjectDetailPage.tsx
-src/pages/ProjectsPage.tsx
 src/pages/ShareLinksPage.tsx
 src/pages/SuiteLaunchPage.tsx
 src/pages/WaitlistEmailsPage.tsx

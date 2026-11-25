@@ -23,6 +23,7 @@ import {
 import { ProjectsLoad, useProjectsPageData } from "../lib/useProjectsPageData";
 import Button, { ButtonColor } from "../ui/Button";
 import { useToast } from "../ui/ToastProvider";
+import { RefreshFailedBanner } from "../ui/templates/States";
 
 enum EditField {
   None = "none",
@@ -202,6 +203,9 @@ const ProjectDetailPage: React.FC = () => {
         <ArrowLeft size={14} />
         Projects
       </Link>
+      <RefreshFailedBanner things="projects" query={data.projectsQuery} />
+      <RefreshFailedBanner things="tasks" query={data.actionsQuery} />
+      <RefreshFailedBanner things="task updates" query={data.updatesQuery} />
       <ProjectHeader project={project} stepCount={card.steps.length} />
       <div className="flex items-center gap-x-3 text-sm text-zinc-500">
         <span>{startedText(card.startedAt)}</span>
