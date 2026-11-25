@@ -2,7 +2,6 @@ import { issueLocation } from "../../../components/form-canvas/IssueList";
 import { IssueTargetKind } from "../../../lib/formIssues";
 import Badge from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";
-import { cn } from "../../../ui/cn";
 import { Kbd } from "../../../ui/Kbd";
 import { Tabs, TabsList, TabsTab } from "../../../ui/Tabs";
 import { WorkspaceToolbar } from "../../../ui/templates/Workspace";
@@ -51,28 +50,24 @@ export function BuilderToolbar() {
         <Tabs
           value={activeEditor}
           onValueChange={(editor: FormEditor) => setActiveEditor(editor)}
-          className="min-w-0"
+          className="min-w-0 flex-1"
         >
-          <TabsList aria-label="Editors" className="border-b-0">
+          <TabsList
+            aria-label="Editors"
+            className="overflow-x-auto overflow-y-hidden border-b-0"
+          >
             {EDITORS.map((editor) => (
               <TabsTab key={editor} value={editor} className="h-14">
                 {EDITOR_LABELS[editor]}
-                {editor === FormEditor.Variables && (
-                  <Badge
-                    className={cn(
-                      "min-w-6 justify-center",
-                      formulas === 0 && "invisible",
-                    )}
-                  >
-                    {formulas}
-                  </Badge>
+                {editor === FormEditor.Variables && formulas > 0 && (
+                  <Badge>{formulas}</Badge>
                 )}
               </TabsTab>
             ))}
           </TabsList>
         </Tabs>
       )}
-      <div className="ml-auto flex shrink-0 items-center gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <IssuesButton
           rows={issues.map((issue) => ({
             location: issueLocation(schema, issue.target),

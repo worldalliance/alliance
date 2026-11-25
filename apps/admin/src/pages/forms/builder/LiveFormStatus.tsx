@@ -20,7 +20,7 @@ function liveSentence({ taskLive, responses }: FormReach): string {
  */
 export function LiveFormStatus({ reach }: { reach: FormReach }) {
   return (
-    <div className="flex w-24 shrink-0 items-center gap-1">
+    <div className="flex w-16 shrink-0 items-center gap-1">
       {reach.live && (
         <>
           <Badge tone={BadgeTone.Info}>Live</Badge>

@@ -5,6 +5,7 @@ import { MoreMenu, type MoreMenuItem } from "../../../ui/MoreMenu";
 import { ViewSwitch } from "../../../ui/templates/List";
 import { PaneHeader } from "../../../ui/templates/Workspace";
 import { useBuilder } from "./BuilderContext";
+import { HEADER_TRUNCATES } from "./paneHeader";
 
 enum Mode {
   Edit = "edit",
@@ -99,6 +100,7 @@ export function MainPaneHeader({ title }: { title?: string }) {
   return (
     <PaneHeader
       title={heading}
+      className={HEADER_TRUNCATES}
       action={
         <div className="flex shrink-0 items-center gap-1">
           <HistoryControls

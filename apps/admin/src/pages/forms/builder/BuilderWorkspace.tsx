@@ -54,7 +54,7 @@ export function BuilderWorkspace() {
   return (
     <div
       ref={rootRef}
-      style={height === null ? undefined : { height }}
+      style={height === null ? undefined : { height, flex: "none" }}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       {activeEditor === FormEditor.Form ? (

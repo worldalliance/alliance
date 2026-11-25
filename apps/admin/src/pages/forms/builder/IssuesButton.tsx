@@ -52,14 +52,14 @@ export function IssuesButton({
 
   if (nothingToSay && !open) {
     return (
-      <p className="w-28 shrink-0 truncate text-caption text-fg-muted">
+      <p className="w-24 shrink-0 truncate text-caption text-fg-muted">
         No issues
       </p>
     );
   }
 
   return (
-    <div className="w-28 shrink-0">
+    <div className="w-24 shrink-0">
       <Popover
         open={open}
         onOpenChange={(next, { reason }) => {

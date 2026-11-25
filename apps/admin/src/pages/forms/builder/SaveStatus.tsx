@@ -9,7 +9,7 @@ export function SaveStatus({ status }: { status: Status }) {
       aria-label="Save state"
       title={status.text || undefined}
       className={cn(
-        "line-clamp-2 w-44 shrink-0 text-right text-caption",
+        "line-clamp-2 w-32 shrink-0 text-right text-caption",
         status.failed ? "text-danger" : "text-fg-muted",
       )}
     >

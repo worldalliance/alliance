@@ -6,7 +6,9 @@ const MIN_HEIGHT = 480;
 /**
  * BACKCOMPAT(builder-fill): a height for the builder when its mount gives it
  * none to fill, so its panes scroll and the page doesn't: from its top to the
- * bottom of the window. Remove once every mount renders it in a `Page fill`.
+ * bottom of the window. It applies once the builder grows past the window,
+ * which a builder in a filled parent never does. Remove once every mount
+ * renders it in a `Page fill`.
  */
 export function useFillHeight(
   root: RefObject<HTMLElement | null>,
@@ -20,21 +22,26 @@ export function useFillHeight(
       const top = element.getBoundingClientRect().top + (main?.scrollTop ?? 0);
       return Math.max(MIN_HEIGHT, Math.floor(window.innerHeight - top));
     };
-    if (
-      height === null &&
-      element.getBoundingClientRect().bottom <= window.innerHeight + 1
-    ) {
-      return;
+    if (height !== null) {
+      const resize = () => setHeight(measure());
+      window.addEventListener("resize", resize);
+      return () => window.removeEventListener("resize", resize);
     }
-    if (height === null && import.meta.env.DEV) {
-      console.error(
-        "FormBuilder: its mount gives it no height to fill. Render it as the only child of a Page fill body.",
-      );
-    }
-    const resize = () => setHeight(measure());
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    const overflows = () =>
+      element.getBoundingClientRect().bottom > window.innerHeight + 1;
+    const check = () => {
+      if (!overflows()) return;
+      if (import.meta.env.DEV) {
+        console.error(
+          "FormBuilder: its mount gives it no height to fill. Render it as the only child of a Page fill body.",
+        );
+      }
+      setHeight(measure());
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, [height, root]);
   return height;
 }

@@ -10,6 +10,7 @@ import {
 } from "../../../../ui/Popover";
 import { PaneHeader } from "../../../../ui/templates/Workspace";
 import { useBuilder } from "../BuilderContext";
+import { HEADER_TRUNCATES } from "../paneHeader";
 import { ElementActionsMenu } from "./ElementActionsMenu";
 import { useSelectionActions } from "./useSelectionActions";
 
@@ -68,7 +69,7 @@ export function InspectorHeader({
   return (
     <PaneHeader
       title={title}
-      className="z-20 bg-canvas"
+      className={cn(HEADER_TRUNCATES, "z-20 bg-canvas")}
       action={
         <div className="flex shrink-0 items-center gap-1">
           {extra}
