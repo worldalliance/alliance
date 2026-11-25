@@ -196,12 +196,10 @@ src/components/suite-partition/SuitePartitionConvert.tsx
 src/components/suite-partition/SuitePartitionEditor.tsx
 src/components/suite-partition/SuitePartitionSection.tsx
 src/pages/ActionDashboard.tsx
-src/pages/ActionSuitePage.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
-src/pages/SuiteLaunchPage.tsx
 src/pages/action-dashboard/ActionDashboardToolbar.tsx
 src/pages/action-dashboard/ActionEditor.tsx
 src/pages/action-dashboard/ActionOverviewTab.tsx

@@ -2,12 +2,19 @@ import {
   eventInEffectAt,
   memberActionPhase,
 } from "@alliance/common/actionEvent";
+import { PARTITION_LAUNCH_REFUSED } from "@alliance/common/suite-partition";
 import type {
   ActionEventDto,
   ActionStatus,
   ActionSuiteDto,
   AdminActionListItemDto,
 } from "@alliance/shared/client";
+import {
+  existingLaunchEvent,
+  hasLaunched,
+} from "../../components/suite-launch/launchBlockers";
+import { suiteHref } from "../../lib/hrefs";
+import { TabParam } from "../../places";
 
 type SuiteEvent = Pick<ActionEventDto, "date" | "newStatus">;
 
@@ -103,3 +110,43 @@ export function suiteRows({
       : new Date(row.membersStart).getTime();
   return rows.sort((a, b) => start(b) - start(a) || b.id - a.id);
 }
+
+export enum LaunchStatus {
+  Ready = "ready",
+  Launched = "launched",
+  Refused = "refused",
+}
+
+export type SuiteLaunch =
+  | { status: LaunchStatus.Ready }
+  | { status: LaunchStatus.Launched; reason: string }
+  | { status: LaunchStatus.Refused; reason: string };
+
+/** Whether the suite can launch, in the words today's suite page uses. */
+export function suiteLaunch(
+  suite: Pick<ActionSuiteDto, "events" | "isPartitioned">,
+): SuiteLaunch {
+  const existing = existingLaunchEvent(suite.events);
+  if (hasLaunched(suite.events) && existing !== null) {
+    return { status: LaunchStatus.Launched, reason: existing };
+  }
+  if (suite.isPartitioned) {
+    return { status: LaunchStatus.Refused, reason: PARTITION_LAUNCH_REFUSED };
+  }
+  return existing === null
+    ? { status: LaunchStatus.Ready }
+    : { status: LaunchStatus.Refused, reason: existing };
+}
+
+/** Names the reminder the Reminders tab picks out, as a reminder's id. */
+export const REMINDER_PARAM = "reminder";
+
+/** The suite's Reminders tab with one reminder picked out. */
+export const suiteReminderHref = (params: {
+  suiteId: number;
+  reminderId: number;
+}) =>
+  `${suiteHref(params.suiteId)}?${new URLSearchParams({
+    [TabParam.Tab]: "reminders",
+    [REMINDER_PARAM]: String(params.reminderId),
+  })}`;

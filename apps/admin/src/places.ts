@@ -500,6 +500,7 @@ export const RECORD_TABS = {
     { id: "timeline", label: "Timeline" },
     { id: "tasks", label: "Tasks" },
     { id: "events", label: "Events" },
+    { id: "reminders", label: "Reminders" },
     { id: "general-updates", label: "General updates" },
     { id: "partition", label: "Partition" },
     { id: "launch", label: "Launch" },

@@ -12,10 +12,11 @@ import { deployedWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtim
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, jest } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import LeaveGuard from "../components/LeaveGuard";
-import { answerLeaveGuard } from "../lib/testing/leaveGuard";
-import SuiteRecord from "../places/SuiteRecord";
-import { ToastProvider } from "../ui/ToastProvider";
+import LeaveGuard from "../../components/LeaveGuard";
+import { answerLeaveGuard } from "../../lib/testing/leaveGuard";
+import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
+import { ToastProvider } from "../../ui/ToastProvider";
+import SuitePage from "./SuitePage";
 
 const failure = () => Response.json({}, { status: 500 });
 const loadSuite = () =>
@@ -88,7 +89,7 @@ const renderPage = (initialEntry = "/tasks/suites/3") => {
         path: "/tasks/suites/:suiteId",
         element: (
           <LeaveGuard>
-            <SuiteRecord />
+            <SuitePage />
           </LeaveGuard>
         ),
       },
@@ -108,13 +109,14 @@ it("says when the suite fails to load", async () => {
   suiteLoad = failure;
   renderPage();
 
-  expect(await screen.findByText("Failed to load suite.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load this suite")).toBeTruthy();
+  expect(screen.getByText(LOAD_FAILED_FALLBACK)).toBeTruthy();
 });
 
 it("says why a delete was refused", async () => {
   eventDelete = () =>
     Response.json({ message: "Reminders use it" }, { status: 400 });
-  renderPage();
+  renderPage("/tasks/suites/3?tab=events");
 
   fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
   fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
@@ -129,7 +131,7 @@ it("says why a delete was refused", async () => {
 it("says why an edit was refused", async () => {
   eventEdit = () =>
     Response.json({ message: "Title is too long" }, { status: 400 });
-  renderPage();
+  renderPage("/tasks/suites/3?tab=events");
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit for all" }));
   expect(screen.getByLabelText("Title")).toBeTruthy();
@@ -143,16 +145,12 @@ it("opens the launch page from the suite and goes back", async () => {
   suiteLoad = unlaunchedSuite([]);
   renderPage();
 
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Begin launch process" }),
-  );
+  fireEvent.click(await screen.findByRole("link", { name: "Launch…" }));
   expect(
     await screen.findByRole("heading", { name: "Launch Suite" }),
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Back to suite" }));
-  expect(
-    await screen.findByRole("button", { name: "Begin launch process" }),
-  ).toBeTruthy();
+  expect(await screen.findByRole("link", { name: "Launch…" })).toBeTruthy();
 });
 
 it("says why a suite with an office taking action event can't launch", async () => {
@@ -162,18 +160,14 @@ it("says why a suite with an office taking action event can't launch", async () 
   expect(
     await screen.findByText(/already has an office taking action event/),
   ).toBeTruthy();
-  expect(
-    screen.queryByRole("button", { name: "Begin launch process" }),
-  ).toBeNull();
+  expect(screen.queryByRole("link", { name: "Launch…" })).toBeNull();
 });
 
 it("offers no launch once the suite has launched", async () => {
   renderPage();
 
-  await screen.findByText("Suite");
-  expect(
-    screen.queryByRole("button", { name: "Begin launch process" }),
-  ).toBeNull();
+  await screen.findByRole("heading", { level: 1, name: "Suite" });
+  expect(screen.queryByRole("link", { name: "Launch…" })).toBeNull();
   expect(screen.queryByText(/already has/)).toBeNull();
 });
 
@@ -185,7 +179,7 @@ it.each([
   async (environment, off) => {
     setWebRuntimeConfig(deployedWebRuntimeConfig(environment));
     suiteLoad = unlaunchedSuite([]);
-    renderPage();
+    renderPage("/tasks/suites/3?tab=partition");
 
     const button = await screen.findByRole("button", {
       name: "Partition this suite",
@@ -201,12 +195,10 @@ it.each([
 
 it("offers the parts in place of a launch for a suite that uses parts", async () => {
   suiteLoad = unlaunchedSuite([], true);
-  renderPage();
+  renderPage("/tasks/suites/3?tab=partition");
 
   expect(await screen.findByText(PARTITION_LAUNCH_REFUSED)).toBeTruthy();
-  expect(
-    screen.queryByRole("button", { name: "Begin launch process" }),
-  ).toBeNull();
+  expect(screen.queryByRole("link", { name: "Launch…" })).toBeNull();
   expect(
     await screen.findByRole("heading", { name: "1. Everyone else" }),
   ).toBeTruthy();
@@ -214,16 +206,16 @@ it("offers the parts in place of a launch for a suite that uses parts", async ()
 
 it("drops one suite's unsaved parts on moving to another", async () => {
   suiteLoad = unlaunchedSuite([], true);
-  const router = renderPage("/tasks/suites/4");
+  const router = renderPage("/tasks/suites/4?tab=partition");
   await screen.findByRole("heading", { name: "1. Everyone else" });
-  await act(() => router.navigate("/tasks/suites/3"));
+  await act(() => router.navigate("/tasks/suites/3?tab=partition"));
   fireEvent.click(await screen.findByRole("button", { name: "Add part" }));
   expect(
     screen.getByRole("heading", { name: "2. Everyone else" }),
   ).toBeTruthy();
 
   answerLeaveGuard(true);
-  await act(() => router.navigate("/tasks/suites/4"));
+  await act(() => router.navigate("/tasks/suites/4?tab=partition"));
 
   expect(
     await screen.findByRole("heading", { name: "1. Everyone else" }),
