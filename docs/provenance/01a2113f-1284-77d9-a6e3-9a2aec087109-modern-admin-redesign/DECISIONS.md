@@ -291,3 +291,15 @@ After the judge's verdict and the revised guide, still agent judgement:
 - **The count sits in the description ("… soonest first. 5 jobs.") and the page has no filter bar**, as the guide now says for a list with nothing to filter. It is left out while loading and when there are none.
 - **A suspension row is keyed by its members and a forum row by its task**, so a row stays open across a refetch, which moves every suspension's sampled time.
 - **The empty state says no member is due**, since the server leaves out a job with no members.
+
+## Trial page: Content › Media
+
+Agent judgement throughout; the owner was not asked.
+
+- **The Image upload tab is a Settings form body with no filter bar, and only the Videos tab fills the frame.** The template map gives a place whose tabs differ in kind the List's header and tabs, and each tab the body of its own template; a filter bar over an upload form would filter nothing.
+- **Replacing a video's content asks first**, where today it had no confirmation: the server deletes the video's current files, and whoever plays the video gets the new ones. It is the Confirm level, not a typed phrase, since it notifies no one.
+- **Both upload buttons stay enabled and say what is missing when pressed** (no file; no `.m3u8` playlist), where today's Upload did nothing without a file and today's Replace was disabled without a reason. A refused upload or replacement stays in the form's save bar; today the replacement's refusal was a toast only.
+- **The uploaded image's link sits in a read-only field with a "Copy link" button.** Today the URL was plain text to select by hand, and getting that link is the page's whole purpose. The file picker offers images first (`accept="image/*"`), which the server already required.
+- **The Videos list gained a search by filename** (`?q=`), the one filter the guide allows everywhere, and its delete is a labelled button asking through the admin's dialog with today's sentence about the files staying in storage. Opening a video is the filename's link; the row itself is no longer a click target.
+- **The video record has a side panel for its five facts and no delete of its own**, as today: delete stays on the list. Its breadcrumb gains a "Videos" step, since the place's own crumb leads to the Image upload tab. An id that isn't a number reads as not found.
+- **The record's order is player, replace, segments**, where today's was player, info, segments in a scrolling box, replace: with the facts beside it the segments table runs its full length last, so no region scrolls inside the page.
