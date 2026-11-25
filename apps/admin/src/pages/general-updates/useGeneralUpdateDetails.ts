@@ -3,6 +3,7 @@ import { isEqual } from "es-toolkit";
 import { useState, type SetStateAction } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { generalUpdateHref } from "../../lib/hrefs";
 import type { useGeneralUpdateAdmin } from "../../lib/useGeneralUpdateAdmin";
 import { useLeaveGuard } from "../../lib/useLeaveGuard";
 import {
@@ -14,7 +15,6 @@ import { useToast } from "../../ui/ToastProvider";
 import {
   EMPTY_FORM,
   formOf,
-  generalUpdateHref,
   saveBodyOf,
   withSuite,
   type GeneralUpdateForm,

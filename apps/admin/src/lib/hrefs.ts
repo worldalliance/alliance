@@ -49,7 +49,10 @@ export const taskUpdateHref = ({
     updateId: updateId.toString(),
   });
 
-export const suiteHref = (suiteId: number, tab?: RecordTabId<RecordId.Suite>) =>
+export const suiteHref = (
+  suiteId: number | "new",
+  tab?: RecordTabId<RecordId.Suite>,
+) =>
   withTab(
     RecordId.Suite,
     href("/tasks/suites/:suiteId", { suiteId: suiteId.toString() }),
@@ -94,8 +97,20 @@ export const formulaHref = (formulaId: number | "new") =>
 export const contractHref = (contractId: number | "new") =>
   href("/tasks/contracts/:id", { id: contractId.toString() });
 
+export const inviteFeedHref = href("/growth/invites/feed");
+
 export const threadHref = (threadId: string) =>
   href("/inbox/:threadId", { threadId });
+
+export const generalUpdateHref = (
+  id: number | "new",
+  tab?: RecordTabId<RecordId.GeneralUpdate>,
+) =>
+  withTab(
+    RecordId.GeneralUpdate,
+    href("/content/general-updates/:id", { id: id.toString() }),
+    tab,
+  );
 
 export const videoHref = (videoId: number) =>
   href("/content/media/videos/:videoId", { videoId: videoId.toString() });

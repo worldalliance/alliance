@@ -3,6 +3,7 @@ import { Fragment, useMemo } from "react";
 import { Link } from "react-router";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDateTime } from "../../lib/formatDate";
+import { generalUpdateHref } from "../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 import { useGeneralUpdatesAdmin } from "../../lib/useGeneralUpdatesAdmin";
 import { PlaceId } from "../../places";
@@ -32,12 +33,7 @@ import {
   RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
-import {
-  generalUpdateHref,
-  groupByStatus,
-  STATUS_LABEL,
-  STATUS_TONE,
-} from "./generalUpdateRules";
+import { groupByStatus, STATUS_LABEL, STATUS_TONE } from "./generalUpdateRules";
 
 const COLUMNS = 4;
 

@@ -3,7 +3,9 @@ import {
   contractHref,
   formHref,
   formulaHref,
+  generalUpdateHref,
   groupHref,
+  inviteFeedHref,
   koraAssignmentHref,
   koraTranscriptPreviewHref,
   memberHref,
@@ -35,11 +37,16 @@ describe("hrefs", () => {
     expect(koraTranscriptPreviewHref("b-1")).toBe("/research/preview/b-1");
     expect(formulaHref(7)).toBe("/tasks/formulas/7");
     expect(contractHref(7)).toBe("/tasks/contracts/7");
+    expect(generalUpdateHref(7)).toBe("/content/general-updates/7");
+    expect(inviteFeedHref).toBe("/growth/invites/feed");
   });
 
   it("names a tab other than the first in the query", () => {
     expect(formHref(7, "responses")).toBe("/tasks/forms/7?tab=responses");
     expect(suiteHref(7, "launch")).toBe("/tasks/suites/7?tab=launch");
+    expect(generalUpdateHref(7, "content")).toBe(
+      "/content/general-updates/7?tab=content",
+    );
   });
 
   it("leaves the first tab as the bare URL", () => {
@@ -50,6 +57,8 @@ describe("hrefs", () => {
   it("builds the create page of a record made on its own page", () => {
     expect(formulaHref("new")).toBe("/tasks/formulas/new");
     expect(contractHref("new")).toBe("/tasks/contracts/new");
+    expect(suiteHref("new")).toBe("/tasks/suites/new");
+    expect(generalUpdateHref("new")).toBe("/content/general-updates/new");
   });
 
   it("builds a task under its project, at a section when one is named", () => {

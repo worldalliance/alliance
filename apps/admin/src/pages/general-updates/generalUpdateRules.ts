@@ -9,9 +9,6 @@ import { BadgeTone } from "../../ui/Badge";
 
 export const GENERAL_UPDATES_HREF = href("/content/general-updates");
 
-export const generalUpdateHref = (id: number | "new") =>
-  href("/content/general-updates/:id", { id: String(id) });
-
 /** The dates are UTC instants as ISO strings, or "" for none. */
 export type GeneralUpdateForm = {
   name: string;
