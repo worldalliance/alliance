@@ -463,6 +463,36 @@ If your design moves or merges one of these screens, your report says where each
 - `success(message, title)`: `title` renders as a heading above `message`, so pass the record's name there (`success("Group created", group.name)`) or nothing.
 - Never for a failure, a warning, or anything needing action: those go where **Empty, loading, error** says, and stay. `lib/useRefusalToast.ts` is the old pages'.
 
+## Charts
+
+Charts come from `apps/admin/src/ui/charts`, and the pieces of the panels around them from `templates/Overview.tsx`; read the props in the files.
+
+| Piece                                                                                     | Use                                                                                                                                                              |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DateAxisChart`, `NumericAxisChart`                                                       | Lines over dates, or over a numeric x such as weeks or hours since a start.                                                                                      |
+| `ChartFrame`                                                                              | The box a chart you draw yourself sits in: it gives you the width to draw at, dims the chart while `updating`, and holds its `tip`.                              |
+| `useChartCursor`                                                                          | The active mark for pointer and keyboard alike: spread `markProps` on the `<svg>`.                                                                               |
+| `ChartTip`, `TipRow`                                                                      | The active mark's detail, kept inside the frame so it never covers a control outside the chart.                                                                  |
+| `ChartLegend`, `LegendItem`, `SequenceLegend`                                             | The series' names, under the chart.                                                                                                                              |
+| `chartColor.ts`                                                                           | `SERIES`, `chartColor` (grid, cursor, track, muted), `sequenceColor`, `heatCellClass`, `axisTextClass`.                                                          |
+| `PanelControls`, `PanelStack`, `PanelNote`, `PanelStat`, `DateRangeFields`, `NumberField` | A panel's controls, first in its body: fields, then `actions` level with them. `PanelStat` is a number inside a `Panel`, where a `StatTile` is a card in a card. |
+
+- **Colour.** Series take `SERIES` in order: neighbours alternate dark and light, 3:1 apart, so two series side by side differ without their hue. Success, warning, danger and info colour a series only when the series is that status. A set too long to name one by one, in an order (cohorts by age), takes `sequenceColor` and a `SequenceLegend`; a filled cell holding a value takes `heatCellClass` and shows the value. Pass colours as values from `chartColor.ts`: the lint reports colour literals in `fill`, `stroke` and `style`, and fixed lengths in `style`.
+- **Size.** Draw at the width `ChartFrame` gives (`width={width}` with a matching `viewBox`) rather than scaling a fixed `viewBox`, so axis text keeps its size in a half-width panel; `xTickCount(width)` thins the ticks to fit.
+- **Without a pointer.** Every value a tip shows can be reached without one: the `<svg>` takes focus and the arrow keys move the active mark, as the kit's charts do, or the values are on the page as text or a table. The `aria-label` names the chart and says how to read it.
+- **A range change** keeps the chart on screen with `updating`. The skeleton is for a first load, or when there was nothing to keep.
+- **Nothing in range** is `ContentState`'s `emptyTitle` ("No invites in this date range"), with no Clear filters.
+- A panel's controls (ranges, weeks, a checkbox) are not URL state. A quick range ("Last 7 days") is a `Default` small button in `actions`. Ticks and tips format numbers with `formatNumber`.
+- Run the grayscale pass on any page with a chart.
+
+## Home's states
+
+- While the queue counts load, Home shows one skeleton line, and the list appears whole once all four settle. Its landing pushes the stats down; it is the one load allowed to move content on Home.
+- A count that couldn't load keeps its row, showing "—" and saying the count couldn't load: a failed count is not an empty queue.
+- Each row shows the exact number, not a `CountBadge` (which caps at 99+), then `QUEUES[id].label` and a button reading `QUEUES[id].open` to `queueHref(id)`, all from `places.ts`.
+- A stat tile whose number comes from a query still loading or failed says so in its `note` ("Loading…", "Couldn't load"), never "—".
+- Stats stay on Home under the queues. Panels that compare well side by side take half the grid (`col-span-12 @4xl:col-span-6`); wide charts and tables take the row.
+
 ## Keyboard
 
 - The shell owns `⌘K` (palette), `[` (sidebar), `?` (shortcut list) and `g` then `h`, `i`, `t`, `m`, `w`, `c`, `a`, `r` or `s` (go to an area). Don't bind these or anything that shadows a browser or OS shortcut.
