@@ -40,7 +40,7 @@ export default [
       route("/members/groups", "pages/groups/GroupsPage.tsx"),
       route("/members/groups/:id", "pages/groups/GroupPage.tsx"),
       route("/members/clusters", "pages/ClustersPage.tsx"),
-      route("/members/tags", "pages/TagManagement.tsx"),
+      route("/members/tags", "pages/tags/TagsPage.tsx"),
       route("/members/lists", "pages/lists/MemberListsPage.tsx"),
       route("/members/lists/:listId", "pages/lists/MemberListPage.tsx"),
       route("/members/friends", "pages/FriendGraphPage.tsx"),

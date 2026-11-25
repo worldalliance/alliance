@@ -294,7 +294,6 @@ src/pages/ProjectDetailPage.tsx
 src/pages/ProjectsPage.tsx
 src/pages/ShareLinksPage.tsx
 src/pages/SuiteLaunchPage.tsx
-src/pages/TagManagement.tsx
 src/pages/TextThreadPage.tsx
 src/pages/TextsPage.tsx
 src/pages/WaitlistEmailsPage.tsx
