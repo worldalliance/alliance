@@ -82,7 +82,11 @@ export function useFormSave({
   } = saved;
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const { success: showSuccessToast, error: showErrorToast } = useToast();
+  const {
+    success: showSuccessToast,
+    error: showErrorToast,
+    confirm,
+  } = useToast();
   const { createForm } = useCreateFormAdmin();
   const { fetchLatest, updateForm } = useAdminTaskFormActions();
   const fetchTheirs = useCallback(
@@ -355,20 +359,21 @@ export function useFormSave({
     showSuccessToast,
   ]);
 
-  const handleTakeTheirs = useCallback(() => {
+  const handleTakeTheirs = useCallback(async () => {
     if (!conflict) return;
-    if (
-      !window.confirm(
-        "Discard your changes and load their current version? Copy your version first if you want to keep it.",
-      )
-    ) {
-      return;
-    }
+    const discard = await confirm({
+      title: "Discard your changes?",
+      message:
+        "Their current version loads in place of yours. Copy your version first if you want to keep it.",
+      confirmLabel: "Discard my changes",
+      destructive: true,
+    });
+    if (!discard) return;
     loadSchema(conflict.theirs);
     reloadEditors();
     markSaved(conflict.theirs, conflict.theirsSnapshotId);
     setConflict(null);
-  }, [conflict, loadSchema, markSaved, reloadEditors, setConflict]);
+  }, [confirm, conflict, loadSchema, markSaved, reloadEditors, setConflict]);
 
   const handleMerge = useCallback(() => {
     if (!conflict) return;

@@ -19,6 +19,7 @@ import {
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { ToastProvider } from "../ui/ToastProvider";
 import MemberListPage from "./MemberListPage";
 
@@ -370,7 +371,7 @@ test("deletes a list with the fix of a part that reads it", async () => {
 
 test("asks before leaving while a part's fix differs from how it opened", async () => {
   formulaAnswers = [[partReadsVolunteers]];
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
   const router = renderPage(`/members/lists/${volunteers.id}`);
   await screen.findByRole("heading", { name: "Volunteers" });
   await remove();

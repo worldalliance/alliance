@@ -1,5 +1,6 @@
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import {
   api,
   base,
@@ -144,7 +145,7 @@ test("keeps the saved text when the list can't load after a save", async () => {
 });
 
 test("leaves without asking when the list can't load after a save", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
   const { router } = renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");

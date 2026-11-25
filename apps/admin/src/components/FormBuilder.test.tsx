@@ -1,8 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import {
   renderFormBuilder,
   renderSavedFormBuilder,
@@ -48,7 +49,7 @@ describe("FormBuilder save conflict", () => {
           : Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
       },
     });
-    jest.spyOn(window, "confirm").mockReturnValue(true);
+    answerLeaveGuard(true);
   });
 
   it.each(["Take theirs", "Merge changes"])(
@@ -59,13 +60,16 @@ describe("FormBuilder save conflict", () => {
         target: { value: "Where" },
       });
       fireEvent.click(screen.getByText("Formulas"));
-      const [first, second] = screen.getAllByLabelText<HTMLInputElement>(
+      const [first, second] = await screen.findAllByLabelText<HTMLInputElement>(
         "Sample answer for input1",
       );
       fireEvent.change(first!, { target: { value: "Oslo" } });
       fireEvent.change(second!, { target: { value: "Lima" } });
       fireEvent.click(screen.getByText("Save Form"));
       fireEvent.click(await screen.findByText(resolve));
+      if (resolve === "Take theirs") {
+        fireEvent.click(await screen.findByText("Discard my changes"));
+      }
 
       await waitFor(() =>
         expect(
@@ -80,6 +84,34 @@ describe("FormBuilder save conflict", () => {
       ).toBe("");
     },
   );
+
+  it("keeps the conflict and the edits when staff back out of Take theirs", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByPlaceholderText("Page title"), {
+      target: { value: "Where" },
+    });
+    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(await screen.findByText("Take theirs"));
+    const ask = await screen.findByRole("dialog", {
+      name: "Discard your changes?",
+    });
+
+    await act(async () => {
+      fireEvent.keyDown(ask, { key: "Escape" });
+    });
+
+    expect(
+      screen.queryByRole("dialog", { name: "Discard your changes?" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("dialog", {
+        name: "This form was changed by someone else",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByPlaceholderText<HTMLInputElement>("Page title").value,
+    ).toBe("Where");
+  });
 });
 
 describe("FormBuilder save conflict with an options formula", () => {
@@ -116,7 +148,7 @@ describe("FormBuilder save conflict with an options formula", () => {
           : Response.json({ id: 1, schema: withFormula, formSnapshotId: 2 });
       },
     });
-    jest.spyOn(window, "confirm").mockReturnValue(true);
+    answerLeaveGuard(true);
     renderBuilder(withFormula);
     selectElement("Pick");
 
@@ -131,6 +163,7 @@ describe("FormBuilder save conflict with an options formula", () => {
     expect(screen.getByText(/Undo, back to/)).toBeTruthy();
     fireEvent.click(screen.getByText("Save Form"));
     fireEvent.click(await screen.findByText("Take theirs"));
+    fireEvent.click(await screen.findByText("Discard my changes"));
 
     await waitFor(() => expect(screen.queryByText(/Undo, back to/)).toBeNull());
   });
@@ -395,7 +428,7 @@ describe("FormBuilder save once a source form loads", () => {
         },
       ],
     });
-    jest.spyOn(window, "confirm").mockReturnValue(true);
+    answerLeaveGuard(true);
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });

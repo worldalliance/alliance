@@ -13,6 +13,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
 import { notifyRealMembersText } from "../lib/notifyRealMembers";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
 import { ToastProvider } from "../ui/ToastProvider";
 import ActionUpdatePage from "./ActionUpdatePage";
@@ -392,7 +393,7 @@ describe("ActionUpdatePage", () => {
   });
 
   it("asks before leaving unsaved details, but not for a tab change", async () => {
-    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(false);
+    const leaveAsked = answerLeaveGuard(false);
     renderPage();
     fireEvent.click(
       await screen.findByRole("button", { name: /^update details$/i }),
@@ -416,7 +417,7 @@ describe("ActionUpdatePage", () => {
           ? Response.json(served)
           : Response.json({ statusCode: 404 }, { status: 404 }),
     });
-    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(true);
+    const leaveAsked = answerLeaveGuard(true);
     const router = renderPage();
     fireEvent.click(
       await screen.findByRole("button", { name: /^update details$/i }),

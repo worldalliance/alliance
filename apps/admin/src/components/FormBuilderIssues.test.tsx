@@ -17,6 +17,7 @@ import {
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import {
   renderFormBuilder,
   renderSavedFormBuilder,
@@ -375,7 +376,7 @@ describe("FormBuilder issues", () => {
   });
 
   it("clears what the editors held for the blank form once a retry loads it", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
+    answerLeaveGuard(true);
     failing.add("7");
     renderSavedFormBuilder(7, "/");
     await screen.findByRole("button", { name: "1 issue" });
@@ -391,7 +392,7 @@ describe("FormBuilder issues", () => {
       fireEvent.click(confirm);
     });
     fireEvent.click(screen.getByRole("button", { name: /^Formulas/ }));
-    fireEvent.change(screen.getByLabelText("Sample answer for input1"), {
+    fireEvent.change(await screen.findByLabelText("Sample answer for input1"), {
       target: { value: "Oslo" },
     });
 

@@ -12,6 +12,7 @@ import {
   pageTitle,
   selectElement,
 } from "../lib/testing/formCanvas";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 const twoPages: FormSchema = {
@@ -113,7 +114,7 @@ const save = () =>
   });
 
 it("starts with nothing to undo, then steps back through edits on every tab", async () => {
-  const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(true);
+  const leaveAsked = answerLeaveGuard(true);
   renderFormBuilder(twoPages, 1);
   expect(button("Undo").disabled).toBe(true);
   expect(button("Redo").disabled).toBe(true);
@@ -165,7 +166,7 @@ it("folds typing into one step until the field loses focus", async () => {
 });
 
 it("keeps redo through a write that changes nothing", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  answerLeaveGuard(true);
   renderFormBuilder(
     {
       ...twoPages,
@@ -322,13 +323,16 @@ it("keeps history when Keep mine saves over theirs", async () => {
 });
 
 it("starts a new history from their version after Take theirs", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  answerLeaveGuard(true);
   conflictsLeft = 1;
   renderFormBuilder(twoPages, 1);
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await save();
   await act(async () => {
     fireEvent.click(await screen.findByText("Take theirs"));
+  });
+  await act(async () => {
+    fireEvent.click(await screen.findByText("Discard my changes"));
   });
 
   expect(pageTitle().value).toBe("One");
@@ -364,7 +368,7 @@ it("creates a draft validator once, whatever is undone and redone after", async 
 });
 
 it("reopens the Output View's expression editor when undo restores its text", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  answerLeaveGuard(true);
   renderFormBuilder(
     {
       ...twoPages,

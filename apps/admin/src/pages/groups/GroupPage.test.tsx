@@ -1,3 +1,4 @@
+/* alliance/max-lines 550 -- temporary: to be split by area (loading, members, settings, progress) once the redesign's foundation review stops changing it */
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
@@ -20,6 +21,7 @@ import {
 import { Suspense, type ReactNode } from "react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
+import { answerLeaveGuard } from "../../lib/testing/leaveGuard";
 import { ToastProvider } from "../../ui/ToastProvider";
 import GroupPage from "./GroupPage";
 
@@ -244,7 +246,7 @@ it("goes back to the groups once a group is deleted", async () => {
 });
 
 it("deletes a group with unsaved settings without asking to leave", async () => {
-  const asked = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const asked = answerLeaveGuard(false);
   try {
     renderPage({ tab: "settings" });
     fireEvent.change(await screen.findByLabelText("Name"), {

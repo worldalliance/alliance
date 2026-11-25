@@ -17,6 +17,7 @@ import {
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
 import { generalUpdateAdmin } from "../../lib/testing/generalUpdateAdmin";
+import { answerLeaveGuard } from "../../lib/testing/leaveGuard";
 import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
@@ -478,7 +479,7 @@ it("keeps unsaved details through a look at the Content tab", async () => {
 });
 
 it("asks before leaving with unsaved details", async () => {
-  const asked = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const asked = answerLeaveGuard(false);
   const { router } = renderPage();
   fireEvent.change(await screen.findByLabelText("Title"), {
     target: { value: "Edited" },

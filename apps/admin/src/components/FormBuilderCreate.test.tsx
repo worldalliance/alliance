@@ -3,6 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import FormBuilderPage from "../pages/FormBuilder";
 import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
@@ -55,7 +56,7 @@ describe("FormBuilder saving a new form", () => {
   );
 
   it("opens it once saved, without asking about the changes just saved", async () => {
-    const leaveAsked = jest.spyOn(window, "confirm").mockReturnValue(false);
+    const leaveAsked = answerLeaveGuard(false);
     const router = createMemoryRouter(
       [
         {

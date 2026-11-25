@@ -7,6 +7,7 @@ import {
   type RouteObject,
 } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { answerLeaveGuard } from "./testing/leaveGuard";
 import { useLeaveGuard } from "./useLeaveGuard";
 
 const Clean = () => {
@@ -58,7 +59,7 @@ const leave = async ({
   to: string;
   answer: boolean;
 }) => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(answer);
+  const confirm = answerLeaveGuard(answer);
   await act(() => router.navigate(to));
   return confirm.mock.calls.length;
 };
@@ -122,7 +123,7 @@ it("still asks for a dirty page whose nested guard is clean", async () => {
 
 it("still asks for a dirty page a change of search params kept mounted, before it renders again", async () => {
   const router = routerWith(<Page dirty />);
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
 
   await act(async () => {
     void router.navigate("/a?tab=events");
@@ -145,7 +146,7 @@ const BypassingSamePath = () => {
 
 it("lets a navigation run past its own guard, then guards again", async () => {
   const router = routerWith(<Bypassing />);
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
 
   await act(async () =>
     navigateUnprompted(() => void router.navigate("/a?saved=1")),
@@ -165,7 +166,7 @@ it("still asks for another dirty guard when one guard's navigation runs unprompt
       <Strict />
     </>,
   );
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
 
   await act(async () => navigateUnprompted(() => void router.navigate("/b")));
 
@@ -181,7 +182,7 @@ it("lets staff leave a page an unprompted navigation left before its guard is re
     return null;
   };
   const router = routerWith(<Bypassing />, <LeavesOnMount />);
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
 
   await act(async () => navigateUnprompted(() => void router.navigate("/b")));
 
@@ -209,7 +210,7 @@ it("still asks for a dirty page a change of search params kept mounted after an 
       throw new Error("navigation failed");
     }),
   ).toThrow("navigation failed");
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
 
   await act(async () => {
     void router.navigate("/a?tab=events");
@@ -234,7 +235,7 @@ it("still asks for a dirty page a change of search params kept mounted after ano
       <Other />
     </>,
   );
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
 
   await act(async () => navigateUnprompted(() => void router.navigate("/b")));
   expect(router.state.location.pathname).toBe("/a");

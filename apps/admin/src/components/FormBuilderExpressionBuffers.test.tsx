@@ -2,6 +2,7 @@ import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 const shownWhenQ: VisibleIfFormula = {
@@ -90,7 +91,7 @@ it("gives each list sub-field its own expression text", async () => {
 });
 
 it("keeps an output block's expression text across tabs", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  answerLeaveGuard(true);
   renderFormBuilder(
     schemaWith([], {
       outputViews: [
@@ -264,7 +265,7 @@ it("keeps a display block's rule-less text until its conditions are removed", as
 });
 
 it("keeps an output block's rule-less text behind its toggle until turned off", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
+  answerLeaveGuard(true);
   renderFormBuilder(
     schemaWith([], {
       outputViews: [

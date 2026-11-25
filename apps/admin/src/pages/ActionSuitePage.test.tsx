@@ -10,9 +10,10 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
 import { deployedWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, jest, spyOn } from "bun:test";
+import { afterEach, expect, it, jest } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import LeaveGuard from "../components/LeaveGuard";
+import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import SuiteRecord from "../places/SuiteRecord";
 import { ToastProvider } from "../ui/ToastProvider";
 
@@ -221,7 +222,7 @@ it("drops one suite's unsaved parts on moving to another", async () => {
     screen.getByRole("heading", { name: "2. Everyone else" }),
   ).toBeTruthy();
 
-  spyOn(window, "confirm").mockReturnValue(true);
+  answerLeaveGuard(true);
   await act(() => router.navigate("/tasks/suites/4"));
 
   expect(

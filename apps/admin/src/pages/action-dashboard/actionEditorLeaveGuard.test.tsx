@@ -15,6 +15,7 @@ import {
   useParams,
 } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
+import { answerLeaveGuard } from "../../lib/testing/leaveGuard";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
 import { ToastProvider } from "../../ui/ToastProvider";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
@@ -83,7 +84,7 @@ const renderEditorAt = (path: "/tasks/new" | "/tasks/7") => {
 };
 
 it("asks before an edited new action is left, and opens the created action unasked", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
   const { router, editor } = renderEditorAt("/tasks/new");
   await waitFor(() => expect(editor().dirty).toBe(false));
 
@@ -103,7 +104,7 @@ it("asks before an edited new action is left, and opens the created action unask
 });
 
 it("leaves staff on the action they moved to when a new action's create resolves late", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  const confirm = answerLeaveGuard(true);
   let finishCreate!: (created: ReturnType<typeof makeAction>) => void;
   const createAction = jest
     .fn()
@@ -178,7 +179,7 @@ it("leaves staff on the action they moved to when a new action's create resolves
 });
 
 it("asks before a change of search params resets an edited new action", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
   const { router, editor } = renderEditorAt("/tasks/new");
   await waitFor(() => expect(editor().dirty).toBe(false));
 
@@ -190,7 +191,7 @@ it("asks before a change of search params resets an edited new action", async ()
 });
 
 it("keeps an existing action's draft through a tab change without asking, and asks on leaving", async () => {
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
   const { router, editor } = renderEditorAt("/tasks/7");
   await waitFor(() => expect(editor().draftSeeded).toBe(true));
   act(() => editor().handleCohortExpressionChange({ type: "AllMembers" }));
@@ -208,7 +209,7 @@ it("asks before leaving while a cover image is still uploading", async () => {
   jest
     .spyOn(readFileDataUriModule, "readFileDataUri")
     .mockReturnValue(new Promise(() => {}));
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+  const confirm = answerLeaveGuard(false);
   const { router, editor } = renderEditorAt("/tasks/7");
   await waitFor(() => expect(editor().draftSeeded).toBe(true));
 
@@ -226,7 +227,7 @@ it("stops asking about a left action's upload while the next action loads", asyn
   jest
     .spyOn(readFileDataUriModule, "readFileDataUri")
     .mockReturnValue(new Promise(() => {}));
-  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  const confirm = answerLeaveGuard(true);
   const Editor = () => {
     const actionId = Number(useParams().actionId);
     const editor = useActionEditor({
