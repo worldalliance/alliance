@@ -6,7 +6,7 @@ import ActionStatsTable from "../components/stats/ActionStatsTable";
 import AggregateStatsCard from "../components/stats/AggregateStatsCard";
 import CohortRetentionCharts from "../components/stats/CohortRetentionCharts";
 import CompletionRateCharts from "../components/stats/CompletionRateCharts";
-import { type ParsedContractStatusPoint } from "../components/stats/contractStatusHistory";
+import { parseContractStatusHistory } from "../components/stats/contractStatusHistory";
 import DailyStatsSection from "../components/stats/DailyStatsSection";
 import InviteFunnelCard from "../components/stats/InviteFunnelCard";
 import MemberReliabilityCard from "../components/stats/MemberReliabilityCard";
@@ -50,14 +50,10 @@ const StatsPage: React.FC = () => {
   const contractStatusLoading =
     contractStatusPending || contractStatusPlaceholder;
 
-  const parsedContractStatusHistory = useMemo<
-    ParsedContractStatusPoint[]
-  >(() => {
-    return contractStatusHistory.map((point) => ({
-      ...point,
-      parsedDate: new Date(point.date),
-    }));
-  }, [contractStatusHistory]);
+  const parsedContractStatusHistory = useMemo(
+    () => parseContractStatusHistory(contractStatusHistory),
+    [contractStatusHistory],
+  );
 
   return (
     <PageShell title="Stats" width={PageWidth.Full}>
