@@ -1,6 +1,6 @@
 /**
  * Cached Intl.DateTimeFormat instances to avoid expensive re-creation.
- * Each formatter is created once and reused for all subsequent calls.
+ * Each formatter is created once and reused, except formatDateTimeWithZone's.
  */
 
 /** "January 1, 2025" */
@@ -38,13 +38,20 @@ const mediumDateFormatterEnUS = new Intl.DateTimeFormat("en-US", {
 });
 
 /** "Jan 1, 2025, 3:00 PM" */
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+const dateTimeOptions: Intl.DateTimeFormatOptions = {
   year: "numeric",
   month: "short",
   day: "numeric",
   hour: "numeric",
   minute: "2-digit",
-});
+};
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, dateTimeOptions);
+
+/** "Jan 1, 2025, 3:00 PM PST" */
+const dateTimeWithZoneOptions: Intl.DateTimeFormatOptions = {
+  ...dateTimeOptions,
+  timeZoneName: "short",
+};
 
 /** "1/1/2025, 3:00:00 PM" (default toLocaleString equivalent) */
 const fullDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
@@ -78,6 +85,13 @@ export function formatMediumDateEnUS(date: Date): string {
 
 export function formatDateTime(date: Date): string {
   return dateTimeFormatter.format(date);
+}
+
+export function formatDateTimeWithZone(date: Date): string {
+  // Built per call, since a formatter keeps the zone it was built in.
+  return new Intl.DateTimeFormat(undefined, dateTimeWithZoneOptions).format(
+    date,
+  );
 }
 
 export function formatFullDateTime(date: Date): string {

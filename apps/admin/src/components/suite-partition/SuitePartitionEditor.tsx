@@ -10,7 +10,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { isEqual } from "es-toolkit";
 import React, { useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
-import { useUnsavedChangesPrompt } from "../../lib/useUnsavedChangesPrompt";
+import { useLeaveGuard } from "../../lib/useLeaveGuard";
 import PartFields, { PartitionProblemList } from "./PartFields";
 import PartitionGrid from "./PartitionGrid";
 import PartitionPreview from "./PartitionPreview";
@@ -58,7 +58,7 @@ const SuitePartitionEditor: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const addPart = useRef<HTMLButtonElement>(null);
   const dirty = !isEqual(parts, draftsOf(base));
-  useUnsavedChangesPrompt({ hasUnsavedChanges: dirty });
+  useLeaveGuard(dirty);
   const loadLatest = () => {
     setBase(partition);
     setParts(draftsOf(partition));

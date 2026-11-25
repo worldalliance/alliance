@@ -51,7 +51,7 @@ const ActionReviewersEditor: React.FC<ActionReviewersEditorProps> = ({
   onReviewersChange,
 }) => (
   <div>
-    <p className="text-sm font-medium text-gray-700">Reviewed By</p>
+    <p className="text-sm font-medium text-gray-700">Reviewed by</p>
     <p className="text-xs text-gray-500 mt-0.5 mb-2">
       External reviewers (not members) shown as “Reviewed by” on the action
       page. Link is optional (website, LinkedIn, …).

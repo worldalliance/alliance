@@ -28,7 +28,7 @@ import {
   useInvalidateFormulasAdmin,
   useSaveFormulasAdmin,
 } from "../lib/useFormulasAdmin";
-import { useUnsavedChangesPrompt } from "../lib/useUnsavedChangesPrompt";
+import { useLeaveGuard } from "../lib/useLeaveGuard";
 
 const NEW = "new";
 
@@ -164,7 +164,7 @@ const FormulaEditor: React.FC<{
   const hasUnsavedChanges =
     !saved &&
     (changed(primary) || fixes.some(changed) || partFixes.some(partFixChanged));
-  const navigateUnprompted = useUnsavedChangesPrompt({ hasUnsavedChanges });
+  const navigateUnprompted = useLeaveGuard(hasUnsavedChanges);
   const newHref = useHref(`/formulas/${NEW}`);
   const ownHref = useHref(`/formulas/${primary.id}`);
   const reload = async () => {

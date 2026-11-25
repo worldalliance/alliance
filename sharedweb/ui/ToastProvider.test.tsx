@@ -107,6 +107,55 @@ describe("ToastProvider", () => {
     expect(screen.getByPlaceholderText("DELETE")).toBeTruthy();
   });
 
+  it("closes a confirm, declined, when its signal aborts", async () => {
+    renderProvider();
+    const controller = new AbortController();
+    let answer: Promise<boolean> = Promise.resolve(true);
+    act(() => {
+      answer = toast.confirm({
+        message: "Send to members?",
+        requiredText: "SEND",
+        signal: controller.signal,
+      });
+    });
+    expect(screen.getByText("Send to members?")).toBeTruthy();
+    act(() => controller.abort());
+
+    expect(await answer).toBe(false);
+    expect(screen.queryByText("Send to members?")).toBeNull();
+  });
+
+  it("accepts a confirm with a live signal and stops listening to it", async () => {
+    renderProvider();
+    const controller = new AbortController();
+    const stopListening = jest.spyOn(controller.signal, "removeEventListener");
+    let answer: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      answer = toast.confirm({
+        message: "Send to members?",
+        signal: controller.signal,
+      });
+    });
+    act(() => screen.getByRole("button", { name: "Confirm" }).click());
+
+    expect(await answer).toBe(true);
+    expect(stopListening).toHaveBeenCalledWith("abort", expect.any(Function));
+  });
+
+  it("declines at once when its signal has already aborted", async () => {
+    renderProvider();
+    const controller = new AbortController();
+    controller.abort();
+
+    let answer: Promise<boolean> = Promise.resolve(true);
+    await act(async () => {
+      answer = toast.confirm({ message: "Send?", signal: controller.signal });
+    });
+
+    expect(await answer).toBe(false);
+    expect(screen.queryByText("Send?")).toBeNull();
+  });
+
   it.each([
     [
       ToastPlacement.Top,

@@ -14,6 +14,7 @@ import {
   within,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../LeaveGuard";
 import SuitePartitionSection from "./SuitePartitionSection";
 
 const EVERYONE_ELSE = "00000000-0000-4000-8000-0000000000e1";
@@ -108,12 +109,14 @@ const renderSection = () => {
       {
         path: "/",
         element: (
-          <SuitePartitionSection
-            suiteId={7}
-            isPartitioned
-            scheduled={false}
-            canPartition
-          />
+          <LeaveGuard>
+            <SuitePartitionSection
+              suiteId={7}
+              isPartitioned
+              scheduled={false}
+              canPartition
+            />
+          </LeaveGuard>
         ),
       },
     ],

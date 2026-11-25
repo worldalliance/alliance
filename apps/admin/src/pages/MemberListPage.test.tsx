@@ -19,6 +19,7 @@ import {
   within,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../components/LeaveGuard";
 import MemberListPage from "./MemberListPage";
 
 const volunteers: MemberListDto = {
@@ -124,7 +125,14 @@ const renderPage = (path: string, cachedFormulas?: FormulaDto[]) => {
   const router = createMemoryRouter(
     [
       { path: "/member-lists", element: <p>All lists</p> },
-      { path: "/member-lists/:listId", element: <MemberListPage /> },
+      {
+        path: "/member-lists/:listId",
+        element: (
+          <LeaveGuard>
+            <MemberListPage />
+          </LeaveGuard>
+        ),
+      },
     ],
     { initialEntries: [path] },
   );

@@ -5,6 +5,7 @@ import {
   type ReminderCohortType,
   type ReminderGroupTimingMode,
 } from "@alliance/shared/client";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
@@ -93,7 +94,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   userTagsError = null,
   initialValues,
   submitting = false,
-  submitLabel = "Create Reminders",
+  submitLabel = "Create reminders",
   serverError = null,
   serverSuccess = null,
   disableEventSelection = false,
@@ -244,7 +245,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Member Action Event
+          Member action event
         </label>
         <select
           value={selectedEventId ?? ""}
@@ -258,7 +259,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           {memberEvents.map((event) => (
             <option key={event.id} value={event.id}>
               {event.title || `Event #${event.id}`} —{" "}
-              {new Date(event.date).toLocaleString()}
+              {formatDateTimeWithZone(new Date(event.date))}
             </option>
           ))}
         </select>

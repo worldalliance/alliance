@@ -2,6 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { isStaging } from "@alliance/sharedweb/lib/config";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Outlet } from "react-router";
+import LeaveGuard from "./components/LeaveGuard";
 import { useAuth } from "./lib/AuthContext";
 
 export default function AdminLayout() {
@@ -15,7 +16,9 @@ export default function AdminLayout() {
 
   return (
     <>
-      <Outlet />
+      <LeaveGuard>
+        <Outlet />
+      </LeaveGuard>
       {isStaging() && (
         <div
           className={cn(

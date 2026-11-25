@@ -3,12 +3,13 @@ import {
   ActionSuiteDto,
   CreateActionEventDto,
 } from "@alliance/shared/client";
+import { formatDateTimeWithZone } from "@alliance/shared/lib/dateFormatters";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/sharedweb/ui/DateTimePicker";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { ConfirmMode } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
 import {
@@ -16,8 +17,22 @@ import {
   DEFAULT_EVENT_NAMES,
 } from "../lib/actionStatusDisplay";
 import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
+import { useConfirmOnPage } from "../lib/useConfirmOnPage";
 
 export type AddActionEvent = ReturnType<typeof useActionAdmin>["addEvent"];
+
+export const LAUNCH_CONFIRM_TEXT = "launch to real members";
+
+const OPENS_TO_MEMBERS: Record<ActionStatus, boolean> = {
+  draft: false,
+  planned: false,
+  office_action: false,
+  member_action: true,
+  resolution: false,
+  completed: false,
+  failed: false,
+  abandoned: false,
+};
 
 const DEADLINE_DECLINED_MESSAGE =
   "Added the launch event without its deadline event. Add the deadline separately.";
@@ -49,7 +64,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setEventCreatedSuccess,
     eventCreatedSuccess,
   } = props;
-  const { confirm } = useToast();
+  const confirm = useConfirmOnPage();
   const [useCustomName, setUseCustomName] = useState<boolean>(false);
   const [launchNow, setLaunchNow] = useState<boolean>(true);
   const [useDeadlineEvent, setUseDeadlineEvent] = useState<boolean>(false);
@@ -114,18 +129,55 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     e.preventDefault();
 
     setError(null);
-    setCreatingEvent(true);
 
+    const deadlineMessage =
+      "The deadline must come after the launch. Pick a later one.";
+    const deadlineTooEarly = (launchAt: Date) =>
+      useDeadlineEvent &&
+      eventForm.newStatus === "member_action" &&
+      new Date(deadlineEventDate) <= launchAt;
+    if (deadlineTooEarly(launchNow ? new Date() : new Date(eventForm.date))) {
+      setError(deadlineMessage);
+      return;
+    }
+
+    // Pending from the question on, so a second submit can't ask again.
+    setCreatingEvent(true);
     try {
+      const opensNow = launchNow || new Date(eventForm.date) <= new Date();
+      if (
+        OPENS_TO_MEMBERS[eventForm.newStatus] &&
+        !(await confirm({
+          title: opensNow ? "Launch to members now?" : "Schedule this launch?",
+          message: `${suiteMode ? "Every action in this suite" : "This action"} opens to its members ${opensNow ? "immediately" : `on ${formatDateTimeWithZone(new Date(eventForm.date))}`}.${suiteMode ? " This skips the suite launch checks." : ""}`,
+          confirmLabel: "Launch",
+          cancelLabel: "Cancel",
+          mode: ConfirmMode.Fullscreen,
+          requiredText: LAUNCH_CONFIRM_TEXT,
+        }))
+      ) {
+        return;
+      }
+      // The question can stay open past the times it was asked about.
+      const launchAt = launchNow ? new Date() : new Date(eventForm.date);
+      if (!opensNow && launchAt <= new Date()) {
+        setError(
+          "The launch time passed before you confirmed. Pick a new time.",
+        );
+        return;
+      }
+      if (deadlineTooEarly(launchAt)) {
+        setError(deadlineMessage);
+        return;
+      }
+
       const eventData = {
         ...eventForm,
         title: useCustomName
           ? eventForm.title
           : DEFAULT_EVENT_NAMES[eventForm.newStatus as ActionStatus],
         description: useCustomName ? eventForm.description : "",
-        date: launchNow
-          ? new Date().toISOString()
-          : new Date(eventForm.date).toISOString(),
+        date: launchAt.toISOString(),
       };
       let response;
 
@@ -207,10 +259,14 @@ const CreateEventForm = (props: CreateEventFormProps) => {
 
   return (
     <form onSubmit={handleAddEvent} className="space-y-4 mt-4">
-      {error && <p className="text-red-500">{error}</p>}
+      {error && (
+        <p role="alert" className="text-red-500">
+          {error}
+        </p>
+      )}
       <div className="mb-4 flex flex-row items-center">
         <label htmlFor="newStatus" className="block text-black min-w-25">
-          New Status
+          Status this event sets
         </label>
         <select
           id="newStatus"
@@ -259,7 +315,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           <>
             <div>
               <label htmlFor="eventTitle" className="block text-black mb-1">
-                Event Title *
+                Event title
               </label>
               <input
                 type="text"
@@ -268,7 +324,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 value={eventForm.title}
                 onChange={handleEventInputChange}
                 required={useCustomName}
-                placeholder="e.g., Launch Event, Office Action"
+                placeholder="e.g., Launch event, Office taking action"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -278,7 +334,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 htmlFor="eventDescription"
                 className="block text-black mb-1"
               >
-                Description
+                Description (optional)
               </label>
               <textarea
                 id="eventDescription"
@@ -368,7 +424,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                   ):
                 </label>
                 <DateTimePicker
-                  id="eventDate"
+                  id="deadlineEventDateInput"
                   name="date"
                   value={deadlineEventDate}
                   onChange={handleDeadlineDateChange}
@@ -440,7 +496,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            Adding Event...
+            Adding event...
           </span>
         ) : eventCreatedSuccess ? (
           <span className="flex items-center justify-center">
@@ -455,10 +511,10 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 clipRule="evenodd"
               />
             </svg>
-            Event Added!
+            Event added
           </span>
         ) : (
-          "Add Event"
+          "Add event"
         )}
       </button>
     </form>

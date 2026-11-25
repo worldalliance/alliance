@@ -93,7 +93,7 @@ const ProjectsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-y-6 p-5">
-      <title>Projects</title>
+      <title>Projects - Admin</title>
       <div className="flex items-center gap-x-3">
         <h1 className="text-lg font-bold">Projects</h1>
         <NewProject />
