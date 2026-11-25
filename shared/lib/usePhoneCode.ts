@@ -9,6 +9,7 @@ import {
   userPhoneSendCode,
   userPhoneVerifyCode,
   type PendingPhoneCodeDto,
+  type UserDto,
   type VerifyPhoneCodeDto,
 } from "../client";
 import { namedRefusalMessage } from "./hey-api";
@@ -18,6 +19,11 @@ import { meCache, meQuery } from "./useMe";
 /** The server's copy for a refused send or verify. */
 export const phoneCodeRefusalMessage = (error: unknown): string =>
   namedRefusalMessage(error, z.enum(OtpError));
+
+export const isConfirmedPhoneNumber = (
+  member: UserDto | undefined,
+  phoneNumber: string,
+): boolean => member?.phoneNumber === phoneNumber && member.phoneNumberVerified;
 
 /** Reloads what follows the member's saved number: whether texts can reach them, and the signed-in member, which says whether it is confirmed. */
 export const reloadAfterPhoneSave = (queryClient: QueryClient) => {
