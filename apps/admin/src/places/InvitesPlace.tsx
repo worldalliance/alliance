@@ -19,7 +19,7 @@ function LiveFeed() {
           Full screen
         </Button>
       </div>
-      <InviteFeedPage />
+      <InviteFeedPage embedded />
     </>
   );
 }

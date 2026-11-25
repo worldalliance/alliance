@@ -2,6 +2,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "bun:test";
+import { useState } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import AdminSearch from "./AdminSearch";
 
@@ -36,10 +37,15 @@ serveApi(
   }),
 );
 
+const Search = () => {
+  const [open, setOpen] = useState(false);
+  return <AdminSearch open={open} onOpenChange={setOpen} />;
+};
+
 const renderSearch = () =>
   render(
     <MemoryRouter>
-      <AdminSearch />
+      <Search />
       <Routes>
         <Route path="/" element={null} />
         <Route path="/members/:userId" element={<p>Member page</p>} />
@@ -65,7 +71,7 @@ it("says which lists failed to load, since they aren't searched", async () => {
   failForms = true;
   renderSearch();
 
-  fireEvent.click(screen.getByRole("button", { name: /Search/ }));
+  fireEvent.keyDown(window, { key: "k", metaKey: true });
 
   expect(
     await screen.findByText("Couldn't load forms, so they aren't searched."),

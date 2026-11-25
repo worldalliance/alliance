@@ -103,7 +103,7 @@ const AmbassadorProgramPage: React.FC = () => {
     createInteraction.error;
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-6 py-6 text-zinc-900">
+    <div className="min-h-screen bg-zinc-50 px-6 py-6 text-zinc-900">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -188,7 +188,7 @@ const AmbassadorProgramPage: React.FC = () => {
           />
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 

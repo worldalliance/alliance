@@ -89,7 +89,7 @@ export default function TabbedPlace({
       : null;
   if (!Page) throw new Error(`no page for place: ${placeId}`);
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-end justify-between gap-4 border-b border-line px-page">
         {place.tabs &&
           (viewHasPage ? (
@@ -111,6 +111,6 @@ export default function TabbedPlace({
         )}
       </div>
       <Page />
-    </>
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import SidebarNav from "../components/SidebarNav";
+import { PlaceId, placeById } from "../places";
 import { ToastProvider } from "../ui/ToastProvider";
 import CustomLinksPage from "./CustomLinksPage";
 
@@ -188,23 +188,10 @@ test("displays a load failure and can retry", async () => {
   await screen.findByDisplayValue("/100k");
 });
 
-test("places Custom Links under the renamed Links folder", () => {
-  render(
-    <MemoryRouter initialEntries={["/custom-links"]}>
-      <SidebarNav
-        groupAssignmentCount={0}
-        needsReplyCount={0}
-        pendingOutreachPartnershipCount={0}
-      />
-    </MemoryRouter>,
-  );
-  expect(screen.getByRole("button", { name: "Links" })).toBeTruthy();
-  expect(
-    screen
-      .getByRole("link", { name: "Custom Links" })
-      .getAttribute("aria-current"),
-  ).toBe("page");
-  expect(screen.queryByText("Invites & Sharing")).toBeNull();
+test("places Custom links under the Links place", () => {
+  const links = placeById(PlaceId.Links);
+  expect(links.label).toBe("Links");
+  expect(links.tabs?.map((tab) => tab.label)).toContain("Custom links");
 });
 
 test("rejects a reserved inline path edit without sending a request", async () => {

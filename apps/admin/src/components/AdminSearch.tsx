@@ -145,34 +145,26 @@ const SearchPalette = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const AdminSearch = () => {
-  const [open, setOpen] = useState(false);
-
+/** The palette, opened by its owner or by ⌘K from anywhere. */
+const AdminSearch = ({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen(true);
+        onOpenChange(true);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [onOpenChange]);
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-500 hover:border-zinc-400"
-      >
-        <Search size={14} aria-hidden />
-        Search
-        <kbd className="ml-auto font-sans text-xs text-zinc-400">⌘K</kbd>
-      </button>
-      {open && <SearchPalette onClose={() => setOpen(false)} />}
-    </>
-  );
+  return open ? <SearchPalette onClose={() => onOpenChange(false)} /> : null;
 };
 
 export default AdminSearch;

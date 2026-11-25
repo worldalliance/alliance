@@ -64,7 +64,13 @@ function formatInviteTime(createdAt: string): string {
   }).format(new Date(createdAt));
 }
 
-export default function InviteFeedPage() {
+export default function InviteFeedPage({
+  embedded = false,
+}: {
+  /** Inside the admin's frame, whose main region this then isn't. */
+  embedded?: boolean;
+}) {
+  const Root = embedded ? "div" : "main";
   const [settings, setSettings] = useState<FeedSettings | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { isConnected, setOnInviteCreated } = useEventLogWebSocket();
@@ -111,7 +117,7 @@ export default function InviteFeedPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f7f3] text-[#14181d] [font-family:'Source_Sans_3',system-ui,sans-serif]">
+    <Root className="min-h-screen bg-[#f7f7f3] text-[#14181d] [font-family:'Source_Sans_3',system-ui,sans-serif]">
       <header className="border-b border-[#081e40]/15 bg-[#f7f7f3]/95">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5 sm:px-8">
           <p className="font-berlingske text-xl uppercase text-[#081e40]">
@@ -248,6 +254,6 @@ export default function InviteFeedPage() {
           )}
         </section>
       </div>
-    </main>
+    </Root>
   );
 }

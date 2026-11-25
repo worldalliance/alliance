@@ -6,7 +6,7 @@ export default [
   layout("adminlayout.tsx", [
     route("/growth/invites/feed", "pages/InviteFeedPage.tsx"),
     route("/research/preview/:batchId", "pages/KoraTranscriptPreviewPage.tsx"),
-    layout("sidebar.tsx", [
+    layout("shell/ShellLayout.tsx", [
       route("/", "pages/StatsPage.tsx"),
 
       route("/inbox", "places/InboxPlace.tsx"),
