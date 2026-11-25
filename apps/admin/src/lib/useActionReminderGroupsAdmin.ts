@@ -13,15 +13,12 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   queryOptions,
-  skipToken,
   useMutation,
   useQueries,
-  useQuery,
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { usePatchQueryData } from "./usePatchQueryData";
 
 type ReminderGroupDetails = {
   groupId: number;
@@ -29,18 +26,32 @@ type ReminderGroupDetails = {
   sent: ActionEventNotifDto[];
 };
 
-const reminderGroupsQuery = (eventId: number | null) =>
+const reminderGroupsQuery = (eventId: number) =>
   queryOptions({
     queryKey: queryKeys.actionReminderGroupsAdmin(eventId),
-    queryFn:
-      eventId === null
-        ? skipToken
-        : () =>
-            actionRemindersReminderGroupsForEventAdmin({
-              path: { id: eventId },
-              throwOnError: true,
-            }).then((res) => res.data),
+    queryFn: () =>
+      actionRemindersReminderGroupsForEventAdmin({
+        path: { id: eventId },
+        throwOnError: true,
+      }).then((res) => res.data),
   });
+
+const combineLists = (results: UseQueryResult<ReminderGroupDto[]>[]) => ({
+  groups:
+    results.length > 0 && results.every((result) => result.data)
+      ? results.flatMap((result) => result.data ?? [])
+      : undefined,
+  groupsLoadFailed: results.some((result) => result.isError),
+  /** The lists as one query, for `ContentState`. */
+  groupsQuery: {
+    isPending: results.some((result) => result.isPending),
+    isLoadingError: results.some((result) => result.isLoadingError),
+    isRefetchError: results.some((result) => result.isRefetchError),
+    isFetching: results.some((result) => result.isFetching),
+    error: results.find((result) => result.isError)?.error ?? null,
+    refetch: () => Promise.all(results.map((result) => result.refetch())),
+  },
+});
 
 const reminderGroupDetailsQuery = (groupId: number) =>
   queryOptions({
@@ -70,11 +81,23 @@ const combineDetails = (results: UseQueryResult<ReminderGroupDetails>[]) => ({
   detailsLoadFailed: results.some((result) => result.isError),
 });
 
+const NO_EVENTS: readonly number[] = [];
+
 export function useActionReminderGroupsAdmin(eventId: number | null) {
+  const eventIds = useMemo(
+    () => (eventId === null ? NO_EVENTS : [eventId]),
+    [eventId],
+  );
+  return useReminderGroupsForEvents(eventIds);
+}
+
+/** The groups of several member action events, as one list. */
+export function useReminderGroupsForEvents(eventIds: readonly number[]) {
   const queryClient = useQueryClient();
-  const groupsQuery = useMemo(() => reminderGroupsQuery(eventId), [eventId]);
-  const { data: groups, isError: groupsLoadFailed } = useQuery(groupsQuery);
-  const patchGroups = usePatchQueryData(groupsQuery.queryKey);
+  const { groups, groupsLoadFailed, groupsQuery } = useQueries({
+    queries: eventIds.map((eventId) => reminderGroupsQuery(eventId)),
+    combine: combineLists,
+  });
 
   const { detailsByGroup, detailsLoadFailed } = useQueries({
     queries: (groups ?? []).map((group) => reminderGroupDetailsQuery(group.id)),
@@ -129,7 +152,12 @@ export function useActionReminderGroupsAdmin(eventId: number | null) {
     // A deleted group's plans fail to load, so it leaves the list, and its
     // details the cache, before the refetch could request them.
     onSuccess: async (_, groupId) => {
-      await patchGroups((prev) => prev.filter((group) => group.id !== groupId));
+      const lists = queryKeys.actionReminderGroupsAdminEvents();
+      await queryClient.cancelQueries({ queryKey: lists });
+      queryClient.setQueriesData<ReminderGroupDto[]>(
+        { queryKey: lists },
+        (prev) => prev?.filter((group) => group.id !== groupId),
+      );
       queryClient.removeQueries({
         queryKey: queryKeys.actionReminderGroupDetailsAdmin(groupId),
       });
@@ -140,6 +168,7 @@ export function useActionReminderGroupsAdmin(eventId: number | null) {
   return {
     groups,
     groupsLoadFailed,
+    groupsQuery,
     detailsByGroup,
     detailsLoadFailed,
     create,
