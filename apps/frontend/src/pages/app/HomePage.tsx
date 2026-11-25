@@ -158,9 +158,10 @@ const HomePage = () => {
           "flex flex-col gap-y-8 sm:gap-y-12 lg:gap-y-16 py-4 sm:py-8 px-4 xl:px-0 max-w-3xl mx-auto relative"
         }
       >
-        {isLargeScreen && (
-          <div className="flex flex-col gap-4">{generalUpdatesList}</div>
-        )}
+        {isLargeScreen &&
+          ((generalUpdates?.length ?? 0) > 0 || generalUpdatesFailure) && (
+            <div className="flex flex-col gap-4">{generalUpdatesList}</div>
+          )}
 
         <div className="flex flex-col gap-4 flex-1">
           <p className="text-base font-semibold text-black">Tasks</p>
@@ -311,7 +312,7 @@ const HomePage = () => {
 
   const sidebarContent = useMemo(
     () => (
-      <div className="pt-6 px-4 flex flex-col *:pb-4 *:px-2 h-[calc(100vh-var(--navbar-top-bar-height))]">
+      <div className="pt-8 px-4 flex flex-col *:px-2 *:not-last:pb-4 h-[calc(100vh-var(--navbar-top-bar-height))]">
         <SidebarProgressBars entries={sidebarProgressBarEntries} />
         <HomeUpdatesSidebar />
       </div>
