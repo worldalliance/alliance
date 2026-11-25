@@ -1,14 +1,12 @@
-import { useRef } from "react";
 import { Link } from "react-router";
 import { formatCount } from "../../lib/formatNumber";
 import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 import type { useActionSuitesAdmin } from "../../lib/useActionSuitesAdmin";
 import type { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { placeById, PlaceId } from "../../places";
-import Button, { ButtonVariant } from "../../ui/Button";
+import { MultiCombobox } from "../../ui/Combobox";
 import DateTimePicker, { timeZoneLabel } from "../../ui/DateTimePicker";
 import { Input } from "../../ui/Input";
-import { Select } from "../../ui/Select";
 import { Skeleton } from "../../ui/Skeleton";
 import { linkClass } from "../../ui/styles";
 import {
@@ -19,12 +17,10 @@ import {
   SaveBar,
 } from "../../ui/templates/Form";
 import { PageBody } from "../../ui/templates/Page";
-import { useFocusAfterRemoval } from "../../ui/useFocusAfterRemoval";
 import UserSelect, { type useSelectableUsers } from "../../ui/UserSelect";
 import {
   saveReachOf,
   usesSuiteSchedule,
-  withSuite,
   type GeneralUpdateFieldsProps,
 } from "./generalUpdateRules";
 import type { GeneralUpdateDetails } from "./useGeneralUpdateDetails";
@@ -98,81 +94,36 @@ function SuiteFields({
   suites,
 }: GeneralUpdateFieldsProps & { suites: Suites }) {
   const available = suites.data ?? [];
-  const unassigned = available.filter(
-    (suite) => !form.suiteIds.includes(suite.id),
-  );
-  const addRef = useRef<HTMLSelectElement>(null);
-  const focus = useFocusAfterRemoval({ ids: form.suiteIds, fallback: addRef });
-
-  const remove = (suiteId: number) => {
-    focus.removing(suiteId)();
-    setForm((prev) => ({
-      ...prev,
-      suiteIds: prev.suiteIds.filter((id) => id !== suiteId),
-    }));
-  };
-
+  const options = [
+    ...available.map((suite) => ({ value: suite.id, label: suite.name })),
+    ...form.suiteIds
+      .filter((id) => !available.some((suite) => suite.id === id))
+      .map((id) => ({ value: id, label: `Suite #${id}` })),
+  ];
   return (
-    <FieldGroup
+    <Field
       label="Suites"
       mark="optional"
-      help={
-        suites.isPending
-          ? "Loading suites…"
-          : available.length === 0 && !suites.isLoadingError
-            ? "No suites yet."
-            : "With a suite, the update starts and ends with Members taking action on one of the suite's tasks. Until that task has those events, the update keeps the dates it has."
-      }
+      help="With a suite, the update starts and ends with Members taking action on one of the suite's tasks. Until that task has those events, the update keeps the dates it has."
       error={
         suites.isLoadingError
           ? "Couldn't load suites, so none can be added."
           : null
       }
     >
-      {form.suiteIds.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {form.suiteIds.map((suiteId) => {
-            const name =
-              available.find((suite) => suite.id === suiteId)?.name ??
-              `Suite #${suiteId}`;
-            return (
-              <li
-                key={suiteId}
-                {...focus.row(suiteId)}
-                className="flex h-control items-center justify-between gap-2 rounded-md border border-line bg-surface-2 pr-1 pl-2.5"
-              >
-                <span className="truncate font-medium">{name}</span>
-                <Button
-                  size="small"
-                  variant={ButtonVariant.Ghost}
-                  aria-label={`Remove: ${name}`}
-                  onClick={() => remove(suiteId)}
-                >
-                  Remove
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
+      {(control) => (
+        <MultiCombobox
+          {...control}
+          options={options}
+          values={form.suiteIds}
+          onChange={(suiteIds) => setForm((prev) => ({ ...prev, suiteIds }))}
+          placeholder="Add a suite"
+          emptyText={available.length === 0 ? "No suites yet" : "No matches"}
+          loading={suites.isPending}
+          loadError={suites.isLoadingError ? "Couldn't load suites" : null}
+        />
       )}
-      <Select
-        ref={addRef}
-        aria-label="Add suite"
-        value=""
-        disabled={unassigned.length === 0}
-        onChange={(event) => {
-          const suiteId = Number(event.target.value);
-          if (event.target.value) setForm((prev) => withSuite(prev, suiteId));
-        }}
-      >
-        <option value="">Add a suite…</option>
-        {unassigned.map((suite) => (
-          <option key={suite.id} value={suite.id}>
-            {suite.name}
-          </option>
-        ))}
-      </Select>
-    </FieldGroup>
+    </Field>
   );
 }
 

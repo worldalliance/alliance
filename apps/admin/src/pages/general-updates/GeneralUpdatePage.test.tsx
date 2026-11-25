@@ -319,9 +319,10 @@ it("saves the picked suite, tags, and manual cohort", async () => {
     target: { value: "Ana" },
   });
   fireEvent.click(await screen.findByRole("button", { name: "Ana" }));
-  fireEvent.change(await screen.findByLabelText("Add suite"), {
-    target: { value: "7" },
-  });
+  const suites = screen.getByRole("combobox", { name: /^Suites/ });
+  fireEvent.keyDown(suites, { key: "ArrowDown" });
+  fireEvent.click(await screen.findByRole("option", { name: "Spring" }));
+  fireEvent.keyDown(suites, { key: "Escape" });
   expect(screen.getByLabelText(/^Start date/)).toHaveProperty("disabled", true);
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -361,14 +362,16 @@ it("removes a suite and brings back the schedule", async () => {
   );
 });
 
-it("moves focus to the select once the last suite is removed", async () => {
+it("keeps focus in the suites control once the last suite is removed", async () => {
   renderPage("/content/general-updates/new?suiteId=7");
   fireEvent.click(
     await screen.findByRole("button", { name: "Remove: Spring" }),
   );
 
   await waitFor(() =>
-    expect(document.activeElement).toBe(screen.getByLabelText("Add suite")),
+    expect(document.activeElement).toBe(
+      screen.getByRole("combobox", { name: /^Suites/ }),
+    ),
   );
 });
 
@@ -405,7 +408,6 @@ it("reports suites that failed to load", async () => {
   expect(
     await screen.findByText("Couldn't load suites, so none can be added."),
   ).toBeDefined();
-  expect(screen.queryByText("No suites yet.")).toBeNull();
 });
 
 it("reports a failed save and keeps the form", async () => {
