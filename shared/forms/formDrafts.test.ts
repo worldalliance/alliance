@@ -1,4 +1,8 @@
-import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
+import type {
+  AnyField,
+  FormValue,
+  ListField,
+} from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import {
   answersToStore,
@@ -7,8 +11,29 @@ import {
   readStoredFormDraft,
   resolveFieldDefaultValue,
   restorableAnswers,
+  sanitizedAnswers,
   serializeStoredFormDraft,
 } from "./formDrafts";
+import { CARD_ID_KEY } from "./listCards";
+
+describe("sanitizedAnswers", () => {
+  it("drops fields the schema lacks and list card ids", () => {
+    const kids: ListField = {
+      id: "kids",
+      type: "input",
+      kind: "list",
+      label: "Kids",
+      fields: [{ id: "name", type: "input", kind: "text", label: "Name" }],
+    };
+
+    expect(
+      sanitizedAnswers(
+        { kids: [{ name: "Ada", [CARD_ID_KEY]: "c0" }], removed: "x" },
+        new Map([["kids", kids]]),
+      ),
+    ).toEqual({ kids: [{ name: "Ada" }] });
+  });
+});
 
 describe("restorableAnswers", () => {
   it("drops multiselect selections of options the field no longer has", () => {

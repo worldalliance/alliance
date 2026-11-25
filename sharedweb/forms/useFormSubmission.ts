@@ -5,7 +5,7 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type SubmitFormDto } from "@alliance/shared/client";
-import { filterAnswersByFieldIds } from "@alliance/shared/forms/formDrafts";
+import { sanitizedAnswers } from "@alliance/shared/forms/formDrafts";
 import { formulaSourcesFor } from "@alliance/shared/forms/formulaChoices";
 import { stripCardIds } from "@alliance/shared/forms/listCards";
 import {
@@ -188,14 +188,10 @@ export function useFormSubmission({
         return NOT_SUBMITTED;
       }
 
-      const sanitizedAnswers = stripCardIds(
-        filterAnswersByFieldIds(effectiveFormData, fieldLookup),
-      );
-
       const sid = searchParams.get("sid") ?? searchParams.get("ref");
 
       const submissionPayload: SubmitFormDto = {
-        answers: sanitizedAnswers,
+        answers: sanitizedAnswers(effectiveFormData, fieldLookup),
         formSnapshotId,
         actionId,
         formulaSources: formulaSourcesFor(schema, sourceHistories),

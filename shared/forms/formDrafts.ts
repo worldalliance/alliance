@@ -12,6 +12,7 @@ import { R, type Result } from "@alliance/common/result";
 import { isEqual } from "es-toolkit";
 import { z } from "zod";
 import { dropUnuploadedFileAnswers } from "./fileAnswers";
+import { stripCardIds } from "./listCards";
 import { dropUnknownOptionAnswers } from "./optionAnswers";
 import { parseTimeToMinutes } from "./timeUtils";
 import { TIME_WHEEL_DEFAULT } from "./timeWheel";
@@ -236,6 +237,14 @@ export function filterAnswersByFieldIds(
     }
   }
   return filtered;
+}
+
+/** The answers a submit sends: schema fields only, without client-only card ids. */
+export function sanitizedAnswers(
+  answers: Record<string, FormValue>,
+  fieldLookup: Map<string, AnyField>,
+): Record<string, FormValue> {
+  return stripCardIds(filterAnswersByFieldIds(answers, fieldLookup));
 }
 
 /**
