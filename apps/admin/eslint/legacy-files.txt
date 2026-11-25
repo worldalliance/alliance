@@ -338,7 +338,6 @@ src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/ProjectDetailPage.tsx
 src/pages/ProjectsPage.tsx
-src/pages/ScheduledPlansPage.tsx
 src/pages/ShareLinksPage.tsx
 src/pages/StaffDirectoryPage.tsx
 src/pages/SuiteLaunchPage.tsx

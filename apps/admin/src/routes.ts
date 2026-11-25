@@ -57,7 +57,7 @@ export default [
       route("/content/media/videos/:videoId", "pages/VideoDetail.tsx"),
 
       route("/activity", "pages/EventLogPage.tsx"),
-      route("/activity/scheduled", "pages/ScheduledPlansPage.tsx"),
+      route("/activity/scheduled", "pages/scheduled/ScheduledJobsPage.tsx"),
 
       route("/research", "pages/KoraParticipantsPage.tsx"),
       route(
