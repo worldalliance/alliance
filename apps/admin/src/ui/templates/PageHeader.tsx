@@ -16,6 +16,11 @@ export type PageHeaderProps = {
   trail: readonly Crumb[];
   /** The page's name: the `h1`, and the end of the trail. */
   title: string;
+  /**
+   * A person record's picture, before the title, in a fixed box so its image
+   * arriving moves nothing: `<AvatarProfile pfp={…} size="medium" alt="" />`.
+   */
+  avatar?: ReactNode;
   /** The record's status badge, directly after the title. */
   badge?: ReactNode;
   /**
@@ -30,6 +35,7 @@ export type PageHeaderProps = {
 export function PageHeader({
   trail,
   title,
+  avatar,
   badge,
   description,
   actions,
@@ -73,6 +79,11 @@ export function PageHeader({
       </div>
       <div className="flex min-h-control flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          {avatar !== undefined && (
+            <span className="flex size-control shrink-0 items-center justify-center">
+              {avatar}
+            </span>
+          )}
           <h1 className="truncate text-title font-semibold">{title}</h1>
           {badge && <span className="flex shrink-0 items-center">{badge}</span>}
         </div>

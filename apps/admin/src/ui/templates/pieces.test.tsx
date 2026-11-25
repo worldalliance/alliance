@@ -416,6 +416,21 @@ describe("Page for a record under a later tab", () => {
   });
 });
 
+describe("Page avatar", () => {
+  it("sits before the title and holds its box while there is no picture yet", () => {
+    render(
+      <MemoryRouter>
+        <Page record={RecordId.Member} title="Sam Lee" avatar={null}>
+          body
+        </Page>
+      </MemoryRouter>,
+    );
+    const box = screen.getByRole("heading", { level: 1 }).previousSibling;
+    expect(box).toBeInstanceOf(HTMLSpanElement);
+    expect(box?.textContent).toBe("");
+  });
+});
+
 describe("Overview controls", () => {
   it("changes only the edited end of a date range, and ties its error to the start", () => {
     const onChange = jest.fn();

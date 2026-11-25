@@ -69,7 +69,7 @@ const headerOf = (
 
 export type PageProps<T extends string> = Pick<
   PageHeaderProps,
-  "badge" | "description" | "actions"
+  "avatar" | "badge" | "description" | "actions"
 > & {
   /** From `usePlaceTabs` or `useRecordTabs`, so the tab is in the URL. */
   tabs?: PageTabsProps<T>;
@@ -98,7 +98,7 @@ export type PageProps<T extends string> = Pick<
  */
 export function Page<T extends string>(props: PageProps<T>) {
   const { tabs, banner, bannerPending = false, fill = false, children } = props;
-  const { badge, description, actions } = props;
+  const { avatar, badge, description, actions } = props;
   const rootClass = cn(
     "@container flex flex-col",
     fill ? "h-full min-h-0" : "min-h-full",
@@ -109,6 +109,7 @@ export function Page<T extends string>(props: PageProps<T>) {
     <>
       <title>{documentTitle(title)}</title>
       <PageHeader
+        avatar={avatar}
         badge={badge}
         description={description}
         actions={actions}
