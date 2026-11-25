@@ -283,8 +283,6 @@ src/pages/InviteGraphPage.tsx
 src/pages/InviteLinksPage.tsx
 src/pages/InviteMessageTemplatePage.tsx
 src/pages/InvitesPage.tsx
-src/pages/MemberListPage.tsx
-src/pages/MemberListsPage.tsx
 src/pages/NeedsReplyPage.tsx
 src/pages/NewActionSuitePage.tsx
 src/pages/OrganizationsPage.tsx

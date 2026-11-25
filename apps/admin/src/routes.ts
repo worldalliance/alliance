@@ -41,8 +41,8 @@ export default [
       route("/members/groups/:id", "pages/groups/GroupPage.tsx"),
       route("/members/clusters", "pages/ClustersPage.tsx"),
       route("/members/tags", "pages/TagManagement.tsx"),
-      route("/members/lists", "pages/MemberListsPage.tsx"),
-      route("/members/lists/:listId", "pages/MemberListPage.tsx"),
+      route("/members/lists", "pages/lists/MemberListsPage.tsx"),
+      route("/members/lists/:listId", "pages/lists/MemberListPage.tsx"),
       route("/members/friends", "pages/FriendGraphPage.tsx"),
 
       route("/growth/invites", "places/InvitesPlace.tsx"),
