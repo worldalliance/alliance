@@ -367,7 +367,6 @@ export async function createFormWithSnapshot(
       placement: null,
     }),
   );
-  await attachFormSnapshot(dataSource, form.id, snapshot.id);
   return { form, snapshot };
 }
 

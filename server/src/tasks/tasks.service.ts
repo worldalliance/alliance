@@ -92,7 +92,7 @@ export class TasksService {
       formId: undefined,
     });
     const snapshot = await this.formSnapshotService.findOrCreate(schema);
-    const form = await this.formRepository.manager.transaction((em) =>
+    return this.formRepository.manager.transaction((em) =>
       insertForm(em, {
         form: {
           title: createFormDto.title,
@@ -102,12 +102,6 @@ export class TasksService {
         placement: null,
       }),
     );
-    await this.formSnapshotService.recordHistorical({
-      owner: SnapshotHistoryOwner.Form,
-      ownerId: form.id,
-      snapshotId: snapshot.id,
-    });
-    return form;
   }
 
   async getForm(formId: number): Promise<Form> {

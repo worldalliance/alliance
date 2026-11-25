@@ -29,6 +29,21 @@ export function hashFormSchema(schema: Record<string, unknown>): string {
     .digest("hex");
 }
 
+// SQL identifiers come from the exhaustive owner table, never caller input.
+export async function recordHistoricalSnapshot(
+  em: EntityManager,
+  params: { owner: SnapshotHistoryOwner; ownerId: number; snapshotId: number },
+): Promise<void> {
+  const { table, ownerColumn, snapshotColumn } =
+    SNAPSHOT_HISTORY_OWNERS[params.owner];
+  await em.query(
+    `INSERT INTO "${table}" ("${ownerColumn}", "${snapshotColumn}")
+     VALUES ($1, $2)
+     ON CONFLICT DO NOTHING`,
+    [params.ownerId, params.snapshotId],
+  );
+}
+
 const servedShapes = (served: FormSchema): FormSchema[] => [
   served,
   withImageUrls(served),
@@ -64,21 +79,15 @@ export class FormSnapshotService {
     return runner.findOneByOrFail(FormSnapshot, { id: rows[0].id });
   }
 
-  // SQL identifiers come from the exhaustive owner table, never caller input.
   async recordHistorical(params: {
     owner: SnapshotHistoryOwner;
     ownerId: number;
     snapshotId: number;
     em?: EntityManager;
   }): Promise<void> {
-    const { table, ownerColumn, snapshotColumn } =
-      SNAPSHOT_HISTORY_OWNERS[params.owner];
-    const runner = params.em ?? this.snapshotRepository.manager;
-    await runner.query(
-      `INSERT INTO "${table}" ("${ownerColumn}", "${snapshotColumn}")
-       VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
-      [params.ownerId, params.snapshotId],
+    await recordHistoricalSnapshot(
+      params.em ?? this.snapshotRepository.manager,
+      params,
     );
   }
 

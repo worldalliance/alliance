@@ -2,6 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import request from "supertest";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
 import { Action } from "../src/actions/entities/action.entity";
+import { Form } from "../src/tasks/entities/form.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   createActionAsAdmin,
@@ -146,6 +147,13 @@ describe("Action task form id (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200);
     expect(copied.body.taskForm.formSnapshot.schema).toEqual(schema);
+    const pastedForm = await ctx.dataSource.getRepository(Form).findOneOrFail({
+      where: { id: copied.body.taskForm.id },
+      relations: { historicalFormSnapshots: true },
+    });
+    expect(pastedForm.historicalFormSnapshots?.map((s) => s.id)).toContain(
+      copied.body.taskForm.formSnapshotId,
+    );
 
     const kept = await getActionAsAdmin(ctx, original.body.id).expect(200);
     expect(kept.body.taskFormId).toBe(taskFormId);
