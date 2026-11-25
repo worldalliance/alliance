@@ -68,7 +68,7 @@ const ReplyContent = ({
   return (
     <div className={cn("flex", compact ? "gap-x-2" : "gap-x-2.5", "relative")}>
       {isHighlighted && (
-        <div className="absolute -left-4 top-0 bottom-0 w-[3px] bg-blue-500 rounded" />
+        <div className="absolute -left-4 top-0 bottom-0 w-[3px] bg-green rounded" />
       )}
       <Link
         to={href("/member/:id", { id: reply.author.id.toString() })}
