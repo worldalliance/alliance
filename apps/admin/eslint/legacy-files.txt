@@ -199,7 +199,6 @@ src/pages/ActionDashboard.tsx
 src/pages/ActionSuitePage.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
-src/pages/NewActionSuitePage.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/SuiteLaunchPage.tsx

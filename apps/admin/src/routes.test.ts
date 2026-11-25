@@ -75,11 +75,17 @@ const OLD_ROUTES = [
 
 type Leaf = { path: string; file: string };
 
-const leaves = (entries: RouteConfigEntry[]): Leaf[] =>
-  entries.flatMap((entry) => [
-    ...(entry.path ? [{ path: entry.path, file: entry.file }] : []),
-    ...leaves(entry.children ?? []),
-  ]);
+const joined = (parent: string, path: string) =>
+  path.startsWith("/") ? path : `${parent}/${path}`;
+
+const leaves = (entries: RouteConfigEntry[], parent = ""): Leaf[] =>
+  entries.flatMap((entry) => {
+    const path = entry.path === undefined ? parent : joined(parent, entry.path);
+    return [
+      ...(entry.path ? [{ path, file: entry.file }] : []),
+      ...leaves(entry.children ?? [], path),
+    ];
+  });
 
 const REDIRECT_FILE = "shell/LegacyRedirect.tsx";
 const all = leaves(routes);
