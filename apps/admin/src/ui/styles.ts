@@ -12,3 +12,11 @@ export const nameLinkClass =
 
 /** A link among other text or values: underlined at rest, so colour isn't its only cue. */
 export const linkClass = "rounded-sm text-accent underline focus-ring";
+
+/**
+ * A row of a Workspace navigator (thread list, outline): the table's hover and
+ * selected tones, selected by `aria-current="page"` on a link or
+ * `aria-selected` on an option. Padding and layout are the caller's.
+ */
+export const navRowClass =
+  "rounded-md focus-ring hover:bg-surface-2 aria-selected:bg-accent-soft aria-[current=page]:bg-accent-soft";

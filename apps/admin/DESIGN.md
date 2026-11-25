@@ -213,6 +213,8 @@ A page header, then sections in one column (`Section`), each a heading and a car
 
 - **Selecting never moves the page.** Selecting an item changes the inspector's content and the selection highlight, and nothing else. Always pass `inspector`, and when nothing is selected have it say what to select, so the pane keeps its place. The owner named this defect in today's form builder.
 - Panes keep the template's widths; a pane may collapse only by a labelled control. Panes never scroll sideways and hold their scrollbar's gutter, so content crossing the pane's height doesn't reflow. `navigatorRef`, `canvasRef` and `inspectorRef` reach each pane's scrolling element, for scrolling a selection into view or portalling into the canvas.
+- A navigator's rows take `navRowClass` (`ui/styles.ts`): the table's hover and selected tones, selected by `aria-current="page"` on a link row or `aria-selected` on an option.
+- A list and its record on one page (Inbox: the threads beside a thread) is a pathless layout route that renders the `Workspace` with the list, with the list's route (`index`) and the record's (`:threadId`) as its children, in `routes.ts`; the record renders in the canvas through `<Outlet />`. Don't nest an absolute path inside another route: React Router's typegen breaks.
 - A pane's title row is a `PaneHeader`: one line whatever the title's length, `leading` before the title (a "Back to {parent}" icon button), `action` after it.
 - Reordering by drag also works without dragging (move up, move down, or a menu), per WCAG 2.5.7.
 - The canvas of the form builder renders the member-facing form renderer and must look as it does in the member app; admin chrome sits around it.
