@@ -16,6 +16,7 @@ import type { CountId } from "../places";
 import { cn } from "../ui/cn";
 import { Kbd } from "../ui/Kbd";
 import Modal from "../ui/Modal";
+import { optionClass, optionGroupLabelClass, OptionText } from "../ui/option";
 import { CountBadge } from "./CountBadge";
 import { BROWSE_GROUPS, SEARCH_PAGES } from "./paletteEntries";
 import { PLACE_ICONS } from "./placeIcons";
@@ -42,9 +43,6 @@ const resultEntry = (result: SearchResult): Entry => ({
   kind: SEARCH_KIND_LABELS[result.kind],
   detail: result.detail,
 });
-
-const ITEM =
-  "flex h-control cursor-default items-center gap-2.5 rounded-md px-2.5 outline-none data-highlighted:bg-accent-soft";
 
 function PaletteContent({
   counts,
@@ -145,10 +143,7 @@ function PaletteContent({
               className="break-inside-avoid pb-2"
             >
               <Autocomplete.GroupLabel
-                className={cn(
-                  "px-2.5 pt-2 pb-1 text-caption font-medium text-fg-muted",
-                  searching && "sr-only",
-                )}
+                className={cn(optionGroupLabelClass, searching && "sr-only")}
               >
                 {group.value}
               </Autocomplete.GroupLabel>
@@ -159,7 +154,7 @@ function PaletteContent({
                     value={entry}
                     render={<Link to={entry.to} />}
                     onClick={onClose}
-                    className={ITEM}
+                    className={optionClass}
                   >
                     {entry.icon && (
                       <entry.icon
@@ -172,12 +167,7 @@ function PaletteContent({
                         {entry.kind}
                       </span>
                     )}
-                    <span className="min-w-0 truncate">{entry.label}</span>
-                    {entry.detail && (
-                      <span className="ml-auto min-w-0 truncate pl-4 text-caption text-fg-muted">
-                        {entry.detail}
-                      </span>
-                    )}
+                    <OptionText label={entry.label} detail={entry.detail} />
                     <CountBadge count={entry.count} className="ml-auto" />
                   </Autocomplete.Item>
                 )}
