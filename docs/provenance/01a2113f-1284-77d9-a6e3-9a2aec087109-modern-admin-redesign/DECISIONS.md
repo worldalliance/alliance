@@ -208,6 +208,15 @@ All agent judgement; nobody was there to ask. The bar is round 3's.
 - **Round 5 changed no code.** Its 16 findings repeated ones already declined or filed, or were wording, splits or missing tests; none was a defect in behaviour, accessibility, a guard, or the guide as it stands at the tip. The loop's hub classified them itself, with no fixer, and the loop ended there.
 - **Left as a follow-up:** no test covers two confirmations opened together showing one at a time (ALL-2501); the reviewer checked that the behaviour is right.
 
+## Review loop, round 8
+
+All agent judgement, under round 7's terms: nobody was there to ask, and every fix is a new commit on top.
+
+- **`PersonCell`'s 16rem cap is back on its table cell.** Round 7 moved it to the cell's content on the belief that Chromium ignores a cell's max-width; round 8's reviewer measured that it holds whenever the table lacks room, and that the cap on the content cut a name while the width it needed sat empty beside it. This supersedes round 7's move.
+- **Rule 9's accepted moves are all the agents' acceptance.** The owner's rule names no exceptions, so the guide no longer sets five of them apart as if the owner had approved them. This supersedes round 7's bullet on the three load moves.
+- **Before the awaiting-assignment queue loads, the groups table counts this browser's stored picks**, so the picks column shows them when the queue fails rather than "—" for none.
+- **A field group that only failed to load still takes a failed submit's focus.** Unreachable on General updates, whose one submit error comes first; left as ALL-2513.
+
 ## Review loop, round 7
 
 All agent judgement; nobody was there to ask. The bar is round 3's. Other agents had already branched from `modern-admin`, so every fix is a new commit on top and no commit was rewritten; findings asking for a split, a reorder or a new message were declined for that reason.
