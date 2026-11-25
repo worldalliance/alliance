@@ -149,21 +149,24 @@ function JobRows({
       </TableRow>
       {expanded && (
         <TableDetailRow id={membersId} colSpan={COLUMNS}>
-          <ul
-            aria-label={`Members: ${kind}, ${when.text}`}
-            className="grid grid-cols-2 gap-x-6 gap-y-2 @4xl:grid-cols-3 @7xl:grid-cols-4"
-          >
-            {job.users.map((user) => (
-              <li key={user.id} className="flex min-w-0">
-                <PersonChip
-                  userId={user.id}
-                  name={user.displayName}
-                  profilePicture={user.profilePicture}
-                  link
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-3">
+            <p className="text-fg-muted">{when.detail}</p>
+            <ul
+              aria-label={`Members: ${kind}, ${when.text}`}
+              className="grid grid-cols-2 gap-x-6 gap-y-2 @4xl:grid-cols-3 @7xl:grid-cols-4"
+            >
+              {job.users.map((user) => (
+                <li key={user.id} className="flex min-w-0">
+                  <PersonChip
+                    userId={user.id}
+                    name={user.displayName}
+                    profilePicture={user.profilePicture}
+                    link
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
         </TableDetailRow>
       )}
     </>

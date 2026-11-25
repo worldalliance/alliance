@@ -301,7 +301,7 @@ One density, Comfortable, with the prototype's values. No density switch. The te
 - Other spacing uses Tailwind's scale (`gap-2`, `p-3`, `w-80`), and controls you size yourself use `h-control` (34 px) or `h-control-sm` (30 px); never a bracketed value.
 - Spacing between things comes from the template and from stack and grid gaps. If you're adding a margin to make something line up, the structure is wrong.
 - Left edges line up: page title, tabs, filter bar and the first table column share the page margin.
-- The owner chose this density because the tighter one read as cluttered. Don't add secondary labels, hint footers, inline shortcut keys or decorative counts to fill space. A fact today's page shows that the prototype hides goes in a tooltip or a detail row, not away.
+- The owner chose this density because the tighter one read as cluttered. Don't add secondary labels, hint footers, inline shortcut keys or decorative counts to fill space. A fact today's page shows that the prototype hides stays reachable by keyboard: behind an `InfoTip` (`ui/InfoTip.tsx`, a small info button that opens on hover and focus) beside the heading, label, column header or single value it explains, or, when each row has its own, in the row's detail row (**Tables**, expandable rows) or a column, since an `InfoTip` per row is a tab stop per row. A `title` attribute alone is only for the whole of a truncated text and the absolute time of a relative one, never a fact's only home.
 - Design for 1280×720 up to wide screens: a table may scroll sideways inside its container, the page never does.
 
 ## Typography
@@ -529,7 +529,7 @@ The URL holds what a colleague needs to see the same thing from a pasted link, a
 - **Failures.** A load: title "Couldn't load {things}", then the server's reason or `LOAD_FAILED_FALLBACK`. A write's fallback: "Couldn't {verb} {the thing}." ("Couldn't delete the group."), never "Unable to", "Failed to" or "Please try again". A `SaveBar` error is the reason alone. A field error is an instruction with no period ("Enter a title", "Choose an image to upload"); help text and dialog bodies are sentences with periods. Changing an old string to this pattern is expected; strings from `common` or `shared` stay as they are.
 - **Buttons** start with a verb and name the result ("Add event", "Delete tag"); a button that opens a dialog asking for more ends in "…". Links are named for where they go.
 - Say what a thing does to members in plain words, as the endpoint does it: "Members can see and start the tasks." No internal names (`publicOnly`, `staffPreview`) in the UI.
-- Icons from `lucide-react`. An icon stands alone only for close, search, send, delete and settings; every other control has a visible word, an overflow menu included ("More").
+- Icons from `lucide-react`. An icon stands alone only for close, search, send, delete, settings and `InfoTip`'s info; every other control has a visible word, an overflow menu included ("More").
 
 ## The shell
 
