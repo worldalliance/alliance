@@ -1,14 +1,22 @@
 import { curveMonotoneX, extent, line, max, scaleLinear } from "d3";
-import { type KeyboardEvent, type MouseEvent, useMemo, useState } from "react";
-import { axisTextClass } from "./chartColor";
 import {
-  CHART_MARGIN as MARGIN,
+  type KeyboardEvent,
+  type MouseEvent,
+  useId,
+  useMemo,
+  useState,
+} from "react";
+import {
   Cursor,
   dedupeTickLabels,
+  CHART_MARGIN as MARGIN,
+  PlotClip,
   PointMark,
+  xTickCount,
   XTicks,
   YGrid,
 } from "./axes";
+import { axisTextClass } from "./chartColor";
 import { ChartFrame } from "./ChartFrame";
 import { ChartTip, TipRow } from "./ChartTip";
 import type { MultiLineSeries, NumericAxisProps } from "./types";
@@ -42,7 +50,7 @@ function geometryOf(props: NumericAxisProps, width: number, height: number) {
     xScale,
     yScale,
     lines: multiLineData.map((s) => path(s.data) ?? ""),
-    xTicks: xScale.ticks(Math.min(8, high - low + 1)),
+    xTicks: xScale.ticks(Math.min(xTickCount(width), high - low + 1)),
     yTicks: props.yTickLabelDedup
       ? dedupeTickLabels(rawYTicks, props.yAxisFormat)
       : rawYTicks,
@@ -62,14 +70,24 @@ function step(
   const first = lines.findIndex((s) => s.data.length > 0);
   if (first === -1) return undefined;
   if (!active) {
-    return ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown", "Home", "End"].includes(key)
+    return [
+      "ArrowRight",
+      "ArrowLeft",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ].includes(key)
       ? { series: first, point: 0 }
       : undefined;
   }
   const points = lines[active.series].data;
   switch (key) {
     case "ArrowRight":
-      return { ...active, point: Math.min(points.length - 1, active.point + 1) };
+      return {
+        ...active,
+        point: Math.min(points.length - 1, active.point + 1),
+      };
     case "ArrowLeft":
       return { ...active, point: Math.max(0, active.point - 1) };
     case "Home":
@@ -174,6 +192,7 @@ function Lines({
     () => geometryOf(chart, width, height),
     [chart, width, height],
   );
+  const clipId = useId();
   if (!geometry) return null;
   const { multiLineData, getXValue, getYValue } = chart;
   const x = (d: MultiLineSeries["data"][number]) =>
@@ -227,22 +246,29 @@ function Lines({
       <XTicks
         ticks={geometry.xTicks}
         x={geometry.xScale}
-        label={(tick) => (chart.xAxisFormat ? chart.xAxisFormat(tick) : String(tick))}
+        label={(tick) =>
+          chart.xAxisFormat ? chart.xAxisFormat(tick) : String(tick)
+        }
         height={height}
       />
-      {multiLineData.map((s, index) => {
-        const isActive = active?.series === index;
-        return (
-          <path
-            key={s.key}
-            d={geometry.lines[index]}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={isActive ? 3.2 : 2.2}
-            opacity={active ? (isActive ? 1 : 0.25) : 1}
-          />
-        );
-      })}
+      <defs>
+        <PlotClip id={clipId} width={width} height={height} />
+      </defs>
+      <g clipPath={`url(#${clipId})`}>
+        {multiLineData.map((s, index) => {
+          const isActive = active?.series === index;
+          return (
+            <path
+              key={s.key}
+              d={geometry.lines[index]}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={isActive ? 3.2 : 2.2}
+              opacity={active ? (isActive ? 1 : 0.25) : 1}
+            />
+          );
+        })}
+      </g>
       {(chart.showDataPoints ?? true) &&
         multiLineData.flatMap((s) =>
           s.data.map((d, index) => (

@@ -8,13 +8,15 @@ import {
   scaleLinear,
   scaleTime,
 } from "d3";
-import { type MouseEvent, useMemo } from "react";
+import { type MouseEvent, useId, useMemo } from "react";
 import { formatDate } from "../../lib/formatDate";
 import {
-  CHART_MARGIN as MARGIN,
   Cursor,
   dedupeTickLabels,
+  CHART_MARGIN as MARGIN,
+  PlotClip,
   PointMark,
+  xTickCount,
   XTicks,
   YGrid,
 } from "./axes";
@@ -68,7 +70,7 @@ function geometryOf(props: DateAxisProps, width: number, height: number) {
     lines,
     areaSeries,
     areaPath,
-    xTicks: xScale.ticks(Math.min(8, data.length)),
+    xTicks: xScale.ticks(Math.min(xTickCount(width), data.length)),
     yTicks: props.yTickLabelDedup
       ? dedupeTickLabels(rawYTicks, yAxisFormat)
       : rawYTicks,
@@ -97,6 +99,7 @@ function Chart({
     () => geometryOf(chart, width, height),
     [chart, width, height],
   );
+  const clipId = useId();
   if (!geometry) return null;
   const { data } = chart;
 
@@ -138,22 +141,27 @@ function Chart({
         label={(tick) => formatDate(tick)}
         height={height}
       />
-      {geometry.areaSeries && (
-        <path
-          d={geometry.areaPath}
-          fill={geometry.areaSeries.color}
-          fillOpacity={AREA_OPACITY}
-        />
-      )}
-      {geometry.lines.map(({ series, path }) => (
-        <path
-          key={series.key}
-          d={path}
-          fill="none"
-          stroke={series.color}
-          strokeWidth={2.4}
-        />
-      ))}
+      <defs>
+        <PlotClip id={clipId} width={width} height={height} />
+      </defs>
+      <g clipPath={`url(#${clipId})`}>
+        {geometry.areaSeries && (
+          <path
+            d={geometry.areaPath}
+            fill={geometry.areaSeries.color}
+            fillOpacity={AREA_OPACITY}
+          />
+        )}
+        {geometry.lines.map(({ series, path }) => (
+          <path
+            key={series.key}
+            d={path}
+            fill="none"
+            stroke={series.color}
+            strokeWidth={2.4}
+          />
+        ))}
+      </g>
       {point && (
         <>
           <Cursor x={geometry.at(point)} height={height} />

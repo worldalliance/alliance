@@ -1,7 +1,37 @@
 import type { ScaleLinear } from "d3";
 import { axisTextClass, chartColor } from "./chartColor";
 
-export const CHART_MARGIN = { top: 28, right: 32, bottom: 64, left: 72 };
+export const CHART_MARGIN = { top: 28, right: 32, bottom: 40, left: 72 };
+
+const MIN_TICK_GAP = 88;
+
+/** About as many x ticks as fit `width` with room for their labels. */
+export const xTickCount = (width: number, margin = CHART_MARGIN) =>
+  Math.max(2, Math.floor((width - margin.left - margin.right) / MIN_TICK_GAP));
+
+/** The plot area, for a `clipPath` that keeps lines from running past the axes. */
+export function PlotClip({
+  id,
+  width,
+  height,
+  margin = CHART_MARGIN,
+}: {
+  id: string;
+  width: number;
+  height: number;
+  margin?: typeof CHART_MARGIN;
+}) {
+  return (
+    <clipPath id={id}>
+      <rect
+        x={margin.left}
+        y={0}
+        width={Math.max(0, width - margin.left - margin.right)}
+        height={height - margin.bottom}
+      />
+    </clipPath>
+  );
+}
 
 export function dedupeTickLabels(
   ticks: number[],

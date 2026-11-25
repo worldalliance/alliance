@@ -222,13 +222,13 @@
   --color-cat-4-soft: oklch(0.95 0.035 340);
   --color-cat-5-soft: oklch(0.95 0.03 230);
   --color-cat-6-soft: oklch(0.95 0.01 270);
-  /* Chart series: neighbours alternate dark and light, so they differ in grayscale. */
-  --color-chart-1: oklch(0.5 0.16 255);
-  --color-chart-2: oklch(0.62 0.14 55);
-  --color-chart-3: oklch(0.45 0.15 310);
-  --color-chart-4: oklch(0.6 0.1 190);
-  --color-chart-5: oklch(0.5 0.17 5);
-  --color-chart-6: oklch(0.6 0.09 115);
+  /* Chart series: neighbours alternate dark and light, 3:1 apart, so they differ in grayscale. */
+  --color-chart-1: oklch(0.39 0.15 258);
+  --color-chart-2: oklch(0.67 0.14 55);
+  --color-chart-3: oklch(0.38 0.15 310);
+  --color-chart-4: oklch(0.645 0.11 190);
+  --color-chart-5: oklch(0.4 0.16 10);
+  --color-chart-6: oklch(0.65 0.12 120);
   /* An ordered ramp for lines and marks, light to dark; every step reads on a surface. */
   --color-seq-1: oklch(0.64 0.12 105);
   --color-seq-2: oklch(0.6 0.12 150);

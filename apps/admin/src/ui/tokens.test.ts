@@ -91,6 +91,9 @@ const nonTextPairs: [string, string][] = [
   ["accent", "canvas"],
   ...categories.map((n): [string, string] => [`cat-${n}`, "surface"]),
   ...categories.map((n): [string, string] => [`chart-${n}`, "surface"]),
+  ...categories
+    .slice(1)
+    .map((n): [string, string] => [`chart-${n - 1}`, `chart-${n}`]),
   ...rampSteps.map((n): [string, string] => [`seq-${n}`, "surface"]),
 ];
 

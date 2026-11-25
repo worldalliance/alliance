@@ -119,7 +119,7 @@ export function TipRow({
 }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+      <dt className="flex min-w-0 shrink items-center gap-1.5 text-fg-muted">
         {swatch && (
           <span
             aria-hidden="true"
@@ -129,7 +129,9 @@ export function TipRow({
         )}
         <span className="truncate">{label}</span>
       </dt>
-      <dd className="text-right font-medium tabular-nums">{children}</dd>
+      <dd className="max-w-40 shrink-0 text-right font-medium tabular-nums">
+        {children}
+      </dd>
     </div>
   );
 }

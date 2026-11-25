@@ -187,15 +187,22 @@ export function DateRangeFields({
   /** What is wrong with the range as a whole, shown under its start. */
   error?: string | null;
 }) {
-  const date = (key: keyof DateRange, label: string, fieldError?: string | null) => (
-    <Field label={label} error={fieldError}>
+  // A fixed width, so an error under a field wraps instead of pushing the next control aside.
+  const date = (
+    key: keyof DateRange,
+    label: string,
+    fieldError?: string | null,
+  ) => (
+    <Field label={label} error={fieldError} className="w-40">
       {(control) => (
         <Input
           {...control}
           type="date"
-          className="h-control-sm w-40"
+          className="h-control-sm"
           value={range[key]}
-          onChange={(event) => onChange({ ...range, [key]: event.target.value })}
+          onChange={(event) =>
+            onChange({ ...range, [key]: event.target.value })
+          }
         />
       )}
     </Field>
@@ -214,6 +221,7 @@ export function NumberField({
   value,
   onChange,
   min,
+  help,
   error,
   placeholder,
 }: {
@@ -221,11 +229,12 @@ export function NumberField({
   value: string;
   onChange: (value: string) => void;
   min?: number;
+  help?: ReactNode;
   error?: string | null;
   placeholder?: string;
 }) {
   return (
-    <Field label={label} error={error}>
+    <Field label={label} help={help} error={error} className="w-40">
       {(control) => (
         <Input
           {...control}
