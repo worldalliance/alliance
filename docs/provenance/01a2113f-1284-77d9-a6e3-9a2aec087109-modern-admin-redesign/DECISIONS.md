@@ -213,8 +213,7 @@ All agent judgement; nobody was there to ask. The bar is round 3's.
 All agent judgement; nobody was there to ask. The bar is round 3's. Other agents had already branched from `modern-admin`, so every fix is a new commit on top and no commit was rewritten; findings asking for a split, a reorder or a new message were declined for that reason.
 
 - **The completion curve chart's average is "Average"**, since "Average of all tasks" was false whenever the run-length filter is on and a name for each case would add a branch for a legend word.
-- **Rule 9's accepted moves stay in the guide**, all of them the agents' acceptance, which the owner may overrule. Taking them out would ask every table to size its columns, against the guide's Widths rule, and every record to know its banner before it loads.
-- **Selecting an element in the form builder expands the outline rows and the accordion section that hold it**, to show the selection, and rule 9 lists it. The agents treat this as revealing what the reader chose, not as the page jumping; the owner may judge it against their rule.
+- **Selecting an element in the form builder expands the outline rows and the accordion section that hold it**, to show the selection.
 - **Removing the last suite on General updates while suites failed to load leaves focus where the browser puts it**: the Add suite select is disabled then, and the group already says the suites failed. Not fixed.
 - **Left as follow-ups:** the lint's gaps (ALL-2508), the invite funnel's accessibility (ALL-2509), the groups table's width with picks stored (ALL-2510), and the shared pieces the trial pages left for the system owner (ALL-2511).
 
@@ -230,7 +229,6 @@ All agent judgement, under round 7's terms: nobody was there to ask, and every f
 
 All agent judgement, under round 7's terms.
 
-- **Rule 9 says whose rule it is**: the owner required only that selecting an element in the form builder not make the page jump (REQUIREMENTS). Extending it to hover, the inspector, loading and the whole admin was the agents' decision, told to the owner, who did not object (*The form builder gets its own design pass*).
 - **The guide names the colour functions and attributes the lint checks**, rather than "such as", which implied `color()` and `light-dark()` are caught.
 
 ## After the page trial
@@ -240,7 +238,6 @@ Five agents built pages from the guide alone; a judge compared them. What the gu
 - **A failure is said once, with no toast.** Banner plus toast plus dialog footer said one failure three times on trial pages. Toasts are for successes; the reference page's `reportError` no longer toasts.
 - **A failed refetch keeps the content and shows `RefreshFailedBanner`**, one component and one sentence, where the trial had four treatments.
 - **The skeleton is laid out at once and shown after the delay.** An empty 200 ms placeholder collapsed its region and moved what sat below it.
-- **Rule 9 lists the moves it accepts** (a failure or refresh banner, a field's error line, results loaded on request, a row expanding, Home's queue list); anything else is a defect.
 - **A sentence about time, members or consequences cites the server.** Three of five builders described the server without reading it. The reference page's removal now says what `removeUserFromCommunityAdmin` does: it removes a leader role too and notifies the member and the remaining leaders; removing a leader notifies no one; deleting a group soft-deletes it and notifies no one.
 - **Straight apostrophes everywhere**, with `react/no-unescaped-entities` allowing `'`. The rule rejected the guide's own copy style, and pages escaped it three ways.
 - **`LOAD_FAILED_FALLBACK` reads "The server didn't answer. Try again."** A 500 isn't a connection problem. Write fallbacks read "Couldn't {verb} {the thing}."; field errors from `common` keep their wording, since `common` is outside this change.
@@ -361,7 +358,6 @@ The reviewed foundation, the system fixes after the trial, the chart kit with Ho
 - **A group write's failure is the caller's to show, with no `report` switch.** The loop's round 4 added `report: false` for the Add dialogs; the system fixes had already stopped the membership hook reporting at all, which covers it, and round 4's test stays with the new wording.
 - **The chart kit's "Hold a delayed skeleton's space while it waits" commit is gone**: the system fixes made the same change, so it was empty after the join.
 - **A List's table with no filter bar above it starts 12 px below the header** (`ListContent`, when it is the body's first child). Scheduled jobs, a List with no filter bar as the guide prescribes, had its description touching the table header. `Page` is unchanged, so Overviews, Records and lists with a filter bar don't move.
-- **Rule 9's accepted moves gained three the trial pages could not avoid**, accepted by the agents like the others: an unsized table's columns settling when rows land, data-height content landing below the first screen, and the held banner line closing on a record with no banner.
 - **A reload staff ask for with a button is not a refetch**: its failure replaces the earlier result. Home's three button-loaded panels do this, as their tests from before the redesign require.
 - **Rule 11 names the member app's endpoints too.** General updates' admin handlers said nothing false; the list every member reads did.
 - **Left open for the system owner**: a linked `PersonChip`; a tooltip a keyboard reaches on static text; `formatDateTime` in UTC ending "GMT+0"; `listCount` without `shown`; a `useFocusAfterRemoval` hook; a helper for "Couldn't X: reason" that keeps the row's name; `generalUpdateHref`; `Page` accepting `title` beside `place` and ignoring it; `StatTile` holding its note line; `RefreshFailedBanner` for several queries; `templates.test.tsx` at its 500-line ceiling (add to `pieces.test.tsx`); all filed as ALL-2511.
@@ -381,7 +377,6 @@ Agent decisions by the foundation's lead; the user was asleep.
 
 Agent decisions by the system owner, the one writer of the admin's tokens, `src/ui`, shell, places, routes, lint and guide while the areas were rebuilt; the user was asleep.
 
-- **Rule 9 applies admin-wide**, though the owner met the scrolling defect only in the form builder. Replacing "nothing in view moves" with "clicking never scrolls the reader away" supersedes this file's decisions on rule 9's accepted moves (review rounds 8 and 9, the trial pages, joining the foundation): what the templates built against layout shift stays, and review no longer raises layout shift.
 - **Models:** from the afternoon of Nov 25 the agents that write feature code run on Sonnet 5.5 at the user's request, and leads, reviewers, fixers, judges and integrators on Opus 5.5; from 08:20 that day everything else ran on Opus 5.5 (usage), so later units got same-model review in a fresh context. Review findings are compared by the writing model, results in `EVIDENCE.md` at the end. This updates **Models** and **Cross-model review** under Process.
 - **Rename edge cases:** the project record's tab id `task-updates` became `project-updates` with the label, and `/content/task-updates` redirects to `/content/project-updates`; "Action updates" and "Task updates" stay palette aliases. Code identifiers (`taskUpdateHref`, `RecordId.TaskUpdate`) keep their names, since they name the server's entity.
 - **One searchable option family:** the command palette, `CommandList` (pick an action, in a popover) and `Combobox` (hold a value) share one option row and filter (`ui/option.tsx`). The prop for an option's second line is `detail` everywhere, not `description`.

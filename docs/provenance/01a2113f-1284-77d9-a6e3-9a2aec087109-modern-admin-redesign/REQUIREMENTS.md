@@ -18,7 +18,7 @@ task: Greenfield redesign of the admin panel (apps/admin) so it is modern-lookin
 ## Design
 
 - The prototype in `.scratch/greenfield/prototypes/ref/`, as revised, is the reference for the look and feel: prototype A's structure and working screens, with prototype C's sidebar, spacing and calmer surfaces. Of the first prototypes, the user prefers C's look to A's, apart from C's home page. The implementation need not follow the prototype precisely, in look or in detail; the user has not reviewed every screen of it and dislikes several things in its form builder. (user-originated)
-- Clicking or selecting never scrolls the page away from where the user is: the scroll position changes only when the user scrolls or uses a control whose purpose is to go somewhere. Elements appearing, disappearing or expanding are fine; layout shift is not a requirement. This replaces the earlier "selecting an element in the form builder does not make the page jump around", whose complaint was the builder scrolling after a click. (user-originated, Nov 25)
+- The admin avoids bad UI/UX in general, judged on its merits; the builder's page jumping after a click is one example, not a special rule. (user-originated, Nov 25)
 - "Action updates" are called "project updates" everywhere in the admin UI, replacing the spec's "Task updates"; "General updates" is unchanged, and the server and API keep their names. (user-originated, Nov 25)
 - The redesign merges before PR #1093 (the shared task panel), which then rebases its admin part onto the new builder. (user-originated, Nov 25)
 - The sidebar is clean and short, with an entry at the bottom that opens the search. (user-originated)
