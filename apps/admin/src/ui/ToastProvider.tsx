@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -42,16 +43,39 @@ const ConfirmContext = createContext<Confirm | undefined>(undefined);
 
 let nextId = 0;
 
+const askKey = (o: ConfirmOptions) =>
+  JSON.stringify([
+    o.title,
+    o.message,
+    o.confirmLabel,
+    o.cancelLabel,
+    o.requiredText,
+    o.destructive,
+  ]);
+
+const abortedAnswer = (signal: AbortSignal) =>
+  new Promise<boolean>((resolve) =>
+    signal.addEventListener("abort", () => resolve(false), { once: true }),
+  );
+
 function ConfirmHost({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<Pending[]>([]);
+  const open = useRef(new Map<string, Promise<boolean>>());
 
   const confirm = useCallback<Confirm>((options) => {
     const { signal } = options;
     if (signal?.aborted) return Promise.resolve(false);
-    return new Promise<boolean>((resolve) => {
+    // A second identical ask, such as a double press, shares the dialog
+    // already open or queued and its answer.
+    const key = askKey(options);
+    const asked = open.current.get(key);
+    if (asked)
+      return signal ? Promise.race([asked, abortedAnswer(signal)]) : asked;
+    const answer = new Promise<boolean>((resolve) => {
       const id = ++nextId;
       const settle = (value: boolean) => {
         signal?.removeEventListener("abort", onAbort);
+        open.current.delete(key);
         setQueue((prev) => prev.filter((p) => p.id !== id));
         resolve(value);
       };
@@ -59,6 +83,8 @@ function ConfirmHost({ children }: { children: ReactNode }) {
       signal?.addEventListener("abort", onAbort, { once: true });
       setQueue((prev) => [...prev, { id, options, settle }]);
     });
+    open.current.set(key, answer);
+    return answer;
   }, []);
 
   const current = queue[0];

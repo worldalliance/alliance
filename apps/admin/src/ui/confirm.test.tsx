@@ -152,3 +152,71 @@ describe("useToast().confirm", () => {
     ).toBe(true);
   });
 });
+
+describe("useToast().confirm asked twice", () => {
+  let confirm: ReturnType<typeof useToast>["confirm"] = () =>
+    Promise.resolve(false);
+  function Capture() {
+    confirm = useToast().confirm;
+    return null;
+  }
+  const mount = () =>
+    render(
+      <ToastProvider>
+        <Capture />
+      </ToastProvider>,
+    );
+  const press = (name: string) =>
+    act(async () => {
+      fireEvent.click(screen.getByRole("button", { name }));
+    });
+  const ask = { title: "Remove the leader?", confirmLabel: "Remove leader" };
+
+  it("opens one dialog for the same ask and gives both callers its answer", async () => {
+    mount();
+    let first: Promise<boolean> = Promise.resolve(false);
+    let second: Promise<boolean> = Promise.resolve(false);
+    await act(async () => {
+      first = confirm(ask);
+      second = confirm({ ...ask });
+    });
+
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    await press("Remove leader");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await Promise.all([first, second])).toEqual([true, true]);
+  });
+
+  it("still queues a different ask behind the open one", async () => {
+    mount();
+    let second: Promise<boolean> = Promise.resolve(true);
+    await act(async () => {
+      void confirm(ask);
+      second = confirm({ ...ask, title: "Remove the member?" });
+    });
+    await press("Cancel");
+
+    expect(
+      screen.getByRole("dialog", { name: "Remove the member?" }),
+    ).toBeTruthy();
+    await press("Cancel");
+    expect(await second).toBe(false);
+  });
+
+  it("declines a joined caller whose own signal aborts, leaving the dialog open", async () => {
+    mount();
+    const controller = new AbortController();
+    let second: Promise<boolean> = Promise.resolve(true);
+    await act(async () => {
+      void confirm(ask);
+      second = confirm({ ...ask, signal: controller.signal });
+    });
+    await act(async () => {
+      controller.abort();
+    });
+
+    expect(await second).toBe(false);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});
