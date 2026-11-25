@@ -5,93 +5,206 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, jest } from "bun:test";
+import { afterEach, describe, expect, it, jest, spyOn } from "bun:test";
 import { MemoryRouter, useLocation } from "react-router";
+import { PlaceId, RecordId } from "../../places";
 import { ShortcutsProvider } from "../../shell/shortcuts";
 import { Input } from "../Input";
 import { Field, SaveBar, SaveState } from "./Form";
-import { BulkBar, SearchField } from "./List";
+import { BulkBar, SearchField, ViewSwitch } from "./List";
 import { Page } from "./Page";
 import { ContentState } from "./States";
 import { SKELETON_DELAY_MS } from "./useDelayedFlag";
-import { useUrlTab } from "./useUrlTab";
+import { usePlaceTabs, usePlaceViews, useRecordTabs } from "./usePlaceTabs";
 
 afterEach(cleanup);
 
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "events", label: "Events", count: 1200 },
-] as const;
-
-function TabbedPage() {
-  const [tab, setTab] = useUrlTab(TABS.map((t) => t.id));
+function GroupsPage({ ids = ["all", "awaiting"] }: { ids?: string[] }) {
+  const tabs = usePlaceTabs(PlaceId.Groups, ids);
   const { search } = useLocation();
   return (
     <Page
-      title="Winter heat survey"
-      breadcrumb={[{ label: "All tasks", to: "/tasks" }]}
-      tabs={{ items: TABS, value: tab, onChange: setTab }}
+      place={PlaceId.Groups}
+      tabs={{
+        ...tabs,
+        items: tabs.items.map((tab) =>
+          tab.id === "awaiting" ? { ...tab, count: 1200 } : tab,
+        ),
+      }}
     >
-      <p>Body of {tab}</p>
+      <p>Body of {tabs.value}</p>
       <output>{search}</output>
     </Page>
   );
 }
 
-const renderAt = (url: string) =>
-  render(
-    <MemoryRouter initialEntries={[url]}>
-      <TabbedPage />
-    </MemoryRouter>,
-  );
+const renderAt = (url: string, page = <GroupsPage />) =>
+  render(<MemoryRouter initialEntries={[url]}>{page}</MemoryRouter>);
 
-describe("Page with tabs", () => {
-  it("opens the first tab on the bare URL", () => {
-    renderAt("/tasks/1");
+const breadcrumbLinks = () =>
+  [
+    ...screen
+      .getByRole("navigation", { name: "Breadcrumb" })
+      .querySelectorAll("a"),
+  ].map((link) => link.getAttribute("href"));
+
+describe("Page with a place's tabs", () => {
+  it("opens the first tab on the bare URL, labelled from the page map", () => {
+    renderAt("/members/groups");
     expect(
-      screen.getByRole("tab", { name: "Overview", selected: true }),
+      screen.getByRole("tab", { name: "All groups", selected: true }),
     ).toBeTruthy();
-    expect(screen.getByRole("tabpanel").textContent).toContain(
-      "Body of overview",
-    );
+    expect(screen.getByRole("tabpanel").textContent).toContain("Body of all");
   });
 
   it("opens the tab the URL names", () => {
-    renderAt("/tasks/1?tab=events");
+    renderAt("/members/groups?tab=awaiting");
     expect(
-      screen.getByRole("tab", { name: "Events 1,200", selected: true }),
+      screen.getByRole("tab", {
+        name: "Awaiting assignment 1,200",
+        selected: true,
+      }),
     ).toBeTruthy();
     expect(screen.getByRole("tabpanel").textContent).toContain(
-      "Body of events",
+      "Body of awaiting",
     );
   });
 
   it("falls back to the first tab on an unknown value", () => {
-    renderAt("/tasks/1?tab=nope");
+    renderAt("/members/groups?tab=nope");
     expect(
-      screen.getByRole("tab", { name: "Overview", selected: true }),
+      screen.getByRole("tab", { name: "All groups", selected: true }),
     ).toBeTruthy();
   });
 
-  it("writes the chosen tab to the URL, keeping other params, and clears it for the first", () => {
-    renderAt("/tasks/1?q=heat");
-    fireEvent.click(screen.getByRole("tab", { name: "Events 1,200" }));
-    expect(screen.getByRole("status").textContent).toBe("?q=heat&tab=events");
-    fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
-    expect(screen.getByRole("status").textContent).toBe("?q=heat");
+  it("writes the chosen tab to the URL, keeping the view and dropping the tab's own params, and clears it for the first", () => {
+    renderAt("/members/groups?q=heat&view=map");
+    fireEvent.click(
+      screen.getByRole("tab", { name: "Awaiting assignment 1,200" }),
+    );
+    expect(screen.getByRole("status").textContent).toBe(
+      "?view=map&tab=awaiting",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "All groups" }));
+    expect(screen.getByRole("status").textContent).toBe("?view=map");
   });
 
-  it("renders the title as the page's one h1 and the breadcrumb as links", () => {
-    renderAt("/tasks/1");
+  it("throws when the page's tab ids differ from the page map's", () => {
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() =>
+        renderAt("/members/groups", <GroupsPage ids={["all", "waiting"]} />),
+      ).toThrow(/places\.ts/);
+    } finally {
+      error.mockRestore();
+    }
+  });
+});
+
+describe("Page views", () => {
+  function PeoplePage() {
+    const views = usePlaceViews(PlaceId.People, ["table", "map"]);
+    const { search } = useLocation();
+    return (
+      <Page place={PlaceId.People}>
+        <ViewSwitch label="View" {...views} />
+        <output>{search}</output>
+      </Page>
+    );
+  }
+
+  it("writes the view to the URL and keeps every other param", () => {
+    renderAt("/members?tab=staff&q=lee", <PeoplePage />);
+    fireEvent.click(screen.getByRole("button", { name: "Map" }));
+    expect(screen.getByRole("status").textContent).toBe(
+      "?tab=staff&q=lee&view=map",
+    );
     expect(
-      screen.getByRole("heading", { level: 1, name: "Winter heat survey" }),
+      screen.getByRole("button", { name: "Map" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+});
+
+describe("Page header", () => {
+  it("names a place's page from the page map: h1, breadcrumb and document title", () => {
+    renderAt("/members/groups");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Groups" }),
     ).toBeTruthy();
+    expect(breadcrumbLinks()).toEqual(["/members"]);
+    expect(document.title).toBe("Groups - Admin");
+  });
+
+  it("puts a record under its place and its parents, titled by its name", () => {
+    renderAt(
+      "/tasks/suites/3",
+      <Page
+        record={RecordId.Suite}
+        title="Winter push"
+        parents={[{ label: "Heat and repairs", to: "/tasks/projects/2" }]}
+      >
+        body
+      </Page>,
+    );
     expect(
-      screen
-        .getByRole("navigation", { name: "Breadcrumb" })
-        .querySelector("a")
-        ?.getAttribute("href"),
-    ).toBe("/tasks");
+      screen.getByRole("heading", { level: 1, name: "Winter push" }),
+    ).toBeTruthy();
+    expect(breadcrumbLinks()).toEqual([
+      "/tasks",
+      "/tasks/suites",
+      "/tasks/projects/2",
+    ]);
+    expect(document.title).toBe("Winter push - Admin");
+  });
+
+  it("says what a record is called until its name loads", () => {
+    renderAt("/tasks/suites/3", <Page record={RecordId.Suite}>body</Page>);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Suite" }),
+    ).toBeTruthy();
+    expect(breadcrumbLinks()).toEqual(["/tasks", "/tasks/suites"]);
+    expect(document.title).toBe("Suite - Admin");
+  });
+
+  it("gives an area's own page no breadcrumb", () => {
+    renderAt("/tasks", <Page place={PlaceId.AllTasks}>body</Page>);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "All tasks" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(document.title).toBe("All tasks - Admin");
+  });
+});
+
+describe("Page with a record's tabs", () => {
+  function FormPage({ ids }: { ids: string[] }) {
+    const tabs = useRecordTabs(RecordId.Form, ids);
+    return (
+      <Page record={RecordId.Form} title="Intake" tabs={tabs}>
+        <p>Body of {tabs.value}</p>
+      </Page>
+    );
+  }
+
+  it("labels them from the page map and opens the one the URL names", () => {
+    renderAt(
+      "/tasks/forms/3?tab=responses",
+      <FormPage ids={["builder", "responses", "versions"]} />,
+    );
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Builder",
+      "Responses",
+      "Versions",
+    ]);
+    expect(screen.getByText("Body of responses")).toBeTruthy();
+  });
+
+  it("throws when the page's tab ids differ from the page map's", () => {
+    const spy = spyOn(console, "error").mockImplementation(() => {});
+    expect(() =>
+      renderAt("/tasks/forms/3", <FormPage ids={["builder"]} />),
+    ).toThrow();
+    spy.mockRestore();
   });
 });
 

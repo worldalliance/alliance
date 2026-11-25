@@ -5,6 +5,7 @@ import Button, { ButtonVariant } from "../Button";
 import { cn } from "../cn";
 import { Input } from "../Input";
 import { zIndex } from "../zIndex";
+import type { UrlTabs } from "./usePlaceTabs";
 
 /**
  * The row under a List's header: search first, then filters and chips as
@@ -100,20 +101,18 @@ export function FilterChip({
   );
 }
 
-export type ViewOption<T extends string> = { id: T; label: string };
-
-/** A switch between two views of the same items. Three or more views are tabs. */
+/**
+ * A switch between two views of the same items; spread `usePlaceViews` into
+ * it. Three or more views are tabs.
+ */
 export function ViewSwitch<T extends string>({
   label,
-  options,
+  items,
   value,
   onChange,
-}: {
+}: UrlTabs<T> & {
   /** The group's accessible name: "View". */
   label: string;
-  options: readonly ViewOption<T>[];
-  value: T;
-  onChange: (id: T) => void;
 }) {
   return (
     <div
@@ -121,15 +120,15 @@ export function ViewSwitch<T extends string>({
       aria-label={label}
       className="inline-flex rounded-md border border-line-strong bg-surface-2 p-0.5"
     >
-      {options.map((option) => (
+      {items.map((item) => (
         <button
-          key={option.id}
+          key={item.id}
           type="button"
-          aria-pressed={option.id === value}
-          onClick={() => onChange(option.id)}
+          aria-pressed={item.id === value}
+          onClick={() => onChange(item.id)}
           className="h-7 rounded-sm px-2.5 font-medium text-fg-muted focus-ring hover:text-fg aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow-xs"
         >
-          {option.label}
+          {item.label}
         </button>
       ))}
     </div>

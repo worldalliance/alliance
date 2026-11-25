@@ -588,6 +588,14 @@ export const RECORDS: readonly AdminRecord[] = [
   },
 ];
 
+const recordsById = new Map(RECORDS.map((record) => [record.id, record]));
+
+export const recordById = (id: RecordId): AdminRecord => {
+  const record = recordsById.get(id);
+  if (!record) throw new Error(`unknown record: ${id}`);
+  return record;
+};
+
 /** Forum posts keep the post in the place's own path, open in its side sheet. */
 export const FORUM_POST_PATH = "/content/posts/:postId?";
 

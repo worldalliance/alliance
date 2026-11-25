@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import FormBuilder from "../pages/FormBuilder";
 import FormResponses from "../pages/FormResponses";
 import FormSnapshotMigration from "../pages/FormSnapshotMigration";
-import { RecordId, RECORDS, selectedTab, TabParam } from "../places";
+import { recordById, RecordId, selectedTab, TabParam } from "../places";
 import { TabLinks } from "../shell/TabbedPlace";
 
 const PAGES: Record<string, ComponentType> = {
@@ -12,7 +12,7 @@ const PAGES: Record<string, ComponentType> = {
   versions: FormSnapshotMigration,
 };
 
-const tabs = RECORDS.find((record) => record.id === RecordId.Form)?.tabs ?? [];
+const tabs = recordById(RecordId.Form).tabs ?? [];
 
 export default function FormRecord() {
   const [searchParams] = useSearchParams();

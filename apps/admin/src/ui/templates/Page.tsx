@@ -1,21 +1,63 @@
 import type { ReactNode } from "react";
+import {
+  type Crumb,
+  documentTitle,
+  placeById,
+  type PlaceId,
+  placeTrail,
+  recordById,
+  type RecordId,
+} from "../../places";
 import { cn } from "../cn";
 import { Tabs, TabsPanel } from "../Tabs";
 import {
   PageHeader,
-  PageTabList,
   type PageHeaderProps,
   type PageTab,
+  PageTabList,
 } from "./PageHeader";
 
 export type PageTabsProps<T extends string> = {
   items: readonly PageTab<T>[];
-  /** From `useUrlTab`, so the tab is in the URL. */
   value: T;
   onChange: (id: T) => void;
 };
 
-export type PageProps<T extends string> = PageHeaderProps & {
+type PageIdentity =
+  | {
+      /** The place this page is. */
+      place: PlaceId;
+    }
+  | {
+      /** The kind of record this page shows; its place comes from `places.ts`. */
+      record: RecordId;
+      /** The record's name. Until it loads, the page says what one is called. */
+      title?: string;
+      /** Its parent records, between its place and itself in the breadcrumb. */
+      parents?: readonly Crumb[];
+    };
+
+const headerOf = (
+  page: PageIdentity,
+): { title: string; trail: readonly Crumb[] } => {
+  if ("record" in page) {
+    const record = recordById(page.record);
+    return {
+      title: page.title ?? record.label,
+      trail: [...placeTrail(record.place), ...(page.parents ?? [])],
+    };
+  }
+  return {
+    title: placeById(page.place).label,
+    trail: placeTrail(page.place).slice(0, -1),
+  };
+};
+
+export type PageProps<T extends string> = Pick<
+  PageHeaderProps,
+  "badge" | "description" | "actions"
+> & {
+  /** From `usePlaceTabs` or `useRecordTabs`, so the tab is in the URL. */
   tabs?: PageTabsProps<T>;
   /** A standing `Banner` between the tabs and the body. */
   banner?: ReactNode;
@@ -26,30 +68,40 @@ export type PageProps<T extends string> = PageHeaderProps & {
   fill?: boolean;
   /** The body. With `tabs`, the body of the current tab. */
   children: ReactNode;
-};
+} & PageIdentity;
 
 /**
- * Every page's skeleton: header, optional tabs and banner, then the body. The
- * body brings its own padding (`PageBody`, `RecordBody`, `ListContent`,
- * `Workspace`), since a list and a workspace run edge to edge.
+ * Every page's skeleton: document title, breadcrumb and header from the
+ * place or record, optional tabs and banner, then the body. The body brings its own
+ * padding (`PageBody`, `RecordBody`, `ListContent`, `Workspace`), since a list
+ * and a workspace run edge to edge.
  */
-export function Page<T extends string>({
-  tabs,
-  banner,
-  fill = false,
-  children,
-  ...header
-}: PageProps<T>) {
+export function Page<T extends string>(props: PageProps<T>) {
+  const { tabs, banner, fill = false, children } = props;
+  const { badge, description, actions } = props;
   const rootClass = cn(
     "@container flex flex-col",
     fill ? "h-full min-h-0" : "min-h-full",
   );
   const bodyClass = cn("flex flex-1 flex-col", fill && "min-h-0");
+  const { title, trail } = headerOf(props);
+  const head = (
+    <>
+      <title>{documentTitle(title)}</title>
+      <PageHeader
+        badge={badge}
+        description={description}
+        actions={actions}
+        trail={trail}
+        title={title}
+      />
+    </>
+  );
 
   if (!tabs) {
     return (
       <div className={rootClass}>
-        <PageHeader {...header} />
+        {head}
         {banner}
         <div className={bodyClass}>{children}</div>
       </div>
@@ -66,7 +118,7 @@ export function Page<T extends string>({
       }}
       className={rootClass}
     >
-      <PageHeader {...header} />
+      {head}
       <PageTabList tabs={tabs.items} />
       {banner}
       <TabsPanel value={tabs.value} className={bodyClass}>

@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import type { Crumb } from "../../places";
 import { TabsList, TabsTab } from "../Tabs";
-
-export type Crumb = { label: string; to: string };
 
 export type PageTab<T extends string = string> = {
   id: T;
@@ -12,8 +11,9 @@ export type PageTab<T extends string = string> = {
 };
 
 export type PageHeaderProps = {
-  /** The trail above this page, nearest last. The page itself is the title. */
-  breadcrumb?: Crumb[];
+  /** The links above this page, nearest last. */
+  trail: readonly Crumb[];
+  /** The page's name: the `h1`, and the end of the trail. */
   title: string;
   /** The record's status badge, directly after the title. */
   badge?: ReactNode;
@@ -24,7 +24,7 @@ export type PageHeaderProps = {
 };
 
 export function PageHeader({
-  breadcrumb,
+  trail,
   title,
   badge,
   description,
@@ -32,27 +32,41 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header className="flex shrink-0 flex-col gap-1 px-page pt-page-top">
-      {breadcrumb && breadcrumb.length > 0 && (
-        <nav aria-label="Breadcrumb">
-          <ol className="flex flex-wrap items-center gap-1.5 text-caption text-fg-muted">
-            {breadcrumb.map((crumb, index) => (
-              <li key={crumb.to} className="flex items-center gap-1.5">
-                {index > 0 && (
-                  <span aria-hidden="true" className="text-line-strong">
+      {/* An area's own page has no trail; the row stays so every title sits at one height. */}
+      <div className="min-h-4">
+        {trail.length > 0 && (
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1.5 text-caption text-fg-muted">
+              {trail.map((crumb) => (
+                <li
+                  key={crumb.to}
+                  className="flex min-w-0 items-center gap-1.5"
+                >
+                  <Link
+                    to={crumb.to}
+                    title={crumb.label}
+                    className="truncate rounded-sm focus-ring hover:text-fg hover:underline"
+                  >
+                    {crumb.label}
+                  </Link>
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0 text-line-strong"
+                  >
                     /
                   </span>
-                )}
-                <Link
-                  to={crumb.to}
-                  className="rounded-sm focus-ring hover:text-fg hover:underline"
-                >
-                  {crumb.label}
-                </Link>
+                </li>
+              ))}
+              <li
+                aria-current="page"
+                className="min-w-0 truncate font-medium text-fg"
+              >
+                {title}
               </li>
-            ))}
-          </ol>
-        </nav>
-      )}
+            </ol>
+          </nav>
+        )}
+      </div>
       <div className="flex min-h-control flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <h1 className="truncate text-title font-semibold">{title}</h1>
