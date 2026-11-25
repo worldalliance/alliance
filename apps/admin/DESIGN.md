@@ -335,7 +335,7 @@ Text is `text-fg` or `text-fg-muted`; dividers `border-line`, stronger edges `bo
 - On a List the table is the page: no card. On a Record or Overview a table sits in a `Panel`.
 - **Accent** marks the primary action, the current selection, links and focus. One primary button per view.
 - **Success, warning, danger and info** mean only that. Never use them for a category, a role, emphasis or an unread mark.
-- **Category colours** (projects) are the tokens `cat-1` to `cat-6`, each with a `-soft` background. The server stores no colour, so pick one from the project's id (`hashString` in `lib/identitySwatch.ts`), and always show it beside the project's name.
+- **Category colours** (projects) are the tokens `cat-1` to `cat-6`, each with a `-soft` background. The server stores no colour, so `projectColor(projectId)` (`ui/projectColor.ts`) picks one from the id, the same on every page: classes `solid`, `soft` (text on it is `text-fg`) and `border`, and `value` for an SVG `fill` or `stroke`. Never text in the colour itself, which is too light to read, and always beside the project's name: `<ProjectSwatch projectId />` (`ui/ProjectSwatch.tsx`) before it. Something with no project gets no swatch.
 - A `Banner` takes `BannerTone.Info` for a standing fact, `Warning` for a consequence to weigh, `Danger` for a violation, blocker or failure; it says the thing in words. `inline` puts it in the body as a box.
 - Light theme only. Every colour is a semantic token so a dark theme is a second set of values.
 
