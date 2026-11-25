@@ -201,7 +201,7 @@ function FormPanes() {
                 aria-label="Outline"
                 className="flex min-h-0 flex-1 flex-col"
               >
-                <PaneHeader title="Outline" />
+                <PaneHeader title="Outline" action={parts.outlineAction} />
                 <div className={PANE_SCROLL}>
                   {isLoading ? (
                     <OutlineSkeleton />

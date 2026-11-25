@@ -148,7 +148,7 @@ describe("FormBuilder dependency links", () => {
     expect(activeSection()).toBe("Conditions");
     expect(
       outline()
-        .getByRole("button", { name: "Two" })
+        .getByRole("treeitem", { name: "Two" })
         .getAttribute("aria-current"),
     ).toBe("true");
   });
@@ -399,7 +399,9 @@ describe("FormBuilder deleting a source", () => {
     renderFormBuilder(listSchema);
     selectElement("Text Field: Name");
     openSection("Advanced");
-    fireEvent.click(settings().getByRole("button", { name: "Delete question" }));
+    fireEvent.click(
+      settings().getByRole("button", { name: "Delete question" }),
+    );
     expect(
       dialog().getByText(/List Field: Kids › Number Field: Age/),
     ).toBeTruthy();
@@ -412,11 +414,11 @@ describe("FormBuilder deleting a source", () => {
       ...schema,
       pages: [{ id: "p0", title: "Zero", fields: [] }, ...schema.pages],
     });
-    fireEvent.click(outline().getByRole("button", { name: "One" }));
+    fireEvent.click(outline().getByRole("treeitem", { name: "One" }));
     fromSelectionMenu("Delete page");
     expect(dialog().getByText(/Page: Two/)).toBeTruthy();
     expect(dialog().queryByText(/Label b/)).toBeNull();
     fireEvent.click(dialog().getByRole("button", { name: "Delete page" }));
-    expect(outline().queryByRole("button", { name: "One" })).toBeNull();
+    expect(outline().queryByRole("treeitem", { name: "One" })).toBeNull();
   });
 });

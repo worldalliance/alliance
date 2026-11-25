@@ -1,5 +1,7 @@
-import { cn } from "@alliance/shared/styles/util";
-import { ChevronRight, GripVertical } from "lucide-react";
+import { ChevronRight, type LucideIcon } from "lucide-react";
+import type { DragEvent, MouseEvent } from "react";
+import type { DropPosition } from "../../lib/useDragReorder";
+import { cn } from "../../ui/cn";
 import { IssueMarker } from "./IssueList";
 import { CheckState, extendableClick } from "./rangeSelection";
 
@@ -34,9 +36,20 @@ const CHECKBOX: Record<
   },
 };
 
+const INDENT = ["pl-1", "pl-5", "pl-9", "pl-13", "pl-17", "pl-21"];
+
 export type RowProps = {
+  /** The row's accessible name, and its tooltip when truncated. */
   label: string;
+  /** What the row shows, when shorter than `label`. */
+  text?: string;
+  icon?: LucideIcon;
+  /** 1 for a page, deeper for what it holds. */
+  level: number;
+  /** The selection's own row. */
   current: boolean;
+  /** In the selection: the current row, or a member of a range. */
+  selected?: boolean;
   rangeFocus?: boolean;
   onSelect: () => void;
   /** Shift-click's selection through this row, in place of `onSelect`. */
@@ -44,89 +57,148 @@ export type RowProps = {
   check?: { state: CheckState; onToggle: () => void };
   expanded?: boolean;
   onToggle?: () => void;
+  /** Collapsed over the selection. */
+  containsSelection?: boolean;
   /** At the entry or anywhere inside it. */
   issues?: number;
-  className?: string;
+  /** The open page's row. */
+  emphasis?: boolean;
 };
 
+export type RowDrag = {
+  onDragStart: (event: DragEvent) => void;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent) => void;
+  /** Takes the drop whole, so it shows a ring for a drop line. */
+  ringed: boolean;
+};
+
+const stop = (event: MouseEvent) => event.stopPropagation();
+
+/**
+ * One line of the outline tree. The tree owns the keys: arrows move focus
+ * and the selection with it, so the row's own controls are pointer-only.
+ */
 export function OutlineRow({
   label,
+  text = label,
+  icon: Icon,
+  level,
   current,
+  selected = current,
   rangeFocus,
   onSelect,
   onExtend,
   check,
   expanded,
   onToggle,
+  containsSelection = false,
   issues = 0,
-  className,
-  draggable = false,
-}: RowProps & { draggable?: boolean }) {
+  emphasis = false,
+  rowKey,
+  tabStop,
+  drag,
+}: RowProps & { rowKey: string; tabStop: boolean; drag?: RowDrag }) {
   return (
     <div
+      role="treeitem"
+      aria-label={label}
+      aria-level={level}
+      aria-selected={selected}
+      aria-current={current}
+      aria-expanded={onToggle ? expanded : undefined}
+      aria-description={
+        containsSelection ? "Contains the selection" : undefined
+      }
+      data-row-key={rowKey}
+      data-selection-focus={rangeFocus || undefined}
+      tabIndex={tabStop ? 0 : -1}
+      draggable={drag !== undefined}
+      onDragStart={drag?.onDragStart}
+      onDragEnd={drag?.onDragEnd}
+      onDragOver={drag?.onDragOver}
+      {...extendableClick({ onSelect, onExtend })}
       className={cn(
-        "group/row flex items-center rounded-md",
-        current ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100",
+        "relative flex h-8 cursor-default select-none items-center gap-1.5 rounded-md pr-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
+        INDENT[level - 1] ?? INDENT.at(-1),
+        selected ? "bg-accent-soft text-fg" : "text-fg hover:bg-surface-2",
+        emphasis && "font-medium",
+        drag?.ringed && "ring-2 ring-inset ring-accent",
+        "group/row",
       )}
     >
-      {draggable ? (
-        <GripVertical
-          className="h-3.5 w-3.5 shrink-0 cursor-grab text-gray-400 opacity-0 group-hover/row:opacity-100"
+      {containsSelection && (
+        <span
           aria-hidden="true"
+          className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent"
         />
-      ) : (
-        <span className="w-3.5 shrink-0" />
       )}
-      {onToggle ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={expanded}
-          aria-label={`Contents of ${label}`}
-          title={expanded ? "Collapse" : "Expand"}
-          className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <ChevronRight
-            className={cn(
-              "h-3.5 w-3.5 transition-transform",
-              expanded && "rotate-90",
-            )}
-            aria-hidden="true"
-          />
-        </button>
-      ) : (
-        <span className="w-5 shrink-0" />
-      )}
-      <button
-        type="button"
-        {...extendableClick({ onSelect, onExtend })}
-        aria-current={current}
-        data-selection-focus={rangeFocus || undefined}
-        title={label}
+      <span
+        aria-hidden="true"
+        data-toggle={onToggle ? "" : undefined}
+        onClick={
+          onToggle &&
+          ((event) => {
+            event.stopPropagation();
+            onToggle();
+          })
+        }
         className={cn(
-          "min-w-0 flex-1 truncate rounded py-1 pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          !current && "text-gray-700",
-          className,
+          "flex size-4 shrink-0 items-center justify-center rounded-sm text-fg-muted",
+          onToggle && "hover:bg-surface-2 hover:text-fg",
         )}
       >
-        {label}
-      </button>
-      <IssueMarker count={issues} className="mr-1" />
+        {onToggle && (
+          <ChevronRight
+            className={cn(
+              "size-3.5 transition-transform duration-fast ease-standard",
+              expanded && "rotate-90",
+            )}
+          />
+        )}
+      </span>
+      {Icon && (
+        <Icon aria-hidden="true" className="size-4 shrink-0 text-fg-muted" />
+      )}
+      <span className="min-w-0 flex-1 truncate" title={label}>
+        {text}
+      </span>
+      <IssueMarker count={issues} className="shrink-0" />
       {check && (
         <input
           type="checkbox"
+          aria-hidden="true"
+          tabIndex={-1}
           checked={CHECKBOX[check.state].checked}
           disabled={CHECKBOX[check.state].disabled}
           onChange={check.onToggle}
+          onClick={stop}
+          onMouseDown={(event) => event.preventDefault()}
           aria-label={`Include ${label} in the selection`}
           title={CHECKBOX[check.state].title}
           className={cn(
-            "mr-1 h-3.5 w-3.5 shrink-0",
+            "size-3.5 shrink-0 accent-accent",
             !CHECKBOX[check.state].checked &&
-              "opacity-0 focus:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100",
+              "opacity-0 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100",
           )}
         />
       )}
     </div>
   );
 }
+
+/** A row and what it holds, as the tree renders it. */
+export type OutlineEntry = {
+  key: string;
+  row: RowProps;
+  drag?: RowDrag;
+  /** Takes dragover anywhere in the entry, its contents included. */
+  overEntry?: (event: DragEvent) => void;
+  dropLine?: DropPosition | null;
+  dragging?: boolean;
+  /** Classes for the grey band behind a grey box's members. */
+  band?: string;
+  /** A note in place of contents, as "No elements"; it takes drops on the row. */
+  empty?: { text: string; onDragOver?: (event: DragEvent) => void };
+  children: OutlineEntry[];
+};

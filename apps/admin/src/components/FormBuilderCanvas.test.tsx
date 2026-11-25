@@ -337,7 +337,7 @@ describe("the form canvas", () => {
         },
       ],
     });
-    fireEvent.click(button("Two"));
+    fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
     fireEvent.click(
       button("Edit page conditions: shown when Town is answered"),
     );
@@ -471,7 +471,7 @@ describe("the form canvas", () => {
     const lines = () =>
       screen
         .getByRole("region", { name: "Form canvas" })
-        .querySelectorAll(".bg-blue-500");
+        .querySelectorAll(".bg-accent");
     expect(dragOverAt(pet, 1)).toBe(false);
     expect(lines()).toHaveLength(1);
     expect(dragOverAt(town, 1)).toBe(true);
@@ -540,10 +540,10 @@ describe("the form canvas", () => {
   it("opens a page on its settings", () => {
     renderFormBuilder(schema);
     selectElement("Pet");
-    fireEvent.click(button("Two"));
+    fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
     expect(heading()).toBe("Page settings");
     expect(screen.getByText(/This page is empty/)).toBeTruthy();
-    fireEvent.click(button("One"));
+    fireEvent.click(screen.getByRole("treeitem", { name: "One" }));
     expect(heading()).toBe("Page settings");
   });
 });

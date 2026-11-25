@@ -1,8 +1,7 @@
 import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import { cn } from "@alliance/shared/styles/util";
-import { Plus } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Eye, FileText } from "lucide-react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
 import { groupEdges } from "../../lib/formGroups";
 import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
 import type { ElementDrop, ElementSpan } from "../../lib/moveElements";
@@ -13,19 +12,26 @@ import {
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
 import {
+  ElementActionsMenu,
+  type ElementActions,
+} from "../../pages/forms/builder/inspector/ElementActionsMenu";
+import { revealInPane } from "../../pages/forms/builder/kit/revealInPane";
+import {
+  outlinePane,
+  useTreeKeys,
+  type RowHandle,
+} from "../../pages/forms/builder/outline/useTreeKeys";
+import { cn } from "../../ui/cn";
+import {
   CanvasTargetKind,
-  ChildKind,
-  describeElement,
   elementTarget,
   pageTitle,
-  targetKey,
   type CanvasTarget,
-  type ResolvedChild,
   type ResolvedTarget,
 } from "./canvasSelection";
 import { DropLine } from "./DropLine";
-import { isContainer, OutlineContents } from "./OutlineContents";
-import { OutlineRow, type RowProps } from "./OutlineRow";
+import { containerEntries, isContainer, leafRow } from "./OutlineContents";
+import { OutlineRow, type OutlineEntry } from "./OutlineRow";
 import {
   checkStateOf,
   inRange,
@@ -34,35 +40,8 @@ import {
   toggleChecked,
   type Span,
 } from "./rangeSelection";
-import { useOutlineDrag, type EntryDrag } from "./useOutlineDrag";
+import { useOutlineDrag } from "./useOutlineDrag";
 import { useRestoreFocusWithin } from "./useRestoreFocusWithin";
-
-const pageKey = (page: Page) => `page:${page.id}`;
-const groupKey = (key: string) => `group:${key}`;
-const elementKey = (page: Page, index: number, child?: ResolvedChild) =>
-  targetKey(page, { kind: CanvasTargetKind.Element, index, child });
-
-/** The entries holding `child`, outermost first. */
-function containersOf(page: Page, index: number, child: ResolvedChild) {
-  const element = elementKey(page, index);
-  switch (child.kind) {
-    case ChildKind.SubField:
-    case ChildKind.Section:
-      return [element];
-    case ChildKind.SectionBlock:
-      return [
-        element,
-        elementKey(page, index, {
-          kind: ChildKind.Section,
-          section: child.section,
-        }),
-      ];
-    default:
-      throw new Error(
-        `unknown child: ${JSON.stringify(child satisfies never)}`,
-      );
-  }
-}
 
 type FormOutlineProps = {
   pages: Page[];
@@ -71,28 +50,54 @@ type FormOutlineProps = {
   displayOnly: boolean;
   pageIndex: number;
   selected: ResolvedTarget;
-  /** Changes with the selection, revealing its entry. */
-  selectionKey: string;
   onSelect: (pageIndex: number, target: CanvasTarget) => void;
   /** Shift-click's selection on the open page through `clicked`, else `alone`. Null where ranges are off. */
   onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
   /** The selection once an entry's checkbox toggles. Null where ranges are off. */
   onCheck: ((pageIndex: number, target: CanvasTarget) => void) | null;
   issues: IssueIndex;
-  onAddPage: () => void;
   onMovePage: (move: ListMove) => void;
   onMoveElements: (from: ElementSpan, to: ElementDrop) => void;
+  /** The selection's actions, for the context menu and Alt+arrows and Delete. */
+  actions?: ElementActions | null;
+  /** Set when the selection was taken somewhere the outline should follow: an add, a deep link, an issue. */
+  reveal?: boolean;
+  /** Pages only, as Preview lists them. */
+  pagesOnly?: boolean;
+};
+
+const NO_ACTIONS: ElementActions = {
+  moveNoun: null,
+  onMoveUp: null,
+  onMoveDown: null,
+  moveToPage: null,
+  duplicateLabel: "Duplicate",
+  onDuplicate: null,
+  onAddBelow: null,
+  editJsonLabel: "Edit element JSON…",
+  onEditJson: null,
+  onShowInOutline: null,
+  deleteLabel: "",
+  onDelete: null,
 };
 
 const selectedRow = (root: HTMLElement) =>
   root.querySelector<HTMLElement>("[data-selection-focus]") ??
   root.querySelector<HTMLElement>('[aria-current="true"]');
 
+const CHILD_KEY = /\/(field|section|block):/;
+
+const pageKey = (page: Page) => `page:${page.id}`;
+const groupKey = (key: string) => `group:${key}`;
+const elementKey = (page: Page, element: PageItem, at: number) =>
+  `${pageKey(page)}/element:${element.id || `@${at}`}`;
+
 /**
- * Pages and their top-level elements, with visibility groups holding their
- * members and lists and accordions their contents. The selected page starts
- * expanded, as does every group, and the entries around a new selection
- * expand to show it.
+ * The form as a tree: pages, their elements, visibility groups holding their
+ * members, and lists and accordions their contents. Pages and groups start
+ * open, containers closed, and nothing opens or scrolls by itself when the
+ * canvas selects: a closed entry holding the selection says so with a bar.
+ * One tab stop; the arrows move the selection with focus.
  */
 export function FormOutline({
   pages,
@@ -100,14 +105,15 @@ export function FormOutline({
   displayOnly,
   pageIndex,
   selected,
-  selectionKey,
   onSelect,
   onExtend,
   onCheck,
   issues,
-  onAddPage,
   onMovePage,
   onMoveElements,
+  actions = null,
+  reveal = false,
+  pagesOnly = false,
 }: FormOutlineProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState<ReadonlyMap<string, boolean>>(
@@ -120,51 +126,6 @@ export function FormOutline({
       new Map(current).set(key, !(current.get(key) ?? byDefault)),
     );
 
-  const currentPage = pages[pageIndex];
-  const selectedElements =
-    selected.kind === CanvasTargetKind.Element
-      ? currentPage?.fields.slice(selected.index, selected.index + 1)
-      : selected.kind === CanvasTargetKind.Range
-        ? currentPage?.fields.slice(selected.start, selected.end)
-        : undefined;
-  const revealed = [
-    currentPage && pageKey(currentPage),
-    ...(selectedElements ?? []).map((element) => {
-      const group = element.id ? groups.get(element.id) : undefined;
-      return group && groupKey(group);
-    }),
-  ].filter((key) => key !== undefined);
-  // Unlike pages and groups, these start collapsed.
-  const revealedContainers =
-    currentPage && selected.kind === CanvasTargetKind.Element && selected.child
-      ? containersOf(currentPage, selected.index, selected.child)
-      : [];
-  // Null at first, so a selection made before the outline mounts is revealed.
-  const [shownKey, setShownKey] = useState<string | null>(null);
-  if (shownKey !== selectionKey) {
-    setShownKey(selectionKey);
-    if (
-      revealed.some((key) => expanded.get(key) === false) ||
-      revealedContainers.some((key) => expanded.get(key) !== true)
-    ) {
-      setExpanded(
-        new Map([
-          ...[...expanded].filter(([key]) => !revealed.includes(key)),
-          ...revealedContainers.map((key) => [key, true] as const),
-        ]),
-      );
-    }
-  }
-  useEffect(() => {
-    if (ref.current)
-      selectedRow(ref.current)?.scrollIntoView({ block: "nearest" });
-  }, [selectionKey]);
-  const restoreFocus = useRestoreFocusWithin(ref, selectedRow);
-  // A row moved to another page while focused leaves focus on the page.
-  useEffect(() => {
-    restoreFocus();
-  });
-
   const span = selectedSpan(selected);
   const { clearOffRows, drop, forPage, forElement, forGroup } = useOutlineDrag({
     selection: span && { pageIndex, ...span },
@@ -172,278 +133,332 @@ export function FormOutline({
     onMoveElements,
   });
 
-  const renderElements = (page: Page, index: number) => {
-    const onPage = index === pageIndex;
-    const pageSelected: ResolvedTarget = onPage
-      ? selected
-      : { kind: CanvasTargetKind.Page };
-    const elementEntry = (element: PageItem, at: number) => {
+  const elementEntry =
+    (page: Page, index: number) =>
+    (element: PageItem, at: number, level: number): OutlineEntry => {
+      const onPage = index === pageIndex;
+      const pageSelected: ResolvedTarget = onPage
+        ? selected
+        : { kind: CanvasTargetKind.Page };
       const target =
         onPage &&
         selected.kind === CanvasTargetKind.Element &&
         selected.index === at
           ? selected
           : null;
-      const key = elementKey(page, at);
+      const key = elementKey(page, element, at);
       const container = isContainer(element) ? element : null;
       const open = container !== null && isExpanded(key, false);
+      const hidden = target?.child !== undefined && !open;
       const alone = elementTarget(element, at);
       const edges = groupEdges(page.fields, at);
-      return (
-        <OutlineEntry
-          key={element.id || at}
-          band={cn(
-            edges && "bg-zinc-100",
-            edges?.first && "rounded-t-md",
-            edges?.last && "rounded-b-md",
-          )}
-          label={describeElement(element)}
-          current={
-            (target !== null && (!target.child || !open)) ||
-            (onPage && inRange(selected, at))
-          }
-          rangeFocus={onPage && rangeFocus(selected) === at}
-          onSelect={() => onSelect(index, alone)}
-          onExtend={
+      const drag = forElement({
+        pageIndex: index,
+        index: at,
+        // A display-only outline has no page row to take drops at the page's end.
+        beforeOnly: open && !(displayOnly && at === page.fields.length - 1),
+      });
+      const ranged = onPage && inRange(selected, at);
+      return {
+        key,
+        band: cn(
+          edges && "bg-surface-2",
+          edges?.first && "rounded-t-md",
+          edges?.last && "rounded-b-md",
+        ),
+        row: {
+          ...leafRow(element),
+          level,
+          current: (target !== null && (!target.child || !open)) || ranged,
+          selected: (target !== null && !target.child) || ranged,
+          rangeFocus: onPage && rangeFocus(selected) === at,
+          onSelect: () => onSelect(index, alone),
+          onExtend:
             onPage && onExtend
               ? () => onExtend({ start: at, end: at + 1 }, alone)
-              : undefined
-          }
-          check={
-            onCheck
-              ? {
-                  state: checkStateOf({
-                    fields: page.fields,
-                    selected: pageSelected,
-                    index: at,
-                  }),
-                  onToggle: () =>
-                    onCheck(
-                      index,
-                      toggleChecked({
-                        fields: page.fields,
-                        selected: pageSelected,
-                        index: at,
-                      }),
-                    ),
-                }
-              : undefined
-          }
-          drag={forElement({
-            pageIndex: index,
-            index: at,
-            // A display-only outline has no page row to take drops at the page's end.
-            beforeOnly: open && !(displayOnly && at === page.fields.length - 1),
-          })}
-          issues={issues.inElement(index, at)}
-          {...(container && {
+              : undefined,
+          check: onCheck
+            ? {
+                state: checkStateOf({
+                  fields: page.fields,
+                  selected: pageSelected,
+                  index: at,
+                }),
+                onToggle: () =>
+                  onCheck(
+                    index,
+                    toggleChecked({
+                      fields: page.fields,
+                      selected: pageSelected,
+                      index: at,
+                    }),
+                  ),
+              }
+            : undefined,
+          issues: issues.inElement(index, at),
+          ...(container && {
             expanded: open,
             onToggle: () => toggle(key, false),
-          })}
-        >
-          {open && (
-            <OutlineContents
-              element={container}
-              child={target?.child}
-              selectChild={(child) =>
-                onSelect(index, { ...elementTarget(element, at), child })
-              }
-              sectionKey={(section) =>
-                elementKey(page, at, { kind: ChildKind.Section, section })
-              }
-              isExpanded={isExpanded}
-              toggle={toggle}
-            />
-          )}
-        </OutlineEntry>
-      );
+          }),
+          containsSelection: hidden,
+        },
+        drag: {
+          onDragStart: drag.onDragStart,
+          onDragEnd: drag.onDragEnd,
+          onDragOver: drag.overRow,
+          ringed: false,
+        },
+        dropLine: drag.dropPosition,
+        dragging: drag.dragging,
+        children: open
+          ? containerEntries({
+              element: container,
+              entryKey: key,
+              level: level + 1,
+              child: target?.child,
+              selectChild: (child) => onSelect(index, { ...alone, child }),
+              isExpanded,
+              toggle,
+            })
+          : [],
+      };
     };
-    return (
-      <ul>
-        {pageSegments(page.fields, groups).map((segment) => {
-          switch (segment.kind) {
-            case SegmentKind.Single:
-              return elementEntry(page.fields[segment.index]!, segment.index);
-            case SegmentKind.Group: {
-              const { key, start, end } = segment;
-              const open = isExpanded(groupKey(key), true);
-              const group: CanvasTarget = { kind: CanvasTargetKind.Group, key };
-              const drag = forGroup({ pageIndex: index, start, end });
-              return (
-                <li key={key} className="relative">
-                  {drag.active && (
-                    <DropLine
-                      position={DropPosition.Before}
-                      before="-top-px"
-                      after="-bottom-px"
-                    />
-                  )}
-                  <div
-                    draggable
-                    onDragStart={drag.onDragStart}
-                    onDragEnd={drag.onDragEnd}
-                    onDragOver={drag.onDragOver}
-                    className={cn(drag.dragging && "opacity-50")}
-                  >
-                    <OutlineRow
-                      draggable
-                      label={`Shared visibility · ${withCount(end - start, "element")}`}
-                      current={
-                        onPage &&
-                        selected.kind === CanvasTargetKind.Group &&
-                        selected.key === key
-                      }
-                      onSelect={() => onSelect(index, group)}
-                      onExtend={
-                        onPage && onExtend
-                          ? () => onExtend({ start, end }, group)
-                          : undefined
-                      }
-                      expanded={open}
-                      onToggle={() => toggle(groupKey(key), true)}
-                      issues={page.fields.slice(start, end).reduce(
-                        (count, _, offset) =>
-                          count + issues.inElement(index, start + offset),
-                        issues.at({
-                          kind: IssueTargetKind.Group,
-                          pageIndex: index,
-                          key,
-                        }).length,
-                      )}
-                      className="text-amber-800"
-                    />
-                  </div>
-                  {open && (
-                    <ul className="ml-3 border-l border-dashed border-amber-300 pl-1">
-                      {page.fields
-                        .slice(start, end)
-                        .map((member, offset) =>
-                          elementEntry(member, start + offset),
-                        )}
-                    </ul>
-                  )}
-                </li>
-              );
-            }
-            default:
-              throw new Error(
-                `unknown segment: ${JSON.stringify(segment satisfies never)}`,
-              );
-          }
-        })}
-      </ul>
-    );
+
+  const pageContents = (page: Page, index: number, level: number) => {
+    const entry = elementEntry(page, index);
+    const onPage = index === pageIndex;
+    return pageSegments(page.fields, groups).map((segment): OutlineEntry => {
+      switch (segment.kind) {
+        case SegmentKind.Single:
+          return entry(page.fields[segment.index]!, segment.index, level);
+        case SegmentKind.Group: {
+          const { key, start, end } = segment;
+          const entryKey = `${pageKey(page)}/${groupKey(key)}`;
+          const open = isExpanded(entryKey, true);
+          const group: CanvasTarget = { kind: CanvasTargetKind.Group, key };
+          const drag = forGroup({ pageIndex: index, start, end });
+          const groupSelected =
+            onPage &&
+            selected.kind === CanvasTargetKind.Group &&
+            selected.key === key;
+          const memberSelected =
+            onPage &&
+            ((selected.kind === CanvasTargetKind.Element &&
+              selected.index >= start &&
+              selected.index < end) ||
+              (span !== null && span.start < end && span.end > start));
+          return {
+            key: entryKey,
+            row: {
+              label: `Shared visibility · ${withCount(end - start, "element")}`,
+              icon: Eye,
+              level,
+              current: groupSelected || (memberSelected && !open),
+              selected: groupSelected,
+              onSelect: () => onSelect(index, group),
+              onExtend:
+                onPage && onExtend
+                  ? () => onExtend({ start, end }, group)
+                  : undefined,
+              expanded: open,
+              onToggle: () => toggle(entryKey, true),
+              containsSelection: memberSelected && !open,
+              issues: page.fields.slice(start, end).reduce(
+                (count, _, offset) =>
+                  count + issues.inElement(index, start + offset),
+                issues.at({
+                  kind: IssueTargetKind.Group,
+                  pageIndex: index,
+                  key,
+                }).length,
+              ),
+            },
+            drag: {
+              onDragStart: drag.onDragStart,
+              onDragEnd: drag.onDragEnd,
+              onDragOver: drag.onDragOver,
+              ringed: false,
+            },
+            dropLine: drag.active ? DropPosition.Before : null,
+            dragging: drag.dragging,
+            children: open
+              ? page.fields
+                  .slice(start, end)
+                  .map((member, offset) =>
+                    entry(member, start + offset, level + 1),
+                  )
+              : [],
+          };
+        }
+        default:
+          throw new Error(
+            `unknown segment: ${JSON.stringify(segment satisfies never)}`,
+          );
+      }
+    });
   };
 
-  return (
-    <div
-      ref={ref}
-      tabIndex={-1}
-      className="p-2 text-sm"
-      onDragOver={clearOffRows}
-      onDrop={drop}
-    >
-      {displayOnly ? (
-        currentPage && renderElements(currentPage, pageIndex)
-      ) : (
-        <>
-          <div className="flex items-center justify-between px-2 pb-1">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Pages
-            </h2>
-            <button
-              type="button"
-              onClick={onAddPage}
-              aria-label="Add page"
-              title="Add page"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-          <ul>
-            {pages.map((page, index) => {
-              const open = isExpanded(pageKey(page), index === pageIndex);
-              const drag = forPage({ index, length: page.fields.length });
-              return (
-                <OutlineEntry
-                  key={page.id}
-                  label={pageTitle(page)}
-                  current={
-                    index === pageIndex &&
-                    selected.kind === CanvasTargetKind.Page
-                  }
-                  onSelect={() =>
-                    onSelect(index, { kind: CanvasTargetKind.Page })
-                  }
-                  drag={drag}
-                  expanded={open}
-                  onToggle={() => toggle(pageKey(page), index === pageIndex)}
-                  issues={issues.onPage(index)}
-                  className="font-medium"
-                >
-                  {open && (
-                    <div className="ml-3 pl-1">
-                      {page.fields.length === 0 ? (
-                        <p
-                          className="px-2 py-1 text-xs text-gray-400"
-                          onDragOver={drag.overRow}
-                        >
-                          No elements
-                        </p>
-                      ) : (
-                        renderElements(page, index)
-                      )}
-                    </div>
-                  )}
-                </OutlineEntry>
-              );
-            })}
-          </ul>
-        </>
-      )}
-    </div>
-  );
-}
+  const pageEntry = (page: Page, index: number): OutlineEntry => {
+    const key = pageKey(page);
+    const empty = page.fields.length === 0;
+    const open = !pagesOnly && !empty && isExpanded(key, true);
+    const drag = forPage({ index, length: page.fields.length });
+    const pageSelected =
+      index === pageIndex && selected.kind === CanvasTargetKind.Page;
+    const inside = index === pageIndex && !pageSelected && !open && !pagesOnly;
+    return {
+      key,
+      row: {
+        label: pageTitle(page),
+        icon: FileText,
+        level: 1,
+        current: pageSelected || inside,
+        selected: pageSelected,
+        emphasis: index === pageIndex,
+        onSelect: () => onSelect(index, { kind: CanvasTargetKind.Page }),
+        ...(!pagesOnly &&
+          !empty && {
+            expanded: open,
+            onToggle: () => toggle(key, true),
+          }),
+        containsSelection: inside && !empty,
+        issues: issues.onPage(index),
+      },
+      drag: {
+        onDragStart: drag.onDragStart,
+        onDragEnd: drag.onDragEnd,
+        onDragOver: drag.overRow,
+        ringed: drag.ringed,
+      },
+      overEntry: drag.overEntry,
+      dropLine: drag.dropPosition,
+      dragging: drag.dragging,
+      empty:
+        empty && !pagesOnly
+          ? { text: "No elements", onDragOver: drag.overRow }
+          : undefined,
+      children: open ? pageContents(page, index, 2) : [],
+    };
+  };
 
-function OutlineEntry({
-  drag,
-  band,
-  children,
-  ...row
-}: RowProps & {
-  drag: EntryDrag;
-  /** Classes for the grey band of a grouped element. */
-  band?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <li
-      className={cn("relative", drag.dragging && "opacity-50", band)}
-      onDragOver={drag.overEntry}
+  const currentPage = pages[pageIndex];
+  const entries = displayOnly
+    ? currentPage
+      ? pageContents(currentPage, pageIndex, 1)
+      : []
+    : pages.map(pageEntry);
+
+  const handles = new Map<string, RowHandle>();
+  let currentKey: string | null = null;
+  const collect = (list: OutlineEntry[]) => {
+    for (const { key, row, children } of list) {
+      handles.set(key, {
+        select: row.onSelect,
+        extend: row.onExtend,
+        toggle: row.onToggle,
+        expanded: row.expanded,
+        current: row.current,
+      });
+      if (row.current && currentKey === null) currentKey = key;
+      collect(children);
+    }
+  };
+  collect(entries);
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const tabKey =
+    focusedKey !== null && handles.has(focusedKey)
+      ? focusedKey
+      : (currentKey ?? handles.keys().next().value ?? null);
+
+  const onKeyDown = useTreeKeys({ tree: ref, handles, actions });
+
+  const restoreFocus = useRestoreFocusWithin(ref, selectedRow);
+  // A row moved to another page while focused leaves focus on the page.
+  useEffect(() => {
+    restoreFocus();
+  });
+  useEffect(() => {
+    if (!reveal || !ref.current) return;
+    const row = selectedRow(ref.current);
+    const pane = outlinePane(ref.current);
+    if (row && pane) revealInPane(pane, row, 8);
+  }, [reveal]);
+
+  const renderEntry = (entry: OutlineEntry) => (
+    <div
+      key={entry.key}
+      role="none"
+      className={cn("relative", entry.dragging && "opacity-50", entry.band)}
+      onDragOver={entry.overEntry}
     >
-      {drag.dropPosition && (
+      {entry.dropLine && (
         <DropLine
-          position={drag.dropPosition}
+          position={entry.dropLine}
           before="-top-px"
           after="-bottom-px"
         />
       )}
+      <OutlineRow
+        {...entry.row}
+        rowKey={entry.key}
+        tabStop={entry.key === tabKey}
+        drag={pagesOnly ? undefined : entry.drag}
+      />
+      {entry.empty && (
+        <p
+          aria-hidden="true"
+          onDragOver={entry.empty.onDragOver}
+          className="py-1 pl-9 text-caption text-fg-muted"
+        >
+          {entry.empty.text}
+        </p>
+      )}
+      {entry.children.map(renderEntry)}
+    </div>
+  );
+
+  return (
+    <ElementActionsMenu
+      label={selectedLabel(selected)}
+      actions={actions ?? NO_ACTIONS}
+      trigger="context"
+    >
       <div
-        draggable
-        onDragStart={drag.onDragStart}
-        onDragEnd={drag.onDragEnd}
-        onDragOver={drag.overRow}
-        className={cn(
-          "relative rounded-md",
-          // Above the row, whose selected background hides an inset ring.
-          drag.ringed &&
-            "after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:ring-2 after:ring-inset after:ring-blue-500",
-        )}
+        ref={ref}
+        role="tree"
+        aria-label="Form outline"
+        aria-multiselectable={onExtend !== null}
+        tabIndex={-1}
+        className="p-2 outline-none"
+        onKeyDown={onKeyDown}
+        onFocus={(event: FocusEvent<HTMLDivElement>) => {
+          const key =
+            event.target instanceof HTMLElement
+              ? event.target.dataset.rowKey
+              : undefined;
+          if (key) setFocusedKey(key);
+        }}
+        onContextMenu={(event) => {
+          // The menu acts on the selection, so the row right-clicked becomes it.
+          if (!(event.target instanceof Element)) return;
+          const row = event.target.closest<HTMLElement>('[role="treeitem"]');
+          const key = row?.dataset.rowKey ?? "";
+          const handle = handles.get(key);
+          // A list's or accordion's child keeps its actions in its settings.
+          if (!handle || CHILD_KEY.test(key) || (handle.current && !actions)) {
+            event.stopPropagation();
+            return;
+          }
+          if (!handle.current) handle.select();
+        }}
+        onDragOver={clearOffRows}
+        onDrop={drop}
       >
-        <OutlineRow {...row} draggable />
+        {entries.map(renderEntry)}
       </div>
-      {children}
-    </li>
+    </ElementActionsMenu>
   );
 }
+
+const selectedLabel = (selected: ResolvedTarget) =>
+  selected.kind === CanvasTargetKind.Page ? "Page actions" : "Element actions";

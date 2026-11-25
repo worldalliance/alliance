@@ -9,7 +9,7 @@ import {
   selectElement,
   selectionMenuItems,
 } from "../lib/testing/formCanvas";
-import { entries } from "../lib/testing/formOutline";
+import { contents, entries, entry } from "../lib/testing/formOutline";
 import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
@@ -50,6 +50,8 @@ it("moves the selected element to the end of the page picked, keeping it selecte
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   expect(entries()).toEqual([
     "One",
+    "Text Block: Welcome",
+    "Text Field: Pet",
     "Two",
     "Text Field: Food",
     "Text Field: Town",
@@ -76,7 +78,7 @@ it("follows the moved element between pages on Undo and Redo, keeping it selecte
   reveals.clear();
   fireEvent.click(screen.getByRole("button", { name: "Redo" }));
   expect(heading()).toBe("Text Field: Town");
-  expect(entries().slice(1)).toEqual([
+  expect(entries().slice(3)).toEqual([
     "Two",
     "Text Field: Food",
     "Text Field: Town",
@@ -88,15 +90,18 @@ it("follows the moved element between pages on Undo and Redo, keeping it selecte
 
 it("moves a selected range together", async () => {
   renderFormBuilder(schema);
-  fireEvent.click(outline().getByRole("button", { name: "Text Field: Town" }));
   fireEvent.click(
-    outline().getByRole("button", { name: "Text Block: Welcome" }),
+    outline().getByRole("treeitem", { name: "Text Field: Town" }),
+  );
+  fireEvent.click(
+    outline().getByRole("treeitem", { name: "Text Block: Welcome" }),
     { shiftKey: true },
   );
   fromSelectionMenu("Move to page 2: Two");
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   expect(entries()).toEqual([
     "One",
+    "Text Field: Pet",
     "Two",
     "Text Field: Food",
     "Text Field: Town",
@@ -157,24 +162,17 @@ it("moves a shared-visibility group together, keeping it selected and shown, eve
       two!,
     ],
   });
-  const contentsOfTwo = () =>
-    outline().getByRole("button", { name: "Contents of Two" });
-  fireEvent.click(contentsOfTwo());
-  fireEvent.click(contentsOfTwo());
-  expect(contentsOfTwo().getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(contents("Two"));
+  expect(entry("Two").getAttribute("aria-expanded")).toBe("false");
   fireEvent.click(
-    outline().getByRole("button", { name: "Shared visibility · 2 elements" }),
+    outline().getByRole("treeitem", { name: "Shared visibility · 2 elements" }),
   );
   fromSelectionMenu("Move to page 2: Two");
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-  expect(entries()).toEqual([
-    "One",
-    "Two",
-    "Text Field: Food",
-    "Shared visibility · 2 elements",
-    "Text Block: Welcome",
-    "Text Field: Pet",
-  ]);
+  expect(entries()).toEqual(["One", "Text Field: Town", "Two"]);
+  expect(entry("Two").getAttribute("aria-description")).toBe(
+    "Contains the selection",
+  );
   expect(heading()).toBe("Shared visibility");
   fireEvent.click(screen.getByRole("button", { name: "Undo" }));
   expect(entries().slice(0, 3)).toEqual([
@@ -197,7 +195,7 @@ it("offers no move in a display-only builder", () => {
     outputViews: [],
   });
   fireEvent.click(
-    outline().getByRole("button", { name: "Header Block: News" }),
+    outline().getByRole("treeitem", { name: "Header Block: News" }),
   );
   expect(heading()).toBe("Header Block: News");
   expect(

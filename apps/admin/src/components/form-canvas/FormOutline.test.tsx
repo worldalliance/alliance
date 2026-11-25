@@ -7,7 +7,7 @@ import { deriveVisibilityGroups } from "../../lib/visibilityGroups";
 import { CanvasTargetKind, ChildKind } from "./canvasSelection";
 import { FormOutline } from "./FormOutline";
 
-it("shows a child selected before it mounts", () => {
+it("marks the closed list holding a selected child, without opening it", () => {
   render(
     <FormOutline
       pages={nestedSchema.pages}
@@ -19,21 +19,20 @@ it("shows a child selected before it mounts", () => {
         index: 0,
         child: { kind: ChildKind.SubField, index: 1 },
       }}
-      selectionKey="age"
       onSelect={() => {}}
       onExtend={null}
       onCheck={null}
       issues={indexIssues([])}
-      onAddPage={() => {}}
       onMovePage={() => {}}
       onMoveElements={() => {}}
     />,
   );
-  expect(
-    screen
-      .getByRole("button", { name: "Number Field: Age" })
-      .getAttribute("aria-current"),
-  ).toBe("true");
+  expect(screen.queryByRole("treeitem", { name: "Number Field: Age" })).toBe(
+    null,
+  );
+  const list = screen.getByRole("treeitem", { name: /^List Field/ });
+  expect(list.getAttribute("aria-current")).toBe("true");
+  expect(list.getAttribute("aria-description")).toBe("Contains the selection");
 });
 
 it("counts a collapsed group's member issues on its row", () => {
@@ -70,7 +69,6 @@ it("counts a collapsed group's member issues on its row", () => {
       displayOnly={false}
       pageIndex={0}
       selected={{ kind: CanvasTargetKind.Page }}
-      selectionKey="p1"
       onSelect={() => {}}
       onExtend={null}
       onCheck={null}
@@ -84,19 +82,20 @@ it("counts a collapsed group's member issues on its row", () => {
           inConditions: false,
         },
       ])}
-      onAddPage={() => {}}
       onMovePage={() => {}}
       onMoveElements={() => {}}
     />,
   );
   fireEvent.click(
-    screen.getByRole("button", { name: /^Contents of Shared visibility/ }),
+    screen
+      .getByRole("treeitem", { name: /^Shared visibility/ })
+      .querySelector("[data-toggle]")!,
   );
   expect(screen.queryByText("Text Field: B")).toBeNull();
   expect(
     screen
       .getByText(/^Shared visibility/)
-      .closest("li")
+      .closest('[role="treeitem"]')
       ?.querySelector('[aria-label="1 issue"]'),
   ).toBeTruthy();
 });

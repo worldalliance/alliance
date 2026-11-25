@@ -462,8 +462,8 @@ it("keeps unsaved expression text across pages, and undoes it", async () => {
   fireEvent.change(expression()!, { target: { value: "c1 AND" } });
   await nextTask();
 
-  fireEvent.click(screen.getByRole("button", { name: "Two" }));
-  fireEvent.click(screen.getByRole("button", { name: "One" }));
+  fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
+  fireEvent.click(screen.getByRole("treeitem", { name: "One" }));
   openConditionsOfA();
   expect(expression()?.value).toBe("c1 AND");
 
@@ -481,8 +481,8 @@ it("drops expression text on returning to all/any rules", async () => {
   fireEvent.change(expression()!, { target: { value: "c1" } });
   fireEvent.click(button("Use all/any rules"));
 
-  fireEvent.click(screen.getByRole("button", { name: "Two" }));
-  fireEvent.click(screen.getByRole("button", { name: "One" }));
+  fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
+  fireEvent.click(screen.getByRole("treeitem", { name: "One" }));
   openConditionsOfA();
   expect(expression()).toBeNull();
 });
@@ -517,7 +517,7 @@ it("keeps the page on screen when undo removes a page before it", async () => {
   renderFormBuilder(twoPages, 1);
   copyPage();
   await nextTask();
-  fireEvent.click(screen.getByRole("button", { name: "Two" }));
+  fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
 
   fireEvent.click(button("Undo"));
   expect(pageTitle().value).toBe("Two");

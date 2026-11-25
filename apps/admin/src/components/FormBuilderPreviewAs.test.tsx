@@ -2,7 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it } from "bun:test";
-import { previewing } from "../lib/testing/formCanvas";
+import { canvas, previewing } from "../lib/testing/formCanvas";
 import { renderSavedFormBuilder } from "../lib/testing/renderFormBuilder";
 import { pickUser } from "../ui/UserSelect.testing";
 
@@ -211,7 +211,7 @@ it.each([
 it("waits for the forms a variable reads before opening the preview", async () => {
   renderSavedFormBuilder(4, "/?previewAs=10");
 
-  expect(await screen.findByText("Your name")).toBeTruthy();
+  expect(await canvas().findByText("Your name")).toBeTruthy();
   await act(async () => {});
   expect(previewing()).toBe(false);
   await act(async () => releaseSourceForm());

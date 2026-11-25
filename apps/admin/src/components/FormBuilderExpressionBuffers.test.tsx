@@ -54,8 +54,8 @@ const revisitTabs = (away: string, back: string) => {
   fireEvent.click(screen.getByRole("tab", { name: back }));
 };
 const revisit = (away: string, back: string) => {
-  fireEvent.click(screen.getByRole("button", { name: away }));
-  fireEvent.click(screen.getByRole("button", { name: back }));
+  fireEvent.click(screen.getByRole("treeitem", { name: away }));
+  fireEvent.click(screen.getByRole("treeitem", { name: back }));
 };
 
 it("gives each list sub-field its own expression text", async () => {
@@ -240,7 +240,7 @@ const expectRuleLessTextKeptUntilRemoved = async ({
 
 it("keeps a page's rule-less text until its conditions are removed", async () => {
   renderFormBuilder(twoPagesWith([]));
-  fireEvent.click(screen.getByRole("button", { name: "Two" }));
+  fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
   await expectRuleLessTextKeptUntilRemoved({
     openConditions: () => openSection("Conditions"),
     revisitEditor: () => revisit("One", "Two"),

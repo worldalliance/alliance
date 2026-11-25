@@ -95,15 +95,11 @@ src/components/form-canvas/ChildRows.tsx
 src/components/form-canvas/ChildSettings.tsx
 src/components/form-canvas/ConditionsIndicator.tsx
 src/components/form-canvas/DependencyLinks.tsx
-src/components/form-canvas/DropLine.tsx
 src/components/form-canvas/ElementBoundary.tsx
 src/components/form-canvas/FormCanvas.tsx
-src/components/form-canvas/FormOutline.tsx
 src/components/form-canvas/GreyBoxPanel.tsx
 src/components/form-canvas/InlineText.tsx
 src/components/form-canvas/InsertPoint.tsx
-src/components/form-canvas/OutlineContents.tsx
-src/components/form-canvas/OutlineRow.tsx
 src/components/form-canvas/PageSettings.tsx
 src/components/form-canvas/RangeSettings.tsx
 src/components/form-canvas/VisibilityGroupPanel.tsx

@@ -12,6 +12,7 @@ import {
   selectGroup,
   settings,
 } from "../lib/testing/formCanvas";
+import { contents, entry } from "../lib/testing/formOutline";
 import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
@@ -61,9 +62,9 @@ const groupSummaries = () =>
         .textContent,
   );
 const checkbox = (label: string) =>
-  outline().getByRole<HTMLInputElement>("checkbox", {
-    name: `Include Text Field: ${label} in the selection`,
-  });
+  outline().getByLabelText<HTMLInputElement>(
+    `Include Text Field: ${label} in the selection`,
+  );
 
 describe("FormBuilder range selection", () => {
   it("Shift-click on the canvas selects the elements between", () => {
@@ -129,7 +130,7 @@ describe("FormBuilder range selection", () => {
     renderFormBuilder(schemaWith(["a", "b", "c"].map((id) => text(id))));
     selectElement("Label a");
     fireEvent.click(
-      outline().getByRole("button", { name: "Text Field: Label c" }),
+      outline().getByRole("treeitem", { name: "Text Field: Label c" }),
       { shiftKey: true },
     );
     expect(heading()).toBe("3 elements selected");
@@ -139,21 +140,18 @@ describe("FormBuilder range selection", () => {
     renderFormBuilder(schemaWith(["a", "b", "c", "d"].map((id) => text(id))));
     const onCanvas = (label: string) =>
       canvas().getByRole("button", { name: `Select Text Field: ${label}` });
-    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
     const reveals = spyOnReveals();
 
     selectElement("Label a");
-    scroll.mockClear();
     reveals.clear();
     fireEvent.click(checkbox("Label d"));
     expect(reveals.targets()).toContain(onCanvas("Label d"));
-    expect(scroll.mock.contexts).toContain(
-      outline().getByRole("button", { name: "Text Field: Label d" }),
+    expect(reveals.targets()).toContain(
+      outline().getByRole("treeitem", { name: "Text Field: Label d" }),
     );
     expect(reveals.targets()).not.toContain(onCanvas("Label a"));
 
     selectElement("Label d");
-    scroll.mockClear();
     reveals.clear();
     fireEvent.click(checkbox("Label a"));
     expect(reveals.targets()).toContain(onCanvas("Label a"));
@@ -179,26 +177,23 @@ describe("FormBuilder range selection", () => {
     ]);
   });
 
-  it("expands a collapsed group the selection reaches into", () => {
+  it("marks a closed group the selection reaches into, leaving it closed", () => {
     const X = shownWhen("q");
     renderFormBuilder(
       schemaWith([text("q"), text("a", X), text("b", X), text("c")]),
     );
     selectElement("Label c");
-    fireEvent.click(
-      outline().getByRole("button", {
-        name: /^Contents of Shared visibility/,
-      }),
-    );
+    fireEvent.click(contents(/^Shared visibility/));
     expect(
-      outline().queryByRole("button", { name: "Text Field: Label b" }),
+      outline().queryByRole("treeitem", { name: "Text Field: Label b" }),
     ).toBeNull();
     shiftSelect("Text Field: Label b");
     expect(
-      outline()
-        .getByRole("button", { name: "Text Field: Label b" })
-        .getAttribute("aria-current"),
-    ).toBe("true");
+      outline().queryByRole("treeitem", { name: "Text Field: Label b" }),
+    ).toBeNull();
+    expect(entry(/^Shared visibility/).getAttribute("aria-description")).toBe(
+      "Contains the selection",
+    );
   });
 
   it("selects one element at a time in a display-only editor", () => {

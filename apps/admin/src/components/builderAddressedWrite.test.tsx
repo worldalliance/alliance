@@ -91,7 +91,7 @@ describe("FormBuilder hands a display block the addressed write", () => {
   );
 
   const openPage = (title: string) =>
-    fireEvent.click(screen.getByRole("button", { name: title }));
+    fireEvent.click(screen.getByRole("treeitem", { name: title }));
 
   it("lands a video upload the admin paged away from", async () => {
     const router = createMemoryRouter([

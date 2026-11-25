@@ -485,7 +485,7 @@ describe("FormBuilder page conditions", () => {
       ],
     });
     const conditionsOf = (title: string) => {
-      fireEvent.click(screen.getByRole("button", { name: title }));
+      fireEvent.click(screen.getByRole("treeitem", { name: title }));
       openSection("Conditions");
       return screen.queryAllByRole("listitem", { name: /^Rule / }).length;
     };

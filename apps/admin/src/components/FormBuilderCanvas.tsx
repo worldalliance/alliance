@@ -1,10 +1,14 @@
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { flowStepPreviews } from "@alliance/shared/forms/flowScreens";
+import { Plus } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { copyElementWithUniqueIds } from "../lib/copyWithUniqueIds";
 import type { IssueIndex } from "../lib/formIssues";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { summarizeVisibility } from "../lib/visibilitySummary";
+import { useBuilder } from "../pages/forms/builder/BuilderContext";
+import { useSelectionActions } from "../pages/forms/builder/inspector/useSelectionActions";
+import Button, { ButtonVariant } from "../ui/Button";
 import type { ContentOverride } from "./form-canvas/CanvasElement";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
@@ -45,6 +49,8 @@ export function FormBuilderCanvas({
   /** Lays out the outline, canvas and settings in the builder's panes. */
   children: (parts: {
     outline: ReactNode;
+    /** The outline pane header's action. */
+    outlineAction: ReactNode;
     canvas: ReactNode;
     settings: ReactNode;
   }) => ReactNode;
@@ -53,8 +59,8 @@ export function FormBuilderCanvas({
     selectedPageIndex,
     currentPage,
     resolvedTarget,
-    selectionKey,
     select,
+    revealPending,
     selectFromOutline,
     extendTo,
   } = canvas;
@@ -71,6 +77,8 @@ export function FormBuilderCanvas({
     moveElementsTo,
     updateElementAt,
   } = edits;
+  const { isPreviewMode } = useBuilder();
+  const actions = useSelectionActions();
   const availableElements = displayOnly
     ? DISPLAY_ONLY_ELEMENTS
     : AVAILABLE_ELEMENTS;
@@ -98,6 +106,13 @@ export function FormBuilderCanvas({
   );
 
   return children({
+    outlineAction:
+      displayOnly || isPreviewMode ? null : (
+        <Button variant={ButtonVariant.Ghost} size="small" onClick={addPage}>
+          <Plus aria-hidden="true" className="size-4" />
+          Add page
+        </Button>
+      ),
     outline: (
       <FormOutline
         pages={schema.pages}
@@ -105,7 +120,6 @@ export function FormBuilderCanvas({
         displayOnly={displayOnly}
         pageIndex={selectedPageIndex}
         selected={resolvedTarget}
-        selectionKey={selectionKey}
         onSelect={(pageIndex, target) =>
           selectFromOutline({
             page: schema.pages[pageIndex]!,
@@ -134,9 +148,11 @@ export function FormBuilderCanvas({
                 })
         }
         issues={issueIndex}
-        onAddPage={addPage}
         onMovePage={movePage}
         onMoveElements={moveElementsTo}
+        actions={actions}
+        reveal={revealPending}
+        pagesOnly={isPreviewMode}
       />
     ),
     canvas: (

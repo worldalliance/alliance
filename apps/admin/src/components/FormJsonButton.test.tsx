@@ -118,7 +118,7 @@ describe("FormBuilder JSON buttons open their own scope", () => {
     expect(openedJson("Element JSON").id).toBe("b");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Two" }));
+    fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
     openSection("Advanced");
     fireEvent.click(screen.getByRole("button", { name: "Edit page JSON" }));
     expect(openedJson("Page JSON").id).toBe("p2");
@@ -136,7 +136,7 @@ describe("FormBuilder form JSON Apply", () => {
       ],
       outputViews: [],
     });
-    fireEvent.click(screen.getByRole("button", { name: "Two" }));
+    fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
     fromMainMenu("Edit form JSON…");
     fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
       target: {

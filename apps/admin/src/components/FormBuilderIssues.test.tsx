@@ -152,7 +152,7 @@ describe("FormBuilder issues", () => {
     expect(issueList().getByText("Fix 1 issue before saving")).toBeTruthy();
     expect(writes).toEqual([]);
 
-    fireEvent.click(outline().getByRole("button", { name: "Two" }));
+    fireEvent.click(outline().getByRole("treeitem", { name: "Two" }));
     selectElement("Label b");
     openSection("Conditions");
     fireEvent.click(
@@ -165,7 +165,7 @@ describe("FormBuilder issues", () => {
 
   it("counts expression text that doesn't parse, though the formula before it does", async () => {
     renderFormBuilder(twoPages([text("b", reads("a"))]), 1);
-    fireEvent.click(outline().getByRole("button", { name: "Two" }));
+    fireEvent.click(outline().getByRole("treeitem", { name: "Two" }));
     edit();
     selectElement("Label b");
     openSection("Conditions");
@@ -200,7 +200,7 @@ describe("FormBuilder issues", () => {
         }),
       ]),
     );
-    fireEvent.click(outline().getByRole("button", { name: "Two" }));
+    fireEvent.click(outline().getByRole("treeitem", { name: "Two" }));
     selectElement("Label b");
     openSection("Conditions");
     fireEvent.click(
@@ -210,9 +210,9 @@ describe("FormBuilder issues", () => {
       ),
     );
 
-    expect(
-      issuesHere().textContent,
-    ).toContain("uses c2, which no rule defines");
+    expect(issuesHere().textContent).toContain(
+      "uses c2, which no rule defines",
+    );
     fireEvent.change(settings().getByRole("textbox", { name: "Expression" }), {
       target: { value: "c1" },
     });
@@ -230,7 +230,7 @@ describe("FormBuilder issues", () => {
 
   it("restores the error and its gate when undo restores the rule", () => {
     renderFormBuilder(readsMissing);
-    fireEvent.click(outline().getByRole("button", { name: "Two" }));
+    fireEvent.click(outline().getByRole("treeitem", { name: "Two" }));
     selectElement("Label b");
     openSection("Conditions");
     fireEvent.click(
@@ -245,9 +245,10 @@ describe("FormBuilder issues", () => {
   it("marks the entry, and goes from the list to where the issue is repaired", () => {
     renderFormBuilder(readsMissing);
     expect(
-      within(
-        outline().getByRole("button", { name: "Two" }).parentElement!,
-      ).getByRole("img", { name: "1 issue" }),
+      within(outline().getByRole("treeitem", { name: "Two" })).getByRole(
+        "img",
+        { name: "1 issue" },
+      ),
     ).toBeTruthy();
 
     fireEvent.click(issueButton()!);
@@ -260,9 +261,7 @@ describe("FormBuilder issues", () => {
     expect(settings().getByRole("tab", { selected: true }).textContent).toBe(
       "Conditions",
     );
-    expect(
-      issuesHere().textContent,
-    ).toContain('reads question "gone"');
+    expect(issuesHere().textContent).toContain('reads question "gone"');
     expect(canvas().getByRole("img", { name: "1 issue" })).toBeTruthy();
   });
 
@@ -373,7 +372,7 @@ describe("FormBuilder issues", () => {
       fireEvent.click(retry);
     });
     await waitFor(() => expect(issueButton()).toBeNull());
-    expect(outline().getByRole("button", { name: "Two" })).toBeTruthy();
+    expect(outline().getByRole("treeitem", { name: "Two" })).toBeTruthy();
     expect(document.activeElement).toBe(
       screen.getByRole("region", { name: "Issues" }),
     );

@@ -8,6 +8,7 @@ import {
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
+import { contents, entry } from "../lib/testing/formOutline";
 import { nestedSchema, subFieldOrder } from "../lib/testing/nestedForm";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
@@ -32,22 +33,17 @@ describe("nested elements on the canvas", () => {
       "Select Text Field: Child name",
       "Select Number Field: Age",
     ]);
-    expect(
-      outline().getByRole("button", { name: "Text Field: Child name" }),
-    ).toBeTruthy();
+    fireEvent.click(contents("List Field: Kids"));
+    expect(entry("Text Field: Child name")).toBeTruthy();
   });
 
   it("selects a sub-field from the outline", () => {
     renderFormBuilder(nestedSchema);
     expect(
-      outline().queryByRole("button", { name: "Number Field: Age" }),
+      outline().queryByRole("treeitem", { name: "Number Field: Age" }),
     ).toBeNull();
-    fireEvent.click(
-      outline().getByRole("button", { name: "Contents of List Field: Kids" }),
-    );
-    fireEvent.click(
-      outline().getByRole("button", { name: "Number Field: Age" }),
-    );
+    fireEvent.click(contents("List Field: Kids"));
+    fireEvent.click(entry("Number Field: Age"));
     expect(heading()).toBe("Number Field: Age");
     expect(
       canvasButton("Select Number Field: Age").getAttribute("aria-pressed"),
@@ -57,17 +53,9 @@ describe("nested elements on the canvas", () => {
   it("edits an accordion block from the outline, opening its section", () => {
     renderFormBuilder(nestedSchema);
     expect(canvas().queryByText("Ships fast")).toBeNull();
-    fireEvent.click(
-      outline().getByRole("button", {
-        name: "Contents of Accordion Block: Shipping, Returns",
-      }),
-    );
-    fireEvent.click(
-      outline().getByRole("button", { name: "Contents of Section: Shipping" }),
-    );
-    fireEvent.click(
-      outline().getByRole("button", { name: "Text Block: Ships fast" }),
-    );
+    fireEvent.click(contents("Accordion Block: Shipping, Returns"));
+    fireEvent.click(contents("Section: Shipping"));
+    fireEvent.click(entry("Text Block: Ships fast"));
     expect(heading()).toBe("Text Block: Ships fast");
     expect(
       canvasButton("Contents of Section: Shipping").getAttribute(
@@ -81,38 +69,26 @@ describe("nested elements on the canvas", () => {
     expect(canvas().getByText("Ships today")).toBeTruthy();
   });
 
-  it("selects a section's block on the canvas, revealing it in the outline", () => {
+  it("selects a section's block on the canvas, marking the closed entry that holds it", () => {
+    const outlineCurrent = (name: string) =>
+      entry(name).getAttribute("aria-current");
     renderFormBuilder(nestedSchema);
     fireEvent.click(canvasButton("Contents of Section: Shipping"));
     fireEvent.click(canvasButton("Select Text Block: Ships fast"));
     expect(heading()).toBe("Text Block: Ships fast");
-    expect(
-      outline()
-        .getByRole("button", { name: "Text Block: Ships fast" })
-        .getAttribute("aria-current"),
-    ).toBe("true");
-  });
-
-  it("marks a collapsed entry current while it hides the selection", () => {
-    const outlineCurrent = (name: string) =>
-      outline().getByRole("button", { name }).getAttribute("aria-current");
-    renderFormBuilder(nestedSchema);
-    fireEvent.click(canvasButton("Contents of Section: Shipping"));
-    fireEvent.click(canvasButton("Select Text Block: Ships fast"));
-    expect(outlineCurrent("Section: Shipping")).toBe("false");
-
-    fireEvent.click(
-      outline().getByRole("button", { name: "Contents of Section: Shipping" }),
+    const accordion = "Accordion Block: Shipping, Returns";
+    expect(outlineCurrent(accordion)).toBe("true");
+    expect(entry(accordion).getAttribute("aria-description")).toBe(
+      "Contains the selection",
     );
+
+    fireEvent.click(contents(accordion));
+    expect(outlineCurrent(accordion)).toBe("false");
     expect(outlineCurrent("Section: Shipping")).toBe("true");
-    expect(outlineCurrent("Accordion Block: Shipping, Returns")).toBe("false");
 
-    fireEvent.click(
-      outline().getByRole("button", {
-        name: "Contents of Accordion Block: Shipping, Returns",
-      }),
-    );
-    expect(outlineCurrent("Accordion Block: Shipping, Returns")).toBe("true");
+    fireEvent.click(contents("Section: Shipping"));
+    expect(outlineCurrent("Section: Shipping")).toBe("false");
+    expect(outlineCurrent("Text Block: Ships fast")).toBe("true");
   });
 
   it("renames a section from its settings", () => {
