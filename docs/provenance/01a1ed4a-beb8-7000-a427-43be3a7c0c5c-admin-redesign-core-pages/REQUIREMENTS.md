@@ -13,3 +13,4 @@ This is PR 3 of the plan in `01a1ed2e-47fb-7000-9671-a7ba248ef2fb-admin-redesign
 4. Visual direction: a quiet, dense, neutral tool in the style of Linear or Vercel, with one accent colour and colour reserved for status. (plan requirement 6; agent-proposed, user-approved)
 5. The project cards don't show the mini-timeline; the project page does. (agent-proposed, user-approved)
 6. Stats loads its reports on open. (agent-proposed, user-approved)
+7. Actions keeps the in-progress suites panel of `01a1812f-9204-7000-9d4f-efb13a967392-suite-launch-flow` (its requirements on "Suites with draft or active actions"), adapted to the redesign: a collapsible "In-progress suites" section above the list, showing each suite with at least one draft or active action, its draft and active counts, and a link to each of those actions. (agent-proposed, user-approved)

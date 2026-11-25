@@ -1,4 +1,5 @@
 import type { ActionDto } from "@alliance/shared/client";
+import { StatusTone } from "./statusTone";
 
 export enum ActionStatusBucket {
   Active = "active",
@@ -14,6 +15,17 @@ export const ACTION_STATUS_BUCKET_LABELS: Record<ActionStatusBucket, string> = {
   [ActionStatusBucket.Draft]: "Draft",
   [ActionStatusBucket.Onboarding]: "Onboarding",
   [ActionStatusBucket.Completed]: "Completed",
+};
+
+export const ACTION_STATUS_BUCKET_TONES: Record<
+  ActionStatusBucket,
+  StatusTone
+> = {
+  [ActionStatusBucket.Active]: StatusTone.Live,
+  [ActionStatusBucket.Pending]: StatusTone.Neutral,
+  [ActionStatusBucket.Draft]: StatusTone.Neutral,
+  [ActionStatusBucket.Onboarding]: StatusTone.Neutral,
+  [ActionStatusBucket.Completed]: StatusTone.Positive,
 };
 
 export const actionStatusBucket = (

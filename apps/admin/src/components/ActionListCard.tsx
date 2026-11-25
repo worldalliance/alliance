@@ -33,7 +33,7 @@ const ActionListCard = ({ action }: ActionListCardProps) => {
                 Archived
               </span>
             )}
-            <h2 className="font-bold text-sm">{action.name}</h2>
+            <h3 className="font-semibold text-sm">{action.name}</h3>
             {lastEventDate && (
               <p className="text-sm text-zinc-500">
                 Last event {formatDateTimeWithZone(lastEventDate)}

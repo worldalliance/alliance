@@ -26,14 +26,12 @@ import ActionTimelineRowMeta from "./ActionTimelineRowMeta";
 interface ActionTimelineProps {
   actions: TimelineAction[];
   title?: string;
-  header?: React.ReactNode;
   className?: string;
   reminders?: TimelineReminder[];
   onReminderClick?: (reminderId: number) => void;
   focusOnDate?: Date | string | number | null;
   latestLaunchFirst?: boolean;
   participantsById?: ReadonlyMap<number, CohortSegment[]>;
-  emptyMessage?: React.ReactNode;
 }
 
 const EMPTY_REMINDERS: TimelineReminder[] = [];
@@ -41,14 +39,12 @@ const EMPTY_REMINDERS: TimelineReminder[] = [];
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
   title,
-  header,
   className,
   reminders,
   onReminderClick,
   focusOnDate,
   latestLaunchFirst = false,
   participantsById,
-  emptyMessage = "No actions with timeline events found.",
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -199,24 +195,9 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   };
 
   if (timelineData.length === 0 && normalizedReminders.length === 0) {
-    // Nested as in the populated chart below, so React keeps the header's
-    // controls, and their focus, mounted when the chart empties or fills.
-    return header ? (
-      <div className={cn("bg-white rounded-lg", className)}>
-        <div>
-          <div>
-            <div className="w-80 border-r border-zinc-200">
-              <div className="h-[50px] bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs">
-                <div className="h-full">{header}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="p-8 text-center text-zinc-500">{emptyMessage}</div>
-      </div>
-    ) : (
+    return (
       <div className={cn("p-8 text-center text-zinc-500", className)}>
-        {emptyMessage}
+        No actions with timeline events found.
       </div>
     );
   }
@@ -233,9 +214,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               className="flex-shrink-0 bg-zinc-50 border-b border-zinc-200 py-3 pr-4 text-xs font-medium text-zinc-700 z-20"
               style={{ height: "50px" }}
             >
-              {header ? (
-                <div className="h-full">{header}</div>
-              ) : title ? (
+              {title ? (
                 <div className="flex items-center h-full pl-4 font-bold text-black text-base">
                   {title}
                 </div>
