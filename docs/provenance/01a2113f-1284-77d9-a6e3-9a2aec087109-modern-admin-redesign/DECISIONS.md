@@ -152,3 +152,58 @@ All agent judgement. `apps/admin/DESIGN.md` names the page as the one to copy.
 - **The Add dialogs hold their own in-flight state**, so Cancel, dismissal and the submit stay held for the whole write, and a pick made meanwhile is ignored.
 - **The confirm dialog's button is still disabled while its work runs**, though that drops focus: the old wrapper around the same dialog has a test from before the redesign that asserts `disabled`. Filed as ALL-2483 for when the wrapper is gone.
 - **A leader's row keeps two buttons, Remove leader and Remove**, as the guide allows for two short actions; a "More" menu holding one item would hide the destructive one behind a click.
+
+## Review loop, round 1
+
+All agent judgement; nobody was there to ask.
+
+- **Splits and reorders the reviewers asked for were mostly declined**, because the branch lands as one squashed PR and no commit deploys alone: the type switch and `cn` stay in the tokens commit, `Kbd` in the frame commit, the registry with its first use, the templates commit and the two template follow-ups whole, each group's decisions in their own commit after the code, and the frame before the palette. Three were done because they were cheap and removed a wrong intermediate state: the member-surface fix and the search shortcut's registration were folded into the commits they fix, and the guide now lands once, after the shell and templates it describes.
+- **The lint commit still names `apps/admin/DESIGN.md` before the guide exists.** Moving the guide later was worth more: a guide ahead of its code told agents to hand-build what the shell already had.
+- **`RECORDS` keeps the planned tab ids for records not yet redesigned** (task, suite, project), from `PLACES.md`, though the old record pages read other ids. Nothing links to them yet, and `useRecordTabs` throws when a rebuilt page's ids differ.
+- **The admin's `DateTimePicker` keeps its copy of the shared picker's change handler.** Sharing it means a hook exported from `sharedweb`, which this change may not touch; filed as ALL-2480.
+- **`InviteFeedPage` takes `embedded`** to render a `div` inside the frame's `<main>` and stays a `<main>` on its full-screen route.
+
+## Review loop, round 2
+
+All agent judgement; nobody was there to ask.
+
+- **The splits and reorders asked for again were declined again**, for round 1's reason, and the commit messages now name what each commit holds beyond its subject. One was done: the review rounds' decisions have their own commit, apart from the reference page's.
+- **A place still shown as its old pages hides its tab links while a view with its own page is open** (Members › Map). The map shows every member, so a tab marked current beside it claimed a filter that wasn't applied.
+- **`useFocusFirstInvalid` returns a function the submit handler calls**, in place of watching the errors object: the guide has errors appear on blur too, and focus moving then would hold a keyboard user in the field they were leaving.
+- **`SearchField` shows its own text while the reader is in it and the value once they leave.** Two rounds of telling its own late values from outside changes by matching what it had sent each left a case wrong, the last being text typed back to an earlier one, so it no longer tracks what it sent (round 3). The cost: a change from outside while the box has focus, such as Back from the keyboard, shows in the list and not in the box until the reader leaves it.
+- **`BulkBar` is a named group and `WorkspaceToolbar` has no role.** `role="toolbar"` promises one Tab stop with arrow keys between its controls (WAI-ARIA Authoring Practices, W3C guidance), which neither had.
+- **"New group…" ends in an ellipsis**, by the guide's rule for a button that opens a dialog asking for more.
+- **The admin's `UserSelect` ties its label to its search box.** The shared one it was forked from doesn't; the fix was two lines in a file the admin now owns.
+- **`Popover` stays though nothing imports it yet**: it is one of the primitives listed above as having a known use.
+- **The guide gives no pixel width for the form column.** It said 640 px where `PageBody width="form"` is 704 px; which the redesign wants is the system owner's to settle, and `width="form"` is all a page needs.
+- **Kora participants' two tabs are not in `places.ts`**; the guide's template map says to ask the system owner for them. Adding them to the map alone would put palette results on tabs the old page doesn't have.
+- **The old Groups page's root says `min-h-full` in the frame-height commit after all.** Round 1 left it because a later commit deletes the page; measured in a browser by round 2's reviewer, it lost its bottom padding in that commit.
+- **Left as follow-ups:** the admin's `Pagination`, `Modal` and `UserSelect` copy logic from `sharedweb` (ALL-2487), as `DateTimePicker` does, since sharing it changes `sharedweb`; the sidebar loads the whole welcome queue for its count (ALL-2488), where a count needs a server endpoint and the cost is unmeasured; old pages whose root says `h-screen` or `min-h-screen` overflow the frame by the staging strip's height on staging, and Invites › Invite graph also by its tab strip in every environment (ALL-2489), which their areas' rebuilds replace; and `ux-guidelines` still describes a hand-styled pending button (ALL-2490), a file outside `apps/admin`, so the guide names `busy` as the admin's pattern meanwhile.
+
+## Review loop, round 3
+
+All agent judgement; nobody was there to ask. From this round a finding was fixed only where behaviour, accessibility, a guard, or the guide or these files against the code was wrong; splits, reorders and wording were declined.
+
+- **A shortcut's key may be typed with AltGr or a Mac's Option.** German and other layouts type `[` that way, and Windows reports AltGr as Ctrl+Alt, so the registry reads Ctrl+Alt off a Mac as typing, not as a modifier. Alt alone off a Mac still runs nothing.
+- **An old URL still sends its own page view before the redirect's.** A reviewer asked to drop it as double counting. It stays: after the branch only links from outside the admin and bookmarks reach an old URL, and that page view, under the old route's template, is the one count of how much they are still used, which removing the redirects later needs.
+- **The group record leaves for the list from an effect once its delete has succeeded**, so the Settings tab and its unsaved-changes guard are gone before the navigation and staff aren't asked about edits to a deleted group.
+- **A leader's role is a neutral badge**: the guide keeps accent for the primary action, selection, links and focus.
+- **`FormRecord`'s root grows with its tab's page**, as `TabbedPlace`'s does; fixed to the frame's height it cut the responses page's sticky toolbar loose after one screen.
+- **Left as follow-ups:** member form previews open their select lists in the admin's font, since the lists are portalled outside `member-surface` and the fix changes `sharedweb` (ALL-2493); tests for which page `TabbedPlace` and `FormRecord` show (ALL-2495); the form builder's save and undo shortcuts still have their own listeners, since the registry can't yet leave a text field's undo to the browser (ALL-2496); Kora's own `countOf` (ALL-2497); and the member app's user picker in single mode (ALL-2498).
+
+## Review loop, round 4
+
+All agent judgement; nobody was there to ask. The bar is round 3's.
+
+- **`ModalTitle` carries the dialog heading's size and weight, not `ModalHeader`**, so a description in the header keeps the body's weight; a caller's own classes still win.
+- **A modifier combination ends a pending key sequence**, as any other key that doesn't continue it does: `g`, Ctrl+C, `t` goes nowhere.
+- **The guide's phase order names all eight statuses**: Planned after Draft, Failed and Abandoned after Completed. The data holds them and `PhaseBadge` renders them, so a page shows them; the order of the three is the agent's.
+- **A failed add from the group's Add dialogs shows in the dialog only**, with no page banner or toast: the banner sat behind the dialog and outlived it. Row and header writes still show as the banner with a toast.
+- **Left as follow-ups:** the sidebar's search row shows ⌘K on every platform (ALL-2482, filed in round 1 and left there); a count that failed to load is an accent "!" like any count (ALL-2499); no test renders `ShellLayout`'s shortcut bindings (ALL-2500).
+
+## Review loop, round 5
+
+All agent judgement; nobody was there to ask. The bar is round 3's.
+
+- **Round 5 changed no code.** Its 16 findings repeated ones already declined or filed, or were wording, splits or missing tests; none was a defect in behaviour, accessibility, a guard, or the guide as it stands at the tip. The loop's hub classified them itself, with no fixer, and the loop ended there.
+- **Left as a follow-up:** no test covers two confirmations opened together showing one at a time (ALL-2501); the reviewer checked that the behaviour is right.
