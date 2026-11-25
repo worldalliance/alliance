@@ -191,7 +191,8 @@ function ExpandToggle({
 
 /**
  * What a row expands to, directly under it, mounted only while open. As tall
- * as its content; its opaque cell keeps the row hover off it.
+ * as its content; its opaque cell keeps the row hover off it. Its children
+ * stack 12 px apart.
  */
 function TableDetailRow({
   id,
@@ -211,7 +212,7 @@ function TableDetailRow({
           BLEED_EDGES,
         )}
       >
-        {children}
+        <div className="flex flex-col gap-3">{children}</div>
       </td>
     </tr>
   );
