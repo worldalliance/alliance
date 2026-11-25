@@ -113,7 +113,7 @@ describe("categories", () => {
       .map((input) => (input as HTMLInputElement).value);
   const assign = (value: string, name: string) => {
     const select = within(
-      screen.getByDisplayValue(value).parentElement!,
+      screen.getByDisplayValue(value).closest("li")!,
     ).getByRole("combobox", { name: "Category" }) as HTMLSelectElement;
     const option = within(select).getByRole("option", { name });
     fireEvent.change(select, {
@@ -121,13 +121,29 @@ describe("categories", () => {
     });
   };
   const optionOrder = () => reloaded().options.map((option) => option.value);
+  const openRowMenu = async (subject: string) => {
+    fireEvent.click(screen.getByRole("button", { name: `More: ${subject}` }));
+    return screen.findByRole("menu");
+  };
+  const fromRowMenu = async (subject: string, item: string) => {
+    const menu = await openRowMenu(subject);
+    fireEvent.click(within(menu).getByRole("menuitem", { name: item }));
+  };
+  const rowMenuDisabled = async (subject: string, item: RegExp) => {
+    const menu = await openRowMenu(subject);
+    const disabled = within(menu)
+      .getByRole("menuitem", { name: item })
+      .getAttribute("aria-disabled");
+    fireEvent.keyDown(menu, { key: "Escape" });
+    return disabled === "true";
+  };
 
-  it("creates, renames, reorders, and deletes categories without touching answers", () => {
+  it("creates, renames, reorders, and deletes categories without touching answers", async () => {
     render(<Editor start={categorized} />);
     expect(screen.queryByRole("combobox", { name: "Category" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     expect(categoryNames()).toEqual(["Category 1", "Category 2"]);
     const [first, second] = screen.getAllByRole("textbox", {
       name: "Category name",
@@ -149,16 +165,10 @@ describe("categories", () => {
       { label: "Texas", value: "tx", category: reloaded().categories![1].id },
     ]);
 
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Move category down" })[0],
-    );
+    await fromRowMenu("Category West", "Move down");
     expect(categoryNames()).toEqual(["South", "West"]);
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Delete category West, keeping its options",
-      }),
-    );
+    await fromRowMenu("Category West", "Delete category, keeping its options");
     expect(categoryNames()).toEqual(["South"]);
     const field = reloaded();
     expect(field.options.map((option) => option.category)).toEqual([
@@ -171,49 +181,43 @@ describe("categories", () => {
     expect(field.defaultValue).toEqual(["ny"]);
   });
 
-  it("moves options only within their section", () => {
+  it("moves options only within their section", async () => {
     render(<Editor start={categorized} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     assign("ca", "Category 1");
     assign("tx", "Category 1");
 
     const category1 = screen.getByRole("group", {
       name: "Options in Category 1",
     });
-    expect(
-      within(category1)
-        .getAllByRole("button", { name: "Move option up" })
-        .map((button) => (button as HTMLButtonElement).disabled),
-    ).toEqual([true, false]);
-    fireEvent.click(
-      within(category1).getAllByRole("button", { name: "Move option up" })[1],
-    );
+    expect(within(category1).getByDisplayValue("ca")).toBeTruthy();
+    expect(await rowMenuDisabled("Option California", /^Move up/)).toBe(true);
+    expect(await rowMenuDisabled("Option Texas", /^Move up/)).toBe(false);
+    await fromRowMenu("Option Texas", "Move up");
     expect(optionOrder()).toEqual(["ny", "tx", "or", "ca"]);
 
-    const uncategorized = screen.getByRole("group", {
-      name: "Options without a category",
-    });
-    fireEvent.click(
-      within(uncategorized).getAllByRole("button", {
-        name: "Move option down",
-      })[0],
-    );
+    expect(
+      within(
+        screen.getByRole("group", { name: "Options without a category" }),
+      ).getByDisplayValue("ny"),
+    ).toBeTruthy();
+    await fromRowMenu("Option New York", "Move down");
     expect(optionOrder()).toEqual(["or", "tx", "ny", "ca"]);
   });
 
   it("keeps focus on an option's category select as it changes section", () => {
     render(<Editor start={categorized} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     assign("ca", "Category 1");
     const select = within(
-      screen.getByDisplayValue("ca").parentElement!,
+      screen.getByDisplayValue("ca").closest("li")!,
     ).getByRole("combobox", { name: "Category" });
     expect(document.activeElement === select).toBe(true);
   });
 
   it("omits the uncategorized group once every option has a category", () => {
     render(<Editor start={categorized} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     for (const value of ["ny", "ca", "or", "tx"]) assign(value, "Category 1");
     expect(
       screen.queryByRole("group", { name: "Options without a category" }) ===
@@ -223,8 +227,8 @@ describe("categories", () => {
 
   it("flags blank and duplicate names, which the schema rejects", () => {
     render(<Editor start={categorized} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     const [first, second] = screen.getAllByRole("textbox", {
       name: "Category name",
     });
@@ -236,9 +240,7 @@ describe("categories", () => {
     fireEvent.change(first, { target: { value: "  " } });
     expect(screen.getByText(/Category names must not be blank/)).toBeTruthy();
     expect(
-      screen.getByRole("button", {
-        name: "Delete category (unnamed), keeping its options",
-      }),
+      screen.getByRole("button", { name: "More: Category (unnamed)" }),
     ).toBeTruthy();
     expect(
       screen.getByRole("group", { name: "Options in (unnamed)" }),
@@ -285,7 +287,7 @@ describe("categories", () => {
 
   it("keeps categories when switching displays", () => {
     render(<Editor start={categorized} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     assign("ny", "Category 1");
     const before = reloaded();
     fireEvent.change(display(), { target: { value: "searchable-dropdown" } });

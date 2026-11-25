@@ -3,7 +3,15 @@ import {
   optionCategoryNameErrors,
   type OptionCategory,
 } from "@alliance/common/forms/options-schema";
-import { cn } from "@alliance/shared/styles/util";
+import { useId } from "react";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import {
+  AddItemButton,
+  ItemList,
+  ItemRow,
+} from "../../pages/forms/builder/kit/ItemList";
+import { swapOptions } from "../../pages/forms/builder/questions/optionRules";
+import { Input } from "../../ui/Input";
 
 type ChoiceOption = SelectField["options"][number];
 
@@ -52,12 +60,6 @@ export function OptionCategoriesEditor({
       ),
     });
 
-  const moveCategory = (from: number, to: number) => {
-    const updated = [...categories];
-    [updated[from], updated[to]] = [updated[to], updated[from]];
-    onUpdate({ categories: updated });
-  };
-
   const deleteCategory = (index: number) => {
     const removed = categories[index].id;
     const remaining = categories.filter((_, i) => i !== index);
@@ -69,77 +71,65 @@ export function OptionCategoriesEditor({
     });
   };
 
+  const move = (from: number, to: number) =>
+    to < 0 || to >= categories.length
+      ? null
+      : () => onUpdate({ categories: swapOptions(categories, from, to) });
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <label className="block text-xs font-medium text-gray-700">
-          Categories
-        </label>
-        <button
-          onClick={addCategory}
-          className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-          type="button"
-        >
-          Add Category
-        </button>
-      </div>
-      <div className="space-y-2 py-1">
-        {categories.map((category, index) => (
-          <div key={category.id}>
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                aria-label="Category name"
-                aria-invalid={!!categoryErrors[index]}
-                value={category.name}
-                onChange={(event) => renameCategory(index, event.target.value)}
-                className={cn(
-                  "flex-1 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
-                  categoryErrors[index] ? "border-red-500" : "border-gray-300",
-                )}
-                placeholder="Category name"
+    <InspectorGroup title="Categories">
+      {categories.length > 0 && (
+        <ItemList label="Categories">
+          {categories.map((category, index) => (
+            <ItemRow
+              key={category.id}
+              name={`Category ${categoryLabel(category)}`}
+              onMoveUp={move(index, index - 1)}
+              onMoveDown={move(index, index + 1)}
+              onRemove={() => deleteCategory(index)}
+              removeLabel="Delete category, keeping its options"
+            >
+              <CategoryName
+                name={category.name}
+                error={categoryErrors[index]}
+                onChange={(name) => renameCategory(index, name)}
               />
-              <div className="flex items-center space-x-1">
-                <button
-                  type="button"
-                  onClick={() => moveCategory(index, index - 1)}
-                  disabled={index === 0}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
-                  aria-label="Move category up"
-                  title="Move up"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveCategory(index, index + 1)}
-                  disabled={index === categories.length - 1}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
-                  aria-label="Move category down"
-                  title="Move down"
-                >
-                  ↓
-                </button>
-              </div>
-              <button
-                onClick={() => deleteCategory(index)}
-                className="text-red-500 hover:text-red-700 text-sm"
-                type="button"
-                aria-label={`Delete category ${categoryLabel(category)}, keeping its options`}
-                title="Delete category, keeping its options"
-              >
-                ×
-              </button>
-            </div>
-            {categoryErrors[index] && (
-              <p className="mt-1 text-[11px] text-red-500">
-                {categoryErrors[index]}; the form won&apos;t save until this is
-                fixed.
-              </p>
-            )}
-          </div>
-        ))}
+            </ItemRow>
+          ))}
+        </ItemList>
+      )}
+      <div>
+        <AddItemButton onClick={addCategory}>Add category</AddItemButton>
       </div>
-    </div>
+    </InspectorGroup>
+  );
+}
+
+function CategoryName({
+  name,
+  error,
+  onChange,
+}: {
+  name: string;
+  error: string | null | undefined;
+  onChange: (name: string) => void;
+}) {
+  const errorId = useId();
+  return (
+    <>
+      <Input
+        aria-label="Category name"
+        placeholder="Category name"
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
+        value={name}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {error && (
+        <p id={errorId} className="text-caption text-danger">
+          {error}; the form won&apos;t save until this is fixed.
+        </p>
+      )}
+    </>
   );
 }

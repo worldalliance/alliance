@@ -86,16 +86,10 @@ src/components/display-blocks/EditableUserLocationBlock.tsx
 src/components/display-blocks/EditableVideoBlock.tsx
 src/components/display-blocks/ManualUserList.tsx
 src/components/display-blocks/PerUserOptions.tsx
-src/components/form-fields/EditableChoiceField.tsx
 src/components/form-fields/EditableContractField.tsx
 src/components/form-fields/EditableConversationField.tsx
 src/components/form-fields/EditableCustomComponentField.tsx
 src/components/form-fields/EditableListField.tsx
-src/components/form-fields/EditableRadioField.tsx
-src/components/form-fields/EditableRankingField.tsx
-src/components/form-fields/FixedOptionsEditor.tsx
-src/components/form-fields/OptionCategoriesEditor.tsx
-src/components/form-fields/OptionsSourcePicker.tsx
 src/components/form-fields/conditions/AddRuleMenu.tsx
 src/components/form-fields/conditions/ConditionRule.tsx
 src/components/form-fields/conditions/ConditionalVisibility.tsx

@@ -1,5 +1,6 @@
 import type { OptionsFormula } from "@alliance/common/forms/variables";
 import { useMemo } from "react";
+import { ExpandableEditor } from "../../pages/forms/builder/kit/ExpandableEditor";
 import { FormPickerError, FormPickerErrorReason } from "../FormPickerError";
 import { FormulaEditor } from "../FormulaEditor";
 import { FormulaResult } from "../formulaResult";
@@ -42,11 +43,16 @@ export function OptionsFormulaEditor({
       {formListFailed && (
         <FormPickerError reason={FormPickerErrorReason.FormList} />
       )}
-      <FormulaEditor
-        formula={formula}
-        result={FormulaResult.Options}
-        sources={sources}
-        onChange={onChange}
+      <ExpandableEditor
+        title="Edit options formula"
+        render={() => (
+          <FormulaEditor
+            formula={formula}
+            result={FormulaResult.Options}
+            sources={sources}
+            onChange={onChange}
+          />
+        )}
       />
     </>
   );

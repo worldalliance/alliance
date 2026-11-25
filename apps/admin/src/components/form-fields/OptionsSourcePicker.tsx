@@ -1,10 +1,10 @@
 import type { ChoiceField } from "@alliance/common/forms/formula-options";
 import type { OptionsFormula } from "@alliance/common/forms/variables";
-import { cn } from "@alliance/shared/styles/util";
 import { isEqual } from "es-toolkit";
-import { List, Sigma } from "lucide-react";
-import { useId, useState } from "react";
-import ConfirmDialog from "../ConfirmDialog";
+import { useState } from "react";
+import ConfirmDialog from "../../ui/ConfirmDialog";
+import { Select } from "../../ui/Select";
+import { Field } from "../../ui/templates/Form";
 
 enum OptionsSource {
   Fixed = "fixed",
@@ -26,6 +26,11 @@ const switchTo: Record<OptionsSource, Partial<ChoiceField>> = {
   },
 };
 
+const SOURCE_LABEL: Record<OptionsSource, string> = {
+  [OptionsSource.Fixed]: "Fixed list",
+  [OptionsSource.Formula]: "Formula",
+};
+
 export function OptionsSourcePicker({
   field,
   onUpdate,
@@ -34,7 +39,6 @@ export function OptionsSourcePicker({
   onUpdate: (updates: Partial<ChoiceField>) => void;
 }) {
   const [confirming, setConfirming] = useState<OptionsSource | null>(null);
-  const captionId = useId();
   const usesFormula = field.optionsFormula !== undefined;
   const fixedCount = field.options.length;
   const hasCategories = (field.categories?.length ?? 0) > 0;
@@ -45,11 +49,12 @@ export function OptionsSourcePicker({
   };
   const confirmations: Record<
     OptionsSource,
-    { title: string; message: string }
+    { title: string; message: string; confirmLabel: string }
   > = {
     [OptionsSource.Fixed]: {
       title: "Go back to a fixed list?",
       message: "This removes the formula and its inputs.",
+      confirmLabel: "Use a fixed list",
     },
     [OptionsSource.Formula]: {
       title: "Compute the options with a formula?",
@@ -62,59 +67,41 @@ export function OptionsSourcePicker({
         ...(hasCategories ? ["the option categories"] : []),
         ...(field.defaultValue != null ? ["the default"] : []),
       ])}.`,
+      confirmLabel: "Use a formula",
     },
   };
   const choose = (source: OptionsSource) =>
     loses[source] ? setConfirming(source) : onUpdate(switchTo[source]);
 
-  const button = (params: {
-    selected: boolean;
-    label: string;
-    icon: typeof List;
-    onClick: () => void;
-  }) => (
-    <button
-      type="button"
-      aria-pressed={params.selected}
-      onClick={params.selected ? undefined : params.onClick}
-      className={cn(
-        "flex items-center gap-1 rounded px-2 py-1 text-xs",
-        params.selected
-          ? "bg-white font-medium text-gray-900 shadow-sm"
-          : "text-gray-500 hover:text-gray-800",
-      )}
-    >
-      <params.icon size={12} />
-      {params.label}
-    </button>
-  );
-
   return (
-    <div className="space-y-1">
-      <p id={captionId} className="text-xs font-medium text-gray-700">
-        Options from
-      </p>
-      <div
-        role="group"
-        aria-labelledby={captionId}
-        className="inline-flex gap-0.5 rounded bg-gray-100 p-0.5"
-      >
-        {button({
-          selected: !usesFormula,
-          label: "Fixed list",
-          icon: List,
-          onClick: () => choose(OptionsSource.Fixed),
-        })}
-        {button({
-          selected: usesFormula,
-          label: "Formula",
-          icon: Sigma,
-          onClick: () => choose(OptionsSource.Formula),
-        })}
-      </div>
+    <>
+      <Field label="Options from">
+        {(control) => (
+          <Select
+            {...control}
+            value={usesFormula ? OptionsSource.Formula : OptionsSource.Fixed}
+            onChange={(event) => {
+              const source = Object.values(OptionsSource).find(
+                (value) => value === event.target.value,
+              );
+              if (!source) {
+                throw new Error(`unknown source: ${event.target.value}`);
+              }
+              choose(source);
+            }}
+          >
+            {Object.values(OptionsSource).map((source) => (
+              <option key={source} value={source}>
+                {SOURCE_LABEL[source]}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
       {confirming !== null && (
         <ConfirmDialog
-          isOpen
+          open
+          destructive
           {...confirmations[confirming]}
           onCancel={() => setConfirming(null)}
           onConfirm={() => {
@@ -123,6 +110,6 @@ export function OptionsSourcePicker({
           }}
         />
       )}
-    </div>
+    </>
   );
 }

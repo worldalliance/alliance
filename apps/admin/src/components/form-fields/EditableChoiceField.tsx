@@ -1,9 +1,14 @@
 import type { MultiSelectField } from "@alliance/common/forms/form-schema";
 import type { ChoiceField } from "@alliance/common/forms/formula-options";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Select } from "../../ui/Select";
+import { CheckboxField, Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import { FixedOptionsEditor } from "./FixedOptionsEditor";
+import { OptionCategoriesEditor } from "./OptionCategoriesEditor";
 import { OptionsFormulaEditor } from "./OptionsFormulaEditor";
 import { OptionsSourcePicker } from "./OptionsSourcePicker";
 import type { BaseFieldProps } from "./types";
@@ -54,100 +59,110 @@ export function EditableChoiceField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(v) => onUpdate({ label: v })}
-      />
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
-
-      {(field.kind === "multiselect" || field.kind === "select") && (
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(v) => onUpdate({ label: v })}
+        />
         <RequiredToggle
+          checked={field.required}
+          onChange={(checked) => onUpdate({ required: checked })}
+        />
+        <CheckboxField
           label="Randomize options"
           checked={!!field.randomizeOptions}
-          onChange={(checked) => onUpdate({ randomizeOptions: checked })}
+          onChange={(event) =>
+            onUpdate({ randomizeOptions: event.target.checked })
+          }
+        />
+        {field.kind === "select" && (
+          <CheckboxField
+            label="Dropdown with search"
+            checked={!!field.searchable}
+            onChange={(event) => onUpdate({ searchable: event.target.checked })}
+          />
+        )}
+        {field.kind === "multiselect" && (
+          <MultiSelectSettings field={field} onUpdate={onUpdate} />
+        )}
+      </InspectorGroup>
+
+      <InspectorGroup title="Options">
+        <OptionsSourcePicker field={field} onUpdate={onUpdate} />
+        {field.optionsFormula !== undefined ? (
+          <OptionsFormulaEditor
+            fieldId={field.id}
+            formula={field.optionsFormula}
+            onChange={(optionsFormula) => onUpdate({ optionsFormula })}
+          />
+        ) : (
+          <FixedOptionsEditor field={field} onUpdate={onUpdate} />
+        )}
+      </InspectorGroup>
+
+      {field.optionsFormula === undefined && (
+        <OptionCategoriesEditor
+          categories={field.categories ?? []}
+          options={field.options}
+          onUpdate={onUpdate}
         />
       )}
+    </FieldWrapper>
+  );
+}
 
-      {field.kind === "select" && (
-        <RequiredToggle
-          label="Dropdown with search"
-          checked={!!field.searchable}
-          onChange={(checked) => onUpdate({ searchable: checked })}
-        />
-      )}
-
-      {field.kind === "multiselect" && (
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-700">
-            Display
-            <select
-              value={multiSelectDisplay(field)}
-              onChange={(event) => {
-                const display = Object.values(MultiSelectDisplay).find(
-                  (value) => value === event.target.value,
-                );
-                if (!display) {
-                  throw new Error(`unknown display: ${event.target.value}`);
-                }
-                onUpdate(MULTISELECT_DISPLAYS[display].flags);
-              }}
-              className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {Object.entries(MULTISELECT_DISPLAYS).map(
-                ([value, { label }]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
-        </div>
-      )}
-
-      {field.kind === "multiselect" && (
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-700">
-            Max selections (optional)
-          </label>
-          <input
+function MultiSelectSettings({
+  field,
+  onUpdate,
+}: {
+  field: MultiSelectField;
+  onUpdate: (updates: Partial<MultiSelectField>) => void;
+}) {
+  return (
+    <>
+      <Field label="Display">
+        {(control) => (
+          <Select
+            {...control}
+            value={multiSelectDisplay(field)}
+            onChange={(event) => {
+              const display = Object.values(MultiSelectDisplay).find(
+                (value) => value === event.target.value,
+              );
+              if (!display) {
+                throw new Error(`unknown display: ${event.target.value}`);
+              }
+              onUpdate(MULTISELECT_DISPLAYS[display].flags);
+            }}
+          >
+            {Object.entries(MULTISELECT_DISPLAYS).map(([value, { label }]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+      <Field label="Max selections" mark="optional">
+        {(control) => (
+          <Input
+            {...control}
             type="number"
             min={1}
             value={field.maxSelections ?? ""}
-            onChange={(event) => {
-              const raw = event.target.value;
-              if (!raw) {
-                onUpdate({ maxSelections: undefined });
-                return;
-              }
-              const parsed = Number(raw);
-              if (Number.isNaN(parsed) || parsed < 1) {
-                onUpdate({ maxSelections: undefined });
-                return;
-              }
-              onUpdate({ maxSelections: Math.floor(parsed) });
-            }}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="No limit"
+            onChange={(event) => {
+              const parsed = Number(event.target.value);
+              onUpdate({
+                maxSelections:
+                  event.target.value && !Number.isNaN(parsed) && parsed >= 1
+                    ? Math.floor(parsed)
+                    : undefined,
+              });
+            }}
           />
-        </div>
-      )}
-
-      <OptionsSourcePicker field={field} onUpdate={onUpdate} />
-
-      {field.optionsFormula !== undefined ? (
-        <OptionsFormulaEditor
-          fieldId={field.id}
-          formula={field.optionsFormula}
-          onChange={(optionsFormula) => onUpdate({ optionsFormula })}
-        />
-      ) : (
-        <FixedOptionsEditor field={field} onUpdate={onUpdate} />
-      )}
-    </FieldWrapper>
+        )}
+      </Field>
+    </>
   );
 }

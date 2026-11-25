@@ -1,6 +1,14 @@
 import type { RankingField } from "@alliance/common/forms/form-schema";
-import { cn } from "@alliance/shared/styles/util";
-import { VariableTextField } from "../VariableTextField";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { AddItemButton } from "../../pages/forms/builder/kit/ItemList";
+import {
+  OptionLabelInput,
+  OptionSection,
+  OptionValueInput,
+} from "../../pages/forms/builder/questions/OptionRows";
+import { newOption } from "../../pages/forms/builder/questions/optionRules";
+import { Input } from "../../ui/Input";
+import { Field } from "../../ui/templates/Form";
 import {
   DuplicateOptionsWarning,
   RequiredToggle,
@@ -18,23 +26,15 @@ export function EditableRankingField({
 }: BaseFieldProps<RankingField>) {
   const duplicates = duplicateOptionValues(field.options);
 
-  const addOption = () => {
-    const nextIndex = field.options.length + 1;
-    const newOption = {
-      label: `Option ${nextIndex}`,
-      value: `option${nextIndex}`,
-    };
-    onUpdate({ options: [...field.options, newOption] });
-  };
-
   const updateOption = (
     index: number,
     updates: { label?: string; value?: string },
-  ) => {
-    const updated = [...field.options];
-    updated[index] = { ...updated[index], ...updates };
-    onUpdate({ options: updated });
-  };
+  ) =>
+    onUpdate({
+      options: field.options.map((option, i) =>
+        i === index ? { ...option, ...updates } : option,
+      ),
+    });
 
   const removeOption = (index: number) => {
     const updated = field.options.filter((_, i) => i !== index);
@@ -43,14 +43,6 @@ export function EditableRankingField({
       updates.numToRank = updated.length > 0 ? updated.length : undefined;
     }
     onUpdate(updates);
-  };
-
-  const moveOption = (from: number, to: number) => {
-    if (to < 0 || to >= field.options.length) return;
-    const updated = [...field.options];
-    const [moved] = updated.splice(from, 1);
-    updated.splice(to, 0, moved);
-    onUpdate({ options: updated });
   };
 
   const handleNumToRankChange = (raw: string) => {
@@ -76,103 +68,70 @@ export function EditableRankingField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(value) => onUpdate({ label: value })}
-      />
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-medium text-gray-700">
-            Options
-          </label>
-          <button
-            onClick={addOption}
-            className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-            type="button"
-          >
-            Add Option
-          </button>
-        </div>
-        <div className="space-y-2 overflow-y-auto py-1">
-          {field.options.map((option, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <VariableTextField
-                multiline
-                rows={1}
-                value={option.label}
-                onChange={(label) => updateOption(index, { label })}
-                containerClassName="flex-1"
-                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-                placeholder="Option label (markdown)"
-              />
-              <input
-                type="text"
-                value={option.value}
-                onChange={(e) => updateOption(index, { value: e.target.value })}
-                className={cn(
-                  "w-20 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
-                  duplicates.has(option.value)
-                    ? "border-red-500"
-                    : "border-gray-300",
-                )}
-                placeholder="Value"
-              />
-              <div className="flex items-center space-x-1">
-                <button
-                  type="button"
-                  onClick={() => moveOption(index, index - 1)}
-                  disabled={index === 0}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
-                  aria-label="Move option up"
-                  title="Move up"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveOption(index, index + 1)}
-                  disabled={index === field.options.length - 1}
-                  className="px-1 py-0.5 text-xs rounded border border-gray-300 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
-                  aria-label="Move option down"
-                  title="Move down"
-                >
-                  ↓
-                </button>
-              </div>
-              <button
-                onClick={() => removeOption(index)}
-                className="text-red-500 hover:text-red-700 text-sm"
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-        <DuplicateOptionsWarning duplicates={duplicates} />
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Number of items to rank
-        </label>
-        <input
-          type="number"
-          min={1}
-          max={field.options.length}
-          value={field.numToRank ?? ""}
-          onChange={(event) => handleNumToRankChange(event.target.value)}
-          placeholder="All options"
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+      <InspectorGroup>
+        <FieldLabelEditor
+          value={field.label}
+          onChange={(value) => onUpdate({ label: value })}
         />
-        <p className="mt-1 text-xs text-gray-500">Defaults to all options.</p>
-      </div>
+        <RequiredToggle
+          checked={field.required}
+          onChange={(checked) => onUpdate({ required: checked })}
+        />
+      </InspectorGroup>
+
+      <InspectorGroup title="Options">
+        {field.options.length > 0 && (
+          <OptionSection
+            label="Options"
+            options={field.options}
+            indices={field.options.map((_, index) => index)}
+            onReorder={(options) => onUpdate({ options })}
+            onRemove={removeOption}
+          >
+            {(index) => (
+              <>
+                <OptionLabelInput
+                  multiline
+                  value={field.options[index].label}
+                  onChange={(label) => updateOption(index, { label })}
+                />
+                <div className="flex">
+                  <OptionValueInput
+                    value={field.options[index].value}
+                    duplicate={duplicates.has(field.options[index].value)}
+                    onChange={(value) => updateOption(index, { value })}
+                  />
+                </div>
+              </>
+            )}
+          </OptionSection>
+        )}
+        <DuplicateOptionsWarning duplicates={duplicates} />
+        <div>
+          <AddItemButton
+            onClick={() =>
+              onUpdate({
+                options: [...field.options, newOption(field.options.length)],
+              })
+            }
+          >
+            Add option
+          </AddItemButton>
+        </div>
+        <Field label="Number of items to rank" help="Empty ranks every option.">
+          {(control) => (
+            <Input
+              {...control}
+              type="number"
+              min={1}
+              max={field.options.length}
+              value={field.numToRank ?? ""}
+              placeholder="All options"
+              onChange={(event) => handleNumToRankChange(event.target.value)}
+            />
+          )}
+        </Field>
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

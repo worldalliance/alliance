@@ -110,6 +110,11 @@ function Editor({
   );
 }
 
+const optionsFrom = () =>
+  screen.getByRole<HTMLSelectElement>("combobox", { name: "Options from" });
+const pickSource = (value: string) =>
+  fireEvent.change(optionsFrom(), { target: { value } });
+
 const withFormula = (formula: string): SelectField => ({
   ...fixed,
   defaultValue: undefined,
@@ -125,13 +130,13 @@ const withFormula = (formula: string): SelectField => ({
 it("asks before replacing fixed options with a formula, then drops them with the default", () => {
   render(<Editor start={fixed} />);
 
-  expect(screen.getByRole("group", { name: "Options from" })).toBeTruthy();
+  expect(optionsFrom().value).toBe("fixed");
 
-  fireEvent.click(screen.getByRole("button", { name: "Formula" }));
+  pickSource("formula");
   expect(
     screen.getByText("This removes the 2 fixed options and the default."),
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  fireEvent.click(screen.getByRole("button", { name: "Use a formula" }));
 
   expect(latest.options).toEqual([]);
   expect(latest.optionsFormula).toEqual({ inputs: {}, formula: "[]" });
@@ -150,11 +155,11 @@ it("drops a multiselect's default along with its fixed options", () => {
     />,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Formula" }));
+  pickSource("formula");
   expect(
     screen.getByText("This removes the 2 fixed options and the default."),
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  fireEvent.click(screen.getByRole("button", { name: "Use a formula" }));
 
   expect(latest.kind).toBe("multiselect");
   expect(latest.defaultValue).toBeUndefined();
@@ -173,9 +178,9 @@ it("asks before dropping categories that hold no options", () => {
     />,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Formula" }));
+  pickSource("formula");
   expect(screen.getByText("This removes the option categories.")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  fireEvent.click(screen.getByRole("button", { name: "Use a formula" }));
 
   expect(latest.categories).toBeUndefined();
   expect(anyFieldSchema.safeParse(latest).success).toBe(true);
@@ -191,7 +196,7 @@ it("goes back to a fixed list from an untouched formula without asking", () => {
     />,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Fixed list" }));
+  pickSource("fixed");
 
   expect(latest.optionsFormula).toBeUndefined();
   expect(latest.options).toEqual([{ label: "Option 1", value: "option1" }]);
@@ -202,15 +207,15 @@ it("asks before replacing a written formula with a fixed list", () => {
   const start = withFormula("input1.at(-1) ?? []");
   render(<Editor start={start} />);
 
-  fireEvent.click(screen.getByRole("button", { name: "Fixed list" }));
+  pickSource("fixed");
   expect(
     screen.getByText("This removes the formula and its inputs."),
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(latest.optionsFormula).toEqual(start.optionsFormula);
 
-  fireEvent.click(screen.getByRole("button", { name: "Fixed list" }));
-  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  pickSource("fixed");
+  fireEvent.click(screen.getByRole("button", { name: "Use a fixed list" }));
   expect(latest.optionsFormula).toBeUndefined();
   expect(latest.options).toEqual([{ label: "Option 1", value: "option1" }]);
 });
