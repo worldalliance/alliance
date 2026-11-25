@@ -1,9 +1,11 @@
 import type {
+  ActionSuiteDto,
   PartitionPreviewResultDto,
   SavePartitionDto,
   SavePartitionResultDto,
   SuitePartitionDto,
 } from "@alliance/shared/client";
+import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -14,8 +16,8 @@ import {
   within,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import LeaveGuard from "../LeaveGuard";
-import SuitePartitionSection from "./SuitePartitionSection";
+import LeaveGuard from "../../../components/LeaveGuard";
+import { SuitePartitionTab } from "../SuitePartitionTab";
 
 const EVERYONE_ELSE = "00000000-0000-4000-8000-0000000000e1";
 const LISTED = "00000000-0000-4000-8000-0000000000a1";
@@ -47,6 +49,16 @@ const partition = (versionId: number): SuitePartitionDto => ({
   launchFailedAt: null,
   launchFailure: null,
 });
+
+const suite: ActionSuiteDto = {
+  id: 7,
+  name: "Suite",
+  actions: [makeAction()],
+  events: [],
+  reminderGroups: [],
+  generalUpdates: [],
+  isPartitioned: true,
+};
 
 let stored: SuitePartitionDto;
 let saves: SavePartitionDto[];
@@ -110,12 +122,7 @@ const renderSection = () => {
         path: "/",
         element: (
           <LeaveGuard>
-            <SuitePartitionSection
-              suiteId={7}
-              isPartitioned
-              scheduled={false}
-              canPartition
-            />
+            <SuitePartitionTab suite={suite} launched={false} />
           </LeaveGuard>
         ),
       },
@@ -133,7 +140,7 @@ it("saves a new part before Everyone else, with its grid cells, and shows the sa
     warnings: [{ partId: EVERYONE_ELSE, message: "No member is in it today." }],
   };
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.click(screen.getByRole("button", { name: "Add part" }));
   const added = screen.getByRole("group", { name: "2. Unnamed part" });
   fireEvent.change(within(added).getByLabelText("Name"), {
@@ -161,15 +168,13 @@ it("saves a new part before Everyone else, with its grid cells, and shows the sa
     text: 'isOnList("V")',
     cells: [{ actionId: 2, assignment: "optional" }],
   });
-  expect(
-    await screen.findByText("Warning: No member is in it today."),
-  ).toBeTruthy();
+  expect(await screen.findByText("No member is in it today.")).toBeTruthy();
 
   fireEvent.change(screen.getAllByLabelText("Name")[0], {
     target: { value: "Listed members" },
   });
-  expect(screen.queryByText("Warning: No member is in it today.")).toBeNull();
-  expect(screen.getByRole("status").textContent).toBe("Unsaved changes.");
+  expect(screen.queryByText("No member is in it today.")).toBeNull();
+  expect(screen.getByRole("status").textContent).toBe("Unsaved changes");
 });
 
 it("shows each refusal at its part and keeps the edits", async () => {
@@ -186,7 +191,7 @@ it("shows each refusal at its part and keeps the edits", async () => {
     warnings: [],
   };
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "Listed members" },
   });
@@ -197,7 +202,7 @@ it("shows each refusal at its part and keeps the edits", async () => {
   expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe(
     "Listed members",
   );
-  expect(screen.getByRole("status").textContent).toBe("Unsaved changes.");
+  expect(screen.getByRole("status").textContent).toBe("Unsaved changes");
 });
 
 it("shows the problems of a refusal and a preview of the same parts once", async () => {
@@ -213,12 +218,13 @@ it("shows the problems of a refusal and a preview of the same parts once", async
   saveAnswer = { problems, warnings: [] };
   previewAnswer = { problems };
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   await screen.findByText("Pick what happens to those members.");
   fireEvent.click(screen.getByRole("button", { name: "Run preview" }));
-  screen.getByRole("button", { name: "Running preview…" });
-  await screen.findByRole("button", { name: "Run preview" });
+  const run = () => screen.getByRole("button", { name: "Run preview" });
+  expect(run().getAttribute("aria-busy")).toBe("true");
+  await waitFor(() => expect(run().hasAttribute("aria-busy")).toBe(false));
   expect(
     screen.getAllByText("Pick what happens to those members."),
   ).toHaveLength(1);
@@ -226,25 +232,27 @@ it("shows the problems of a refusal and a preview of the same parts once", async
 
 it("moves a part but never past Everyone else", async () => {
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.click(screen.getByRole("button", { name: "Add part" }));
-  fireEvent.click(screen.getAllByRole("button", { name: "Move up" })[1]);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Move up: Unnamed part" }),
+  );
   expect(
     screen
-      .getAllByRole("heading", { level: 3 })
-      .map((heading) => heading.textContent),
+      .getAllByRole("group")
+      .map((part) => within(part).getByRole("heading").textContent),
   ).toEqual(["1. Unnamed part", "2. Listed", "3. Everyone else"]);
-  const down = screen.getAllByRole("button", { name: "Move down" })[1];
+  const down = screen.getByRole("button", { name: "Move down: Listed" });
   expect(down.getAttribute("aria-disabled")).toBe("true");
 });
 
 it("removes a part and moves focus to Add part", async () => {
   renderSection();
-  await screen.findByText("1. Listed");
-  const remove = screen.getByRole("button", { name: "Remove Listed" });
+  await screen.findByRole("heading", { name: "1. Listed" });
+  const remove = screen.getByRole("button", { name: "Remove: Listed" });
   remove.focus();
   fireEvent.click(remove);
-  expect(screen.queryByText("1. Listed")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "1. Listed" })).toBeNull();
   expect(document.activeElement).toBe(
     screen.getByRole("button", { name: "Add part" }),
   );
@@ -266,12 +274,14 @@ it("previews the parts and marks the preview out of date after an edit, still na
     },
   };
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.click(screen.getByRole("button", { name: "Run preview" }));
   expect(
     await screen.findByText("Preview of 10 members with an agreement"),
   ).toBeTruthy();
-  expect(screen.getByText("Nothing assigned: 6")).toBeTruthy();
+  expect(
+    within(screen.getByText("Nothing assigned").parentElement!).getByText("6"),
+  ).toBeTruthy();
   expect(screen.getByText("1 > 0")).toBeTruthy();
   expect(screen.getByText("No such list. (2 members)")).toBeTruthy();
   fireEvent.change(screen.getByRole("combobox", { name: "Call for Listed" }), {
@@ -285,20 +295,24 @@ it("previews the parts and marks the preview out of date after an edit, still na
   fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "Renamed" },
   });
-  expect(screen.getByRole("rowheader", { name: "Listed" })).toBeTruthy();
+  expect(
+    within(screen.getByRole("region", { name: "Preview" })).getByRole("cell", {
+      name: "Listed",
+    }),
+  ).toBeTruthy();
 });
 
 it("says a failed save failed and keeps the edits", async () => {
   saveStatus = 503;
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "Listed members" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   expect(await screen.findByRole("alert")).toHaveProperty(
     "textContent",
-    expect.stringContaining("Couldn't save the partition."),
+    expect.stringContaining("Couldn't save"),
   );
   expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe(
     "Listed members",
@@ -309,11 +323,13 @@ it("clears the no-required-work tick when the part's kind of work changes", asyn
   stored = partition(3);
   stored.parts[1].noRequiredWorkTick = "nothing";
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   const tick = () =>
-    screen.getAllByRole<HTMLInputElement>("checkbox", {
+    within(
+      screen.getByRole("group", { name: "2. Everyone else" }),
+    ).getByRole<HTMLInputElement>("checkbox", {
       name: "This part intentionally has no required work",
-    })[0];
+    });
   expect(tick().checked).toBe(true);
   fireEvent.change(
     screen.getByRole("combobox", { name: "Write for Everyone else" }),
@@ -325,21 +341,19 @@ it("clears the no-required-work tick when the part's kind of work changes", asyn
 it("shows no unsaved changes after a save the server stored as it was", async () => {
   keepsVersion = true;
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.change(screen.getByRole("textbox", { name: /Condition/ }), {
     target: { value: 'isOnList("A") ' },
   });
-  expect(screen.getByRole("status").textContent).toBe("Unsaved changes.");
+  expect(screen.getByRole("status").textContent).toBe("Unsaved changes");
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   await waitFor(() => expect(saves).toHaveLength(1));
-  await waitFor(() =>
-    expect(screen.queryByText("Unsaved changes.")).toBeNull(),
-  );
+  await waitFor(() => expect(screen.queryByText("Unsaved changes")).toBeNull());
 });
 
 it("keeps unsaved edits when the partition was saved elsewhere, until asked to load the latest", async () => {
   const client = renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "Listed members" },
   });
@@ -354,15 +368,17 @@ it("keeps unsaved edits when the partition was saved elsewhere, until asked to l
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   await waitFor(() => expect(saves).toHaveLength(1));
   expect(saves[0].baseVersionId).toBe(3);
-  await screen.findByText("Unavailable");
+  await screen.findByText("Couldn't save: Unavailable");
 
   fireEvent.click(await screen.findByRole("button", { name: "Load latest" }));
   expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe("Listed");
-  expect(document.activeElement).toBe(
-    screen.getByRole("heading", { name: "Partition" }),
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "1. Listed" }),
+    ),
   );
   expect(screen.queryByText(/saved elsewhere/)).toBeNull();
-  expect(screen.queryByText("Unavailable")).toBeNull();
+  expect(screen.queryByText(/Unavailable/)).toBeNull();
 });
 
 it.each([
@@ -372,7 +388,7 @@ it.each([
   "offers the latest parts after %s is refused because an action left, keeping the edits until asked",
   async (button, refuse) => {
     renderSection();
-    await screen.findByText("1. Listed");
+    await screen.findByRole("heading", { name: "1. Listed" });
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Listed members" },
     });
@@ -382,9 +398,7 @@ it.each([
     fireEvent.click(screen.getByRole("button", { name: button }));
 
     await screen.findByRole("button", { name: "Load latest" });
-    screen.getByText(
-      /An action left this suite since you opened this partition/,
-    );
+    screen.getByText(/A task left this suite since you opened this partition/);
     expect(screen.queryByText(/saved elsewhere/)).toBeNull();
     expect(screen.getByLabelText<HTMLInputElement>("Name").value).toBe(
       "Listed members",
@@ -406,7 +420,7 @@ it("hides a refused save's problems once the part is edited", async () => {
     warnings: [],
   };
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   await screen.findByText("Pick what happens to those members.");
   fireEvent.change(screen.getByRole("textbox", { name: /Condition/ }), {
@@ -418,7 +432,7 @@ it("hides a refused save's problems once the part is edited", async () => {
 it("shows no unsaved changes after a cell is changed and changed back", async () => {
   stored.parts[0].cells.unshift({ actionId: 2, assignment: "optional" });
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   const call = () => screen.getByRole("combobox", { name: "Call for Listed" });
   fireEvent.change(call(), { target: { value: "optional" } });
   fireEvent.change(call(), { target: { value: "required" } });
@@ -442,7 +456,7 @@ it("keeps a refused save's problems hidden after the next save fails", async () 
     warnings: [],
   };
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   await screen.findByText("Pick what happens to those members.");
   fireEvent.change(screen.getByRole("textbox", { name: /Condition/ }), {
@@ -450,7 +464,7 @@ it("keeps a refused save's problems hidden after the next save fails", async () 
   });
   saveStatus = 503;
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
-  await screen.findByText(/Couldn't save the partition\./);
+  await screen.findByText(/Couldn't save/);
   expect(screen.queryByText("Pick what happens to those members.")).toBeNull();
 });
 
@@ -458,7 +472,7 @@ it("keeps edits made while a save runs", async () => {
   let open!: () => void;
   saveGate = new Promise((resolve) => (open = resolve));
   renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   const name = () => screen.getByLabelText<HTMLInputElement>("Name");
   fireEvent.change(name(), { target: { value: "A" } });
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
@@ -468,16 +482,16 @@ it("keeps edits made while a save runs", async () => {
 
   await screen.findByRole("button", { name: "Save partition" });
   await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Saving…" })).toBeNull(),
+    expect(screen.getByRole("status").textContent).not.toBe("Saving…"),
   );
   expect(name().value).toBe("AB");
-  expect(screen.getByRole("status").textContent).toBe("Unsaved changes.");
+  expect(screen.getByRole("status").textContent).toBe("Unsaved changes");
   expect(screen.queryByText(/saved elsewhere/)).toBeNull();
 });
 
 it("adopts the parts the save returns, not a refetch that started before the save", async () => {
   const client = renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.change(screen.getByLabelText("Name"), { target: { value: "A" } });
   let open!: () => void;
   getGate = new Promise((resolve) => (open = resolve));
@@ -485,7 +499,7 @@ it("adopts the parts the save returns, not a refetch that started before the sav
   await waitFor(() => expect(gets).toBe(2));
   fireEvent.click(screen.getByRole("button", { name: "Save partition" }));
   await waitFor(() =>
-    expect(screen.getByRole("status").textContent).toBe("Saved."),
+    expect(screen.getByRole("status").textContent).toBe("Saved"),
   );
   open();
   await waitFor(() => expect(client.isFetching()).toBe(0));
@@ -500,7 +514,7 @@ it("adopts the parts the save returns, not a refetch that started before the sav
 
 it("keeps unsaved edits without offering the latest when only an action's name changed", async () => {
   const client = renderSection();
-  await screen.findByText("1. Listed");
+  await screen.findByRole("heading", { name: "1. Listed" });
   fireEvent.change(screen.getByLabelText("Name"), { target: { value: "A" } });
   stored = {
     ...partition(3),

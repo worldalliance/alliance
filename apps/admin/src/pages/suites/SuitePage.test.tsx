@@ -182,7 +182,7 @@ it.each([
     renderPage("/tasks/suites/3?tab=partition");
 
     const button = await screen.findByRole("button", {
-      name: "Partition this suite",
+      name: "Partition this suite…",
     });
     expect(button.hasAttribute("disabled")).toBe(off);
     expect(

@@ -188,13 +188,6 @@ src/components/suite-launch/SuiteLaunchPanel.test.tsx
 src/components/suite-launch/SuiteLaunchPanel.tsx
 src/components/suite-launch/TaskFormPreviews.tsx
 src/components/suite-launch/TextFindingsCheck.tsx
-src/components/suite-partition/FallbackSelect.tsx
-src/components/suite-partition/PartFields.tsx
-src/components/suite-partition/PartitionGrid.tsx
-src/components/suite-partition/PartitionPreview.tsx
-src/components/suite-partition/SuitePartitionConvert.tsx
-src/components/suite-partition/SuitePartitionEditor.tsx
-src/components/suite-partition/SuitePartitionSection.tsx
 src/pages/ActionDashboard.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
