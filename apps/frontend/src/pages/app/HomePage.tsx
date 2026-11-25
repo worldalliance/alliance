@@ -144,12 +144,24 @@ const HomePage = () => {
         ? getTaskDismissInfo(selectedTaskNavigatorItem.action)
         : undefined;
 
+    const generalUpdatesList = (
+      <HomeGeneralUpdates
+        generalUpdates={generalUpdates}
+        failure={generalUpdatesFailure}
+        onDismiss={handleDismissGeneralUpdate}
+      />
+    );
+
     return (
       <div
         className={
           "flex flex-col gap-y-8 sm:gap-y-12 lg:gap-y-16 py-4 sm:py-8 px-4 xl:px-0 max-w-3xl mx-auto relative"
         }
       >
+        {isLargeScreen && (
+          <div className="flex flex-col gap-4">{generalUpdatesList}</div>
+        )}
+
         <div className="flex flex-col gap-4 flex-1">
           <p className="text-base font-semibold text-black">Tasks</p>
           <TaskNavigatorList
@@ -258,14 +270,12 @@ const HomePage = () => {
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
-          {!isLargeScreen && <HomeUpdatesCarousel />}
-          <HomeGeneralUpdates
-            generalUpdates={generalUpdates}
-            failure={generalUpdatesFailure}
-            onDismiss={handleDismissGeneralUpdate}
-          />
-        </div>
+        {!isLargeScreen && (
+          <div className="flex flex-col gap-4">
+            <HomeUpdatesCarousel />
+            {generalUpdatesList}
+          </div>
+        )}
 
         {!isLargeScreen && (
           <SidebarProgressBars entries={sidebarProgressBarEntries} />
