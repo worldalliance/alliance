@@ -1,8 +1,7 @@
-import type React from "react";
-
 export type ChartSeries = {
   key: string;
   label: string;
+  /** A colour value: `SERIES[n]` or another value from `chartColor.ts`. */
   color: string;
   getValue: (d: DataPoint) => number;
 };
@@ -20,59 +19,41 @@ export type DataPoint = {
   [key: string]: unknown;
 };
 
-type DateRange = {
-  start: string;
-  end: string;
-};
-
-type NumericRange = {
-  min: number;
-  max: number;
-};
-
-type HoverContent = {
+export type HoverContent = {
   title: string;
   items: { label: string; value: string | number; color?: string }[];
 };
 
 type BaseChartProps = {
+  /** The chart's accessible name. */
   title: string;
-  loading?: boolean;
-  emptyMessage?: string;
-  showArea?: boolean;
-  areaSeriesKey?: string;
-  areaColor?: string;
   yAxisFormat?: (value: number) => string;
   yDomain?: [number, number];
   height?: number;
-  headerContent?: React.ReactNode;
-  showHoverOnlyOnHover?: boolean;
   yTickLabelDedup?: boolean;
+  /** Dim the chart and say so while new data replaces what it shows. */
+  updating?: boolean;
 };
 
 export type DateAxisProps = BaseChartProps & {
-  xType?: "date";
   data: DataPoint[];
   series: ChartSeries[];
-  dateRange?: DateRange;
-  onDateRangeChange?: (range: DateRange) => void;
+  /** Fill under one series: the one `areaSeriesKey` names, else the first. */
+  showArea?: boolean;
+  areaSeriesKey?: string;
   getHoverContent?: (point: DataPoint) => HoverContent;
+  /** No point is active until the pointer or keyboard picks one; otherwise the latest is. */
+  showHoverOnlyOnHover?: boolean;
 };
 
 export type NumericAxisProps = BaseChartProps & {
-  xType: "number";
   xAxisFormat?: (value: number) => string;
-  xAxisLabel?: string;
-  xRange?: NumericRange;
-  onXRangeChange?: (range: NumericRange) => void;
+  xRange?: { min: number; max: number };
   getXValue: (d: DataPoint) => number;
   getYValue: (d: DataPoint) => number;
   multiLineData: MultiLineSeries[];
   getHoverContent?: (point: DataPoint, series: MultiLineSeries) => HoverContent;
+  /** A ring on every point, not only the active one. On unless set false. */
   showDataPoints?: boolean;
   getHoverXLabel?: (point: DataPoint) => string;
-  legendGradient?: string;
-  legendLabels?: { left: string; right: string };
 };
-
-export type TimeSeriesChartProps = DateAxisProps | NumericAxisProps;

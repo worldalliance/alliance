@@ -1,10 +1,7 @@
 import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { useMemo, useState } from "react";
-import { DateAxisChart } from "../../components/time-series-chart/DateAxisChart";
-import type {
-  ChartSeries,
-  DataPoint,
-} from "../../components/time-series-chart/types";
+import { DateAxisChart } from "../../ui/charts/DateAxisChart";
+import type { ChartSeries, DataPoint } from "../../ui/charts/types";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatDate } from "../../lib/formatDate";
 import type { useActionStats } from "../../lib/useActionStats";
@@ -31,7 +28,6 @@ const NAME_LENGTH = 40;
 const HEIGHT = 350;
 const FULL_DOMAIN: [number, number] = [0, 1];
 const NO_STATS: ActionStatsWithOnboardingDto[] = [];
-const AREA = `color-mix(in oklab, ${chartColor.completed} 14%, transparent)`;
 
 const number = (value: unknown) => (typeof value === "number" ? value : 0);
 const rate = (value: unknown) => `${(number(value) * 100).toFixed(2)}%`;
@@ -144,7 +140,6 @@ export function CompletionRatePanel({
               series={CUMULATIVE}
               showArea
               areaSeriesKey="avgRate"
-              areaColor={AREA}
               yDomain={domainOf(cumulative.map((d) => d.avgRate))}
               yAxisFormat={axisRate}
               showHoverOnlyOnHover

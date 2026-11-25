@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { LOAD_FAILED_FALLBACK } from "../ui/templates/States";
 import ActionCompletionCurveChart from "./ActionCompletionCurveChart";
 
 const curve = (actionId: number, actionName: string) =>
@@ -58,18 +59,16 @@ const renderChart = () =>
   );
 
 describe("ActionCompletionCurveChart", () => {
-  it("keeps the selected action while another granularity loads", async () => {
+  it("keeps the selected task while another granularity loads", async () => {
     renderChart();
     const select = await screen.findByRole<HTMLSelectElement>("combobox");
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(3));
     fireEvent.change(select, { target: { value: "2" } });
 
-    fireEvent.click(screen.getByText("Daily"));
+    fireEvent.click(screen.getByRole("button", { name: "By day" }));
     expect(select.value).toBe("2");
-    expect(screen.getByText("Loading...")).toBeTruthy();
-    expect(
-      screen.queryByText("No action completion curves available."),
-    ).toBeNull();
+    expect(screen.getByText("Updating…")).toBeTruthy();
+    expect(screen.queryByText("No task completion curves yet")).toBeNull();
 
     await act(async () => releaseDaily());
     expect(select.value).toBe("2");
@@ -83,11 +82,12 @@ describe("ActionCompletionCurveChart", () => {
     renderChart();
 
     expect(
-      await screen.findByText("Unable to load action completion curves."),
+      await screen.findByText("Couldn't load task completion curves"),
     ).toBeTruthy();
-    expect(
-      screen.queryByText("No action completion curves available."),
-    ).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain(
+      LOAD_FAILED_FALLBACK,
+    );
+    expect(screen.queryByText("No task completion curves yet")).toBeNull();
   });
 
   it("keeps a typed duration filter while there are no curves", async () => {
@@ -96,9 +96,9 @@ describe("ActionCompletionCurveChart", () => {
         Response.json({ message: "boom" }, { status: 500 }),
     });
     renderChart();
-    await screen.findByText("Unable to load action completion curves.");
+    await screen.findByText("Couldn't load task completion curves");
 
-    const min = screen.getByPlaceholderText<HTMLInputElement>("min");
+    const min = screen.getByLabelText<HTMLInputElement>("Shortest run (days)");
     fireEvent.change(min, { target: { value: "5" } });
 
     expect(min.value).toBe("5");

@@ -79,9 +79,9 @@ describe("CompletionRatePanel", () => {
 
     fireEvent.mouseMove(cumulative, { clientX: 999 });
 
-    expect(screen.getByText("Average rate").nextSibling?.textContent).toBe(
-      "55.00%",
-    );
-    expect(screen.getByText("Total tasks").nextSibling?.textContent).toBe("2");
+    const valueOf = (label: string) =>
+      screen.getByText(label).closest("div")?.querySelector("dd")?.textContent;
+    expect(valueOf("Average rate")).toBe("55.00%");
+    expect(valueOf("Total tasks")).toBe("2");
   });
 });

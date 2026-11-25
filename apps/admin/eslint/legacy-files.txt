@@ -5,7 +5,6 @@
 src/ConfigErrorScreen.tsx
 src/components/ActionCategoryIcons.tsx
 src/components/ActionCohortDecisionsTab.tsx
-src/components/ActionCompletionCurveChart.tsx
 src/components/ActionFollowUpFormsTab.tsx
 src/components/ActionForm.tsx
 src/components/ActionFormFields.tsx
@@ -100,7 +99,6 @@ src/components/SortHeader.tsx
 src/components/SuiteEventCard.tsx
 src/components/SuiteEventList.tsx
 src/components/TextareaWithHighlights.tsx
-src/components/TimeSeriesChart.tsx
 src/components/UpdatePreview.tsx
 src/components/UserAwayPeriodsSection.tsx
 src/components/UserCard.tsx
@@ -267,9 +265,6 @@ src/components/texts/ComposingNotice.tsx
 src/components/texts/TextComposer.tsx
 src/components/texts/TextHistory.tsx
 src/components/texts/TextThreadSection.tsx
-src/components/time-series-chart/DateAxisChart.tsx
-src/components/time-series-chart/NumericAxisChart.tsx
-src/components/time-series-chart/chartAxes.tsx
 src/components/user-detail/MemberTextsSection.tsx
 src/components/user-detail/SectionQueryState.tsx
 src/components/user-detail/UserActionsSection.tsx

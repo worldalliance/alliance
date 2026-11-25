@@ -16,7 +16,7 @@ import {
 } from "../Table";
 import { FieldGroup, SaveBar, SaveState } from "./Form";
 import { listCount, useListSearch } from "./List";
-import { Panel, Section } from "./Overview";
+import { DateRangeFields, Panel, Section } from "./Overview";
 import { Page } from "./Page";
 import { ContentState, RefreshFailedBanner } from "./States";
 import { usePlaceTabs, withQueueCounts } from "./usePlaceTabs";
@@ -310,5 +310,29 @@ describe("Page for a record under a later tab", () => {
         .querySelectorAll("a"),
     ].map((link) => [link.textContent, link.getAttribute("href")]);
     expect(links.at(-1)).toEqual(["Videos", "/content/media?tab=videos"]);
+  });
+});
+
+describe("Overview controls", () => {
+  it("changes only the edited end of a date range, and ties its error to the start", () => {
+    const onChange = jest.fn();
+    render(
+      <DateRangeFields
+        range={{ start: "2026-01-01", end: "2026-02-01" }}
+        onChange={onChange}
+        error="Start date must be before the end date."
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("To"), {
+      target: { value: "2026-03-01" },
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      start: "2026-01-01",
+      end: "2026-03-01",
+    });
+    expect(screen.getByLabelText("From").getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+    expect(screen.getByLabelText("To").getAttribute("aria-invalid")).toBeNull();
   });
 });

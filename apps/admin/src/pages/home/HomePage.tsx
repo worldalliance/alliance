@@ -93,9 +93,7 @@ export default function HomePage() {
               stats={stats}
               recalculate={recalculate}
             />
-            <div className={FULL}>
-              <ActionCompletionCurveChart />
-            </div>
+            <ActionCompletionCurveChart className={FULL} />
             <CompletionRatePanel className={FULL} stats={stats} />
             <ReminderClickRatePanel className={FULL} />
             <TaskStatsPanel className={FULL} stats={stats} />

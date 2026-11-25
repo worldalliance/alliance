@@ -1,321 +1,318 @@
 import { hoursInDay } from "@alliance/common/duration";
-import { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";
+import { useEffect, useMemo, useState } from "react";
 import {
+  AVERAGE_SERIES_KEY,
   buildActionCompletionCurveChartData,
   curveDurationDays,
 } from "../lib/actionCompletionCurveChartData";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { formatCount } from "../lib/formatNumber";
 import {
   type GranularityMode,
   useActionCompletionCurvesAdmin,
 } from "../lib/useActionCompletionCurvesAdmin";
-import { TimeSeriesChart } from "./TimeSeriesChart";
+import Button, { ButtonVariant } from "../ui/Button";
+import { ChartLegend, LegendItem } from "../ui/charts/ChartLegend";
+import { NumericAxisChart } from "../ui/charts/NumericAxisChart";
+import { Select } from "../ui/Select";
+import { Skeleton } from "../ui/Skeleton";
+import { Field } from "../ui/templates/Form";
+import { ViewSwitch } from "../ui/templates/List";
+import {
+  NumberField,
+  Panel,
+  PanelControls,
+  PanelStack,
+} from "../ui/templates/Overview";
+import { ContentState, LOAD_FAILED_FALLBACK } from "../ui/templates/States";
 
-type ActionCompletionCurveChartProps = {
+const ALL = "all";
+const DURATION_SLACK_DAYS = 3;
+const GRANULARITIES = [
+  { id: "hourly", label: "Cumulative by hour" },
+  { id: "daily", label: "By day" },
+] as const satisfies readonly { id: GranularityMode; label: string }[];
+const noCurves: ActionCompletionCurveDto[] = [];
+
+const number = (value: unknown) => (typeof value === "number" ? value : 0);
+const percent = (value: unknown) => `${(number(value) * 100).toFixed(2)}%`;
+
+const hourLabel = (hours: number) => {
+  const days = Math.floor(hours / hoursInDay);
+  const h = hours % hoursInDay;
+  if (days === 0) return `${h}h`;
+  if (h === 0) return `${days}d`;
+  return `${days}d ${h}h`;
+};
+
+/**
+ * How a task's completions spread over its run, against the average of every
+ * task. `actionId` fixes the task, as on its record; otherwise staff pick one.
+ */
+export default function ActionCompletionCurveChart({
+  title = "Completions through the week",
+  actionId,
+  showSelector = true,
+  className,
+}: {
   title?: string;
   actionId?: number;
   showSelector?: boolean;
-};
-
-const noCurves: ActionCompletionCurveDto[] = [];
-
-const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
-  title = "Completions throughout week",
-  actionId,
-  showSelector = true,
-}) => {
-  const [selectedActionId, setSelectedActionId] = useState<string>(
-    actionId !== undefined ? String(actionId) : "all",
+  className?: string;
+}) {
+  const [selected, setSelected] = useState(
+    actionId !== undefined ? String(actionId) : ALL,
   );
   const [granularity, setGranularity] = useState<GranularityMode>("hourly");
-  const [minDurationDays, setMinDurationDays] = useState<string>("");
-  const [maxDurationDays, setMaxDurationDays] = useState<string>("");
+  const [minDays, setMinDays] = useState("");
+  const [maxDays, setMaxDays] = useState("");
+  const curvesQuery = useActionCompletionCurvesAdmin(granularity);
+  const curves = curvesQuery.data ?? noCurves;
+  // While another granularity loads, the curves on screen are the last one's, and are drawn as such.
+  const [settled, setSettled] = useState(granularity);
+  useEffect(() => {
+    if (curvesQuery.data && !curvesQuery.isPlaceholderData)
+      setSettled(granularity);
+  }, [curvesQuery.data, curvesQuery.isPlaceholderData, granularity]);
+  const isHourly =
+    (curvesQuery.isPlaceholderData ? settled : granularity) === "hourly";
+  const taskId = actionId !== undefined ? String(actionId) : selected;
+
+  const options = useMemo(
+    () =>
+      curves
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.memberActionStartDate).getTime() -
+              new Date(a.memberActionStartDate).getTime() ||
+            a.actionName.localeCompare(b.actionName),
+        )
+        .map((curve) => ({
+          id: String(curve.actionId),
+          name: curve.actionName,
+        })),
+    [curves],
+  );
 
   useEffect(() => {
-    if (actionId === undefined) return;
-    setSelectedActionId(String(actionId));
+    if (actionId !== undefined) setSelected(String(actionId));
   }, [actionId]);
 
-  const {
-    data: actionCompletionCurves = noCurves,
-    isPending,
-    isPlaceholderData,
-    isError,
-  } = useActionCompletionCurvesAdmin(granularity);
-  const loading = isPending || isPlaceholderData;
-
-  const completionCurveActionOptions = useMemo(() => {
-    return actionCompletionCurves
-      .slice()
-      .sort((a, b) => {
-        const dateA = new Date(a.memberActionStartDate).getTime();
-        const dateB = new Date(b.memberActionStartDate).getTime();
-        if (dateA !== dateB) {
-          return dateB - dateA;
-        }
-        return a.actionName.localeCompare(b.actionName);
-      })
-      .map((curve) => ({
-        id: String(curve.actionId),
-        name: curve.actionName,
-      }));
-  }, [actionCompletionCurves]);
-
-  const completionCurveActionOrder = useMemo(
-    () => ["all", ...completionCurveActionOptions.map((option) => option.id)],
-    [completionCurveActionOptions],
-  );
-
-  const stepCompletionAction = useCallback(
-    (direction: -1 | 1) => {
-      if (completionCurveActionOrder.length === 0) return;
-      const currentIndex = completionCurveActionOrder.indexOf(selectedActionId);
-      const startIndex = currentIndex >= 0 ? currentIndex : 0;
-      const nextIndex =
-        (startIndex + direction + completionCurveActionOrder.length) %
-        completionCurveActionOrder.length;
-      setSelectedActionId(completionCurveActionOrder[nextIndex]);
-    },
-    [completionCurveActionOrder, selectedActionId],
-  );
+  useEffect(() => {
+    if (actionId !== undefined || selected === ALL) return;
+    if (!options.some((option) => option.id === selected)) setSelected(ALL);
+  }, [actionId, options, selected]);
 
   useEffect(() => {
-    if (actionId !== undefined) return;
-    if (selectedActionId === "all") return;
-    const exists = completionCurveActionOptions.some(
-      (option) => option.id === selectedActionId,
-    );
-    if (!exists) {
-      setSelectedActionId("all");
-    }
-  }, [actionId, completionCurveActionOptions, selectedActionId]);
-
-  // Default duration filter to ±3 days of the selected action's duration
-  const effectiveActionId =
-    actionId !== undefined ? String(actionId) : selectedActionId;
-  useEffect(() => {
-    if (effectiveActionId === "all") {
-      setMinDurationDays("");
-      setMaxDurationDays("");
+    if (taskId === ALL) {
+      setMinDays("");
+      setMaxDays("");
       return;
     }
-    const curve = actionCompletionCurves.find(
-      (c) => String(c.actionId) === effectiveActionId,
-    );
+    const curve = curves.find((c) => String(c.actionId) === taskId);
     if (!curve) return;
-    const durationDays = curveDurationDays(curve);
-    setMinDurationDays(String(Math.max(0, durationDays - 3)));
-    setMaxDurationDays(String(durationDays + 3));
-  }, [effectiveActionId, actionCompletionCurves]);
+    const days = curveDurationDays(curve);
+    setMinDays(String(Math.max(0, days - DURATION_SLACK_DAYS)));
+    setMaxDays(String(days + DURATION_SLACK_DAYS));
+  }, [taskId, curves]);
 
-  const isHourly = granularity === "hourly";
-
-  const actionCompletionCurveChartData = useMemo(
+  const chart = useMemo(
     () =>
       buildActionCompletionCurveChartData({
-        curves: actionCompletionCurves,
+        curves,
         isHourly,
-        selectedActionId: effectiveActionId,
-        minDays: minDurationDays !== "" ? Number(minDurationDays) : null,
-        maxDays: maxDurationDays !== "" ? Number(maxDurationDays) : null,
+        selectedActionId: taskId,
+        minDays: minDays !== "" ? Number(minDays) : null,
+        maxDays: maxDays !== "" ? Number(maxDays) : null,
       }),
-    [
-      actionCompletionCurves,
-      effectiveActionId,
-      isHourly,
-      minDurationDays,
-      maxDurationDays,
-    ],
+    [curves, isHourly, taskId, minDays, maxDays],
   );
 
-  const showDropdown = showSelector && actionId === undefined;
-
-  const formatHourLabel = (hours: number): string => {
-    const days = Math.floor(hours / hoursInDay);
-    const h = hours % hoursInDay;
-    if (days === 0) return `${h}h`;
-    if (h === 0) return `${days}d`;
-    return `${days}d ${h}h`;
+  const order = [ALL, ...options.map((option) => option.id)];
+  const stepTask = (direction: -1 | 1) => {
+    const at = Math.max(0, order.indexOf(selected));
+    setSelected(order[(at + direction + order.length) % order.length]);
   };
+  const filtered = minDays !== "" || maxDays !== "";
+  const average = chart.multiLineData.find((s) => s.key === AVERAGE_SERIES_KEY);
+  const tasks = chart.multiLineData.filter((s) => s.key !== AVERAGE_SERIES_KEY);
 
   return (
-    <TimeSeriesChart
-      title={title}
-      xType="number"
-      loading={loading}
-      emptyMessage={
-        isError
-          ? "Unable to load action completion curves."
-          : "No action completion curves available."
-      }
-      multiLineData={actionCompletionCurveChartData.multiLineData}
-      getXValue={(d) => (d.x as number) ?? 0}
-      getYValue={(d) =>
-        isHourly
-          ? ((d.cumulativeCompletionFraction as number) ?? 0)
-          : ((d.completionFraction as number) ?? 0)
-      }
-      xAxisFormat={(v) =>
-        isHourly ? formatHourLabel(Math.round(v)) : `${Math.round(v)}d`
-      }
-      xRange={{ min: 0, max: actionCompletionCurveChartData.maxX }}
-      showDataPoints={!isHourly}
-      getHoverXLabel={
-        isHourly ? (d) => formatHourLabel((d.x as number) ?? 0) : undefined
-      }
-      yDomain={actionCompletionCurveChartData.yDomain}
-      yAxisFormat={(v) => `${Math.round(v * 100)}%`}
-      height={360}
-      headerContent={
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 md:ml-auto">
-          <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden">
-            <button
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                granularity === "daily"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setGranularity("daily")}
-            >
-              Daily
-            </button>
-            <button
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                granularity === "hourly"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setGranularity("hourly")}
-            >
-              Hourly CDF
-            </button>
-          </div>
-          {showDropdown && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-600">
-                Action
-              </label>
-              <select
-                value={selectedActionId}
-                onChange={(event) => setSelectedActionId(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowLeft") {
-                    event.preventDefault();
-                    stepCompletionAction(-1);
-                  }
-                  if (event.key === "ArrowRight") {
-                    event.preventDefault();
-                    stepCompletionAction(1);
-                  }
-                }}
-                className="rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
-              >
-                <option value="all">All actions</option>
-                {completionCurveActionOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-gray-600">
-              Duration (days)
-            </label>
-            <input
-              type="number"
-              min={0}
-              placeholder="min"
-              value={minDurationDays}
-              onChange={(e) => setMinDurationDays(e.target.value)}
-              className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
-            />
-            <span className="text-gray-400">–</span>
-            <input
-              type="number"
-              min={0}
-              placeholder="max"
-              value={maxDurationDays}
-              onChange={(e) => setMaxDurationDays(e.target.value)}
-              className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
-            />
-            {(minDurationDays !== "" || maxDurationDays !== "") && (
-              <button
-                type="button"
+    <Panel title={title} className={className}>
+      <PanelStack>
+        <PanelControls
+          actions={
+            filtered && (
+              <Button
+                variant={ButtonVariant.Default}
+                size="small"
                 onClick={() => {
-                  setMinDurationDays("");
-                  setMaxDurationDays("");
+                  setMinDays("");
+                  setMaxDays("");
                 }}
-                className="text-xs text-zinc-500 hover:text-zinc-700 hover:underline"
               >
-                Clear filter
-              </button>
-            )}
+                Clear duration
+              </Button>
+            )
+          }
+        >
+          <div className="flex flex-col gap-1.5">
+            <span aria-hidden="true" className="font-medium">
+              Show
+            </span>
+            <ViewSwitch
+              label="Show"
+              items={GRANULARITIES}
+              value={granularity}
+              onChange={setGranularity}
+            />
           </div>
-        </div>
-      }
-      getHoverContent={(point, series) => {
-        const completionRate =
-          typeof point.completionFraction === "number"
-            ? point.completionFraction
-            : 0;
-        const cumulativeRate =
-          typeof point.cumulativeCompletionFraction === "number"
-            ? point.cumulativeCompletionFraction
-            : 0;
-
-        const xValue = point.x as number;
-        const items: {
-          label: string;
-          value: string | number;
-          color?: string;
-        }[] = isHourly
-          ? [
-              {
-                label: "Cumulative completed",
-                value: `${(cumulativeRate * 100).toFixed(2)}%`,
-                color: series.color,
-              },
-            ]
-          : [
-              { label: "Day", value: xValue },
-              {
-                label: "Completions today",
-                value: `${(completionRate * 100).toFixed(2)}%`,
-                color: series.color,
-              },
-              {
-                label: "Total completed",
-                value: `${(cumulativeRate * 100).toFixed(2)}%`,
-              },
-            ];
-
-        if (series.key === "average") {
-          items.push({
-            label: "Actions",
-            value: point.actionCount as number,
-          });
-        } else if (!isHourly) {
-          items.push(
-            {
-              label: "Completed",
-              value: point.completionCount as number,
-            },
-            {
-              label: "Joined",
-              value: point.usersJoined as number,
-            },
-          );
-        }
-
-        return {
-          title: series.label,
-          items,
-        };
-      }}
-    />
+          {showSelector && actionId === undefined && (
+            <Field
+              label="Task"
+              help="Left and right arrow keys step through the tasks."
+            >
+              {(control) => (
+                <Select
+                  {...control}
+                  className="h-control-sm w-64"
+                  value={selected}
+                  onChange={(event) => setSelected(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key !== "ArrowLeft" &&
+                      event.key !== "ArrowRight"
+                    ) {
+                      return;
+                    }
+                    event.preventDefault();
+                    stepTask(event.key === "ArrowLeft" ? -1 : 1);
+                  }}
+                >
+                  <option value={ALL}>All tasks</option>
+                  {options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          )}
+          <NumberField
+            label="Shortest run (days)"
+            min={0}
+            value={minDays}
+            onChange={setMinDays}
+          />
+          <NumberField
+            label="Longest run (days)"
+            min={0}
+            value={maxDays}
+            onChange={setMaxDays}
+          />
+        </PanelControls>
+        <ContentState
+          loading={curvesQuery.isPending}
+          skeleton={<Skeleton className="h-96 w-full" />}
+          error={
+            curvesQuery.isLoadingError
+              ? adminRefusalMessage(curvesQuery.error, LOAD_FAILED_FALLBACK)
+              : null
+          }
+          errorTitle="Couldn't load task completion curves"
+          onRetry={() => void curvesQuery.refetch()}
+          empty={chart.multiLineData.length === 0}
+          filtered={filtered}
+          onClearFilters={() => {
+            setMinDays("");
+            setMaxDays("");
+          }}
+          emptyTitle="No task completion curves yet"
+        >
+          <NumericAxisChart
+            title={title}
+            updating={curvesQuery.isPlaceholderData}
+            height={360}
+            multiLineData={chart.multiLineData}
+            getXValue={(d) => number(d.x)}
+            getYValue={(d) =>
+              number(
+                isHourly
+                  ? d.cumulativeCompletionFraction
+                  : d.completionFraction,
+              )
+            }
+            xAxisFormat={(v) =>
+              isHourly ? hourLabel(Math.round(v)) : `${Math.round(v)}d`
+            }
+            xRange={{ min: 0, max: chart.maxX }}
+            showDataPoints={!isHourly}
+            getHoverXLabel={
+              isHourly ? (d) => hourLabel(number(d.x)) : undefined
+            }
+            yDomain={chart.yDomain}
+            yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+            getHoverContent={(point, series) => ({
+              title: series.label,
+              items: [
+                ...(isHourly
+                  ? [
+                      {
+                        label: "Completed so far",
+                        value: percent(point.cumulativeCompletionFraction),
+                        color: series.color,
+                      },
+                    ]
+                  : [
+                      { label: "Day", value: number(point.x) },
+                      {
+                        label: "Completed that day",
+                        value: percent(point.completionFraction),
+                        color: series.color,
+                      },
+                      {
+                        label: "Completed so far",
+                        value: percent(point.cumulativeCompletionFraction),
+                      },
+                    ]),
+                ...(series.key === AVERAGE_SERIES_KEY
+                  ? [
+                      {
+                        label: "Tasks",
+                        value: formatCount(number(point.actionCount)),
+                      },
+                    ]
+                  : isHourly
+                    ? []
+                    : [
+                        {
+                          label: "Completed",
+                          value: formatCount(number(point.completionCount)),
+                        },
+                        {
+                          label: "Joined",
+                          value: formatCount(number(point.usersJoined)),
+                        },
+                      ]),
+              ],
+            })}
+          />
+          <ChartLegend>
+            {average && (
+              <LegendItem swatch={average.color}>{average.label}</LegendItem>
+            )}
+            {tasks.length === 1 && (
+              <LegendItem swatch={tasks[0].color}>{tasks[0].label}</LegendItem>
+            )}
+            {tasks.length > 1 && (
+              <LegendItem swatch={tasks[0].color}>Each task</LegendItem>
+            )}
+          </ChartLegend>
+        </ContentState>
+      </PanelStack>
+    </Panel>
   );
-};
-
-export default ActionCompletionCurveChart;
+}

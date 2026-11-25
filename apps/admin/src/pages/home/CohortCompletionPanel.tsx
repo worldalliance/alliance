@@ -1,8 +1,8 @@
 import chroma from "chroma-js";
 import { max, min } from "d3";
 import { useMemo, useState } from "react";
-import { NumericAxisChart } from "../../components/time-series-chart/NumericAxisChart";
-import type { MultiLineSeries } from "../../components/time-series-chart/types";
+import { NumericAxisChart } from "../../ui/charts/NumericAxisChart";
+import type { MultiLineSeries } from "../../ui/charts/types";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useMemberCompletionRetentionAdmin } from "../../lib/useMemberCompletionRetentionAdmin";
 import { Skeleton } from "../../ui/Skeleton";
@@ -111,13 +111,11 @@ export function CohortCompletionPanel({ className }: { className?: string }) {
           <div className="relative">
             <NumericAxisChart
               title="Cohort completion reliability"
-              xType="number"
               height={HEIGHT}
               multiLineData={lines.series}
               getXValue={(d) => number(d.weekIndex)}
               getYValue={(d) => number(d.completionRate)}
               xAxisFormat={(v) => `${Math.round(v)}w`}
-              xAxisLabel="Week"
               xRange={numericRange}
               yDomain={[0, 1]}
               yAxisFormat={(v) => `${Math.round(v * 100)}%`}

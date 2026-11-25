@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { dedupeTickLabels } from "./chartAxes";
+import { dedupeTickLabels } from "./axes";
 
 describe("dedupeTickLabels", () => {
   it("keeps the first tick of each formatted label", () => {

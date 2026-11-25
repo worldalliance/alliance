@@ -1,5 +1,7 @@
 import { createContext, type ReactNode, useContext, useId } from "react";
 import { cn } from "../cn";
+import { Input } from "../Input";
+import { Field } from "./Form";
 
 /** A `Panel` under a `Section`'s `h2` titles itself with an `h3`. */
 const InSectionContext = createContext(false);
@@ -104,5 +106,139 @@ export function StatTile({
       </span>
       {note && <span className="text-caption text-fg-muted">{note}</span>}
     </div>
+  );
+}
+
+/**
+ * The controls of a panel, first in its body, above what they drive. Fields
+ * sit side by side; `actions` (an apply button, quick ranges, a checkbox) sit
+ * after them, level with the fields' controls whether or not an error shows
+ * under one.
+ */
+export function PanelControls({
+  actions,
+  children,
+}: {
+  actions?: ReactNode;
+  /** `Field`s, `DateRangeFields`, `NumberField`s. */
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start gap-3">
+      {children}
+      {actions && (
+        <div className="flex flex-col gap-1.5">
+          <span aria-hidden="true" className="invisible">
+            &nbsp;
+          </span>
+          <div className="flex items-center gap-2">{actions}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A panel's body when it has controls: the controls, then what they drive. */
+export function PanelStack({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col gap-4">{children}</div>;
+}
+
+/** A muted line where a panel's content would be: nothing asked for yet, or nothing in one part. */
+export function PanelNote({ children }: { children: ReactNode }) {
+  return <p className="text-fg-muted">{children}</p>;
+}
+
+/** A number with its label inside a `Panel`, where a `StatTile` would be a card in a card. */
+export function PanelStat({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  /** Formatted; "—" when the server has no value. */
+  value: string;
+  note?: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <span className="text-caption font-medium text-fg-muted">{label}</span>
+      <span className="mt-1 text-title font-semibold tabular-nums">
+        {value}
+      </span>
+      {note && <span className="text-caption text-fg-muted">{note}</span>}
+    </div>
+  );
+}
+
+export type DateRange = { start: string; end: string };
+
+/** A From and a To date for a panel's range, as `yyyy-mm-dd`. Not for an instant members experience. */
+export function DateRangeFields({
+  range,
+  onChange,
+  startLabel = "From",
+  endLabel = "To",
+  error,
+}: {
+  range: DateRange;
+  onChange: (range: DateRange) => void;
+  startLabel?: string;
+  endLabel?: string;
+  /** What is wrong with the range as a whole, shown under its start. */
+  error?: string | null;
+}) {
+  const date = (key: keyof DateRange, label: string, fieldError?: string | null) => (
+    <Field label={label} error={fieldError}>
+      {(control) => (
+        <Input
+          {...control}
+          type="date"
+          className="h-control-sm w-40"
+          value={range[key]}
+          onChange={(event) => onChange({ ...range, [key]: event.target.value })}
+        />
+      )}
+    </Field>
+  );
+  return (
+    <>
+      {date("start", startLabel, error)}
+      {date("end", endLabel)}
+    </>
+  );
+}
+
+/** A whole number for a panel's control: weeks, days. */
+export function NumberField({
+  label,
+  value,
+  onChange,
+  min,
+  error,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  min?: number;
+  error?: string | null;
+  placeholder?: string;
+}) {
+  return (
+    <Field label={label} error={error}>
+      {(control) => (
+        <Input
+          {...control}
+          type="number"
+          inputMode="numeric"
+          min={min}
+          step={1}
+          placeholder={placeholder}
+          className="h-control-sm w-24"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+    </Field>
   );
 }

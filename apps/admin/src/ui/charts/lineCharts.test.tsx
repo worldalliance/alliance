@@ -1,5 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { TimeSeriesChart, type DataPoint } from "./TimeSeriesChart";
+import { DateAxisChart } from "./DateAxisChart";
+import { NumericAxisChart } from "./NumericAxisChart";
+import type { DataPoint } from "./types";
 
 beforeEach(() => {
   jest
@@ -33,7 +35,7 @@ const renderDateChart = (
   } = {},
 ) =>
   render(
-    <TimeSeriesChart
+    <DateAxisChart
       title="Signups"
       data={data}
       showHoverOnlyOnHover={options.showHoverOnlyOnHover}
@@ -77,9 +79,8 @@ const renderNumericChart = (
   } = {},
 ) =>
   render(
-    <TimeSeriesChart
+    <NumericAxisChart
       title="Curves"
-      xType="number"
       showDataPoints={options.showDataPoints}
       getHoverXLabel={options.getHoverXLabel}
       xAxisFormat={options.xAxisFormat}
@@ -120,6 +121,10 @@ const renderNumericChart = (
     />,
   );
 
+const swatchOf = (label: string) =>
+  screen.getByText(label).parentElement?.querySelector<HTMLElement>("span")
+    ?.style.backgroundColor;
+
 const expectDedupedPercentGrid = (container: HTMLElement) => {
   for (const label of ["0%", "1%", "2%"]) {
     expect(screen.getAllByText(label)).toHaveLength(1);
@@ -129,10 +134,10 @@ const expectDedupedPercentGrid = (container: HTMLElement) => {
   expect(gridLine?.getAttribute("x2")).toBe("968");
 };
 
-describe("TimeSeriesChart", () => {
-  it("shows the empty message without data", () => {
-    renderDateChart([]);
-    expect(screen.getByText("No data available.")).toBeTruthy();
+describe("line charts", () => {
+  it("draws nothing without data", () => {
+    const { container } = renderDateChart([]);
+    expect(container.querySelector("svg")).toBeNull();
   });
 
   it("hovers the date nearest the pointer, and the latest date otherwise", () => {
@@ -140,7 +145,7 @@ describe("TimeSeriesChart", () => {
     expect(screen.getByText("Count 3")).toBeTruthy();
     expect(screen.getByText("Joined")).toBeTruthy();
     expect(screen.getByText("3 signups")).toBeTruthy();
-    expect(container.querySelector('rect[fill="#123456"]')).not.toBeNull();
+    expect(swatchOf("Joined")).toBe("#123456");
     const svg = container.querySelector("svg")!;
     fireEvent.mouseMove(svg, at(72, 174));
     expect(screen.getByText("Count 1")).toBeTruthy();
@@ -163,7 +168,7 @@ describe("TimeSeriesChart", () => {
   });
 
   it("fills the area under a date chart's line only with showArea", () => {
-    const filled = 'path[fill="rgba(8,145,178,0.12)"]';
+    const filled = "path[fill-opacity]";
     const { container, unmount } = renderDateChart(datePoints);
     expect(container.querySelector(filled)).toBeNull();
     unmount();
@@ -181,7 +186,7 @@ describe("TimeSeriesChart", () => {
         areaSeriesKey,
       });
       const d = container
-        .querySelector('path[fill="rgba(8,145,178,0.12)"]')
+        .querySelector("path[fill-opacity]")
         ?.getAttribute("d");
       unmount();
       return d;
@@ -243,16 +248,40 @@ describe("TimeSeriesChart", () => {
     const { container } = renderNumericChart();
     expect(screen.queryByText("A at 1")).toBeNull();
     const circle = container.querySelectorAll("circle")[1];
-    fireEvent.mouseEnter(circle);
-    expect(screen.getByText("A at 1")).toBeTruthy();
-    expect(screen.getByText("Share:")).toBeTruthy();
-    expect(screen.getByText("2 done").getAttribute("style")).toContain(
-      "color: #654321",
+    const svg = container.querySelector("svg")!;
+    fireEvent.mouseMove(
+      svg,
+      at(Number(circle.getAttribute("cx")), Number(circle.getAttribute("cy"))),
     );
-    fireEvent.mouseOut(circle, {
-      relatedTarget: container.querySelector("svg"),
-    });
+    expect(screen.getByText("A at 1")).toBeTruthy();
+    expect(screen.getByText("2 done")).toBeTruthy();
+    expect(swatchOf("Share")).toBe("#654321");
+    fireEvent.mouseLeave(svg);
     expect(screen.queryByText("A at 1")).toBeNull();
+  });
+
+  it("reads each point from the keyboard, and the line above or below", () => {
+    const { container } = renderNumericChart({ showDataPoints: false });
+    const svg = container.querySelector("svg")!;
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+    expect(screen.getByText("A at 0")).toBeTruthy();
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+    expect(screen.getByText("A at 1")).toBeTruthy();
+    fireEvent.keyDown(svg, { key: "ArrowDown" });
+    expect(screen.getByText("B at 1")).toBeTruthy();
+    fireEvent.keyDown(svg, { key: "Escape" });
+    expect(screen.queryByText(/ at /)).toBeNull();
+  });
+
+  it("reads each date from the keyboard", () => {
+    const { container } = renderDateChart(datePoints, {
+      showHoverOnlyOnHover: true,
+    });
+    const svg = container.querySelector("svg")!;
+    fireEvent.keyDown(svg, { key: "ArrowRight" });
+    expect(screen.getByText("Count 1")).toBeTruthy();
+    fireEvent.keyDown(svg, { key: "End" });
+    expect(screen.getByText("Count 3")).toBeTruthy();
   });
 
   it("draws one y grid label per formatted value on a date chart", () => {
