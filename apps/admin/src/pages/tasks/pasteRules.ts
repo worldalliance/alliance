@@ -73,11 +73,8 @@ export function pasteBody(
 }
 
 export enum EventsOutcomeKind {
-  /** An event other than Draft is in effect now: the task is out of Draft once created. */
   Live = "live",
-  /** Nothing but Draft is in effect now; a later event takes it out of Draft. */
   Scheduled = "scheduled",
-  /** Every event leaves it a draft. */
   StaysDraft = "staysDraft",
 }
 

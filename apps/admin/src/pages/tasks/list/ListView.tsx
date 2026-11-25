@@ -30,7 +30,6 @@ import { completedOfJoined } from "./TaskProgress";
 
 const COLUMNS = 5;
 
-/** The All tasks place's List view: the filtered tasks grouped by suite, most recent event first. */
 export function ListView() {
   const list = useActionsAdmin();
   const filters = useTaskFilters();

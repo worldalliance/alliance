@@ -21,7 +21,6 @@ const summaryOf = (selected: ReadonlySet<ActionStatusBucket>) =>
         .map((bucket) => ACTION_STATUS_BUCKET_LABELS[bucket])
         .join(", ") || "None";
 
-/** Which status buckets the Timeline and List views show; the menu stays open while staff tick. */
 export function StatusFilter({
   selected,
   onChange,

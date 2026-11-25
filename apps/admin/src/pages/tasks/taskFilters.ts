@@ -42,7 +42,6 @@ export function useTaskFilters() {
   };
 }
 
-/** The tasks left once archived ones are hidden, and those the status filter then keeps. */
 export function filterTasks<T extends AdminActionListItemDto>(
   tasks: readonly T[],
   { buckets, showArchived }: TaskFilters,

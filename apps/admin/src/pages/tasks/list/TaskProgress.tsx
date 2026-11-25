@@ -19,7 +19,6 @@ export const completedOfJoined = ({
     ? null
     : `${formatCount(usersCompleted)} / ${formatCount(usersJoined)}`;
 
-/** How many of the members who joined a launched task completed it, as a bar and its words. */
 export default function TaskProgress({
   className,
   ...counts

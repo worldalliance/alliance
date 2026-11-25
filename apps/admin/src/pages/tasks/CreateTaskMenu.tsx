@@ -11,7 +11,6 @@ import {
 } from "../../ui/DropdownMenu";
 import { PasteTaskDialog } from "./PasteTaskDialog";
 
-/** The Tasks area's create menu: a draft task, a suite, or a task pasted from its exported JSON. */
 export function CreateTaskMenu() {
   const navigate = useNavigate();
   const [pasting, setPasting] = useState(false);

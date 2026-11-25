@@ -24,7 +24,6 @@ export interface TaskCardProps {
   >;
 }
 
-/** One task as a block of a few lines, for a list of a suite's tasks. */
 export default function TaskCard({ action }: TaskCardProps) {
   const lastEvent = getLastPastEventDate(action);
   return (
