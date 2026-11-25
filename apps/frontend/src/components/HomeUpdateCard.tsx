@@ -29,7 +29,7 @@ const HomeUpdateCard = memo(function HomeUpdateCard({
     >
       <div
         className={cn(
-          "relative grid aspect-3/2 w-full shrink-0 gap-0.5 bg-zinc-100",
+          "relative grid aspect-3/2 w-full shrink-0 grid-rows-1 gap-0.5 overflow-hidden bg-zinc-100",
           tiles.length === 2 && "grid-cols-2",
           tiles.length >= 3 && "grid-cols-[2fr_1fr] grid-rows-2",
         )}
@@ -52,7 +52,7 @@ const HomeUpdateCard = memo(function HomeUpdateCard({
                 alt={cover.alt}
                 loading="lazy"
                 onError={() => markFailed(cover.src)}
-                className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
               />
               {hiddenCount > 0 && position === tiles.length - 1 && (
                 <span

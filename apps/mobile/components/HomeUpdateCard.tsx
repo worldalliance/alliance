@@ -5,7 +5,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
 import { ArrowRight, ClipboardList, Layers } from "lucide-react-native";
 import { memo, useState } from "react";
-import { Image, Pressable, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import { resolveImageSource } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import ProfileImage from "./ProfileImage";
@@ -45,7 +45,7 @@ const HomeUpdateCard = memo(function HomeUpdateCard({
     >
       <View
         className={cn(
-          "w-full gap-0.5 bg-zinc-100",
+          "w-full gap-0.5 overflow-hidden bg-zinc-100",
           tiles.length > 1 && "flex-row",
         )}
         style={{ aspectRatio: 3 / 2 }}
@@ -186,7 +186,7 @@ function MosaicTile({
         accessibilityLabel={cover.alt}
         accessibilityIgnoresInvertColors
         resizeMode="cover"
-        style={{ width: "100%", height: "100%" }}
+        style={StyleSheet.absoluteFill}
       />
       {hiddenCount > 0 && (
         <View
