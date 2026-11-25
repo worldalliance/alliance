@@ -4,6 +4,7 @@ import { UseQueryResult } from "@tanstack/react-query";
 import { format, formatDistanceStrict } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import Section from "../ui/Section";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 /** Clicks recorded before link tracking have no time. */
@@ -24,7 +25,11 @@ export default function UserNotificationsSection({
   query: UseQueryResult<ActionEventNotifDto[]>;
 }) {
   if (!notifs) {
-    return <SectionLoadState noun="notifications" isError={isError} />;
+    return (
+      <Section title="Notifications">
+        <SectionLoadState noun="notifications" isError={isError} />
+      </Section>
+    );
   }
   return <UserNotifications notifs={notifs} isRefetchError={isRefetchError} />;
 }
@@ -79,10 +84,7 @@ function UserNotifications({
   }, [pushNotifs]);
 
   return (
-    <section>
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-        Notifications ({notifs.length})
-      </h2>
+    <Section title="Notifications" meta={notifs.length}>
       <SectionRefreshError noun="notifications" isError={isRefetchError} />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Texts */}
@@ -299,7 +301,7 @@ function UserNotifications({
           )}
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 

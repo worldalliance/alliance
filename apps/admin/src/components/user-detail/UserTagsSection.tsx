@@ -3,6 +3,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useTagsAdmin } from "../../lib/useTagsAdmin";
+import Section from "../ui/Section";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserTagsSection({
@@ -72,17 +73,20 @@ export default function UserTagsSection({
   );
 
   if (!allTags) {
-    return <SectionLoadState noun="tags" isError={isError} />;
+    return (
+      <Section title="Tags">
+        <SectionLoadState noun="tags" isError={isError} />
+      </Section>
+    );
   }
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-        Tags ({userTags.length})
-      </h2>
+    <Section title="Tags" meta={userTags.length}>
       <SectionRefreshError noun="tags" isError={isRefetchError} />
       {tagMutationError && (
-        <p className="text-xs text-red-500 mb-2">{tagMutationError}</p>
+        <p role="alert" className="text-xs text-red-600 mb-2">
+          {tagMutationError}
+        </p>
       )}
       <div className="space-y-1 max-h-48 overflow-y-auto">
         {sortedAllTags.map((tag) => {
@@ -113,6 +117,6 @@ export default function UserTagsSection({
           <p className="text-xs text-zinc-500">No tags available.</p>
         )}
       </div>
-    </section>
+    </Section>
   );
 }

@@ -6,6 +6,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useAuth } from "../../lib/AuthContext";
+import Section from "../ui/Section";
 
 export default function UserRolesSection({
   user,
@@ -77,10 +78,11 @@ export default function UserRolesSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">Roles</h2>
+    <Section title="Roles">
       {roleMutationError && (
-        <p className="text-xs text-red-500 mb-2">{roleMutationError}</p>
+        <p role="alert" className="text-xs text-red-600 mb-2">
+          {roleMutationError}
+        </p>
       )}
       <div className="space-y-1">
         <label
@@ -137,6 +139,6 @@ export default function UserRolesSection({
           </span>
         </label>
       </div>
-    </section>
+    </Section>
   );
 }

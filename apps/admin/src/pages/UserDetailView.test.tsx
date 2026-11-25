@@ -329,7 +329,9 @@ it("says why a role change was refused", async () => {
 
   fireEvent.click(await screen.findByRole("checkbox", { name: "Staff" }));
 
-  expect(await screen.findByText("Forbidden")).toBeTruthy();
+  expect((await screen.findByText("Forbidden")).getAttribute("role")).toBe(
+    "alert",
+  );
   expect(
     screen.getByRole<HTMLInputElement>("checkbox", { name: "Staff" }).checked,
   ).toBe(false);
@@ -364,7 +366,7 @@ it("checks a tag once the member has it", async () => {
   await toggleVolunteers();
 
   await waitFor(() => expect(volunteersBox().checked).toBe(true));
-  expect(screen.getByText("Tags (1)")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Tags 1" })).toBeTruthy();
 });
 
 it("says when a tag change is refused", async () => {
@@ -387,7 +389,9 @@ it("says why a tag change was refused", async () => {
 
   await toggleVolunteers();
 
-  expect(await screen.findByText("Tag is archived")).toBeTruthy();
+  expect(
+    (await screen.findByText("Tag is archived")).getAttribute("role"),
+  ).toBe("alert");
   expect(volunteersBox().checked).toBe(false);
 });
 
@@ -432,7 +436,9 @@ it("lists the member's friends with their status", async () => {
   detailStatus = 200;
   renderPage();
 
-  expect(await screen.findByText("Friends (1)")).toBeTruthy();
+  expect(
+    await screen.findByRole("heading", { name: "Friends 1" }),
+  ).toBeTruthy();
   expect(screen.getByRole("link", { name: /Alex/ }).getAttribute("href")).toBe(
     "/member/8",
   );
@@ -445,6 +451,7 @@ it("says when the friends fail to load", async () => {
   renderPage();
 
   expect(await screen.findByText("Failed to load friends")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Friends" })).toBeTruthy();
 });
 
 it("keeps cached friends it could not refresh and says so", async () => {
@@ -458,7 +465,7 @@ it("keeps cached friends it could not refresh and says so", async () => {
       "Could not refresh friends. Reload to see the latest.",
     ),
   ).toBeTruthy();
-  expect(screen.getByText("Friends (1)")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Friends 1" })).toBeTruthy();
 });
 
 it("lists the member's form submissions newest first", async () => {
@@ -474,7 +481,9 @@ it("lists the member's form submissions newest first", async () => {
   ];
   renderPage();
 
-  expect(await screen.findByText("Invited Submissions (2)")).toBeTruthy();
+  expect(
+    await screen.findByRole("heading", { name: "Form submissions 2" }),
+  ).toBeTruthy();
   expect(
     screen
       .getAllByRole("link", { name: /^Form #/ })
@@ -512,7 +521,7 @@ it("keeps cached notifications it could not refresh and says so", async () => {
       "Could not refresh notifications. Reload to see the latest.",
     ),
   ).toBeTruthy();
-  expect(screen.getByText("Notifications (0)")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Notifications 0" })).toBeTruthy();
 });
 
 it("says when the member's form submissions fail to load", async () => {
@@ -537,7 +546,9 @@ it("keeps cached form submissions it could not refresh and says so", async () =>
       "Could not refresh form submissions. Reload to see the latest.",
     ),
   ).toBeTruthy();
-  expect(screen.getByText("Invited Submissions (0)")).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Form submissions 0" }),
+  ).toBeTruthy();
 });
 
 it("says when the member's actions fail to load", async () => {

@@ -5,8 +5,8 @@ import {
   defaultOf,
   SETTINGS_LOADING,
 } from "@alliance/shared/lib/notificationSettings";
-import { useId } from "react";
 import { useNotificationSettingsAdmin } from "../../lib/useNotificationSettingsAdmin";
+import Section from "../ui/Section";
 import { SectionRefreshError } from "./SectionQueryState";
 
 const SOURCE_LABEL: Record<PreferenceSource, string> = {
@@ -27,16 +27,9 @@ export default function UserNotificationSettingsSection({
     isError,
     isRefetchError,
   } = useNotificationSettingsAdmin(userId);
-  const headingId = useId();
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="border border-zinc-200 rounded p-3"
-    >
-      <h2 id={headingId} className="text-sm font-semibold text-zinc-700 mb-2">
-        Notification settings
-      </h2>
+    <Section title="Notification settings">
       <SectionRefreshError
         noun="notification settings"
         isError={isRefetchError}
@@ -110,6 +103,6 @@ export default function UserNotificationSettingsSection({
       ) : (
         <p className="text-xs text-zinc-500">{SETTINGS_LOADING}</p>
       )}
-    </section>
+    </Section>
   );
 }

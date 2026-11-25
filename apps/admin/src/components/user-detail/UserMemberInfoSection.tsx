@@ -4,6 +4,7 @@ import {
 } from "@alliance/shared/client/types.gen";
 import { Globe, MapPin, UserPlus } from "lucide-react";
 import { Link } from "react-router";
+import Section from "../ui/Section";
 import { humanize } from "./humanize";
 
 export default function UserMemberInfoSection({
@@ -12,8 +13,7 @@ export default function UserMemberInfoSection({
   user: UserAdminDetailDto;
 }) {
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">Member Info</h2>
+    <Section title="Member info">
       <div className="space-y-3 text-sm">
         <div>
           <p className="text-xs font-medium text-zinc-500 mb-1">Bio</p>
@@ -62,7 +62,7 @@ export default function UserMemberInfoSection({
           )}
         </dl>
       </div>
-    </section>
+    </Section>
   );
 }
 

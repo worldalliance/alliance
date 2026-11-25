@@ -14,6 +14,7 @@ import {
   useCommunitiesAdmin,
   useMoveCommunityMemberAdmin,
 } from "../lib/useCommunitiesAdmin";
+import Section from "./ui/Section";
 
 const NO_COMMUNITIES: CommunityDto[] = [];
 
@@ -190,8 +191,7 @@ export default function MemberGroupMoveSection({
     !isMoving;
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">Groups</h2>
+    <Section title="Groups">
       <div className="space-y-3">
         <div className="space-y-1">
           {memberCommunities.map((community) => (
@@ -272,7 +272,7 @@ export default function MemberGroupMoveSection({
           </p>
         )}
         {communitiesLoadFailed && (
-          <p className="text-xs text-red-500" role="alert">
+          <p className="text-xs text-red-600" role="alert">
             {adminRefusalMessage(communitiesError, "Unable to load groups.")}
           </p>
         )}
@@ -290,7 +290,7 @@ export default function MemberGroupMoveSection({
           </p>
         )}
         {mutationError && (
-          <p className="text-xs text-red-500" role="alert">
+          <p className="text-xs text-red-600" role="alert">
             {mutationError}
           </p>
         )}
@@ -309,6 +309,6 @@ export default function MemberGroupMoveSection({
               : "Assign member"}
         </Button>
       </div>
-    </section>
+    </Section>
   );
 }

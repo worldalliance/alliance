@@ -5,6 +5,7 @@ import {
 } from "@alliance/shared/lib/useFormsAdmin";
 import { UseQueryResult } from "@tanstack/react-query";
 import { Link } from "react-router";
+import Section from "../ui/Section";
 import { SectionLoadState, SectionRefreshError } from "./SectionQueryState";
 
 export default function UserFormSubmissionsSection({
@@ -14,7 +15,11 @@ export default function UserFormSubmissionsSection({
 }) {
   const displaySlugs = useFormDisplaySlugs();
   if (!formResponses) {
-    return <SectionLoadState noun="form submissions" isError={isError} />;
+    return (
+      <Section title="Form submissions">
+        <SectionLoadState noun="form submissions" isError={isError} />
+      </Section>
+    );
   }
 
   const sortedFormResponses = [...formResponses].sort(
@@ -22,10 +27,7 @@ export default function UserFormSubmissionsSection({
   );
 
   return (
-    <section className="border border-zinc-200 rounded p-3">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-        Invited Submissions ({sortedFormResponses.length})
-      </h2>
+    <Section title="Form submissions" meta={sortedFormResponses.length}>
       <SectionRefreshError noun="form submissions" isError={isRefetchError} />
       {sortedFormResponses.length > 0 ? (
         <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -54,6 +56,6 @@ export default function UserFormSubmissionsSection({
       ) : (
         <p className="text-xs text-zinc-500">No form submissions.</p>
       )}
-    </section>
+    </Section>
   );
 }
