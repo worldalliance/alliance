@@ -207,3 +207,26 @@ All agent judgement; nobody was there to ask. The bar is round 3's.
 
 - **Round 5 changed no code.** Its 16 findings repeated ones already declined or filed, or were wording, splits or missing tests; none was a defect in behaviour, accessibility, a guard, or the guide as it stands at the tip. The loop's hub classified them itself, with no fixer, and the loop ended there.
 - **Left as a follow-up:** no test covers two confirmations opened together showing one at a time (ALL-2501); the reviewer checked that the behaviour is right.
+
+## After the page trial
+
+Five agents built pages from the guide alone; a judge compared them. What the guide and the system took from it, all agent judgement (nobody was there to ask):
+
+- **A failure is said once, with no toast.** Banner plus toast plus dialog footer said one failure three times on trial pages. Toasts are for successes; the reference page's `reportError` no longer toasts.
+- **A failed refetch keeps the content and shows `RefreshFailedBanner`**, one component and one sentence, where the trial had four treatments.
+- **The skeleton is laid out at once and shown after the delay.** An empty 200 ms placeholder collapsed its region and moved what sat below it.
+- **Rule 9 lists the moves it accepts** (a failure or refresh banner, a field's error line, results loaded on request, a row expanding, Home's queue list); anything else is a defect.
+- **A sentence about time, members or consequences cites the server.** Three of five builders described the server without reading it. The reference page's removal now says what `removeUserFromCommunityAdmin` does: it removes a leader role too and notifies the member and the remaining leaders; removing a leader notifies no one; deleting a group soft-deletes it and notifies no one.
+- **Straight apostrophes everywhere**, with `react/no-unescaped-entities` allowing `'`. The rule rejected the guide's own copy style, and pages escaped it three ways.
+- **`LOAD_FAILED_FALLBACK` reads "The server didn't answer. Try again."** A 500 isn't a connection problem. Write fallbacks read "Couldn't {verb} {the thing}."; field errors from `common` keep their wording, since `common` is outside this change.
+- **A role is plain text or a neutral badge.** The reference page's accent "Leader" badge used the selection colour for a category.
+- **Unused capacity is the Groups place's description and "—" until both lists load.** It isn't a row count, and before the queue loaded it overstated the number.
+- **Open seats is the server's free seats; picks awaiting confirmation get their own column**, shown only while there are picks. The column had subtracted this browser's unconfirmed picks without saying so.
+- **A non-numeric record id is "not found" at once**, not an error, since no such record can exist.
+- **After a row's own button removes it, focus goes to the next row, else the previous, else the add button.** The judge asked for next-or-add; the previous row is nearer than a button in the panel header.
+- **Who edits `routes.ts`, `places.ts` and a record's tabs is stated once in the guide**: a builder edits its own route lines, its records' `tabs` and a record's `tab`; the rest goes through the system owner. Briefs had contradicted the guide.
+- **A merged place's route moves to `pages/<place>/<Place>Page.tsx`** and its `places/` module goes, so every place's files are found the same way.
+- **Queue counts on tabs come from `places.ts` through `withQueueCounts`, and the page passes the size it loaded.** Reading `useQueueCounts` inside `Page` would fetch all four queues on any page with a queue tab and in every test of it; the shell already fetches them, so the numbers agree with the sidebar.
+- **`PersonCell` renders its own table cell**, so its cap and truncation can't be left off; `PersonChip` is the inline form.
+- **`DateTimePicker timeZone` edits in the named zone.** A wall-clock time the spring change skips moves an hour later; a repeated autumn hour takes its first occurrence (what `@date-fns/tz` does).
+- **Left for later**: a multi-pick with reserved height, `Field limit`, `Textarea autoGrow`, `Modal` scrolling inside 720 px and `initialFocus`, toasts placed clear of the header, `LeaveGuard` asking with the admin's dialog, duplicate `confirm()` calls, an admin `CommunityMembersTable`, `CopyField`, a code well, and lint on literal colours in `style`.
