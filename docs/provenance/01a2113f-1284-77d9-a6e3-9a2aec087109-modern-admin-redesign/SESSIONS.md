@@ -10,3 +10,4 @@
 - claude:69f0ea0a-5d90-487a-8378-40ed253104ff (review loop round 8 fixer, foundation-lead.loop3.fix8)
 - claude:dda1ed53-e0cd-4772-9d7c-2443d0a5efaf (review loop round 9 fixer, foundation-lead.loop3.fix9)
 - claude:6c543751-c23a-4234-9365-48289b297e5c (review loop round 10 fixer, foundation-lead.loop3.fix10)
+- claude:d54630fd-7dd2-4259-bea2-98df8dc6ced8 (review loop round 11 fixer, foundation-lead.loop3.fix11)
