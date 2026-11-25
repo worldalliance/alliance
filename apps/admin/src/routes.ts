@@ -39,7 +39,7 @@ export default [
       route("/members/welcome", "pages/welcome/WelcomeQueuePage.tsx"),
       route("/members/groups", "pages/groups/GroupsPage.tsx"),
       route("/members/groups/:id", "pages/groups/GroupPage.tsx"),
-      route("/members/clusters", "pages/ClustersPage.tsx"),
+      route("/members/clusters", "pages/clusters/ClustersPage.tsx"),
       route("/members/tags", "pages/tags/TagsPage.tsx"),
       route("/members/lists", "pages/lists/MemberListsPage.tsx"),
       route("/members/lists/:listId", "pages/lists/MemberListPage.tsx"),
