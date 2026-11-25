@@ -1,5 +1,5 @@
 import { scaleBand, scaleLinear } from "d3";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatCount } from "../../lib/formatNumber";
 import { YGrid } from "../../ui/charts/axes";
 import { axisTextClass, chartColor, SERIES } from "../../ui/charts/chartColor";
@@ -70,6 +70,16 @@ export function ReminderClickRateBarChart({
   const [scrollLeft, setScrollLeft] = useState(0);
   const { label, title, emptyMessage, fill } = REMINDER_CHANNEL[channel];
   const hovered = cursor.index === null ? undefined : bars[cursor.index];
+  const svgRef = useRef<SVGSVGElement>(null);
+  const keyed = useRef(false);
+  // A bar reached by the keys may sit outside the scrolled view.
+  useEffect(() => {
+    if (!keyed.current || cursor.index === null) return;
+    keyed.current = false;
+    svgRef.current
+      ?.querySelectorAll("[data-bar]")
+      [cursor.index]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [cursor.index]);
 
   return (
     <section aria-label={title} className="flex min-w-0 flex-col gap-2">
@@ -128,7 +138,12 @@ export function ReminderClickRateBarChart({
                   viewBox={`0 0 ${width} ${HEIGHT}`}
                   role="img"
                   aria-label={`${title}. Arrow keys read each task.`}
+                  ref={svgRef}
                   {...cursor.markProps}
+                  onKeyDown={(event) => {
+                    keyed.current = true;
+                    cursor.markProps.onKeyDown(event);
+                  }}
                   onMouseLeave={() => cursor.setIndex(null)}
                 >
                   <YGrid
