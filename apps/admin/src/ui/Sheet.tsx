@@ -1,11 +1,11 @@
-import { cn } from "@alliance/shared/styles/util";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import type React from "react";
 import type { ReactNode } from "react";
+import { cn } from "./cn";
+import { zIndex } from "./zIndex";
 
-export type SideDrawerProps = {
+export type SheetProps = {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
@@ -14,8 +14,8 @@ export type SideDrawerProps = {
   panelClassName?: string;
 };
 
-/** On the same dialog primitive as `sharedweb/ui/Modal`, anchored right. */
-const SideDrawer: React.FC<SideDrawerProps> = ({
+/** A dialog anchored to the right edge. */
+const Sheet: React.FC<SheetProps> = ({
   open,
   onClose,
   title,
@@ -31,7 +31,7 @@ const SideDrawer: React.FC<SideDrawerProps> = ({
   >
     <Dialog.Portal>
       <Dialog.Backdrop
-        className={cn(zIndex.drawer, "fixed inset-0 bg-black/30")}
+        className={cn(zIndex.drawer, "fixed inset-0 bg-scrim")}
       />
       <Dialog.Viewport
         onClick={(event) => event.stopPropagation()}
@@ -39,19 +39,19 @@ const SideDrawer: React.FC<SideDrawerProps> = ({
       >
         <Dialog.Popup
           className={cn(
-            "flex h-full w-screen max-w-[46rem] flex-col bg-white shadow-2xl outline-none",
+            "flex h-full w-screen max-w-3xl flex-col bg-surface text-body text-fg shadow-pop outline-none",
             panelClassName,
           )}
         >
-          <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-3">
-            <Dialog.Title className="min-w-0 truncate text-base font-semibold text-zinc-900">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-card py-3">
+            <Dialog.Title className="min-w-0 truncate text-heading font-semibold">
               {title}
             </Dialog.Title>
             <div className="flex shrink-0 items-center gap-1">
               {headerActions}
               <Dialog.Close
                 aria-label="Close"
-                className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                className="rounded-md p-1.5 text-fg-muted focus-ring hover:bg-surface-2 hover:text-fg"
               >
                 <X aria-hidden="true" className="size-5" />
               </Dialog.Close>
@@ -64,4 +64,4 @@ const SideDrawer: React.FC<SideDrawerProps> = ({
   </Dialog.Root>
 );
 
-export default SideDrawer;
+export default Sheet;

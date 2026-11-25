@@ -15,9 +15,9 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ChevronLeft, ChevronRight, CirclePlay } from "lucide-react";
 import React, { useMemo } from "react";
 import { respondentName } from "../../lib/respondent";
+import Sheet from "../../ui/Sheet";
 import type { FormWithSchema } from "../FormResponsesView";
 import { IdentityChip } from "../IdentitySwatch";
-import SideDrawer from "../SideDrawer";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import { formatSubmitted } from "./rows";
 import { snapshotSeed } from "./SnapshotNavigator";
@@ -120,7 +120,7 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
   const replayId = response?.sessionReplayUrl?.split("/").pop();
 
   return (
-    <SideDrawer
+    <Sheet
       open={response !== null}
       onClose={onClose}
       title={
@@ -239,7 +239,7 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
           )}
         </div>
       )}
-    </SideDrawer>
+    </Sheet>
   );
 };
 

@@ -28,12 +28,12 @@ import React, {
 } from "react";
 import { useSearchParams } from "react-router";
 import { assignedRowFields } from "../../lib/assignedRowFields";
+import Sheet from "../../ui/Sheet";
 import type {
   FormWithSchema,
   ResponseVariantOption,
 } from "../FormResponsesView";
 import { IdentityChip } from "../IdentitySwatch";
-import SideDrawer from "../SideDrawer";
 import {
   autoSnapshotMode,
   buildQuestionColumns,
@@ -453,7 +453,7 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
         />
       )}
 
-      <SideDrawer
+      <Sheet
         open={navigatorOpen}
         onClose={() => setNavigatorOpen(false)}
         title="Versions"
@@ -472,7 +472,7 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
           }
           snapshotsHref={formId === null ? null : `/forms/${formId}/snapshots`}
         />
-      </SideDrawer>
+      </Sheet>
 
       <ResponseDrawer
         response={openResponse}
