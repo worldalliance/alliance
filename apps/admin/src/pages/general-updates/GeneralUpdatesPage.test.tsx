@@ -1,9 +1,9 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { generalUpdateAdmin } from "../lib/testing/generalUpdateAdmin";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { generalUpdateAdmin } from "../../lib/testing/generalUpdateAdmin";
 import GeneralUpdatesPage from "./GeneralUpdatesPage";
 
 let loadStatus = 200;
@@ -26,9 +26,9 @@ beforeEach(() => {
   loadStatus = 200;
 });
 
-const renderPage = (query = queryWrapper()) =>
+const renderPage = (query = queryWrapper(), url = "/content/general-updates") =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <GeneralUpdatesPage />
     </MemoryRouter>,
     query,
@@ -45,10 +45,8 @@ it("groups the loaded general updates by schedule", async () => {
 it("says the general updates failed to load instead of listing none", async () => {
   loadStatus = 500;
   renderPage();
-  expect(
-    await screen.findByText("Failed to load general updates"),
-  ).toBeTruthy();
-  expect(screen.queryByText("No general updates found.")).toBeNull();
+  expect(await screen.findByText("Couldn't load general updates")).toBeTruthy();
+  expect(screen.queryByText("No general updates yet")).toBeNull();
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
@@ -66,7 +64,25 @@ it("keeps the loaded general updates beside a refetch error", async () => {
   await act(() => query.client.refetchQueries());
 
   expect(
-    await screen.findByText("Failed to load general updates"),
+    await screen.findByText(/^Couldn't refresh general updates/),
   ).toBeTruthy();
   expect(screen.getByText("Weekly note")).toBeTruthy();
+});
+
+it("links each general update to its record", async () => {
+  renderPage();
+  const link = await screen.findByRole("link", { name: "Weekly note" });
+  expect(link.getAttribute("href")).toBe("/content/general-updates/1");
+});
+
+it("filters by name and says when nothing matches", async () => {
+  renderPage(queryWrapper(), "/content/general-updates?q=weekly");
+  expect(await screen.findByText("Weekly note")).toBeTruthy();
+  expect(screen.queryByText("Unscheduled note")).toBeNull();
+  expect(screen.getByText("1 of 2 general updates")).toBeTruthy();
+  cleanup();
+
+  renderPage(queryWrapper(), "/content/general-updates?q=zzz");
+  expect(await screen.findByText("No results")).toBeTruthy();
+  expect(screen.queryByText("No general updates yet")).toBeNull();
 });

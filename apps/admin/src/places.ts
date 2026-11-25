@@ -601,6 +601,10 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.GeneralUpdates,
     label: "General update",
     path: "/content/general-updates/:id",
+    tabs: [
+      { id: "details", label: "Details" },
+      { id: "content", label: "Content" },
+    ],
   },
   {
     id: RecordId.Video,

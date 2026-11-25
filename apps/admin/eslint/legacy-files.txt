@@ -211,8 +211,6 @@ src/components/formulas/FormulaHistory.tsx
 src/components/formulas/OtherFormulaProblems.tsx
 src/components/formulas/PartFixFields.tsx
 src/components/formulas/SaveRefusal.tsx
-src/components/general-update/GeneralUpdateAudienceFields.tsx
-src/components/general-update/GeneralUpdateScheduleFields.tsx
 src/components/organizations/OrganizationCard.tsx
 src/components/organizations/OrganizationLinks.tsx
 src/components/output-builder/EditableOutputFieldBlock.tsx
@@ -312,8 +310,6 @@ src/pages/FormsList.tsx
 src/pages/FormulaPage.tsx
 src/pages/FormulasPage.tsx
 src/pages/FriendGraphPage.tsx
-src/pages/GeneralUpdatePage.tsx
-src/pages/GeneralUpdatesPage.tsx
 src/pages/HostedDocsPage.tsx
 src/pages/InviteFeedPage.tsx
 src/pages/InviteGraphPage.tsx
