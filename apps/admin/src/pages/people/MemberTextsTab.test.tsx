@@ -16,7 +16,7 @@ import {
 import { MemoryRouter } from "react-router";
 import { useNeedsReplyAdmin } from "../../lib/useTextThreadsAdmin";
 import { ToastProvider } from "../../ui/ToastProvider";
-import MemberTextsSection from "./MemberTextsSection";
+import { MemberTextsTab } from "./MemberTextsTab";
 
 const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({
   id: 1,
@@ -128,7 +128,7 @@ const renderSection = (queries?: DefaultOptions["queries"]) => {
     <Wrapper>
       <ToastProvider>
         <MemoryRouter>
-          <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+          <MemberTextsTab member={{ id: 7, name: "Sam", timeZone: null }} />
         </MemoryRouter>
       </ToastProvider>
     </Wrapper>,
@@ -220,7 +220,7 @@ it("frees the composer without waiting for Needs Reply to refresh", async () => 
     <Wrapper>
       <ToastProvider>
         <NeedsReplyObserver />
-        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        <MemberTextsTab member={{ id: 7, name: "Sam", timeZone: null }} />
       </ToastProvider>
     </Wrapper>,
   );
@@ -269,7 +269,7 @@ const renderSamThenKim = () => {
   const section = (member: { id: number; name: string }) => (
     <Wrapper>
       <ToastProvider>
-        <MemberTextsSection member={{ ...member, timeZone: null }} />
+        <MemberTextsTab member={{ ...member, timeZone: null }} />
       </ToastProvider>
     </Wrapper>
   );

@@ -13,7 +13,7 @@ import {
   within,
 } from "@testing-library/react";
 import { ToastProvider } from "../../ui/ToastProvider";
-import MemberTextsSection from "./MemberTextsSection";
+import { MemberTextsTab } from "./MemberTextsTab";
 
 const text = (id: number): MmsMessageDto => ({
   id,
@@ -76,7 +76,7 @@ const renderSection = () => {
   render(
     <Wrapper>
       <ToastProvider>
-        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        <MemberTextsTab member={{ id: 7, name: "Sam", timeZone: null }} />
       </ToastProvider>
     </Wrapper>,
   );

@@ -35,9 +35,7 @@ src/components/CollectiveResultFields.tsx
 src/components/ContractCard.tsx
 src/components/CountSamples.tsx
 src/components/CreateActionMenu.tsx
-src/components/CreateActivityControls.tsx
 src/components/CreateEventForm.tsx
-src/components/DeleteAccountModal.tsx
 src/components/Disclosure.tsx
 src/components/DisplayOnlyPreview.tsx
 src/components/EventManagementTab.tsx
@@ -65,7 +63,6 @@ src/components/IdentitySwatch.tsx
 src/components/InsertableTokenButton.tsx
 src/components/MarkedDiagnostics.tsx
 src/components/MemberFilterDropdown.tsx
-src/components/MemberGroupMoveSection.tsx
 src/components/NewActionTimeline.tsx
 src/components/NewProjectActionDialog.tsx
 src/components/NumberSample.tsx
@@ -89,7 +86,6 @@ src/components/SuiteEventCard.tsx
 src/components/SuiteEventList.tsx
 src/components/TextareaWithHighlights.tsx
 src/components/UpdatePreview.tsx
-src/components/UserAwayPeriodsSection.tsx
 src/components/UserCard.tsx
 src/components/UserPicker.tsx
 src/components/VariableBuilder.sourceForms.test.tsx
@@ -251,16 +247,6 @@ src/components/texts/ComposingNotice.tsx
 src/components/texts/TextComposer.tsx
 src/components/texts/TextHistory.tsx
 src/components/texts/TextThreadSection.tsx
-src/components/user-detail/MemberTextsSection.tsx
-src/components/user-detail/SectionQueryState.tsx
-src/components/user-detail/UserActionsSection.tsx
-src/components/user-detail/UserFormSubmissionsSection.tsx
-src/components/user-detail/UserFriendsSection.tsx
-src/components/user-detail/UserMemberInfoSection.tsx
-src/components/user-detail/UserNotificationSettingsSection.tsx
-src/components/user-detail/UserNotificationsSection.tsx
-src/components/user-detail/UserRolesSection.tsx
-src/components/user-detail/UserTagsSection.tsx
 src/components/waitlist/EntryActions.tsx
 src/components/waitlist/EntryContactActions.tsx
 src/components/waitlist/InlineNameForm.tsx
@@ -318,7 +304,6 @@ src/pages/SuiteLaunchPage.tsx
 src/pages/TagManagement.tsx
 src/pages/TextThreadPage.tsx
 src/pages/TextsPage.tsx
-src/pages/UserDetailView.tsx
 src/pages/UsersList.tsx
 src/pages/WaitlistEmailsPage.tsx
 src/pages/WaitlistPage.tsx

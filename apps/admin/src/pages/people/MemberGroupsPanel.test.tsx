@@ -10,8 +10,8 @@ import {
   within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { ToastProvider } from "../ui/ToastProvider";
-import MemberGroupMoveSection from "./MemberGroupMoveSection";
+import { ToastProvider } from "../../ui/ToastProvider";
+import { MemberGroupsPanel } from "./MemberGroupsPanel";
 
 const north = makeCommunity({ id: 4, name: "North" });
 const south = makeCommunity({ id: 5, name: "South" });
@@ -79,7 +79,7 @@ const submitTo = async (params: {
   render(
     <MemoryRouter>
       <ToastProvider>
-        <MemberGroupMoveSection
+        <MemberGroupsPanel
           user={params.member}
           refreshUser={refreshUser}
         />
@@ -146,7 +146,7 @@ it("hides a server error's own text behind the assign fallback", async () => {
     button: "Assign member",
   });
 
-  expect(await screen.findByText("Could not assign this member.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't assign this member.")).toBeTruthy();
   expect(refreshUser).not.toHaveBeenCalled();
 });
 
@@ -154,7 +154,7 @@ const renderSection = () =>
   render(
     <MemoryRouter>
       <ToastProvider>
-        <MemberGroupMoveSection user={user} refreshUser={async () => {}} />
+        <MemberGroupsPanel user={user} refreshUser={async () => {}} />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -164,7 +164,7 @@ it("says it is loading the groups rather than that none has room", async () => {
   renderSection();
 
   expect(
-    screen.getByRole("option", { name: "Loading groups..." }),
+    screen.getByRole("option", { name: "Loading groups…" }),
   ).toBeTruthy();
   expect(
     screen.queryByText(
@@ -178,7 +178,7 @@ it("says when the groups failed to load", async () => {
   listStatus = 500;
   renderSection();
 
-  expect(await screen.findByText("Unable to load groups.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load groups.")).toBeTruthy();
   expect(
     screen.queryByText(
       "No groups with staff assignments and available capacity.",
@@ -199,5 +199,5 @@ it("hides a server error's own text behind the move fallback", async () => {
   moveStatus = 500;
   await moveToSouth();
 
-  expect(await screen.findByText("Could not move this member.")).toBeTruthy();
+  expect(await screen.findByText("Couldn't move this member.")).toBeTruthy();
 });

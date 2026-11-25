@@ -1,23 +1,22 @@
 import type { DeleteUserAdminDto } from "@alliance/shared/client/types.gen";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { DeleteAccountModal } from "./DeleteAccountModal";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { MemberDeleteDialog } from "./MemberDeleteDialog";
 
 const renderModal = (
   deleteAccount: (body: DeleteUserAdminDto) => Promise<unknown>,
 ) => {
   const deleted: true[] = [];
   render(
-    <DeleteAccountModal
+    <MemberDeleteDialog
       deleteAccount={deleteAccount}
-      userName="Sam"
-      userEmail="sam@example.com"
+      member={{ name: "Sam", email: "sam@example.com" }}
       onCancel={() => {}}
       onDeleted={() => deleted.push(true)}
     />,
   );
-  fireEvent.change(screen.getByPlaceholderText(/Why is this account/), {
+  fireEvent.change(screen.getByLabelText("Reason"), {
     target: { value: "  Asked by email  " },
   });
   fireEvent.change(screen.getByPlaceholderText("sam@example.com"), {
@@ -54,9 +53,10 @@ it("shows a refused deletion and lets the admin try again", async () => {
   ).toBeTruthy();
   expect(deleted).toEqual([]);
   expect(
-    screen.getByRole<HTMLButtonElement>("button", { name: "Delete account" })
-      .disabled,
-  ).toBe(false);
+    screen
+      .getByRole("button", { name: "Delete account" })
+      .getAttribute("aria-busy"),
+  ).toBeNull();
   expect(logged).toHaveBeenCalledWith("Failed to delete account", refusal);
   logged.mockRestore();
 });
@@ -76,10 +76,9 @@ serveApi(
 it("says why a screenshot upload was refused", async () => {
   jest.spyOn(console, "error").mockImplementation(() => {});
   const { baseElement } = render(
-    <DeleteAccountModal
+    <MemberDeleteDialog
       deleteAccount={() => Promise.reject(new Error("not called"))}
-      userName="Test Member"
-      userEmail="member@example.com"
+      member={{ name: "Test Member", email: "member@example.com" }}
       onCancel={() => {}}
       onDeleted={() => {}}
     />,
@@ -95,7 +94,7 @@ it("says why a screenshot upload was refused", async () => {
 });
 
 it.each([
-  [500, "Failed to upload the screenshot. Try again."],
+  [500, "Couldn't upload the screenshot."],
   [401, sessionExpiredMessage],
 ])(
   "shows its own text, not the server's, for a %i upload refusal",
@@ -103,10 +102,9 @@ it.each([
     jest.spyOn(console, "error").mockImplementation(() => {});
     uploadRefusal = { status, message: "Framework text" };
     const { baseElement } = render(
-      <DeleteAccountModal
+      <MemberDeleteDialog
         deleteAccount={() => Promise.reject(new Error("not called"))}
-        userName="Test Member"
-        userEmail="member@example.com"
+        member={{ name: "Test Member", email: "member@example.com" }}
         onCancel={() => {}}
         onDeleted={() => {}}
       />,
@@ -121,3 +119,21 @@ it.each([
     expect(screen.queryByText("Framework text")).toBeNull();
   },
 );
+
+it("names what is missing instead of deleting", () => {
+  const bodies: DeleteUserAdminDto[] = [];
+  render(
+    <MemberDeleteDialog
+      deleteAccount={async (body) => bodies.push(body)}
+      member={{ name: "Sam", email: "sam@example.com" }}
+      onCancel={() => {}}
+      onDeleted={() => {}}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+  expect(screen.getByText("Enter why the account is being deleted")).toBeTruthy();
+  expect(screen.getByText("Type sam@example.com to confirm")).toBeTruthy();
+  expect(bodies).toEqual([]);
+});

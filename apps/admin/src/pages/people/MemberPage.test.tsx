@@ -1,4 +1,3 @@
-/* alliance/max-lines 550 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type {
   CreateActionActivityDto,
   FormResponseDto,
@@ -27,9 +26,9 @@ import {
 } from "@testing-library/react";
 import { omit } from "es-toolkit";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { AuthProvider } from "../lib/AuthContext";
-import { ToastProvider } from "../ui/ToastProvider";
-import UserDetailView, { clientLoader } from "./UserDetailView";
+import { AuthProvider } from "../../lib/AuthContext";
+import { ToastProvider } from "../../ui/ToastProvider";
+import MemberPage, { clientLoader } from "./MemberPage";
 
 const sam: UserAdminDetailDto = {
   ...makeUser({ id: 7, name: "Sam", hasActiveContract: true }),
@@ -110,6 +109,7 @@ serveApi(
         formResponsesStatus === 200
           ? Response.json(formResponses)
           : Response.json({}, { status: formResponsesStatus }),
+      "GET /user/awayranges/:id": () => Response.json([]),
       "GET /user/listfriends/:id": () =>
         friendsStatus === 200
           ? Response.json([alex])
@@ -142,20 +142,17 @@ afterEach(() => {
   queryClient.clear();
 });
 
-const renderPage = () => {
+const renderPage = (tab?: string, path = "/members/7") => {
   const router = createMemoryRouter(
     [
       {
         path: "/members/:userId",
-        Component: UserDetailView,
+        Component: MemberPage,
         loader: (args) =>
-          clientLoader({
-            ...args,
-            params: { userId: args.params.userId ?? "" },
-          }),
+          clientLoader({ ...args, params: { userId: args.params.userId ?? "" } }),
       },
     ],
-    { initialEntries: ["/members/7"] },
+    { initialEntries: [tab ? `${path}?tab=${tab}` : path] },
   );
   render(
     <QueryClientProvider client={queryClient}>
@@ -191,12 +188,23 @@ const cacheSam = (overrides: Partial<UserAdminDetailDto> = {}) =>
     ...overrides,
   });
 
+
 it("loads the member alongside the rest of the page", async () => {
   detailStatus = 200;
   renderPage();
 
-  expect(await screen.findByRole("heading", { name: "Sam" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Sam", level: 1 })).toBeTruthy();
 });
+
+it("says an id that can't exist was not found without asking for it", async () => {
+  detailStatus = 200;
+  renderPage(undefined, "/members/abc");
+
+  expect(await screen.findByText("Member not found")).toBeTruthy();
+});
+
+const settingsPanel = async () =>
+  within(await screen.findByRole("region", { name: "Notification settings" }));
 
 it("shows each channel default and each override with its source and whether it is in effect", async () => {
   detailStatus = 200;
@@ -221,22 +229,23 @@ it("shows each channel default and each override with its source and whether it 
       },
     ],
   };
-  renderPage();
+  renderPage("notifications");
 
-  const section = within(
-    await screen.findByRole("region", { name: "Notification settings" }),
-  );
-  await section.findByText("Overrides (2)");
+  const section = await settingsPanel();
+  await section.findByText("2 overrides");
   expect(
     ["In-app", "Push", "Text", "Email"].map(
       (label) => section.getByText(`${label} default`).nextSibling?.textContent,
     ),
   ).toEqual(["Off", "Off", "On", "On"]);
   expect(
-    section.getAllByRole("listitem").map((row) => row.textContent),
+    section
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => row.textContent),
   ).toEqual([
-    "Likes · PushOnSet by member",
-    "A member left a group you lead · PushOffCarried over by migrationNot in effect",
+    "LikesPushOnSet by member",
+    "A member left a group you leadPushOffNot in effectCarried over by migration",
   ]);
 });
 
@@ -246,15 +255,11 @@ it("says when every notification follows the defaults", async () => {
     defaults: { inApp: true, push: true, text: true, email: true },
     overrides: [],
   };
-  renderPage();
+  renderPage("notifications");
 
-  const section = within(
-    await screen.findByRole("region", { name: "Notification settings" }),
-  );
-  expect(await section.findByText("Overrides (0)")).toBeTruthy();
-  expect(
-    section.getByText("Every notification follows the defaults."),
-  ).toBeTruthy();
+  const section = await settingsPanel();
+  expect(await section.findByText("0 overrides")).toBeTruthy();
+  expect(section.getByText("Every notification follows the defaults.")).toBeTruthy();
 });
 
 it("keeps cached notification settings it could not refresh and says so", async () => {
@@ -263,22 +268,20 @@ it("keeps cached notification settings it could not refresh and says so", async 
     defaults: { inApp: true, push: true, text: true, email: true },
     overrides: [],
   });
-  renderPage();
+  renderPage("notifications");
 
   expect(
-    await screen.findByText(
-      "Could not refresh notification settings. Reload to see the latest.",
-    ),
+    await screen.findByText(/Couldn't refresh notification settings\./),
   ).toBeTruthy();
-  expect(screen.getByText("Overrides (0)")).toBeTruthy();
+  expect(screen.getByText("0 overrides")).toBeTruthy();
 });
 
 it("says when the member's notification settings fail to load", async () => {
   detailStatus = 200;
-  renderPage();
+  renderPage("notifications");
 
   expect(
-    await screen.findByText("Failed to load notification settings."),
+    await screen.findByText("Couldn't load notification settings"),
   ).toBeTruthy();
 });
 
@@ -287,7 +290,7 @@ it("loads the member afresh over one cached moments ago", async () => {
   cacheSam({ name: "Sam Before" });
   renderPage();
 
-  expect(await screen.findByRole("heading", { name: "Sam" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Sam", level: 1 })).toBeTruthy();
 });
 
 it("says a member that does not exist was not found", async () => {
@@ -300,7 +303,7 @@ it("says the member failed to load", async () => {
   detailStatus = 500;
   renderPage();
 
-  expect(await screen.findByText("Failed to load member")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load this member")).toBeTruthy();
 });
 
 it("replaces a cached member who has since been deleted", async () => {
@@ -315,34 +318,35 @@ it("keeps a cached member it could not refresh and says so", async () => {
   cacheSam();
   renderPage();
 
-  expect(
-    await screen.findByText(
-      "Could not refresh this member. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Sam" })).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh this member\./)).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Sam", level: 1 })).toBeTruthy();
 });
 
 it("says why a role change was refused", async () => {
   detailStatus = 200;
-  renderPage();
+  renderPage("membership");
 
-  fireEvent.click(await screen.findByRole("checkbox", { name: "Staff" }));
+  fireEvent.click(await screen.findByRole("switch", { name: "Staff" }));
 
   expect(await screen.findByText("Forbidden")).toBeTruthy();
   expect(
-    screen.getByRole<HTMLInputElement>("checkbox", { name: "Staff" }).checked,
-  ).toBe(false);
+    screen.getByRole("switch", { name: "Staff" }).getAttribute("aria-checked"),
+  ).toBe("false");
 });
 
 it("says why a suspension was refused instead of confirming it", async () => {
   detailStatus = 200;
   renderPage();
 
+  fireEvent.click(await screen.findByRole("button", { name: "More" }));
   fireEvent.click(
-    await screen.findByRole("button", { name: "Suspend contract" }),
+    await screen.findByRole("menuitem", { name: "Suspend contract…" }),
   );
-  fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Suspend contract",
+    }),
+  );
 
   expect(
     await screen.findByText("Member does not have an active contract."),
@@ -351,89 +355,86 @@ it("says why a suspension was refused instead of confirming it", async () => {
 });
 
 const toggleVolunteers = async () => {
-  fireEvent.click(await screen.findByRole("checkbox", { name: "Volunteers" }));
+  fireEvent.click(await screen.findByRole("switch", { name: "Volunteers" }));
 };
 
-const volunteersBox = () =>
-  screen.getByRole<HTMLInputElement>("checkbox", { name: "Volunteers" });
+const volunteersOn = () =>
+  screen.getByRole("switch", { name: "Volunteers" }).getAttribute("aria-checked");
 
-it("checks a tag once the member has it", async () => {
+const tagsPanel = () => within(screen.getByRole("region", { name: "Tags" }));
+
+it("switches a tag on once the member has it", async () => {
   detailStatus = 200;
-  renderPage();
+  renderPage("membership");
 
   await toggleVolunteers();
 
-  await waitFor(() => expect(volunteersBox().checked).toBe(true));
-  expect(screen.getByText("Tags (1)")).toBeTruthy();
+  await waitFor(() => expect(volunteersOn()).toBe("true"));
+  expect(tagsPanel().getByText("1")).toBeTruthy();
 });
 
 it("says when a tag change is refused", async () => {
   detailStatus = 200;
   addTagStatus = 500;
-  renderPage();
+  renderPage("membership");
 
   await toggleVolunteers();
 
   expect(
-    await screen.findByText("Failed to update tag membership. Try again."),
+    await screen.findByText("Couldn't change the member's tags."),
   ).toBeTruthy();
-  expect(volunteersBox().checked).toBe(false);
+  expect(volunteersOn()).toBe("false");
 });
 
 it("says why a tag change was refused", async () => {
   detailStatus = 200;
   addTagStatus = 400;
-  renderPage();
+  renderPage("membership");
 
   await toggleVolunteers();
 
   expect(await screen.findByText("Tag is archived")).toBeTruthy();
-  expect(volunteersBox().checked).toBe(false);
+  expect(volunteersOn()).toBe("false");
 });
 
 it("says it could not refresh the member after a tag change", async () => {
   detailStatus = 200;
-  renderPage();
-  await screen.findByRole("checkbox", { name: "Volunteers" });
+  renderPage("membership");
+  await screen.findByRole("switch", { name: "Volunteers" });
   detailStatus = 500;
 
   await toggleVolunteers();
 
-  expect(
-    await screen.findByText(
-      "Could not refresh this member. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh this member\./)).toBeTruthy();
 });
 
 it("says when the tags fail to load", async () => {
   detailStatus = 200;
   tagSummariesStatus = 500;
-  renderPage();
+  renderPage("membership");
 
-  expect(await screen.findByText("Failed to load tags")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load tags")).toBeTruthy();
 });
 
 it("keeps cached tags it could not refresh and says so", async () => {
   detailStatus = 200;
   tagSummariesStatus = 500;
   queryClient.setQueryData(queryKeys.tagSummariesAdmin(), [volunteers]);
-  renderPage();
+  renderPage("membership");
 
-  expect(
-    await screen.findByText(
-      "Could not refresh tags. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(volunteersBox()).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh tags\./)).toBeTruthy();
+  expect(screen.getByRole("switch", { name: "Volunteers" })).toBeTruthy();
 });
 
-it("lists the member's friends with their status", async () => {
-  detailStatus = 200;
-  renderPage();
+const friendsPanel = () => within(screen.getByRole("region", { name: "Friends" }));
 
-  expect(await screen.findByText("Friends (1)")).toBeTruthy();
-  expect(screen.getByRole("link", { name: /Alex/ }).getAttribute("href")).toBe(
+it("lists the member's friends with their standing", async () => {
+  detailStatus = 200;
+  renderPage("profile");
+
+  expect(await screen.findByRole("link", { name: "Alex" })).toBeTruthy();
+  expect(friendsPanel().getByText("1")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Alex" }).getAttribute("href")).toBe(
     "/members/8",
   );
   expect(screen.getByText("Signed · Ambassador")).toBeTruthy();
@@ -442,26 +443,25 @@ it("lists the member's friends with their status", async () => {
 it("says when the friends fail to load", async () => {
   detailStatus = 200;
   friendsStatus = 500;
-  renderPage();
+  renderPage("profile");
 
-  expect(await screen.findByText("Failed to load friends")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load friends")).toBeTruthy();
 });
 
 it("keeps cached friends it could not refresh and says so", async () => {
   detailStatus = 200;
   friendsStatus = 500;
   queryClient.setQueryData(userQueryKeys.friends(7), [alex]);
-  renderPage();
+  renderPage("profile");
 
-  expect(
-    await screen.findByText(
-      "Could not refresh friends. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByText("Friends (1)")).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh friends\./)).toBeTruthy();
+  expect(friendsPanel().getByText("1")).toBeTruthy();
 });
 
-it("lists the member's form submissions newest first", async () => {
+const responsesPanel = () =>
+  within(screen.getByRole("region", { name: "Form responses" }));
+
+it("lists the member's form responses newest first", async () => {
   detailStatus = 200;
   formResponses = [
     makeFormResponse({ id: 1, formId: 4, createdAt: "2026-03-01T12:00:00Z" }),
@@ -472,9 +472,10 @@ it("lists the member's form submissions newest first", async () => {
       deviceType: "ios",
     }),
   ];
-  renderPage();
+  renderPage("tasks");
 
-  expect(await screen.findByText("Invited Submissions (2)")).toBeTruthy();
+  expect(await screen.findByRole("link", { name: "Form #9" })).toBeTruthy();
+  expect(responsesPanel().getByText("2")).toBeTruthy();
   expect(
     screen
       .getAllByRole("link", { name: /^Form #/ })
@@ -486,105 +487,105 @@ it("lists the member's form submissions newest first", async () => {
   expect(screen.getByText("ios")).toBeTruthy();
 });
 
-it("says when the member has no form submissions", async () => {
+it("says when the member has no form responses", async () => {
   detailStatus = 200;
-  renderPage();
+  renderPage("tasks");
 
-  expect(await screen.findByText("No form submissions.")).toBeTruthy();
+  expect(await screen.findByText("No form responses")).toBeTruthy();
 });
 
 it("says when the member's notifications fail to load", async () => {
   detailStatus = 200;
   notifsStatus = 500;
-  renderPage();
+  renderPage("notifications");
 
-  expect(await screen.findByText("Failed to load notifications")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load notifications")).toBeTruthy();
 });
 
 it("keeps cached notifications it could not refresh and says so", async () => {
   detailStatus = 200;
   notifsStatus = 500;
   queryClient.setQueryData(queryKeys.userNotifsAdmin(7), []);
-  renderPage();
+  renderPage("notifications");
 
-  expect(
-    await screen.findByText(
-      "Could not refresh notifications. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByText("Notifications (0)")).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh notifications\./)).toBeTruthy();
+  expect(screen.getByText("No texts sent")).toBeTruthy();
 });
 
-it("says when the member's form submissions fail to load", async () => {
+it("says when the member's form responses fail to load", async () => {
   detailStatus = 200;
   formResponsesStatus = 500;
-  renderPage();
+  renderPage("tasks");
 
-  expect(
-    await screen.findByText("Failed to load form submissions"),
-  ).toBeTruthy();
-  expect(screen.queryByText("No form submissions.")).toBeNull();
+  expect(await screen.findByText("Couldn't load form responses")).toBeTruthy();
+  expect(screen.queryByText("No form responses")).toBeNull();
 });
 
-it("keeps cached form submissions it could not refresh and says so", async () => {
+it("keeps cached form responses it could not refresh and says so", async () => {
   detailStatus = 200;
   formResponsesStatus = 500;
   queryClient.setQueryData(queryKeys.userFormResponsesAdmin(7), []);
-  renderPage();
+  renderPage("tasks");
 
-  expect(
-    await screen.findByText(
-      "Could not refresh form submissions. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
-  expect(screen.getByText("Invited Submissions (0)")).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh form responses\./)).toBeTruthy();
+  expect(screen.getByText("No form responses")).toBeTruthy();
 });
 
-it("says when the member's actions fail to load", async () => {
+it("says when the member's tasks fail to load", async () => {
   detailStatus = 200;
   relationsStatus = 500;
-  renderPage();
+  renderPage("tasks");
 
-  expect(await screen.findByText("Failed to load actions")).toBeTruthy();
+  expect(await screen.findByText("Couldn't load tasks")).toBeTruthy();
 });
 
-it("records an activity for the member and shows their new status", async () => {
+const recordCompleted = async () => {
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "More: Call your representative",
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "Record “Completed”…" }),
+  );
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Record activity",
+    }),
+  );
+};
+
+it("records an activity for the member once confirmed and shows their new status", async () => {
   detailStatus = 200;
   relations = relationsFor("todo");
-  renderPage();
+  renderPage("tasks");
 
-  const row = (await screen.findByText("Call your representative")).closest(
-    "tr",
-  );
-  fireEvent.change(within(row!).getByRole("combobox"), {
-    target: { value: "user_completed" },
-  });
+  await recordCompleted();
 
-  expect(
-    await screen.findByText("Completed", { selector: "span" }),
-  ).toBeTruthy();
+  expect(await screen.findByText("Completed", { selector: "span" })).toBeTruthy();
   expect(createdActivities).toEqual([
     { actionId: 5, userId: 7, type: "user_completed" },
   ]);
 });
 
-it("says it could not refresh the member's actions after recording one", async () => {
+it("says it could not refresh the member's tasks after recording one", async () => {
   detailStatus = 200;
   relations = relationsFor("todo");
-  renderPage();
-  const row = (await screen.findByText("Call your representative")).closest(
-    "tr",
-  );
+  renderPage("tasks");
+  await screen.findByText("Call your representative");
   relationsStatus = 500;
 
-  fireEvent.change(within(row!).getByRole("combobox"), {
-    target: { value: "user_completed" },
-  });
+  await recordCompleted();
 
-  expect(
-    await screen.findByText(
-      "Could not refresh actions. Reload to see the latest.",
-    ),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh tasks\./)).toBeTruthy();
   expect(screen.getByText("Not started", { selector: "span" })).toBeTruthy();
+});
+
+it("shows a task the member has no record for without failing", async () => {
+  detailStatus = 200;
+  relations = { ...relationsFor("todo"), users: [] };
+  renderPage("tasks");
+
+  const row = (await screen.findByText("Call your representative")).closest("tr");
+  expect(within(row!).getAllByText("—").length).toBeGreaterThan(0);
 });

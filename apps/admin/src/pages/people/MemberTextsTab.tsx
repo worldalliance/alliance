@@ -1,15 +1,17 @@
 import { href, Link } from "react-router";
+import TextComposer from "../../components/texts/TextComposer";
+import TextThreadSection, {
+  ComposerNotice,
+  OptedOutNotice,
+} from "../../components/texts/TextThreadSection";
 import {
   fetchMemberThread,
   useMemberTextsAdmin,
 } from "../../lib/useMemberTextsAdmin";
-import TextComposer from "../texts/TextComposer";
-import TextThreadSection, {
-  ComposerNotice,
-  OptedOutNotice,
-} from "../texts/TextThreadSection";
+import { linkClass } from "../../ui/styles";
 
-export default function MemberTextsSection({
+/** The member's own text thread, in the inbox's thread view. */
+export function MemberTextsTab({
   member,
 }: {
   member: { id: number; name: string; timeZone: string | null };
@@ -33,8 +35,7 @@ export default function MemberTextsSection({
       composer={(data, onConflictShown) =>
         !data.phoneNumber ? null : !data.textable ? (
           <ComposerNotice>
-            This member&apos;s phone number isn&apos;t valid, so they can&apos;t
-            be texted.
+            This member's phone number isn't valid, so they can't be texted.
           </ComposerNotice>
         ) : data.optedOut ? (
           <OptedOutNotice />
@@ -53,11 +54,8 @@ export default function MemberTextsSection({
       }
       headerLink={
         threadId && (
-          <Link
-            to={href("/inbox/:threadId", { threadId })}
-            className="text-sm underline text-zinc-700"
-          >
-            Open this number&apos;s thread
+          <Link to={href("/inbox/:threadId", { threadId })} className={linkClass}>
+            Open this number's thread
           </Link>
         )
       }

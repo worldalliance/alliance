@@ -10,7 +10,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
 import { ToastProvider } from "../../ui/ToastProvider";
-import MemberTextsSection from "./MemberTextsSection";
+import { MemberTextsTab } from "./MemberTextsTab";
 
 const text = (
   id: number,
@@ -129,7 +129,7 @@ const renderSection = () => {
   render(
     <Wrapper>
       <ToastProvider>
-        <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+        <MemberTextsTab member={{ id: 7, name: "Sam", timeZone: null }} />
       </ToastProvider>
     </Wrapper>,
   );

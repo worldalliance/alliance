@@ -1,15 +1,7 @@
 import type { UserAwayRangeDto } from "@alliance/shared/client/types.gen";
+import { formatDate } from "../../lib/formatDate";
 
-function formatAwayDate(date: string) {
-  return new Date(date).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
+/** "Feb 1 to Feb 5", with a year only where it isn't this year. */
 export function formatAwayRange(range: UserAwayRangeDto) {
-  return `${formatAwayDate(range.startDate)} to ${formatAwayDate(
-    range.endDate,
-  )}`;
+  return `${formatDate(range.startDate)} to ${formatDate(range.endDate)}`;
 }

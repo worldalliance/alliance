@@ -10,7 +10,7 @@ import type { DefaultOptions } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { ToastProvider } from "../../ui/ToastProvider";
-import MemberTextsSection from "./MemberTextsSection";
+import { MemberTextsTab } from "./MemberTextsTab";
 
 const message = (overrides: Partial<MmsMessageDto>): MmsMessageDto => ({
   id: 1,
@@ -82,7 +82,7 @@ const renderSection = (queries?: DefaultOptions["queries"]) => {
     <Wrapper>
       <ToastProvider>
         <MemoryRouter>
-          <MemberTextsSection member={{ id: 7, name: "Sam", timeZone: null }} />
+          <MemberTextsTab member={{ id: 7, name: "Sam", timeZone: null }} />
         </MemoryRouter>
       </ToastProvider>
     </Wrapper>,

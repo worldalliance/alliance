@@ -600,6 +600,13 @@ export const RECORDS: readonly AdminRecord[] = [
     place: PlaceId.People,
     label: "Member",
     path: "/members/:userId",
+    tabs: [
+      { id: "texts", label: "Texts" },
+      { id: "tasks", label: "Tasks" },
+      { id: "membership", label: "Membership" },
+      { id: "notifications", label: "Notifications" },
+      { id: "profile", label: "Profile" },
+    ],
   },
   {
     id: RecordId.Group,

@@ -12,7 +12,7 @@ import {
 } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { ToastProvider } from "../../ui/ToastProvider";
-import MemberTextsSection from "./MemberTextsSection";
+import { MemberTextsTab } from "./MemberTextsTab";
 
 const textable = (phoneNumber: string): MmsThreadDto => ({
   threadId: null,
@@ -78,7 +78,7 @@ const renderSection = () => {
   const section = (member: { id: number; name: string }) => (
     <Wrapper>
       <ToastProvider>
-        <MemberTextsSection member={{ ...member, timeZone: null }} />
+        <MemberTextsTab member={{ ...member, timeZone: null }} />
       </ToastProvider>
     </Wrapper>
   );
