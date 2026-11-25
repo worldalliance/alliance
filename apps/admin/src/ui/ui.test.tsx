@@ -52,6 +52,35 @@ describe("Button", () => {
     ).toBe(true);
   });
 
+  it("keeps its label and focus while busy, ignoring presses and submits", () => {
+    const onClick = jest.fn();
+    const onSubmit = jest.fn((event: React.FormEvent) =>
+      event.preventDefault(),
+    );
+    render(
+      <form onSubmit={onSubmit}>
+        <Button onClick={onClick} busy>
+          Remove
+        </Button>
+        <Button type="submit" busy>
+          Save
+        </Button>
+      </form>,
+    );
+    const remove = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Remove",
+    });
+    remove.focus();
+    fireEvent.click(remove);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(remove.disabled).toBe(false);
+    expect(remove.getAttribute("aria-disabled")).toBe("true");
+    expect(document.activeElement).toBe(remove);
+  });
+
   it("lets `variant` win over the legacy `color`", () => {
     render(
       <Button

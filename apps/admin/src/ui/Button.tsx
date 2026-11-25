@@ -1,4 +1,5 @@
 import { cva } from "class-variance-authority";
+import { LoaderCircle } from "lucide-react";
 import React from "react";
 import { Link } from "react-router";
 import { cn } from "./cn";
@@ -48,24 +49,24 @@ const VARIANT_OF_COLOR: Record<ButtonColor, ButtonVariant> = {
 export type ButtonSize = "small" | "medium" | "large";
 
 export const buttonVariants = cva(
-  "relative box-border items-center justify-center gap-1.5 rounded-md border text-body font-medium transition-colors duration-fast focus-ring disabled:cursor-not-allowed disabled:opacity-50",
+  "relative box-border items-center justify-center gap-1.5 rounded-md border text-body font-medium transition-colors duration-fast focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress",
   {
     variants: {
       variant: {
         [ButtonVariant.Primary]:
-          "border-accent bg-accent text-accent-fg not-disabled:hover:border-accent-hover not-disabled:hover:bg-accent-hover",
+          "border-accent bg-accent text-accent-fg not-disabled:not-aria-busy:hover:border-accent-hover not-disabled:not-aria-busy:hover:bg-accent-hover",
         [ButtonVariant.Default]:
-          "border-line-strong bg-surface text-fg not-disabled:hover:bg-surface-2",
+          "border-line-strong bg-surface text-fg not-disabled:not-aria-busy:hover:bg-surface-2",
         [ButtonVariant.Soft]:
-          "border-line bg-surface-2 text-fg not-disabled:hover:bg-line",
+          "border-line bg-surface-2 text-fg not-disabled:not-aria-busy:hover:bg-line",
         [ButtonVariant.Ghost]:
-          "border-transparent bg-transparent text-fg not-disabled:hover:bg-line",
+          "border-transparent bg-transparent text-fg not-disabled:not-aria-busy:hover:bg-line",
         [ButtonVariant.Danger]:
-          "border-danger bg-danger text-on-danger not-disabled:hover:border-danger-hover not-disabled:hover:bg-danger-hover",
+          "border-danger bg-danger text-on-danger not-disabled:not-aria-busy:hover:border-danger-hover not-disabled:not-aria-busy:hover:bg-danger-hover",
         [ButtonVariant.DangerOutline]:
-          "border-danger bg-surface text-danger not-disabled:hover:bg-danger-soft",
+          "border-danger bg-surface text-danger not-disabled:not-aria-busy:hover:bg-danger-soft",
         [ButtonVariant.AccentOutline]:
-          "border-accent bg-surface text-accent not-disabled:hover:bg-accent-soft",
+          "border-accent bg-surface text-accent not-disabled:not-aria-busy:hover:bg-accent-soft",
       },
       size: {
         small: "min-h-control-sm px-2.5 py-1",
@@ -89,6 +90,11 @@ type ButtonProps = React.PropsWithChildren &
     | ({
         to?: never;
         ref?: React.RefObject<HTMLButtonElement | null>;
+        /**
+         * The button's own work is in flight: it keeps its label and its
+         * focus, shows a spinner and ignores presses, a submit included.
+         */
+        busy?: boolean;
       } & Pick<
         React.HTMLAttributes<HTMLButtonElement>,
         "onMouseEnter" | "onMouseLeave" | "onKeyDown" | "onPointerDown"
@@ -106,6 +112,7 @@ type ButtonProps = React.PropsWithChildren &
     | {
         to: string;
         ref?: never;
+        busy?: never;
         type?: never;
         onClick?: never;
         onMouseEnter?: never;
@@ -125,6 +132,7 @@ const Button: React.FC<ButtonProps> = ({
   color = ButtonColor.White,
   type = "button",
   disabled = false,
+  busy = false,
   onMouseEnter,
   onMouseLeave,
   onKeyDown,
@@ -157,13 +165,18 @@ const Button: React.FC<ButtonProps> = ({
       type={type}
       title={title}
       className={classes}
-      onClick={onClick}
+      // `preventDefault` also stops a submit button's form from submitting.
+      onClick={busy ? (event) => event.preventDefault() : onClick}
       disabled={disabled}
+      {...(busy && { "aria-disabled": true, "aria-busy": true })}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
     >
+      {busy && (
+        <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+      )}
       {children}
     </button>
   );
