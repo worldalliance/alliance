@@ -178,6 +178,7 @@
   --color-gray-2: #d6d6d6;
   --color-gray-3: #777;
   --color-gray-4: #404040;
+  --color-member-box: var(--color-zinc-100);
 }
 
 /*
