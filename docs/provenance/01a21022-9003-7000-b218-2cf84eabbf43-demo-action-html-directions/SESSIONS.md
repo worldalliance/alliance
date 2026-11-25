@@ -1,0 +1,3 @@
+- claude:2513efb5-7567-4030-bc96-42e239f595ca
+- codex:01a2109a-bedd-7411-b4f9-17348d571e12 (subagent)
+- codex:01a2109f-51d4-7ed1-bf31-533017d214a3 (subagent)
