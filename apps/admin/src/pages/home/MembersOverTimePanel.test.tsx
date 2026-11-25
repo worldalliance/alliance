@@ -41,7 +41,10 @@ describe("MembersOverTimePanel", () => {
     svg.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 350);
 
     const valueOf = (label: string) =>
-      screen.getByText(label, { selector: "dt span" }).closest("div")?.querySelector("dd")?.textContent;
+      screen
+        .getByText(label, { selector: "dt span" })
+        .closest("div")
+        ?.querySelector("dd")?.textContent;
     fireEvent.mouseMove(svg, { clientX: 900 });
     expect(valueOf("Churn")).toBe("20%");
     expect(valueOf("Active members")).toBe("12");
@@ -60,7 +63,9 @@ describe("MembersOverTimePanel", () => {
     if (!svg) throw new Error("no chart");
 
     fireEvent.keyDown(svg, { key: "End" });
-    expect(screen.getByText("Churned members", { selector: "dt span" })).toBeTruthy();
+    expect(
+      screen.getByText("Churned members", { selector: "dt span" }),
+    ).toBeTruthy();
     fireEvent.keyDown(svg, { key: "Escape" });
     expect(screen.queryByText("Churn")).toBeNull();
   });

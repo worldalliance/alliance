@@ -6,6 +6,7 @@ import { formatCount } from "../../lib/formatNumber";
 import {
   Cursor,
   CHART_MARGIN as MARGIN,
+  xTickCount,
   XTicks,
   YGrid,
 } from "../../ui/charts/axes";
@@ -158,7 +159,7 @@ function Areas({
         width={width}
       />
       <XTicks
-        ticks={geometry.xScale.ticks(Math.max(2, Math.floor(width / 120)))}
+        ticks={geometry.xScale.ticks(xTickCount(width))}
         x={geometry.xScale}
         label={(tick) => formatDate(tick)}
         height={HEIGHT}

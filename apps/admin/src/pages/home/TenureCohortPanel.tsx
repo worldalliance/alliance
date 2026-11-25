@@ -94,7 +94,6 @@ export function TenureCohortPanel({ className }: { className?: string }) {
   return (
     <Panel
       title="Task completion and churn after joining"
-      description="Members who first joined exactly N weeks ago"
       className={className}
     >
       <PanelStack>
@@ -119,6 +118,7 @@ export function TenureCohortPanel({ className }: { className?: string }) {
           >
             <NumberField
               label="Weeks after joining"
+              help="Joined exactly this many weeks ago."
               min={0}
               value={weeksInput}
               onChange={setWeeksInput}

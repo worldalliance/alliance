@@ -62,6 +62,8 @@ describe("KeyStats", () => {
     expect(
       await within(tile("All-time churn")).findByText("Couldn't load"),
     ).toBeTruthy();
-    expect(within(tile("Last month churn")).getByText("Couldn't load")).toBeTruthy();
+    expect(
+      within(tile("Last month churn")).getByText("Couldn't load"),
+    ).toBeTruthy();
   });
 });

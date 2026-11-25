@@ -130,7 +130,7 @@ function Histogram({ weeks }: { weeks: number[] }) {
               textAnchor="middle"
               className={axisTextClass}
             >
-              Weeks since signing
+              Weeks from signing to last completed task
             </text>
           </svg>
         );
@@ -157,8 +157,8 @@ export function TimeToChurnPanel({ className }: { className?: string }) {
       title="Time to churn"
       description={
         data && data.length > 0
-          ? `${countLabel(data.length, "churned member")}, from signing to last completed task`
-          : "From signing to last completed task"
+          ? countLabel(data.length, "churned member")
+          : undefined
       }
       className={className}
     >

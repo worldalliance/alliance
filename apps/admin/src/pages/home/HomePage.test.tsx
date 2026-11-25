@@ -306,7 +306,9 @@ describe("HomePage members over time", () => {
     });
     await waitFor(() => expect(next).toHaveLength(1));
 
-    await waitFor(() => expect(shown(within(section).getByRole("status"))).toBe(true));
+    await waitFor(() =>
+      expect(shown(within(section).getByRole("status"))).toBe(true),
+    );
     expect(
       screen.queryByText("No contract status data in this date range"),
     ).toBeNull();
@@ -315,8 +317,18 @@ describe("HomePage members over time", () => {
   it("keeps the chart, marked as updating, while a range change loads", async () => {
     respondToContractStatusHistory = async () =>
       Response.json([
-        { date: "2026-01-01", activeCount: 10, churnedCount: 1, totalEverSigned: 11 },
-        { date: "2026-02-01", activeCount: 12, churnedCount: 2, totalEverSigned: 14 },
+        {
+          date: "2026-01-01",
+          activeCount: 10,
+          churnedCount: 1,
+          totalEverSigned: 11,
+        },
+        {
+          date: "2026-02-01",
+          activeCount: 12,
+          churnedCount: 2,
+          totalEverSigned: 14,
+        },
       ]);
     renderPage();
     const section = await screen.findByRole("region", {
