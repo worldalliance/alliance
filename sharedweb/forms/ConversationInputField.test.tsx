@@ -21,7 +21,11 @@ const field: ConversationField = {
   expert: { userId: 7, userName: "Dr Maria" },
   message: "Were you aware of these statements?",
   options: [
-    { label: "Yes, and I accept them", value: "accept" },
+    {
+      label: "Yes, and I accept them",
+      value: "accept",
+      note: { placeholder: "Anything to add?" },
+    },
     {
       label: "Not convinced",
       value: "skeptic",
@@ -82,10 +86,20 @@ describe("ConversationInputField", () => {
     expect(
       screen.getByText("Please leave a note about your skepticism"),
     ).toBeTruthy();
+    expect(screen.getByText("Auto response")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your note (optional)"), {
       target: { value: "I doubt it" },
     });
     expect(screen.getByDisplayValue("I doubt it")).toBeTruthy();
+  });
+
+  it("shows the note box at once after an option with no reply", () => {
+    render(<Harness />);
+    fireEvent.click(
+      screen.getByRole("radio", { name: "Yes, and I accept them" }),
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByLabelText("Your note (optional)")).toBeTruthy();
   });
 
   it("shows a saved choice's reply straight away", () => {

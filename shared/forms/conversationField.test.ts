@@ -64,7 +64,7 @@ describe("useExpertTyping", () => {
 
   const render = (choice: string | undefined, reduceMotion = false) =>
     renderHook((props) => useExpertTyping(props), {
-      initialProps: { choice, reduceMotion },
+      initialProps: { choice, hasReply: true, reduceMotion },
     });
 
   it("doesn't type for the choice the field opened with", () => {
@@ -73,15 +73,21 @@ describe("useExpertTyping", () => {
 
   it("types after a pick, then stops", () => {
     const { result, rerender } = render(undefined);
-    rerender({ choice: "skeptic", reduceMotion: false });
+    rerender({ choice: "skeptic", hasReply: true, reduceMotion: false });
     expect(result.current).toBe(true);
     act(() => jest.advanceTimersByTime(EXPERT_TYPING_MS));
     expect(result.current).toBe(false);
   });
 
+  it("never types for a choice with no reply", () => {
+    const { result, rerender } = render(undefined);
+    rerender({ choice: "maybe", hasReply: false, reduceMotion: false });
+    expect(result.current).toBe(false);
+  });
+
   it("never types with reduce motion on", () => {
     const { result, rerender } = render(undefined, true);
-    rerender({ choice: "skeptic", reduceMotion: true });
+    rerender({ choice: "skeptic", hasReply: true, reduceMotion: true });
     expect(result.current).toBe(false);
   });
 });

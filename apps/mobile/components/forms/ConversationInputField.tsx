@@ -1,13 +1,13 @@
 import { chosenConversationOption } from "@alliance/common/forms/conversation";
 import type {
-  ConversationExpert,
   ConversationField,
   FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import { useExpertTyping } from "@alliance/shared/forms/useExpertTyping";
+import { autoResponseLabel } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
 import Reanimated, {
   useAnimatedStyle,
@@ -19,48 +19,22 @@ import Reanimated, {
 } from "react-native-reanimated";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
-import ProfileImage from "../ProfileImage";
 import Text from "../system/Text";
+import { ExpertBubble } from "./ExpertBubble";
 import { inputClasses, renderValidationMessage } from "./fieldParts";
-
-function ExpertBubble({
-  expert,
-  showName,
-  children,
-}: {
-  expert: ConversationExpert | null;
-  showName?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <View className="flex-row items-end gap-2">
-      <View importantForAccessibility="no-hide-descendants" accessible={false}>
-        <ProfileImage pfp={expert?.userProfilePicture ?? null} size="medium" />
-      </View>
-      <View className="max-w-[85%] items-start gap-1">
-        {showName && expert ? (
-          <Text className="px-2 text-xs text-zinc-500">{expert.userName}</Text>
-        ) : null}
-        <View className="rounded-2xl rounded-bl-sm bg-zinc-200 px-3.5 py-2">
-          {children}
-        </View>
-      </View>
-    </View>
-  );
-}
 
 function TypingDot({ delay }: { delay: number }) {
   const opacity = useSharedValue(0.3);
   useEffect(() => {
     opacity.value = withDelay(
       delay,
-      withRepeat(withTiming(1, { duration: 400 }), -1, true),
+      withRepeat(withTiming(1, { duration: 300 }), -1, true),
     );
   }, [delay, opacity]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Reanimated.View
-      className="h-2 w-2 rounded-full bg-zinc-500"
+      className="h-1.5 w-1.5 rounded-full bg-zinc-400"
       style={style}
     />
   );
@@ -72,9 +46,9 @@ function TypingDots({ name }: { name: string | undefined }) {
       accessible
       accessibilityLabel={name ? `${name} is typing` : "Typing"}
       accessibilityLiveRegion="polite"
-      className="h-6 flex-row items-center gap-1"
+      className="h-4 flex-row items-center gap-1"
     >
-      {[0, 150, 300].map((delay) => (
+      {[0, 120, 240].map((delay) => (
         <TypingDot key={delay} delay={delay} />
       ))}
     </View>
@@ -113,6 +87,7 @@ export function ConversationInputField({
   const chosen = chosenConversationOption(field, choice);
   const typing = useExpertTyping({
     choice,
+    hasReply: Boolean(chosen?.reply),
     reduceMotion: useReducedMotion(),
   });
 
@@ -122,11 +97,11 @@ export function ConversationInputField({
         <Markdown text={field.message} />
       </ExpertBubble>
 
-      <View className="items-end">
+      <View className="ml-[75px] items-start">
         <View
           accessibilityRole="radiogroup"
           className={cn(
-            "max-w-[85%] overflow-hidden rounded-2xl rounded-br-sm border bg-white",
+            "max-w-[85%] overflow-hidden rounded-2xl border bg-white",
             hasError ? "border-red-500" : "border-zinc-200",
           )}
         >
@@ -166,7 +141,11 @@ export function ConversationInputField({
       </View>
 
       {chosen?.reply ? (
-        <ExpertBubble expert={field.expert}>
+        <ExpertBubble
+          expert={field.expert}
+          faint={typing}
+          caption={typing ? undefined : autoResponseLabel}
+        >
           {typing ? (
             <TypingDots name={field.expert?.userName} />
           ) : (

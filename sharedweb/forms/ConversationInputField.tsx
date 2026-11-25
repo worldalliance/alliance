@@ -1,69 +1,35 @@
 import { chosenConversationOption } from "@alliance/common/forms/conversation";
 import type {
-  ConversationExpert,
   ConversationField,
   FormValue,
 } from "@alliance/common/forms/form-schema";
 import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
 import { useExpertTyping } from "@alliance/shared/forms/useExpertTyping";
+import { autoResponseLabel } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
-import { useId, type ReactNode } from "react";
+import { useId } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { prefersReducedMotion } from "../lib/reducedMotion";
-import { AvatarProfile } from "../ui/Avatar";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
+import { ExpertBubble } from "./ExpertBubble";
 import {
   fieldInputClassName,
   sharedInputClasses,
   ValidationMessage,
 } from "./fieldParts";
 
-function ExpertBubble({
-  expert,
-  showName,
-  id,
-  children,
-}: {
-  expert: ConversationExpert | null;
-  showName?: boolean;
-  id?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-end gap-2">
-      <AvatarProfile
-        pfp={expert?.userProfilePicture ?? null}
-        size="medium"
-        alt=""
-        className="shrink-0"
-      />
-      <div className="flex min-w-0 max-w-[85%] flex-col items-start gap-1">
-        {showName && expert && (
-          <span className="px-2 text-xs text-zinc-500">{expert.userName}</span>
-        )}
-        <div
-          id={id}
-          className="rounded-2xl rounded-bl-sm bg-zinc-200 px-3.5 py-2 text-zinc-900"
-        >
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TypingDots({ name }: { name: string | undefined }) {
   return (
     <span
       role="status"
       aria-label={name ? `${name} is typing` : "Typing"}
-      className="flex h-6 items-center gap-1"
+      className="flex h-4 items-center gap-1"
     >
-      {[0, 150, 300].map((delay) => (
+      {[0, 120, 240].map((delay) => (
         <span
           key={delay}
           aria-hidden
-          className="size-2 animate-bounce rounded-full bg-zinc-500"
+          className="size-1.5 animate-bounce rounded-full bg-zinc-400"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -98,6 +64,7 @@ export function ConversationInputField({
   const chosen = chosenConversationOption(field, choice);
   const typing = useExpertTyping({
     choice,
+    hasReply: Boolean(chosen?.reply),
     reduceMotion: prefersReducedMotion(),
   });
   const expertName = field.expert?.userName;
@@ -108,14 +75,14 @@ export function ConversationInputField({
         <FormMarkdownWrapper markdownContent={field.message} />
       </ExpertBubble>
 
-      <div className="flex justify-end">
+      <div className="ml-[75px] flex">
         <div
           role="radiogroup"
           aria-labelledby={messageId}
           aria-required={required}
           aria-invalid={hasError}
           className={cn(
-            "flex max-w-[85%] flex-col divide-y divide-zinc-200 overflow-hidden rounded-2xl rounded-br-sm border bg-white",
+            "flex max-w-[85%] flex-col divide-y divide-zinc-200 overflow-hidden rounded-2xl border bg-white",
             hasError ? "border-red-500" : "border-zinc-200",
           )}
         >
@@ -125,7 +92,9 @@ export function ConversationInputField({
               <label
                 key={option.value}
                 className={cn(
-                  "flex items-start gap-3 px-4 py-3 text-zinc-800",
+                  // Anchors the sr-only radio to this row: focusing it otherwise
+                  // scrolls the page to wherever its absolute position lands.
+                  "relative flex items-start gap-3 px-4 py-3 text-zinc-800",
                   "has-focus-visible:ring-2 has-focus-visible:ring-green has-focus-visible:ring-inset",
                   selected ? "bg-green/10" : "hover:bg-zinc-50",
                   disabled ? "cursor-default" : "cursor-pointer",
@@ -165,11 +134,11 @@ export function ConversationInputField({
       <div aria-live="polite" className="flex flex-col gap-3">
         {chosen?.reply &&
           (typing ? (
-            <ExpertBubble expert={field.expert}>
+            <ExpertBubble expert={field.expert} faint>
               <TypingDots name={expertName} />
             </ExpertBubble>
           ) : (
-            <ExpertBubble expert={field.expert}>
+            <ExpertBubble expert={field.expert} caption={autoResponseLabel}>
               <FormMarkdownWrapper markdownContent={chosen.reply} />
             </ExpertBubble>
           ))}

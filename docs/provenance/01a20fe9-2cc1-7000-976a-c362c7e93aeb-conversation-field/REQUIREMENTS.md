@@ -9,7 +9,7 @@ task: Spec a new "conversational" question type for the Alliance task form, in w
 
 - A new question type for task forms that makes the form feel conversational. It is one form question made of, in order: (user-originated)
   1. A chat bubble from an expert, left-aligned, with the expert's avatar beside it, holding markdown-formatted text.
-  2. The member's response: a select-one question whose options sit in a right-aligned chat bubble.
+  2. The member's response: a select-one question.
   3. An optional reply from the expert, shown when the member selects an option the admin gave a reply. Each option has its own reply or none.
   4. An optional note box at the end, where the member can write a note.
 
@@ -20,16 +20,20 @@ task: Spec a new "conversational" question type for the Alliance task form, in w
 
 - The admin picks the expert from Alliance users, as the Quote block does: searching users by name or id, and showing that user's name and profile picture. The expert needs an Alliance account. (agent-proposed, user-approved)
 - The expert's avatar sits beside each expert bubble, and the expert's name shows above the first expert bubble, as chat apps do. (agent-proposed, user-approved)
+- The avatar sits beside the bubble's top-left corner, not its bottom-left. (user-originated)
 
 ## Member behavior
 
-- The member's options, right-aligned, look like a radio list: a white card with a thin border and a divider between options, a radio circle beside each option that fills green when chosen, and a light green background on the chosen option. (user-originated)
+- The member's options sit on the left, not right-aligned, indented 75 px. (user-originated)
+- The member's options look like a radio list: a white card with a thin border and a divider between options, a radio circle beside each option that fills green when chosen, and a light green background on the chosen option. (user-originated)
 - After the member picks an option, every option stays visible with the chosen one highlighted, so the member can change their pick in place, and the expert reply changes to match the new pick. (agent-proposed, user-approved)
-- After a pick whose option has a reply, a short animation of typing dots ("...") plays in an expert bubble, then the reply appears. Members whose system has reduce-motion on get the reply straight away, with no dots. (agent-proposed, user-approved; the "..." dots user-originated)
+- After a pick whose option has a reply, a short animation of typing dots ("...") plays in an expert bubble, then the reply appears. The typing bubble and its dots are smaller and fainter than a message bubble, and the animation is a little shorter than one second. (smaller, fainter and shorter user-originated)
+- Each expert reply has a line reading "AUTO RESPONSE" just above its bubble, outside it, so members know it was written in advance: all caps, small, not italic, and faint. (user-originated) Members whose system has reduce-motion on get the reply straight away, with no dots. (agent-proposed, user-approved; the "..." dots user-originated)
 - The field's label is not shown to the member: the expert's bubble is the question. The label names the answer in admin responses and exports. (agent-proposed, user-approved)
 
 ## Note box
 
+- After a pick whose option has no reply, the note box, when that option shows one, appears at once, with no typing delay. (user-originated)
 - The admin sets per option whether the note box shows after that option is picked, so in the example it can show only after "not convinced". The admin can turn it on for every option. (agent-proposed, user-approved)
 - The field's usual Required switch makes the choice required. Each option whose note box is on can also make the note required after that option. (agent-proposed, user-approved)
 
@@ -40,3 +44,9 @@ task: Spec a new "conversational" question type for the Alliance task form, in w
 ## Apps
 
 - The first release supports both web and mobile member apps. Mobile builds that predate it show their existing "update the app" message for forms that use it. (agent-proposed, user-approved)
+
+## Expert message without a question
+
+- Admins can show an expert's message on its own, with no multiple-choice question and no note after it. (user-originated)
+- It is a display block of its own, "Expert message", like the Text and Quote blocks: the admin picks the expert from Alliance users and writes a markdown message, and members see it as the expert's avatar and chat bubble. It records no answer, so it adds no column to responses and can't be required. (agent-proposed, user-approved)
+- Each expert message and conversation shows the expert's name and avatar itself, even when it directly follows another from the same expert. (agent-proposed, user-approved)
