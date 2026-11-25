@@ -24,6 +24,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { StickyAccordionTitles } from "@alliance/sharedweb/forms/accordionStyles";
 import { formBlockedView } from "@alliance/sharedweb/forms/FormElements";
+import { PhoneConfirmSlot } from "@alliance/sharedweb/forms/phoneConfirmSlot";
 import { useWebFormState } from "@alliance/sharedweb/forms/useWebFormState";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
@@ -37,6 +38,7 @@ import {
   ImmersiveTone,
   useImmersiveNavbar,
 } from "../../lib/NavbarOptionsContext";
+import PhoneConfirm from "../phone/PhoneConfirm";
 import ProgressBar from "../system/ProgressBar";
 import { CardMenuSlotContext } from "./CardMenuSlot";
 import FlowButton, { FlowButtonKind } from "./FlowButton";
@@ -93,6 +95,13 @@ type TaskFlowProps = {
   signupHref?: string;
 };
 
+const confirmFormPhone = (phoneNumber: string) => (
+  <PhoneConfirm
+    phoneNumber={phoneNumber}
+    unconfirmedNote="Confirm your number so we know it’s right."
+  />
+);
+
 /**
  * `onCompleteAction` runs only once the member leaves the completion screen
  * of a live flow, since completing the action unmounts this panel.
@@ -117,7 +126,12 @@ export default function TaskFlow({
   onAbandonAction,
   signupHref,
 }: TaskFlowProps) {
-  const { user, isAuthenticated, loading: userLoading } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isImpersonation,
+    loading: userLoading,
+  } = useAuth();
   const menuSlot = useContext(CardMenuSlotContext);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { records, readOnly, withdraws } = TASK_FLOW_MODE_RULES[mode];
@@ -424,7 +438,15 @@ export default function TaskFlow({
               </>
             ) : null}
             <StickyAccordionTitles.Provider value>
-              {renderStage()}
+              <PhoneConfirmSlot.Provider
+                value={
+                  records && isAuthenticated && !isImpersonation
+                    ? confirmFormPhone
+                    : null
+                }
+              >
+                {renderStage()}
+              </PhoneConfirmSlot.Provider>
             </StickyAccordionTitles.Provider>
           </Dialog.Popup>
         </Dialog.Portal>

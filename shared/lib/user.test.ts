@@ -410,9 +410,14 @@ it("a profile update invalidates the visibility context", async () => {
   ).toBe(true);
 });
 
-it("a saved phone number refreshes the notification settings", async () => {
+it("a saved phone number refreshes the notification settings and the signed-in member", async () => {
+  let meLoads = 0;
   api.alsoServing({
     "POST /user/update": () => Response.json({ id: ALLOWED_USER }),
+    "GET /auth/me": () => {
+      meLoads += 1;
+      return Response.json({ user: { id: ALLOWED_USER } });
+    },
   });
   const { client, wrapper } = queryWrapper();
   const settingsState = () =>
@@ -424,6 +429,8 @@ it("a saved phone number refreshes the notification settings", async () => {
 
   await mutation.result.current.mutateAsync({ name: "Maya Rowan" });
   expect(settingsState()).toBe(false);
+  expect(meLoads).toBe(0);
   await mutation.result.current.mutateAsync({ phoneNumber: "+14155552671" });
   expect(settingsState()).toBe(true);
+  await waitFor(() => expect(meLoads).toBe(1));
 });

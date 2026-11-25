@@ -5,6 +5,7 @@ import type {
   SubmitFormDto,
 } from "@alliance/shared/client/types.gen";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import { seedsFromMember } from "@alliance/shared/forms/useFormSchemaMaps";
 import {
   followUpDraftStorageKey,
   followUpFormIntro,
@@ -80,10 +81,13 @@ export default function FollowUpFormPanel({
     [],
   );
 
-  if (isPending || !form) {
+  const schema = form?.schema as unknown as FormSchema | undefined;
+  const waitsForUser = userLoading && !!schema && seedsFromMember(schema);
+
+  if (isPending || !form || !schema || waitsForUser) {
     return (
       <div className="flex flex-col justify-center items-center p-6 border border-zinc-200 rounded-md">
-        {isPending ? (
+        {isPending || waitsForUser ? (
           <Spinner />
         ) : (
           <p className="text-red-500">{formError?.message}</p>
@@ -114,7 +118,7 @@ export default function FollowUpFormPanel({
       <div className="w-full">
         <FormRenderer
           key={formInstanceKey}
-          form={form.schema as unknown as FormSchema}
+          form={schema}
           id={form.id}
           formSnapshotId={form.formSnapshotId}
           actionId={actionId}

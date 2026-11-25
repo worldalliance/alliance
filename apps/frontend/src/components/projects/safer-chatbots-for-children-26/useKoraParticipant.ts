@@ -1,4 +1,3 @@
-import { GENERIC_FAILURE } from "@alliance/common/errorMessage";
 import { KoraError, KoraProjectStatus } from "@alliance/common/kora";
 import { OtpError } from "@alliance/common/otp";
 import {
@@ -13,7 +12,7 @@ import {
   type KoraParticipantStateDto,
   type StartKoraCodeDto,
 } from "@alliance/shared/client";
-import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import { namedRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
@@ -30,17 +29,8 @@ export const thrownKoraError = (
 ): OtpError | KoraError | undefined =>
   koraRefusalSchema.safeParse(error).data?.error;
 
-/** A refusal the server named carries its copy at any status, including the 503 of a failed delivery. */
-export function koraRefusalMessage(error: unknown): string {
-  return (
-    koraRefusalSchema.safeParse(error).data?.message ??
-    thrownRefusalMessage({
-      error,
-      fallback: GENERIC_FAILURE,
-      sessionExpired: GENERIC_FAILURE,
-    })
-  );
-}
+export const koraRefusalMessage = (error: unknown): string =>
+  namedRefusalMessage(error, koraRefusalSchema.shape.error);
 
 const timeZone = () => signupTimeZone(deviceTimeZone());
 

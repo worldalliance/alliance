@@ -11,6 +11,8 @@ const REFUSAL =
 let sent: UpdateProfileDto[] = [];
 let refusalSent: () => void = () => {};
 let refusalHeld: Promise<void> = Promise.resolve();
+let nameSent: () => void = () => {};
+let nameHeld: Promise<void> = Promise.resolve();
 
 serveApi(
   routes({
@@ -21,10 +23,15 @@ serveApi(
         refusalSent();
         await refusalHeld;
       }
+      if (body.name !== undefined) {
+        nameSent();
+        await nameHeld;
+      }
       return body.phoneNumber === TAKEN
         ? Response.json({ message: REFUSAL }, { status: 409 })
         : Response.json({ id: 7 });
     },
+    "GET /auth/me": () => Response.json({ user: { id: 7 } }),
   }),
 );
 
@@ -32,6 +39,8 @@ beforeEach(() => {
   sent = [];
   refusalSent = () => {};
   refusalHeld = Promise.resolve();
+  nameSent = () => {};
+  nameHeld = Promise.resolve();
 });
 
 const mount = () => {
@@ -130,5 +139,41 @@ describe("useSettingsAutosave", () => {
 
     expect(result.current.phoneNumberError).toBeNull();
     expect(result.current.saveStatus).toBe("saved");
+  });
+
+  it("offers to confirm a typed number only once it is saved", async () => {
+    const { result } = mount();
+    expect(result.current.confirmablePhoneNumber).toBe("+14155552671");
+
+    act(() =>
+      result.current.updateEditableUser({ phoneNumber: "+14155550199" }),
+    );
+
+    expect(result.current.confirmablePhoneNumber).toBeNull();
+    await waitFor(() =>
+      expect(result.current.confirmablePhoneNumber).toBe("+14155550199"),
+    );
+  });
+
+  it("keeps a number confirmed while another field's save was on its way", async () => {
+    let release = () => {};
+    nameHeld = new Promise((resolve) => {
+      release = resolve;
+    });
+    const sentName = new Promise<void>((resolve) => {
+      nameSent = resolve;
+    });
+    const { result } = mount();
+    act(() => result.current.updateEditableUser({ phoneNumber: TAKEN }));
+    await waitFor(() => expect(result.current.phoneNumberError).toBe(REFUSAL));
+    act(() => result.current.updateEditableUser({ name: "Grace" }));
+    await act(() => sentName);
+
+    act(() => result.current.phoneNumberConfirmed(TAKEN));
+    await act(async () => release());
+
+    await waitFor(() => expect(result.current.saveStatus).toBe("saved"));
+    expect(result.current.confirmablePhoneNumber).toBe(TAKEN);
+    expect(sent.filter((body) => body.phoneNumber === TAKEN)).toHaveLength(1);
   });
 });

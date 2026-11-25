@@ -1,6 +1,7 @@
-import type { AnyField } from "@alliance/common/forms/form-schema";
+import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import {
+  answersToStore,
   applyDefaultValues,
   clampPageIndex,
   readStoredFormDraft,
@@ -64,6 +65,21 @@ describe("restorableAnswers", () => {
   });
 });
 
+describe("answersToStore", () => {
+  it("leaves out an answer equal to its default, arrays included", () => {
+    const defaults = new Map<string, FormValue>([
+      ["zone", "Europe/London"],
+      ["places", ["ny", "la"]],
+    ]);
+    expect(
+      answersToStore(
+        { zone: "Europe/London", places: ["ny", "la"], name: "Ada" },
+        defaults,
+      ),
+    ).toEqual({ name: "Ada" });
+  });
+});
+
 describe("readStoredFormDraft", () => {
   const name: AnyField = {
     id: "name",
@@ -84,6 +100,7 @@ describe("readStoredFormDraft", () => {
       publicAnswers: { name: true, gone: false },
       currentPageIndex: 2,
       syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+      edited: true,
     });
     expect(read(raw)).toEqual(
       R.success({
@@ -91,6 +108,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: { name: true },
         currentPageIndex: 2,
         syncedUpdatedAt: "2026-01-01T00:00:00.000Z",
+        edited: true,
       }),
     );
   });
@@ -103,6 +121,7 @@ describe("readStoredFormDraft", () => {
           publicAnswers: { name: "yes" },
           currentPageIndex: "1",
           syncedUpdatedAt: null,
+          edited: "yes",
         }),
       ),
     ).toEqual(
@@ -111,6 +130,7 @@ describe("readStoredFormDraft", () => {
         publicAnswers: {},
         currentPageIndex: undefined,
         syncedUpdatedAt: undefined,
+        edited: false,
       }),
     );
   });

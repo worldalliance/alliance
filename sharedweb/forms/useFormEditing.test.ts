@@ -53,6 +53,7 @@ const renderEditing = ({
       schema,
       userDefaultPublic: true,
       timeZone: "UTC",
+      profilePhoneNumber: null,
     });
     const draft = useFormDraftState({
       ...maps,

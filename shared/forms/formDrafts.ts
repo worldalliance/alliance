@@ -9,6 +9,7 @@ import type {
 import { isValidRangeSelection } from "@alliance/common/forms/range";
 import { isValidRankingSelection } from "@alliance/common/forms/ranking";
 import { R, type Result } from "@alliance/common/result";
+import { isEqual } from "es-toolkit";
 import { z } from "zod";
 import { dropUnuploadedFileAnswers } from "./fileAnswers";
 import { dropUnknownOptionAnswers } from "./optionAnswers";
@@ -176,6 +177,49 @@ export function applyDefaultValues(
   return base ? base : {};
 }
 
+/**
+ * The answers that differ from their default. A stored draft keeps only these,
+ * so restoring refills the rest from the default current then, such as the
+ * member's timezone, rather than a stale copy.
+ */
+export function answersToStore(
+  answers: Record<string, FormValue>,
+  defaults: Map<string, FormValue>,
+): Record<string, FormValue> {
+  return Object.fromEntries(
+    Object.entries(answers).filter(
+      ([id, value]) => !isEqual(defaults.get(id), value),
+    ),
+  );
+}
+
+/**
+ * The answers a synced draft carries: a prefilled phone answer still at the
+ * member's number goes as "", which `answersFromSync` reads back as the number
+ * on file then, so a number changed since doesn't come back stale.
+ */
+export function answersToSync(
+  answers: Record<string, FormValue>,
+  profilePhoneDefaults: Map<string, FormValue>,
+): Record<string, FormValue> {
+  const synced = { ...answers };
+  for (const [id, phone] of profilePhoneDefaults) {
+    if (synced[id] === phone) synced[id] = "";
+  }
+  return synced;
+}
+
+export function answersFromSync(
+  synced: Record<string, FormValue>,
+  profilePhoneDefaults: Map<string, FormValue>,
+): Record<string, FormValue> {
+  const answers = { ...synced };
+  for (const [id, phone] of profilePhoneDefaults) {
+    if (answers[id] === "") answers[id] = phone;
+  }
+  return answers;
+}
+
 export function filterAnswersByFieldIds(
   answers: Record<string, FormValue> | null,
   allowedFields: Map<string, AnyField>,
@@ -240,6 +284,7 @@ const storedFormDraftSchema = z.object({
   publicAnswers: z.record(z.string(), z.unknown()).optional().catch(undefined),
   currentPageIndex: z.number().optional().catch(undefined),
   syncedUpdatedAt: z.string().optional().catch(undefined),
+  edited: z.boolean().optional().catch(undefined),
 });
 
 export type StoredFormDraft = {
@@ -247,6 +292,8 @@ export type StoredFormDraft = {
   publicAnswers: Record<string, boolean>;
   currentPageIndex: number | undefined;
   syncedUpdatedAt: string | undefined;
+  /** Set once the member has edited the draft on this device, even back to no answers. */
+  edited: boolean;
 };
 
 /**
@@ -268,8 +315,13 @@ export function readStoredFormDraft({
     (json) => {
       const parsed = storedFormDraftSchema.safeParse(json);
       if (!parsed.success) return R.failure(parsed.error);
-      const { formData, publicAnswers, currentPageIndex, syncedUpdatedAt } =
-        parsed.data;
+      const {
+        formData,
+        publicAnswers,
+        currentPageIndex,
+        syncedUpdatedAt,
+        edited,
+      } = parsed.data;
       return R.success({
         answers: formData
           ? // Safe: the renderer wrote these values from its FormValue state.
@@ -281,6 +333,7 @@ export function readStoredFormDraft({
         publicAnswers: restorablePublicAnswers(publicAnswers, outputFieldIds),
         currentPageIndex,
         syncedUpdatedAt,
+        edited: edited ?? false,
       });
     },
   );
@@ -291,6 +344,7 @@ export function serializeStoredFormDraft(draft: {
   publicAnswers: Partial<Record<string, boolean>>;
   currentPageIndex: number;
   syncedUpdatedAt: string | null;
+  edited?: boolean;
 }): string {
   return JSON.stringify({ ...draft, updatedAt: Date.now() });
 }
