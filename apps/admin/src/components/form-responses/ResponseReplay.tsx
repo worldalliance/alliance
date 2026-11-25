@@ -1,11 +1,13 @@
-import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import type { AnyField } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
-import { CardStyle } from "@alliance/shared/styles/card";
+import { parseStoredFormSchema } from "@alliance/shared/parsed-dtos";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import React, { useMemo } from "react";
 import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../../lib/aiScore";
-import Button, { ButtonColor } from "../../ui/Button";
-import Card from "../../ui/Card";
+import Badge, { BadgeTone } from "../../ui/Badge";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { PageBody } from "../../ui/templates/Page";
+import { ContentState, FormSkeleton } from "../../ui/templates/States";
 import type { FormWithSchema } from "../FormResponsesView";
 
 type ResponseReplayProps = {
@@ -29,21 +31,13 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
   currentResponse,
   fieldsById,
 }) => {
-  const currentResponseAiInlineLabels = useMemo<
-    Record<string, React.ReactNode>
-  >(() => {
-    const detections = currentResponse?.aiDetectionResults ?? [];
-    const inlineScores: Record<string, React.ReactNode> = {};
-
-    for (const detection of detections) {
-      if (!detection.fieldPath.startsWith("answers.")) {
-        continue;
-      }
+  const aiScoreLabels = useMemo<Record<string, React.ReactNode>>(() => {
+    const labels: Record<string, React.ReactNode> = {};
+    for (const detection of currentResponse?.aiDetectionResults ?? []) {
+      if (!detection.fieldPath.startsWith("answers.")) continue;
       const fieldId = detection.fieldPath.slice("answers.".length);
       const field = fieldsById.get(fieldId);
-      if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) {
-        continue;
-      }
+      if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) continue;
       if (
         typeof detection.aiProbability !== "number" ||
         Number.isNaN(detection.aiProbability) ||
@@ -51,78 +45,71 @@ const ResponseReplay: React.FC<ResponseReplayProps> = ({
       ) {
         continue;
       }
-      inlineScores[fieldId] = (
-        <span className="text-sm font-semibold text-red-600">
-          {formatAiScore(detection.aiProbability)}
-        </span>
+      labels[fieldId] = (
+        <Badge tone={BadgeTone.Danger} className="self-auto">
+          AI score {formatAiScore(detection.aiProbability)}
+        </Badge>
       );
     }
-
-    return inlineScores;
+    return labels;
   }, [currentResponse, fieldsById]);
 
-  const emptyStateMessage = filterActive
-    ? "No responses match this filter."
-    : "No responses yet for this form.";
+  const snapshot = useMemo(
+    () =>
+      currentResponse?.schemaSnapshot
+        ? parseStoredFormSchema(currentResponse.schemaSnapshot)
+        : null,
+    [currentResponse],
+  );
+  const skeleton = (
+    <div className="mx-auto w-full max-w-xl">
+      <FormSkeleton fields={5} />
+    </div>
+  );
 
   return (
-    <div className="px-2">
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Loading responses...</p>
-        </div>
-      ) : error ? (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-red-500">{error}</p>
-        </div>
-      ) : filteredTotal === 0 ? (
-        <Card style={CardStyle.White} className="flex items-center gap-3">
-          <p className="text-gray-600">{emptyStateMessage}</p>
-          {filterActive && (
-            <Button
-              onClick={onClearFilter}
-              color={ButtonColor.White}
-              size="small"
-            >
-              Clear filter
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <>
-          {form !== null && (
-            <div className="max-w-[600px] mx-auto">
-              {(() => {
-                const responseSchema =
-                  (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
-                  form.schema;
-                return (
-                  <div className="member-surface bg-white p-6 border border-gray-200 rounded-lg">
-                    <FormRenderer
-                      id={currentResponse?.formId ?? form.id}
-                      formSnapshotId={
-                        currentResponse?.formSnapshotId ?? form.formSnapshotId
-                      }
-                      actionId={0}
-                      form={responseSchema}
-                      completedFormResponse={currentResponse}
-                      renderFormAsCompleted
-                      onSubmit={null}
-                      userId={currentResponse?.user?.id}
-                      user={currentResponse?.user ?? undefined}
-                      adminPreviewUserId={currentResponse?.user?.id}
-                      showDetail
-                      disableOptionRandomization
-                      fieldLabelRightContent={currentResponseAiInlineLabels}
-                    />
-                  </div>
-                );
-              })()}
+    <PageBody>
+      <ContentState
+        loading={loading || (form === null && filteredTotal > 0)}
+        skeleton={skeleton}
+        error={error}
+        errorTitle="Couldn't load responses"
+        empty={filteredTotal === 0}
+        filtered={filterActive}
+        onClearFilters={onClearFilter}
+        emptyTitle="No responses yet"
+      >
+        {form && (
+          <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
+            {currentResponse?.schemaSnapshot && snapshot === null && (
+              <Banner tone={BannerTone.Warning} inline>
+                This response's saved version of the form couldn't be read, so
+                its answers are shown in the current version of {form.title}.
+              </Banner>
+            )}
+            <div className="member-surface rounded-card border border-line bg-surface p-6">
+              <FormRenderer
+                id={currentResponse?.formId ?? form.id}
+                formSnapshotId={
+                  currentResponse?.formSnapshotId ?? form.formSnapshotId
+                }
+                actionId={0}
+                form={snapshot ?? form.schema}
+                completedFormResponse={currentResponse}
+                renderFormAsCompleted
+                onSubmit={null}
+                userId={currentResponse?.user?.id}
+                user={currentResponse?.user ?? undefined}
+                adminPreviewUserId={currentResponse?.user?.id}
+                showDetail
+                disableOptionRandomization
+                fieldLabelRightContent={aiScoreLabels}
+              />
             </div>
-          )}
-        </>
-      )}
-    </div>
+          </div>
+        )}
+      </ContentState>
+    </PageBody>
   );
 };
 

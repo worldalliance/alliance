@@ -3,6 +3,7 @@ import type { AdminFollowUpFormDto } from "./client/types.gen";
 import {
   parseFollowUpFormDto,
   parseFormulaChoices,
+  parseStoredFormSchema,
   parseVisibilityValidatorResults,
 } from "./parsed-dtos";
 
@@ -103,6 +104,32 @@ describe("parseFollowUpFormDto", () => {
     );
     expect(value.followUpForm.cohortExpression).toBeNull();
     expect(value.cohortExpressionError).not.toBeNull();
+    expect(logged).toBe(1);
+  });
+});
+
+describe("parseStoredFormSchema", () => {
+  const radio = {
+    id: "mood",
+    type: "input",
+    kind: "radio",
+    label: "Mood",
+    options: [
+      { value: "a", label: "A" },
+      { value: "a", label: "Also A" },
+    ],
+  };
+
+  it("keeps a snapshot that fails only a later rule, as stored", () => {
+    const stored = { pages: [{ id: "p", fields: [radio] }], outputViews: [] };
+    expect(parseStoredFormSchema(stored)).toBe(stored);
+  });
+
+  it("reads nothing from a value without pages of fields", () => {
+    const { value, logged } = withSilencedErrors(() =>
+      parseStoredFormSchema({ pages: "nope" }),
+    );
+    expect(value).toBeNull();
     expect(logged).toBe(1);
   });
 });

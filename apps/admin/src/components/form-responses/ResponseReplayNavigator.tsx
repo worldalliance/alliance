@@ -2,15 +2,34 @@ import type {
   ActionWithdrawalDto,
   FormResponseDto,
 } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import { CirclePlay } from "lucide-react";
 import React from "react";
+import { formatDateTime } from "../../lib/formatDate";
+import { countOf, formatCount } from "../../lib/formatNumber";
 import type { filterDescription } from "../../lib/responseFilter";
-import Button, { ButtonColor } from "../../ui/Button";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { Combobox, type ComboboxOption } from "../../ui/Combobox";
+import NewTabMark from "../../ui/NewTabMark";
 import Pagination from "../../ui/Pagination";
+import { FilterBar, FilterChip, listCount } from "../../ui/templates/List";
 import { IdentityChip } from "../IdentitySwatch";
-import { WithdrawalInfo } from "../WithdrawalInfo";
-import type { RespondentSearch } from "./useRespondentSearch";
+import { WithdrawalBadge, WithdrawalDetails } from "../WithdrawalInfo";
+import {
+  RESPONDENT_RESULT_LIMIT,
+  type RespondentSearch,
+} from "./useRespondentSearch";
+
+/** Where PostHog plays the recording a response stored as `sessionReplayUrl`. */
+export const sessionRecordingHref = (sessionReplayUrl: string): string =>
+  "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
+  sessionReplayUrl.substring(sessionReplayUrl.lastIndexOf("/") + 1);
+
+const CHIP_FIELD_LENGTH = 32;
+
+const shorten = (text: string): string =>
+  text.length > CHIP_FIELD_LENGTH
+    ? `${text.slice(0, CHIP_FIELD_LENGTH - 1)}…`
+    : text;
 
 type ResponseReplayNavigatorProps = {
   filterSummary: ReturnType<typeof filterDescription>;
@@ -26,6 +45,53 @@ type ResponseReplayNavigatorProps = {
   withdrawnUserMap: Map<number, ActionWithdrawalDto>;
 };
 
+/** Ends the list when the search matches more than it shows; picking it does nothing. */
+const MORE = -1;
+
+function RespondentCombobox({
+  search,
+  page,
+}: {
+  search: RespondentSearch;
+  page: number;
+}) {
+  const shown = search.results.slice(0, RESPONDENT_RESULT_LIMIT);
+  const hidden = search.results.length - shown.length;
+  const options: ComboboxOption<number>[] = shown.map(
+    ({ response, idx, name }) => {
+      const submitted = formatDateTime(response.createdAt);
+      return {
+        value: idx,
+        label: name,
+        detail: idx + 1 === page ? `Showing · ${submitted}` : submitted,
+      };
+    },
+  );
+  if (hidden > 0) {
+    options.push({
+      value: MORE,
+      label: `${formatCount(hidden)} more. Type a name to narrow the list.`,
+    });
+  }
+  return (
+    <div className="w-80">
+      <Combobox
+        aria-label="Find a respondent"
+        placeholder="Find a respondent"
+        className="h-control-sm"
+        options={options}
+        value={null}
+        onChange={(idx) => {
+          if (idx !== MORE) search.select(idx);
+        }}
+        query={search.query}
+        onQueryChange={search.setQuery}
+        emptyText="No matching responses"
+      />
+    </div>
+  );
+}
+
 const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
   filterSummary,
   filteredTotal,
@@ -39,127 +105,80 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
   getResponseVariantName,
   withdrawnUserMap,
 }) => {
-  const currentResponseVariantName = currentResponse
+  const variantName = currentResponse
     ? getResponseVariantName(currentResponse)
     : null;
-  const currentWithdrawal =
+  const withdrawal =
     currentResponse?.user?.id != null
       ? (withdrawnUserMap.get(currentResponse.user.id) ?? null)
       : null;
+  const recording = currentResponse?.sessionReplayUrl;
 
   return (
-    <div className="px-6 pb-4 border-t border-gray-100 pt-3">
-      {filterSummary && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="text-sm text-gray-600">
-            Filtered:{" "}
-            <span className="font-medium text-gray-900">
-              {filterSummary.fieldLabel}
-            </span>{" "}
-            — {filterSummary.description}{" "}
-            <span className="text-gray-400">
-              ({filteredTotal} of {total})
+    <div className="bg-surface">
+      <FilterBar
+        count={
+          filterSummary
+            ? listCount({ shown: filteredTotal, total, noun: "response" })
+            : countOf(filteredTotal, "response")
+        }
+        actions={
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, filteredTotal)}
+            onPageChange={onPageChange}
+            siblingCount={0}
+          />
+        }
+      >
+        <RespondentCombobox search={search} page={page} />
+        {filterSummary && (
+          <span
+            title={`${filterSummary.fieldLabel}: ${filterSummary.description}`}
+          >
+            <FilterChip
+              field={shorten(filterSummary.fieldLabel)}
+              value={shorten(filterSummary.description)}
+              onRemove={onClearFilter}
+            />
+          </span>
+        )}
+      </FilterBar>
+      {currentResponse && (
+        <div className="flex min-h-14 items-center gap-3 border-b border-line px-page py-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 className="max-w-full truncate text-heading font-semibold">
+              {getRespondentName(currentResponse)}
+            </h2>
+            {variantName && (
+              <IdentityChip seed={variantName} label={variantName} />
+            )}
+            {withdrawal && (
+              <span className="flex min-w-0 items-center gap-2">
+                <WithdrawalBadge />
+                <WithdrawalDetails withdrawal={withdrawal} />
+              </span>
+            )}
+            <span className="text-fg-muted">
+              Submitted {formatDateTime(currentResponse.createdAt)}
             </span>
           </div>
-          <Button
-            onClick={onClearFilter}
-            color={ButtonColor.White}
-            size="small"
-          >
-            Clear filter
-          </Button>
-        </div>
-      )}
-      <div className="flex items-center justify-between flex-wrap md:flex-nowrap gap-3">
-        <Pagination
-          page={page}
-          totalPages={Math.max(1, filteredTotal)}
-          onPageChange={onPageChange}
-        />
-
-        <div className="relative" ref={search.containerRef}>
-          <input
-            type="text"
-            value={search.query}
-            onChange={(e) => {
-              search.setQuery(e.target.value);
-              search.setOpen(true);
-            }}
-            onFocus={() => search.setOpen(true)}
-            onKeyDown={search.handleKeyDown}
-            placeholder="Search by name..."
-            className="w-56 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-          />
-          {search.open && (
-            <div className="absolute z-30 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-              {search.results.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-gray-500">
-                  No matching responses
-                </div>
-              ) : (
-                search.results.map(({ response, idx, name }) => (
-                  <button
-                    key={response.id ?? `${response.sid}-${idx}`}
-                    type="button"
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-b-0",
-                      idx + 1 === page && "bg-blue-50 font-medium",
-                    )}
-                    onClick={() => search.select(idx)}
-                  >
-                    <div className="truncate text-gray-900">{name}</div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(response.createdAt).toLocaleString()}
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
+          {recording && (
+            <Button
+              size="small"
+              variant={ButtonVariant.Default}
+              className="shrink-0"
+              onClick={() =>
+                window.open(sessionRecordingHref(recording), "_blank")
+              }
+            >
+              <CirclePlay aria-hidden="true" className="size-4" />
+              Watch session recording
+              <NewTabMark />
+            </Button>
           )}
         </div>
-
-        {currentResponse && (
-          <div className="flex items-center gap-4">
-            <div className="text-right min-w-[200px]">
-              <div className="flex items-center justify-end gap-2">
-                <p className="font-medium text-gray-900 truncate max-w-[700px]">
-                  {getRespondentName(currentResponse)}
-                </p>
-                {currentResponseVariantName && (
-                  <IdentityChip
-                    seed={currentResponseVariantName}
-                    label={currentResponseVariantName}
-                  />
-                )}
-                {currentWithdrawal && (
-                  <WithdrawalInfo withdrawal={currentWithdrawal} />
-                )}
-              </div>
-              <p className="text-sm text-gray-500">
-                {new Date(currentResponse.createdAt).toLocaleString()}
-              </p>
-            </div>
-            {currentResponse.sessionReplayUrl && (
-              <Button
-                size="small"
-                color={ButtonColor.BlueOutline}
-                onClick={() =>
-                  window.open(
-                    "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
-                      currentResponse.sessionReplayUrl!.substring(
-                        currentResponse.sessionReplayUrl!.lastIndexOf("/") + 1,
-                      ),
-                    "_blank",
-                  )
-                }
-              >
-                <CirclePlay size={14} className="mr-1.5" />
-                Replay
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };

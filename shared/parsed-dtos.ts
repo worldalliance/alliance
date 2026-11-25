@@ -19,6 +19,10 @@ import {
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
 import {
+  formSchema,
+  type FormSchema,
+} from "@alliance/common/forms/form-schema";
+import {
   readFormulaChoices,
   type FormulaChoices,
 } from "@alliance/common/forms/formula-choices";
@@ -31,7 +35,7 @@ import {
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
 import { R, type Result } from "@alliance/common/result";
-import type { ZodError } from "zod";
+import { z, type ZodError } from "zod";
 import type { AdminActionDto, AdminFollowUpFormDto } from "./client/types.gen";
 
 export type ParsedActionDto = Omit<AdminActionDto, "cohortExpression"> & {
@@ -134,4 +138,24 @@ export function parseFormulaChoices(value: unknown): FormulaChoices {
 /** The row a response was submitted with; the server writes it validated. */
 export function parseAssignedRow(value: unknown): AssignedRow | null {
   return assignedRowSchema.nullable().parse(value);
+}
+
+const storedSchemaShapeSchema = z.looseObject({
+  pages: z.array(z.looseObject({ fields: z.array(z.unknown()) })),
+});
+
+/**
+ * A response's `schemaSnapshot` as members are shown it. A snapshot can fail
+ * rules added after it was written; the server serves it as stored, so this
+ * does too. Null only when it isn't a form with pages of fields.
+ */
+export function parseStoredFormSchema(value: unknown): FormSchema | null {
+  const parsed = formSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  if (!storedSchemaShapeSchema.safeParse(value).success) {
+    console.error("Saved form snapshot is unreadable", parsed.error, value);
+    return null;
+  }
+  // Safe as far as the server's own `formSchemaOf` is: it has a form's shape.
+  return value as FormSchema;
 }

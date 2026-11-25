@@ -94,7 +94,7 @@ it("shows the answers to the question picked", () => {
   expect(screen.getByText("Hello there")).toBeTruthy();
 });
 
-it("replays the respondent picked from the name search", () => {
+it("replays the respondent picked from the name search", async () => {
   renderView({
     path: "/?tab=replays",
     form: null,
@@ -103,12 +103,12 @@ it("replays the respondent picked from the name search", () => {
       { ...response, id: 2, user: makeUser({ id: 2, name: "Bea" }) },
     ],
   });
-  fireEvent.change(screen.getByPlaceholderText("Search by name..."), {
-    target: { value: "bea" },
-  });
-  fireEvent.click(screen.getByText("Bea"));
+  const box = screen.getByRole("combobox", { name: "Find a respondent" });
+  fireEvent.keyDown(box, { key: "ArrowDown" });
+  fireEvent.input(box, { target: { value: "bea" } });
+  fireEvent.click(await screen.findByRole("option", { name: /Bea/ }));
 
-  expect(screen.getByText("Bea")).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Bea" })).toBeTruthy();
   expect(screen.queryByText("Ana")).toBeNull();
 });
 
