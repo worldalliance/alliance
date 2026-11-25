@@ -9,8 +9,8 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach } from "bun:test";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import LeaveGuard from "../components/LeaveGuard";
-import { ToastProvider } from "../ui/ToastProvider";
+import LeaveGuard from "../../components/LeaveGuard";
+import { ToastProvider } from "../../ui/ToastProvider";
 import FormulaPage from "./FormulaPage";
 
 export const base: FormulaDto = {
@@ -50,6 +50,7 @@ export const api: {
   answers: (FormulaProblemDto[] | number)[];
   listFails: boolean;
   listHeld: Promise<void> | undefined;
+  saveHeld: Promise<void> | undefined;
   listFetches: number;
 } = {
   stored: [],
@@ -57,6 +58,7 @@ export const api: {
   answers: [],
   listFails: false,
   listHeld: undefined,
+  saveHeld: undefined,
   listFetches: 0,
 };
 
@@ -74,6 +76,7 @@ export const serveFormulas = () => {
       "POST /formulas/save": async ({ request }) => {
         const body: SaveFormulasDto = await request.json();
         api.saves.push(body);
+        await api.saveHeld;
         const answer = api.answers.shift() ?? [];
         if (typeof answer === "number") {
           return Response.json(
@@ -111,6 +114,7 @@ export const serveFormulas = () => {
     api.answers = [];
     api.listFails = false;
     api.listHeld = undefined;
+    api.saveHeld = undefined;
     api.listFetches = 0;
   });
 };

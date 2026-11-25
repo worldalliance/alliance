@@ -1,5 +1,6 @@
 import React from "react";
-import Button, { ButtonColor } from "../../ui/Button";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
 
 export type Refusal = { message: string; outdated: boolean };
 
@@ -9,17 +10,23 @@ const SaveRefusal: React.FC<{
   onReload: () => void;
 }> = ({ refusal, onReload }) =>
   refusal === null ? null : (
-    <div
-      role="alert"
-      className="border border-red-300 bg-red-50 rounded p-3 text-sm text-red-800 max-w-3xl space-y-2"
+    <Banner
+      inline
+      tone={BannerTone.Danger}
+      action={
+        refusal.outdated && (
+          <Button
+            size="small"
+            variant={ButtonVariant.Default}
+            onClick={onReload}
+          >
+            Reload
+          </Button>
+        )
+      }
     >
-      <p>{refusal.message}</p>
-      {refusal.outdated && (
-        <Button size="small" color={ButtonColor.White} onClick={onReload}>
-          Reload
-        </Button>
-      )}
-    </div>
+      {refusal.message}
+    </Banner>
   );
 
 export default SaveRefusal;

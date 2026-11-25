@@ -8,11 +8,14 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export function useFormulasAdmin() {
+export function useFormulasAdmin({
+  enabled = true,
+}: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.formulasAdmin(),
     queryFn: () =>
       formulasListAdmin({ throwOnError: true }).then((r) => r.data),
+    enabled,
   });
 }
 

@@ -59,7 +59,6 @@ src/components/HistoryControls.tsx
 src/components/HomePlacementBadges.tsx
 src/components/IdentitySwatch.tsx
 src/components/InsertableTokenButton.tsx
-src/components/MarkedDiagnostics.tsx
 src/components/NewActionTimeline.tsx
 src/components/NumberSample.tsx
 src/components/OpenReferenceWarning.tsx
@@ -177,13 +176,6 @@ src/components/form-responses/FormResponsesHeader.tsx
 src/components/form-responses/QuestionResponses.tsx
 src/components/form-responses/ResponseReplay.tsx
 src/components/form-responses/ResponseReplayNavigator.tsx
-src/components/formulas/FormulaDiagnostics.tsx
-src/components/formulas/FormulaFields.tsx
-src/components/formulas/FormulaFixes.tsx
-src/components/formulas/FormulaHistory.tsx
-src/components/formulas/OtherFormulaProblems.tsx
-src/components/formulas/PartFixFields.tsx
-src/components/formulas/SaveRefusal.tsx
 src/components/organizations/OrganizationCard.tsx
 src/components/organizations/OrganizationLinks.tsx
 src/components/output-builder/EditableOutputFieldBlock.tsx
@@ -259,7 +251,6 @@ src/pages/CustomLinksPage.tsx
 src/pages/ExternalShareTargetsPage.tsx
 src/pages/FormSnapshotMigration.tsx
 src/pages/FormsList.tsx
-src/pages/FormulaPage.tsx
 src/pages/HostedDocsPage.tsx
 src/pages/InviteFeedPage.tsx
 src/pages/InviteGraphPage.tsx

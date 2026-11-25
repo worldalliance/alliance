@@ -1,6 +1,7 @@
 import type { FormulaProblemDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import {
   api,
   base,
@@ -18,7 +19,7 @@ test("shows what a save would break, and saves the fix with it", async () => {
   renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   expect(
     await screen.findByText("The left of this operator has to be a number."),
   ).toBeTruthy();
@@ -33,7 +34,7 @@ test("shows what a save would break, and saves the fix with it", async () => {
     screen.getByRole("heading", { name: "Fixing doubled in this save" }),
   );
   typeText("Formula", "base + base", 1);
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(api.saves).toHaveLength(2));
   expect(
     api.saves[1].edits.map(({ id, baseVersionId, text }) => ({
@@ -71,7 +72,7 @@ test("saves a part's fix with the formula", async () => {
   client.setQueryData(partition, {});
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "null");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Fix it in this save" }),
   );
@@ -84,7 +85,7 @@ test("saves a part's fix with the formula", async () => {
     screen.getByRole("combobox", { name: /When the condition is undecided/ }),
     { target: { value: "continue" } },
   );
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
   await waitFor(() => expect(api.saves).toHaveLength(2));
   expect(api.saves[1].partFixes).toEqual([
@@ -108,7 +109,7 @@ test("opens a fix with the names the save gives", async () => {
   await screen.findByRole("heading", { name: "base" });
   typeText("Name", "bar");
   typeText("Formula", '"two"');
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Fix it in this save" }),
   );
@@ -123,7 +124,7 @@ test("says to reload when someone else saved first", async () => {
   renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   expect(
     await screen.findByText(
       "`base` was changed since you opened it. Reload to see the latest version.",
@@ -143,11 +144,11 @@ test("reloads an unsaved new formula to a blank one", async () => {
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create formula" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Fix it in this save" }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create formula" }));
   const assign = jest
     .spyOn(window.location, "assign")
     .mockImplementation(() => {});
@@ -164,14 +165,14 @@ test("reloads a new formula to its page when a lost answer hid its save", async 
   await screen.findByRole("heading", { name: "New formula" });
   typeText("Name", "tripled");
   typeText("Formula", "base * 3");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  await screen.findByText("Couldn't save.");
+  fireEvent.click(screen.getByRole("button", { name: "Create formula" }));
+  await screen.findByText(`Couldn't save: ${SAVE_FAILED_FALLBACK}`);
   const { id } = api.saves[0].edits[0];
   api.stored = [
     ...api.stored,
     { ...base, id, name: "tripled", text: "base * 3" },
   ];
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create formula" }));
   const assign = jest
     .spyOn(window.location, "assign")
     .mockImplementation(() => {});
@@ -187,7 +188,7 @@ test("offers no reload for a save refused for another reason", async () => {
   renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", "3");
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await screen.findByText("was changed since you opened it", { exact: false });
   expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
 });
@@ -200,7 +201,7 @@ test("keeps unsaved edits when the list refreshes with a newer version", async (
   await act(() => client.invalidateQueries());
   expect(screen.getByLabelText(/^Formula/)).toHaveProperty("value", "3");
   api.answers = [409];
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await screen.findByRole("button", { name: "Reload" });
   expect(api.saves[0].edits[0].baseVersionId).toBe(1);
 });
@@ -211,7 +212,7 @@ test("links a problem in a formula newer than the page to its own page", async (
   renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   const link = await screen.findByRole("link", {
     name: `${newer} opens in new tab`,
   });
@@ -264,16 +265,16 @@ test("drops a fix's problems when the admin stops fixing it", async () => {
   renderPage(`/tasks/formulas/${base.id}`);
   await screen.findByRole("heading", { name: "base" });
   typeText("Formula", '"two"');
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await screen.findByText("Problems in other formulas and parts");
   fireEvent.click(screen.getByRole("button", { name: "Fix it in this save" }));
   typeText("Formula", "base + oops", 1);
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(api.saves).toHaveLength(2));
-  await screen.findByRole("button", { name: "Save" });
+  await screen.findByRole("button", { name: "Save changes" });
   fireEvent.click(screen.getByRole("button", { name: "Stop fixing it" }));
   expect(screen.queryByText("Problems in other formulas and parts")).toBeNull();
   expect(document.activeElement).toBe(
-    screen.getByRole("button", { name: "Save" }),
+    screen.getByRole("button", { name: "Save changes" }),
   );
 });
