@@ -284,21 +284,24 @@ export function InviteGraphTab() {
       inspector={
         <>
           <PaneHeader title="Selection" />
-          <div className="flex min-h-24 flex-col gap-1 px-card py-4">
-            {selected ? (
-              <>
-                <p className="font-medium">{selected.name}</p>
+          <div className="flex flex-col px-card py-4">
+            <div className="flex min-h-16 flex-col gap-1">
+              {selected ? (
+                <>
+                  <p className="font-medium">{selected.name}</p>
+                  <p className="text-fg-muted">
+                    {formatCount(selected.ancestors)} up the chain,{" "}
+                    {formatCount(selected.descendants)} down it
+                  </p>
+                </>
+              ) : (
                 <p className="text-fg-muted">
-                  {formatCount(selected.ancestors)} up the chain,{" "}
-                  {formatCount(selected.descendants)} down it
+                  Select a member or campaign to trace who led to them and
+                  whom they invited. Select it again, or the background, to
+                  clear.
                 </p>
-              </>
-            ) : (
-              <p className="text-fg-muted">
-                Select a member or campaign to trace who led to them and whom
-                they invited. Select it again, or the background, to clear.
-              </p>
-            )}
+              )}
+            </div>
             <CheckboxField
               label="Isolate subgraph"
               help="Hides everyone outside the selection's chain."
@@ -308,7 +311,7 @@ export function InviteGraphTab() {
             />
           </div>
           <PaneHeader title="Filters" />
-          <div className="flex flex-col items-start gap-3 px-card py-4">
+          <div className="flex flex-col gap-3 px-card py-4 [&_select]:min-w-0">
             <EnumFilterSelect
               label="Contract"
               values={ContractFilter}

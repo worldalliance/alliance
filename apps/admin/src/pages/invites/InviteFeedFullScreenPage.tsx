@@ -11,6 +11,7 @@ import {
   tabHref,
 } from "../../places";
 import Button, { ButtonVariant, buttonVariants } from "../../ui/Button";
+import { cn } from "../../ui/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/Popover";
 import { ContentState, RefreshFailedBanner } from "../../ui/templates/States";
 import { ConnectionBadge, FeedSettingsFields, feedTime } from "./LiveFeedTab";
@@ -37,10 +38,18 @@ export default function InviteFeedFullScreenPage() {
             The Alliance
           </p>
           <div className="flex items-center gap-3">
-            <ConnectionBadge connected={isConnected} />
+            <span className="flex">
+              <ConnectionBadge connected={isConnected} />
+            </span>
             <Popover>
               <PopoverTrigger
-                className={buttonVariants({ variant: ButtonVariant.Default })}
+                className={cn(
+                  "flex",
+                  buttonVariants({
+                    variant: ButtonVariant.Default,
+                    size: "medium",
+                  }),
+                )}
               >
                 <Settings2 aria-hidden="true" className="size-4" />
                 Feed settings
