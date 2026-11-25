@@ -9,6 +9,9 @@ const MIN_TICK_GAP = 88;
 export const xTickCount = (width: number, margin = CHART_MARGIN) =>
   Math.max(2, Math.floor((width - margin.left - margin.right) / MIN_TICK_GAP));
 
+/** Half the widest series stroke, so a line along the x axis isn't clipped to half its width. */
+const BASELINE_STROKE_ROOM = 2;
+
 /** The plot area, for a `clipPath` that keeps lines from running past the axes. */
 export function PlotClip({
   id,
@@ -27,7 +30,7 @@ export function PlotClip({
         x={margin.left}
         y={0}
         width={Math.max(0, width - margin.left - margin.right)}
-        height={height - margin.bottom}
+        height={height - margin.bottom + BASELINE_STROKE_ROOM}
       />
     </clipPath>
   );
