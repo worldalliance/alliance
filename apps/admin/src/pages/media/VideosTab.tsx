@@ -46,14 +46,18 @@ export function VideosTab() {
   }, [all, q]);
 
   const tableRef = useRef<HTMLTableElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   // After a row's Delete removes the row, focus goes to the neighbouring
-  // row's Delete.
-  const [focusAfter, setFocusAfter] = useState<number | null>(null);
+  // row's Delete, or to the search when no row is left.
+  const [focusAfter, setFocusAfter] = useState<number | "search" | null>(null);
   useEffect(() => {
     if (focusAfter === null) return;
-    const target = tableRef.current?.querySelector<HTMLElement>(
-      `[data-video="${focusAfter}"] button`,
-    );
+    const target =
+      focusAfter === "search"
+        ? searchRef.current?.querySelector("input")
+        : tableRef.current?.querySelector<HTMLElement>(
+            `[data-video="${focusAfter}"] button`,
+          );
     if (!target) return;
     target.focus();
     setFocusAfter(null);
@@ -83,7 +87,7 @@ export function VideosTab() {
     const index = rows.findIndex((row) => row.id === video.id);
     const neighbour = rows[index + 1] ?? rows[index - 1];
     deletion.mutate(video.id, {
-      onSuccess: () => setFocusAfter(neighbour?.id ?? null),
+      onSuccess: () => setFocusAfter(neighbour?.id ?? "search"),
     });
   };
 
@@ -113,7 +117,9 @@ export function VideosTab() {
           noun: "video",
         })}
       >
-        <SearchField label="Filter videos" value={q} onChange={setQ} />
+        <div ref={searchRef}>
+          <SearchField label="Filter videos" value={q} onChange={setQ} />
+        </div>
       </FilterBar>
       <ListContent>
         <ContentState

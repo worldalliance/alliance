@@ -305,7 +305,7 @@ Agent judgement throughout; the owner was not asked.
 - **The record's order is player, files, replace**, where today's was player, info, files in a scrolling box, replace: staff look before they replace, the facts sit beside the player, and the files table runs its full length, so no region scrolls inside the page. The first build put replace above the files; the trial's judge moved it back.
 - **The files panel is "HLS files" and counts files**, where it said "HLS segments": the server lists every stored object of the video, the playlist included (`getVideoDetails` in `server/src/videos/videos.service.ts`). The replace form's field is "Replacement files", so the page has one thing of each name.
 - **A failed delete names its video by id** ("Couldn't delete video 36.", or "Couldn't delete video 36: " and the server's reason), since most videos share the filename `output.m3u8`. For the same reason each row's Delete is labelled with the filename and the id.
-- **After a delete, focus goes to the next row's Delete, else the previous row's.** When the last video goes there is no row and the list has no add control, so focus is left where the browser puts it.
+- **After a delete, focus goes to the next row's Delete, else the previous row's.** When the last video goes, or the last one the filter shows, there is no row and the list has no add control, so focus goes to the search field, never to the page's body (ux-guidelines).
 - **The page says videos are "uploaded in video blocks"**, not "to forms": the video block is a display block, and the upload endpoint doesn't record where the block sits.
 
 ## Trial page: Content › General updates

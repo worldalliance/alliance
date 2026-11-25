@@ -189,6 +189,19 @@ it("moves focus to the next video's delete once a video is deleted", async () =>
   );
 });
 
+it("moves focus to the search once the last video is deleted", async () => {
+  stored = [video(1, "intro.mp4")];
+  renderPage();
+  await deleteFirst();
+
+  await waitForElementToBeRemoved(() => screen.queryByText("intro.mp4"));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("searchbox", { name: "Filter videos" }),
+    ),
+  );
+});
+
 it("drops a video another admin already deleted", async () => {
   deleteStatus = 404;
   renderPage();
