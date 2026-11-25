@@ -41,6 +41,7 @@ import {
 } from "./form-snapshot-migration.dto";
 import { FormSubmissionService } from "./form-submission.service";
 import {
+  AdminFormDto,
   CreateFormDto,
   FormAggregateViewsDto,
   FormDraftDto,
@@ -418,9 +419,11 @@ export class TasksController {
   /** The stored form, unfilled: what the builder edits and clones. */
   @Get("adminForm/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: FormDto })
-  async getFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<FormDto> {
-    return new FormDto(await this.tasksService.getForm(id));
+  @ApiOkResponse({ type: AdminFormDto })
+  async getFormAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<AdminFormDto> {
+    return new AdminFormDto(await this.tasksService.getAdminForm(id));
   }
 
   @Get("aggregateViews/:id")

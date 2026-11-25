@@ -12,3 +12,4 @@ task: Make the admin preview button give staff the same task completion experien
 - The completion screen shows "View tasks" and "Invite a friend" with the members' labels. In preview, both just close the flow. (agent-proposed, user-approved)
 - After the completion screen closes, the preview shows the members' completed card built from the preview's answers, plus a "Start over" button that clears everything and returns to the start card. (agent-proposed, user-approved)
 - The completed card's "Share" button is hidden in preview. (agent-proposed, user-approved)
+- A task form opened directly at `/forms/:id`, such as through "Edit task form", also previews through the task flow. The forms API says whether a form is a task form, and the form builder uses that to pick the task flow preview. (agent-proposed, user-approved)

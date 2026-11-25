@@ -5357,6 +5357,16 @@ export type MaybeFormDraftDto = {
     draft?: FormDraftDto;
 };
 
+export type AdminFormDto = {
+    id: number;
+    title: string;
+    formSnapshotId: number;
+    schema: {
+        [key: string]: unknown;
+    };
+    usedInAction?: FormLinkedActionDto;
+};
+
 export type FormAggregateViewsDto = {
     aggregateViews: Array<{
         [key: string]: unknown;
@@ -16829,7 +16839,7 @@ export type TasksGetFormAdminErrors = {
 export type TasksGetFormAdminError = TasksGetFormAdminErrors[keyof TasksGetFormAdminErrors];
 
 export type TasksGetFormAdminResponses = {
-    200: FormDto;
+    200: AdminFormDto;
 };
 
 export type TasksGetFormAdminResponse = TasksGetFormAdminResponses[keyof TasksGetFormAdminResponses];

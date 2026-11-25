@@ -48,7 +48,12 @@ import {
   formSchemaOf,
   memberSnapshot,
 } from "./form-snapshot-schema";
-import { CreateFormDto, type FormSummary, UpdateFormDto } from "./form.dto";
+import {
+  type AdminForm,
+  CreateFormDto,
+  type FormSummary,
+  UpdateFormDto,
+} from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
 import {
   findFormsReadingForm,
@@ -156,6 +161,12 @@ export class TasksService {
       });
     }
     return validated.value;
+  }
+
+  async getAdminForm(formId: number): Promise<AdminForm> {
+    const form = await this.getForm(formId);
+    const usedInAction = await this.formLinks.findActionByFormId(formId);
+    return { form, usedInAction };
   }
 
   async getForm(formId: number): Promise<Form> {
