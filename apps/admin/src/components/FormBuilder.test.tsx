@@ -211,7 +211,7 @@ describe("FormBuilder save while a source form loads", () => {
 
     expect(
       await screen.findByText(
-        "Still loading the questions of forms your formulas read. Try again in a moment.",
+        /Still loading the questions of forms your formulas read\. Try again in a moment\./,
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/doesn't exist/)).toBeNull();
@@ -255,7 +255,7 @@ describe("FormBuilder save while a source form loads", () => {
 
     expect(
       await screen.findByText(
-        "Still loading the questions of forms your formulas read. Try again in a moment.",
+        /Still loading the questions of forms your formulas read\. Try again in a moment\./,
       ),
     ).toBeTruthy();
     expect(writes).toEqual([]);

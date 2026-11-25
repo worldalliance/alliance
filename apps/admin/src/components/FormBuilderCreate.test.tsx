@@ -39,7 +39,7 @@ describe("FormBuilder creating a form", () => {
     });
     fireEvent.click(screen.getByText("Save Form"));
     expect(
-      (await screen.findAllByText("Could not save form")).length,
+      (await screen.findAllByText(/The server didn't answer\./)).length,
     ).toBeGreaterThan(0);
   });
 });
