@@ -85,17 +85,23 @@ function TableCell({
   /** The row's buttons, at the row's end. */
   actions?: boolean;
   /**
-   * Caps a text column near 260 px and cuts the text with an ellipsis. Text
-   * given as a string is also the cell's tooltip; pass `title` for anything else.
+   * A text column that takes the row's spare width (shared with any
+   * other truncated column) and cuts the rest with an ellipsis. Text given as
+   * a string is also the cell's tooltip; pass `title` for anything else.
    */
   truncate?: boolean;
 }) {
   return (
     <td
+      data-truncate={truncate ? "" : undefined}
       className={cn(
         "h-row border-b border-line px-cell group-last/row:border-b-0 group-data-bleed/table:group-last/row:border-b",
         BLEED_EDGES,
-        truncate && "max-w-64 truncate",
+        // The other columns fit their content on one line, so the spare
+        // width goes to the truncated ones, whose own content asks for none.
+        truncate
+          ? "max-w-0 truncate"
+          : "group-has-[[data-truncate]]/table:w-px group-has-[[data-truncate]]/table:whitespace-nowrap",
         actions && "whitespace-nowrap",
         className,
       )}

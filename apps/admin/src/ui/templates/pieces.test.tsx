@@ -179,6 +179,25 @@ describe("SearchField", () => {
 });
 
 describe("Table pieces", () => {
+  it("gives a truncated column the spare width and keeps the rest on one line", () => {
+    render(
+      <Table>
+        <TableBody>
+          <TableRow>
+            <TableCell truncate>A long name</TableCell>
+            <TableCell>Nov 30, 2025</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const name = screen.getByRole("cell", { name: "A long name" });
+    expect(name.hasAttribute("data-truncate")).toBe(true);
+    expect(name.getAttribute("title")).toBe("A long name");
+    expect(
+      screen.getByRole("cell", { name: "Nov 30, 2025" }).className,
+    ).toContain("group-has-[[data-truncate]]/table:whitespace-nowrap");
+  });
+
   it("names the actions column for screen readers and labels a group row", () => {
     render(
       <Table>
