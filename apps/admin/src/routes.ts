@@ -74,7 +74,7 @@ export default [
         "pages/research/AssignmentPage.tsx",
       ),
 
-      route("/settings", "pages/TestPushNotification.tsx"),
+      route("/settings", "pages/settings/SettingsPage.tsx"),
     ]),
     ...LEGACY_ROUTES.map((legacy) =>
       route(legacy.from, "shell/LegacyRedirect.tsx", {
