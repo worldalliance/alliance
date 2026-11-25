@@ -313,6 +313,10 @@
   transition-property: width;
 }
 
+@utility scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--color-accent);

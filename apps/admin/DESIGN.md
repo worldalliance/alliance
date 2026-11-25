@@ -212,7 +212,8 @@ A page header, then sections in one column (`Section`), each a heading and a car
 `Workspace` fills the frame under the page header (`Page fill`); the page itself never scrolls, each pane does. Up to three panes: **navigator** (left, 288 px), **canvas** (center, the children), **inspector** (right, 320 px: properties of the selection, or context). A `WorkspaceToolbar` across the top holds mode switches, undo and redo, the save state and the primary action. When a workspace is a tab of a Record, the record header stays above it.
 
 - **Selecting never moves the page.** Selecting an item changes the inspector's content and the selection highlight, and nothing else. Always pass `inspector`, and when nothing is selected have it say what to select, so the pane keeps its place. The owner named this defect in today's form builder.
-- Panes keep the template's widths; a pane may collapse only by a labelled control.
+- Panes keep the template's widths; a pane may collapse only by a labelled control. Panes never scroll sideways and hold their scrollbar's gutter, so content crossing the pane's height doesn't reflow. `navigatorRef`, `canvasRef` and `inspectorRef` reach each pane's scrolling element, for scrolling a selection into view or portalling into the canvas.
+- A pane's title row is a `PaneHeader`: one line whatever the title's length, `leading` before the title (a "Back to {parent}" icon button), `action` after it.
 - Reordering by drag also works without dragging (move up, move down, or a menu), per WCAG 2.5.7.
 - The canvas of the form builder renders the member-facing form renderer and must look as it does in the member app; admin chrome sits around it.
 - Adding an element opens a searchable picker listing only field and block types that exist today (`DATACHECK.md` names eight the prototype invented).
