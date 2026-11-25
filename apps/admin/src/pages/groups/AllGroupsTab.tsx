@@ -47,11 +47,14 @@ const HEADS: readonly (readonly [string, string | undefined])[] = [
 export function AllGroupsTab({
   groups,
   pendingByGroupId,
+  picking,
   onNewGroup,
 }: {
   groups: UseQueryResult<CommunityDto[]>;
   /** Selections waiting on the Awaiting assignment tab, by group. */
   pendingByGroupId: Record<number, number>;
+  /** Picks exist only while staff are assigning on the other tab. */
+  picking: boolean;
   onNewGroup: () => void;
 }) {
   const [q, setQ] = useListSearch();
@@ -63,8 +66,6 @@ export function AllGroupsTab({
       .filter((group) => group.name.toLowerCase().includes(needle))
       .sort(byGroupName);
   }, [all, q]);
-  // Picks exist only while staff are assigning on the other tab.
-  const picking = Object.values(pendingByGroupId).some((count) => count > 0);
   const heads = picking ? HEADS : HEADS.filter(([label]) => label !== PICKED);
 
   return (

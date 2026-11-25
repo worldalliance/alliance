@@ -223,6 +223,20 @@ it("shows the selections awaiting confirmation against their group", async () =>
   expect(cells[5]).toBe("1");
 });
 
+it("holds the picks column while the queue is not loaded", async () => {
+  queueStatus = 500;
+  localStorage.setItem(
+    "admin.groupAssignmentSelections",
+    JSON.stringify({ 7: "4" }),
+  );
+  renderPage();
+
+  await screen.findByRole("link", { name: "North" });
+  expect(
+    screen.getByRole("columnheader", { name: "Picked, unconfirmed" }),
+  ).toBeTruthy();
+});
+
 it("says no one is awaiting a group once the last member is assigned", async () => {
   queue = [makeUser({ id: 7, name: "Sam" })];
   renderPage("/members/groups?tab=awaiting");

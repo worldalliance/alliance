@@ -75,6 +75,7 @@ export default function GroupsPage() {
       <AllGroupsTab
         groups={groups}
         pendingByGroupId={assignment.pendingByGroupId}
+        picking={assignment.picking}
         onNewGroup={() => setCreating(true)}
       />
     ),

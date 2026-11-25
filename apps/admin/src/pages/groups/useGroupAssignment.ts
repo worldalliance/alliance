@@ -76,6 +76,12 @@ export function useGroupAssignment({
     return counts;
   }, [assignments]);
 
+  // Before the queue loads, the stored picks decide, so the column showing
+  // them doesn't arrive after the table.
+  const picking = members
+    ? assignments.length > 0
+    : Object.values(stored).some((groupId) => groupId !== "");
+
   const groupOf = useCallback(
     (memberId: number) =>
       assignments.find(({ member }) => member.id === memberId)?.group ?? null,
@@ -142,6 +148,7 @@ export function useGroupAssignment({
   return {
     assignments,
     pendingByGroupId,
+    picking,
     groupOf,
     optionsFor,
     problemOf,
