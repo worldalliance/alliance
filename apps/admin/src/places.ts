@@ -1,4 +1,4 @@
-/* alliance/max-lines 700 -- data: the page map, one entry per area, place, tab and record */
+/* alliance/max-lines 750 -- data: the page map, one entry per area, place, tab and record */
 /**
  * The admin's page map: every area, place, tab and record. The sidebar,
  * palette, breadcrumbs and titles all read it, so a place is added or moved
@@ -77,6 +77,34 @@ export enum CountId {
   AwaitingGroup = "awaiting-group",
   PartnershipResponses = "partnership-responses",
 }
+
+/** Each queue: what Home says beside its count, the button to it, and where that goes. */
+export const QUEUES: Record<
+  CountId,
+  { label: string; open: string; place: PlaceId; tab?: string }
+> = {
+  [CountId.NeedsReply]: {
+    label: "Texts need a reply",
+    open: "Open inbox",
+    place: PlaceId.Inbox,
+  },
+  [CountId.WelcomeQueue]: {
+    label: "New members to welcome",
+    open: "Open welcome queue",
+    place: PlaceId.WelcomeQueue,
+  },
+  [CountId.AwaitingGroup]: {
+    label: "Members awaiting a group",
+    open: "Open group assignment",
+    place: PlaceId.Groups,
+    tab: "awaiting",
+  },
+  [CountId.PartnershipResponses]: {
+    label: "Partnership responses to review",
+    open: "Open partnerships",
+    place: PlaceId.OutreachPartnerships,
+  },
+};
 
 export type PlaceTab = {
   /** The `?tab=` or `?view=` value; the first of a list is the bare URL. */
@@ -670,27 +698,23 @@ export const RAIL: readonly RailEntry[] = [
   { label: "Members", place: PlaceId.People },
 ];
 
+const railQueue = (label: string, count: CountId): RailEntry => ({
+  label,
+  place: QUEUES[count].place,
+  tab: QUEUES[count].tab,
+  count,
+});
+
 export const RAIL_QUEUES: readonly RailEntry[] = [
-  {
-    label: "Welcome queue",
-    place: PlaceId.WelcomeQueue,
-    count: CountId.WelcomeQueue,
-  },
-  {
-    label: "Awaiting a group",
-    place: PlaceId.Groups,
-    tab: "awaiting",
-    count: CountId.AwaitingGroup,
-  },
-  {
-    label: "Partnership responses",
-    place: PlaceId.OutreachPartnerships,
-    count: CountId.PartnershipResponses,
-  },
+  railQueue("Welcome queue", CountId.WelcomeQueue),
+  railQueue("Awaiting a group", CountId.AwaitingGroup),
+  railQueue("Partnership responses", CountId.PartnershipResponses),
 ];
 
-export const railHref = (entry: RailEntry): string =>
+export const railHref = (entry: Pick<RailEntry, "place" | "tab">): string =>
   tabHref(placeById(entry.place), { tab: entry.tab });
+
+export const queueHref = (id: CountId): string => railHref(QUEUES[id]);
 
 /**
  * The rail entry a location belongs to: a queue when the location is that

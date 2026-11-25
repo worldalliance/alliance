@@ -1,35 +1,12 @@
 import { ArrowRight, Check } from "lucide-react";
 import { formatCount } from "../../lib/formatNumber";
-import { CountId, placeById, PlaceId, tabHref } from "../../places";
+import { CountId, QUEUES, queueHref } from "../../places";
 import type { QueueCount } from "../../shell/useQueueCounts";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
 import { Section } from "../../ui/templates/Overview";
 import { useDelayedFlag } from "../../ui/templates/useDelayedFlag";
 import { waitingQueues } from "./homeRules";
-
-const QUEUE: Record<CountId, { label: string; open: string; to: string }> = {
-  [CountId.NeedsReply]: {
-    label: "Texts need a reply",
-    open: "Open inbox",
-    to: placeById(PlaceId.Inbox).path,
-  },
-  [CountId.WelcomeQueue]: {
-    label: "New members to welcome",
-    open: "Open welcome queue",
-    to: placeById(PlaceId.WelcomeQueue).path,
-  },
-  [CountId.AwaitingGroup]: {
-    label: "Members awaiting a group",
-    open: "Open group assignment",
-    to: tabHref(placeById(PlaceId.Groups), { tab: "awaiting" }),
-  },
-  [CountId.PartnershipResponses]: {
-    label: "Partnership responses to review",
-    open: "Open partnerships",
-    to: placeById(PlaceId.OutreachPartnerships).path,
-  },
-};
 
 const COUNT_FAILED = "· This count couldn't load.";
 
@@ -66,7 +43,7 @@ export function NeedsYou({ counts }: { counts: Record<CountId, QueueCount> }) {
               {count === null ? "—" : formatCount(count)}
             </span>
             <span className="min-w-0 flex-1">
-              {QUEUE[id].label}
+              {QUEUES[id].label}
               {count === null && (
                 <span className="text-danger"> {COUNT_FAILED}</span>
               )}
@@ -74,9 +51,9 @@ export function NeedsYou({ counts }: { counts: Record<CountId, QueueCount> }) {
             <Button
               variant={ButtonVariant.Default}
               size="small"
-              to={QUEUE[id].to}
+              to={queueHref(id)}
             >
-              {QUEUE[id].open}
+              {QUEUES[id].open}
               <ArrowRight aria-hidden="true" className="size-4" />
             </Button>
           </li>

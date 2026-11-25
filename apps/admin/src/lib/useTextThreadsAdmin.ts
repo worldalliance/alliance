@@ -48,12 +48,12 @@ export function useNeedsReplyAdmin() {
   });
 }
 
-/** The Needs reply badge's count: null until the list first loads if that
- * load fails, so a failure doesn't read as nobody waiting; a later failed
- * poll keeps the last count. */
-export function useNeedsReplyCount(): number | null {
+/** The Needs reply badge's count: undefined while the list first loads, null
+ * if that load fails, so neither reads as nobody waiting; a later failed poll
+ * keeps the last count. */
+export function useNeedsReplyCount(): number | null | undefined {
   const { data, isError } = useNeedsReplyAdmin();
-  return data?.length ?? (isError ? null : 0);
+  return data?.length ?? (isError ? null : undefined);
 }
 
 export function useTextThreadListAdmin(
