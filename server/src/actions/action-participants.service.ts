@@ -14,7 +14,11 @@ import {
 import { CohortAdmissionService } from "./cohort-admission.service";
 import { readsSavedDecisions } from "./cohort-decision";
 import { CohortResolutionSession } from "./cohort-resolution-session";
-import { CohortResolverService } from "./cohort-resolver.service";
+import {
+  CohortResolverService,
+  readsUndecidedLive,
+  UndecidedMembers,
+} from "./cohort-resolver.service";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import {
@@ -38,9 +42,13 @@ export class ActionParticipantsService {
     private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
 
-  async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
+  async findParticipantIdsForActionById(
+    actionId: number,
+    params: { undecided?: UndecidedMembers } = {},
+  ): Promise<number[]> {
     return this.findParticipantIdsForAction(
       await this.findParticipantAction(actionId),
+      params,
     );
   }
 
@@ -53,8 +61,11 @@ export class ActionParticipantsService {
     );
   }
 
-  async findParticipantIdsForAction(action: ParsedAction): Promise<number[]> {
-    const result = await this.findParticipantIdsForActions([action]);
+  async findParticipantIdsForAction(
+    action: ParsedAction,
+    params: { undecided?: UndecidedMembers } = {},
+  ): Promise<number[]> {
+    const result = await this.findParticipantIdsForActions([action], params);
     return result.get(action.id) ?? [];
   }
 
@@ -76,7 +87,10 @@ export class ActionParticipantsService {
    */
   async findParticipantIdsForActions(
     actions: ParsedAction[],
-    params: { session?: CohortResolutionSession } = {},
+    params: {
+      session?: CohortResolutionSession;
+      undecided?: UndecidedMembers;
+    } = {},
   ): Promise<Map<number, number[]>> {
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
@@ -94,6 +108,12 @@ export class ActionParticipantsService {
     const actionIds = entries.map((e) => e.action.id);
     const session = params.session ?? new CohortResolutionSession();
     const now = new Date();
+    const undecided = params.undecided ?? UndecidedMembers.Outside;
+    const savedReaders = entries.flatMap(({ action }) =>
+      readsSavedDecisions(action, now) ? [action] : [],
+    );
+    const readsLive = (action: ParsedAction) =>
+      readsUndecidedLive({ action, now, undecided });
     await Promise.all([
       // The users never leave this method, and every predicate it runs reads
       // only what the roster projection loads.
@@ -103,9 +123,11 @@ export class ActionParticipantsService {
             this.userService.findActiveUsersForRoster(),
           ),
       this.cohortAdmissionService.prefetchAdmittedMemberIds(
-        entries.flatMap(({ action }) =>
-          readsSavedDecisions(action, now) ? [action.id] : [],
-        ),
+        savedReaders.filter((a) => !readsLive(a)).map((a) => a.id),
+        session,
+      ),
+      this.cohortAdmissionService.prefetchDecisionsForActions(
+        savedReaders.filter(readsLive).map((a) => a.id),
         session,
       ),
     ]);
@@ -118,6 +140,7 @@ export class ActionParticipantsService {
           eventId: e.event.id,
         })),
         session,
+        undecided,
       });
 
     // 2. One query: all completion + withdrawal activities for these actions

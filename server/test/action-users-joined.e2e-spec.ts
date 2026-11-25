@@ -5,6 +5,7 @@ import type { Repository } from "typeorm";
 import { ActionActivityService } from "../src/actions/action-activity.service";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { CohortResolutionSession } from "../src/actions/cohort-resolution-session";
+import { UndecidedMembers } from "../src/actions/cohort-resolver.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action, parseAction } from "../src/actions/entities/action.entity";
@@ -108,7 +109,10 @@ describe("Action.usersJoined recomputation (e2e)", () => {
     };
   };
 
-  const fullLoadParticipantIds = async (actionId: number) =>
+  const fullLoadParticipantIds = async (
+    actionId: number,
+    undecided = UndecidedMembers.Outside,
+  ) =>
     participants.findParticipantIdsForActions(
       [
         parseAction(
@@ -118,7 +122,7 @@ describe("Action.usersJoined recomputation (e2e)", () => {
           }),
         ),
       ],
-      { session: new CohortResolutionSession() },
+      { session: new CohortResolutionSession(), undecided },
     );
 
   const storedCounts = async () =>
@@ -166,6 +170,45 @@ describe("Action.usersJoined recomputation (e2e)", () => {
     });
   });
 
+  it.each([
+    { undecided: UndecidedMembers.Outside, countsUndecided: false },
+    { undecided: UndecidedMembers.LiveWhileOpen, countsUndecided: true },
+  ])(
+    "keeps saved decisions and counts an open action's undecided member only when reading them live ($undecided)",
+    async ({ undecided, countsUndecided }) => {
+      const { open, expected } = await setUp();
+      const undecidedMember = await fixtures.createUser({
+        signedAt: addDays(now, -30),
+      });
+
+      const ids = await fullLoadParticipantIds(open.id, undecided);
+
+      expect(ids.get(open.id)!.sort()).toEqual(
+        [...expected[open.id], ...(countsUndecided ? [undecidedMember] : [])]
+          .map((user) => user.id)
+          .sort(),
+      );
+    },
+  );
+
+  it("leaves a closed action's undecided member out when reading undecided members live", async () => {
+    const signedAt = addDays(now, -30);
+    const decided = await fixtures.createUser({ signedAt });
+    const closed = await fixtures.createAction({
+      start: addDays(now, -10),
+      deadline: addDays(now, -1),
+    });
+    await saveLiveCohortDecisions(ctx, [closed.id]);
+    await fixtures.createUser({ signedAt });
+
+    const ids = await fullLoadParticipantIds(
+      closed.id,
+      UndecidedMembers.LiveWhileOpen,
+    );
+
+    expect(ids.get(closed.id)).toEqual([decided.id]);
+  });
+
   it("loads the roster projection on the single-action path", async () => {
     const { open } = await setUp();
     const userService = ctx.app.get(UserService);
@@ -180,28 +223,34 @@ describe("Action.usersJoined recomputation (e2e)", () => {
     }).toEqual({ fullLoads: 0, rosterLoads: 1 });
   });
 
-  it("loads the saved decisions of every action in one query", async () => {
-    const { open } = await setUp();
-    const second = await fixtures.createAction({
-      start: addDays(now, -10),
-      deadline: addDays(now, 3),
-    });
-    await saveLiveCohortDecisions(ctx, [second.id]);
-    const decisionFind = jest.spyOn(
-      ctx.app.get<Repository<ActionCohortDecision>>(
-        getRepositoryToken(ActionCohortDecision),
-      ),
-      "find",
-    );
-    const actions = await ctx.dataSource.getRepository(Action).find({
-      where: [{ id: open.id }, { id: second.id }],
-      relations: { events: true },
-    });
+  it.each([UndecidedMembers.Outside, UndecidedMembers.LiveWhileOpen])(
+    "loads the saved decisions of every action in one query (%s)",
+    async (undecided) => {
+      const { open } = await setUp();
+      const second = await fixtures.createAction({
+        start: addDays(now, -10),
+        deadline: addDays(now, 3),
+      });
+      await saveLiveCohortDecisions(ctx, [second.id]);
+      const decisionFind = jest.spyOn(
+        ctx.app.get<Repository<ActionCohortDecision>>(
+          getRepositoryToken(ActionCohortDecision),
+        ),
+        "find",
+      );
+      const actions = await ctx.dataSource.getRepository(Action).find({
+        where: [{ id: open.id }, { id: second.id }],
+        relations: { events: true },
+      });
 
-    await participants.findParticipantIdsForActions(actions.map(parseAction));
+      await participants.findParticipantIdsForActions(
+        actions.map(parseAction),
+        { undecided },
+      );
 
-    expect(decisionFind.mock.calls.length).toBe(1);
-  });
+      expect(decisionFind.mock.calls.length).toBe(1);
+    },
+  );
 
   it("loads the user population once per sweep", async () => {
     const { open, notStarted, notStartedTwin } = await setUp();
