@@ -84,15 +84,11 @@ export function parseZonedDateTime(
   const [year, month, day, hour, minute, second] = match
     .slice(1)
     .map((part) => Number(part ?? 0));
-  const time = new TZDate(
-    year,
-    month - 1,
-    day,
-    hour,
-    minute,
-    second,
-    timeZone,
-  ).getTime();
+  // The setters take a year below 100 as given; the constructor reads it as 19xx.
+  const date = new TZDate(2000, 0, 1, timeZone);
+  date.setFullYear(year, month - 1, day);
+  date.setHours(hour, minute, second, 0);
+  const time = date.getTime();
   return Number.isNaN(time) ? null : new Date(time);
 }
 

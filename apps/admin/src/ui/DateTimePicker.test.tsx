@@ -112,6 +112,12 @@ describe("parseZonedDateTime", () => {
     );
   });
 
+  it("keeps a year below 100, as typing a year passes through one", () => {
+    expect(
+      parseZonedDateTime("0020-07-04T09:30", PACIFIC)?.getUTCFullYear(),
+    ).toBe(20);
+  });
+
   it("returns null for a value that isn't a date and time", () => {
     expect(parseZonedDateTime("", PACIFIC)).toBeNull();
     expect(parseZonedDateTime("2026-11-01", PACIFIC)).toBeNull();
