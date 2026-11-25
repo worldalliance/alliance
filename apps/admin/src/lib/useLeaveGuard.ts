@@ -5,7 +5,11 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { useBeforeUnload, type BlockerFunction } from "react-router";
+import {
+  useBeforeUnload,
+  useLocation,
+  type BlockerFunction,
+} from "react-router";
 
 // React Router honours one blocker at a time, so guards register in the set
 // their `LeaveGuard` provides, and it owns the single blocker that asks them all.
@@ -35,6 +39,8 @@ export function useLeaveGuard(
   }
   const { allowSamePath = false } = options;
   const bypassed = useRef(false);
+  const departedTo = useRef<string>(undefined);
+  const { key } = useLocation();
   useBeforeUnload(
     useCallback(
       (event) => {
@@ -47,18 +53,33 @@ export function useLeaveGuard(
   );
 
   useEffect(() => {
-    const guard: BlockerFunction = ({ currentLocation, nextLocation }) =>
-      dirty &&
-      !bypassed.current &&
-      !(allowSamePath && currentLocation.pathname === nextLocation.pathname);
+    // A page its own unprompted navigation has left keeps its guard until its
+    // effects clean up, so the guard stands down once the router reaches that
+    // navigation's destination. A page that stays mounted through another
+    // navigation, or whose navigation another guard blocked, still guards.
+    const guard: BlockerFunction = ({ currentLocation, nextLocation }) => {
+      if (bypassed.current) {
+        departedTo.current = nextLocation.key;
+        return false;
+      }
+      return (
+        dirty &&
+        !(
+          departedTo.current === currentLocation.key &&
+          currentLocation.key !== key
+        ) &&
+        !(allowSamePath && currentLocation.pathname === nextLocation.pathname)
+      );
+    };
     guards.add(guard);
     return () => {
       guards.delete(guard);
     };
-  }, [guards, dirty, allowSamePath]);
+  }, [guards, dirty, allowSamePath, key]);
 
   return useCallback((navigate: () => void) => {
     bypassed.current = true;
+    departedTo.current = undefined;
     try {
       navigate();
     } finally {

@@ -1,4 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { useLayoutEffect, useState } from "react";
 import {
   createMemoryRouter,
   Outlet,
@@ -23,7 +24,10 @@ const Page = ({ dirty, nested }: { dirty: boolean; nested?: boolean }) => {
   return nested ? <Clean /> : null;
 };
 
-const routerWith = (page: RouteObject["element"]) => {
+const routerWith = (
+  page: RouteObject["element"],
+  landing: RouteObject["element"] = null,
+) => {
   const router = createMemoryRouter(
     [
       {
@@ -34,7 +38,8 @@ const routerWith = (page: RouteObject["element"]) => {
         ),
         children: [
           { path: "/a", element: page },
-          { path: "/b", element: null },
+          { path: "/b", element: landing },
+          { path: "/c", element: null },
         ],
       },
     ],
@@ -115,9 +120,26 @@ it("still asks for a dirty page whose nested guard is clean", async () => {
   expect(router.state.location.pathname).toBe("/a");
 });
 
+it("still asks for a dirty page a change of search params kept mounted, before it renders again", async () => {
+  const router = routerWith(<Page dirty />);
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+  await act(async () => {
+    void router.navigate("/a?tab=events");
+    void router.navigate("/b");
+  });
+
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(router.state.location.pathname).toBe("/a");
+});
+
 let navigateUnprompted: (navigate: () => void) => void = () => {};
 const Bypassing = () => {
   navigateUnprompted = useLeaveGuard(true);
+  return null;
+};
+const BypassingSamePath = () => {
+  navigateUnprompted = useLeaveGuard(true, { allowSamePath: true });
   return null;
 };
 
@@ -151,6 +173,22 @@ it("still asks for another dirty guard when one guard's navigation runs unprompt
   expect(router.state.location.pathname).toBe("/a");
 });
 
+it("lets staff leave a page an unprompted navigation left before its guard is removed", async () => {
+  // A layout effect on the next page runs before the left page's passive
+  // effect cleanup, which is what removes its guard.
+  const LeavesOnMount = () => {
+    useLayoutEffect(() => void router.navigate("/c"), []);
+    return null;
+  };
+  const router = routerWith(<Bypassing />, <LeavesOnMount />);
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+  await act(async () => navigateUnprompted(() => void router.navigate("/b")));
+
+  await waitFor(() => expect(router.state.location.pathname).toBe("/c"));
+  expect(confirm).not.toHaveBeenCalled();
+});
+
 it("guards again after an unprompted navigation throws", async () => {
   const router = routerWith(<Bypassing />);
 
@@ -161,6 +199,52 @@ it("guards again after an unprompted navigation throws", async () => {
   ).toThrow("navigation failed");
 
   expect(await leave({ router, to: "/b", answer: false })).toBe(1);
+  expect(router.state.location.pathname).toBe("/a");
+});
+
+it("still asks for a dirty page a change of search params kept mounted after an unprompted navigation throws", async () => {
+  const router = routerWith(<BypassingSamePath />);
+  expect(() =>
+    navigateUnprompted(() => {
+      throw new Error("navigation failed");
+    }),
+  ).toThrow("navigation failed");
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+  await act(async () => {
+    void router.navigate("/a?tab=events");
+    void router.navigate("/b");
+  });
+
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(router.state.location.pathname).toBe("/a");
+});
+
+it("still asks for a dirty page a change of search params kept mounted after another guard blocked its unprompted navigation", async () => {
+  let setOtherDirty: (dirty: boolean) => void = () => {};
+  const Other = () => {
+    const [dirty, setDirty] = useState(true);
+    setOtherDirty = setDirty;
+    useLeaveGuard(dirty, { allowSamePath: true });
+    return null;
+  };
+  const router = routerWith(
+    <>
+      <BypassingSamePath />
+      <Other />
+    </>,
+  );
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+  await act(async () => navigateUnprompted(() => void router.navigate("/b")));
+  expect(router.state.location.pathname).toBe("/a");
+  act(() => setOtherDirty(false));
+  await act(async () => {
+    void router.navigate("/a?tab=events");
+    void router.navigate("/b");
+  });
+
+  expect(confirm).toHaveBeenCalledTimes(2);
   expect(router.state.location.pathname).toBe("/a");
 });
 
