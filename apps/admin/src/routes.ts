@@ -49,7 +49,7 @@ export default [
       route("/members/friends", "pages/friends/FriendGraphPage.tsx"),
 
       route("/growth/invites", "places/InvitesPlace.tsx"),
-      route("/growth/waitlist", "places/WaitlistPlace.tsx"),
+      route("/growth/waitlist", "pages/waitlist/WaitlistPage.tsx"),
       route("/growth/links", "pages/links/LinksPage.tsx"),
       route("/growth/organizations", "pages/OrganizationsPage.tsx"),
       route("/growth/partnerships", "pages/OutreachPartnershipsPage.tsx"),
