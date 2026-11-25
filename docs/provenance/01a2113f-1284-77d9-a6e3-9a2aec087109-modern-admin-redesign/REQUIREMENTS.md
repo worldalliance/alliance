@@ -17,7 +17,7 @@ task: Greenfield redesign of the admin panel (apps/admin) so it is modern-lookin
 
 ## Design
 
-- The prototype in `.scratch/greenfield/prototypes/ref/`, as revised, is the reference for the look and feel: prototype A's structure and working screens, with prototype C's sidebar, spacing and calmer surfaces. Among the four first prototypes the ranking was A, C, D, B. The implementation need not follow the prototype precisely, in look or in detail; the user has not reviewed every screen of it and dislikes several things in its form builder. (user-originated)
+- The prototype in `.scratch/greenfield/prototypes/ref/`, as revised, is the reference for the look and feel: prototype A's structure and working screens, with prototype C's sidebar, spacing and calmer surfaces. Of the first prototypes, the user prefers C's look to A's, apart from C's home page. The implementation need not follow the prototype precisely, in look or in detail; the user has not reviewed every screen of it and dislikes several things in its form builder. (user-originated)
 - Selecting an element in the form builder does not make the page jump around. (user-originated)
 - The sidebar is clean and short, with an entry at the bottom that opens the search. (user-originated)
 - The sidebar's header and footer stay in place while its middle scrolls, so the button that collapses it is always visible without scrolling. (user-originated)
