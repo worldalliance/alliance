@@ -18,7 +18,7 @@ export default [
         route("/inbox/:threadId", "pages/inbox/ThreadPage.tsx"),
       ]),
 
-      route("/tasks", "places/TasksPlace.tsx"),
+      route("/tasks", "pages/tasks/TasksPage.tsx"),
       route("/tasks/:actionId", "pages/tasks/TaskPage.tsx"),
       route(
         "/tasks/:actionId/updates/:updateId",
