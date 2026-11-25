@@ -174,7 +174,7 @@ function ExpandToggle({
       aria-expanded={expanded}
       aria-controls={expanded ? controls : undefined}
       onClick={onToggle}
-      className="-ml-1.5 inline-flex h-control-sm items-center gap-1 rounded-md px-1.5 font-medium focus-ring hover:bg-line"
+      className="-ml-1.5 inline-flex h-control-sm items-center gap-1 rounded-md px-1.5 font-medium whitespace-nowrap focus-ring hover:bg-line"
       {...props}
     >
       <ChevronRight
@@ -191,7 +191,7 @@ function ExpandToggle({
 
 /**
  * What a row expands to, directly under it, mounted only while open. As tall
- * as its content, on the page background, with no row hover.
+ * as its content; its opaque cell keeps the row hover off it.
  */
 function TableDetailRow({
   id,
@@ -207,7 +207,7 @@ function TableDetailRow({
       <td
         colSpan={colSpan}
         className={cn(
-          "border-b border-line bg-canvas px-cell py-3",
+          "border-b border-line bg-surface px-cell pt-1 pb-4",
           BLEED_EDGES,
         )}
       >

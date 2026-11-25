@@ -201,7 +201,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
           </div>
         ))}
         {selectedUsers.length === 0 && hint && (
-          <p className="text-caption text-fg-muted">{hint}</p>
+          <p className="col-span-full text-caption text-fg-muted">{hint}</p>
         )}
       </div>
     </div>

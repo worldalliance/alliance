@@ -61,7 +61,8 @@ export function Banner({
         className={cn("mt-0.5 size-4 shrink-0", TONE[tone].icon)}
       />
       <div className="min-w-0 flex-1">{children}</div>
-      {action}
+      {/* Pulled into the text's first line, so a small button centres on it. */}
+      {action && <div className="-my-1.5 shrink-0">{action}</div>}
     </div>
   );
 }
