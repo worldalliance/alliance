@@ -2,24 +2,24 @@ import type { NormalizedReminder } from "../../../lib/actionTimelineData";
 import { formatDateTime } from "../../../lib/formatDate";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import { cn } from "../../../ui/cn";
-import { NAME_COLUMN_PX, pixelsAt } from "./timelineRules";
+import { NAME_COLUMN_PX, type XForTime } from "./timelineRules";
 
 const at = (date: Date) => formatDateTime(date, { timeZone: LAUNCH_TIME_ZONE });
 
 /** A suite's reminders over every row: a line at a send time, a band over a send window. */
 export function TimelineReminders({
   reminders,
-  start,
+  x,
   onReminderClick,
 }: {
   reminders: NormalizedReminder[];
-  start: Date;
+  x: XForTime;
   onReminderClick?: (reminderId: number) => void;
 }) {
   return reminders.map((reminder) => {
-    const left = pixelsAt(reminder.startDate.getTime(), start);
+    const left = x(reminder.startDate);
     const width = reminder.isRange
-      ? Math.max(pixelsAt(reminder.endDate.getTime(), start) - left, 2)
+      ? Math.max(x(reminder.endDate) - left, 2)
       : 2;
     const name = reminder.label ? `: ${reminder.label}` : "";
     const title = reminder.isRange

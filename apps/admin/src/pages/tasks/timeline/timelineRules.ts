@@ -3,7 +3,6 @@ import {
   memberActionPhase,
 } from "@alliance/common/actionEvent";
 import type { ActionEventDto, ActionStatus } from "@alliance/shared/client";
-import { millisecondsInDay } from "date-fns/constants";
 import type { TimelineRow } from "../../../lib/actionTimelineData";
 import { hashString } from "../../../lib/identitySwatch";
 
@@ -24,8 +23,7 @@ export const HEADER_PX = 48;
 export const GROUP_PX = 40;
 export const ROW_PX = 56;
 
-export const pixelsAt = (time: number, start: Date) =>
-  ((time - start.getTime()) / millisecondsInDay) * PIXELS_PER_DAY;
+export type XForTime = (time: Date | number) => number;
 
 export type ProjectCat = 1 | 2 | 3 | 4 | 5 | 6;
 const CATS = [1, 2, 3, 4, 5, 6] as const satisfies readonly ProjectCat[];

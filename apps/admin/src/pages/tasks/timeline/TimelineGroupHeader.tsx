@@ -9,10 +9,10 @@ import { nameLinkClass } from "../../../ui/styles";
 import { zIndex } from "../../../ui/zIndex";
 import {
   GroupBy,
-  pixelsAt,
   PROJECT_CAT_CLASS,
   projectCat,
   type TimelineGroup,
+  type XForTime,
 } from "./timelineRules";
 
 const HREF: Record<GroupBy, (id: number) => string> = {
@@ -23,20 +23,18 @@ const HREF: Record<GroupBy, (id: number) => string> = {
 /** A group's name, with what the group shares drawn across the weeks. */
 export function TimelineGroupHeader({
   group,
-  start,
+  x,
 }: {
   group: TimelineGroup;
-  start: Date;
+  x: XForTime;
 }) {
   const cat =
     group.kind === GroupBy.Project && group.id !== null
       ? PROJECT_CAT_CLASS[projectCat(group.id)]
       : null;
   const span = group.span;
-  const left = span ? pixelsAt(span.start.getTime(), start) : 0;
-  const width = span
-    ? Math.max(pixelsAt(span.end.getTime(), start) - left, 4)
-    : 0;
+  const left = span ? x(span.start) : 0;
+  const width = span ? Math.max(x(span.end) - left, 4) : 0;
   return (
     <div className="flex h-10 border-b border-line bg-canvas">
       <div

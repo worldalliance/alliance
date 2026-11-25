@@ -1,4 +1,4 @@
-import { getDayOfYear, milliseconds } from "date-fns";
+import { addWeeks, getDayOfYear, milliseconds } from "date-fns";
 import {
   type ReactNode,
   useLayoutEffect,
@@ -10,11 +10,13 @@ import { Link } from "react-router";
 import {
   firstRowActiveInWeek,
   type NormalizedReminder,
+  timelineScale,
   weekTicks,
 } from "../../../lib/actionTimelineData";
 import type { CohortSegment } from "../../../lib/describeCohortExpression";
-import { formatDate } from "../../../lib/formatDate";
+import { formatDate, formatDateTime } from "../../../lib/formatDate";
 import { taskHref } from "../../../lib/hrefs";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import { cn } from "../../../ui/cn";
 import { nameLinkClass } from "../../../ui/styles";
 import { zIndex } from "../../../ui/zIndex";
@@ -26,13 +28,10 @@ import {
   GROUP_PX,
   NAME_COLUMN_PX,
   PIXELS_PER_DAY,
-  pixelsAt,
   ROW_PX,
   rowTops,
   type TimelineGroup,
 } from "./timelineRules";
-
-const WEEK_PX = PIXELS_PER_DAY * 7;
 
 export type TaskTimelineProps = {
   /** The chart's accessible name. */
@@ -75,8 +74,9 @@ export function TaskTimeline({
   // Room for a last phase drawn a week past its start.
   const endTime =
     Math.max(range.end.getTime(), now.getTime()) + milliseconds({ days: 14 });
-  const chartPx = Math.ceil(pixelsAt(endTime, start));
-  const nowPx = pixelsAt(now.getTime(), start);
+  const x = useMemo(() => timelineScale(start, PIXELS_PER_DAY), [start]);
+  const chartPx = Math.ceil(x(endTime));
+  const nowPx = x(now);
   const ticks = useMemo(
     () =>
       weekTicks({
@@ -149,18 +149,20 @@ export function TaskTimeline({
           <div className="relative shrink-0" style={{ width: `${chartPx}px` }}>
             {ticks.map(({ date, left }) => {
               const week = Math.ceil(getDayOfYear(date) / 7) + 1;
+              const day = formatDate(date, { timeZone: LAUNCH_TIME_ZONE });
               return (
                 <button
                   type="button"
                   key={date.getTime()}
                   onClick={() => jumpToWeek(date)}
-                  aria-label={`Jump to the first task active in week ${week}, ${formatDate(date)}`}
+                  aria-label={`Jump to the first task active in week ${week}, ${day}`}
                   className="absolute inset-y-0 flex scroll-ml-80 flex-col justify-center border-l border-line px-2 text-left text-caption text-fg-muted focus-ring hover:bg-surface hover:text-fg"
-                  style={{ left: `${left}px`, width: `${WEEK_PX}px` }}
+                  style={{
+                    left: `${left}px`,
+                    width: `${x(addWeeks(date, 1)) - left}px`,
+                  }}
                 >
-                  <span className="font-medium text-fg">
-                    {formatDate(date)}
-                  </span>
+                  <span className="font-medium text-fg">{day}</span>
                   <span>Week {week}</span>
                 </button>
               );
@@ -169,7 +171,7 @@ export function TaskTimeline({
               type="button"
               onClick={centreOnNow}
               aria-label="Scroll to now"
-              title={`Now: ${formatDate(now)}`}
+              title={`Now: ${formatDateTime(now, { timeZone: LAUNCH_TIME_ZONE })}`}
               className="absolute bottom-1 -translate-x-1/2 rounded-sm bg-fg px-1 text-caption font-medium text-surface focus-ring"
               style={{ left: `${nowPx}px` }}
             >
@@ -194,9 +196,7 @@ export function TaskTimeline({
             </div>
             {groups.map((group) => (
               <div key={group.key} role="group" aria-label={group.name}>
-                {groupHeaders && (
-                  <TimelineGroupHeader group={group} start={start} />
-                )}
+                {groupHeaders && <TimelineGroupHeader group={group} x={x} />}
                 {group.rows.map((row) => (
                   <div
                     key={row.action.id}
@@ -237,7 +237,7 @@ export function TaskTimeline({
                       className="relative shrink-0"
                       style={{ width: `${chartPx}px` }}
                     >
-                      <TimelineBars row={row} start={start} now={now} />
+                      <TimelineBars row={row} x={x} now={now} />
                     </div>
                   </div>
                 ))}
@@ -245,7 +245,7 @@ export function TaskTimeline({
             ))}
             <TimelineReminders
               reminders={reminders}
-              start={start}
+              x={x}
               onReminderClick={onReminderClick}
             />
             <span

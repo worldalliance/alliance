@@ -1,9 +1,9 @@
 import type { ActionStatus } from "@alliance/shared/client";
-import { milliseconds, startOfDay } from "date-fns";
 import { Link } from "react-router";
-import type {
-  PhaseSegment,
-  TimelineRow,
+import {
+  phaseBarBounds,
+  type PhaseSegment,
+  type TimelineRow,
 } from "../../../lib/actionTimelineData";
 import { formatDateTime } from "../../../lib/formatDate";
 import { taskHref } from "../../../lib/hrefs";
@@ -12,9 +12,9 @@ import { cn } from "../../../ui/cn";
 import { phaseLabel } from "../../../ui/PhaseBadge";
 import {
   labelFits,
-  pixelsAt,
   PROJECT_CAT_CLASS,
   projectCat,
+  type XForTime,
 } from "./timelineRules";
 
 const at = (date: Date) => formatDateTime(date, { timeZone: LAUNCH_TIME_ZONE });
@@ -41,27 +41,24 @@ const memberActionClass = (project: TimelineRow["action"]["project"]) => {
 const barClass = "focus-ring scroll-mt-12 scroll-ml-80";
 
 /**
- * One phase from its event to the next. A week-wide column can't show the time
- * of day an event fires, so a bar spans whole days from its first gridline.
- * The last phase has no event ending it: its solid part stops at now and a
- * dashed outline runs on.
+ * One phase from its event's instant to the next's, so touching phases share an
+ * edge and each bar's own border marks the join. The last phase has no event
+ * ending it: its solid part stops at now and a dashed outline runs on.
  */
 function PhaseBar({
   action,
   phase,
   open,
-  start,
+  x,
   now,
 }: {
   action: TimelineRow["action"];
   phase: PhaseSegment;
   open: boolean;
-  start: Date;
+  x: XForTime;
   now: Date;
 }) {
   const label = phaseLabel(phase.status);
-  const from = startOfDay(phase.startDate).getTime();
-  const left = pixelsAt(from, start);
   if (phase.status === "completed") {
     const title = `${action.name}: ${label} (${at(phase.startDate)})`;
     return (
@@ -70,17 +67,12 @@ function PhaseBar({
         title={title}
         aria-label={title}
         className={cn(barClass, "absolute inset-y-3 w-0.5 bg-fg-muted")}
-        style={{ left: `${left}px` }}
+        style={{ left: `${x(phase.startDate)}px` }}
       />
     );
   }
-  const to = open
-    ? Math.max(phase.endDate.getTime(), from + milliseconds({ days: 7 }))
-    : startOfDay(phase.endDate).getTime();
-  const width = Math.max(pixelsAt(to, start) - left - 2, 4);
-  const solid = open
-    ? Math.min(Math.max(pixelsAt(now.getTime(), start) - left, 0), width)
-    : width;
+  const { left, width } = phaseBarBounds(phase, x);
+  const solid = open ? Math.min(Math.max(x(now) - left, 0), width) : width;
   const title = open
     ? `${action.name}: ${label} (from ${at(phase.startDate)}, no later event)`
     : `${action.name}: ${label} (${at(phase.startDate)} – ${at(phase.endDate)})`;
@@ -120,11 +112,11 @@ function PhaseBar({
 /** A task's phases across the chart, each a link to the task. */
 export function TimelineBars({
   row,
-  start,
+  x,
   now,
 }: {
   row: TimelineRow;
-  start: Date;
+  x: XForTime;
   now: Date;
 }) {
   return row.phases.map((phase, index) => (
@@ -133,7 +125,7 @@ export function TimelineBars({
       action={row.action}
       phase={phase}
       open={index === row.phases.length - 1}
-      start={start}
+      x={x}
       now={now}
     />
   ));
