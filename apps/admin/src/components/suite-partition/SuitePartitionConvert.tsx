@@ -32,7 +32,7 @@ const SuitePartitionConvert: React.FC<{
       </p>
       {!canPartition && (
         <p className="text-sm text-zinc-600">
-          Partitioning is off until a partition can be undone.
+          Partitioning is off in production until partitioned suites can launch.
         </p>
       )}
       <Button

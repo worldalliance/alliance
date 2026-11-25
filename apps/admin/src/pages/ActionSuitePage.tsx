@@ -1,5 +1,7 @@
+import { Features } from "@alliance/common/features";
 import { PARTITION_LAUNCH_REFUSED } from "@alliance/common/suite-partition";
 import { UpdateActionEventDto } from "@alliance/shared/client";
+import { isFeatureEnabled } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { milliseconds } from "date-fns";
@@ -128,7 +130,7 @@ const ActionSuitePage = () => {
         suiteId={suiteId}
         isPartitioned={suite.isPartitioned}
         scheduled={launched}
-        canPartition={false}
+        canPartition={isFeatureEnabled(Features.SuitePartitioning)}
       />
       <SuiteEventList
         addToSuite={addEvent.mutateAsync}

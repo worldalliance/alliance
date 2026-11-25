@@ -1,9 +1,5 @@
-import { NodeEnv } from "@alliance/common/node-env";
-import { Features, isEnabled } from "@alliance/shared/lib/features";
-import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
-import { deployedWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { afterEach, describe, expect, test } from "bun:test";
-import { getAdminUrl, getSiteUrl, isFeatureEnabled } from "./config";
+import { getAdminUrl, getSiteUrl } from "./config";
 
 declare global {
   interface Window {
@@ -33,17 +29,4 @@ describe("getAdminUrl", () => {
 
     expect(getAdminUrl()).toBe("https://admin.thealliance.org");
   });
-});
-
-describe("isFeatureEnabled", () => {
-  test.each([NodeEnv.Staging, NodeEnv.Production])(
-    "follows the runtime environment, not the build mode: %s",
-    (environment) => {
-      setWebRuntimeConfig(deployedWebRuntimeConfig(environment));
-
-      for (const feature of Object.values(Features)) {
-        expect(isFeatureEnabled(feature)).toBe(isEnabled(feature, environment));
-      }
-    },
-  );
 });

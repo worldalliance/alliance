@@ -1,3 +1,4 @@
+import { NodeEnv } from "@alliance/common/node-env";
 import { PARTITION_LAUNCH_REFUSED } from "@alliance/common/suite-partition";
 import type {
   ActionSuiteDto,
@@ -6,6 +7,8 @@ import type {
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { setWebRuntimeConfig } from "@alliance/sharedweb/lib/runtimeConfig";
+import { deployedWebRuntimeConfig } from "@alliance/sharedweb/lib/testing/runtimeConfig";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, jest, spyOn } from "bun:test";
@@ -165,18 +168,27 @@ it("offers no launch once the suite has launched", async () => {
   expect(screen.queryByText(/already has/)).toBeNull();
 });
 
-it("keeps partitioning off, since a partition can't be undone yet", async () => {
-  suiteLoad = unlaunchedSuite([]);
-  renderPage();
+it.each([
+  [NodeEnv.Production, true],
+  [NodeEnv.Staging, false],
+] as const)(
+  "offers partitioning only outside production, where partitioned suites can't launch yet: %s",
+  async (environment, off) => {
+    setWebRuntimeConfig(deployedWebRuntimeConfig(environment));
+    suiteLoad = unlaunchedSuite([]);
+    renderPage();
 
-  const button = await screen.findByRole("button", {
-    name: "Partition this suite",
-  });
-  expect(button.hasAttribute("disabled")).toBe(true);
-  expect(
-    screen.getByText("Partitioning is off until a partition can be undone."),
-  ).toBeTruthy();
-});
+    const button = await screen.findByRole("button", {
+      name: "Partition this suite",
+    });
+    expect(button.hasAttribute("disabled")).toBe(off);
+    expect(
+      screen.queryByText(
+        "Partitioning is off in production until partitioned suites can launch.",
+      ) !== null,
+    ).toBe(off);
+  },
+);
 
 it("offers the parts in place of a launch for a suite that uses parts", async () => {
   suiteLoad = unlaunchedSuite([], true);

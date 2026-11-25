@@ -1,3 +1,5 @@
+import { NodeEnv } from "@alliance/common/node-env";
+import { setEnv } from "@alliance/common/set-env";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
@@ -79,6 +81,18 @@ describe("Suite partitions (e2e)", () => {
       expect.objectContaining({ name: "Everyone else", text: null, cells: [] }),
     ]);
     await fx.convert(suite.id).expect(409);
+  });
+
+  it("refuses to convert in production, where partitioned suites can't launch yet", async () => {
+    const { suite } = await fx.createSuite(["Call"]);
+    const saved = process.env.NODE_ENV;
+    process.env.NODE_ENV = NodeEnv.Production;
+    try {
+      await fx.convert(suite.id).expect(404);
+    } finally {
+      setEnv("NODE_ENV", saved);
+    }
+    await fx.convert(suite.id).expect(201);
   });
 
   it("refuses a part that can be undecided until its fallback is picked", async () => {

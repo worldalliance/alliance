@@ -16099,6 +16099,10 @@ export type SuitePartitionsConvertToPartitionAdminErrors = {
      */
     400: HeyApiError;
     /**
+     * Partitioning is off here.
+     */
+    404: HeyApiError;
+    /**
      * The suite already uses parts or is scheduled.
      */
     409: HeyApiError;

@@ -1,3 +1,4 @@
+import { Features } from "@alliance/common/features";
 import { KORA_UPLOAD_NEEDS_TRANSCRIPTS } from "@alliance/common/kora";
 import { R, type Result } from "@alliance/common/result";
 import {
@@ -28,6 +29,7 @@ import {
 } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtRequest } from "src/auth/tokens";
+import { isFeatureEnabled } from "src/config/features";
 import {
   KoraBatchDto,
   KoraBatchEventDto,
@@ -42,7 +44,6 @@ import {
   KoraBatchActionsService,
 } from "./kora-batch-actions.service";
 import { KoraBatchService } from "./kora-batch.service";
-import { koraStagingTools } from "./kora-staging-tools";
 
 const TRANSCRIPTS_MAX_BYTES = 50 * 1024 * 1024;
 
@@ -205,7 +206,9 @@ export class KoraBatchesController {
 }
 
 function requireStagingTools(): void {
-  if (!koraStagingTools()) throw new NotFoundException();
+  if (!isFeatureEnabled(Features.KoraStagingTools)) {
+    throw new NotFoundException();
+  }
 }
 
 function found<T>(result: Result<T, KoraBatchActionError>): T {

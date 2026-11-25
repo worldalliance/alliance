@@ -1,5 +1,4 @@
 import { adminOrigin } from "@alliance/common/url";
-import { Features, isEnabled } from "@alliance/shared/lib/features";
 import {
   getAdminUrl as getAdminUrlShared,
   getApiUrl as getApiUrlShared,
@@ -7,7 +6,6 @@ import {
   getWebSocketUrl as getWebSocketUrlShared,
 } from "@alliance/sharedweb/lib/config";
 import { webEnv } from "@alliance/sharedweb/lib/env";
-import { webEnvironment } from "@alliance/sharedweb/lib/runtimeConfig";
 
 // One vhost serves this app on both worldalliance.org and thealliance.org and
 // proxies /api and /socket.io on each. The auth cookie is SameSite=strict, so a
@@ -54,8 +52,4 @@ export const getSingleActionSSEUrl = (actionId: number) => {
 
 export const getBulkActionSSEUrl = (actionIds: number[]) => {
   return `${getApiUrl()}/actions/live-list?ids=${actionIds.join(",")}`;
-};
-
-export const isFeatureEnabled = (feature: Features) => {
-  return isEnabled(feature, webEnvironment());
 };

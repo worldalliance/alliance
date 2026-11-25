@@ -1,8 +1,10 @@
+import { Features } from "@alliance/common/features";
 import {
   Body,
   Controller,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -12,6 +14,7 @@ import { ApiOkResponse, ApiResponse } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import type { JwtPayload } from "src/auth/tokens";
 import { ReqUser } from "src/auth/user.decorator";
+import { isFeatureEnabled } from "src/config/features";
 import {
   PartitionPartsDto,
   PartitionPreviewResultDto,
@@ -45,10 +48,14 @@ export class SuitePartitionsController {
     status: 409,
     description: "The suite already uses parts or is scheduled.",
   })
+  @ApiResponse({ status: 404, description: "Partitioning is off here." })
   async convertToPartitionAdmin(
     @Param("suiteId", ParseIntPipe) suiteId: number,
     @ReqUser() user: JwtPayload,
   ): Promise<SuitePartitionDto> {
+    if (!isFeatureEnabled(Features.SuitePartitioning)) {
+      throw new NotFoundException();
+    }
     await this.partitions.convert({ suiteId, userId: user.sub });
     return new SuitePartitionDto(await this.partitions.get(suiteId));
   }
