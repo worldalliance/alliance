@@ -222,7 +222,10 @@ export function ListContent({
     <div
       className={cn(
         "min-h-0 flex-1 overflow-auto",
-        cards ? "flex flex-col gap-section px-page py-section" : "bg-surface",
+        // With no filter bar above it, the table would touch the page description.
+        cards
+          ? "flex flex-col gap-section px-page py-section"
+          : "bg-surface first:mt-3",
       )}
     >
       {children}
