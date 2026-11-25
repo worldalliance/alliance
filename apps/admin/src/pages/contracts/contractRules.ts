@@ -1,4 +1,7 @@
+import { href } from "react-router";
 import { BadgeTone } from "../../ui/Badge";
+
+export const CONTRACTS_HREF = href("/tasks/contracts");
 
 export const contractName = (contract: { id: number; name?: string | null }) =>
   contract.name?.trim() || `Contract #${contract.id}`;
@@ -36,8 +39,8 @@ type Scheduled = {
 
 /**
  * Active is the one contract the server hands members to sign, whose id the
- * caller has from the current-contract endpoint. Inactive covers one with no
- * start date, one that ended, and one a later start replaced.
+ * caller knows. Inactive covers one with no start date, one that ended, and
+ * one a later start replaced.
  */
 export function statusOf(
   contract: Scheduled,
