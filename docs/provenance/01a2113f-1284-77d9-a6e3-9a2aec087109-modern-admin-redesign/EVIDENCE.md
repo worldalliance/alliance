@@ -419,3 +419,11 @@ Taken on 2026-11-24 against revision c722280863, the base of the `modern-admin` 
   ```
 
 - Cause: the admin's PostHog reporting (`apps/admin/src/lib/analytics.ts`, page views tagged `app: admin` with route-template URLs) arrived in commit `a03200601d` (#1073), merged to `main` on 2026-11-24. Production ran `2c5eb2ec07` (2026-11-19), per `GITHUB_REPOSITORY=worldalliance/alliance bash .github/actions/deploy-guard/live-commit.sh production`, and `git merge-base --is-ancestor a03200601d 2c5eb2ec07` showed #1073 is not in it. So there is no per-route usage data until `main` reaches production and staff use the admin for a while; usage was not reconstructed from other sources such as server logs.
+
+### The Tailwind lint plugin
+
+The plugin's metadata was checked on 2026-11-24. The install was run on 2026-11-25 by a reviewer of this branch, at the commit that adds this section, with bun 1.4.4.
+
+- **`eslint-plugin-better-tailwindcss` 4.11.0 supports Tailwind CSS 4 and has a `no-restricted-classes` rule.** Source: the package's npm metadata, https://www.npmjs.com/package/eslint-plugin-better-tailwindcss (a community plugin, common practice; not a vendor recommendation).
+- **Installing it moved six existing packages to new top-level versions in `bun.lock` and removed one.** Method: `cd apps/frontend && bun add -d eslint-plugin-better-tailwindcss@4.11.0`, then `git diff bun.lock`, then reverted. Moved: `synckit` 0.11.12 to 0.12.3, `enhanced-resolve` 5.20.1 to 5.25.1, `tapable` 2.3.2 to 2.3.3, `mdn-data` 2.0.14 to 2.37.2, `ajv-keywords` 3.5.2 to 5.1.0, `@pkgr/core` 0.2.9 to 0.3.6. Removed: `@expo/ws-tunnel` with its nested `ws`. `valibot` 1.5.0 was only added, nested under the plugin. The plugin's peer range is `tailwindcss: ^3.3.0 || ^4.1.17` (`npm view eslint-plugin-better-tailwindcss@4.11.0 peerDependencies`).
+
