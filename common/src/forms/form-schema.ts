@@ -97,6 +97,8 @@ export const formSchema = z.strictObject({
   description: z.string().optional(),
   pages: z.array(pageSchema),
   submit: z.strictObject({ label: z.string().optional() }).optional(),
+  /** False hides the step outline on the task's card. */
+  taskOutline: z.boolean().optional(),
   completionSubtitle: z.string().optional(),
   shareableTextTemplate: z.string().optional(),
   defaultShareableTextTemplate: z.string().optional(),

@@ -353,7 +353,7 @@ export function useTaskFlow(params: {
 
   const nextIsLast = nextIndex === null;
   const outline = useTaskOutline({
-    enabled: rules.outline,
+    enabled: rules.outline && form.schema.taskOutline !== false,
     form,
     screens,
     visibleIndices,

@@ -54,4 +54,16 @@ describe("useTaskFlow outline progress", () => {
     const past = setup({ schema, savedScreen: 2 });
     expect(doneSteps(past.hook.result.current.outline)).toEqual(["Your story"]);
   });
+
+  it("is empty when the form turns the outline off", () => {
+    const { hook } = setup({
+      schema: {
+        pages: [{ id: "p1", fields: [header("h"), input("a")] }],
+        outputViews: [],
+        taskOutline: false,
+      },
+      visiblePageIndices: [0],
+    });
+    expect(hook.result.current.outline).toEqual([]);
+  });
 });

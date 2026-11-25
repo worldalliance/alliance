@@ -8,3 +8,4 @@ Continues `01a1cc92-722f-7000-8dfe-0357e84660bc-task-outline`, whose requirement
 Origins: **User** is the user's own request.
 
 - A step the member has done shows its circle green, with no check mark. (User)
+- In the admin, a task can turn its outline off, for long tasks. (User)
