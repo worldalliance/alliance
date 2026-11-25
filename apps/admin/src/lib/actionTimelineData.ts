@@ -342,6 +342,11 @@ export const buildTimelineData = ({
   };
 };
 
+export const timelineScale =
+  (globalStartDate: Date, pixelsPerDay: number) => (time: Date | number) =>
+    ((new Date(time).getTime() - globalStartDate.getTime()) * pixelsPerDay) /
+    millisecondsInDay;
+
 // globalStartDate falls at an arbitrary time of day, so ticks anchor to
 // midnight rather than to it.
 export const weekTicks = ({
@@ -353,18 +358,14 @@ export const weekTicks = ({
   globalEndDate: Date;
   pixelsPerDay: number;
 }) => {
-  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
+  const xForTime = timelineScale(globalStartDate, pixelsPerDay);
   const firstDay = startOfDay(globalStartDate);
   const ticks: { date: Date; left: number }[] = [];
 
   let current = isTuesday(firstDay) ? firstDay : nextTuesday(firstDay);
 
   while (current <= globalEndDate) {
-    ticks.push({
-      date: current,
-      left:
-        (current.getTime() - globalStartDate.getTime()) * pixelsPerMillisecond,
-    });
+    ticks.push({ date: current, left: xForTime(current) });
     current = addWeeks(current, 1);
   }
 

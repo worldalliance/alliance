@@ -1,6 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
 import { getDayOfYear, milliseconds } from "date-fns";
-import { millisecondsInDay } from "date-fns/constants";
 import React, {
   useCallback,
   useEffect,
@@ -17,6 +16,7 @@ import {
   type TimelineAction,
   type TimelineReminder,
   type TimelineRow,
+  timelineScale,
   weekTicks,
 } from "../lib/actionTimelineData";
 import type { CohortSegment } from "../lib/describeCohortExpression";
@@ -113,6 +113,10 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   const timelineContentHeight =
     Math.max(timelineData.length, hasReminderOverlay ? 1 : 0) * rowHeight;
   const chartHeight = timelineContentHeight + 60;
+  const xForTime = useMemo(
+    () => timelineScale(globalStartDate, pixelsPerDay),
+    [globalStartDate, pixelsPerDay],
+  );
 
   useEffect(() => {
     if (
@@ -123,13 +127,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       return;
     }
 
-    const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-    const startTime = globalStartDate.getTime();
-    const endTime = globalEndDate.getTime();
-    const clampedTime = Math.min(Math.max(focusTimestamp, startTime), endTime);
-    const focusOffset = clampedTime - startTime;
+    const clampedTime = Math.min(
+      Math.max(focusTimestamp, globalStartDate.getTime()),
+      globalEndDate.getTime(),
+    );
     const targetScrollLeft =
-      focusOffset * pixelsPerMillisecond - scrollContainer.clientWidth / 2;
+      xForTime(clampedTime) - scrollContainer.clientWidth / 2;
 
     scrollContainer.scrollTo({
       left: Math.max(0, targetScrollLeft),
@@ -159,7 +162,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     focusTimestamp,
     globalStartDate,
     globalEndDate,
-    pixelsPerDay,
+    xForTime,
     scrollContainer,
   ]);
 
@@ -173,19 +176,13 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     if (scrollContainerRef.current && timelineData.length > 0) {
       const currentDate = new Date();
       if (currentDate >= globalStartDate && currentDate <= globalEndDate) {
-        // Use precise timing for centering
-        const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-        const millisecondsSinceStart =
-          currentDate.getTime() - globalStartDate.getTime();
-        const currentTimePosition =
-          millisecondsSinceStart * pixelsPerMillisecond;
         const containerWidth = scrollContainerRef.current.clientWidth;
-        const targetScrollLeft = currentTimePosition - containerWidth / 2;
+        const targetScrollLeft = xForTime(currentDate) - containerWidth / 2;
 
         scrollContainerRef.current.scrollLeft = Math.max(0, targetScrollLeft);
       }
     }
-  }, [timelineData, globalStartDate, globalEndDate, pixelsPerDay]);
+  }, [timelineData, globalStartDate, globalEndDate, xForTime]);
 
   const scrollToWeek = (weekStart: Date) => {
     const index = firstRowActiveInWeek(timelineData, weekStart);
@@ -362,18 +359,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   }}
                 >
                   {normalizedReminders.map((reminder) => {
-                    const pixelsPerMillisecond =
-                      pixelsPerDay / millisecondsInDay;
-                    const startOffset =
-                      reminder.startDate.getTime() - globalStartDate.getTime();
-                    const left = startOffset * pixelsPerMillisecond;
+                    const left = xForTime(reminder.startDate);
 
                     if (reminder.isRange) {
-                      const endOffset =
-                        reminder.endDate.getTime() - globalStartDate.getTime();
                       const width = Math.max(
                         2,
-                        (endOffset - startOffset) * pixelsPerMillisecond,
+                        xForTime(reminder.endDate) - left,
                       );
 
                       return (
@@ -439,18 +430,11 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   currentDate >= globalStartDate &&
                   currentDate <= globalEndDate
                 ) {
-                  // Use precise timing for current time indicator
-                  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-                  const millisecondsSinceStart =
-                    currentDate.getTime() - globalStartDate.getTime();
-
                   return (
                     <div
                       className="absolute bg-zinc-600 pointer-events-none z-30"
                       style={{
-                        left: `${
-                          millisecondsSinceStart * pixelsPerMillisecond
-                        }px`,
+                        left: `${xForTime(currentDate)}px`,
                         width: "2px",
                         top: "45px",
                         height: `${timelineContentHeight}px`,
@@ -466,11 +450,9 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
               {focusIndicator?.visible &&
                 (() => {
-                  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-                  const offset =
-                    focusIndicator.timestamp - globalStartDate.getTime();
+                  const left = xForTime(focusIndicator.timestamp);
 
-                  if (!Number.isFinite(offset)) {
+                  if (!Number.isFinite(left)) {
                     return null;
                   }
 
@@ -478,7 +460,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                     <div
                       className="absolute bg-blue-500 pointer-events-none z-40 transition-opacity duration-200"
                       style={{
-                        left: `${offset * pixelsPerMillisecond}px`,
+                        left: `${left}px`,
                         width: "2px",
                         top: "45px",
                         height: `${timelineContentHeight}px`,
@@ -493,7 +475,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   key={action.id}
                   action={action}
                   phases={phases}
-                  globalStartDate={globalStartDate}
+                  xForTime={xForTime}
                   pixelsPerDay={pixelsPerDay}
                   chartWidth={chartWidth}
                   rowIndex={index}

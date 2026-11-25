@@ -18,6 +18,7 @@ import {
   firstRowActiveInWeek,
   normalizeReminders,
   parseReminderDate,
+  timelineScale,
   weekTicks,
 } from "./actionTimelineData";
 
@@ -284,6 +285,16 @@ describe("buildTimelineData", () => {
         latestLaunchFirst: false,
       }).globalStartDate.toISOString(),
     ).toBe(new Date(NOW.getTime() - milliseconds({ days: 2 })).toISOString());
+  });
+});
+
+describe("timelineScale", () => {
+  const xForTime = timelineScale(new Date("2026-03-01T08:00:00Z"), 16);
+
+  it("places an instant by its exact time, not its day", () => {
+    expect(xForTime(new Date("2026-03-01T08:00:00Z"))).toBe(0);
+    expect(xForTime(new Date("2026-03-01T20:00:00Z"))).toBe(8);
+    expect(xForTime(new Date("2026-03-03T14:00:00Z"))).toBe(36);
   });
 });
 
