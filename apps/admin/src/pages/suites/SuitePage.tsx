@@ -1,7 +1,4 @@
-import type {
-  ActionSuiteDto,
-  UpdateActionEventDto,
-} from "@alliance/shared/client";
+import type { ActionSuiteDto } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import type { ReactNode } from "react";
 import { Fragment, useMemo, useState } from "react";
@@ -121,24 +118,17 @@ export default function SuitePage() {
   const newTaskHref = `/tasks/new?suiteId=${suiteId}`;
   const highlighted = Number(searchParams.get(REMINDER_PARAM));
 
-  const handleEditEvent = (eventId: number, body: UpdateActionEventDto) => {
+  const handleDeleteEvent = async (eventId: number) => {
     setEventError(null);
-    updateEvent.mutate(
-      { eventId, body },
-      {
-        onError: (e) =>
-          setEventError(adminRefusalMessage(e, "Couldn't update the event.")),
-      },
-    );
-  };
-  const handleDeleteEvent = (eventId: number) => {
-    setEventError(null);
-    deleteEvent.mutate(eventId, {
-      onError: (e) =>
-        setEventError(
-          `${adminRefusalMessage(e, "Couldn't delete the event.")} (events will fail to delete if reminders depend on their existence)`,
-        ),
-    });
+    try {
+      await deleteEvent.mutateAsync(eventId);
+      return true;
+    } catch (e) {
+      setEventError(
+        `${adminRefusalMessage(e, "Couldn't delete the event.")} (an event a project update is tied to can't be deleted)`,
+      );
+      return false;
+    }
   };
 
   const launch = suite && suiteLaunch(suite);
@@ -210,7 +200,9 @@ export default function SuitePage() {
       <SuiteEventsTab
         suite={shown}
         addEvent={addEvent.mutateAsync}
-        updateEvent={handleEditEvent}
+        updateEvent={(eventId, body) =>
+          updateEvent.mutateAsync({ eventId, body })
+        }
         deleteEvent={handleDeleteEvent}
       />
     ),

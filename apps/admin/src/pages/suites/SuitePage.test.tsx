@@ -118,12 +118,14 @@ it("says why a delete was refused", async () => {
     Response.json({ message: "Reminders use it" }, { status: 400 });
   renderPage("/tasks/suites/3?tab=events");
 
-  fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
-  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete: Launch" }),
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Delete event" }));
 
   expect(
     await screen.findByText(
-      "Reminders use it (events will fail to delete if reminders depend on their existence)",
+      "Reminders use it (an event a project update is tied to can't be deleted)",
     ),
   ).toBeTruthy();
 });
@@ -133,12 +135,13 @@ it("says why an edit was refused", async () => {
     Response.json({ message: "Title is too long" }, { status: 400 });
   renderPage("/tasks/suites/3?tab=events");
 
-  fireEvent.click(await screen.findByRole("button", { name: "Edit for all" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Edit…: Launch" }));
   expect(screen.getByLabelText("Title")).toBeTruthy();
-  expect(screen.getByLabelText("Date")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(screen.getByLabelText("Date (Pacific time)")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Save for every task" }));
 
   expect(await screen.findByText("Title is too long")).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
 });
 
 it("opens the launch page from the suite and goes back", async () => {
