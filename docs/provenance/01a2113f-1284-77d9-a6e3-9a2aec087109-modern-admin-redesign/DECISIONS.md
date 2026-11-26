@@ -543,3 +543,39 @@ Agent decisions by the growth area (Invites, Waitlist, Links, Organizations, Out
 - **Ambassador program is a list, not a settings form.** A card's unconfirmed Remove button comes last, so focus after a removal never lands on another member's Remove. Projected growth is program-wide, whatever the search.
 - **Project updates** link to the update's record route through `RECORDS`. The list says to write an update "from its task's page", since the task record's tab name belongs to the tasks area. Forum posts show dates in Pacific time. Stepping between posts replaces history; opening one pushes. The expert picker is disabled, not hidden, while Q&A is off, with its note always visible.
 - **Review:** every reviewer ran on Opus 5.5 in a fresh context, the same model that wrote most of the code (Fable was retired on Nov 25). From round 4, reviews cover only the fix delta, and the loop stopped after round 5, the first with no HIGH finding, per the owner's Nov 26 plan. Its one remaining bug, the New campaign picture help, is ALL-2651.
+
+## Area: responses
+
+Agent decisions by the responses area's lead and its units (forms list, form record, Versions tab, the responses view and its four sub-views, exports); the user was asleep. Units were built on Opus 5.5, except the exports unit and the rebase onto `ma-sys`, which ran on Sonnet 5.5, and all were reviewed on Opus 5.5 in a fresh context.
+
+- **Forms list:** a row opens the form from its name, its task is a separate column linking to the task record, and delete stays a visible per-row button. There is no "New form" button (user requirement); `/tasks/forms/new` stays reachable by URL. Where the forms index names no task, the list shows "—" and the record shows "Form N", because the index doesn't link follow-up forms to their task (ALL-2549).
+- **Deleting a form:** the confirmation lists what the server does: responses, drafts and follow-up forms are deleted, the completions those responses recorded are removed, nobody is notified, and nothing can be restored. A task whose main form is deleted keeps pointing at it, and the form stops loading for members. Nothing blocks that case, because the server doesn't. A form that is a task's variant is refused with a 500 today, which is filed in ALL-1441.
+- **Form title editing is not built:** saving needs the whole schema, so a title-only save could create a new version, which would make every current response show as out of date. Filed as ALL-2542.
+- **Versions tab:**
+  - A version is named `v<snapshot id>`, as in the Responses tab's Versions drawer, and its date reads "First saved". Snapshots are shared across forms by schema hash, so a save that returns a form to an earlier schema reuses that version.
+  - The tab loads alongside the form, without waiting for it.
+  - Reassigning responses is styled as destructive, because the admin can't move them back. Its dialog says that members then see their past answers under the current version's questions.
+  - There is no "Back to responses" link unless `returnTo` is set; the Responses tab does that job.
+- **Responses view:**
+  - The view renders no header of its own; the record's title stands for it, on the form record and on the task record alike.
+  - The four sub-views use a `ViewSwitch`, not a second row of tabs.
+  - A response opens from the respondent's name, not a row click. With the Respondent column hidden, the first visible cell opens the response and reads "Open" when that cell is empty.
+  - "Released {date}" is now "first {date}", since it was always the first response's date.
+  - A failed refresh shows the shared "Couldn't refresh responses … Showing what loaded before." banner, not a toast.
+  - "Copy link" confirms with a toast.
+  - The version and compare toggles use words and weight, not status colours.
+- **Sub-views:**
+  - The PostHog button reads "Watch session recording", since "Replay" was ambiguous inside the Replays tab.
+  - Withdrawals show no time, because the server sends none.
+  - Stats' filter banner is a filter chip with the count.
+  - Questions stays a table with wrapping answers, not cards, so respondent, variant, time and AI score line up beside each answer.
+  - A response's snapshot renders as stored when it fails only a rule added after it was written (`parseStoredFormSchema` in `shared/parsed-dtos.ts`). Only a snapshot with no pages of fields falls back to the current version, under a banner naming the form.
+  - The Replays respondent search is `ui/Combobox`, and the response being shown reads "Showing · date".
+- **Exports (Defect fix list):**
+  - Both exports hold exactly the Responses table's rows, in its order, under its variant, search and version filters, from every sub-view. The menu names those filters ("1 response · Variant: Beta · Search: ann").
+  - The Stats and Replays answer filter narrows the replays only.
+  - Hidden columns still export: hiding a column is a reading aid, and a file missing columns can't be rebuilt from it.
+  - The CSV gains "Submitted at", option labels taken from each response's own version (labels only; the HTML file's toggle still offers raw values), and a "<label> (removed)" column for each question a later version dropped. "(removed)" is shown only where the question really was removed from that response's own form, never because a variant doesn't ask it.
+  - "User Name" is blank when there is no name.
+- **States after joining `ma-sys`:** the forms list, the form record and the Versions tab use `ContentState` with `things`/`query`. The responses view and its sub-views keep passing `loading`/`error` by hand, because one composite hook feeds them (form, responses and a refresh mutation), not a single query.
+- **Review:** the loop ran three rounds, the third reviewing only the delta from round 2's fixes and the rebase onto `ma-sys`. It stopped there under the owner's stop rule, since round 3 found nothing HIGH. Round 3's unfixed bugs are filed in Linear "Modern admin" as ALL-2643 to ALL-2650, among them a variant's removed question no longer reading "(removed)" in the task record's CSV (ALL-2649). Earlier follow-ups are ALL-2549, ALL-2550 and ALL-2551 (since fixed by adopting `useFocusAfterRemoval`), plus a comment on ALL-1441. Its formatting failures were fixed.
