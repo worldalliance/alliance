@@ -1,3 +1,4 @@
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import { useConfirmOnPage } from "../../../lib/useConfirmOnPage";
 import { Select } from "../../../ui/Select";
 import { CheckboxField, Field, FormSection } from "../../../ui/templates/Form";
@@ -23,9 +24,14 @@ export const PUBLIC_ONLY_CONFIRM = {
 
 export function VisibilitySection({
   editor,
+  task,
   hideStaffPreview,
-}: Pick<DetailsSectionProps, "editor"> & { hideStaffPreview: boolean }) {
+}: Pick<DetailsSectionProps, "editor" | "task"> & {
+  hideStaffPreview: boolean;
+}) {
   const { form } = editor;
+  const previewOver =
+    task !== null && hasMemberActionStarted(task.events, new Date());
   const confirm = useConfirmOnPage();
   const mode = form.visibilityMode ?? "public";
 
@@ -35,6 +41,7 @@ export function VisibilitySection({
   ) => {
     if (
       checked &&
+      !(field === "staffPreview" && previewOver) &&
       !(await confirm(
         field === "staffPreview" ? STAFF_PREVIEW_CONFIRM : PUBLIC_ONLY_CONFIRM,
       ))
@@ -80,7 +87,14 @@ export function VisibilitySection({
         <CheckboxField
           name="staffPreview"
           label="Staff preview"
-          help="Shows the draft to every staff account on its home page until Members taking action starts. Nobody can submit, complete, withdraw, dismiss, like or comment until then."
+          help={
+            !previewOver
+              ? "Shows the draft to every staff account on its home page until Members taking action starts. Nobody can submit, complete, withdraw, dismiss, like or comment until then."
+              : form.staffPreview
+                ? `Members taking action has started, so staff no longer see it through preview. The setting is still on: a duplicate starts in staff preview${task?.suite ? ", and moving the suite's Members taking action later turns it back on" : ""}.`
+                : "Members taking action has started, so staff preview no longer applies."
+          }
+          disabled={previewOver && !task?.staffPreview && !form.staffPreview}
           checked={form.staffPreview ?? false}
           onChange={(e) => void turnOn("staffPreview", e.target.checked)}
         />

@@ -58,7 +58,11 @@ export function TaskDetailsForm({
       <ContentSection {...sections} />
       <SetupSection {...sections} />
       <ParticipationSection {...sections} />
-      <VisibilitySection editor={editor} hideStaffPreview={hideStaffPreview} />
+      <VisibilitySection
+        editor={editor}
+        task={task}
+        hideStaffPreview={hideStaffPreview}
+      />
       <CompletionSection editor={editor} lookups={lookups} />
       <MoreSettingsSection editor={editor} />
       <div className="sticky bottom-0 z-10 overflow-hidden rounded-card border border-line">

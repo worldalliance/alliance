@@ -1,3 +1,4 @@
+import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { makeParsedAction } from "../../../lib/testing/parsedAction";
 import { renderForm } from "./renderDetailsForm";
@@ -94,6 +95,76 @@ describe("TaskDetailsForm editing", () => {
       await waitFor(() => expect(edits).toEqual([[field, true]]));
     },
   );
+
+  it("holds staff preview off once Members taking action has started", () => {
+    renderForm({
+      task: makeParsedAction({ events: [makeEvent()] }),
+    });
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>(/^Staff preview/).disabled,
+    ).toBe(true);
+    screen.getByText(
+      "Members taking action has started, so staff preview no longer applies.",
+    );
+  });
+
+  it("lets staff preview be cleared once started, and says what leaving it on does", () => {
+    renderForm({
+      form: { staffPreview: true },
+      task: makeParsedAction({ events: [makeEvent()], staffPreview: true }),
+    });
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>(/^Staff preview/).disabled,
+    ).toBe(false);
+    screen.getByText(
+      /The setting is still on: a duplicate starts in staff preview\.$/,
+    );
+  });
+
+  it("says moving the start later turns staff preview back on only for a task in a suite", () => {
+    renderForm({
+      form: { staffPreview: true },
+      task: makeParsedAction({
+        events: [makeEvent()],
+        staffPreview: true,
+        suite: {
+          id: 9,
+          name: "Live suite",
+          createdAt: "2026-01-02T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          events: [],
+        },
+      }),
+    });
+
+    screen.getByText(
+      /a duplicate starts in staff preview, and moving the suite's Members taking action later turns it back on\.$/,
+    );
+  });
+
+  it("lets a saved staff preview that was cleared once started be ticked again, without asking", async () => {
+    const { edits } = renderForm({
+      form: { staffPreview: false },
+      task: makeParsedAction({ events: [makeEvent()], staffPreview: true }),
+    });
+
+    fireEvent.click(screen.getByLabelText(/^Staff preview/));
+    await waitFor(() => expect(edits).toEqual([["staffPreview", true]]));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("lets an unsaved staff preview be cleared once Members taking action has started", () => {
+    renderForm({
+      form: { staffPreview: true },
+      task: makeParsedAction({ events: [makeEvent()], staffPreview: false }),
+    });
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>(/^Staff preview/).disabled,
+    ).toBe(false);
+  });
 
   it("turns public-only and staff preview off without asking", () => {
     const { edits } = renderForm({

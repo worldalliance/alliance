@@ -37,12 +37,20 @@ export function TaskReadiness({
     [task, schema],
   );
   const formUnknown = task.taskFormId != null && schema === null;
-  const unchecked = (id: string) => formUnknown && NEEDS_TASK_FORM.has(id);
+  const unchecked = formUnknown
+    ? items.filter((item) => NEEDS_TASK_FORM.has(item.id))
+    : [];
   const ready = items.filter(
-    (item) => item.isReady && !unchecked(item.id),
-  ).length;
+    (item) => item.isReady && !unchecked.includes(item),
+  );
+  const open = items.filter(
+    (item) => !item.isReady && !unchecked.includes(item),
+  );
   return (
-    <Panel title="Readiness" description={`${ready} of ${items.length} ready`}>
+    <Panel
+      title="Readiness"
+      description={`${ready.length} of ${items.length} ready`}
+    >
       <div className="flex flex-col gap-3">
         {formUnknown && taskForm.isLoadingError && (
           <Banner
@@ -64,35 +72,52 @@ export function TaskReadiness({
             {adminRefusalMessage(taskForm.error, LOAD_FAILED_FALLBACK)}
           </Banner>
         )}
-        <ul className="flex flex-col gap-2">
-          {items.map((item) => (
-            <li key={item.id} className="flex items-start gap-2.5">
-              {unchecked(item.id) ? (
+        {open.length > 0 && (
+          <ul aria-label="Not ready" className="flex flex-col gap-2">
+            {open.map((item) => (
+              <li key={item.id} className="flex items-start gap-2.5">
+                <Badge tone={BadgeTone.Warning} className="shrink-0">
+                  Not ready
+                </Badge>
+                <span className="min-w-0">
+                  {item.label}
+                  {item.required && (
+                    <span className="text-caption text-fg-muted">
+                      {" "}
+                      · Required for staff testing
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {unchecked.length > 0 && (
+          <ul aria-label="Not checked" className="flex flex-col gap-2">
+            {unchecked.map((item) => (
+              <li key={item.id} className="flex items-start gap-2.5">
                 <Badge tone={BadgeTone.Neutral} className="shrink-0">
                   {taskForm.isLoadingError ? "—" : "Loading…"}
                 </Badge>
-              ) : (
-                <Badge
-                  tone={item.isReady ? BadgeTone.Success : BadgeTone.Warning}
-                  className="shrink-0"
-                >
-                  {item.isReady ? "Ready" : "Not ready"}
-                </Badge>
-              )}
-              <span className="min-w-0">
-                {unchecked(item.id) && item.id === "readingTime"
-                  ? "Total reading time: —"
-                  : item.label}
-                {item.required && (
-                  <span className="text-caption text-fg-muted">
-                    {" "}
-                    · Required for staff testing
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
+                <span className="min-w-0">
+                  {item.id === "readingTime"
+                    ? "Total reading time: —"
+                    : item.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {ready.length > 0 && (
+          <p className="flex items-start gap-2.5">
+            <Badge tone={BadgeTone.Success} className="shrink-0">
+              Ready
+            </Badge>
+            <span className="min-w-0 text-fg-muted">
+              {ready.map((item) => item.label).join(" · ")}
+            </span>
+          </p>
+        )}
       </div>
     </Panel>
   );
