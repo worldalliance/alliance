@@ -287,7 +287,7 @@ export function useOutputPanes({
           ) : (
             <EmptyState
               title="No output views yet"
-              description="An output view shows members' answers back to them once they finish."
+              description="Add a view to show answers from this form once members finish it."
               action={
                 <Button variant={ButtonVariant.Primary} onClick={addView}>
                   Add output view
