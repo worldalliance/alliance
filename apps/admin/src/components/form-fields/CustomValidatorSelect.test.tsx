@@ -58,7 +58,7 @@ describe("the validator type picker", () => {
       );
     const query = queryWrapper();
     const view = render(picker, query);
-    expect(await screen.findByText("Failed to load validators")).toBeTruthy();
+    expect(await screen.findByText("Couldn't load validators")).toBeTruthy();
     view.unmount();
 
     validatorTypes = hasPhoneNumber;

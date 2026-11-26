@@ -8,7 +8,13 @@ afterEach(cleanup);
 
 const file = (name: string) => new File(["x"], name, { type: "image/png" });
 
-function Harness({ multiple = false }: { multiple?: boolean }) {
+function Harness({
+  multiple = false,
+  emptyText,
+}: {
+  multiple?: boolean;
+  emptyText?: string;
+}) {
   const [files, setFiles] = useState<File[]>([]);
   return (
     <>
@@ -19,6 +25,7 @@ function Harness({ multiple = false }: { multiple?: boolean }) {
             value={files}
             onChange={setFiles}
             multiple={multiple}
+            emptyText={emptyText}
             accept="image/*"
           />
         )}
@@ -72,6 +79,11 @@ describe("FileInput", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.getByText("No file chosen")).toBeTruthy();
     expect(nativeInput().value).toBe("");
+  });
+
+  it("says what was uploaded once the caller clears the value", () => {
+    render(<Harness emptyText="Uploaded a.png" />);
+    expect(screen.getByText("Uploaded a.png")).toBeTruthy();
   });
 
   it("passes disabled and the invalid state to the native input", () => {

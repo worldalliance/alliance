@@ -5,12 +5,13 @@ import { cn } from "./cn";
 /**
  * A "Choose file…" button with the chosen names beside it. The caller holds
  * the files; handing back an empty `value` clears the control, so the same
- * file can be chosen again.
+ * file can be chosen again; `emptyText` then says what was uploaded.
  */
 export function FileInput({
   value,
   onChange,
   multiple = false,
+  emptyText,
   className,
   id,
   ...input
@@ -23,6 +24,8 @@ export function FileInput({
   value: readonly File[];
   onChange: (files: File[]) => void;
   multiple?: boolean;
+  /** Shown while `value` is empty, such as "Uploaded notes.csv" after the caller cleared it. */
+  emptyText?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -58,7 +61,9 @@ export function FileInput({
         className={cn("min-w-0 truncate", !names && "text-fg-muted")}
         title={names || undefined}
       >
-        {names || (multiple ? "No files chosen" : "No file chosen")}
+        {names ||
+          emptyText ||
+          (multiple ? "No files chosen" : "No file chosen")}
       </span>
     </div>
   );
