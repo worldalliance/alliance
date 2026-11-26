@@ -166,8 +166,9 @@ export function PriorityView() {
       >
         <CheckboxField
           label="Show all"
-          help="Include items that can't reach home pages now."
+          help="Include items that can't reach home pages, now or later."
           checked={showAll}
+          disabled={save.isPending || held?.savedAt !== undefined}
           onChange={(event) => void toggleShowAll(event.target.checked)}
         />
       </FilterBar>

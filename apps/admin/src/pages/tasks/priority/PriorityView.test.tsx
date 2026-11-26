@@ -263,6 +263,10 @@ it("keeps showing the saved order when the reload after a save fails", async () 
         : null,
   ).filter(Boolean);
   expect(names).toEqual(["Sign the petition", "Call your rep"]);
+  expect(screen.getByRole("checkbox", { name: "Show all" })).toHaveProperty(
+    "disabled",
+    true,
+  );
 });
 
 it("keeps the reorder and says why when the save is refused", async () => {
@@ -415,6 +419,10 @@ it("holds the rows still while a save runs", async () => {
   fireEvent.click(saveButton());
 
   await waitFor(() => expect(down()).toHaveProperty("disabled", true));
+  expect(screen.getByRole("checkbox", { name: "Show all" })).toHaveProperty(
+    "disabled",
+    true,
+  );
   release();
   expect(await screen.findByText("Saved")).toBeTruthy();
   expect(down()).toHaveProperty("disabled", false);

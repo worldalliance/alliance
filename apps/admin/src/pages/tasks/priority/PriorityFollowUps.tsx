@@ -56,8 +56,8 @@ export function PriorityFollowUps({
           Follow-up forms
         </h2>
         <p className="text-fg-muted">
-          Shown to members who completed their task, after their tasks, newest
-          start first. Their order can't be changed here.
+          Shown to members in the form's cohort who completed its task, after
+          their tasks, newest start first. Their order can't be changed here.
         </p>
       </div>
       {rows.length === 0 ? (
