@@ -215,6 +215,7 @@ function ViewTree({
                     blockKey: key,
                   })
                 }
+                title={label}
                 className={cn(ROW, "min-w-0 flex-1 py-1", selected && SELECTED)}
               >
                 <span className="min-w-0">
@@ -226,6 +227,7 @@ function ViewTree({
               </button>
               <MoreMenu
                 size="small"
+                compact
                 subject={label}
                 items={blockMenuItems({
                   index,
