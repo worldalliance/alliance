@@ -393,6 +393,7 @@ Agent decisions by the system owner, the one writer of the admin's tokens, `src/
 - **`UserSelect` keeps its row grid for several picks** rather than chips: about 20 callers and the cohort pickers hold hundreds of members.
 - **`fromApi` keeps a refused request's status:** `R.fromPromise` without a mapper turned the API's error into a plain `Error`, so pages showed the fallback instead of the server's reason.
 - **Declined:** a tree primitive (one caller, the builder), `ForceGraph`'s keyboard selection (the members and growth areas own it), a mono section title (no clear use).
+- **Tags are about to be retired (owner, Nov 26),** so any tag UI an area still builds stays minimal, and the members list drops its Tags column. **The role badge reuses the frontend's words, not its component:** `roleBadges` in `@alliance/shared/lib/copy` holds the labels and tooltips the frontend's `UserDisplayName` shows, and the admin renders them with its own `ui/Badge` (neutral tone: a role is not a status), since the frontend's badge is in `sharedweb/ui`, which the admin may not import. No new shared copy is needed.
 
 ## Area: activity
 
