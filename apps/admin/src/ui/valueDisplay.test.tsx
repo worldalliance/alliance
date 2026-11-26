@@ -8,14 +8,14 @@ import { ToastProvider } from "./ToastProvider";
 afterEach(cleanup);
 
 describe("CopyField", () => {
-  it("says so when the clipboard refuses", async () => {
+  it("says so when the clipboard refuses, until the value changes", async () => {
     const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: () => Promise.reject(new Error("denied")) },
     });
     try {
-      render(
+      const { rerender } = render(
         <ToastProvider>
           <CopyField label="Link" value="https://cdn.test/a.webp" />
         </ToastProvider>,
@@ -29,6 +29,12 @@ describe("CopyField", () => {
           "Couldn't copy the link. Select it and copy it yourself.",
         ),
       ).toBeTruthy();
+      rerender(
+        <ToastProvider>
+          <CopyField label="Link" value="https://cdn.test/b.webp" />
+        </ToastProvider>,
+      );
+      expect(screen.queryByText(/Couldn't copy the link/)).toBeNull();
     } finally {
       if (clipboard) Object.defineProperty(navigator, "clipboard", clipboard);
       else Reflect.deleteProperty(navigator, "clipboard");

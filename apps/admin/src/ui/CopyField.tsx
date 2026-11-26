@@ -20,11 +20,12 @@ export function CopyField({
   value: string;
 }) {
   const { success } = useToast();
-  const [failed, setFailed] = useState(false);
+  const [failedValue, setFailedValue] = useState<string | null>(null);
+  const failed = failedValue === value;
   const thing = label.toLowerCase();
   const copy = async () => {
     const copied = await copyToClipboard(value);
-    setFailed(!copied);
+    setFailedValue(copied ? null : value);
     if (copied) success(`Copied ${thing}`);
   };
   return (
