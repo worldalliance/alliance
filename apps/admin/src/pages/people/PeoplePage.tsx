@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { PlaceId, placeById } from "../../places";
 import Button, { ButtonVariant } from "../../ui/Button";
@@ -8,7 +8,10 @@ import { usePlaceTabs, usePlaceViews } from "../../ui/templates/usePlaceTabs";
 import { AllTab } from "./AllTab";
 import { AwayTab } from "./AwayTab";
 import { MapView } from "./MapView";
+import { MemberSheet } from "./MemberSheet";
+import { MemberSteps } from "./memberSteps";
 import { StaffTab } from "./StaffTab";
+import { useMemberPeek } from "./useMemberPeek";
 
 const TABS = ["all", "staff", "away"] as const;
 type Tab = (typeof TABS)[number];
@@ -20,16 +23,20 @@ export default function PeoplePage() {
   const views = usePlaceViews(PlaceId.People, VIEWS);
   // The map counts every member with an active contract, so it is a view of
   // All only; Staff and Away keep their own list whatever the view.
+  const peek = useMemberPeek();
+  const [rowIds, setRowIds] = useState<readonly number[]>([]);
   const onAll = tabs.value === "all";
   const users = useUsersAdmin({ enabled: onAll && views.value === "table" });
   const allBody: Record<View, () => ReactNode> = {
-    table: () => <AllTab users={users} />,
+    table: () => (
+      <AllTab users={users} onOpenMember={peek.open} onRowIds={setRowIds} />
+    ),
     map: () => <MapView />,
   };
   const body: Record<Tab, () => ReactNode> = {
     all: allBody[views.value],
-    staff: () => <StaffTab />,
-    away: () => <AwayTab />,
+    staff: () => <StaffTab onOpenMember={peek.open} onRowIds={setRowIds} />,
+    away: () => <AwayTab onOpenMember={peek.open} onRowIds={setRowIds} />,
   };
   return (
     <Page
@@ -51,6 +58,19 @@ export default function PeoplePage() {
       tabs={tabs}
     >
       {body[tabs.value]()}
+      {peek.memberId !== null && (
+        <MemberSheet
+          userId={peek.memberId}
+          onClose={peek.close}
+          headerActions={
+            <MemberSteps
+              ids={rowIds}
+              memberId={peek.memberId}
+              onStep={peek.step}
+            />
+          }
+        />
+      )}
     </Page>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import { RoleFilter } from "../../lib/memberRoleFilter";
 import { CompletionFilter, ContractFilter } from "./progressRules";
 
@@ -66,6 +66,7 @@ const writeParam = (
  */
 export function usePeopleFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { state } = useLocation();
   const filters = readPeopleFilters(searchParams);
   const update = useCallback(
     (
@@ -80,9 +81,9 @@ export function usePeopleFilters() {
           next.delete(PeopleParam.Page);
           return next;
         },
-        { replace: true },
+        { replace: true, state },
       ),
-    [setSearchParams],
+    [setSearchParams, state],
   );
   return {
     filters,
@@ -125,7 +126,7 @@ export function usePeopleFilters() {
           writeParam(next, PeopleParam.Page, String(page), "1");
           return next;
         },
-        { replace: true },
+        { replace: true, state },
       ),
     clearFilters: () =>
       update((next) => {

@@ -26,6 +26,7 @@ import {
 } from "../../ui/templates/States";
 import { formatAwayRange } from "./awayRange";
 import { type AwayWindow, useAwayWindow } from "./awayWindow";
+import { useReportRowIds } from "./memberSteps";
 
 const ZONE = timeZoneLabel(LAUNCH_TIME_ZONE);
 const END_LABELS: Record<keyof AwayWindow, string> = {
@@ -34,7 +35,14 @@ const END_LABELS: Record<keyof AwayWindow, string> = {
 };
 
 /** Members away at any point in a window, each of their periods a row. */
-export function AwayTab() {
+export function AwayTab({
+  onOpenMember,
+  onRowIds,
+}: {
+  onOpenMember?: (userId: number) => void;
+  /** The shown members' ids, in order, for the peek's up and down. */
+  onRowIds?: (ids: readonly number[]) => void;
+}) {
   const [now] = useState(() => new Date());
   const { window, setEnd } = useAwayWindow(now);
   const valid = window.from < window.to;
@@ -43,6 +51,10 @@ export function AwayTab() {
   const stale = ranges.isPlaceholderData;
   const members = new Set((ranges.data ?? []).map((range) => range.userId))
     .size;
+  useReportRowIds(
+    onRowIds,
+    valid && !stale ? (ranges.data ?? []).map((range) => range.userId) : [],
+  );
   return (
     <>
       <RefreshFailedBanner things="away periods" query={ranges} />
@@ -62,7 +74,8 @@ export function AwayTab() {
               value={window[end]}
               aria-invalid={!valid || undefined}
               onChange={({ date }) => date && setEnd(end, date)}
-              inputClassName="h-control-sm w-52"
+              size="small"
+              inputClassName="w-52"
             />
           </label>
         ))}
@@ -92,7 +105,10 @@ export function AwayTab() {
                 stale && "opacity-40",
               )}
             >
-              <AwayTable ranges={ranges.data ?? []} />
+              <AwayTable
+                ranges={ranges.data ?? []}
+                onOpenMember={onOpenMember}
+              />
             </div>
           </ContentState>
         )}
@@ -101,7 +117,13 @@ export function AwayTab() {
   );
 }
 
-function AwayTable({ ranges }: { ranges: readonly MemberAwayRangeDto[] }) {
+function AwayTable({
+  ranges,
+  onOpenMember,
+}: {
+  ranges: readonly MemberAwayRangeDto[];
+  onOpenMember?: (userId: number) => void;
+}) {
   return (
     <Table bleed>
       <TableHeader>
@@ -120,6 +142,7 @@ function AwayTable({ ranges }: { ranges: readonly MemberAwayRangeDto[] }) {
               name={range.userName}
               profilePicture={null}
               firstColumn
+              onOpen={onOpenMember}
             />
             <TableCell className="whitespace-nowrap">
               {formatAwayRange(range)}

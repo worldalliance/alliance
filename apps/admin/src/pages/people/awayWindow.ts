@@ -1,7 +1,7 @@
 import { TZDate } from "@date-fns/tz";
 import { addDays, isTuesday, nextTuesday, set } from "date-fns";
 import { useCallback } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 
 /** Next Tuesday, today included, 7pm through the Tuesday after at 11:59pm, Pacific time. */
@@ -29,6 +29,7 @@ const parseInstant = (raw: string | null) => {
  */
 export function useAwayWindow(now: Date) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { state } = useLocation();
   const fallback = defaultAwayWindow(now);
   const window: AwayWindow = {
     from: parseInstant(searchParams.get("from")) ?? fallback.from,
@@ -42,9 +43,9 @@ export function useAwayWindow(now: Date) {
           next.set(end, date.toISOString());
           return next;
         },
-        { replace: true },
+        { replace: true, state },
       ),
-    [setSearchParams],
+    [setSearchParams, state],
   );
   return { window, setEnd };
 }

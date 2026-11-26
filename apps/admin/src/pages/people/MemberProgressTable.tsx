@@ -91,6 +91,7 @@ export function MemberProgressTable<T extends MemberProgressRow>({
   tagNamesByUserId,
   detailFacts,
   bleed = false,
+  onOpenMember,
 }: {
   members: readonly T[];
   /** From `useMemberProgress`. */
@@ -102,6 +103,8 @@ export function MemberProgressTable<T extends MemberProgressRow>({
   /** More `Fact`s for an open row, after the contact details. */
   detailFacts?: (member: T) => ReactNode;
   bleed?: boolean;
+  /** A plain click on a member's name calls this instead of opening their record. */
+  onOpenMember?: (userId: number) => void;
 }) {
   const withTags = tagNamesByUserId !== undefined;
   const columns = COLUMNS + (withTags ? 1 : 0);
@@ -133,6 +136,7 @@ export function MemberProgressTable<T extends MemberProgressRow>({
                 : tagNamesByUserId && (tagNamesByUserId[member.id] ?? [])
             }
             detailFacts={detailFacts}
+            onOpenMember={onOpenMember}
           />
         ))}
       </TableBody>
@@ -148,6 +152,7 @@ function ProgressRow<T extends MemberProgressRow>({
   contactKnown,
   tagNames,
   detailFacts,
+  onOpenMember,
 }: {
   member: T;
   columns: number;
@@ -157,6 +162,7 @@ function ProgressRow<T extends MemberProgressRow>({
   /** Undefined: no Tags column. Null: unknown. */
   tagNames: string[] | null | undefined;
   detailFacts?: (member: T) => ReactNode;
+  onOpenMember?: (userId: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const detailId = `member-progress-${member.id}`;
@@ -178,6 +184,7 @@ function ProgressRow<T extends MemberProgressRow>({
           name={member.name}
           profilePicture={member.profilePicture}
           firstColumn
+          onOpen={onOpenMember}
         />
         <TableCell className="whitespace-nowrap">{rolesOf(member)}</TableCell>
         {tagNames !== undefined && (

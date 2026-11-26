@@ -20,7 +20,7 @@ import { AvatarProfile } from "../../ui/Avatar";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { cn } from "../../ui/cn";
 import { Input } from "../../ui/Input";
-import { personName } from "../../ui/PersonCell";
+import { peekOnPlainClick, personName } from "../../ui/PersonCell";
 import { nameLinkClass } from "../../ui/styles";
 import {
   SAVE_FAILED_FALLBACK,
@@ -30,17 +30,28 @@ import {
 import { FilterBar, ListContent } from "../../ui/templates/List";
 import {
   ContentState,
-  LOAD_FAILED_FALLBACK,
   RefreshFailedBanner,
   TableSkeleton,
 } from "../../ui/templates/States";
+import { useReportRowIds } from "./memberSteps";
 import { staffDirectoryChanged } from "./staffRules";
+import { MEMBER_PARAM } from "./useMemberPeek";
+
+// The peek opens over the tab, so its edits survive it.
+const PEEK_PARAMS = [MEMBER_PARAM];
 
 /**
  * The people with the staff flag in the order the public People page shows
  * them, each with a brief title and About link, saved together.
  */
-export function StaffTab() {
+export function StaffTab({
+  onOpenMember,
+  onRowIds,
+}: {
+  onOpenMember?: (userId: number) => void;
+  /** The shown members' ids, in order, for the peek's up and down. */
+  onRowIds?: (ids: readonly number[]) => void;
+}) {
   const directory = useStaffDirectoryAdmin();
   const [edits, setEdits] = useState<StaffDirectoryEntryDto[] | null>(null);
   const [saved, setSaved] = useState(false);
@@ -53,7 +64,11 @@ export function StaffTab() {
     [edits, directory.data],
   );
   const dirty = staffDirectoryChanged({ saved: directory.data ?? [], items });
-  useLeaveGuard(dirty);
+  useLeaveGuard(dirty, { ignoreParams: PEEK_PARAMS });
+  useReportRowIds(
+    onRowIds,
+    items.map((item) => item.id),
+  );
   const { confirmSave, dialog } = useContentConfirm();
   const save = useSaveStaffDirectoryAdmin();
   const edit = (next: StaffDirectoryEntryDto[]) => {
@@ -97,16 +112,10 @@ export function StaffTab() {
       </FilterBar>
       <ListContent>
         <ContentState
-          loading={directory.isPending}
+          things="staff"
+          query={directory}
+          refreshBanner={false}
           skeleton={<TableSkeleton bleed columns={4} />}
-          error={
-            directory.isLoadingError
-              ? adminRefusalMessage(directory.error, LOAD_FAILED_FALLBACK)
-              : null
-          }
-          errorTitle="Couldn't load staff"
-          onRetry={() => void directory.refetch()}
-          retrying={directory.isFetching}
           empty={items.length === 0}
           emptyTitle="No staff yet"
           emptyDescription="Turn Staff on in a member's record to list them here."
@@ -183,6 +192,9 @@ export function StaffTab() {
                     <Link
                       to={memberHref(item.id)}
                       title={name}
+                      onClick={
+                        onOpenMember && peekOnPlainClick(onOpenMember, item.id)
+                      }
                       className={cn(nameLinkClass, "truncate")}
                     >
                       {name}

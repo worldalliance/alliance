@@ -38,16 +38,20 @@ const lee = makeUser({
 let users: UserDto[] = [];
 let tags: TagDto[] = [];
 let addUserStatus = 200;
-let timeSpentTotal: () => Response;
+let timeSpentTotal: () => Response | Promise<Response>;
 let relationsStatus = 200;
 let tagsStatus = 200;
+let tagsLoaded: Promise<unknown>;
 const tagCalls: { path: string; body: unknown }[] = [];
 
 serveApi(
   routes({
     "GET /user/list": () => Response.json(users),
     "GET /analytics/time-spent-per-user-total": () => timeSpentTotal(),
-    "GET /user/tags": () => Response.json(tags, { status: tagsStatus }),
+    "GET /user/tags": async () => {
+      await tagsLoaded;
+      return Response.json(tags, { status: tagsStatus });
+    },
     "GET /actions/action-relations": () =>
       Response.json(
         { actions: [], suites: [], users: [] },
@@ -93,6 +97,7 @@ beforeEach(() => {
   timeSpentTotal = () => Response.json([]);
   relationsStatus = 200;
   tagsStatus = 200;
+  tagsLoaded = Promise.resolve();
   tagCalls.length = 0;
 });
 
@@ -130,6 +135,28 @@ it("orders members by total time spent", async () => {
 
   renderPage();
 
+  await waitFor(() => expect(shownNames()).toEqual(["Lee", "Sam", "Ada"]));
+});
+
+it("holds the rows until what orders them has loaded", async () => {
+  let release = () => {};
+  timeSpentTotal = () =>
+    new Promise((resolve) => {
+      release = () =>
+        resolve(
+          Response.json([
+            { userId: sam.id, timeSpent: 30 },
+            { userId: lee.id, timeSpent: 90 },
+          ]),
+        );
+    });
+
+  renderPage();
+
+  expect(await screen.findByText("3 members")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
+  expect(shownNames()).toEqual([]);
+  release();
   await waitFor(() => expect(shownNames()).toEqual(["Lee", "Sam", "Ada"]));
 });
 
@@ -198,6 +225,21 @@ it("doesn't apply the caught-up filter while task records failed to load", async
   renderPage("/members?status=caught_up");
   await screen.findByText(/^Couldn't load the members' task records\./);
   expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
+});
+
+it("holds the rows while tags load under a tag filter", async () => {
+  let release = () => {};
+  tagsLoaded = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  renderPage("/members?tag=t1");
+
+  expect(await screen.findByText("3 members")).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Loading" })).toBeTruthy();
+  expect(shownNames()).toEqual([]);
+  release();
+  await waitFor(() => expect(shownNames()).toEqual(["Lee"]));
 });
 
 it("doesn't apply the tags filter while tags failed to load", async () => {

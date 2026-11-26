@@ -22,6 +22,7 @@ import { useTagsAdmin } from "../../lib/useTagsAdmin";
 import { useTimeSpentPerUserTotalAdmin } from "../../lib/useTimeSpentPerUserTotalAdmin";
 import Badge from "../../ui/Badge";
 import Button, { ButtonVariant } from "../../ui/Button";
+import { MultiFilter } from "../../ui/MultiFilter";
 import Pagination from "../../ui/Pagination";
 import { personName } from "../../ui/PersonCell";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
@@ -40,7 +41,7 @@ import {
   TableSkeleton,
 } from "../../ui/templates/States";
 import { MemberProgressTable } from "./MemberProgressTable";
-import { MultiFilter } from "./MultiFilter";
+import { useReportRowIds } from "./memberSteps";
 import { ProgressFilters } from "./ProgressFilters";
 import {
   byNextTaskDue,
@@ -61,7 +62,16 @@ const NO_USERS: UserDto[] = [];
 const NO_TAGS: TagDto[] = [];
 
 /** Every member with their task progress: search, filter, shuffle, tag, open. */
-export function AllTab({ users }: { users: UseQueryResult<UserDto[]> }) {
+export function AllTab({
+  users,
+  onOpenMember,
+  onRowIds,
+}: {
+  users: UseQueryResult<UserDto[]>;
+  onOpenMember?: (userId: number) => void;
+  /** The shown members' ids, in order, for the peek's up and down. */
+  onRowIds?: (ids: readonly number[]) => void;
+}) {
   const all = users.data ?? NO_USERS;
   const timeSpent = useTimeSpentPerUserTotalAdmin();
   const tagsAdmin = useTagsAdmin();
@@ -177,6 +187,11 @@ export function AllTab({ users }: { users: UseQueryResult<UserDto[]> }) {
     page * MEMBERS_PER_PAGE,
   );
 
+  useReportRowIds(
+    onRowIds,
+    shown.map((member) => member.id),
+  );
+
   const roleCounts = useMemo(
     () =>
       Object.values(RoleFilter).map((role) => ({
@@ -190,6 +205,10 @@ export function AllTab({ users }: { users: UseQueryResult<UserDto[]> }) {
     mapValues(lists, (list) => list.length);
 
   const filtered = hasActiveFilters(filters);
+  // Rows wait for what orders and filters them, so they never move under a click.
+  const orderPending =
+    [relations, contact, timeSpent].some((query) => query.isPending) ||
+    (filters.tagIds.length > 0 && tagsAdmin.isLoading);
   return (
     <>
       <PartBanners
@@ -282,16 +301,16 @@ export function AllTab({ users }: { users: UseQueryResult<UserDto[]> }) {
       </FilterBar>
       <ListContent>
         <ContentState
-          loading={users.isPending}
-          skeleton={<TableSkeleton bleed columns={7} />}
-          error={
-            users.isLoadingError
-              ? adminRefusalMessage(users.error, LOAD_FAILED_FALLBACK)
-              : null
+          things="members"
+          query={{ ...users, isPending: users.isPending || orderPending }}
+          refreshBanner={false}
+          skeleton={
+            <TableSkeleton
+              bleed
+              columns={7}
+              columnClassNames={[undefined, undefined, undefined, "text-right"]}
+            />
           }
-          errorTitle="Couldn't load members"
-          onRetry={() => void users.refetch()}
-          retrying={users.isFetching}
           empty={shown.length === 0}
           filtered={filtered}
           onClearFilters={clearFilters}
@@ -314,6 +333,7 @@ export function AllTab({ users }: { users: UseQueryResult<UserDto[]> }) {
           <MemberProgressTable
             bleed
             members={shown}
+            onOpenMember={onOpenMember}
             progress={progress}
             memberContactInfo={contact.data}
             tagNamesByUserId={tagNamesByUserId}
@@ -408,8 +428,8 @@ function PartBanners({
       )}
       {tagsAdmin.isLoadingError && (
         <Banner tone={BannerTone.Danger}>
-          Couldn't load tags. {LOAD_FAILED_FALLBACK} The tags filter and column
-          are off until they load.
+          Couldn't load tags. {reason(tagsAdmin.error)} The tags filter and
+          column are off until they load.
         </Banner>
       )}
     </>
