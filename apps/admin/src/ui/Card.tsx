@@ -16,7 +16,7 @@ const STYLE: Record<CardStyle, string> = {
   [CardStyle.LightGrey]: "border-line bg-surface-2",
   [CardStyle.LightGreyBorder]: "border-line bg-surface-2",
   [CardStyle.Black]: "border-fg bg-fg text-accent-fg",
-  [CardStyle.Navy]: "border-fg bg-fg text-accent-fg",
+  [CardStyle.Navy]: "border-primary bg-primary text-on-primary",
   [CardStyle.Alert]: "border-info bg-info-soft",
   [CardStyle.Green]: "border-success bg-success-soft",
   [CardStyle.LightGreen]: "border-success bg-success-soft",

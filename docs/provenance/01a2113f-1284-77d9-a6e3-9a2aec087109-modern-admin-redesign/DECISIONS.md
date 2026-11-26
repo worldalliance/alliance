@@ -579,3 +579,13 @@ Agent decisions by the responses area's lead and its units (forms list, form rec
   - "User Name" is blank when there is no name.
 - **States after joining `ma-sys`:** the forms list, the form record and the Versions tab use `ContentState` with `things`/`query`. The responses view and its sub-views keep passing `loading`/`error` by hand, because one composite hook feeds them (form, responses and a refresh mutation), not a single query.
 - **Review:** the loop ran three rounds, the third reviewing only the delta from round 2's fixes and the rebase onto `ma-sys`. It stopped there under the owner's stop rule, since round 3 found nothing HIGH. Round 3's unfixed bugs are filed in Linear "Modern admin" as ALL-2643 to ALL-2650, among them a variant's removed question no longer reading "(removed)" in the task record's CSV (ALL-2649). Earlier follow-ups are ALL-2549, ALL-2550 and ALL-2551 (since fixed by adopting `useFocusAfterRemoval`), plus a comment on ALL-1441. Its formatting failures were fixed.
+
+## System: the member app's colours
+
+Agent judgement by the system owner's colours node; the user was away.
+
+- **Primary buttons are navy (`primary`, oklch(0.24 0.07 259), the member app's #081e40, 16:1 under white; hover its #0d2c5c)**, as the member app's primary buttons and bands are. The Alliance green is the `accent` everywhere else: the current selection, tabs, the sidebar's active entry, links, focus, checked controls, outline buttons and count badges. Making buttons green instead is one class list in `ui/Button.tsx`.
+- **The accent is the brand green darkened, oklch(0.5 0.14 133)**: the brand green itself is 3.2:1 on or under white and 2.9:1 on the canvas, under AA's 4.5:1 for text and, on the canvas, its 3:1 for controls, so the accent keeps its hue and drops its lightness to 5.6:1 under white and 5.3:1 on the canvas; hover is oklch(0.44 0.12 133), the soft background oklch(0.95 0.045 130). No token holds the undarkened green, since nothing in the admin can use it.
+- **Success moves from hue 150 to emerald, oklch(0.52 0.11 165)**, so a done badge doesn't read as the brand: at hue 150 it was 0.046 from the accent in OKLab, now 0.077.
+- **`html` takes `accent-color` and `:focus-visible` the accent's outline colour in `@layer base`**, as the member app sets `accent-color` on `html`, so pages not yet on the admin's components lose the browser's blue; Tailwind utilities still win over the base layer.
+- **The categorical, chart, sequential and heat palettes are unchanged**: they carry data, not the brand, and leading them with green would put the brand beside success in charts.

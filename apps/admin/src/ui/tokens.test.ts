@@ -55,6 +55,8 @@ const textPairs: [string, string][] = [
   ["accent-fg", "accent"],
   ["accent-fg", "accent-hover"],
   ["accent-fg", "fg"],
+  ["on-primary", "primary"],
+  ["on-primary", "primary-hover"],
   ["fg", "accent-soft"],
   ["fg-muted", "accent-soft"],
   ["success", "success-soft"],
@@ -89,6 +91,8 @@ const nonTextPairs: [string, string][] = [
   ["line-control", "surface-2"],
   ["accent", "surface"],
   ["accent", "canvas"],
+  ["primary", "surface"],
+  ["primary", "canvas"],
   ...categories.map((n): [string, string] => [`cat-${n}`, "surface"]),
   ...categories.map((n): [string, string] => [`chart-${n}`, "surface"]),
   ...categories

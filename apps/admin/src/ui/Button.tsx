@@ -57,7 +57,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         [ButtonVariant.Primary]:
-          "border-accent bg-accent text-accent-fg not-disabled:not-aria-busy:hover:border-accent-hover not-disabled:not-aria-busy:hover:bg-accent-hover",
+          "border-primary bg-primary text-on-primary not-disabled:not-aria-busy:hover:border-primary-hover not-disabled:not-aria-busy:hover:bg-primary-hover",
         [ButtonVariant.Default]:
           "border-line-strong bg-surface text-fg not-disabled:not-aria-busy:hover:bg-surface-2",
         [ButtonVariant.Soft]:

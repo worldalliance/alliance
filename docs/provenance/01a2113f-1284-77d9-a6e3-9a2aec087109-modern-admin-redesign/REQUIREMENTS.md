@@ -31,6 +31,7 @@ task: Greenfield redesign of the admin panel (apps/admin) so it is modern-lookin
 - A status is never shown by a coloured dot alone: it carries a label, such as a badge. (user-originated)
 - A navigation entry such as "Forms" or "Tasks" opens a list or overview, never one arbitrary record. (user-originated)
 - Light theme only, with colours defined so a dark theme can be added later. (agent-proposed, user-approved)
+- The admin uses the member app's colours: the Alliance green (the member app's `--color-green`, rgb(98, 161, 36)) as the main colour and navy (its `--color-navy`, rgb(7, 30, 64), and `--site-primary`, #081e40) as the secondary, as changes to the admin's colour tokens rather than page by page. (user-originated, Nov 26)
 - The form builder gets a full redesign as a three-pane workspace: outline, canvas, inspector. (agent-proposed, user-approved)
 
 ## Tasks, suites and projects

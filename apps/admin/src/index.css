@@ -197,12 +197,18 @@
   --color-line-control: oklch(0.62 0.01 270);
   --color-fg: oklch(0.22 0.01 270);
   --color-fg-muted: oklch(0.48 0.012 270);
-  --color-accent: oklch(0.52 0.19 265);
-  --color-accent-hover: oklch(0.47 0.17 265);
+  /* The Alliance green (#62a124, oklch 0.64 0.166 133) darkened to read as text and under white. */
+  --color-accent: oklch(0.5 0.14 133);
+  --color-accent-hover: oklch(0.44 0.12 133);
   --color-accent-fg: oklch(0.99 0 0);
-  --color-accent-soft: oklch(0.95 0.03 265);
-  --color-success: oklch(0.52 0.13 150);
-  --color-success-soft: oklch(0.96 0.03 150);
+  --color-accent-soft: oklch(0.95 0.045 130);
+  /* The member app's navy (#081e40), its primary buttons' fill. */
+  --color-primary: oklch(0.24 0.07 259);
+  --color-primary-hover: oklch(0.3 0.094 259);
+  --color-on-primary: oklch(0.99 0 0);
+  /* Emerald, 30 degrees of hue from the accent, so done never reads as the brand. */
+  --color-success: oklch(0.52 0.11 165);
+  --color-success-soft: oklch(0.96 0.03 165);
   --color-warning: oklch(0.53 0.12 70);
   --color-warning-soft: oklch(0.96 0.04 80);
   --color-danger: oklch(0.53 0.19 25);
@@ -297,6 +303,17 @@
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-slow: 0ms;
+  }
+}
+
+/* Pages not yet on the admin's components still take the accent for native controls and focus. */
+@layer base {
+  html {
+    accent-color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline-color: var(--color-accent);
   }
 }
 

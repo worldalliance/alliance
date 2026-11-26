@@ -350,11 +350,13 @@ Four layers, and hierarchy comes from borders and the layer change, not shadows.
 | **Sunken surface**  | `bg-surface-2`                  | Table header row, row hover, read-only wells.                                                       |
 | **Floating**        | `bg-surface shadow-pop`         | Menus, popovers, sheets, dialogs, the palette, the bulk bar, toasts. The only things with a shadow. |
 
-Text is `text-fg` or `text-fg-muted`; dividers `border-line`, stronger edges `border-line-strong`. Each of `accent`, `success`, `warning`, `danger` and `info` has a `-soft` background (`bg-danger-soft text-danger`). `ui/tokens.test.ts` checks the contrast of the pairs in use: add a pair there when you pair two tokens it doesn't list.
+Text is `text-fg` or `text-fg-muted`; dividers `border-line`, stronger edges `border-line-strong`. `primary` takes `text-on-primary`. Each of `accent`, `success`, `warning`, `danger` and `info` has a `-soft` background (`bg-danger-soft text-danger`). `ui/tokens.test.ts` checks the contrast of the pairs in use: add a pair there when you pair two tokens it doesn't list.
 
 - A card groups content that belongs together and could be moved as a unit. Don't put a card in a card; use a divider or a sunken row inside.
 - On a List the table is the page: no card. On a Record or Overview a table sits in a `Panel`.
-- **Accent** marks the primary action, the current selection, links and focus. One primary button per view.
+- **Primary** is the member app's navy and fills the primary button, one per view, as the member app's primary buttons are navy.
+- **Accent** is the Alliance green, darkened to read on surfaces and under white text: the current selection, links, focus, checked controls and outline buttons. The brand green itself (`#62a124`) is 3.2:1 on white and 2.9:1 on the canvas, too light for text or a control on the canvas, so it isn't a token.
+- Success is emerald, a hue away from the accent, so done never reads as the brand.
 - **Success, warning, danger and info** mean only that. Never use them for a category, a role, emphasis or an unread mark.
 - **Category colours** (projects) are the tokens `cat-1` to `cat-6`, each with a `-soft` background. The server stores no colour, so `projectColor(projectId)` (`ui/projectColor.ts`) picks one from the id, the same on every page: classes `solid`, `soft` (text on it is `text-fg`) and `border`, and `value` for an SVG `fill` or `stroke`. Never text in the colour itself, which is too light to read, and always beside the project's name: `<ProjectSwatch projectId />` (`ui/ProjectSwatch.tsx`) before it. Something with no project gets no swatch.
 - A `Banner` takes `BannerTone.Info` for a standing fact, `Warning` for a consequence to weigh, `Danger` for a violation, blocker or failure; it says the thing in words. `inline` puts it in the body as a box.
