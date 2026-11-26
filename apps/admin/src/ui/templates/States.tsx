@@ -179,8 +179,12 @@ export function RefreshFailedBanner({
 }: (RefreshPart | { parts: readonly RefreshPart[] }) & { inline?: boolean }) {
   const parts = "parts" in props ? props.parts : [props];
   const failed = parts.filter((part) => part.query.isRefetchError);
-  const first = failed[0];
-  if (!first) return null;
+  if (failed.length === 0) return null;
+  const reasons = new Set(
+    failed.map((part) =>
+      adminRefusalMessage(part.query.error, LOAD_FAILED_FALLBACK),
+    ),
+  );
   return (
     <Banner
       tone={BannerTone.Danger}
@@ -197,8 +201,7 @@ export function RefreshFailedBanner({
       }
     >
       Couldn't refresh {LIST.format(failed.map((part) => part.things))}.{" "}
-      {adminRefusalMessage(first.query.error, LOAD_FAILED_FALLBACK)} Showing
-      what loaded before.
+      {[...reasons].join(" ")} Showing what loaded before.
     </Banner>
   );
 }

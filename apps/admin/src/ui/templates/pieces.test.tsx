@@ -8,6 +8,7 @@ import {
 import { afterEach, describe, expect, it, jest } from "bun:test";
 import { createRef } from "react";
 import { MemoryRouter, useLocation } from "react-router";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
 import { CountId, PlaceId, RecordId } from "../../places";
 import { ModalFooter } from "../Modal";
 import {
@@ -25,7 +26,11 @@ import { FieldGroup, SaveBar, SaveState, useFocusFirstInvalid } from "./Form";
 import { listCount, SearchField, useListSearch } from "./List";
 import { DateRangeFields, Panel, Section, StatTile } from "./Overview";
 import { Page } from "./Page";
-import { ContentState, RefreshFailedBanner } from "./States";
+import {
+  ContentState,
+  LOAD_FAILED_FALLBACK,
+  RefreshFailedBanner,
+} from "./States";
 import { usePlaceTabs, withQueueCounts } from "./usePlaceTabs";
 
 afterEach(cleanup);
@@ -74,6 +79,24 @@ describe("RefreshFailedBanner", () => {
     expect(
       [stats, rates, tasks].map((q) => q.refetch.mock.calls.length),
     ).toEqual([1, 1, 0]);
+  });
+
+  it("gives each distinct reason once when parts fail differently", () => {
+    render(
+      <RefreshFailedBanner
+        parts={[
+          { things: "the stats", query: query() },
+          { things: "the rates", query: query() },
+          {
+            things: "the tasks",
+            query: { ...query(), error: { statusCode: 401 } },
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toContain(
+      `${LOAD_FAILED_FALLBACK} ${sessionExpiredMessage} Showing`,
+    );
   });
 
   it("renders nothing unless a refetch failed", () => {
