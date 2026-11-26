@@ -51,7 +51,7 @@ export function CohortDecisions({
       title="Cohort decisions"
       description={
         decisions.data &&
-        `${assigned} assigned, ${rows.length - assigned} excluded. Members without a decision are not listed.`
+        `${assigned} assigned, ${rows.length - assigned} excluded`
       }
       action={
         rows.length > 0 && (
@@ -64,6 +64,11 @@ export function CohortDecisions({
       }
       flush
     >
+      {rows.length > 0 && (
+        <p className="border-b border-line px-card py-2 text-caption text-fg-muted">
+          Members without a decision are not listed.
+        </p>
+      )}
       <RefreshFailedBanner things="cohort decisions" query={decisions} inline />
       <ContentState
         loading={decisions.isPending}
@@ -95,7 +100,7 @@ export function CohortDecisions({
           <TableBody>
             {visible.map((row) => (
               <TableRow key={row.userId}>
-                <TableCell className="align-top">
+                <TableCell className="min-w-48 align-top break-words">
                   <Link to={memberHref(row.userId)} className={nameLinkClass}>
                     {row.userName}
                   </Link>
@@ -123,7 +128,7 @@ export function CohortDecisions({
                 <TableCell className="align-top">
                   {REASON_LABELS[row.reason]}
                 </TableCell>
-                <TableCell className="align-top tabular-nums">
+                <TableCell className="align-top whitespace-nowrap tabular-nums">
                   {formatDateTime(row.resolvedAt)}
                 </TableCell>
                 <TableCell actions className="align-top">
@@ -132,7 +137,7 @@ export function CohortDecisions({
                     aria-label={`Correct ${row.userName}'s decision`}
                     onClick={() => setCorrecting(row)}
                   >
-                    Correct decision
+                    Correct
                   </Button>
                 </TableCell>
               </TableRow>

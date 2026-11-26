@@ -66,8 +66,14 @@ export function ActionHistory({
                   timeZone: LAUNCH_TIME_ZONE,
                 })}
               </span>
-              {row.scheduled && <Badge tone={BadgeTone.Info}>Scheduled</Badge>}
-              <span className="min-w-0 flex-1">{sentence(row)}</span>
+              <span className="min-w-0 flex-1">
+                {sentence(row)}
+                {row.scheduled && (
+                  <Badge tone={BadgeTone.Info} className="ml-2 align-middle">
+                    Scheduled
+                  </Badge>
+                )}
+              </span>
               <button
                 type="button"
                 className={linkClass}
