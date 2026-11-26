@@ -38,3 +38,4 @@
 - claude:f4877cc0-cac4-4645-ae01-c0850314d7c4 (responses review loop round 1 fixer, view and sub-views; area-responses-lead.r1-fix2)
 - claude:d6251acb-fb58-49a2-8b80-88cea66d1b29 (responses review loop round 2 fixer; area-responses-lead.r2-fix)
 - claude:cd753972-5a67-4bbf-991e-84388bc57335
+- claude:fdb9002f-c798-4227-8879-068ac14f0b42 (members role badges, fanout-lead.members-roles)

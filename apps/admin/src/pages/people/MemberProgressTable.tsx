@@ -9,7 +9,6 @@ import type {
   UserActionRelationPillStatus,
 } from "@alliance/shared/client/types.gen";
 import { formatAwayReason } from "@alliance/shared/lib/awayRangesFormatters";
-import { roleBadges } from "@alliance/shared/lib/copy";
 import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
 import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
 import { keyBy } from "es-toolkit";
@@ -21,6 +20,7 @@ import { LAUNCH_TIME_ZONE } from "../../lib/launchTimeZone";
 import Badge, { BadgeTone } from "../../ui/Badge";
 import { PersonCell, personName } from "../../ui/PersonCell";
 import { phaseLabel } from "../../ui/PhaseBadge";
+import RoleBadges from "../../ui/RoleBadges";
 import { linkClass } from "../../ui/styles";
 import {
   ExpandToggle,
@@ -67,17 +67,7 @@ const RELATION_TONE: Record<UserActionRelationPillStatus, BadgeTone> = {
   optional_task: BadgeTone.Neutral,
 };
 
-const rolesOf = (member: MemberProgressRow) =>
-  [
-    member.admin && "Admin",
-    member.staff && roleBadges.staff.label,
-    member.ambassador && roleBadges.ambassador.label,
-    member.groupLead && roleBadges.grouplead.label,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-const COLUMNS = 6;
+const COLUMNS = 5;
 
 /**
  * Members with their record on each task, when to reach them and what is due
@@ -88,7 +78,6 @@ export function MemberProgressTable<T extends MemberProgressRow>({
   members,
   progress,
   memberContactInfo,
-  tagNamesByUserId,
   detailFacts,
   bleed = false,
   onOpenMember,
@@ -98,23 +87,17 @@ export function MemberProgressTable<T extends MemberProgressRow>({
   progress: MemberProgress;
   /** Undefined while it loads or when it couldn't: its cells read "—". */
   memberContactInfo: Record<number, CommunityMemberContactInfoDto> | undefined;
-  /** Adds a Tags column; null while the tags are unknown, so its cells read "—". */
-  tagNamesByUserId?: Record<number, string[]> | null;
   /** More `Fact`s for an open row, after the contact details. */
   detailFacts?: (member: T) => ReactNode;
   bleed?: boolean;
   /** A plain click on a member's name calls this instead of opening their record. */
   onOpenMember?: (userId: number) => void;
 }) {
-  const withTags = tagNamesByUserId !== undefined;
-  const columns = COLUMNS + (withTags ? 1 : 0);
   return (
     <Table bleed={bleed}>
       <TableHeader>
         <TableRow>
           <TableHead>Member</TableHead>
-          <TableHead>Role</TableHead>
-          {withTags && <TableHead>Tags</TableHead>}
           <TableHead className="text-right">Task history</TableHead>
           <TableHead>Contact time (PT)</TableHead>
           <TableHead>Next task due</TableHead>
@@ -126,15 +109,9 @@ export function MemberProgressTable<T extends MemberProgressRow>({
           <ProgressRow
             key={member.id}
             member={member}
-            columns={columns}
             progress={progress}
             contactInfo={memberContactInfo?.[member.id]}
             contactKnown={memberContactInfo !== undefined}
-            tagNames={
-              tagNamesByUserId === undefined
-                ? undefined
-                : tagNamesByUserId && (tagNamesByUserId[member.id] ?? [])
-            }
             detailFacts={detailFacts}
             onOpenMember={onOpenMember}
           />
@@ -146,21 +123,16 @@ export function MemberProgressTable<T extends MemberProgressRow>({
 
 function ProgressRow<T extends MemberProgressRow>({
   member,
-  columns,
   progress,
   contactInfo,
   contactKnown,
-  tagNames,
   detailFacts,
   onOpenMember,
 }: {
   member: T;
-  columns: number;
   progress: MemberProgress;
   contactInfo: CommunityMemberContactInfoDto | undefined;
   contactKnown: boolean;
-  /** Undefined: no Tags column. Null: unknown. */
-  tagNames: string[] | null | undefined;
   detailFacts?: (member: T) => ReactNode;
   onOpenMember?: (userId: number) => void;
 }) {
@@ -185,21 +157,8 @@ function ProgressRow<T extends MemberProgressRow>({
           profilePicture={member.profilePicture}
           firstColumn
           onOpen={onOpenMember}
+          badge={<MemberRoles member={member} />}
         />
-        <TableCell className="whitespace-nowrap">{rolesOf(member)}</TableCell>
-        {tagNames !== undefined && (
-          <TableCell className="max-w-56">
-            {tagNames === null ? (
-              "—"
-            ) : (
-              <span className="flex gap-1 overflow-hidden">
-                {tagNames.map((tag) => (
-                  <Badge key={tag}>{tag}</Badge>
-                ))}
-              </span>
-            )}
-          </TableCell>
-        )}
         <TableCell>
           {progress.known && relations ? (
             <div className="min-w-40">
@@ -247,7 +206,7 @@ function ProgressRow<T extends MemberProgressRow>({
         </TableCell>
       </TableRow>
       {expanded && (
-        <TableDetailRow id={detailId} colSpan={columns}>
+        <TableDetailRow id={detailId} colSpan={COLUMNS}>
           <div className="flex flex-wrap gap-x-12 gap-y-4 pt-2">
             <div className="w-96 max-w-full">
               <SidePanelSection title="Contact">
@@ -293,6 +252,21 @@ function ProgressRow<T extends MemberProgressRow>({
         </TableDetailRow>
       )}
     </>
+  );
+}
+
+function MemberRoles({ member }: { member: MemberProgressRow }) {
+  if (!member.admin && !member.staff && !member.ambassador && !member.groupLead)
+    return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {member.admin && <Badge>Admin</Badge>}
+      <RoleBadges
+        staff={member.staff}
+        ambassador={member.ambassador}
+        grouplead={member.groupLead}
+      />
+    </span>
   );
 }
 

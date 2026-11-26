@@ -114,17 +114,6 @@ export function AllTab({
     }
     return byUser;
   }, [tags]);
-  const tagNamesByUserId = useMemo(
-    () =>
-      tags &&
-      Object.fromEntries(
-        Object.entries(tagsByUserId).map(([id, list]) => [
-          id,
-          list.map((tag) => tag.name),
-        ]),
-      ),
-    [tags, tagsByUserId],
-  );
 
   const listed = useMemo(() => {
     const times = timeSpent.data ?? {};
@@ -307,8 +296,8 @@ export function AllTab({
           skeleton={
             <TableSkeleton
               bleed
-              columns={7}
-              columnClassNames={[undefined, undefined, undefined, "text-right"]}
+              columns={5}
+              columnClassNames={[undefined, "text-right"]}
             />
           }
           empty={shown.length === 0}
@@ -336,7 +325,6 @@ export function AllTab({
             onOpenMember={onOpenMember}
             progress={progress}
             memberContactInfo={contact.data}
-            tagNamesByUserId={tagNamesByUserId}
             detailFacts={(member) => {
               const name = personName({ userId: member.id, name: member.name });
               const memberTags = tagsByUserId[member.id] ?? NO_TAGS;
@@ -428,8 +416,8 @@ function PartBanners({
       )}
       {tagsAdmin.isLoadingError && (
         <Banner tone={BannerTone.Danger}>
-          Couldn't load tags. {reason(tagsAdmin.error)} The tags filter and
-          column are off until they load.
+          Couldn't load tags. {reason(tagsAdmin.error)} The tags filter is off
+          until they load.
         </Banner>
       )}
     </>

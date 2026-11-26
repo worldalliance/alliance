@@ -30,6 +30,7 @@ task: Greenfield redesign of the admin panel (apps/admin) so it is modern-lookin
 - Home is a fixed list of queues, in this order, each shown only when its count is above zero, each with its count and one button to the queue: "Texts need a reply", "New members to welcome", "Members awaiting a group", "Partnership responses to review". With nothing waiting it is one line, "Nothing needs you right now", and the organization's stats move up. The stats sit below the queues otherwise. (agent-proposed, user-approved)
 - A status is never shown by a coloured dot alone: it carries a label, such as a badge. (user-originated)
 - A navigation entry such as "Forms" or "Tasks" opens a list or overview, never one arbitrary record. (user-originated)
+- The members list has no Tags column and no Role column; tags are about to be retired. A member's role shows as a badge beside their name, the way the member app shows it, reusing the member app's badge. (user-originated, Nov 26)
 - Light theme only, with colours defined so a dark theme can be added later. (agent-proposed, user-approved)
 - The admin uses the member app's colours: the Alliance green (the member app's `--color-green`, rgb(98, 161, 36)) as the main colour and navy (its `--color-navy`, rgb(7, 30, 64), and `--site-primary`, #081e40) as the secondary, as changes to the admin's colour tokens rather than page by page. (user-originated, Nov 26)
 - The form builder gets a full redesign as a three-pane workspace: outline, canvas, inspector. (agent-proposed, user-approved)

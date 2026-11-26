@@ -649,3 +649,11 @@ The suites list, New suite, the suite record and its tabs, and Launch, rebuilt o
 - **The contract check comes first**, above every other check, and is a blocker in the summary.
 - **The launch schedule's fields take Pacific time**, as their labels always said, instead of the browser's zone. `usersJoined` shows exactly as the server returns it (root note on #1094). "Preview task form as this member" still goes through `?previewAs=` (#1093).
 - **Copy says "task" for "action" wherever staff read it**, and failure messages name the suite's tabs. The phase names ("members taking action") stay.
+
+## Members list: role badges in place of the Role and Tags columns
+
+- **The badge is the member app's profile-card badge** (Staff, Ambassador, Lead, white on the role's colour, with its tooltip), moved from `UserProfileCard` to `sharedweb/ui/RoleBadges.tsx` and re-exported by `apps/admin/src/ui/RoleBadges.ts`. The member app also has icon-only role marks beside names (`UserDisplayName`); those were not used because the admin requires a word on a badge, and the ambassador and group-lead icons differ only by colour. As in the member app, staff shows alone. The admin gains the `staff` colour token the badge needs, with the member app's value.
+- **Admins get a neutral "Admin" badge before the member app's badge**, since the member app has no admin badge and the Role column showed admins; without it the list would drop that fact.
+- **The badges sit inside the name cell** through a `badge` slot on `PersonCell`, after the name, which truncates first.
+- **Tags stay in the filter bar and in a row's details**; only the column went, replacing the Tags column **Area: members** describes.
+- **Review:** one same-model (Opus 5.5) reviewer over the commit found no fix-now issue. Its two owner decisions became ALL-2698 (staff hides a member's Ambassador and Lead badges) and ALL-2699 (the badges' white text fails contrast, inherited from the member app).

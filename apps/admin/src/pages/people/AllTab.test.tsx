@@ -10,7 +10,13 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { ToastProvider } from "../../ui/ToastProvider";
 import PeoplePage from "./PeoplePage";
@@ -370,4 +376,21 @@ it("says there are no members yet when there are none", async () => {
   renderPage();
   expect(await screen.findByText("No members yet")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Show all members" })).toBeNull();
+});
+
+it("shows roles as badges beside the name, with no role or tags column", async () => {
+  users = [ada, sam, { ...lee, staff: false, ambassador: true }].map(signedUp);
+
+  renderPage();
+
+  const row = async (name: string) =>
+    within(await screen.findByRole("row", { name: new RegExp(name) }));
+  expect((await row("Ada")).getByText("Admin")).toBeTruthy();
+  expect((await row("Sam")).getByText("Staff")).toBeTruthy();
+  expect((await row("Lee")).getByText("Ambassador")).toBeTruthy();
+  const headers = screen
+    .getAllByRole("columnheader")
+    .map((header) => header.textContent);
+  expect(headers).not.toContain("Role");
+  expect(headers).not.toContain("Tags");
 });

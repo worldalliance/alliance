@@ -1,5 +1,4 @@
 import { ProfileDto } from "@alliance/shared/client";
-import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import type { useProfileDraft } from "@alliance/shared/lib/useProfileDraft";
 import {
@@ -15,6 +14,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
+import RoleBadges from "@alliance/sharedweb/ui/RoleBadges";
 import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   Tooltip,
@@ -181,54 +181,11 @@ const UserProfileCard: React.FC<
                 <InfoTooltip content="Names are hidden for members who have set their account to be anonymous." />
               </div>
             )}
-            {(profile.staff ||
-              profile.ambassador ||
-              profile.isCommunityLeader) && (
-              <div className="flex items-center gap-[3px]">
-                {profile.staff && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="text-xs bg-staff text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                          {roleBadges.staff.label}
-                        </div>
-                      }
-                    />
-                    <TooltipContent sideOffset={4}>
-                      {roleBadges.staff.tooltip}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {!profile.staff && profile.ambassador && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="text-xs bg-ambassador text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                          {roleBadges.ambassador.label}
-                        </div>
-                      }
-                    />
-                    <TooltipContent sideOffset={4}>
-                      {roleBadges.ambassador.tooltip}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {!profile.staff && profile.isCommunityLeader && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="text-xs bg-grouplead text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                          {roleBadges.grouplead.label}
-                        </div>
-                      }
-                    />
-                    <TooltipContent sideOffset={4}>
-                      {roleBadges.grouplead.tooltip}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )}
+            <RoleBadges
+              staff={profile.staff}
+              ambassador={profile.ambassador}
+              grouplead={profile.isCommunityLeader}
+            />
             {!profile.hasActiveContract && (
               <Tooltip>
                 <TooltipTrigger

@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import { memberHref } from "../lib/hrefs";
 import { AvatarProfile } from "./Avatar";
@@ -45,11 +45,14 @@ export function PersonCell({
   profilePicture,
   firstColumn = false,
   onOpen,
+  badge,
   className,
 }: Person & {
   /** The member is what the row is: the name reads as the row's name, not as a link among values. */
   firstColumn?: boolean;
   onOpen?: (userId: number) => void;
+  /** After the name. Give it `shrink-0` so the name truncates first. */
+  badge?: ReactNode;
   className?: string;
 }) {
   const shown = personName({ userId, name });
@@ -65,6 +68,7 @@ export function PersonCell({
         >
           {shown}
         </Link>
+        {badge}
       </span>
     </TableCell>
   );
