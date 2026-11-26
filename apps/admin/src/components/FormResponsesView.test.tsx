@@ -31,6 +31,8 @@ const renderView = (params: {
   referralsError?: string | null;
   responses?: FormResponseDto[];
   form?: FormWithSchema | null;
+  error?: string | null;
+  refreshError?: Error;
 }) => {
   const router = createMemoryRouter(
     [
@@ -46,8 +48,13 @@ const renderView = (params: {
             }
             responses={params.responses ?? [response]}
             loading={false}
-            error={null}
-            onRefresh={() => {}}
+            error={params.error ?? null}
+            refresh={{
+              mutate: () => {},
+              isPending: false,
+              isError: params.refreshError !== undefined,
+              error: params.refreshError ?? null,
+            }}
             withdrawnUserMap={new Map()}
             sidsToUserMap={{}}
             referralsError={params.referralsError}
@@ -69,7 +76,19 @@ const renderView = (params: {
 it("opens on the responses table when no tab is picked", () => {
   renderView({ path: "/" });
 
-  expect(screen.getByPlaceholderText("Search responses…")).toBeTruthy();
+  expect(screen.getByPlaceholderText("Search responses")).toBeTruthy();
+});
+
+it("shows only the load error when retrying a failed first load fails", () => {
+  renderView({
+    path: "/",
+    responses: [],
+    error: "Failed to load form responses",
+    refreshError: new Error("offline"),
+  });
+
+  expect(screen.getByText("Couldn't load responses")).toBeTruthy();
+  expect(screen.queryByText(/Couldn't refresh responses/)).toBeNull();
 });
 
 it("lists no response to a question whose stored answer is an empty object", () => {
@@ -82,7 +101,7 @@ it("says the referrals failed to load beside the responses", () => {
   renderView({ path: "/?tab=questions", referralsError: "No share links" });
 
   expect(screen.getByText("No share links")).toBeTruthy();
-  expect(screen.getByText("1 response")).toBeTruthy();
+  expect(screen.getByText(/^1 response ·/)).toBeTruthy();
 });
 
 it("shows the answers to the question picked", () => {

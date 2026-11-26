@@ -9,6 +9,7 @@ import { imageSrcFromKey } from "@alliance/sharedweb/lib/imageSrc";
 import { Check, Minus } from "lucide-react";
 import type { ReactNode } from "react";
 import { BOOLEAN_ANSWER_LABELS } from "../../lib/booleanAnswerLabels";
+import { linkClass } from "../../ui/styles";
 
 export type CellContent = {
   /** Full text. Searched, sorted on, and shown once the row expands. */
@@ -73,9 +74,9 @@ const booleanCell = (params: {
   return {
     text,
     node: value ? (
-      <Check aria-label={text} className="size-4 text-emerald-600" />
+      <Check aria-label={text} className="size-4 text-fg" />
     ) : (
-      <Minus aria-label={text} className="size-4 text-zinc-400" />
+      <Minus aria-label={text} className="size-4 text-fg-muted" />
     ),
   };
 };
@@ -156,7 +157,7 @@ const CELL_RENDERERS: Record<FieldKind, CellRenderer> = {
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
-          className="text-blue-600 hover:underline"
+          className={linkClass}
         >
           {value}
         </a>

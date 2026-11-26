@@ -68,7 +68,6 @@ src/components/SelectableCards.tsx
 src/components/ShareableTextBuilder.tsx
 src/components/SharedOutputSourceWarning.tsx
 src/components/SlugField.tsx
-src/components/SnapshotTargetPicker.tsx
 src/components/SuiteEventCard.tsx
 src/components/SuiteEventList.tsx
 src/components/TextareaWithHighlights.tsx
@@ -164,7 +163,6 @@ src/components/form-fields/conditions/RetryButton.tsx
 src/components/form-fields/conditions/ValidatorRule.tsx
 src/components/form-fields/conditions/VisibilityConditions.tsx
 src/components/form-fields/conditions/styles.ts
-src/components/form-responses/FormResponsesHeader.tsx
 src/components/output-builder/EditableOutputFieldBlock.tsx
 src/components/output-builder/OutputBlockList.tsx
 src/components/output-builder/OutputPreview.tsx
@@ -178,14 +176,6 @@ src/components/reminders/ReminderMessageFields.tsx
 src/components/reminders/ReminderPreviewError.tsx
 src/components/reminders/ReminderScheduleFields.tsx
 src/components/reminders/TentativePlanSummary.tsx
-src/components/responses-table/ColumnVisibilityMenu.tsx
-src/components/responses-table/ResponseDrawer.tsx
-src/components/responses-table/ResponsesGrid.tsx
-src/components/responses-table/ResponsesTable.test.tsx
-src/components/responses-table/ResponsesTable.tsx
-src/components/responses-table/ResponsesToolbar.tsx
-src/components/responses-table/SnapshotNavigator.tsx
-src/components/responses-table/cells.tsx
 src/components/row-list/RowConditionEditor.tsx
 src/components/row-list/RowListBuilder.tsx
 src/components/suite-launch/ActionLinks.tsx

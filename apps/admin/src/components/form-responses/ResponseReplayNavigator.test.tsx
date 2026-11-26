@@ -46,18 +46,18 @@ const renderNavigator = (respondentSearch: RespondentSearch) =>
   render(<Navigator respondentSearch={respondentSearch} />);
 
 it("shows the filter, the current respondent and their session replay", () => {
-  const open = jest.spyOn(window, "open").mockImplementation(() => null);
   renderNavigator(search());
 
   expect(screen.getByText("1 of 3 responses")).toBeTruthy();
   expect(screen.getByText("Ana")).toBeTruthy();
   expect(screen.getByText("Short")).toBeTruthy();
-  fireEvent.click(screen.getByText("Watch session recording"));
-  expect(open).toHaveBeenCalledWith(
+  const recording = screen.getByRole("link", {
+    name: /Watch session recording/,
+  });
+  expect(recording.getAttribute("href")).toBe(
     "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=abc123",
-    "_blank",
   );
-  open.mockRestore();
+  expect(recording.getAttribute("rel")).toBe("noopener noreferrer");
 });
 
 const openList = () => {

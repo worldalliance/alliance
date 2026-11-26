@@ -1,7 +1,6 @@
 import React from "react";
 import { useActionMergedResponsesAdmin } from "../lib/useActionMergedResponsesAdmin";
-import { useRefusalToast } from "../lib/useRefusalToast";
-import FormResponsesView, { REFRESH_ERROR } from "./FormResponsesView";
+import FormResponsesView from "./FormResponsesView";
 
 export interface ActionMergedResponsesTabProps {
   actionId: number;
@@ -24,7 +23,6 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
     error,
     refresh,
   } = useActionMergedResponsesAdmin(actionId);
-  const refusalToast = useRefusalToast();
 
   // Only surface the variant filter / per-response variant tags when the action
   // actually has variants beyond its default form.
@@ -49,11 +47,7 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
       responses={responses}
       loading={loading}
       error={error}
-      onRefresh={() =>
-        refresh.mutate(undefined, {
-          onError: (e) => refusalToast(e, REFRESH_ERROR),
-        })
-      }
+      refresh={refresh}
       withdrawnUserMap={withdrawnUserMap}
       sidsToUserMap={sidsToUserMap}
       referralsError={referralsError}

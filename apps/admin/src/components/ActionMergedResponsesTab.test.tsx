@@ -272,7 +272,7 @@ it("keeps a reload's responses over those of the reload it replaced", async () =
 
   expect(screen.queryByText("First Member")).toBeNull();
   expect(screen.getByText("Second Member")).toBeTruthy();
-  expect(screen.queryByText("Failed to refresh form responses")).toBeNull();
+  expect(screen.queryByText(/Couldn't refresh responses/)).toBeNull();
 });
 
 it("shows no previous action's responses while the next action's variants load", async () => {

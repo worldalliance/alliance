@@ -1,6 +1,7 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
 import SnapshotNavigator from "./SnapshotNavigator";
 
@@ -27,9 +28,12 @@ serveApi(
 );
 
 beforeEach(() => {
+  setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
   requested = [];
   status = 200;
 });
+
+afterEach(() => setSystemTime());
 
 const renderNavigator = (open: boolean) =>
   render(
@@ -55,16 +59,16 @@ const renderNavigator = (open: boolean) =>
         formIds={[4]}
         selectedSnapshotId={null}
         onSelectVersion={() => {}}
-        snapshotsHref={null}
+        onReassign={null}
       />
     </MemoryRouter>,
     queryWrapper(),
   );
 
-it("shows when each version was created", async () => {
+it("shows when each version was first saved", async () => {
   renderNavigator(true);
 
-  expect(await screen.findByText(/^Created .*2026/)).toBeTruthy();
+  expect(await screen.findByText(/^First saved Mar 1[45]/)).toBeTruthy();
   expect(requested).toEqual(["4"]);
 });
 
@@ -81,8 +85,8 @@ it("says so when version dates fail to load", async () => {
 
   expect(
     await screen.findByText(
-      "Could not load version dates. Everything else below still applies.",
+      "Couldn't load when each version was first saved. Everything else here still applies.",
     ),
   ).toBeTruthy();
-  expect(screen.getByText("Creation date unavailable")).toBeTruthy();
+  expect(screen.getByText("First saved date unavailable")).toBeTruthy();
 });

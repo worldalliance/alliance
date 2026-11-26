@@ -1,4 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import type { FormResponseDto } from "@alliance/shared/client";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -13,6 +14,7 @@ import { MemoryRouter, useSearchParams } from "react-router";
 import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
 import { ToastProvider } from "../../ui/ToastProvider";
 import ResponsesTable from "./ResponsesTable";
+import { useResponsesTable } from "./useResponsesTable";
 
 afterEach(() => {
   localStorage.clear();
@@ -102,6 +104,30 @@ serveApi(
   }),
 );
 
+const FORM = { id: 3, title: "Survey", formSnapshotId: 7, schema: SCHEMA };
+
+const Harness = ({ responses }: { responses: FormResponseDto[] }) => {
+  const shared = {
+    form: FORM,
+    withdrawnUserMap: new Map(),
+    sidsToUserMap: {},
+  };
+  const table = useResponsesTable({
+    ...shared,
+    responses,
+    paramKey: (name) => `r_${name}`,
+  });
+  return (
+    <ResponsesTable
+      {...shared}
+      table={table}
+      loading={false}
+      error={null}
+      onReassign={null}
+    />
+  );
+};
+
 const ParamsProbe = () => {
   const [params] = useSearchParams();
   return <output data-testid="params">{params.toString()}</output>;
@@ -115,15 +141,7 @@ const renderTable = (search = "", responses = RESPONSES) =>
     <MemoryRouter initialEntries={[`/${search}`]}>
       <SiteOriginLinkProvider origin="https://worldalliance.org">
         <ToastProvider>
-          <ResponsesTable
-            form={{ id: 3, title: "Survey", formSnapshotId: 7, schema: SCHEMA }}
-            responses={responses}
-            withdrawnUserMap={new Map()}
-            sidsToUserMap={{}}
-            loading={false}
-            error={null}
-            paramKey={(name) => `r_${name}`}
-          />
+          <Harness responses={responses} />
           <ParamsProbe />
         </ToastProvider>
       </SiteOriginLinkProvider>
@@ -138,16 +156,16 @@ const answerOrder = () =>
     .slice(1)
     .map((row) => within(row).getAllByRole("cell").at(-1)?.textContent);
 
-it("opens a response when its row is clicked", () => {
+it("opens a response from its respondent's name", () => {
   renderTable();
 
   const [zebra, apple] = document.querySelectorAll("tbody tr");
 
-  fireEvent.click(screen.getByText("apple"));
+  fireEvent.click(within(tableRows()[2]).getByRole("link"));
 
   expect(currentParams().get("r_response")).toBe("2");
-  expect(apple.className).toContain("bg-blue-50");
-  expect(zebra.className).not.toContain("bg-blue-50");
+  expect(apple.getAttribute("aria-selected")).toBe("true");
+  expect(zebra.getAttribute("aria-selected")).toBe("false");
   expect(screen.getByRole("button", { name: "Next response" })).toBeTruthy();
 });
 
@@ -156,12 +174,12 @@ it("expands a row from its chevron without opening it, and collapses it again", 
   const row = tableRows()[1];
   expect(within(row).getByText("Ada (+1 other)")).toBeTruthy();
 
-  fireEvent.click(within(row).getByRole("button", { name: "Expand row" }));
+  fireEvent.click(within(row).getByRole("button", { name: /^Expand row:/ }));
 
   expect(within(row).getByText("1. Ada 2. Bo")).toBeTruthy();
   expect(currentParams().get("r_response")).toBeNull();
 
-  fireEvent.click(within(row).getByRole("button", { name: "Collapse row" }));
+  fireEvent.click(within(row).getByRole("button", { name: /^Collapse row:/ }));
 
   expect(within(row).getByText("Ada (+1 other)")).toBeTruthy();
 });
@@ -173,7 +191,7 @@ it("expands a row when a clipped cell is clicked, without opening it", () => {
   fireEvent.click(within(row).getByText(/first line/));
 
   expect(
-    within(row).getByRole("button", { name: "Collapse row" }),
+    within(row).getByRole("button", { name: /^Collapse row:/ }),
   ).toBeTruthy();
   expect(currentParams().get("r_response")).toBeNull();
 });
@@ -189,7 +207,7 @@ it("expands a row when a long one-line cell is clicked, without opening it", () 
   fireEvent.click(within(row).getByText(long));
 
   expect(
-    within(row).getByRole("button", { name: "Collapse row" }),
+    within(row).getByRole("button", { name: /^Collapse row:/ }),
   ).toBeTruthy();
   expect(currentParams().get("r_response")).toBeNull();
 });
@@ -222,13 +240,13 @@ it("sorts by a column when its header is clicked", () => {
 it("says so when a search matches no response", () => {
   renderTable("?r_q=nothing");
 
-  expect(screen.getByText("No response matches this search.")).toBeTruthy();
+  expect(screen.getByText("No results")).toBeTruthy();
 });
 
 it("says so when the form has no responses", () => {
   renderTable("", []);
 
-  expect(screen.getByText("No responses yet for this form.")).toBeTruthy();
+  expect(screen.getByText("No responses yet")).toBeTruthy();
   expect(screen.queryByRole("table")).toBeNull();
 });
 
@@ -257,7 +275,7 @@ it("writes the search to the URL after the keystroke, not during it", async () =
 it("counts the responses a search leaves", () => {
   renderTable("?r_q=zeb");
 
-  expect(screen.getByText("1 response of 3")).toBeTruthy();
+  expect(screen.getByText("1 of 3 responses")).toBeTruthy();
 });
 
 it("expands every row from Expand rows, and collapses them again", () => {
@@ -265,14 +283,16 @@ it("expands every row from Expand rows, and collapses them again", () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Expand rows" }));
 
-  expect(screen.getAllByRole("button", { name: "Collapse row" })).toHaveLength(
-    3,
-  );
+  expect(
+    screen.getAllByRole("button", { name: /^Collapse row:/ }),
+  ).toHaveLength(3);
   expect(screen.getByText("1. Ada 2. Bo")).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: "Expand rows" }));
 
-  expect(screen.getAllByRole("button", { name: "Expand row" })).toHaveLength(3);
+  expect(screen.getAllByRole("button", { name: /^Expand row:/ })).toHaveLength(
+    3,
+  );
   expect(screen.getByText("Ada (+1 other)")).toBeTruthy();
 });
 
@@ -340,7 +360,9 @@ it("narrows the rows to a version until its filter is cleared", () => {
   renderTable("?r_version=6", [...RESPONSES, RETIRED_RESPONSE]);
   expect(tableRows()).toHaveLength(2);
 
-  fireEvent.click(screen.getByRole("button", { name: "Clear version filter" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove filter Version: v6" }),
+  );
 
   expect(currentParams().get("r_version")).toBeNull();
   expect(tableRows()).toHaveLength(5);

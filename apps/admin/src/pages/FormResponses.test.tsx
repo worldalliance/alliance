@@ -80,15 +80,13 @@ it("says so when the responses fail to load", async () => {
   expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
 });
 
-it("toasts a failed refresh and keeps the responses up", async () => {
+it("shows a failed refresh in a banner and keeps the responses up", async () => {
   renderPage();
   expect(await screen.findByText("Withdrew")).toBeTruthy();
 
   responsesStatus = 500;
   fireEvent.click(screen.getByText("Refresh"));
 
-  expect(
-    await screen.findByText("Failed to refresh form responses"),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Couldn't refresh responses/)).toBeTruthy();
   expect(await screen.findByText("Withdrew")).toBeTruthy();
 });

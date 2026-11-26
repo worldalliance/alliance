@@ -6,8 +6,10 @@ import { CirclePlay } from "lucide-react";
 import React from "react";
 import { formatDateTime } from "../../lib/formatDate";
 import { countOf, formatCount } from "../../lib/formatNumber";
+import { posthogReplayHref } from "../../lib/posthogReplay";
 import type { filterDescription } from "../../lib/responseFilter";
-import Button, { ButtonVariant } from "../../ui/Button";
+import { ButtonVariant, buttonVariants } from "../../ui/Button";
+import { cn } from "../../ui/cn";
 import { Combobox, type ComboboxOption } from "../../ui/Combobox";
 import NewTabMark from "../../ui/NewTabMark";
 import Pagination from "../../ui/Pagination";
@@ -18,11 +20,6 @@ import {
   RESPONDENT_RESULT_LIMIT,
   type RespondentSearch,
 } from "./useRespondentSearch";
-
-/** Where PostHog plays the recording a response stored as `sessionReplayUrl`. */
-export const sessionRecordingHref = (sessionReplayUrl: string): string =>
-  "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
-  sessionReplayUrl.substring(sessionReplayUrl.lastIndexOf("/") + 1);
 
 const CHIP_FIELD_LENGTH = 32;
 
@@ -164,18 +161,22 @@ const ResponseReplayNavigator: React.FC<ResponseReplayNavigatorProps> = ({
             </span>
           </div>
           {recording && (
-            <Button
-              size="small"
-              variant={ButtonVariant.Default}
-              className="shrink-0"
-              onClick={() =>
-                window.open(sessionRecordingHref(recording), "_blank")
-              }
+            <a
+              href={posthogReplayHref(recording)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "flex shrink-0",
+                buttonVariants({
+                  variant: ButtonVariant.Default,
+                  size: "small",
+                }),
+              )}
             >
               <CirclePlay aria-hidden="true" className="size-4" />
               Watch session recording
               <NewTabMark />
-            </Button>
+            </a>
           )}
         </div>
       )}

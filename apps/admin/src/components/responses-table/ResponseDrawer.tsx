@@ -1,8 +1,6 @@
 import {
-  formSchema,
   isQuestionField,
   type AnyField,
-  type FieldKind,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import type {
@@ -10,38 +8,24 @@ import type {
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
+import { parseStoredFormSchema } from "@alliance/shared/parsed-dtos";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
-import { ChevronLeft, ChevronRight, CirclePlay } from "lucide-react";
+import { ChevronDown, ChevronUp, CirclePlay } from "lucide-react";
 import React, { useMemo } from "react";
+import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../../lib/aiScore";
+import { formatCount } from "../../lib/formatNumber";
+import { posthogReplayHref } from "../../lib/posthogReplay";
 import { respondentName } from "../../lib/respondent";
-import Button, { ButtonColor } from "../../ui/Button";
+import Button, { ButtonVariant } from "../../ui/Button";
+import NewTabMark from "../../ui/NewTabMark";
 import Sheet from "../../ui/Sheet";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { Fact, FactList } from "../../ui/templates/Record";
 import type { FormWithSchema } from "../FormResponsesView";
 import { IdentityChip } from "../IdentitySwatch";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import { formatSubmitted } from "./rows";
 import { snapshotSeed } from "./SnapshotNavigator";
-
-const AI_SCORE_FIELD_KINDS = new Set<FieldKind>(["text", "textarea"]);
-
-const POSTHOG_REPLAY_BASE =
-  "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=";
-
-const formatAiScore = (value: number): string => `${Math.round(value * 100)}%`;
-
-const MetaRow: React.FC<{ label: string; children: React.ReactNode }> = ({
-  label,
-  children,
-}) => (
-  <div className="flex items-baseline gap-2">
-    <dt className="w-28 shrink-0 text-xs tracking-wide text-zinc-500 uppercase">
-      {label}
-    </dt>
-    <dd className="min-w-0 flex-1 text-sm break-words text-zinc-900">
-      {children}
-    </dd>
-  </div>
-);
 
 export type ResponseDrawerProps = {
   response: FormResponseDto | null;
@@ -62,15 +46,12 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
   onClose,
   onStep,
 }) => {
-  const parsedSnapshot = useMemo(() => {
-    if (!response) return null;
-    return formSchema.safeParse(response.schemaSnapshot);
-  }, [response]);
+  const snapshot = useMemo(
+    () => (response ? parseStoredFormSchema(response.schemaSnapshot) : null),
+    [response],
+  );
 
-  const schema: FormSchema | null =
-    parsedSnapshot?.success === true
-      ? parsedSnapshot.data
-      : (form?.schema ?? null);
+  const schema: FormSchema | null = snapshot ?? form?.schema ?? null;
 
   const fieldsById = useMemo(() => {
     const fields = new Map<string, AnyField>();
@@ -82,30 +63,29 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
     return fields;
   }, [schema]);
 
-  const aiScores = useMemo(() => {
-    const entries: Array<{ label: string; fieldId: string; score: number }> =
-      [];
-    for (const detection of response?.aiDetectionResults ?? []) {
-      if (!detection.fieldPath.startsWith("answers.")) continue;
-      const fieldId = detection.fieldPath.slice("answers.".length);
-      const field = fieldsById.get(fieldId);
-      if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) continue;
-      const score = detection.aiProbability;
-      if (typeof score !== "number" || Number.isNaN(score) || score <= 0) {
-        continue;
-      }
-      entries.push({ fieldId, label: field.label ?? fieldId, score });
-    }
-    return entries;
-  }, [response, fieldsById]);
+  const aiScores = useMemo(
+    () =>
+      (response?.aiDetectionResults ?? []).flatMap((detection) => {
+        if (!detection.fieldPath.startsWith("answers.")) return [];
+        const fieldId = detection.fieldPath.slice("answers.".length);
+        const field = fieldsById.get(fieldId);
+        const score = detection.aiProbability;
+        if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) return [];
+        if (typeof score !== "number" || Number.isNaN(score) || score <= 0) {
+          return [];
+        }
+        return [{ fieldId, label: field.label ?? fieldId, score }];
+      }),
+    [response, fieldsById],
+  );
 
   const aiInlineLabels = useMemo<Record<string, React.ReactNode>>(
     () =>
       Object.fromEntries(
         aiScores.map(({ fieldId, score }) => [
           fieldId,
-          <span key={fieldId} className="text-sm font-semibold text-red-600">
-            {formatAiScore(score)}
+          <span key={fieldId} className="font-semibold text-danger">
+            AI {formatAiScore(score)}
           </span>,
         ]),
       ),
@@ -117,105 +97,109 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
       ? null
       : (withdrawnUserMap.get(response.user.id) ?? null);
 
-  const replayId = response?.sessionReplayUrl?.split("/").pop();
-
   return (
     <Sheet
       open={response !== null}
       onClose={onClose}
       title={
-        response
-          ? respondentName({ response, sidsToUserMap })
-          : "Response details"
+        response ? respondentName({ response, sidsToUserMap }) : "Response"
       }
       headerActions={
         <>
-          <span className="mr-1 text-xs text-zinc-500">
-            {position.index + 1} of {position.total}
+          <span className="mr-1 text-caption text-fg-muted tabular-nums">
+            {formatCount(position.index + 1)} of {formatCount(position.total)}
           </span>
           <Button
+            variant={ButtonVariant.Ghost}
             size="small"
-            color={ButtonColor.White}
             disabled={position.index <= 0}
             onClick={() => onStep(-1)}
             aria-label="Previous response"
             title="Previous response"
           >
-            <ChevronLeft aria-hidden="true" className="size-4" />
+            <ChevronUp aria-hidden="true" className="size-4" />
           </Button>
           <Button
+            variant={ButtonVariant.Ghost}
             size="small"
-            color={ButtonColor.White}
             disabled={position.index >= position.total - 1}
             onClick={() => onStep(1)}
             aria-label="Next response"
             title="Next response"
           >
-            <ChevronRight aria-hidden="true" className="size-4" />
+            <ChevronDown aria-hidden="true" className="size-4" />
           </Button>
         </>
       }
     >
       {response && (
-        <div className="space-y-5 p-5">
-          <dl className="space-y-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-            <MetaRow label="Submitted">
-              {formatSubmitted(response.createdAt)}
-            </MetaRow>
-            <MetaRow label="Version">
+        <div className="flex flex-col gap-section p-card">
+          <FactList>
+            <Fact label="Submitted">{formatSubmitted(response.createdAt)}</Fact>
+            <Fact label="Version">
               <IdentityChip
                 seed={snapshotSeed(response.formSnapshotId)}
                 label={`v${response.formSnapshotId}`}
               />
-            </MetaRow>
-            <MetaRow label="Response ID">{response.id}</MetaRow>
-            <MetaRow label="User ID">{response.user?.id ?? "—"}</MetaRow>
-            <MetaRow label="SID">{response.sid || "—"}</MetaRow>
-            <MetaRow label="Device">{response.deviceType || "—"}</MetaRow>
+            </Fact>
+            <Fact label="Response ID">
+              <span className="font-mono text-xs">{response.id}</span>
+            </Fact>
+            <Fact label="User ID">
+              <span className="font-mono text-xs">
+                {response.user?.id ?? "—"}
+              </span>
+            </Fact>
+            <Fact label="SID">
+              <span className="font-mono text-xs break-all">
+                {response.sid || "—"}
+              </span>
+            </Fact>
+            <Fact label="Device">{response.deviceType || "—"}</Fact>
             {withdrawal && (
-              <MetaRow label="Withdrawal">
+              <Fact label="Withdrawal">
                 <WithdrawalInfo withdrawal={withdrawal} />
-              </MetaRow>
+              </Fact>
             )}
             {aiScores.length > 0 && (
-              <MetaRow label="AI detection">
-                <ul className="space-y-0.5">
+              <Fact label="AI detection">
+                <ul className="flex flex-col py-2">
                   {aiScores.map((entry) => (
                     <li key={entry.fieldId}>
-                      <span className="font-semibold text-red-600">
+                      <span className="font-semibold text-danger tabular-nums">
                         {formatAiScore(entry.score)}
                       </span>{" "}
-                      <span className="text-zinc-600">{entry.label}</span>
+                      {entry.label}
                     </li>
                   ))}
                 </ul>
-              </MetaRow>
+              </Fact>
             )}
-            {replayId && (
-              <MetaRow label="Replay">
-                <Button
-                  size="small"
-                  color={ButtonColor.BlueOutline}
-                  onClick={() =>
-                    window.open(`${POSTHOG_REPLAY_BASE}${replayId}`, "_blank")
-                  }
+            {response.sessionReplayUrl && (
+              <Fact label="Replay">
+                <a
+                  href={posthogReplayHref(response.sessionReplayUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-sm font-medium text-accent focus-ring hover:underline"
                 >
-                  <CirclePlay aria-hidden="true" className="mr-1.5 size-3.5" />
+                  <CirclePlay aria-hidden="true" className="size-4" />
                   Watch replay
-                </Button>
-              </MetaRow>
+                  <NewTabMark />
+                </a>
+              </Fact>
             )}
-          </dl>
+          </FactList>
 
-          {parsedSnapshot?.success === false && (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              This response&rsquo;s own snapshot did not parse, so the form
-              below is rendered from the form&rsquo;s current schema.
-            </p>
+          {response && snapshot === null && form && (
+            <Banner tone={BannerTone.Warning} inline>
+              This response's saved version of the form couldn't be read, so its
+              answers are shown in the current version of {form.title}.
+            </Banner>
           )}
 
           {schema && form ? (
-            <div className="member-surface rounded-lg border border-zinc-200 bg-white p-5">
+            <div className="member-surface rounded-card border border-line bg-surface p-card">
               <FormRenderer
                 id={response.formId}
                 formSnapshotId={response.formSnapshotId}
@@ -233,9 +217,9 @@ const ResponseDrawer: React.FC<ResponseDrawerProps> = ({
               />
             </div>
           ) : (
-            <p className="text-sm text-red-600">
-              No schema available to render this response.
-            </p>
+            <Banner tone={BannerTone.Danger} inline>
+              No form questions are available to show this response.
+            </Banner>
           )}
         </div>
       )}
