@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router";
-import type { QueueCount } from "../../shell/useQueueCounts";
 import {
   type CountId,
   type PlaceId,
@@ -11,6 +10,7 @@ import {
   selectedTab,
   TabParam,
 } from "../../places";
+import type { QueueCount } from "../../shell/useQueueCounts";
 
 /** What `Page`'s `tabs` and `ViewSwitch` take: spread or pass it whole. */
 export type UrlTabs<T extends string> = {

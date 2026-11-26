@@ -224,10 +224,7 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
         const combo = `${MOD}${event.shiftKey ? SHIFT : ""}${event.key.toLowerCase()}`;
         const shortcut = all.find((candidate) => candidate.keys === combo);
         if (!mod || !shortcut || event.altKey) return;
-        if (
-          shortcut.allowInTextField === false &&
-          isTextEntry(event.target)
-        ) {
+        if (shortcut.allowInTextField === false && isTextEntry(event.target)) {
           return;
         }
         event.preventDefault();
