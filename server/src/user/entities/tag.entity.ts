@@ -24,6 +24,8 @@ import {
 } from "typeorm";
 import { User } from "./user.entity";
 
+// BACKCOMPAT(tags): superseded by member lists. Remove with every BACKCOMPAT(tags) once production
+// holds no tag reference and none can be written (ALL-2694).
 @Entity()
 @Index(["name"], { unique: true, where: '"deletedAt" IS NULL' })
 export class Tag {

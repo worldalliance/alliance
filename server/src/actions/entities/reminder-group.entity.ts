@@ -33,7 +33,7 @@ export enum ReminderGroupTimingMode {
 export enum ReminderCohortType {
   AllUncompleted = "all_uncompleted",
   GroupLeadsWithUncompleted = "group_leads_with_uncompleted",
-  Tag = "tag",
+  Tag = "tag", // BACKCOMPAT(tags)
   Custom = "custom",
 }
 

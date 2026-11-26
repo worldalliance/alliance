@@ -36,7 +36,7 @@ export enum ActionUpdateNotifyType {
   None = "none",
   ActionCohort = "action_cohort",
   AllMembers = "all_members",
-  Tag = "tag",
+  Tag = "tag", // BACKCOMPAT(tags)
 }
 
 /** Legacy is only for updates that predate recognition copy. */

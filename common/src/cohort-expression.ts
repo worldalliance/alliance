@@ -11,6 +11,7 @@ import { z } from "zod";
 
 // --- Leaf Conditions ---
 
+// BACKCOMPAT(tags)
 export const tagConditionSchema = z.strictObject({
   type: z.literal("Tag"),
   tagId: z.string(),
