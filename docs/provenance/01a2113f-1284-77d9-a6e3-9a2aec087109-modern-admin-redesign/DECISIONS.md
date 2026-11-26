@@ -589,3 +589,63 @@ Agent judgement by the system owner's colours node; the user was away.
 - **Success moves from hue 150 to emerald, oklch(0.52 0.11 165)**, so a done badge doesn't read as the brand: at hue 150 it was 0.046 from the accent in OKLab, now 0.077.
 - **`html` takes `accent-color` and `:focus-visible` the accent's outline colour in `@layer base`**, as the member app sets `accent-color` on `html`, so pages not yet on the admin's components lose the browser's blue; Tailwind utilities still win over the base layer.
 - **The categorical, chart, sequential and heat palettes are unchanged**: they carry data, not the brand, and leading them with green would put the brand beside success in charts.
+
+## Area: suites
+
+The suites list, New suite, the suite record and its tabs, and Launch, rebuilt on `ma-suites` by a shell unit and four tab units (Tabs, Reminders, Partition, Launch), then reviewed in one review loop of five rounds. It stopped after round 5 found nothing high-severity, under root's stop rule. 28 findings were fixed in the commits they answer, and the rest are Linear follow-ups (ALL-2523, ALL-2581 to ALL-2586, ALL-2613 to ALL-2615) or drops with reasons. All agent judgement; the user was asleep and has not seen these. Every agent ran on Opus 5.5 (from 08:20 at the user's request), so review is same-model in a fresh context, not cross-model.
+
+**Frame and list**
+
+- **New suite is a dialog over the list at `/tasks/suites/new`** (a nested route): it takes a name only, and Create opens the empty suite record. The list behind keeps its search. Cancel goes back when the dialog was opened inside the app; opened by URL, it replaces the entry with the list.
+- **The list shows a one-task suite's task by name** in its Tasks column, and the side panel does the same (38 of 64 launched suites hold one task). `GET /actions/suites` sends no tasks or events, so the list joins the all-tasks list and holds its skeleton until both load.
+- **The first tab is "Timeline" in every state**, not "Overview" while a draft. The body is the same timeline either way: a phase strip led by Draft, then the gantt once any task has an event. A draft's tasks show before it has one.
+- **Reminders get their own tab on the suite record**, beside Timeline, Tasks, Events, General updates, Partition and Launch. `PLACES.md` gives them none, but inventory SU-9..11 needs a home, and reminders stay distinct from updates.
+- **The header holds New task always, and Launch… only while the suite can launch.** Where it can't, the refusal text stands where Launch… would be. A draft suite says "Nothing is visible to members until you launch".
+- **A suite launched for a later members start reads "Scheduled"**, not "Draft", in the list, header and side panel. Its banner says nothing is visible to members until they start, with the time.
+- **A draft gets a separate banner for each thing that reaches members before launch**: a general update already shown to members, or a task whose own members start event, or a general update's future start, opens it without a launch.
+- **The side panel shows only what the suite query gives**: status, members start, deadline, tasks, partition. A suite with no tasks shows "No tasks yet" with New task on every tab but General updates.
+- **The suites list and the suite record wire their loading states by hand rather than through `ContentState`'s derived form**, since a missing suite must read as not found, an empty state, and the derived form would show it as a load failure.
+- **A missing suite reads "Couldn't load this suite"** with the server's reason, since the server answers 500 for a missing id. A 404 would read as not found, ready for a server fix.
+- **Rename and delete a suite are not offered**: the server has no route for either. Filed ALL-2503.
+- **The suite record holds its banner line while the suite loads, on every load.** Review round 1 changed this under the layout-shift rule; the change was undone when the user withdrew that rule, and the shell's behaviour, already checked in the browser, stands.
+
+**Events, tasks, general updates (Tabs unit)**
+
+- **Events are a table, edited in a dialog**, so no date is edited inline. A custom title is capped at 160 px with a tooltip and wraps under the phase badge, and a description is one muted line under the name. This keeps Edit and Delete in view at 1280 px on real data. Add event stays an inline panel below the events, mounting the tasks area's `CreateEventForm` unchanged, with its typed phrase.
+- **Event edits ask before they reach members**, which today's page never did (ALL-2328):
+  - Moving the members start to now or the past asks the same typed launch phrase as adding a members taking action event.
+  - Any other phase change, and moving a future start earlier, asks a Confirm naming both.
+  - The consequence is computed again after the question, and a changed answer refuses the save.
+- **Deleting an event says what goes with it**: the number of tasks it is deleted from, and that the suite's reminders with it as their deadline stop sending. The exception is reminders timed from a dependency task's deadline: the suite query carries no timing anchors, so the count can be one too high. Groups already fully sent aren't counted. The review reversed an earlier choice to leave the count unqualified. Today's hint said reminders block a delete. What blocks it is a project update tied to the event, and the hint now says so. That refusal answers a bare 500, which is ALL-1441.
+- **Event and general update dates show in Pacific time**, with the zone named.
+- **The Timeline tab mounts the tasks area's `ActionTimeline`**, with no timeline maths of its own (root note on #1092). The draft Timeline shows no readiness count: computing it would repeat the Launch tab's requests and could disagree with it, so it links to Launch instead.
+- **The Tasks tab is a table in priority order** and has no New task button of its own; the header's is always there.
+- **The General updates tab's date sentence names only the suite's members start and deadline.** For an update tied to several suites, the server takes the dates from an arbitrary one: filed ALL-2520.
+
+**Reminders**
+
+- **The tab lists every reminder group of the suite.** Today's page showed only the first task's, so suite 66 showed none of its 8.
+- **Groups are a table, created and edited in a sheet** whose URL is `?group=`, with a leave guard. A sheet opened from the tab closes with Back, and one opened by URL replaces the history entry. The buttons are New reminder and Populate (Default), and the sheet's edit button is "Save changes".
+- **Switching the open group in the sheet still asks first when it has unsaved changes.** The sheet remounts when `?group=` changes, so ignoring that param in the leave guard (as `ma-sys` allows) would drop edits silently.
+- **The group's help says its recipients come from every task in the suite.**
+- **Each save that reaches members says what it sends**: the number of reminders in the next 30 days, the first send time in Pacific time, and whether it is already due. Creating a group keeps the typed phrase. Populating keeps its phrase and now names the number of groups and the task.
+
+**Partition**
+
+- **The parts grid has tasks as rows**, one form and one preview panel.
+  - The no-required-work tick always shows, disabled with its reason where it can't be used.
+  - The save bar gains Discard.
+  - A scheduled partitioned suite carries a warning that every save there is refused.
+  - Saving and previewing run independently, so a click is never silently ignored.
+- **The launched and scheduled sentences name the members taking action event**, because a suite past its start has launched, not been scheduled.
+
+**Launch**
+
+- **Launch is a tab with no side panel.** The checks run in one column, beside a summary that stays in view while scrolling. The summary lists what launch creates, in order with Pacific dates, the counts, the blockers (each linking to its check) and the Launch button.
+- **Nothing is created before the admin types "I am going to notify {n} real members"**:
+  - Launch then creates the members taking action event, the office taking action event and the default reminders.
+  - The schedule never defaults to now and is checked again at click time.
+  - Launch rereads the suite and refuses if it has launched meanwhile.
+- **The contract check comes first**, above every other check, and is a blocker in the summary.
+- **The launch schedule's fields take Pacific time**, as their labels always said, instead of the browser's zone. `usersJoined` shows exactly as the server returns it (root note on #1094). "Preview task form as this member" still goes through `?previewAs=` (#1093).
+- **Copy says "task" for "action" wherever staff read it**, and failure messages name the suite's tabs. The phase names ("members taking action") stay.
