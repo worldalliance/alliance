@@ -14,7 +14,7 @@ import { HEADER_TRUNCATES } from "../paneHeader";
 import { ElementActionsMenu } from "./ElementActionsMenu";
 import { useSelectionActions } from "./useSelectionActions";
 
-/** The selection's issues behind a button of fixed width, so the settings under it never move. */
+/** The selection's issues behind a button, taking no room when there are none. */
 function IssuesHere() {
   const { issueIndex, canvas } = useBuilder();
   const messages = selectionIssues({
@@ -24,32 +24,29 @@ function IssuesHere() {
     target: canvas.resolvedTarget,
   });
   const count = withCount(messages.length, "issue");
+  if (messages.length === 0) return null;
   return (
-    <div className="w-20 shrink-0">
-      {messages.length > 0 && (
-        <Popover>
-          <PopoverTrigger
-            aria-label={`${count} here`}
-            className={cn(
-              "inline-flex max-w-full text-danger",
-              buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
-            )}
-          >
-            <span className="truncate">{count}</span>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-72">
-            <ul
-              aria-label="Issues here"
-              className="flex list-disc flex-col gap-1 pl-4 text-danger"
-            >
-              {messages.map((message, index) => (
-                <li key={index}>{message}</li>
-              ))}
-            </ul>
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
+    <Popover>
+      <PopoverTrigger
+        aria-label={`${count} here`}
+        className={cn(
+          "inline-flex text-danger",
+          buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
+        )}
+      >
+        {count}
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <ul
+          aria-label="Issues here"
+          className="flex list-disc flex-col gap-1 pl-4 text-danger"
+        >
+          {messages.map((message, index) => (
+            <li key={index}>{message}</li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 

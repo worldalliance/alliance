@@ -1,17 +1,17 @@
 import { withCount } from "@alliance/common/plural";
 import { CircleAlert, LoaderCircle } from "lucide-react";
 import { useEffect, useRef } from "react";
+import Button, { ButtonVariant, buttonVariants } from "../../../ui/Button";
+import { cn } from "../../../ui/cn";
+import { Popover, PopoverContent, PopoverTrigger } from "../../../ui/Popover";
 import {
   IssueGate,
   type IssueRow,
   type LoadFailure,
   type SourceCheck,
 } from "./issues/IssueList";
-import { useRestoreFocusWithin } from "./selection/useRestoreFocusWithin";
-import Button, { ButtonVariant, buttonVariants } from "../../../ui/Button";
-import { cn } from "../../../ui/cn";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../ui/Popover";
 import { focusInPlace } from "./kit/revealInPane";
+import { useRestoreFocusWithin } from "./selection/useRestoreFocusWithin";
 
 const GATED_ACTION: Record<IssueGate, string> = {
   [IssueGate.Save]: "saving",
@@ -19,8 +19,8 @@ const GATED_ACTION: Record<IssueGate, string> = {
 };
 
 /**
- * The toolbar's count of what blocks Save and Preview, in a slot of fixed
- * width, opening a list that links each issue to where it's repaired. `gate`
+ * The toolbar's count of what blocks Save and Preview, in a slot at least as
+ * wide as "No issues" and never truncated, opening a list that links each issue to where it's repaired. `gate`
  * names the action that opened it, which moves focus into the list.
  */
 export function IssuesButton({
@@ -52,14 +52,14 @@ export function IssuesButton({
 
   if (nothingToSay && !open) {
     return (
-      <p className="w-24 shrink-0 truncate text-caption text-fg-muted">
+      <p className="min-w-24 shrink-0 whitespace-nowrap text-caption text-fg-muted">
         No issues
       </p>
     );
   }
 
   return (
-    <div className="w-24 shrink-0">
+    <div className="min-w-24 shrink-0">
       <Popover
         open={open}
         onOpenChange={(next, { reason }) => {
@@ -71,7 +71,7 @@ export function IssuesButton({
         <PopoverTrigger
           ref={triggerRef}
           className={cn(
-            "inline-flex max-w-full",
+            "inline-flex whitespace-nowrap",
             buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
             count > 0 ? "text-danger" : "text-fg-muted",
           )}
@@ -79,7 +79,7 @@ export function IssuesButton({
           {count > 0 ? (
             <>
               <CircleAlert aria-hidden="true" className="size-4" />
-              <span className="truncate">{withCount(count, "issue")}</span>
+              {withCount(count, "issue")}
             </>
           ) : sources.pending > 0 ? (
             <>
