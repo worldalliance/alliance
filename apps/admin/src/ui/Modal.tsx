@@ -237,7 +237,11 @@ const Modal: React.FC<ModalProps> = ({
 
   const opener = useRef<Element | null>(null);
   const wasOpen = useRef(false);
-  if (open && !wasOpen.current) opener.current = document.activeElement;
+  // Safari doesn't focus a clicked button, so its opener reads as `<body>`.
+  if (open && !wasOpen.current) {
+    opener.current =
+      document.activeElement === document.body ? null : document.activeElement;
+  }
   wasOpen.current = open;
 
   return (

@@ -215,6 +215,36 @@ describe("Modal", () => {
       ),
     );
   });
+
+  it("uses finalFocus when the click that opened it focused nothing, as in Safari", async () => {
+    function Unfocused() {
+      const [open, setOpen] = useState(false);
+      const add = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button ref={add}>Add period</button>
+          <button onClick={() => setOpen(true)}>Edit</button>
+          <Modal
+            open={open}
+            onClose={() => setOpen(false)}
+            finalFocus={() => add.current}
+          >
+            <ModalTitle>Away period</ModalTitle>
+            <button onClick={() => setOpen(false)}>Close it</button>
+          </Modal>
+        </>
+      );
+    }
+    render(<Unfocused />);
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Close it" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Add period" }),
+      ),
+    );
+  });
 });
 
 describe("Sheet", () => {
