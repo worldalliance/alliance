@@ -26,7 +26,6 @@ import {
 import Badge from "../../ui/Badge";
 import Button, { ButtonVariant } from "../../ui/Button";
 import NewTabMark from "../../ui/NewTabMark";
-import PhaseBadge from "../../ui/PhaseBadge";
 import { Skeleton } from "../../ui/Skeleton";
 import { linkClass } from "../../ui/styles";
 import { Banner, BannerTone } from "../../ui/templates/Banner";
@@ -51,6 +50,7 @@ import { MessagesTab } from "./messages/MessagesTab";
 import { OverviewTab } from "./overview/OverviewTab";
 import { ResponsesTab } from "./responses/ResponsesTab";
 import { TaskCommands } from "./TaskCommands";
+import { TaskPhaseBadge } from "./TaskPhaseBadge";
 import { COPY_GUIDELINES_URL, TaskSidePanel } from "./TaskSidePanel";
 import {
   TASK_TAB_LAYOUT,
@@ -261,7 +261,7 @@ export function TaskRecord({
         badge={
           task && (
             <span className="flex items-center gap-1.5">
-              <PhaseBadge status={task.status} />
+              <TaskPhaseBadge task={task} />
               {task.archived && <Badge>Archived</Badge>}
             </span>
           )

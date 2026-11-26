@@ -1,3 +1,4 @@
+import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
@@ -81,6 +82,32 @@ const renderPage = (url: string) => {
     queryWrapper(),
   );
 };
+
+it.each([
+  ["Staff testing", { staffPreview: true }],
+  [
+    "Scheduled",
+    {
+      events: [
+        makeEvent({ newStatus: "member_action", date: "2999-01-01T00:00:00Z" }),
+      ],
+    },
+  ],
+])(
+  "says %s beside the status in the header before launch",
+  async (label, extra) => {
+    task = makeParsedAction({ ...task, ...extra });
+    renderPage("/tasks/7");
+
+    const title = await screen.findByRole("heading", {
+      level: 1,
+      name: "Winter heat survey",
+    });
+    const header = within(title.parentElement ?? title);
+    header.getByText("Draft");
+    header.getByText(label);
+  },
+);
 
 it("shows the task's name, phase and commands", async () => {
   renderPage("/tasks/7");
