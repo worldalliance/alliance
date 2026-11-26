@@ -5,7 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, jest } from "bun:test";
 import { useRef, useState } from "react";
 import { useFocusAfterRemoval } from "./useFocusAfterRemoval";
 
@@ -59,6 +59,20 @@ describe("useFocusAfterRemoval", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Add" }),
     );
+  });
+
+  it("scrolls the neighbour into view the least, not with focus's jump", () => {
+    const scrolled = jest.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrolled;
+    try {
+      render(<List initial={["a", "b"]} />);
+      remove("b");
+      expect(scrolled).toHaveBeenCalledTimes(1);
+      expect(scrolled.mock.calls[0]?.[0]).toMatchObject({ block: "nearest" });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
   });
 
   it("waits for a neighbour that is listed but not yet rendered", async () => {

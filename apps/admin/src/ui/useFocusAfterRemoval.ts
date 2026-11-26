@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from "@alliance/sharedweb/lib/reducedMotion";
 import { type RefObject, useCallback, useEffect, useId, useState } from "react";
 
 type Focusable = { focus: () => void };
@@ -32,7 +33,15 @@ export function useFocusAfterRemoval<Id extends string | number>({
     const target = row?.querySelector<HTMLElement>("button");
     // A neighbour still listed but not yet rendered is waited for.
     if (!target && neighbour !== undefined && ids.includes(neighbour)) return;
-    (target ?? fallback.current)?.focus();
+    if (target) {
+      // A plain focus() jumps a neighbour that is off screen (a tall card
+      // above the viewport) into view at once; this scrolls the least.
+      target.focus({ preventScroll: true });
+      target.scrollIntoView?.({
+        block: "nearest",
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+      });
+    } else fallback.current?.focus();
     setPending(null);
   }, [pending, ids, scope, fallback]);
 
