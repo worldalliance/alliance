@@ -151,12 +151,9 @@ export function AllGroupsTab({ groups }: { groups: UseQueryResult<CommunityDto[]
       </FilterBar>
       <ListContent>
         <ContentState
-          loading={groups.isPending}
+          things="groups"
+          query={groups}
           skeleton={<TableSkeleton bleed columns={4} />}
-          error={groups.isLoadingError ? adminRefusalMessage(groups.error, LOAD_FAILED_FALLBACK) : null}
-          errorTitle="Couldn't load groups"
-          onRetry={() => void groups.refetch()}
-          retrying={groups.isFetching}
           empty={rows.length === 0}
           filtered={q !== ""}
           onClearFilters={() => setQ("")}
@@ -169,6 +166,24 @@ export function AllGroupsTab({ groups }: { groups: UseQueryResult<CommunityDto[]
   );
 }
 ```
+
+Give `ContentState` the query, not `loading` and `error` worked out by hand: it shows the skeleton while the query is on its first load (`isPending`), the failed state when that load failed (`isLoadingError`, retrying with `refetch` and `isFetching`), and above the content a `RefreshFailedBanner` when a later refetch failed, so a page can't show a stale list as a failed load or a failed load as "No results". A body fed by two queries passes both as `parts`; it waits for both, fails naming those that failed, retries only those, and the banner names the ones that went stale:
+
+```tsx
+<ContentState
+  parts={[
+    { things: "groups", query: groups },
+    { things: "the members awaiting a group", query: queue },
+  ]}
+  skeleton={<TableSkeleton bleed columns={5} />}
+  empty={rows.length === 0}
+  emptyTitle="No one is awaiting a group"
+>
+  <Table bleed>…</Table>
+</ContentState>
+```
+
+Pass `errorTitle` to override "Couldn't load groups and the members awaiting a group", and `refreshBanner={false}` where the page already mounts `RefreshFailedBanner` (as `GroupsPage` does, in `Page`'s `banner`). A part of the page that can fail alone while the rest renders (a count beside a tab, a stat tile) uses the query's `isLoadingError` and `isRefetchError` directly, never `isError` or `data === undefined`: a count while loading is blank, after a failed load it is "!", after a failed refetch it keeps the last value. The `loading`, `error`, `errorTitle` props still work for content no query backs.
 
 - **`place`** is the `PlaceId` (`src/places.ts`) the page is. From it `Page` sets the document title, the breadcrumb and the one `h1`; don't write a `<title>`, a trail or a header by hand, and pass no `title` (a type error beside `place`). A record's page passes `record={RecordId.Suite}` instead, with `title={suite?.name}` (until the name loads `Page` shows the record's kind from `places.ts`), and `parents={[{ label, to }]}` when it sits under another record. A record listed under a non-first tab of its place has that `tab` in `RECORDS`, and `Page` adds the tab to the breadcrumb. `badge`, `description` and `actions` fill the rest of the header. A `description` that comes with the data passes `""` until it loads: the line is held, so the tabs don't drop when it arrives.
 - **Tabs and views** come from `places.ts`, which the redirects, the palette and the sidebar also read. `usePlaceTabs(place, ids)` binds a place's tabs to `?tab=`, `usePlaceViews(place, ids)` its views to `?view=`, `useRecordTabs(RecordId.Suite, ids)` a record's tabs. `ids` repeats the ids from `places.ts`, so `tabs.value` is a typed union to index a `Record<Tab, …>` with, and the hook throws if they differ. Only the current tab's body is mounted, so state two tabs need lives in the page file or the URL, and an unsaved form on a tab is lost on leaving it unless `useLeaveGuard` asks first. A tab whose `places.ts` entry has a `count` shows that queue's size through `withQueueCounts` (hidden at zero and while loading, "!" when it failed), as the sidebar does. Another count beside a tab label only where today's page has it: set `count` on that item.
@@ -408,7 +423,7 @@ Keep each page's save model as it is today; the model is part of the data layer 
 - **Loading.** The first load of a page or tab shows a skeleton shaped like the content, with the header, tabs and filter bar already in place. `ContentState` lays the skeleton out at once and shows it after about 200 ms, so fast loads don't flash and nothing below moves; build it from `TableSkeleton`, `FormSkeleton` or `ui/Skeleton.tsx` blocks sized like the content. For anything else, `useDelayedFlag` (`templates/useDelayedFlag.ts`) is the delay.
 - **Nothing yet** (`ContentState`'s `emptyTitle`, or `ui/EmptyState.tsx`): names what is empty and offers the next step where there is one. On Home and queues, an empty queue is good news and says so in one line.
 - **No results**: filters or search matched nothing. `ContentState` says so and offers "Clear filters".
-- **Failed to load** (`ContentState`'s `error`, or `ErrorState`): the title says what couldn't load, the reason is `adminRefusalMessage(error, LOAD_FAILED_FALLBACK)`, "Try again" retries with `retrying={query.isFetching}`. Use the query's `isLoadingError`, so a failed refetch keeps what loaded. When part of a page fails, the rest still renders and a `Banner` names the failed part and what that means for what's shown. A failed load never looks like an empty list.
+- **Failed to load** (`ContentState` given the query, or `ErrorState`; the model page shows the one- and two-query cases): the title says what couldn't load, the reason is `adminRefusalMessage(error, LOAD_FAILED_FALLBACK)`, "Try again" retries with `retrying={query.isFetching}`. `ContentState` uses the query's `isLoadingError`, so a failed refetch keeps what loaded and shows the `RefreshFailedBanner` over it. When part of a page fails, the rest still renders and a `Banner` names the failed part and what that means for what's shown. A failed load never looks like an empty list.
 - **Failed refetch.** Content already on screen stays, and `<RefreshFailedBanner things="groups" query={query} />` says it may be stale, with a retry. It renders nothing unless `query.isRefetchError`, so mount it always: in `Page`'s `banner`, as the first child of a tab body that owns its query, or `inline` in a panel. It shows only after the client's retries, about 7 s after a server error or lost response and at once when the server refuses; to see it in a browser, load the page, leave it, make the request fail and come back. A reload the reader asked for with a button is not a refetch: its failure replaces the earlier result with the failed state, so an old answer isn't read as the new one.
 - **A failed write is said once, where the reader is looking**, and stays until dismissed or the next success: an explicit save in its `SaveBar` (`error` is the reason alone, fallback `SAVE_FAILED_FALLBACK`); a dialog's write in `ModalFooter`'s `error`, and nowhere else; a write confirmed in a `ConfirmDialog` that closes once the write settles, as an `InlineError` beside the control that opened it (`AwaitingTab.tsx`); a write from a row or a header button as `Page`'s `banner`, a `BannerTone.Danger` `Banner` with a Ghost small "Dismiss". No toast for a failure.
 - **Refused by the server**: show the server's own message through `lib/adminRefusal.ts`. An expired session shows the session message from `lib/sessionExpired.ts`.

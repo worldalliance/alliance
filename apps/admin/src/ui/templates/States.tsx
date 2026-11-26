@@ -156,6 +156,14 @@ type RefreshPart = {
   query: RefreshableQuery;
 };
 
+/** What `ContentState` reads of a query: a `useQuery` result fits. */
+type LoadQuery = RefreshableQuery & {
+  isPending: boolean;
+  isLoadingError: boolean;
+};
+
+type LoadPart = { things: string; query: LoadQuery };
+
 const LIST = new Intl.ListFormat("en-US");
 
 /**
@@ -195,18 +203,10 @@ export function RefreshFailedBanner({
   );
 }
 
-export type ContentStateProps = {
-  /** The first load, with nothing to show yet. Not a refetch. */
-  loading: boolean;
+type ContentStateBase = {
   /** Shown while loading, shaped like the content. */
   skeleton: ReactNode;
-  /** A failed load's reason; `null` or `undefined` when it didn't fail. */
-  error?: string | null;
-  /** "Couldn't load suites". */
-  errorTitle: string;
   onRetry?: () => void;
-  /** The retry is running: the query's `isFetching`. */
-  retrying?: boolean;
   /** The loaded content has no items. Omit, with `emptyTitle`, for content that is never empty. */
   empty?: boolean;
   /** Search or filters are applied, so empty means no results. */
@@ -219,25 +219,78 @@ export type ContentStateProps = {
   children: ReactNode;
 };
 
+/** The states told by hand: `loading` is the first load, never a refetch. */
+type ContentStateByHand = ContentStateBase & {
+  loading: boolean;
+  /** A failed load's reason; `null` or `undefined` when it didn't fail. */
+  error?: string | null;
+  /** "Couldn't load suites". */
+  errorTitle: string;
+  /** The retry is running: the query's `isFetching`. */
+  retrying?: boolean;
+};
+
+/**
+ * The states derived from the queries behind the content: the skeleton while
+ * any is on its first load, the failed state when one's first load failed
+ * (retrying those), and above the content a banner when a refetch failed.
+ */
+type ContentStateFromQueries = ContentStateBase & {
+  /** Overrides "Couldn't load {things}", which names every failed part. */
+  errorTitle?: string;
+  /** Pass `false` where the page mounts `RefreshFailedBanner` itself. */
+  refreshBanner?: boolean;
+} & ({ things: string; query: LoadQuery } | { parts: readonly LoadPart[] });
+
+export type ContentStateProps = ContentStateByHand | ContentStateFromQueries;
+
+function byHand(props: ContentStateByHand) {
+  return { ...props, banner: null };
+}
+
+function fromQueries(props: ContentStateFromQueries) {
+  const parts = "parts" in props ? props.parts : [props];
+  const failed = parts.filter((part) => part.query.isLoadingError);
+  const first = failed[0];
+  return {
+    loading: parts.some((part) => part.query.isPending),
+    error: first
+      ? adminRefusalMessage(first.query.error, LOAD_FAILED_FALLBACK)
+      : null,
+    errorTitle:
+      props.errorTitle ??
+      `Couldn't load ${LIST.format(failed.map((part) => part.things))}`,
+    retrying: failed.some((part) => part.query.isFetching),
+    onRetry:
+      props.onRetry ??
+      (() => failed.forEach((part) => void part.query.refetch())),
+    banner:
+      props.refreshBanner === false ? null : (
+        <RefreshFailedBanner parts={parts} inline />
+      ),
+  };
+}
+
 /**
  * Picks among loading, failed, no results, nothing yet and the content, so the
- * four never look alike. Use it for any region that loads.
+ * four never look alike. Use it for any region that loads. Hand it the query
+ * (`things` and `query`) or several (`parts`) and it tells loading from a
+ * failed load from a failed refetch itself; `loading` and `error` by hand are
+ * for content no query backs.
  */
-export function ContentState({
-  loading,
-  skeleton,
-  error,
-  errorTitle,
-  onRetry,
-  retrying,
-  empty = false,
-  filtered = false,
-  onClearFilters,
-  emptyTitle = "Nothing here yet",
-  emptyDescription,
-  emptyAction,
-  children,
-}: ContentStateProps) {
+export function ContentState(props: ContentStateProps) {
+  const {
+    skeleton,
+    empty = false,
+    filtered = false,
+    onClearFilters,
+    emptyTitle = "Nothing here yet",
+    emptyDescription,
+    emptyAction,
+    children,
+  } = props;
+  const { loading, error, errorTitle, retrying, onRetry, banner } =
+    "loading" in props ? byHand(props) : fromQueries(props);
   if (error !== null && error !== undefined) {
     return (
       <ErrorState
@@ -249,29 +302,39 @@ export function ContentState({
     );
   }
   if (loading) return <DelayedSkeleton>{skeleton}</DelayedSkeleton>;
-  if (empty && filtered) {
-    return (
-      <EmptyState
-        title="No results"
-        description="Nothing matches the search and filters."
-        action={
-          onClearFilters && (
-            <Button variant={ButtonVariant.Default} onClick={onClearFilters}>
-              Clear filters
-            </Button>
-          )
-        }
-      />
-    );
-  }
-  if (empty) {
-    return (
-      <EmptyState
-        title={emptyTitle}
-        description={emptyDescription}
-        action={emptyAction}
-      />
-    );
-  }
-  return children;
+  const body = (() => {
+    if (empty && filtered) {
+      return (
+        <EmptyState
+          title="No results"
+          description="Nothing matches the search and filters."
+          action={
+            onClearFilters && (
+              <Button variant={ButtonVariant.Default} onClick={onClearFilters}>
+                Clear filters
+              </Button>
+            )
+          }
+        />
+      );
+    }
+    if (empty) {
+      return (
+        <EmptyState
+          title={emptyTitle}
+          description={emptyDescription}
+          action={emptyAction}
+        />
+      );
+    }
+    return children;
+  })();
+  return banner ? (
+    <>
+      {banner}
+      {body}
+    </>
+  ) : (
+    body
+  );
 }
