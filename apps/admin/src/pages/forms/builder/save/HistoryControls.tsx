@@ -3,7 +3,11 @@ import { useEffect, type RefObject } from "react";
 import { isTextEntry } from "../../../../lib/useDraftHistory";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { Kbd } from "../../../../ui/Kbd";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../ui/Tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../../../../ui/Tooltip";
 
 type HistoryControlsProps = {
   /** Where the shortcuts apply, besides an unfocused page. */
@@ -66,16 +70,17 @@ export function HistoryControls({
           <Button
             variant={ButtonVariant.Ghost}
             size="small"
+            className="px-1.5"
+            aria-label={label}
             onClick={redo ? onRedo : onUndo}
             disabled={redo ? !canRedo : !canUndo}
           >
             <Icon aria-hidden="true" className="size-4" />
-            {label}
           </Button>
         }
       />
       <TooltipContent>
-        <Kbd>{keys}</Kbd>
+        {label} <Kbd>{keys}</Kbd>
       </TooltipContent>
     </Tooltip>
   ));
