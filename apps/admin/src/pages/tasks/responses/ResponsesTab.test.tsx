@@ -9,9 +9,10 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
-import { ToastProvider } from "../ui/ToastProvider";
-import ActionMergedResponsesTab from "./ActionMergedResponsesTab";
+import { makeParsedAction } from "../../../lib/testing/parsedAction";
+import { SiteOriginLinkProvider } from "../../../ui/SiteAppProvider";
+import { ToastProvider } from "../../../ui/ToastProvider";
+import { ResponsesTab } from "./ResponsesTab";
 
 const schema: FormSchema = {
   pages: [
@@ -122,7 +123,7 @@ const tab = (actionId: number) => (
   <SiteOriginLinkProvider origin="https://worldalliance.org">
     <ToastProvider>
       <MemoryRouter>
-        <ActionMergedResponsesTab actionId={actionId} />
+        <ResponsesTab task={makeParsedAction({ id: actionId })} />
       </MemoryRouter>
     </ToastProvider>
   </SiteOriginLinkProvider>

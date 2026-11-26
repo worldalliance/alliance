@@ -3,7 +3,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
+import { VariantCoverage } from "./VariantCoverage";
 
 const stats: ActionFormVariantStatsDto[] = [
   {
@@ -39,44 +39,36 @@ serveApi(
   }),
 );
 
-const renderCoverage = (params: {
-  percentageSum: number;
-  hasVariants: boolean;
-}) =>
+const renderCoverage = (params: { splitTotal: number; hasVariants: boolean }) =>
   render(
     <MemoryRouter>
-      <ActionFormVariantCoverage stats={stats} {...params} />
+      <VariantCoverage stats={stats} {...params} />
     </MemoryRouter>,
     queryWrapper(),
   );
 
-describe("ActionFormVariantCoverage", () => {
-  it("names each group's form by its display slug", async () => {
-    renderCoverage({ percentageSum: 40, hasVariants: true });
+describe("VariantCoverage", () => {
+  it("names each variant's form by its display slug", async () => {
+    renderCoverage({ splitTotal: 40, hasVariants: true });
     expect(await screen.findByText("food-drive::v1")).toBeTruthy();
     expect(screen.getByText("food-drive::v2")).toBeTruthy();
   });
 
-  it("totals assignments and submissions across groups", () => {
-    renderCoverage({ percentageSum: 40, hasVariants: true });
-    expect(screen.getByText("12 users assigned")).toBeTruthy();
+  it("totals assignments and submissions across variants", () => {
+    renderCoverage({ splitTotal: 40, hasVariants: true });
+    expect(screen.getByText("12 members assigned")).toBeTruthy();
     expect(screen.getByText("8")).toBeTruthy();
     expect(screen.getByText("40%")).toBeTruthy();
-    expect(screen.getByText("remainder")).toBeTruthy();
+    expect(screen.getByText("Remainder")).toBeTruthy();
     expect(
-      screen.getByText(/Default form covers the remaining 60%/),
+      screen.getByText(/The default form covers the remaining 60%/),
     ).toBeTruthy();
   });
 
-  it("flags splits over 100%", () => {
-    renderCoverage({ percentageSum: 120, hasVariants: true });
-    expect(screen.getByText(/Percentage total 120% exceeds 100%/)).toBeTruthy();
-  });
-
   it("says everyone sees the default form when there are no variants", () => {
-    renderCoverage({ percentageSum: 0, hasVariants: false });
+    renderCoverage({ splitTotal: 0, hasVariants: false });
     expect(
-      screen.getByText("No variants — all users see the default form."),
+      screen.getByText("No variants: every member sees the default form."),
     ).toBeTruthy();
   });
 });

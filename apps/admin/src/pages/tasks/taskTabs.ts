@@ -42,7 +42,7 @@ export const TASK_TAB_LAYOUT: Record<TaskTab, TaskTabLayout> = {
   variants: TaskTabLayout.Side,
   "follow-up-forms": TaskTabLayout.Full,
   messages: TaskTabLayout.Side,
-  responses: TaskTabLayout.Full,
+  responses: TaskTabLayout.Fill,
   events: TaskTabLayout.Side,
   activity: TaskTabLayout.Side,
 };
