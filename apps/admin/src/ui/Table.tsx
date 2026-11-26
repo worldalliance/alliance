@@ -17,16 +17,43 @@ type TableProps = React.ComponentProps<"table"> & {
   stickyActions?: boolean;
 };
 
+// The focus ring's width and offset, so the whole ring clears the pinned column.
+const FOCUS_RING_ROOM = 4;
+
+/**
+ * The browser counts a control under the pinned actions column as in view, so
+ * Tab would focus it without scrolling and hide its focus ring.
+ */
+function revealFromUnderActions(event: React.FocusEvent<HTMLTableElement>) {
+  const cell = event.target.closest("td, th");
+  const actions = cell?.parentElement?.querySelector(":scope > [data-actions]");
+  if (!cell || !actions || cell === actions) return;
+  const hidden =
+    event.target.getBoundingClientRect().right -
+    actions.getBoundingClientRect().left;
+  if (hidden <= 0) return;
+  let scroller = event.currentTarget.parentElement;
+  while (scroller && scroller.scrollWidth <= scroller.clientWidth) {
+    scroller = scroller.parentElement;
+  }
+  scroller?.scrollBy({ left: hidden + FOCUS_RING_ROOM });
+}
+
 function Table({
   className,
   bleed = false,
   stickyActions = false,
+  onFocus,
   ...props
 }: TableProps) {
   return (
     <table
       data-bleed={bleed ? "" : undefined}
       data-sticky-actions={stickyActions ? "" : undefined}
+      onFocus={(event) => {
+        if (stickyActions) revealFromUnderActions(event);
+        onFocus?.(event);
+      }}
       className={cn(
         "group/table w-full border-separate border-spacing-0 text-left",
         className,
@@ -122,6 +149,7 @@ function TableHead({
   return (
     <th
       aria-sort={sort ? (sort.direction ?? "none") : undefined}
+      data-actions={actions ? "" : undefined}
       className={cn(
         zIndex.raised,
         "sticky top-0 h-th border-b border-line bg-surface-2 px-cell text-caption font-medium whitespace-nowrap text-fg-muted",
@@ -164,6 +192,7 @@ function TableCell({
   return (
     <td
       data-truncate={truncate ? "" : undefined}
+      data-actions={actions ? "" : undefined}
       className={cn(
         "h-row border-b border-line px-cell group-last/row:border-b-0 group-data-bleed/table:group-last/row:border-b",
         BLEED_EDGES,
