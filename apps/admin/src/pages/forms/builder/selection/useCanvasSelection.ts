@@ -136,16 +136,18 @@ export function useCanvasSelection({
     pageIndex,
     target,
     section: nextSection = SECTION_ON_SELECT[target.kind],
+    reveal: shouldReveal = true,
   }: {
     page: Page;
     pageIndex: number;
     target: CanvasTarget;
     section?: SidebarSection;
+    reveal?: boolean;
   }) => {
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
     setSection(nextSection);
-    reveal();
+    if (shouldReveal) reveal();
   };
 
   if (placeOnLoad) {

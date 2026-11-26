@@ -7,14 +7,17 @@ function setup({ target }: { target: { top: number; height: number } }) {
   const child = document.createElement("div");
   pane.append(child);
   let scrollTop = 1000;
-  Object.defineProperty(pane, "scrollTop", {
-    get: () => scrollTop,
-    set: (value: number) => (scrollTop = value),
-  });
+  const behaviors: (ScrollBehavior | undefined)[] = [];
+  Object.defineProperty(pane, "scrollTop", { get: () => scrollTop });
+  pane.scrollTo = (options?: ScrollToOptions | number) => {
+    if (typeof options !== "object") throw new Error("scrollTo(x, y) unused");
+    behaviors.push(options.behavior);
+    scrollTop = options.top ?? scrollTop;
+  };
   pane.getBoundingClientRect = () => DOMRect.fromRect({ y: 100, height: 400 });
   child.getBoundingClientRect = () =>
     DOMRect.fromRect({ y: target.top, height: target.height });
-  return { pane, child, scrollTop: () => scrollTop };
+  return { pane, child, scrollTop: () => scrollTop, behaviors };
 }
 
 describe("revealInPane", () => {
@@ -48,6 +51,42 @@ describe("revealInPane", () => {
     });
     revealInPane(pane, child);
     expect(scrollTop()).toBe(1000 + 500 - 24);
+  });
+});
+
+describe("revealInPane's motion", () => {
+  const withMotion = (reduce: boolean, run: () => void) => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: reduce && query.includes("reduce"),
+      }),
+    });
+    try {
+      run();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: original,
+      });
+    }
+  };
+
+  it("animates the scroll", () => {
+    const { pane, child, behaviors } = setup({
+      target: { top: 450, height: 100 },
+    });
+    withMotion(false, () => revealInPane(pane, child));
+    expect(behaviors).toEqual(["smooth"]);
+  });
+
+  it("jumps under reduced motion", () => {
+    const { pane, child, behaviors } = setup({
+      target: { top: 450, height: 100 },
+    });
+    withMotion(true, () => revealInPane(pane, child));
+    expect(behaviors).toEqual(["instant"]);
   });
 });
 

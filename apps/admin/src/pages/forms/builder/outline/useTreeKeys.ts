@@ -4,7 +4,7 @@ import { focusInPlace, revealInPane } from "../kit/revealInPane";
 
 /** What the keyboard can do to one row of the tree. */
 export type RowHandle = {
-  select: () => void;
+  select: (options?: { reveal: boolean }) => void;
   /** Extends the selection through the row; absent where ranges can't reach it. */
   extend?: () => void;
   /** Absent on a row with nothing to show or hide. */

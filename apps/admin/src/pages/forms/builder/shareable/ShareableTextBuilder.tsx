@@ -16,6 +16,7 @@ import {
   type ShareableInsertable,
 } from "./InsertableTokenButton";
 import { ReferralUrlNotice } from "./ReferralUrlNotice";
+import { focusInPlace } from "../kit/revealInPane";
 import TextareaWithHighlights from "../../../../components/TextareaWithHighlights";
 
 interface ShareableTextBuilderProps {
@@ -185,7 +186,7 @@ export function ShareableTextBuilder({
 
     window.requestAnimationFrame(() => {
       const nextCaret = replacementRange.start + token.length;
-      completedTextareaRef.current?.focus();
+      focusInPlace(completedTextareaRef.current);
       completedTextareaRef.current?.setSelectionRange(nextCaret, nextCaret);
       setCompletedCaretIndex(nextCaret);
     });
@@ -207,7 +208,7 @@ export function ShareableTextBuilder({
 
     window.requestAnimationFrame(() => {
       const nextCaret = selectionStart + token.length;
-      defaultTextareaRef.current?.focus();
+      focusInPlace(defaultTextareaRef.current);
       defaultTextareaRef.current?.setSelectionRange(nextCaret, nextCaret);
     });
   };

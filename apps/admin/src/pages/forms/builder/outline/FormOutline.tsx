@@ -51,7 +51,11 @@ type FormOutlineProps = {
   displayOnly: boolean;
   pageIndex: number;
   selected: ResolvedTarget;
-  onSelect: (pageIndex: number, target: CanvasTarget) => void;
+  onSelect: (
+    pageIndex: number,
+    target: CanvasTarget,
+    options?: { reveal: boolean },
+  ) => void;
   /** Shift-click's selection on the open page through `clicked`, else `alone`. Null where ranges are off. */
   onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
   /** The selection once an entry's checkbox toggles. Null where ranges are off. */
@@ -158,7 +162,7 @@ export function FormOutline({
           current: (target !== null && (!target.child || !open)) || ranged,
           selected: (target !== null && !target.child) || ranged,
           rangeFocus: onPage && rangeFocus(selected) === at,
-          onSelect: () => onSelect(index, alone),
+          onSelect: (options) => onSelect(index, alone, options),
           onExtend:
             onPage && onExtend
               ? () => onExtend({ start: at, end: at + 1 }, alone)
@@ -241,7 +245,7 @@ export function FormOutline({
               level,
               current: groupSelected || (memberSelected && !open),
               selected: groupSelected,
-              onSelect: () => onSelect(index, group),
+              onSelect: (options) => onSelect(index, group, options),
               onExtend:
                 onPage && onExtend
                   ? () => onExtend({ start, end }, group)
@@ -301,7 +305,8 @@ export function FormOutline({
         current: pageSelected || inside,
         selected: pageSelected,
         emphasis: index === pageIndex,
-        onSelect: () => onSelect(index, { kind: CanvasTargetKind.Page }),
+        onSelect: (options) =>
+          onSelect(index, { kind: CanvasTargetKind.Page }, options),
         ...(!pagesOnly &&
           !empty && {
             expanded: open,
@@ -435,7 +440,7 @@ export function FormOutline({
             event.stopPropagation();
             return;
           }
-          if (!handle.current) handle.select();
+          if (!handle.current) handle.select({ reveal: false });
         }}
         onDragOver={clearOffRows}
         onDrop={drop}

@@ -142,11 +142,12 @@ export function FormBuilderCanvas({
         displayOnly={displayOnly}
         pageIndex={selectedPageIndex}
         selected={resolvedTarget}
-        onSelect={(pageIndex, target) =>
+        onSelect={(pageIndex, target, options) =>
           selectFromOutline({
             page: schema.pages[pageIndex]!,
             pageIndex,
             target,
+            reveal: options?.reveal,
           })
         }
         onExtend={

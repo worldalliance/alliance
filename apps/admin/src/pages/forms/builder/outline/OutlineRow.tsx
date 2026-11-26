@@ -51,7 +51,8 @@ export type RowProps = {
   /** In the selection: the current row, or a member of a range. */
   selected?: boolean;
   rangeFocus?: boolean;
-  onSelect: () => void;
+  /** `reveal: false` selects without scrolling the canvas, as a right-click does. */
+  onSelect: (options?: { reveal: boolean }) => void;
   /** Shift-click's selection through this row, in place of `onSelect`. */
   onExtend?: () => void;
   check?: { state: CheckState; onToggle: () => void };
