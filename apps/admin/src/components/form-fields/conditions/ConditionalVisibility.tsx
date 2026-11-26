@@ -52,10 +52,8 @@ function ReplaceExpression({
   onChoose: (combinator: Combinator) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-caption text-fg-muted">
-        Replace the expression with:
-      </span>
+    <div className="flex items-center gap-2 whitespace-nowrap">
+      <span className="text-caption text-fg-muted">Replace with</span>
       <Button
         variant={ButtonVariant.Default}
         size="small"
@@ -98,6 +96,7 @@ export function ConditionalVisibility({
   const [expressionRequested, setExpressionRequested] = useState(
     () => (visibility !== undefined && simple === null) || typed !== null,
   );
+  const [focusExpression, setFocusExpression] = useState(false);
   const advanced = expressionRequested || (!!visibility && simple === null);
   const conditions = visibility?.conditions ?? {};
 
@@ -202,6 +201,7 @@ export function ConditionalVisibility({
 
   const replaceExpression = (chosen: Combinator) => {
     setExpressionRequested(false);
+    setFocusExpression(false);
     setBuffer(null);
     writeSimple(conditions, {
       combinator: chosen,
@@ -214,8 +214,35 @@ export function ConditionalVisibility({
 
   return (
     <div className="flex flex-col gap-4">
+      {!advanced ? (
+        <Button
+          variant={ButtonVariant.Ghost}
+          size="small"
+          onClick={() => {
+            setExpressionRequested(true);
+            setFocusExpression(true);
+          }}
+        >
+          Edit as expression
+        </Button>
+      ) : canLeaveExpression ? (
+        <Button
+          variant={ButtonVariant.Ghost}
+          size="small"
+          onClick={() => {
+            setExpressionRequested(false);
+            setFocusExpression(false);
+            setBuffer(null);
+          }}
+        >
+          Use all/any rules
+        </Button>
+      ) : (
+        <ReplaceExpression onChoose={replaceExpression} />
+      )}
       {advanced ? (
         <ExpressionEditor
+          focusOnMount={focusExpression}
           text={expressionText}
           error={
             blankAndUnconditional
@@ -272,9 +299,6 @@ export function ConditionalVisibility({
           </Field>
         )
       )}
-      {advanced && !canLeaveExpression && (
-        <ReplaceExpression onChoose={replaceExpression} />
-      )}
       {rules.length > 0 && (
         <ItemList label="Rules">
           {rules.map(({ name, negated }) => {
@@ -299,27 +323,6 @@ export function ConditionalVisibility({
       )}
       <div className="flex flex-wrap items-center gap-2">
         <AddRuleMenu sources={sources} onAdd={addRule} />
-        {!advanced && (
-          <Button
-            variant={ButtonVariant.Ghost}
-            size="small"
-            onClick={() => setExpressionRequested(true)}
-          >
-            Edit as expression
-          </Button>
-        )}
-        {canLeaveExpression && (
-          <Button
-            variant={ButtonVariant.Ghost}
-            size="small"
-            onClick={() => {
-              setExpressionRequested(false);
-              setBuffer(null);
-            }}
-          >
-            Use all/any rules
-          </Button>
-        )}
       </div>
     </div>
   );

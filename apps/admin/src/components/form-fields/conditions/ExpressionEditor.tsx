@@ -1,15 +1,24 @@
+import { useEffect, useRef } from "react";
+import { focusInPlace } from "../../../pages/forms/builder/kit/revealInPane";
 import { Field } from "../../../ui/templates/Form";
 import { Textarea } from "../../../ui/Textarea";
 
 export function ExpressionEditor({
+  focusOnMount = false,
   text,
   error,
   onChange,
 }: {
+  /** Set when the reader just asked for the expression, so typing goes there. */
+  focusOnMount?: boolean;
   text: string;
   error: string | null;
   onChange: (text: string) => void;
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (focusOnMount) focusInPlace(ref.current);
+  }, [focusOnMount]);
   return (
     <Field
       label="Expression"
@@ -19,6 +28,7 @@ export function ExpressionEditor({
       {(control) => (
         <Textarea
           {...control}
+          ref={ref}
           rows={3}
           className="min-h-0 font-mono"
           value={text}

@@ -144,18 +144,18 @@ export function ConditionRule({
       aria-label={`Rule ${name}`}
       className="flex flex-col gap-3 rounded-md border border-line p-3"
     >
-      <div className="flex min-h-control-sm items-center gap-2">
-        <span className="min-w-0 truncate font-medium">
-          {ruleTitle(condition)}
-        </span>
-        {showName && (
-          <code className="font-mono text-caption text-fg-muted">{name}</code>
-        )}
-        {unreferenced && <Badge tone={BadgeTone.Warning}>Not used</Badge>}
+      <div className="flex items-start gap-2">
+        <div className="flex min-h-control-sm min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium">{ruleTitle(condition)}</span>
+          {showName && (
+            <code className="font-mono text-caption text-fg-muted">{name}</code>
+          )}
+          {unreferenced && <Badge tone={BadgeTone.Warning}>Not used</Badge>}
+        </div>
         <Button
           variant={ButtonVariant.Ghost}
           size="small"
-          className="ml-auto"
+          className="shrink-0 whitespace-nowrap"
           onClick={onRemove}
         >
           Remove rule
