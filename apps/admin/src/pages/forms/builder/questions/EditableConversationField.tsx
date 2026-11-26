@@ -1,16 +1,16 @@
 import type { ConversationField } from "@alliance/common/forms/form-schema";
-import { ExpandableEditor } from "../kit/ExpandableEditor";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { cn } from "../../../../ui/cn";
 import { controlClass } from "../../../../ui/styles";
 import { Field } from "../../../../ui/templates/Form";
-import { UserPicker } from "./UserPicker";
-import { VariableTextField } from "./VariableTextField";
+import { ExpandableEditor } from "../kit/ExpandableEditor";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { RequiredToggle } from "./CommonControls";
 import { ConversationOptions } from "./ConversationOptions";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
+import { UserPicker } from "./UserPicker";
+import { VariableTextField } from "./VariableTextField";
 
 export function EditableConversationField({
   field,
@@ -26,16 +26,11 @@ export function EditableConversationField({
       laterFields={laterFields}
     >
       <InspectorGroup>
-        <Field label="Expert">
-          {() => (
-            <UserPicker
-              placeholder="Search users by name or id"
-              ariaLabel="Expert"
-              selected={field.expert}
-              onChange={(expert) => onUpdate({ expert })}
-            />
-          )}
-        </Field>
+        <UserPicker
+          label="Expert"
+          selected={field.expert}
+          onChange={(expert) => onUpdate({ expert })}
+        />
         <div className="flex flex-col gap-1.5">
           <FieldLabelEditor
             label="Question"

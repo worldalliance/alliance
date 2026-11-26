@@ -1,7 +1,7 @@
 import type { QuoteBlock } from "@alliance/common/forms/display-blocks";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { EditableQuoteBlock } from "./EditableQuoteBlock";
 
@@ -28,7 +28,7 @@ const block: QuoteBlock = {
   text: "Worth it",
 };
 
-it("stores the picked member's picture as its upload key", async () => {
+it("picks a member by keyboard, storing their picture as its upload key", async () => {
   const onUpdate = jest.fn();
   render(
     <ToastProvider>
@@ -41,11 +41,13 @@ it("stores the picked member's picture as its upload key", async () => {
     queryWrapper(),
   );
 
-  fireEvent.change(
-    await screen.findByPlaceholderText("(Optional) Select user by name or id"),
-    { target: { value: "Ada" } },
-  );
-  fireEvent.click(await screen.findByRole("button", { name: /Ada/ }));
+  const search = await screen.findByRole("combobox", { name: "Member" });
+  await waitFor(() => expect(search.hasAttribute("disabled")).toBe(false));
+  fireEvent.keyDown(search, { key: "ArrowDown" });
+  fireEvent.input(search, { target: { value: "Ada" } });
+  await screen.findByRole("option", { name: /Ada/ });
+  fireEvent.keyDown(search, { key: "Enter" });
+  await waitFor(() => expect(onUpdate).toHaveBeenCalled());
 
   expect(onUpdate).toHaveBeenCalledWith(
     expect.objectContaining({ userId: 7, userProfilePicture: KEY }),

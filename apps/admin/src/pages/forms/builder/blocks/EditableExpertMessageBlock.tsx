@@ -13,17 +13,11 @@ export function EditableExpertMessageBlock(
     <DisplayBlockWrapper {...props}>
       {({ block, onUpdate }) => (
         <InspectorGroup>
-          <div className="flex flex-col gap-1.5">
-            <span aria-hidden="true" className="font-medium">
-              Expert
-            </span>
-            <UserPicker
-              placeholder="Search users by name or id"
-              ariaLabel="Expert"
-              selected={block.expert}
-              onChange={(expert) => onUpdate({ expert })}
-            />
-          </div>
+          <UserPicker
+            label="Expert"
+            selected={block.expert}
+            onChange={(expert) => onUpdate({ expert })}
+          />
           <ExpandableBlockText title="Edit expert message" block={block}>
             {(rows) => (
               <BlockTextField

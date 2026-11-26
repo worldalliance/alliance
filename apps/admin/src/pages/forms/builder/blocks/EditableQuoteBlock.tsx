@@ -10,30 +10,25 @@ export function EditableQuoteBlock(props: BaseDisplayBlockProps<QuoteBlock>) {
     <DisplayBlockWrapper {...props}>
       {({ block, onUpdate }) => (
         <InspectorGroup>
-          <div className="flex flex-col gap-1.5">
-            <span aria-hidden="true" className="font-medium">
-              Member
-            </span>
-            <UserPicker
-              ariaLabel="Member"
-              selected={
-                block.userId == null
-                  ? null
-                  : {
-                      userId: block.userId,
-                      userName: block.userName ?? `User #${block.userId}`,
-                      userProfilePicture: block.userProfilePicture,
-                    }
-              }
-              onChange={(user) =>
-                onUpdate({
-                  userId: user?.userId,
-                  userName: user?.userName,
-                  userProfilePicture: user?.userProfilePicture,
-                })
-              }
-            />
-          </div>
+          <UserPicker
+            label="Member"
+            selected={
+              block.userId == null
+                ? null
+                : {
+                    userId: block.userId,
+                    userName: block.userName ?? `User #${block.userId}`,
+                    userProfilePicture: block.userProfilePicture,
+                  }
+            }
+            onChange={(user) =>
+              onUpdate({
+                userId: user?.userId,
+                userName: user?.userName,
+                userProfilePicture: user?.userProfilePicture,
+              })
+            }
+          />
           <BlockTextField
             label="Quote"
             multiline
