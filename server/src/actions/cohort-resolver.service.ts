@@ -13,7 +13,11 @@ import {
 } from "src/utils/action-user";
 import type { Repository } from "typeorm";
 import { CohortAdmissionService } from "./cohort-admission.service";
-import { readsSavedDecisions } from "./cohort-decision";
+import {
+  CohortEnrollmentState,
+  computeCohortEnrollment,
+  readsSavedDecisions,
+} from "./cohort-decision";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
@@ -29,6 +33,33 @@ import {
   type ParsedAction,
 } from "./entities/action.entity";
 import { PrerequisiteProgressService } from "./prerequisite-progress.service";
+
+/** How a launched action's cohort counts a member the pass has not decided yet. */
+export enum UndecidedMembers {
+  Outside = "outside",
+  /**
+   * By the live cohort while enrollment is open, so a count taken between
+   * launch and the pass deciding its members does not drop them.
+   */
+  LiveWhileOpen = "live_while_open",
+}
+
+const READS_UNDECIDED_LIVE: Record<
+  UndecidedMembers,
+  (action: ParsedAction, now: Date) => boolean
+> = {
+  [UndecidedMembers.Outside]: () => false,
+  [UndecidedMembers.LiveWhileOpen]: (action, now) =>
+    computeCohortEnrollment(action, now).state === CohortEnrollmentState.Open,
+};
+
+/** Whether a launched action's cohort reads its undecided members live. */
+export const readsUndecidedLive = (params: {
+  action: ParsedAction;
+  now: Date;
+  undecided: UndecidedMembers;
+}): boolean =>
+  READS_UNDECIDED_LIVE[params.undecided](params.action, params.now);
 
 @Injectable()
 export class CohortResolverService {
@@ -107,27 +138,37 @@ export class CohortResolverService {
   }
 
   /**
-   * An action's cohort as its readers see it. Saved decisions stand in for the
-   * live cohort from launch on, so a member the pass has not decided yet reads
-   * as outside it; see `readsSavedDecisions`.
+   * An action's cohort as its readers see it. From launch on, saved decisions
+   * stand in for the live cohort, and a member the pass has not decided yet
+   * reads per `undecided`, outside by default; see `readsSavedDecisions`.
    */
   resolveCohort(params: {
     action: ParsedAction;
     session: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
+    undecided?: UndecidedMembers;
   }): Promise<Set<number>> {
-    const { action, session, resolvingActionIds } = params;
-    if (readsSavedDecisions(action, new Date())) {
-      return this.cohortAdmissionService.loadAdmittedMemberIds(
-        action.id,
-        session,
-      );
-    }
-    return this.resolveActionCohortMemberIds({
+    const {
       action,
       session,
       resolvingActionIds,
-    });
+      undecided = UndecidedMembers.Outside,
+    } = params;
+    const now = new Date();
+    if (!readsSavedDecisions(action, now)) {
+      return this.resolveActionCohortMemberIds({
+        action,
+        session,
+        resolvingActionIds,
+      });
+    }
+    if (readsUndecidedLive({ action, now, undecided })) {
+      return this.resolveDecidedCohort({ action, session, resolvingActionIds });
+    }
+    return this.cohortAdmissionService.loadAdmittedMemberIds(
+      action.id,
+      session,
+    );
   }
 
   /**

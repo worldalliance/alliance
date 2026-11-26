@@ -3,7 +3,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
 import { CohortAdmissionService } from "src/actions/cohort-admission.service";
 import { CohortResolutionSession } from "src/actions/cohort-resolution-session";
-import { CohortResolverService } from "src/actions/cohort-resolver.service";
+import {
+  CohortResolverService,
+  type UndecidedMembers,
+} from "src/actions/cohort-resolver.service";
 import {
   ActionSuite,
   loadedActionSuiteActions,
@@ -61,8 +64,9 @@ export class ActionEventRecipientService {
     resolvingActionIds?: ReadonlySet<number>;
     /** Leaves out members a part's row assigns the action as optional. */
     requiredOnly?: boolean;
+    undecided?: UndecidedMembers;
   }): Promise<Map<number, User[]>> {
-    const { entries, includeSuspended, requiredOnly } = params;
+    const { entries, includeSuspended, requiredOnly, undecided } = params;
     if (entries.length === 0) return new Map();
     const session = params.session ?? new CohortResolutionSession();
     const resolvingActionIds = params.resolvingActionIds ?? new Set<number>();
@@ -80,6 +84,7 @@ export class ActionEventRecipientService {
           action,
           session,
           resolvingActionIds,
+          undecided,
         }),
       );
     }

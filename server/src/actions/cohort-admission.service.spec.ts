@@ -122,3 +122,42 @@ describe("CohortAdmissionService.prefetchAdmittedMemberIds", () => {
     expect(session.admittedUserIdsByAction.size).toBe(0);
   });
 });
+
+describe("CohortAdmissionService.prefetchDecisionsForActions", () => {
+  it("fills each action's decisions from one query", async () => {
+    const find = jest.fn(async () => [
+      { actionId: 10, userId: 1, included: true },
+      { actionId: 10, userId: 2, included: false },
+    ]);
+    const service = await serviceWith(find);
+    const session = new CohortResolutionSession();
+    session.decisionsByAction.set(12, Promise.resolve(new Map([[9, true]])));
+
+    await service.prefetchDecisionsForActions([10, 11, 12], session);
+
+    expect(await service.loadDecisionsForAction(10, session)).toEqual(
+      new Map([
+        [1, true],
+        [2, false],
+      ]),
+    );
+    expect(await service.loadDecisionsForAction(11, session)).toEqual(
+      new Map(),
+    );
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(find).toHaveBeenCalledWith({
+      where: { actionId: In([10, 11]) },
+      select: { actionId: true, userId: true, included: true },
+    });
+  });
+
+  it("rejects once and leaves the session unfilled when the query fails", async () => {
+    const service = await serviceWith(failingFind());
+    const session = new CohortResolutionSession();
+
+    await expect(
+      service.prefetchDecisionsForActions([10, 11], session),
+    ).rejects.toThrow("connection terminated");
+    expect(session.decisionsByAction.size).toBe(0);
+  });
+});

@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, type Repository } from "typeorm";
+import {
+  type FindOptionsSelect,
+  type FindOptionsWhere,
+  In,
+  type Repository,
+} from "typeorm";
 import type { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 
@@ -69,11 +74,13 @@ export class CohortAdmissionService {
     userIds: number[],
     session: CohortResolutionSession,
   ): Promise<void> {
-    return this.prefetchAdmitted({
+    return this.prefetch({
       ids: userIds,
       by: "userId",
-      collect: "actionId",
+      where: { included: true },
+      select: { userId: true, actionId: true },
       memo: session.admittedActionIdsByUser,
+      build: (rows) => new Set(rows.map((row) => row.actionId)),
     });
   }
 
@@ -113,11 +120,13 @@ export class CohortAdmissionService {
     actionIds: number[],
     session: CohortResolutionSession,
   ): Promise<void> {
-    return this.prefetchAdmitted({
+    return this.prefetch({
       ids: actionIds,
       by: "actionId",
-      collect: "userId",
+      where: { included: true },
+      select: { userId: true, actionId: true },
       memo: session.admittedUserIdsByAction,
+      build: (rows) => new Set(rows.map((row) => row.userId)),
     });
   }
 
@@ -136,33 +145,46 @@ export class CohortAdmissionService {
     return pending;
   }
 
-  private async prefetchAdmitted({
+  /** Fills `loadDecisionsForAction` for every listed action with one query. */
+  prefetchDecisionsForActions(
+    actionIds: number[],
+    session: CohortResolutionSession,
+  ): Promise<void> {
+    return this.prefetch({
+      ids: actionIds,
+      by: "actionId",
+      select: { actionId: true, userId: true, included: true },
+      memo: session.decisionsByAction,
+      build: (rows) => new Map(rows.map((row) => [row.userId, row.included])),
+    });
+  }
+
+  private async prefetch<V>({
     ids,
     by,
-    collect,
+    where = {},
+    select,
     memo,
+    build,
   }: {
     ids: number[];
     by: DecisionKey;
-    collect: DecisionKey;
-    memo: Map<number, Promise<Set<number>>>;
+    where?: FindOptionsWhere<ActionCohortDecision>;
+    select: FindOptionsSelect<ActionCohortDecision>;
+    memo: Map<number, Promise<V>>;
+    build: (rows: ActionCohortDecision[]) => V;
   }): Promise<void> {
     const missing = ids.filter((id) => !memo.has(id));
     if (missing.length === 0) {
       return;
     }
     const rows = await this.decisionRepository.find({
-      where: { [by]: In(missing), included: true },
-      select: { userId: true, actionId: true },
+      where: { [by]: In(missing), ...where },
+      select,
     });
     const byKey = Map.groupBy(rows, (row) => row[by]);
     for (const id of missing) {
-      memo.set(
-        id,
-        Promise.resolve(
-          new Set((byKey.get(id) ?? []).map((row) => row[collect])),
-        ),
-      );
+      memo.set(id, Promise.resolve(build(byKey.get(id) ?? [])));
     }
   }
 }

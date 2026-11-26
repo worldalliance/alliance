@@ -57,6 +57,13 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200);
 
+  const usersJoined = async (actionId: number) =>
+    (
+      await ctx.dataSource
+        .getRepository(Action)
+        .findOneByOrFail({ id: actionId })
+    ).usersJoined;
+
   /** A member decided onto the US branch who has since moved abroad. */
   const decideThenMove = async (
     window = { start: addDays(now, -1), deadline: addDays(now, 3) },
@@ -150,14 +157,32 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
     await participants.reloadUsersJoinedForAction(us.id);
     await participants.reloadUsersJoinedForAction(nonUs.id);
 
-    const usersJoined = async (actionId: number) =>
-      (
-        await ctx.dataSource
-          .getRepository(Action)
-          .findOneByOrFail({ id: actionId })
-      ).usersJoined;
     expect(await usersJoined(us.id)).toBe(1);
     expect(await usersJoined(nonUs.id)).toBe(0);
+  });
+
+  it("counts members of a launched action as joined before the pass decides them", async () => {
+    await createUser({ signedAt, timeZone: "America/New_York" });
+    const usCohort = { cohortExpression: { type: "USMember" } } as const;
+    const open = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+      ...usCohort,
+    });
+    const closed = await createAction({
+      start: addDays(now, -10),
+      deadline: addDays(now, -1),
+      ...usCohort,
+    });
+    const participants = ctx.app.get(ActionParticipantsService);
+    await participants.reloadUsersJoinedForAction(open.id);
+    await participants.reloadUsersJoinedForAction(closed.id);
+    expect(await usersJoined(open.id)).toBe(1);
+    expect(await usersJoined(closed.id)).toBe(0);
+
+    await participants.reloadAllActionUsersJoined();
+    expect(await usersJoined(open.id)).toBe(1);
+    expect(await usersJoined(closed.id)).toBe(0);
   });
 
   it("welcomes a moved member who completed the onboarding branch they were decided into", async () => {
