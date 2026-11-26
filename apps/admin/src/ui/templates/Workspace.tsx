@@ -70,7 +70,7 @@ export function WorkspaceToolbar({ children }: { children: ReactNode }) {
 /**
  * A pane's title row. It stays put while the pane scrolls and is one line
  * whatever the title's length. `leading` sits before the title, such as an
- * icon button back to the selection's parent.
+ * icon button back to the selection's parent. `action` takes several controls and lays them in a row at the right.
  */
 export function PaneHeader({
   title,
@@ -96,7 +96,7 @@ export function PaneHeader({
           {title}
         </h2>
       </div>
-      {action !== undefined && <div className="shrink-0">{action}</div>}
+      {action !== undefined && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>
   );
 }

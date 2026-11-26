@@ -229,7 +229,7 @@ A page header, then sections in one column (`Section`), each a heading and a car
 - Panes keep the template's widths; a pane may collapse only by a labelled control. Panes never scroll sideways and hold their scrollbar's gutter, so content crossing the pane's height doesn't reflow. `navigatorRef`, `canvasRef` and `inspectorRef` reach each pane's scrolling element, for scrolling a selection into view or portalling into the canvas.
 - A navigator's rows take `navRowClass` (`ui/styles.ts`): the table's hover and selected tones, selected by `aria-current="page"` on a link row or `aria-selected` on an option.
 - A list and its record on one page (Inbox: the threads beside a thread) is a pathless layout route that renders the `Workspace` with the list, with the list's route (`index`) and the record's (`:threadId`) as its children, in `routes.ts`; the record renders in the canvas through `<Outlet />`. Don't nest an absolute path inside another route: React Router's typegen breaks.
-- A pane's title row is a `PaneHeader`: one line whatever the title's length, `leading` before the title (a "Back to {parent}" icon button), `action` after it.
+- A pane's title row is a `PaneHeader`: one line whatever the title's length, `leading` before the title (a "Back to {parent}" icon button), `action` after it (it takes several controls and lays them in a row at the right).
 - Reordering by drag also works without dragging (move up, move down, or a menu), per WCAG 2.5.7.
 - The canvas of the form builder renders the member-facing form renderer and must look as it does in the member app; admin chrome sits around it.
 - Adding an element opens a searchable picker listing only field and block types that exist today (`DATACHECK.md` names eight the prototype invented).
@@ -393,6 +393,7 @@ For other statuses pick the tone by meaning: neutral for inactive or not started
 - **The submit button stays enabled** and reports what's wrong when pressed, unless today's page disables it as a guard (Launch while blockers remain): then the reason is visible text beside it.
 - **A button whose write is running takes `busy`** (`ui/Button.tsx`): it keeps its label and focus, shows a spinner and ignores presses. Don't swap the label for "Saving…" or disable it.
 - A switch takes effect at once; a setting saved by a Save button is a checkbox.
+- One choice out of two to five, all worth seeing, is `RadioGroupField` (`label`, `help`, `choices: { value, label, help? }[]`, `value`, `onChange`), radios from `ui/Radio.tsx` under a `FieldGroup`; more than five, or a long list, is a `Select`. A section's own buttons (Remove view, Delete) go in `FormSection`'s `actions`, at the right of its heading, not at its foot.
 - A file is `FileInput` (controlled `value: File[]`; set it back to `[]` to clear). A form whose button uploads or runs something rather than saving passes `SaveBar`'s `stateText` (`{ saving: "Uploading…", saved: "Uploaded", failed: "Couldn't upload" }`, keyed by `SaveState`).
 
 ### Dates and times

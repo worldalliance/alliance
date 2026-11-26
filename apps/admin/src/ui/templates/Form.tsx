@@ -9,6 +9,7 @@ import {
 } from "react";
 import Button, { ButtonVariant } from "../Button";
 import { Checkbox } from "../Checkbox";
+import { Radio } from "../Radio";
 import { cn } from "../cn";
 
 /**
@@ -19,10 +20,13 @@ export function FormSection({
   title,
   description,
   footer,
+  actions,
   children,
 }: {
   title: string;
   description?: ReactNode;
+  /** Buttons for the section as a whole, such as Remove view or Delete, at the right of the heading. */
+  actions?: ReactNode;
   /** The section's `SaveBar`, or its one button. */
   footer?: ReactNode;
   children: ReactNode;
@@ -33,11 +37,16 @@ export function FormSection({
       aria-labelledby={titleId}
       className="flex flex-col overflow-hidden rounded-card border border-line bg-surface"
     >
-      <div className="flex flex-col gap-0.5 px-card pt-card">
-        <h2 id={titleId} className="text-heading font-semibold">
-          {title}
-        </h2>
-        {description && <p className="text-fg-muted">{description}</p>}
+      <div className="flex items-start justify-between gap-3 px-card pt-card">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 id={titleId} className="text-heading font-semibold">
+            {title}
+          </h2>
+          {description && <p className="text-fg-muted">{description}</p>}
+        </div>
+        {actions && (
+          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        )}
       </div>
       <div className="flex flex-col gap-4 p-card">{children}</div>
       {footer}
@@ -219,6 +228,73 @@ export function CheckboxField({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * One choice out of a few, all visible: radios under a `FieldGroup`, each
+ * with its label and optional help. Arrow keys move the choice, as the
+ * browser does for radios sharing a name.
+ */
+export function RadioGroupField<T extends string>({
+  label,
+  mark,
+  help,
+  error,
+  disabled,
+  className,
+  choices,
+  value,
+  onChange,
+}: {
+  label: string;
+  mark?: "optional" | "required";
+  help?: ReactNode;
+  error?: string | null;
+  disabled?: boolean;
+  className?: string;
+  choices: readonly { value: T; label: string; help?: ReactNode }[];
+  value: T | null;
+  onChange: (value: T) => void;
+}) {
+  const name = useId();
+  return (
+    <FieldGroup
+      label={label}
+      mark={mark}
+      help={help}
+      error={error}
+      disabled={disabled}
+      className={className}
+    >
+      {choices.map((choice) => {
+        const id = `${name}-${choice.value}`;
+        const helpId = `${id}-help`;
+        return (
+          <div key={choice.value} className="flex items-start gap-2.5">
+            <Radio
+              id={id}
+              name={name}
+              value={choice.value}
+              checked={choice.value === value}
+              onChange={() => onChange(choice.value)}
+              aria-describedby={choice.help ? helpId : undefined}
+              className="mt-0.5"
+            />
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <label htmlFor={id} className="font-medium">
+                {choice.label}
+              </label>
+              {choice.help && (
+                <p id={helpId} className="text-caption text-fg-muted">
+                  {choice.help}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </FieldGroup>
   );
 }
 
