@@ -92,7 +92,6 @@ src/components/form-canvas/ChildRows.tsx
 src/components/form-canvas/ChildSettings.tsx
 src/components/form-canvas/DependencyLinks.tsx
 src/components/form-canvas/GreyBoxPanel.tsx
-src/components/form-canvas/InlineText.tsx
 src/components/form-canvas/PageSettings.tsx
 src/components/form-canvas/RangeSettings.tsx
 src/components/form-canvas/VisibilityGroupPanel.tsx

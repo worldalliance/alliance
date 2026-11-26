@@ -8,6 +8,7 @@ import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { GripVertical } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { InlineTextOverlay } from "../../pages/forms/builder/canvas/InlineTextOverlay";
 import { cn } from "../../ui/cn";
 import { writeBlockFor } from "../display-blocks/perUserContent";
 import { CanvasAccordion, CanvasList } from "./CanvasContainers";
@@ -56,7 +57,7 @@ function ElementContent({
   inline,
   textEditor,
 }: ContentProps & {
-  /** The element's own text, open in place of its rendering. */
+  /** A list's label, open over its rendering. */
   textEditor: ReactNode;
 }) {
   if (element.kind === "list") {
@@ -84,7 +85,6 @@ function ElementContent({
       />
     );
   }
-  if (textEditor) return textEditor;
   return isQuestionField(element) ? (
     <CanvasContent interactive={false}>
       <CanvasQuestion field={element} />
@@ -200,29 +200,41 @@ export function CanvasElement({
         onKeyDown={editing && text ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
       />
-      <ElementBoundary
-        element={element}
-        fallback={(message) => (
-          <FlaggedElement
-            message={message}
-            repair="Select it to change its settings or JSON."
-          />
-        )}
-        onFlagged={setFlagged}
+      <InlineTextOverlay
+        editor={
+          editing?.editing && text && element.kind !== "list"
+            ? text.editor
+            : null
+        }
       >
-        {() => (
-          <ElementContent
-            element={element}
-            selectedChild={selectedChild}
-            onSelectChild={onSelectChild}
-            summarize={summarize}
-            onUpdate={onUpdate}
-            updateCurrent={updateCurrent}
-            inline={inline}
-            textEditor={editing?.editing && text ? text.editor : null}
-          />
-        )}
-      </ElementBoundary>
+        <ElementBoundary
+          element={element}
+          fallback={(message) => (
+            <FlaggedElement
+              message={message}
+              repair="Select it to change its settings or JSON."
+            />
+          )}
+          onFlagged={setFlagged}
+        >
+          {() => (
+            <ElementContent
+              element={element}
+              selectedChild={selectedChild}
+              onSelectChild={onSelectChild}
+              summarize={summarize}
+              onUpdate={onUpdate}
+              updateCurrent={updateCurrent}
+              inline={inline}
+              textEditor={
+                editing?.editing && text && element.kind === "list"
+                  ? text.editor
+                  : null
+              }
+            />
+          )}
+        </ElementBoundary>
+      </InlineTextOverlay>
       {conditionSummary && (
         <ElementConditionsIndicator
           summary={conditionSummary}

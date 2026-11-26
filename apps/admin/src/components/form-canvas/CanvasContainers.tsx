@@ -19,6 +19,7 @@ import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
 import { updateListSubField } from "../../lib/updateListSubField";
+import { InlineTextOverlay } from "../../pages/forms/builder/canvas/InlineTextOverlay";
 import { cn } from "../../ui/cn";
 import { accordionWrites } from "./accordionWrites";
 import {
@@ -104,11 +105,9 @@ function CanvasChild({
         onKeyDown={editing ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
       />
-      {editing?.editing && text ? (
-        text.editor
-      ) : (
+      <InlineTextOverlay editor={editing?.editing && text ? text.editor : null}>
         <CanvasContent interactive={interactive}>{children}</CanvasContent>
-      )}
+      </InlineTextOverlay>
       {editing && !editing.editing && text && (
         <EditTextButton
           label={text.editLabel}
@@ -146,11 +145,13 @@ export function CanvasList({
   const hiddenInOutput = new Set(list.outputViewHiddenFieldIds ?? []);
   return (
     <div className="relative space-y-3">
-      {labelEditor ?? (
-        <CanvasContent interactive={false}>
-          <RenderLabel field={list} />
-        </CanvasContent>
-      )}
+      <div className="relative">
+        <InlineTextOverlay editor={labelEditor}>
+          <CanvasContent interactive={false}>
+            <RenderLabel field={list} />
+          </CanvasContent>
+        </InlineTextOverlay>
+      </div>
       <ListCard
         remove={
           <CanvasContent interactive={false}>
@@ -291,47 +292,51 @@ export function CanvasAccordion({
                 selectionRing(sectionSelected),
               )}
             >
-              {titleInline?.editing ? (
-                <div className="min-w-0 flex-1 py-2">
-                  <InlineTextEditor
-                    value={section.title}
-                    onChange={(title) =>
-                      updateSection(index, () => ({ title }))
-                    }
-                    lines={TextLines.Single}
-                    label="Section title"
-                    onStop={titleInline.stop}
-                    className={ACCORDION_TITLE}
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  aria-label={`Select ${label}`}
-                  aria-pressed={sectionSelected}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelectChild(
-                      sectionChild(section, index),
-                      SidebarSection.Content,
-                    );
-                  }}
-                  onKeyDown={
-                    titleInline ? startOnEnter(titleInline) : undefined
+              <div className="relative min-w-0 flex-1">
+                <InlineTextOverlay
+                  editor={
+                    titleInline?.editing ? (
+                      <InlineTextEditor
+                        value={section.title}
+                        onChange={(title) =>
+                          updateSection(index, () => ({ title }))
+                        }
+                        lines={TextLines.Single}
+                        label="Section title"
+                        onStop={titleInline.stop}
+                        className={ACCORDION_TITLE}
+                      />
+                    ) : null
                   }
-                  onContextMenu={(event) => event.stopPropagation()}
-                  className="min-w-0 flex-1 rounded-md py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  <span
-                    className={cn(
-                      ACCORDION_TITLE,
-                      !section.title && "text-fg-muted",
-                    )}
+                  <button
+                    type="button"
+                    aria-label={`Select ${label}`}
+                    aria-pressed={sectionSelected}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelectChild(
+                        sectionChild(section, index),
+                        SidebarSection.Content,
+                      );
+                    }}
+                    onKeyDown={
+                      titleInline ? startOnEnter(titleInline) : undefined
+                    }
+                    onContextMenu={(event) => event.stopPropagation()}
+                    className="w-full rounded-md py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
-                    {sectionTitle(section)}
-                  </span>
-                </button>
-              )}
+                    <span
+                      className={cn(
+                        ACCORDION_TITLE,
+                        !section.title && "text-fg-muted",
+                      )}
+                    >
+                      {sectionTitle(section)}
+                    </span>
+                  </button>
+                </InlineTextOverlay>
+              </div>
               {titleInline && !titleInline.editing && (
                 <EditTextButton
                   label="Edit section title"

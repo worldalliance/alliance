@@ -8,11 +8,12 @@ import {
   type FieldKind,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import { cn } from "@alliance/shared/styles/util";
 import { headerClassName } from "@alliance/sharedweb/forms/headerStyles";
 import { Pencil } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { isTextEntry } from "../../lib/useDraftHistory";
+import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
+import { cn } from "../../ui/cn";
 import { VariableTextField } from "../VariableTextField";
 import { CanvasContent, CanvasQuestion } from "./CanvasContent";
 
@@ -109,7 +110,7 @@ export function EditTextButton({
       aria-label={label}
       title={`${label} (Enter)`}
       className={cn(
-        "flex h-6 w-6 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-600 shadow-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+        "flex size-6 items-center justify-center rounded-full border border-line bg-surface text-fg-muted shadow-pop outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent",
         className,
       )}
     >
@@ -119,7 +120,7 @@ export function EditTextButton({
 }
 
 /**
- * An item's source text, in place of its rendering. Takes focus when it
+ * An item's source text, for `InlineTextOverlay`. Takes focus when it
  * opens; Escape, leaving it, or Enter on a single line closes it. Without
  * `variables`, a plain single line, for text the form never interpolates.
  */
@@ -146,13 +147,13 @@ export function InlineTextEditor({
       HTMLInputElement | HTMLTextAreaElement
     >("input, textarea");
     if (!input) return;
-    input.focus();
+    focusInPlace(input);
     input.setSelectionRange(input.value.length, input.value.length);
   }, []);
 
   const multiline = lines === TextLines.Multiple;
   const inputClassName = cn(
-    "w-full rounded-md border border-blue-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500",
+    "w-full rounded-md border border-line-control bg-surface px-2 py-1 outline-none focus-visible:ring-2 focus-visible:ring-accent",
     multiline && "resize-none",
     className,
   );
@@ -165,7 +166,9 @@ export function InlineTextEditor({
         if (event.defaultPrevented || event.nativeEvent.isComposing) return;
         const finished =
           event.key === "Escape" ||
-          (event.key === "Enter" && !multiline && isTextEntry(event.target));
+          (event.key === "Enter" &&
+            (!multiline || event.metaKey || event.ctrlKey) &&
+            isTextEntry(event.target));
         if (finished) {
           event.preventDefault();
           onStop({ refocus: true });
@@ -214,7 +217,7 @@ function InlineLabelEditor({ field, onChange, onStop }: LabelEditorProps) {
       lines={TextLines.Multiple}
       label="Label"
       onStop={onStop}
-      className="text-zinc-700"
+      className="text-fg"
     />
   );
 }
@@ -231,7 +234,7 @@ function InlineQuestionEditor(props: LabelEditorProps) {
   );
 }
 
-export const ITEM_PENCIL = "absolute -top-2 right-6 z-10";
+export const ITEM_PENCIL = "absolute -top-3 right-2 z-10";
 
 /** What a selected item shows while its text is open, and its pencil's name. */
 export type InlineText = { editor: ReactNode; editLabel: string };
@@ -274,7 +277,7 @@ export function inlineTextFor({
             label="Text"
             onStop={onStop}
             className={
-              item.kind === "header" ? headerClassName(item) : "text-zinc-900"
+              item.kind === "header" ? headerClassName(item) : "text-fg"
             }
           />
         ),

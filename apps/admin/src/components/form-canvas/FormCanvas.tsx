@@ -18,6 +18,7 @@ import {
   SegmentKind,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
+import { InlineTextOverlay } from "../../pages/forms/builder/canvas/InlineTextOverlay";
 import { NO_ACTIONS } from "../../pages/forms/builder/canvas/noActions";
 import {
   ElementActionsMenu,
@@ -279,17 +280,21 @@ export function FormCanvas({
               if (!pageSelected) selectPage(SidebarSection.Content);
             }}
           >
-            {pageSelected && inline.editing ? (
-              <InlineTextEditor
-                value={page.title ?? ""}
-                variables={false}
-                onChange={(title) => onUpdatePage({ title })}
-                lines={TextLines.Single}
-                label="Page title"
-                onStop={inline.stop}
-                className="text-title font-semibold text-fg"
-              />
-            ) : (
+            <InlineTextOverlay
+              editor={
+                pageSelected && inline.editing ? (
+                  <InlineTextEditor
+                    value={page.title ?? ""}
+                    variables={false}
+                    onChange={(title) => onUpdatePage({ title })}
+                    lines={TextLines.Single}
+                    label="Page title"
+                    onStop={inline.stop}
+                    className="text-title font-semibold text-fg"
+                  />
+                ) : null
+              }
+            >
               <button
                 type="button"
                 data-canvas-select=""
@@ -313,7 +318,7 @@ export function FormCanvas({
                   </span>
                 )}
               </button>
-            )}
+            </InlineTextOverlay>
             {page.visibleIfFormula && (
               <ConditionsIndicator
                 onClick={() => selectPage(SidebarSection.Conditions)}

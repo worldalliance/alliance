@@ -106,6 +106,12 @@ describe("inline text on the canvas", () => {
       key: "Enter",
     });
     const input = canvasText("Text");
+    // The block stays laid out under the editor, so opening it moves nothing.
+    expect(
+      canvas()
+        .getByRole("heading", { name: "Welcome", hidden: true })
+        .closest('[aria-hidden="true"]'),
+    ).not.toBeNull();
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(queryCanvasText("Text")).toBeNull();
@@ -162,7 +168,7 @@ describe("inline text on the canvas", () => {
     expect(queryCanvasText("Text")).toBeNull();
   });
 
-  it("hides a checkbox's rendered label while its label is open", () => {
+  it("hides a checkbox's rendered label under its open label", () => {
     renderFormBuilder({
       ...schema,
       pages: [
@@ -177,7 +183,11 @@ describe("inline text on the canvas", () => {
     selectElement("Agree");
     fireEvent.click(canvasButton("Edit label"));
     expect(canvasText("Label").value).toBe("Agree");
-    expect(canvas().queryByText("Agree", { ignore: "textarea" })).toBeNull();
+    expect(
+      canvas().queryByText("Agree", {
+        ignore: '[aria-hidden="true"] *, textarea',
+      }),
+    ).toBeNull();
   });
 
   it("renames the page from its title, which takes no variables", () => {
