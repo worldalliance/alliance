@@ -50,28 +50,24 @@ const askKey = (o: ConfirmOptions) =>
     o.confirmLabel,
     o.cancelLabel,
     o.requiredText,
+    o.requiredTextLabel,
+    o.requiredTextPlaceholder,
     o.destructive,
   ]);
 
-const abortedAnswer = (signal: AbortSignal) =>
-  new Promise<boolean>((resolve) =>
-    signal.addEventListener("abort", () => resolve(false), { once: true }),
-  );
-
 function ConfirmHost({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<Pending[]>([]);
-  const open = useRef(new Map<string, Promise<boolean>>());
+  const open = useRef(new Set<string>());
 
   const confirm = useCallback<Confirm>((options) => {
     const { signal } = options;
     if (signal?.aborted) return Promise.resolve(false);
-    // A second identical ask, such as a double press, shares the dialog
-    // already open or queued and its answer.
+    // A second identical ask, such as a double press, is declined: sharing
+    // the open dialog's answer would run its caller's write twice.
     const key = askKey(options);
-    const asked = open.current.get(key);
-    if (asked)
-      return signal ? Promise.race([asked, abortedAnswer(signal)]) : asked;
-    const answer = new Promise<boolean>((resolve) => {
+    if (open.current.has(key)) return Promise.resolve(false);
+    open.current.add(key);
+    return new Promise<boolean>((resolve) => {
       const id = ++nextId;
       const settle = (value: boolean) => {
         signal?.removeEventListener("abort", onAbort);
@@ -83,8 +79,6 @@ function ConfirmHost({ children }: { children: ReactNode }) {
       signal?.addEventListener("abort", onAbort, { once: true });
       setQueue((prev) => [...prev, { id, options, settle }]);
     });
-    open.current.set(key, answer);
-    return answer;
   }, []);
 
   const current = queue[0];

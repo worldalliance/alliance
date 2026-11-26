@@ -200,20 +200,21 @@ describe("useToast().confirm asked twice", () => {
     });
   const ask = { title: "Remove the leader?", confirmLabel: "Remove leader" };
 
-  it("opens one dialog for the same ask and gives both callers its answer", async () => {
+  it("declines a second identical ask and keeps the one dialog", async () => {
     mount();
     let first: Promise<boolean> = Promise.resolve(false);
-    let second: Promise<boolean> = Promise.resolve(false);
+    let second: Promise<boolean> = Promise.resolve(true);
     await act(async () => {
       first = confirm(ask);
       second = confirm({ ...ask });
     });
 
+    expect(await second).toBe(false);
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     await press("Remove leader");
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(await Promise.all([first, second])).toEqual([true, true]);
+    expect(await first).toBe(true);
   });
 
   it("still queues a different ask behind the open one", async () => {
@@ -232,19 +233,18 @@ describe("useToast().confirm asked twice", () => {
     expect(await second).toBe(false);
   });
 
-  it("declines a joined caller whose own signal aborts, leaving the dialog open", async () => {
+  it("asks again once the first identical ask is answered", async () => {
     mount();
-    const controller = new AbortController();
-    let second: Promise<boolean> = Promise.resolve(true);
     await act(async () => {
       void confirm(ask);
-      second = confirm({ ...ask, signal: controller.signal });
     });
+    await press("Cancel");
+    let again: Promise<boolean> = Promise.resolve(false);
     await act(async () => {
-      controller.abort();
+      again = confirm({ ...ask });
     });
+    await press("Remove leader");
 
-    expect(await second).toBe(false);
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(await again).toBe(true);
   });
 });
