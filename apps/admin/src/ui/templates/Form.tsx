@@ -102,7 +102,7 @@ export function Field({
   mark?: "optional" | "required";
   help?: ReactNode;
   /** How to fix it. Help stays visible beside it. */
-  error?: string | null;
+  error?: ReactNode;
   className?: string;
   children: (control: FieldControlProps) => ReactNode;
 }) {
@@ -129,9 +129,9 @@ export function Field({
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-caption text-danger">
+        <div id={errorId} role="alert" className="text-caption text-danger">
           {error}
-        </p>
+        </div>
       )}
     </div>
   );
