@@ -5,7 +5,6 @@ import {
 } from "@alliance/common/forms/form-conditions";
 import { type Page } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import { cn } from "@alliance/shared/styles/util";
 import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
@@ -21,6 +20,9 @@ import {
 import { formEditorPath } from "../../lib/formEditorLink";
 import type { VisibilityGroups } from "../../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../../lib/visibilitySummary";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { cn } from "../../ui/cn";
+import { linkClass } from "../../ui/styles";
 import {
   CanvasTargetKind,
   describeElement,
@@ -60,21 +62,19 @@ const rolesNote = (roles: readonly DependencyRole[]) =>
     ? null
     : ` (${roles.map((role) => ROLE_LABELS[role]).join(", ")})`;
 
-const LINK =
-  "min-w-0 truncate text-left text-sm text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+const LINK = cn(linkClass, "min-w-0 truncate text-left");
 
 function LinkList({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-1">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
-        {label}
-      </h3>
-      <ul aria-label={label} className="space-y-1">
+    <InspectorGroup title={label}>
+      <ul aria-label={label} className="flex flex-col gap-1.5">
         {children}
       </ul>
-    </div>
+    </InspectorGroup>
   );
 }
+
+const ROW = "flex min-w-0 items-baseline gap-1 text-fg-muted";
 
 /**
  * The questions the selection's formulas read, and, for a question, what on
@@ -138,7 +138,7 @@ export function DependencyLinks({
             className={cn(LINK, "inline-flex items-center gap-1")}
           >
             <span className="truncate">{label}</span>
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
           </Link>
           {rolesNote(source.roles)}
         </>
@@ -146,7 +146,7 @@ export function DependencyLinks({
     }
     if (source.place === null) {
       return (
-        <span className="text-sm text-red-700">
+        <span className="text-danger">
           Missing question <code className="font-mono">{source.fieldId}</code>
           {rolesNote(source.roles)}
         </span>
@@ -156,13 +156,13 @@ export function DependencyLinks({
   };
 
   return (
-    <div className="space-y-3 border-t border-gray-200 pt-3">
+    <>
       {sources.length > 0 && (
         <LinkList label="Depends on">
           {sources.map((source) => (
             <li
               key={`${source.sourceFormId}/${source.fieldId}`}
-              className="flex items-baseline gap-1 text-sm text-gray-500"
+              className={ROW}
             >
               {sourceLink(source)}
             </li>
@@ -171,16 +171,18 @@ export function DependencyLinks({
       )}
       {entries &&
         (entries.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No conditions on this form read this question.
-          </p>
+          <InspectorGroup>
+            <p className="text-fg-muted">
+              No conditions on this form read this question.
+            </p>
+          </InspectorGroup>
         ) : (
           <LinkList label="Used by">
             {entries.map((entry) =>
               entry.kind === DependentEntryKind.Single ? (
                 <li
                   key={JSON.stringify(entry.dependent.place)}
-                  className="flex items-baseline gap-1 text-sm text-gray-500"
+                  className={ROW}
                 >
                   {placeLink(entry.dependent)}
                 </li>
@@ -201,12 +203,12 @@ export function DependencyLinks({
                   </button>
                   <ul
                     aria-label="Group members"
-                    className="ml-3 space-y-1 border-l border-amber-200 pl-2"
+                    className="mt-1.5 ml-1 flex flex-col gap-1.5 border-l border-line pl-3"
                   >
                     {entry.members.map((member) => (
                       <li
                         key={JSON.stringify(member.place)}
-                        className="flex items-baseline gap-1 text-sm text-gray-500"
+                        className={ROW}
                       >
                         {placeLink(member)}
                       </li>
@@ -217,6 +219,6 @@ export function DependencyLinks({
             )}
           </LinkList>
         ))}
-    </div>
+    </>
   );
 }

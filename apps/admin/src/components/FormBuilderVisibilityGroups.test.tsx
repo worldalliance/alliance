@@ -64,12 +64,19 @@ const openGroup = (
   selectGroup(canvasGroups()[index]!);
   openSection(section);
 };
-const splitButtons = () =>
-  settings().getAllByRole("button", { name: /^Split group before / });
-const detachButtons = () =>
-  settings().getAllByRole("button", {
-    name: /^Edit .* visibility separately$/,
-  });
+const memberMenus = () =>
+  within(settings().getByRole("list", { name: "Group members" })).getAllByRole(
+    "button",
+    { name: /^More: / },
+  );
+const fromMemberMenu = (index: number, item: RegExp) => {
+  fireEvent.click(memberMenus()[index]!);
+  fireEvent.click(screen.getByRole("menuitem", { name: item }));
+};
+const split = (index: number) =>
+  fromMemberMenu(index, /^Split group before /);
+const detach = (index: number) =>
+  fromMemberMenu(index, /^Edit .* visibility separately$/);
 
 describe("FormBuilder visibility groups", () => {
   it("wraps matching neighbors in one group with a shared summary", () => {
@@ -83,7 +90,11 @@ describe("FormBuilder visibility groups", () => {
       within(group!).getByText("Shown when Label q is answered"),
     ).toBeTruthy();
     openGroup(0, "Content");
-    expect(detachButtons()).toHaveLength(2);
+    expect(memberMenus()).toHaveLength(2);
+    fireEvent.click(memberMenus()[1]!);
+    expect(
+      screen.getByRole("menuitem", { name: /^Edit .* visibility separately$/ }),
+    ).toBeTruthy();
   });
 
   it("opens a group's shared rule, and its members from there", () => {
@@ -104,7 +115,7 @@ describe("FormBuilder visibility groups", () => {
   it("splits without marking the form unsaved", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
     openGroup(0, "Content");
-    fireEvent.click(splitButtons()[1]!);
+    split(2);
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     expect(saveState()).not.toBe("Unsaved changes");
   });
@@ -135,7 +146,7 @@ describe("FormBuilder visibility groups", () => {
 
   it("clearing shared visibility dissolves the group and dirties the form", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
-    openGroup(0);
+    openGroup(0, "Content");
     fireEvent.click(screen.getByRole("button", { name: "Clear visibility" }));
     expect(canvasGroups()).toHaveLength(0);
     expect(saveState()).toBe("Unsaved changes");
@@ -174,8 +185,7 @@ describe("FormBuilder visibility groups", () => {
 
   it("groups a copied page like a freshly loaded one", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
-    openSection("Advanced");
-    fireEvent.click(screen.getByRole("button", { name: "Copy page" }));
+    fromSelectionMenu("Copy page");
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
   });
 
@@ -186,7 +196,7 @@ describe("FormBuilder visibility groups", () => {
     expect(settings().getByText("Shown when Label q is answered")).toBeTruthy();
     expect(settings().queryByRole("button", { name: "Add rule" })).toBeNull();
     fireEvent.click(
-      settings().getByRole("button", { name: "Edit in group settings" }),
+      settings().getByRole("button", { name: "Open group settings" }),
     );
     expect(heading()).toBe("Shared visibility");
     expect(
@@ -199,9 +209,8 @@ describe("FormBuilder visibility groups", () => {
   it("ungrouping or detaching keeps the form saved", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
     openGroup(0, "Content");
-    fireEvent.click(detachButtons()[0]!);
+    detach(0);
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
-    openSection("Conditions");
     fireEvent.click(screen.getByRole("button", { name: "Ungroup all" }));
     expect(canvasGroups()).toHaveLength(0);
     expect(saveState()).not.toBe("Unsaved changes");
@@ -214,18 +223,18 @@ describe("FormBuilder visibility groups", () => {
     const whole = ["Shared visibility · 3 elements"];
 
     openGroup(0, "Content");
-    fireEvent.click(splitButtons()[0]!);
+    split(1);
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     undo();
     expect(memberCounts()).toEqual(whole);
 
     openGroup(0, "Content");
-    fireEvent.click(detachButtons()[1]!);
+    detach(1);
     expect(canvasGroups()).toHaveLength(0);
     undo();
     expect(memberCounts()).toEqual(whole);
 
-    openGroup(0);
+    openGroup(0, "Content");
     fireEvent.click(screen.getByRole("button", { name: "Ungroup all" }));
     expect(canvasGroups()).toHaveLength(0);
     undo();
@@ -324,7 +333,7 @@ describe("FormBuilder visibility groups across loads", () => {
   it("regroups when the whole form's JSON is replaced", async () => {
     renderFormBuilder(grouped);
     openGroup(0, "Content");
-    fireEvent.click(splitButtons()[0]!);
+    split(1);
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     await applyFormJson(grouped);
     expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]);
@@ -335,7 +344,7 @@ describe("FormBuilder visibility groups across loads", () => {
       schemaWith([text("a", X), text("b", X), text("c", X), text("d", X)]),
     );
     openGroup(0, "Content");
-    fireEvent.click(splitButtons()[1]!);
+    split(2);
   };
   const applyElementJson = async (element: PageItem) => {
     selectElement("Label a");
@@ -382,7 +391,7 @@ describe("FormBuilder visibility groups across loads", () => {
     await act(async () => {});
 
     openSection("Content");
-    fireEvent.click(detachButtons()[0]!);
+    detach(0);
     openSection("Conditions");
     expect(
       settings().getByRole<HTMLTextAreaElement>("textbox", {
@@ -405,7 +414,7 @@ describe("FormBuilder visibility groups across loads", () => {
       screen.getByRole("button", { name: "Apply id and kind changes" }),
     );
     openGroup(0, "Content");
-    fireEvent.click(splitButtons()[0]!);
+    split(1);
     fireEvent.click(screen.getByRole("button", { name: "Save form" }));
     await waitFor(() => expect(saveState()).not.toBe("Unsaved changes"));
     await act(async () => {});

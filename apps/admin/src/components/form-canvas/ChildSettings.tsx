@@ -4,10 +4,11 @@ import type {
   ListSubField,
   PageItem,
 } from "@alliance/common/forms/form-schema";
-import { Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
 import { updateListSubField } from "../../lib/updateListSubField";
+import { ReadOnlyId } from "../../pages/forms/builder/kit/ReadOnlyId";
+import { controlClass } from "../../ui/styles";
 import { EditableNestedBlock } from "../display-blocks/EditableNestedBlock";
 import { PerViewerOptions } from "../display-blocks/PerViewerOptionsContext";
 import { ElementExpressionScope } from "../form-fields/conditions/expressionBuffers";
@@ -17,6 +18,7 @@ import type {
   FieldEditor,
   FieldOfKind,
 } from "../form-fields/types";
+import { cn } from "../../ui/cn";
 import { VariableTextField } from "../VariableTextField";
 import { accordionWrites } from "./accordionWrites";
 import {
@@ -32,11 +34,6 @@ import {
 } from "./canvasSelection";
 import { neighborMoves } from "./ChildRows";
 import { ElementBoundary, FlaggedSettings } from "./ElementBoundary";
-import {
-  SettingsAction,
-  SettingsActions,
-  SettingsMoveActions,
-} from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import {
   ALL_SECTIONS,
@@ -65,7 +62,7 @@ function renderSubFieldEditor<K extends ListSubFieldKind>(
   ) : (
     <SectionPanels
       content={
-        <p className="text-sm text-gray-500">
+        <p className="text-fg-muted">
           No settings to edit for this kind of question.
         </p>
       }
@@ -140,20 +137,26 @@ export function ChildSettings({
     <SettingsSidebar
       parent={{ label: describeElement(element), onSelect: onSelectParent }}
       heading={view.heading}
-      headingActions={<SettingsMoveActions {...view.moves} />}
+      ownActions={{
+        moveNoun: null,
+        ...view.moves,
+        moveToPage: null,
+        duplicateLabel: "Duplicate",
+        onDuplicate: null,
+        onAddBelow: null,
+        editJsonLabel: "",
+        onEditJson: null,
+        onShowInOutline: null,
+        deleteLabel: view.deleteLabel,
+        onDelete: remove,
+      }}
       sections={view.sections}
       section={section}
       onSection={onSection}
       focusPending={focusPending}
       onFocused={onFocused}
       dependencies={dependencies}
-      actions={
-        <SettingsActions idLabel={view.idLabel} id={view.id}>
-          <SettingsAction Icon={Trash2} destructive onClick={remove}>
-            {view.deleteLabel}
-          </SettingsAction>
-        </SettingsActions>
-      }
+      actions={view.id && <ReadOnlyId label={view.idLabel} value={view.id} />}
     >
       <div key={editorKey}>
         <ElementBoundary
@@ -161,7 +164,7 @@ export function ChildSettings({
           fallback={(message) => (
             <FlaggedSettings
               message={message}
-              repair="Delete it under Advanced, or edit its element's JSON."
+              repair="Delete it from the More menu, or edit its element's JSON."
             />
           )}
         >
@@ -258,8 +261,8 @@ function childView({
           editor: (
             <SectionPanels
               content={
-                <div>
-                  <span className="mb-1 block text-xs font-medium text-gray-700">
+                <div className="flex flex-col gap-1.5">
+                  <span aria-hidden="true" className="font-medium">
                     Section title
                   </span>
                   <VariableTextField
@@ -267,7 +270,7 @@ function childView({
                     onChange={(title) => updateSection(() => ({ title }))}
                     aria-label="Section title"
                     placeholder="Section title"
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={cn(controlClass, "h-control")}
                   />
                 </div>
               }

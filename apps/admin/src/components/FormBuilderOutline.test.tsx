@@ -5,7 +5,9 @@ import {
   fromMainMenu,
   heading,
   inNarrowWindow,
+  fromSelectionMenu,
   openSection,
+  selectionMenuState,
   outline,
   pageTitle,
   selectElement,
@@ -118,9 +120,9 @@ describe("the form outline", () => {
 
   it("moves the open page with its keyboard controls, keeping it open", () => {
     renderFormBuilder(schema);
-    const up = screen.getByRole("button", { name: "Move page up" });
-    expect(up.getAttribute("aria-disabled")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Move page down" }));
+    expect(selectionMenuState("Move page up")).toBe("disabled");
+
+    fromSelectionMenu("Move page down");
     expect(entries()).toEqual([
       "Two",
       "Shared visibility · 2 elements",
@@ -134,7 +136,8 @@ describe("the form outline", () => {
     expect(pageTitle().value).toBe("One");
     openSection("Advanced");
     expect(settings().getByDisplayValue("p1")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Move page up" }));
+
+    fromSelectionMenu("Move page up");
     expect(entries().slice(0, 2)).toEqual(["One", "Text Field: Town"]);
   });
 });

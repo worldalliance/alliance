@@ -1,8 +1,8 @@
 import type { PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
-import { Settings2, Unlink } from "lucide-react";
 import { createContext, useContext } from "react";
 import { detachMember, type VisibilityGroups } from "../lib/visibilityGroups";
+import Button, { ButtonVariant } from "../ui/Button";
 import { SharedRuleSummary } from "./form-canvas/VisibilityGroupPanel";
 
 type VisibilityGroupMember = {
@@ -52,27 +52,15 @@ export function SharedVisibilityNotice({
   detach,
 }: Omit<VisibilityGroupMember, "elementId">) {
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex flex-col gap-3">
       <SharedRuleSummary heading="Shared visibility" summary={summary} />
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={openGroup}
-          aria-label="Edit in group settings"
-          title="Edit in group settings"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-        >
-          <Settings2 className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={detach}
-          aria-label="Edit visibility separately"
-          title="Edit visibility separately"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-        >
-          <Unlink className="h-4 w-4" aria-hidden="true" />
-        </button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant={ButtonVariant.Default} size="small" onClick={openGroup}>
+          Open group settings
+        </Button>
+        <Button variant={ButtonVariant.Default} size="small" onClick={detach}>
+          Edit visibility separately
+        </Button>
       </div>
     </div>
   );

@@ -66,7 +66,6 @@ src/components/VariableInputPickers.tsx
 src/components/VariableInputRow.tsx
 src/components/VariableSamples.tsx
 src/components/VariableTextField.tsx
-src/components/VisibilityGroupContext.tsx
 src/components/VisibilityProfilePicker.tsx
 src/components/display-blocks/BlockPreview.tsx
 src/components/display-blocks/DisplayBlockWrapper.tsx
@@ -88,13 +87,6 @@ src/components/display-blocks/EditableUserLocationBlock.tsx
 src/components/display-blocks/EditableVideoBlock.tsx
 src/components/display-blocks/ManualUserList.tsx
 src/components/display-blocks/PerUserOptions.tsx
-src/components/form-canvas/ChildRows.tsx
-src/components/form-canvas/ChildSettings.tsx
-src/components/form-canvas/DependencyLinks.tsx
-src/components/form-canvas/GreyBoxPanel.tsx
-src/components/form-canvas/PageSettings.tsx
-src/components/form-canvas/RangeSettings.tsx
-src/components/form-canvas/VisibilityGroupPanel.tsx
 src/components/form-fields/CommonControls.tsx
 src/components/form-fields/CustomValidatorSelect.tsx
 src/components/form-fields/EditableCheckboxField.tsx

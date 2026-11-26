@@ -1,7 +1,7 @@
-import { cn } from "@alliance/shared/styles/util";
 import { createContext, useContext, type ReactNode } from "react";
 import type { ChildTarget } from "./canvasSelection";
-import { SettingsMoveActions } from "./SettingsActions";
+import { cn } from "../../ui/cn";
+import { MoreMenu, type MoreMenuItem } from "../../ui/MoreMenu";
 
 type SelectChild = (child: ChildTarget, options?: { focus: true }) => void;
 
@@ -42,13 +42,23 @@ export function neighborMoves<T>(
 }
 
 export function ChildRows({ children }: { children: ReactNode }) {
-  return (
-    <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
-      {children}
-    </ul>
-  );
+  return <ul className="flex flex-col gap-2">{children}</ul>;
 }
 
+const moveItem = (
+  label: string,
+  onMove: (() => void) | null,
+  edgeReason: string,
+): MoreMenuItem =>
+  onMove
+    ? { label, onSelect: onMove }
+    : { label, onSelect: () => {}, disabledReason: edgeReason };
+
+/**
+ * A row selecting one item of a container, with a More menu that moves it,
+ * and the item's own contents under the row at its full width, as an
+ * accordion section's blocks.
+ */
 export function ChildRow({
   label,
   onSelect,
@@ -66,20 +76,26 @@ export function ChildRow({
   children?: ReactNode;
 }) {
   return (
-    <li>
-      <div className={cn("flex items-center gap-1 px-2 py-1", className)}>
+    <li className="flex flex-col gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
           onClick={onSelect}
           title={label}
-          className="min-w-0 flex-1 truncate rounded px-1 py-1 text-left text-sm text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className={cn(
+            "focus-ring h-control-sm min-w-0 flex-1 truncate rounded-md border border-line bg-surface px-2.5 text-left hover:underline",
+            className,
+          )}
         >
           {label}
         </button>
-        <SettingsMoveActions
-          noun={label}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
+        <MoreMenu
+          subject={label}
+          size="small"
+          items={[
+            moveItem("Move up", onMoveUp, "It's the first."),
+            moveItem("Move down", onMoveDown, "It's the last."),
+          ]}
         />
       </div>
       {children}

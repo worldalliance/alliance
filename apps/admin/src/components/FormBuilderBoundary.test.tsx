@@ -143,6 +143,6 @@ describe("FormBuilder render failures", () => {
     expect(openPanel().getByText("block editor broke")).toBeTruthy();
     openSection("Advanced");
     expect(openPanel().getByText("block editor broke")).toBeTruthy();
-    expect(settings().getByRole("button", { name: /^Delete/ })).toBeTruthy();
+    expect(selectionMenuState("Delete block")).toBe("enabled");
   });
 });

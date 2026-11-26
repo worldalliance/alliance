@@ -422,7 +422,10 @@ describe("FormBuilder sharing visibility across a selection", () => {
     selectGroup(canvasGroups()[0]!);
     openSection("Content");
     fireEvent.click(
-      settings().getByRole("button", {
+      settings().getByRole("button", { name: "More: Text Field: Label c" }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", {
         name: "Split group before Text Field: Label c",
       }),
     );

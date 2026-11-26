@@ -1,5 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
+import type { ElementActions } from "../../pages/forms/builder/inspector/ElementActionsMenu";
 import { InspectorHeader } from "../../pages/forms/builder/inspector/InspectorHeader";
 import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
 import Button, { ButtonVariant } from "../../ui/Button";
@@ -17,6 +18,7 @@ export function SettingsSidebar({
   parent,
   heading,
   headingActions,
+  ownActions,
   sections,
   section,
   onSection,
@@ -30,6 +32,7 @@ export function SettingsSidebar({
   parent?: { label: string; onSelect: () => void };
   heading: string;
   headingActions?: ReactNode;
+  ownActions?: ElementActions;
   sections: readonly SidebarSection[];
   section: SidebarSection;
   onSection: (section: SidebarSection) => void;
@@ -68,7 +71,11 @@ export function SettingsSidebar({
           </Button>
         </div>
       )}
-      <InspectorHeader title={heading} extra={headingActions} />
+      <InspectorHeader
+        title={heading}
+        extra={headingActions}
+        ownActions={ownActions}
+      />
       <SidebarSections
         sections={sections}
         active={sections.includes(section) ? section : sections[0]!}

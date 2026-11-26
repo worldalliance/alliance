@@ -120,7 +120,7 @@ describe("FormBuilder JSON buttons open their own scope", () => {
 
     fireEvent.click(screen.getByRole("treeitem", { name: "Two" }));
     openSection("Advanced");
-    fireEvent.click(screen.getByRole("button", { name: "Edit page JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit page JSON…" }));
     expect(openedJson("Page JSON").id).toBe("p2");
   });
 });

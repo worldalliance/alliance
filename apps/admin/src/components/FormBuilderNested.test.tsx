@@ -3,8 +3,9 @@ import { act, fireEvent, screen } from "@testing-library/react";
 import {
   canvasButton,
   canvasOrder,
+  fromRowMenu,
+  fromSelectionMenu,
   heading,
-  openSection,
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
@@ -17,9 +18,7 @@ describe("a container's settings", () => {
   it("lists its children as rows to select and reorder", () => {
     renderFormBuilder(nestedSchema);
     selectElement("List Field: Kids");
-    fireEvent.click(
-      settings().getByRole("button", { name: "Move Text Field: Name down" }),
-    );
+    fromRowMenu("Text Field: Name", "Move down");
     expect(subFieldOrder()).toEqual([
       "Select Number Field: Age",
       "Select Text Field: Name",
@@ -51,7 +50,7 @@ describe("a container's settings", () => {
   it("moves a selected child and keeps it selected", () => {
     renderFormBuilder(nestedSchema);
     selectElement("Text Field: Name");
-    fireEvent.click(settings().getByRole("button", { name: "Move down" }));
+    fromSelectionMenu("Move down");
     expect(heading()).toBe("Text Field: Name");
     expect(subFieldOrder()).toEqual([
       "Select Number Field: Age",
@@ -62,10 +61,7 @@ describe("a container's settings", () => {
   it("returns to the container on deleting a child, which undo restores", () => {
     renderFormBuilder(nestedSchema);
     selectElement("Text Field: Name");
-    openSection("Advanced");
-    fireEvent.click(
-      settings().getByRole("button", { name: "Delete question" }),
-    );
+    fromSelectionMenu("Delete question");
     expect(heading()).toBe("List Field: Kids");
     expect(subFieldOrder()).toEqual(["Select Number Field: Age"]);
 
@@ -104,15 +100,12 @@ describe("a container's settings", () => {
       ],
     });
     selectElement("List Field: Kids");
-    fireEvent.click(settings().getByRole("button", { name: /Share$/ }));
+    fireEvent.click(settings().getByRole("button", { name: /^Custom Component Field: Share$/ }));
     expect(
       settings().getByText("No settings to edit for this kind of question."),
     ).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Conditions" })).toBeNull();
-    openSection("Advanced");
-    fireEvent.click(
-      settings().getByRole("button", { name: "Delete question" }),
-    );
+    fromSelectionMenu("Delete question");
     expect(heading()).toBe("List Field: Kids");
     expect(subFieldOrder()).toEqual(["Select Text Field: Name"]);
   });
@@ -138,7 +131,7 @@ describe("a container's settings", () => {
       ],
     });
     fireEvent.click(canvasButton("Select Section: Returns"));
-    fireEvent.click(settings().getByRole("button", { name: "Move up" }));
+    fromSelectionMenu("Move up");
     expect(heading()).toBe("Section: Returns");
     expect(canvasOrder(/^Select Section/)).toEqual([
       "Select Section: Returns",
@@ -187,9 +180,7 @@ describe("a container's settings", () => {
   it("adds and reorders an accordion's sections and blocks from its rows", async () => {
     renderFormBuilder(nestedSchema);
     selectElement("Accordion Block: Shipping, Returns");
-    fireEvent.click(
-      settings().getByRole("button", { name: "Move Section: Returns up" }),
-    );
+    fromRowMenu("Section: Returns", "Move up");
     expect(canvasOrder(/^Select Section/)).toEqual([
       "Select Section: Returns",
       "Select Section: Shipping",
@@ -242,18 +233,16 @@ describe("a container's settings", () => {
     });
     fireEvent.click(canvasButton("Contents of Section: Shipping"));
     fireEvent.click(canvasButton("Select Text Block: First"));
-    fireEvent.click(settings().getByRole("button", { name: "Move down" }));
+    fromSelectionMenu("Move down");
     expect(heading()).toBe("Text Block: First");
     expect(canvasOrder(/^Select Text Block/)).toEqual([
       "Select Text Block: Second",
       "Select Text Block: First",
     ]);
 
-    openSection("Advanced");
-    fireEvent.click(settings().getByRole("button", { name: "Delete block" }));
+    fromSelectionMenu("Delete block");
     expect(heading()).toBe("Section: Shipping");
-    openSection("Advanced");
-    fireEvent.click(settings().getByRole("button", { name: "Delete section" }));
+    fromSelectionMenu("Delete section");
     expect(heading()).toBe("Accordion Block");
   });
 
@@ -285,12 +274,10 @@ describe("a container's settings", () => {
     });
     fireEvent.click(canvasButton("Contents of Section: Shipping"));
     fireEvent.click(canvasButton("Select Text Block: First"));
-    openSection("Advanced");
-    fireEvent.click(settings().getByRole("button", { name: "Delete block" }));
+    fromSelectionMenu("Delete block");
     expect(heading()).toBe("Section: Shipping");
 
-    openSection("Advanced");
-    fireEvent.click(settings().getByRole("button", { name: "Delete section" }));
+    fromSelectionMenu("Delete section");
     expect(heading()).toBe("Accordion Block: Returns");
   });
 });

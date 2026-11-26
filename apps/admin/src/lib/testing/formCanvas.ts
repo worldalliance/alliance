@@ -32,8 +32,15 @@ export const issuesHere = () => {
   return screen.getByRole("list", { name: "Issues here" });
 };
 
+/** The header's More comes first; rows of a list editor have their own after it. */
 const openSelectionMenu = () =>
-  fireEvent.click(settings().getByRole("button", { name: /^More: / }));
+  fireEvent.click(settings().getAllByRole("button", { name: /^More: / })[0]!);
+
+/** Runs `item` from the More menu of the inspector row named `row`. */
+export const fromRowMenu = (row: string, item: string) => {
+  fireEvent.click(settings().getByRole("button", { name: `More: ${row}` }));
+  fireEvent.click(screen.getByRole("menuitem", { name: item }));
+};
 
 /** Runs `item` from the selection's More menu in the settings header. */
 export const fromSelectionMenu = (item: string) => {

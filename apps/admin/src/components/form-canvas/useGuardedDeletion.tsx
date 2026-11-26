@@ -11,8 +11,14 @@ import {
   groupDependents,
 } from "../../lib/formDependencies";
 import type { VisibilityGroups } from "../../lib/visibilityGroups";
-import { useToast } from "../../ui/ToastProvider";
-import ConfirmDialog from "../ConfirmDialog";
+import Button, { ButtonVariant } from "../../ui/Button";
+import ConfirmDialog from "../../ui/ConfirmDialog";
+import Modal, {
+  ModalActions,
+  ModalBody,
+  ModalDescription,
+  ModalTitle,
+} from "../../ui/Modal";
 import { describePlace } from "./DependencyLinks";
 
 export const DELETION: Record<PlaceKind, { action: string; subject: string }> =
@@ -37,6 +43,8 @@ type PendingDeletion = {
   pages: readonly Page[];
   affected: string[];
   run: () => void;
+  /** Confirmed after the form changed, so `run` would delete the wrong thing. */
+  stale: boolean;
 };
 
 /**
@@ -52,7 +60,6 @@ export function useGuardedDeletion({
   groups: VisibilityGroups;
 }) {
   const [pending, setPending] = useState<PendingDeletion | null>(null);
-  const { error: showErrorToast } = useToast();
 
   const guard = (container: FormPlace, run: () => void) => {
     const dependents = dependentsOutside(pages, container);
@@ -68,25 +75,41 @@ export function useGuardedDeletion({
               .map(({ place }) => describePlace(pages, place))
               .join(", ")}`,
     );
-    setPending({ container, pages, affected, run });
+    setPending({ container, pages, affected, run, stale: false });
   };
 
+  const close = () => setPending(null);
   const confirm = () => {
     if (!pending) return;
-    setPending(null);
     if (pending.pages !== pages) {
-      showErrorToast(
-        "The form changed while this was open. Delete again to see what reads it now.",
-      );
+      setPending({ ...pending, stale: true });
       return;
     }
+    setPending(null);
     pending.run();
   };
 
   const deletion = pending && DELETION[pending.container.kind];
-  const dialog = (
+  const dialog = pending?.stale ? (
+    <Modal open onClose={close} panelClassName="max-w-lg">
+      <ModalBody className="flex flex-col gap-2 p-6">
+        <ModalTitle className="text-heading font-semibold">
+          Nothing was deleted
+        </ModalTitle>
+        <ModalDescription className="text-fg-muted">
+          The form changed while this was open. Delete again to see what reads
+          it now.
+        </ModalDescription>
+        <ModalActions className="mt-4">
+          <Button variant={ButtonVariant.Default} onClick={close}>
+            Close
+          </Button>
+        </ModalActions>
+      </ModalBody>
+    </Modal>
+  ) : (
     <ConfirmDialog
-      isOpen={pending !== null}
+      open={pending !== null}
       title={deletion ? `${deletion.action}?` : ""}
       message={
         pending && deletion
@@ -99,7 +122,8 @@ export function useGuardedDeletion({
           : ""
       }
       confirmLabel={deletion?.action}
-      onCancel={() => setPending(null)}
+      destructive
+      onCancel={close}
       onConfirm={confirm}
     />
   );

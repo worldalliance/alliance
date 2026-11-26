@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   fromMainMenu,
   insertElement,
+  fromSelectionMenu,
   openSection,
   pageTitle,
   saveState,
@@ -105,11 +106,7 @@ beforeEach(() => {
 const nextTask = () => act(async () => {});
 const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
-const copyPage = () => {
-  openSection("Advanced");
-  fireEvent.click(button("Copy page"));
-  openSection("Content");
-};
+const copyPage = () => fromSelectionMenu("Copy page");
 const save = () =>
   act(async () => {
     fireEvent.click(button("Save form"));

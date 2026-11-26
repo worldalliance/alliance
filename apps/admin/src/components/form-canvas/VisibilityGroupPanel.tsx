@@ -1,7 +1,9 @@
 import type { AnyField, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
-import { Scissors, Ungroup, Unlink } from "lucide-react";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { MoreMenu } from "../../ui/MoreMenu";
 import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
 import { SectionPanels } from "./sidebarSections";
 
@@ -33,10 +35,8 @@ export function SharedRuleSummary({
 }) {
   return (
     <div className="min-w-0 flex-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-amber-800">
-        {heading}
-      </p>
-      <p className="break-words text-sm text-gray-700">Shown when {summary}</p>
+      <p className="text-caption font-medium text-fg-muted">{heading}</p>
+      <p className="break-words">Shown when {summary}</p>
     </div>
   );
 }
@@ -53,71 +53,74 @@ export function VisibilityGroupPanel({
   return (
     <SectionPanels
       content={
-        <ol aria-label="Group members" className="space-y-1">
-          {members.map((member, offset) => (
-            <li key={offset}>
-              {offset > 0 && (
-                <div className="flex justify-center">
+        <>
+          <InspectorGroup>
+            <ol aria-label="Group members" className="flex flex-col gap-2">
+              {members.map((member, offset) => (
+                <li
+                  key={offset}
+                  className="flex min-w-0 items-center gap-2 rounded-md border border-line bg-surface py-1 pr-1 pl-2.5"
+                >
                   <button
                     type="button"
-                    onClick={member.splitBefore}
-                    aria-label={`Split group before ${member.label}`}
-                    title={`Split group before ${member.label}`}
-                    className="rounded p-1 text-gray-400 hover:bg-amber-100 hover:text-gray-700"
+                    onClick={member.select}
+                    title={member.label}
+                    className="focus-ring min-w-0 flex-1 truncate rounded-sm text-left hover:underline"
                   >
-                    <Scissors className="h-3.5 w-3.5" aria-hidden="true" />
+                    {member.label}
                   </button>
-                </div>
-              )}
-              <div className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1">
-                <button
-                  type="button"
-                  onClick={member.select}
-                  className="min-w-0 flex-1 truncate text-left text-sm text-gray-800 hover:text-blue-700"
-                >
-                  {member.label}
-                </button>
-                <button
-                  type="button"
-                  onClick={member.detach}
-                  aria-label={`Edit ${member.label}'s visibility separately`}
-                  title={`Edit ${member.label}'s visibility separately`}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                >
-                  <Unlink className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ol>
+                  <MoreMenu
+                    subject={member.label}
+                    size="small"
+                    items={[
+                      ...(offset > 0
+                        ? [
+                            {
+                              label: `Split group before ${member.label}`,
+                              onSelect: member.splitBefore,
+                            },
+                          ]
+                        : []),
+                      {
+                        label: `Edit ${member.label}'s visibility separately`,
+                        onSelect: member.detach,
+                      },
+                    ]}
+                  />
+                </li>
+              ))}
+            </ol>
+          </InspectorGroup>
+          <InspectorGroup>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={ButtonVariant.Default}
+                size="small"
+                onClick={onUngroup}
+              >
+                Ungroup all
+              </Button>
+              <Button
+                variant={ButtonVariant.Default}
+                size="small"
+                onClick={() => onChangeVisibility(undefined)}
+              >
+                Clear visibility
+              </Button>
+            </div>
+            <p className="text-caption text-fg-muted">
+              Ungroup all keeps each element&apos;s visibility. Clear
+              visibility removes the rule from every element in the group.
+            </p>
+          </InspectorGroup>
+        </>
       }
       conditions={
         <>
-          <div className="flex items-start gap-2">
-            <SharedRuleSummary
-              heading={`Shared visibility · ${withCount(members.length, "element")}`}
-              summary={summary}
-            />
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={onUngroup}
-                aria-label="Ungroup all"
-                title="Ungroup all, keeping each element's visibility"
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-amber-100 hover:text-gray-700"
-              >
-                <Ungroup className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeVisibility(undefined)}
-                className="rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-              >
-                Clear visibility
-              </button>
-            </div>
-          </div>
-
+          <SharedRuleSummary
+            heading={`Shared visibility · ${withCount(members.length, "element")}`}
+            summary={summary}
+          />
           <ConditionalVisibility
             field={firstMember}
             previousFields={previousFields}

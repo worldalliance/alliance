@@ -1,9 +1,23 @@
 import type { PageItem } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import { Group, SquareDashed, Ungroup } from "lucide-react";
-import { useId } from "react";
+import type { ReactNode } from "react";
 import { groupRunAt, regroup } from "../../lib/formGroups";
-import { SettingsAction } from "./SettingsActions";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import Button, { ButtonVariant } from "../../ui/Button";
+
+function GreyBoxAction({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Button variant={ButtonVariant.Default} size="small" onClick={onClick}>
+      {children}
+    </Button>
+  );
+}
 
 /**
  * Puts the selected elements, `start` up to `end`, in a grey box members see
@@ -31,8 +45,6 @@ export function GreyBoxPanel({
   const write = (group: "new" | null) =>
     onChange(regroup({ fields, start, end, group }));
 
-  const headingId = useId();
-
   const status =
     run !== null && (exact || end - start === 1)
       ? `In a grey box with ${withCount(run.end - run.start, "element")}.`
@@ -41,37 +53,31 @@ export function GreyBoxPanel({
         : "Not in a grey box.";
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="space-y-2 border-t border-gray-200 pt-3"
-    >
-      <h3 id={headingId} className="text-sm font-medium text-gray-800">
-        Grey box
-      </h3>
-      <p className="text-sm text-gray-700">{status}</p>
+    <InspectorGroup title="Grey box">
+      <p>{status}</p>
       <div className="flex flex-wrap gap-2">
         {exact ? (
-          <SettingsAction Icon={Ungroup} onClick={() => write(null)}>
+          <GreyBoxAction onClick={() => write(null)}>
             Remove grey box
-          </SettingsAction>
+          </GreyBoxAction>
         ) : (
           !inside && (
-            <SettingsAction Icon={Group} onClick={() => write("new")}>
+            <GreyBoxAction onClick={() => write("new")}>
               Put in a grey box
-            </SettingsAction>
+            </GreyBoxAction>
           )
         )}
         {run !== null && !exact && end - start === 1 && (
-          <SettingsAction Icon={SquareDashed} onClick={() => onSelectBox(run)}>
+          <GreyBoxAction onClick={() => onSelectBox(run)}>
             Select grey box
-          </SettingsAction>
+          </GreyBoxAction>
         )}
         {grouped && !exact && (
-          <SettingsAction Icon={Ungroup} onClick={() => write(null)}>
+          <GreyBoxAction onClick={() => write(null)}>
             Remove from grey box
-          </SettingsAction>
+          </GreyBoxAction>
         )}
       </div>
-    </section>
+    </InspectorGroup>
   );
 }

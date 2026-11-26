@@ -398,10 +398,7 @@ describe("FormBuilder deleting a source", () => {
   it("lists the sub-fields reading a deleted sub-field", () => {
     renderFormBuilder(listSchema);
     selectElement("Text Field: Name");
-    openSection("Advanced");
-    fireEvent.click(
-      settings().getByRole("button", { name: "Delete question" }),
-    );
+    fromSelectionMenu("Delete question");
     expect(
       dialog().getByText(/List Field: Kids › Number Field: Age/),
     ).toBeTruthy();

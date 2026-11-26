@@ -11,7 +11,7 @@ import {
 import { PaneHeader } from "../../../../ui/templates/Workspace";
 import { useBuilder } from "../BuilderContext";
 import { HEADER_TRUNCATES } from "../paneHeader";
-import { ElementActionsMenu } from "./ElementActionsMenu";
+import { ElementActionsMenu, type ElementActions } from "./ElementActionsMenu";
 import { useSelectionActions } from "./useSelectionActions";
 
 /** The selection's issues behind a button of fixed width, so the settings under it never move. */
@@ -60,12 +60,15 @@ function IssuesHere() {
 export function InspectorHeader({
   title,
   extra,
+  ownActions,
 }: {
   title: string;
   /** Controls the selection's own settings still put here. */
   extra?: ReactNode;
+  /** The actions of a selection `useSelectionActions` leaves to its settings, as a child's. */
+  ownActions?: ElementActions;
 }) {
-  const actions = useSelectionActions();
+  const actions = useSelectionActions() ?? ownActions;
   return (
     <PaneHeader
       title={title}

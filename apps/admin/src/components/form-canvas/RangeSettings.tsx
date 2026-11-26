@@ -13,6 +13,9 @@ import {
 } from "../../lib/visibilityGroups";
 import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
 import { LocalExpressionBuffers } from "../form-fields/conditions/expressionBuffers";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
 import { describeElement } from "./canvasSelection";
 import { SectionPanels } from "./sidebarSections";
 
@@ -110,25 +113,27 @@ export function RangeSettings({
   const conditions = () => {
     if (withoutId.length > 0) {
       return (
-        <p className="text-sm text-red-700">
+        <Banner inline tone={BannerTone.Danger}>
           Blocks without an ID can&apos;t share visibility:{" "}
           {withoutId.map(describeElement).join(", ")}. Give each an ID in its
           element JSON first.
-        </p>
+        </Banner>
       );
     }
     if (group) {
       return (
-        <div className="space-y-2 text-sm text-gray-700">
+        <InspectorGroup>
           <p>These elements already share visibility.</p>
-          <button
-            type="button"
-            onClick={() => onSelectGroup(group)}
-            className="text-blue-700 hover:underline"
-          >
-            Open group settings
-          </button>
-        </div>
+          <div>
+            <Button
+              variant={ButtonVariant.Default}
+              size="small"
+              onClick={() => onSelectGroup(group)}
+            >
+              Open group settings
+            </Button>
+          </div>
+        </InspectorGroup>
       );
     }
     const sources = conditionSourceFields({
@@ -139,44 +144,39 @@ export function RangeSettings({
     });
     return (
       <>
-        <p className="text-sm text-gray-700">
-          Choose the visibility these elements will share. It replaces each
-          element&apos;s own.
-        </p>
-        <ul aria-label="Current visibility" className="space-y-2">
-          {currentFormulas(members).map(({ formula, holders }, index) => {
-            const reason = cantShareReason(formula);
-            return (
-              <li key={index}>
-                <button
-                  type="button"
-                  disabled={reason !== null}
-                  onClick={() => share(formula)}
-                  className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-left text-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-white disabled:text-gray-500"
-                >
-                  <span className="block font-medium">
-                    Share: shown when {summarize(formula)}
-                  </span>
-                  <span className="block text-gray-600">
-                    Now on {holders.join(", ")}
-                  </span>
-                  {reason && (
-                    <span className="block text-amber-800">{reason}</span>
-                  )}
-                </button>
+        <InspectorGroup description="Choose the visibility these elements will share. It replaces each element's own.">
+          <ul aria-label="Current visibility" className="flex flex-col gap-2">
+            {currentFormulas(members).map(({ formula, holders }, index) => {
+              const reason = cantShareReason(formula);
+              return (
+                <li key={index}>
+                  <button
+                    type="button"
+                    disabled={reason !== null}
+                    onClick={() => share(formula)}
+                    className="focus-ring flex w-full flex-col gap-0.5 rounded-md border border-line bg-surface px-2.5 py-2 text-left transition-colors duration-fast hover:bg-surface-2 disabled:cursor-not-allowed disabled:hover:bg-surface"
+                  >
+                    <span className="font-medium">
+                      Share: shown when {summarize(formula)}
+                    </span>
+                    <span className="text-caption text-fg-muted">
+                      Now on {holders.join(", ")}
+                    </span>
+                    {reason && (
+                      <span className="text-caption text-danger">{reason}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+            {unconditional.length > 0 && (
+              <li className="text-caption text-fg-muted">
+                Always shown now: {unconditional.join(", ")}
               </li>
-            );
-          })}
-          {unconditional.length > 0 && (
-            <li className="px-2 text-sm text-gray-600">
-              Always shown now: {unconditional.join(", ")}
-            </li>
-          )}
-        </ul>
-        <div className="space-y-2 border-t border-gray-200 pt-3">
-          <p className="text-sm font-medium text-gray-800">
-            Or share new rules
-          </p>
+            )}
+          </ul>
+        </InspectorGroup>
+        <InspectorGroup title="Or share new rules">
           <LocalExpressionBuffers>
             <ConditionalVisibility
               field={{ visibleIfFormula: authored }}
@@ -188,17 +188,19 @@ export function RangeSettings({
             />
           </LocalExpressionBuffers>
           {authoredReason && (
-            <p className="text-sm text-amber-800">{authoredReason}</p>
+            <p className="text-caption text-danger">{authoredReason}</p>
           )}
-          <button
-            type="button"
-            disabled={!authored || authoredReason !== null}
-            onClick={() => authored && share(authored)}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-          >
-            Share new rules
-          </button>
-        </div>
+          <div>
+            <Button
+              variant={ButtonVariant.Default}
+              size="small"
+              disabled={!authored || authoredReason !== null}
+              onClick={() => authored && share(authored)}
+            >
+              Share new rules
+            </Button>
+          </div>
+        </InspectorGroup>
       </>
     );
   };
@@ -206,19 +208,22 @@ export function RangeSettings({
   return (
     <SectionPanels
       content={
-        <ol aria-label="Selected elements" className="space-y-1">
-          {members.map((member, offset) => (
-            <li key={member.id || offset}>
-              <button
-                type="button"
-                onClick={() => onSelectMember(start + offset)}
-                className="w-full truncate rounded-md border border-gray-200 px-2 py-1 text-left text-sm text-gray-800 hover:text-blue-700"
-              >
-                {describeElement(member)}
-              </button>
-            </li>
-          ))}
-        </ol>
+        <InspectorGroup>
+          <ol aria-label="Selected elements" className="flex flex-col gap-2">
+            {members.map((member, offset) => (
+              <li key={member.id || offset}>
+                <button
+                  type="button"
+                  onClick={() => onSelectMember(start + offset)}
+                  title={describeElement(member)}
+                  className="focus-ring w-full truncate rounded-md border border-line bg-surface px-2.5 py-1.5 text-left hover:underline"
+                >
+                  {describeElement(member)}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </InspectorGroup>
       }
       conditions={conditions()}
     />
