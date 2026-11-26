@@ -19,6 +19,7 @@ const twMerge = extendTailwindMerge({
         "page-top",
         "section",
         "card",
+        "dialog",
         "bar",
       ],
       radius: ["card"],

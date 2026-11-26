@@ -117,7 +117,7 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({
     <div
       data-modal-header=""
       className={cn(
-        "relative border-b border-line p-card",
+        "relative shrink-0 border-b border-line p-card",
         className,
         showClose && MODAL_CLOSE_GUTTER,
       )}
@@ -137,7 +137,10 @@ export const ModalBody: React.FC<ModalBodyProps> = ({
   children,
   className,
 }) => (
-  <div data-modal-body="" className={cn("p-card", className)}>
+  <div
+    data-modal-body=""
+    className={cn("min-h-0 flex-1 overflow-y-auto p-card", className)}
+  >
     {children}
   </div>
 );
@@ -145,7 +148,7 @@ export const ModalBody: React.FC<ModalBodyProps> = ({
 export type ModalFooterProps = {
   children: ReactNode;
   /** A refusal or a failed write, above the buttons; the dialog stays open. */
-  error?: string | null;
+  error?: ReactNode;
   /**
    * The shown error, for a dialog that must move focus to it because the
    * control that had focus is gone.
@@ -164,7 +167,7 @@ export const ModalFooter: React.FC<ModalFooterProps> = ({
   errorRef,
   className,
 }) => (
-  <div className={cn("border-t border-line p-card", className)}>
+  <div className={cn("shrink-0 border-t border-line p-card", className)}>
     <InlineError ref={errorRef} message={error} className="mb-3" />
     {children}
   </div>
@@ -288,7 +291,10 @@ const Modal: React.FC<ModalProps> = ({
               onKeyDown={onKeyDown}
               aria-label={ariaLabel}
               className={cn(
-                "relative w-full max-w-md rounded-card bg-surface text-body text-fg shadow-pop outline-none",
+                // A `<form>` holding the header, body and footer takes the panel's
+                // column, so its `ModalBody` is what scrolls; the panel scrolls
+                // only content with no `ModalBody`.
+                "relative flex max-h-dialog w-full max-w-md flex-col overflow-y-auto rounded-card bg-surface text-body text-fg shadow-pop outline-none [&>form]:flex [&>form]:min-h-0 [&>form]:flex-col",
                 panelClassName,
               )}
             >

@@ -275,6 +275,8 @@
   --spacing-section: 1.25rem;
   --spacing-card: 1.25rem;
   --spacing-bar: 0.875rem;
+  /* The viewport minus the modal's p-4 on both sides. */
+  --spacing-dialog: calc(100dvh - 2rem);
 
   --radius-card: 0.625rem;
 

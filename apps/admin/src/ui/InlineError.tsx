@@ -2,7 +2,7 @@ import { type ReactNode, type Ref } from "react";
 import { cn } from "./cn";
 
 interface InlineErrorProps {
-  message?: string | null;
+  message?: ReactNode;
   className?: string;
   children?: ReactNode;
   /** For moving focus to the message; makes it focusable by script only. */
@@ -24,7 +24,7 @@ export default function InlineError({
       role="alert"
       className={cn("flex items-center gap-2 text-body text-danger", className)}
     >
-      <span>{message}</span>
+      <div>{message}</div>
       {children}
     </div>
   );
