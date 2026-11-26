@@ -134,8 +134,8 @@ export function eventConfirm(params: {
           ? "Make this suite's draft tasks visible to members?"
           : "Make this draft visible to members?",
         message: suite
-          ? `A ${phaseLabel(status)} event takes every task in this suite that is still a draft out of Draft, so each becomes visible to its members ${when}.${skipsChecks}`
-          : `This task is a draft. A ${phaseLabel(status)} event takes it out of Draft, so it becomes visible to its members ${when}.${archived}`,
+          ? `An event setting ${phaseLabel(status)} takes every task in this suite that is still a draft out of Draft, so each becomes visible to its members ${when}.${skipsChecks}`
+          : `This task is a draft. An event setting ${phaseLabel(status)} takes it out of Draft, so it becomes visible to its members ${when}.${archived}`,
         confirmLabel: "Add event",
         cancelLabel: "Cancel",
         requiredText: LAUNCH_CONFIRM_TEXT,

@@ -136,15 +136,27 @@ export function EventsTab({
                 <TableHead>Event</TableHead>
                 <TableHead>Status from then</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
                 <TableHead>Set by</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {events.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell truncate className="font-medium">
-                    {event.title}
+                  <TableCell
+                    truncate
+                    title={
+                      event.description
+                        ? `${event.title}: ${event.description}`
+                        : event.title
+                    }
+                  >
+                    <span className="font-medium">{event.title}</span>
+                    {event.description && (
+                      <span className="text-fg-muted">
+                        {" "}
+                        · {event.description}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <PhaseBadge status={event.newStatus} />
@@ -154,9 +166,6 @@ export function EventsTab({
                       weekday: true,
                       timeZone: LAUNCH_TIME_ZONE,
                     })}
-                  </TableCell>
-                  <TableCell truncate className="text-fg-muted">
-                    {event.description || "—"}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {event.suiteManaged && suite ? (
