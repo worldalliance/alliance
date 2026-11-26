@@ -393,3 +393,35 @@ Agent decisions by the system owner, the one writer of the admin's tokens, `src/
 - **`UserSelect` keeps its row grid for several picks** rather than chips: about 20 callers and the cohort pickers hold hundreds of members.
 - **`fromApi` keeps a refused request's status:** `R.fromPromise` without a mapper turned the API's error into a plain `Error`, so pages showed the fallback instead of the server's reason.
 - **Declined:** a tree primitive (one caller, the builder), `ForceGraph`'s keyboard selection (the members and growth areas own it), a mono section title (no clear use).
+
+## Area: activity
+
+All agent judgement; the user was asleep and has not seen these. Covers Activity › Event log, Research › Kora participants (with the assignment record and the transcript preview), Settings and Login. Every agent, reviewers included, ran on Opus 5.5, so the reviews were same-model in a fresh context.
+
+Event log:
+
+- **The type filter offers all 17 server event types, in label order**, not the server's enum order, so no unused type gains prominence by position. Labels are written for staff ("Text opt-out", "Task comment", "Forum reply not notified"); the rest are their names in sentence case. A streamed event of a type this build doesn't know shows the server's raw name instead of failing.
+- **New events wait while staff are reading.** With the list scrolled off its top, the pointer over it, focus inside it or a row open, arrivals are held behind "Show N new events", which scrolls the list back to the top (smoothly; instantly under reduced motion). Changing the type filter also returns the list to the top.
+- **A header badge shows the feed's state** (Live, Connecting, Disconnected, Not live), which today's page did not show.
+- **Every row has Details** (full message, exact time, data), not only rows with data. Type and page live in the URL, and an unknown value falls back to the default.
+
+Kora participants:
+
+- **Two tabs.** Participants holds totals, signups per day, search, both tables and the export, as three panels under one search. Assignments holds, in order, project status, transcript batches with upload, history, notices, conversations and results: the controls first, then what informs them. The assignment record has no side panel.
+- **A batch's badge reads Open, Closed or Retired**, not "Assigning": whether pairs are handed out also depends on the project status shown above it. Closed means its closing time has passed, by the rule the server assigns from.
+- **The closing date is changed in a dialog** opened by "Change…" beside the date, where today's inline input grew a Save button after an edit. On a narrow table "Change…" wraps under the date rather than moving into the row menu.
+- **Retiring an already-closed batch** no longer says it will stop being assigned; it keeps "Its pairs not yet rated leave assignments in progress", which `dropUnrated` makes true whatever the closing date.
+- **Both notices ask for the typed phrase for real people** (`notifyRealPeopleText`), since waitlist participants are not all members, and keep "Messages can't be recalled once sent". The "there's more" notice describes reviewers who finished an assignment, have none unfinished and haven't been told, matching the server's query.
+- **The empty batches panel says the project can be made Active once it has transcripts**; uploading does not make it Active.
+- **The transcript preview stays full screen** with a slim admin bar above KORA's review tool, which is mounted, not edited.
+
+Settings and Login:
+
+- **Send test push confirms with a plain dialog naming the member**, not the guide's typed phrase for notifying real members: it reaches one member, and the realistic mistake, picking the wrong one, is what the dialog names. The alternative was the typed phrase.
+- **Send test push validates on submit** ("Choose a member", "Enter a message", focus on the first) instead of disabling its button, as the guide says for a form; the two checks are today's.
+- **A send reads as a send, and only Expo's ticket counts as sent.** "Sent: Expo accepted it for delivery", not "delivered", because the server has only Expo's ticket by then; a 200 without an ok ticket is a failure ("The server's request to Expo failed; the server log has the reason."). A server error says "The server hit an error sending it." with no "Try again", since it repeats (ALL-2533). An earlier response stays visible, muted and labelled as earlier, while a resend is in flight or after it fails.
+- **Login keeps its layout, copy and behaviour, with the nearest tokens for its colours**: the button is `fg` rather than pure black, which the lint bans, and the banner is `danger-soft`/`danger`, so both look slightly different. Its earlier defects (ALL-2545–2547) were left alone because Login is to stay as it is.
+
+Review:
+
+- **Small findings became Linear issues in "Modern admin" rather than more rounds**, under the stop rule: ALL-2528, ALL-2531–2533, ALL-2545–2547, ALL-2567, ALL-2568, ALL-2576–2578, ALL-2598, ALL-2626–2628. The Event log's browser checks from its third review round on ran against a mocked API, because the local server could not start (expired AWS login); the integration's checks of Settings and Kora ran on the real stack.
