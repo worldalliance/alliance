@@ -256,6 +256,7 @@ function FormCanvasPane({
   const {
     currentPage,
     revealPending,
+    revealsOutline,
     revealed,
     selectionKey,
     selections,
@@ -286,9 +287,9 @@ function FormCanvasPane({
     // Only once the page has laid out does the outline's pane have its final height.
     const outline = outlineRef.current;
     const row = outline && selectedRow(outline);
-    if (outline && row) revealInPane(outline, row, 8);
+    if (revealsOutline && outline && row) revealInPane(outline, row, 8);
     revealed();
-  }, [revealPending, revealed, settled, outlineRef]);
+  }, [revealPending, revealsOutline, revealed, settled, outlineRef]);
 
   const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
   const shownKey = `${inspectorScope}:${selectionKey}`;

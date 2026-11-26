@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { renderFormBuilder } from "../../../../lib/testing/renderFormBuilder";
+import { spyOnReveals } from "../../../../lib/testing/reveals";
 
 const schema: FormSchema = {
   pages: [
@@ -63,6 +64,16 @@ describe("selecting from the outline", () => {
       expect(scrolls).toEqual([
         expect.objectContaining({ behavior: "smooth" }),
       ]),
+    );
+  });
+
+  it("leaves the outline where it is on a click", async () => {
+    const reveals = spyOnReveals();
+    const { row } = setup();
+    await act(async () => fireEvent.click(row));
+    await waitFor(() => expect(reveals.targets()).not.toEqual([]));
+    expect(reveals.targets().some((target) => target.contains(row))).toBe(
+      false,
     );
   });
 

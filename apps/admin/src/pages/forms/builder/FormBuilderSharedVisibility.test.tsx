@@ -148,7 +148,8 @@ describe("FormBuilder range selection", () => {
     await waitFor(() =>
       expect(reveals.targets()).toContain(onCanvas("Label d")),
     );
-    expect(reveals.targets()).toContain(
+    // The click was in the outline, which stays where it is.
+    expect(reveals.targets()).not.toContain(
       outline().getByRole("treeitem", { name: "Text Field: Label d" }),
     );
     expect(reveals.targets()).not.toContain(onCanvas("Label a"));

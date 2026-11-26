@@ -147,6 +147,7 @@ export function FormBuilderCanvas({
             pageIndex,
             target,
             reveal: options?.reveal,
+            revealOutline: false,
           })
         }
         onExtend={
@@ -157,6 +158,7 @@ export function FormBuilderCanvas({
                   page: currentPage,
                   pageIndex: selectedPageIndex,
                   target: extendTo(clicked, alone),
+                  revealOutline: false,
                 })
         }
         onCheck={
@@ -167,6 +169,7 @@ export function FormBuilderCanvas({
                   page: schema.pages[pageIndex]!,
                   pageIndex,
                   target,
+                  revealOutline: false,
                 })
         }
         issues={issueIndex}

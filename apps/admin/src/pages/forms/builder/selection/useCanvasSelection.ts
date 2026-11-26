@@ -109,8 +109,13 @@ export function useCanvasSelection({
   const [focusPending, setFocusPending] = useState(false);
   const focused = useCallback(() => setFocusPending(false), []);
   const [revealPending, setRevealPending] = useState(false);
+  const [revealsOutline, setRevealsOutline] = useState(true);
   const revealed = useCallback(() => setRevealPending(false), []);
-  const reveal = () => setRevealPending(true);
+  /** `outline: false` for a selection from an outline click, which keeps the outline where it is. */
+  const reveal = (outline = true) => {
+    setRevealPending(true);
+    setRevealsOutline(outline);
+  };
 
   const currentPage = pages[selectedPageIndex] ??
     pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
@@ -137,17 +142,19 @@ export function useCanvasSelection({
     target,
     section: nextSection = SECTION_ON_SELECT[target.kind],
     reveal: shouldReveal = true,
+    revealOutline = true,
   }: {
     page: Page;
     pageIndex: number;
     target: CanvasTarget;
     section?: SidebarSection;
     reveal?: boolean;
+    revealOutline?: boolean;
   }) => {
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
     setSection(nextSection);
-    if (shouldReveal) reveal();
+    if (shouldReveal) reveal(revealOutline);
   };
 
   if (placeOnLoad) {
@@ -210,6 +217,7 @@ export function useCanvasSelection({
     setFocusPending,
     focused,
     revealPending,
+    revealsOutline,
     revealed,
     reveal,
     select,
