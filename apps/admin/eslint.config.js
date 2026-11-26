@@ -126,6 +126,7 @@ export default defineConfig([
       "src/pages/LoginPage.tsx",
       "src/pages/InviteFeedPage.tsx",
       "src/pages/KoraTranscriptPreviewPage.tsx",
+      "src/pages/research/TranscriptPreviewPage.tsx",
     ],
     plugins: { admin: design },
     rules: { "admin/page-height": "error" },
