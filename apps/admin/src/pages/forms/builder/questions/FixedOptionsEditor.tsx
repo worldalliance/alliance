@@ -61,6 +61,7 @@ export function FixedOptionsEditor({
   const categoryIds = new Set(categories.map((category) => category.id));
   const sections: OptionSectionRows[] = [null, ...categories]
     .map((category) => ({
+      id: category?.id ?? "",
       label: category
         ? `Options in ${categoryLabel(category)}`
         : categories.length > 0
@@ -181,7 +182,7 @@ export function FixedOptionsEditor({
   const rows = () =>
     sections.map((section) => (
       <div
-        key={section.label}
+        key={section.id}
         role={section.heading === null ? undefined : "group"}
         aria-label={section.heading === null ? undefined : section.label}
         className="flex flex-col gap-2"

@@ -15,6 +15,8 @@ import { swapOptions } from "./optionRules";
 type Option = { label: string; value: string };
 
 export type OptionSectionRows = {
+  /** The category's id, or "" for options without one. */
+  id: string;
   /** Names the section's list: "Options in West". */
   label: string;
   /** Shown above the section when the options have categories. */
@@ -76,7 +78,7 @@ export function FixedOptionsTable<O extends Option>({
       </TableHeader>
       <TableBody>
         {sections.map((section) => (
-          <Fragment key={section.label}>
+          <Fragment key={section.id}>
             {section.heading !== null && (
               <TableGroupRow
                 colSpan={columns}
