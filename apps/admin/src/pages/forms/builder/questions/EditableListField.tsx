@@ -1,12 +1,12 @@
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import type { ListField } from "@alliance/common/forms/form-schema";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { ItemList, ItemRow } from "../kit/ItemList";
 import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
 import { CheckboxField, Field } from "../../../../ui/templates/Form";
-import { describeElement, subFieldChild } from "../selection/canvasSelection";
 import { neighborMoves, useSelectChild } from "../inspector/ChildRows";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { ItemList, ItemRow } from "../kit/ItemList";
+import { describeElement, subFieldChild } from "../selection/canvasSelection";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import { ListPrefillSettings } from "./ListPrefillSettings";
@@ -130,11 +130,6 @@ export function EditableListField({
                   {...neighborMoves(subFields, index, (fields) =>
                     onUpdate({ fields }),
                   )}
-                  onRemove={() =>
-                    onUpdate({
-                      fields: subFields.filter((_, i) => i !== index),
-                    })
-                  }
                 >
                   <button
                     type="button"

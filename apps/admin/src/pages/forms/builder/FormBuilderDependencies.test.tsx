@@ -411,6 +411,18 @@ describe("FormBuilder deleting a source", () => {
     expect(heading()).toBe("List Field: Kids");
   });
 
+  it("deletes a sub-field only from its own settings, where it is guarded", async () => {
+    renderFormBuilder(listSchema);
+    selectElement("List Field: Kids");
+    fireEvent.click(
+      settings().getByRole("button", { name: /^More: .*Text Field: Name/ }),
+    );
+    await screen.findByRole("menu");
+    expect(
+      screen.queryByRole("menuitem", { name: /Remove|Delete/ }),
+    ).toBeNull();
+  });
+
   it("names the page deletion and what outside the page reads it", () => {
     renderFormBuilder({
       ...schema,
