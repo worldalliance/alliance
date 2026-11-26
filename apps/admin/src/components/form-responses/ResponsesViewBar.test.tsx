@@ -22,6 +22,8 @@ const renderBar = (
       selectedVariantKey=""
       onVariantChange={() => {}}
       onRefresh={() => {}}
+      exportCount={2}
+      exportFilters={[]}
       onExportCsv={() => {}}
       onExportHtml={() => {}}
       {...overrides}
@@ -55,14 +57,14 @@ it("offers snapshot reassignment only with a handler for it", () => {
   expect(onReassign).toHaveBeenCalled();
 });
 
-it("disables the CSV export when the selected variant has no responses, but not the HTML one", async () => {
-  renderBar();
+it("disables both exports when nothing is on screen", async () => {
+  renderBar({ exportCount: 0 });
   fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
   const csv = await screen.findByRole("menuitem", { name: /^Export CSV/ });
   const html = screen.getByRole("menuitem", { name: /^Export HTML/ });
   expect(csv.getAttribute("aria-disabled")).toBe("true");
-  expect(html.getAttribute("aria-disabled")).not.toBe("true");
+  expect(html.getAttribute("aria-disabled")).toBe("true");
 });
 
 it("reports the variant picked, and no variant for all of them", () => {

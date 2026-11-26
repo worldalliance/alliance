@@ -3,10 +3,7 @@ import {
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
-import {
-  fieldHasOptions,
-  type AnyField,
-} from "@alliance/common/forms/form-schema";
+import type { AnyField } from "@alliance/common/forms/form-schema";
 import { fieldsWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import type {
   ActionWithdrawalDto,
@@ -15,6 +12,7 @@ import type {
 } from "@alliance/shared/client";
 import { parseFormulaChoices } from "@alliance/shared/parsed-dtos";
 import { z } from "zod";
+import { optionLabel } from "../answerLabels";
 import { isEmptyAnswer } from "../answerValues";
 import { respondentName } from "../respondent";
 import { escapeXml, tag } from "./xml";
@@ -29,11 +27,6 @@ const recordSchema = z.record(z.string(), z.unknown());
 
 const headingOf = (field: AnyField): string =>
   field.label?.trim() ? field.label.trim() : field.id;
-
-const optionLabel = (field: AnyField, value: string): string => {
-  if (!fieldHasOptions(field)) return value;
-  return field.options.find((option) => option.value === value)?.label ?? value;
-};
 
 const selectionsOf = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(stringify);

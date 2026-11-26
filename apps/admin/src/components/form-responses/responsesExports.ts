@@ -19,6 +19,8 @@ export function exportResponsesCsv(params: {
   responses: FormResponseDto[];
   orderedFieldIds: string[];
   fieldLabels: Map<string, string>;
+  schema: unknown;
+  formId: number;
   variantName?: (response: FormResponseDto) => string | null;
   exportFileBase: string;
 }): void {
@@ -26,6 +28,8 @@ export function exportResponsesCsv(params: {
     responses: params.responses,
     orderedFieldIds: params.orderedFieldIds,
     fieldLabels: params.fieldLabels,
+    schema: params.schema,
+    formId: params.formId,
     variantName: params.variantName,
   });
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
@@ -40,6 +44,7 @@ export function exportResponsesHtml(params: {
   withdrawnUserMap: Map<number, ActionWithdrawalDto>;
   sidsToUserMap: Record<string, ProfileDto>;
   variantOptions?: ResponseVariantOption[];
+  filters: string[];
   exportFileBase: string;
 }): void {
   const safeTitle = safeFileBase(params.exportFileBase);
@@ -50,9 +55,24 @@ export function exportResponsesHtml(params: {
     withdrawnUserMap: params.withdrawnUserMap,
     sidsToUserMap: params.sidsToUserMap,
     variantOptions: params.variantOptions,
+    filters: params.filters,
     exportedAt: new Date().toISOString(),
     csvFileName: `${safeTitle}-responses.csv`,
   });
   const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
   downloadBlob(blob, `${safeTitle}-responses.html`);
+}
+
+/** The filters narrowing what the table shows, in words, for the exports to state. */
+export function exportFilterDescriptions(params: {
+  variantName: string | null;
+  query: string;
+  snapshotId: number | null;
+}): string[] {
+  const { variantName, query, snapshotId } = params;
+  return [
+    ...(variantName ? [`Variant: ${variantName}`] : []),
+    ...(query ? [`Search: ${query}`] : []),
+    ...(snapshotId !== null ? [`Version: snapshot ${snapshotId}`] : []),
+  ];
 }

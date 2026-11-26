@@ -36,6 +36,7 @@ import QuestionResponses from "./form-responses/QuestionResponses";
 import ResponseReplay from "./form-responses/ResponseReplay";
 import ResponseReplayNavigator from "./form-responses/ResponseReplayNavigator";
 import {
+  exportFilterDescriptions,
   exportResponsesCsv,
   exportResponsesHtml,
 } from "./form-responses/responsesExports";
@@ -309,6 +310,17 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     paramKey,
   });
 
+  // Both exports hold exactly the table's rows, in its order; the columns stay complete.
+  const exportRows = useMemo(
+    () => table.sortedRows.map((row) => row.original.response),
+    [table.sortedRows],
+  );
+  const exportFilters = exportFilterDescriptions({
+    variantName: selectedVariant?.name ?? null,
+    query: table.query,
+    snapshotId: table.selectedSnapshotId,
+  });
+
   const { reassign, picker } = useSnapshotReassign({
     targets: snapshotTargets,
     selectedFormId: selectedVariant?.formId,
@@ -433,12 +445,16 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         loading={loading}
         error={error}
         onReassignSnapshots={reassign}
+        exportCount={exportRows.length}
+        exportFilters={exportFilters}
         onExportCsv={() =>
           form &&
           exportResponsesCsv({
-            responses: scopedResponses,
+            responses: exportRows,
             orderedFieldIds,
             fieldLabels,
+            schema: form.schema,
+            formId: form.id,
             variantName: variantOptions && getResponseVariantName,
             exportFileBase,
           })
@@ -448,10 +464,11 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
           exportResponsesHtml({
             title,
             form,
-            responses,
+            responses: exportRows,
             withdrawnUserMap,
             sidsToUserMap,
             variantOptions,
+            filters: exportFilters,
             exportFileBase,
           })
         }

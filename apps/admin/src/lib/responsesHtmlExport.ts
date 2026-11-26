@@ -28,6 +28,8 @@ export type BuildResponsesHtmlParams = {
   withdrawnUserMap: Map<number, ActionWithdrawalDto>;
   sidsToUserMap: Record<string, ProfileDto>;
   variantOptions?: ExportVariant[];
+  /** What narrowed the exported responses, in words; empty when none did. */
+  filters?: string[];
   exportedAt: string;
   csvFileName: string;
 };
@@ -66,7 +68,6 @@ const groupSnapshots = (params: {
   }
   const ordered = [...groups.values()];
   for (const group of ordered) {
-    group.responses.sort((a, b) => submittedAt(a) - submittedAt(b));
     group.firstAt = Math.min(...group.responses.map(submittedAt));
   }
   ordered.sort((a, b) => a.firstAt - b.firstAt);
@@ -123,11 +124,14 @@ export function buildResponsesHtml(params: BuildResponsesHtmlParams): string {
     withdrawnUserMap,
     sidsToUserMap,
     variantOptions,
+    filters = [],
     exportedAt,
     csvFileName,
   } = params;
 
-  const sorted = [...responses].sort((a, b) => submittedAt(a) - submittedAt(b));
+  const times = responses.map(submittedAt);
+  const first = responses[times.indexOf(Math.min(...times))];
+  const last = responses[times.indexOf(Math.max(...times))];
 
   const renderGroups = (groups: SnapshotGroup[]): string =>
     groups
@@ -141,7 +145,7 @@ export function buildResponsesHtml(params: BuildResponsesHtmlParams): string {
 
   if (variantOptions && variantOptions.length > 0) {
     const byFormId = new Map<number, FormResponseDto[]>();
-    for (const response of sorted) {
+    for (const response of responses) {
       const bucket = byFormId.get(response.formId);
       if (bucket) bucket.push(response);
       else byFormId.set(response.formId, [response]);
@@ -160,7 +164,9 @@ export function buildResponsesHtml(params: BuildResponsesHtmlParams): string {
           currentSchema: form.schema,
           currentSnapshotId: formId === form.id ? form.formSnapshotId : null,
         });
-        snapshotCount += groups.length;
+        snapshotCount += groups.filter(
+          (group) => group.responses.length > 0,
+        ).length;
         return tag(
           "variant",
           [
@@ -173,11 +179,11 @@ export function buildResponsesHtml(params: BuildResponsesHtmlParams): string {
       .join("");
   } else {
     const groups = groupSnapshots({
-      responses: sorted,
+      responses,
       currentSchema: form.schema,
       currentSnapshotId: form.formSnapshotId,
     });
-    snapshotCount = groups.length;
+    snapshotCount = groups.filter((group) => group.responses.length > 0).length;
     bodyContent = renderGroups(groups);
   }
 
@@ -185,14 +191,19 @@ export function buildResponsesHtml(params: BuildResponsesHtmlParams): string {
     "export-meta",
     [],
     tag("exported-at", [], escapeXml(exportedAt)) +
-      tag("response-count", [], String(sorted.length)) +
+      tag("response-count", [], String(responses.length)) +
       tag("snapshot-count", [], String(snapshotCount)) +
-      tag("first-response-at", [], escapeXml(sorted[0]?.createdAt ?? "")) +
-      tag(
-        "last-response-at",
-        [],
-        escapeXml(sorted[sorted.length - 1]?.createdAt ?? ""),
-      ),
+      tag("first-response-at", [], escapeXml(first?.createdAt ?? "")) +
+      tag("last-response-at", [], escapeXml(last?.createdAt ?? "")) +
+      (filters.length > 0
+        ? tag(
+            "filters",
+            [],
+            filters
+              .map((filter) => tag("filter", [], escapeXml(filter)))
+              .join(""),
+          )
+        : ""),
   );
 
   const root = tag(

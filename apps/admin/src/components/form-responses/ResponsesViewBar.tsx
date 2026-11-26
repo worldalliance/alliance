@@ -59,6 +59,10 @@ type ResponsesViewBarProps = {
   onRefresh: () => void;
   /** Offers "Reassign snapshots" when present. */
   onReassignSnapshots?: () => void;
+  /** How many responses the table shows: what both exports hold. */
+  exportCount: number;
+  /** The variant, search and version filters narrowing `exportCount`, in words. */
+  exportFilters: string[];
   onExportCsv: () => void;
   onExportHtml: () => void;
 };
@@ -80,6 +84,8 @@ const ResponsesViewBar: React.FC<ResponsesViewBarProps> = ({
   onVariantChange,
   onRefresh,
   onReassignSnapshots,
+  exportCount,
+  exportFilters,
   onExportCsv,
   onExportHtml,
 }) => {
@@ -95,7 +101,9 @@ const ResponsesViewBar: React.FC<ResponsesViewBarProps> = ({
       ),
     [responses],
   );
-  const variantPicked = selectedVariantKey !== "";
+  const exportScope = [countOf(exportCount, "response"), ...exportFilters].join(
+    " · ",
+  );
 
   return (
     <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-page py-bar">
@@ -145,25 +153,25 @@ const ResponsesViewBar: React.FC<ResponsesViewBarProps> = ({
             <ChevronDown aria-hidden="true" className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-56">
-            <DropdownMenuItem disabled={total === 0} onClick={onExportCsv}>
+            <DropdownMenuItem
+              disabled={exportCount === 0}
+              onClick={onExportCsv}
+            >
               <span className="flex flex-col">
                 Export CSV
-                <span className="text-caption text-fg-muted">
-                  {variantPicked ? "The variant picked" : "Every response"}
+                <span className="max-w-72 text-caption wrap-break-word text-fg-muted">
+                  {exportScope}
                 </span>
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={responses.length === 0}
+              disabled={exportCount === 0}
               onClick={onExportHtml}
             >
               <span className="flex flex-col">
                 Export HTML
-                <span className="text-caption text-fg-muted">
-                  Every response
-                  {variantOptions && variantOptions.length > 0
-                    ? ", by variant"
-                    : ""}
+                <span className="max-w-72 text-caption wrap-break-word text-fg-muted">
+                  {exportScope}
                 </span>
               </span>
             </DropdownMenuItem>
