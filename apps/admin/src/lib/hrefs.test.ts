@@ -18,6 +18,7 @@ import {
   threadHref,
   videoHref,
 } from "./hrefs";
+import { ActionEditorSection } from "./staffTestingGate";
 
 describe("hrefs", () => {
   it("builds each record's path from its id", () => {
@@ -64,8 +65,8 @@ describe("hrefs", () => {
   it("builds a task under its project, at a section when one is named", () => {
     const task = { projectId: 3, actionId: 7 };
     expect(projectTaskHref(task)).toBe("/tasks/projects/3/tasks/7");
-    expect(projectTaskHref({ ...task, hash: "release" })).toBe(
-      "/tasks/projects/3/tasks/7#release",
-    );
+    expect(
+      projectTaskHref({ ...task, hash: ActionEditorSection.Release }),
+    ).toBe("/tasks/projects/3/tasks/7#release");
   });
 });

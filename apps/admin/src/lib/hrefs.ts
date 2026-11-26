@@ -6,6 +6,7 @@ import {
   TabParam,
   type TabbedRecordId,
 } from "../places";
+import { ActionEditorSection } from "./staffTestingGate";
 
 /** The record's first tab is its bare URL, as `tabHref` does for a place. */
 const withTab = <R extends TabbedRecordId>(
@@ -83,8 +84,7 @@ export const projectTaskHref = ({
 }: {
   projectId: number;
   actionId: number;
-  /** A section of the page, without the "#". */
-  hash?: string;
+  hash?: ActionEditorSection;
 }) =>
   href("/tasks/projects/:projectId/tasks/:actionId", {
     projectId: projectId.toString(),
