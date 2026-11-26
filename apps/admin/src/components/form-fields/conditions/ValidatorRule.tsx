@@ -1,9 +1,10 @@
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import { Select } from "../../../ui/Select";
+import { Field } from "../../../ui/templates/Form";
 import { CustomValidatorSelect } from "../CustomValidatorSelect";
 import { useCustomValidatorDrafts } from "../customValidatorDrafts";
 import { useValidatorConfig } from "../useValidatorConfig";
-import { RetryButton } from "./RetryButton";
-import { INPUT_CLASS } from "./styles";
+import { LoadFailure } from "./RetryButton";
 
 type ValidatorCondition = Extract<Condition, { kind: "validator" }>;
 
@@ -21,7 +22,7 @@ export function ValidatorRule({
   const { config, isDraft, saved } = useValidatorConfig(validatorId);
 
   return (
-    <div className="space-y-2">
+    <>
       {config || isDraft ? (
         <CustomValidatorSelect
           type={config?.type}
@@ -36,32 +37,32 @@ export function ValidatorRule({
             onChange({ ...condition, validatorId: draftId });
           }}
           filter={(validator) => validator.usableForVisibility}
-          label="Visibility validator"
+          label="Validator"
         />
       ) : saved.isError ? (
-        <div className="flex items-center gap-2">
-          <p className="text-[11px] text-red-600">
-            Could not load validator {validatorId}.
-          </p>
-          <RetryButton onClick={() => void saved.refetch()} />
-        </div>
+        <LoadFailure onRetry={() => void saved.refetch()}>
+          Couldn't load validator {validatorId}.
+        </LoadFailure>
       ) : (
-        <p className="text-[11px] text-gray-400">Loading validator details…</p>
+        <p className="text-caption text-fg-muted">Loading validator details…</p>
       )}
-      <select
-        aria-label="Validator result"
-        className={INPUT_CLASS}
-        value={String(condition.resultEquals ?? true)}
-        onChange={(event) =>
-          onChange({
-            ...condition,
-            resultEquals: event.target.value === "true",
-          })
-        }
-      >
-        <option value="true">passes</option>
-        <option value="false">fails</option>
-      </select>
-    </div>
+      <Field label="Result">
+        {(control) => (
+          <Select
+            {...control}
+            value={String(condition.resultEquals ?? true)}
+            onChange={(event) =>
+              onChange({
+                ...condition,
+                resultEquals: event.target.value === "true",
+              })
+            }
+          >
+            <option value="true">passes</option>
+            <option value="false">fails</option>
+          </Select>
+        )}
+      </Field>
+    </>
   );
 }

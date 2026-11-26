@@ -1,4 +1,6 @@
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import Badge, { BadgeTone } from "../../../ui/Badge";
+import Button, { ButtonVariant } from "../../../ui/Button";
 import { invertCondition } from "./conditionFormula";
 import {
   CompletedActionsRule,
@@ -43,7 +45,7 @@ function ruleTitle(condition: Condition): string {
     case "firstContractSigned":
       return "First contract signed";
     case "completedActionCount":
-      return "Completed actions";
+      return "Completed tasks";
     default:
       throw new Error(
         `unknown condition: ${JSON.stringify(condition satisfies never)}`,
@@ -129,7 +131,7 @@ export function ConditionRule({
   name: string;
   condition: Condition;
   negated: boolean;
-  /** Advanced mode, where the expression refers to rules by name. */
+  /** Expression mode, where the expression refers to rules by name. */
   showName: boolean;
   unreferenced: boolean;
   allowNegation: boolean;
@@ -140,30 +142,25 @@ export function ConditionRule({
   return (
     <li
       aria-label={`Rule ${name}`}
-      className="space-y-2 rounded border border-gray-200 bg-white p-3"
+      className="flex flex-col gap-3 rounded-md border border-line p-3"
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-gray-700">
+      <div className="flex min-h-control-sm items-center gap-2">
+        <span className="min-w-0 truncate font-medium">
           {ruleTitle(condition)}
-          {showName && (
-            <code className="ml-2 rounded bg-gray-100 px-1 font-normal text-gray-600">
-              {name}
-            </code>
-          )}
         </span>
-        <button
-          type="button"
-          className="text-[11px] text-gray-500 hover:text-red-500"
+        {showName && (
+          <code className="font-mono text-caption text-fg-muted">{name}</code>
+        )}
+        {unreferenced && <Badge tone={BadgeTone.Warning}>Not used</Badge>}
+        <Button
+          variant={ButtonVariant.Ghost}
+          size="small"
+          className="ml-auto"
           onClick={onRemove}
         >
           Remove rule
-        </button>
+        </Button>
       </div>
-      {unreferenced && (
-        <p className="text-[11px] text-amber-600">
-          The expression doesn&apos;t use {name} yet.
-        </p>
-      )}
       <RuleBody
         condition={condition}
         negated={negated}

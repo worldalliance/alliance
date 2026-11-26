@@ -7,6 +7,8 @@ import {
   useFormQuestionFieldsPeek,
 } from "@alliance/shared/lib/useFormSchema";
 import { describeCondition } from "../../../lib/visibilitySummary";
+import { Select } from "../../../ui/Select";
+import { Field } from "../../../ui/templates/Form";
 import {
   formFieldsErrorReason,
   FormPickerError,
@@ -25,8 +27,7 @@ import {
   type RuleCondition,
 } from "./fieldConditions";
 import { FieldRuleValue } from "./FieldRuleValue";
-import { RetryButton } from "./RetryButton";
-import { INPUT_CLASS } from "./styles";
+import { LoadFailure } from "./RetryButton";
 
 /** A new rule on another form: its first question if already cached, else a
  * blank one the admin picks once the questions load. */
@@ -50,32 +51,31 @@ function SourceFormSelect({
   const { options, isLoading, isError, refetch } = useFormOptions();
   const listed = options.some((form) => form.id === formId);
   return (
-    <div className="space-y-1">
-      <select
-        aria-label="Source form"
-        className={INPUT_CLASS}
-        value={formId}
-        onChange={(event) => onChange(Number(event.target.value))}
-      >
-        {!listed && (
-          <option value={formId}>
-            {isLoading ? `Loading forms… (#${formId})` : `Form #${formId}`}
-          </option>
+    <div className="flex flex-col gap-1.5">
+      <Field label="Form">
+        {(control) => (
+          <Select
+            {...control}
+            value={formId}
+            onChange={(event) => onChange(Number(event.target.value))}
+          >
+            {!listed && (
+              <option value={formId}>
+                {isLoading ? `Loading forms… (#${formId})` : `Form #${formId}`}
+              </option>
+            )}
+            {options.map((form) => (
+              <option key={form.id} value={form.id}>
+                {form.title} ({form.displaySlug})
+              </option>
+            ))}
+          </Select>
         )}
-        {options.map((form) => (
-          <option key={form.id} value={form.id}>
-            {form.title} ({form.displaySlug})
-          </option>
-        ))}
-      </select>
+      </Field>
       {isError && (
-        <div className="flex items-center gap-2">
-          <FormPickerError
-            reason={FormPickerErrorReason.FormList}
-            className="text-[11px]"
-          />
-          <RetryButton onClick={refetch} />
-        </div>
+        <LoadFailure onRetry={refetch}>
+          <FormPickerError reason={FormPickerErrorReason.FormList} />
+        </LoadFailure>
       )}
     </div>
   );
@@ -141,8 +141,35 @@ export function FieldRule({
     </option>
   );
 
+  const questionNote = (() => {
+    if (
+      !controller &&
+      condition.when !== "" &&
+      externalStatus === FormFieldsStatus.Ready
+    ) {
+      return (
+        <p className="text-caption text-danger">
+          {sourceFormId === undefined
+            ? "This question isn't available to this rule: it was deleted, or it's on a later page."
+            : "That form has no question with this id that a rule can use."}{" "}
+          The rule still checks: {negated ? "NOT " : ""}
+          {describeCondition(condition, () => undefined)}.
+        </p>
+      );
+    }
+    if (isLater) {
+      return (
+        <p className="text-caption text-warning">
+          This question comes later in the form, so this element can appear or
+          disappear above where the member is answering.
+        </p>
+      );
+    }
+    return null;
+  })();
+
   return (
-    <div className="space-y-2">
+    <>
       {sourceFormId !== undefined && (
         <SourceFormSelect
           formId={sourceFormId}
@@ -154,85 +181,76 @@ export function FieldRule({
           }
         />
       )}
-      <select
-        aria-label="Question"
-        className={INPUT_CLASS}
-        value={condition.when}
-        disabled={externalStatus !== FormFieldsStatus.Ready}
-        onChange={(event) => chooseQuestion(event.target.value)}
-      >
-        {!controller && (
-          <option value={condition.when}>
-            {externalStatus === FormFieldsStatus.Pending
-              ? "Loading questions…"
-              : condition.when === ""
-                ? "Choose a question"
-                : `Unavailable question (${condition.when})`}
-          </option>
+      <div className="flex flex-col gap-1.5">
+        <Field label="Question">
+          {(control) => (
+            <Select
+              {...control}
+              value={condition.when}
+              disabled={externalStatus !== FormFieldsStatus.Ready}
+              onChange={(event) => chooseQuestion(event.target.value)}
+            >
+              {!controller && (
+                <option value={condition.when}>
+                  {externalStatus === FormFieldsStatus.Pending
+                    ? "Loading questions…"
+                    : condition.when === ""
+                      ? "Choose a question"
+                      : `Unavailable question (${condition.when})`}
+                </option>
+              )}
+              {sourceFormId === undefined ? (
+                <>
+                  {earlierControllers.map(questionOption)}
+                  {laterControllers.length > 0 && (
+                    <optgroup label="Later in form">
+                      {laterControllers.map(questionOption)}
+                    </optgroup>
+                  )}
+                </>
+              ) : (
+                externalControllers.map(questionOption)
+              )}
+            </Select>
+          )}
+        </Field>
+        {externalError && sourceFormId !== undefined && (
+          <LoadFailure onRetry={external.refetch}>
+            <FormPickerError reason={externalError} />
+          </LoadFailure>
         )}
-        {sourceFormId === undefined ? (
-          <>
-            {earlierControllers.map(questionOption)}
-            {laterControllers.length > 0 && (
-              <optgroup label="Later in form">
-                {laterControllers.map(questionOption)}
-              </optgroup>
-            )}
-          </>
-        ) : (
-          externalControllers.map(questionOption)
-        )}
-      </select>
-      {externalError && sourceFormId !== undefined && (
-        <div className="flex items-center gap-2">
-          <FormPickerError reason={externalError} className="text-[11px]" />
-          <RetryButton onClick={external.refetch} />
-        </div>
-      )}
-      {!controller &&
-        condition.when !== "" &&
-        externalStatus === FormFieldsStatus.Ready && (
-          <p className="text-[11px] text-red-600">
-            {sourceFormId === undefined
-              ? "This question isn't available to this rule: it was deleted, or it's on a later page."
-              : "That form has no question with this id that a rule can use."}{" "}
-            The rule still checks: {negated ? "NOT " : ""}
-            {describeCondition(condition, () => undefined)}.
-          </p>
-        )}
-      {isLater && (
-        <p className="text-[11px] text-amber-600">
-          This field comes later in the form, so this element can appear or
-          disappear above where the member is answering.
-        </p>
-      )}
+        {questionNote}
+      </div>
       {controller && current && (
         <>
-          <select
-            aria-label="Comparison"
-            className={INPUT_CLASS}
-            value={current}
-            onChange={(event) => {
-              const comparison = comparisons.find(
-                (c) => c === event.target.value,
-              );
-              if (!comparison) return;
-              onChange(
-                applyFieldComparison({
-                  comparison,
-                  controller,
-                  sourceFormId,
-                  previous: condition,
-                }),
-              );
-            }}
-          >
-            {comparisons.map((comparison) => (
-              <option key={comparison} value={comparison}>
-                {FIELD_COMPARISON_LABELS[comparison]}
-              </option>
-            ))}
-          </select>
+          <Field label="Comparison">
+            {(control) => (
+              <Select
+                {...control}
+                value={current}
+                onChange={(event) => {
+                  const comparison = comparisons.find(
+                    (c) => c === event.target.value,
+                  );
+                  if (!comparison) return;
+                  onChange(
+                    applyFieldComparison({
+                      comparison,
+                      controller,
+                      sourceFormId,
+                      previous: condition,
+                    }),
+                  );
+                }}
+              >
+                {comparisons.map((comparison) => (
+                  <option key={comparison} value={comparison}>
+                    {FIELD_COMPARISON_LABELS[comparison]}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
           <FieldRuleValue
             comparison={current}
             controller={controller}
@@ -241,6 +259,6 @@ export function FieldRule({
           />
         </>
       )}
-    </div>
+    </>
   );
 }

@@ -64,17 +64,6 @@ src/components/VariableInputPickers.tsx
 src/components/VariableInputRow.tsx
 src/components/VariableSamples.tsx
 src/components/VisibilityProfilePicker.tsx
-src/components/form-fields/conditions/AddRuleMenu.tsx
-src/components/form-fields/conditions/ConditionRule.tsx
-src/components/form-fields/conditions/ConditionalVisibility.tsx
-src/components/form-fields/conditions/ContextRules.tsx
-src/components/form-fields/conditions/ExpressionEditor.tsx
-src/components/form-fields/conditions/FieldRule.tsx
-src/components/form-fields/conditions/FieldRuleValue.tsx
-src/components/form-fields/conditions/RetryButton.tsx
-src/components/form-fields/conditions/ValidatorRule.tsx
-src/components/form-fields/conditions/VisibilityConditions.tsx
-src/components/form-fields/conditions/styles.ts
 src/components/output-builder/EditableOutputFieldBlock.tsx
 src/components/output-builder/OutputBlockList.tsx
 src/components/output-builder/OutputPreview.tsx

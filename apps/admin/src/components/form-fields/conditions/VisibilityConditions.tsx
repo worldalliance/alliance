@@ -1,4 +1,6 @@
 import { useState, type ComponentProps } from "react";
+import { ExpandableEditor } from "../../../pages/forms/builder/kit/ExpandableEditor";
+import Button, { ButtonVariant } from "../../../ui/Button";
 import {
   SharedVisibilityNotice,
   useVisibilityGroupMember,
@@ -19,23 +21,31 @@ export function VisibilityConditions(
   const [clears, setClears] = useState(0);
   const conditional = field.visibleIfFormula !== undefined || expression.typed;
 
+  const removeAll = () => {
+    onChange({ visibleIfFormula: undefined });
+    expression.clear();
+    setClears((count) => count + 1);
+  };
+
   return (
-    <div className="space-y-3">
-      <ConditionalVisibility key={clears} {...props} />
-      {conditional && (
-        <button
-          type="button"
-          onClick={() => {
-            onChange({ visibleIfFormula: undefined });
-            expression.clear();
-            setClears((count) => count + 1);
-          }}
-          className="text-xs text-red-600 hover:text-red-700"
-        >
-          Remove all conditions
-        </button>
+    <ExpandableEditor
+      title="Edit conditions"
+      render={() => (
+        <div className="flex flex-col gap-4">
+          <ConditionalVisibility key={clears} {...props} />
+          {conditional && (
+            <Button
+              variant={ButtonVariant.Ghost}
+              size="small"
+              className="text-danger"
+              onClick={removeAll}
+            >
+              Remove all conditions
+            </Button>
+          )}
+        </div>
       )}
-    </div>
+    />
   );
 }
 

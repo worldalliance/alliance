@@ -9,8 +9,11 @@ import {
   formulaConditionNames,
   serializeVisibilityFormula,
 } from "@alliance/shared/forms/visibilityFormula";
-import { cn } from "@alliance/shared/styles/util";
 import { useMemo, useState } from "react";
+import { ItemList } from "../../../pages/forms/builder/kit/ItemList";
+import Button, { ButtonVariant } from "../../../ui/Button";
+import { Select } from "../../../ui/Select";
+import { Field } from "../../../ui/templates/Form";
 import { useCustomValidatorDrafts } from "../customValidatorDrafts";
 import { AddRuleMenu } from "./AddRuleMenu";
 import {
@@ -28,10 +31,6 @@ import type { OutputBlockOption } from "./ContextRules";
 import { useExpressionBuffer } from "./expressionBuffers";
 import { ExpressionEditor } from "./ExpressionEditor";
 import { isConditionalController, type RuleCondition } from "./fieldConditions";
-import { INPUT_CLASS } from "./styles";
-
-const BUTTON_CLASS =
-  "rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100";
 
 type ConditionalVisibilityProps = {
   field: { id?: string; visibleIfFormula?: VisibleIfFormula };
@@ -53,22 +52,24 @@ function ReplaceExpression({
   onChoose: (combinator: Combinator) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
-      Replace the expression with:
-      <button
-        type="button"
-        className={BUTTON_CLASS}
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-caption text-fg-muted">
+        Replace the expression with:
+      </span>
+      <Button
+        variant={ButtonVariant.Default}
+        size="small"
         onClick={() => onChoose(Combinator.All)}
       >
         All rules
-      </button>
-      <button
-        type="button"
-        className={BUTTON_CLASS}
+      </Button>
+      <Button
+        variant={ButtonVariant.Default}
+        size="small"
         onClick={() => onChoose(Combinator.Any)}
       >
         Any rule
-      </button>
+      </Button>
     </div>
   );
 }
@@ -212,10 +213,7 @@ export function ConditionalVisibility({
   };
 
   return (
-    <div className="space-y-2 pt-2">
-      <span className="block text-xs font-medium text-gray-700">
-        Conditional visibility
-      </span>
+    <div className="flex flex-col gap-4">
       {advanced ? (
         <ExpressionEditor
           text={expressionText}
@@ -247,35 +245,38 @@ export function ConditionalVisibility({
           }}
         />
       ) : rules.length === 0 ? (
-        <p className="text-[11px] text-gray-500">
+        <p className="text-fg-muted">
           Always shown. Add a rule to show this only when it matches.
         </p>
       ) : (
         rules.length > 1 && (
-          <label className="flex items-center gap-2 whitespace-nowrap text-xs text-gray-700">
-            Show when
-            <select
-              aria-label="Combine rules"
-              className={cn(INPUT_CLASS, "w-auto")}
-              value={combinator}
-              onChange={(event) =>
-                writeSimple(conditions, {
-                  combinator:
-                    event.target.value === Combinator.Any
-                      ? Combinator.Any
-                      : Combinator.All,
-                  rules,
-                })
-              }
-            >
-              <option value={Combinator.All}>all of these rules match</option>
-              <option value={Combinator.Any}>any of these rules match</option>
-            </select>
-          </label>
+          <Field label="Show when">
+            {(control) => (
+              <Select
+                {...control}
+                value={combinator}
+                onChange={(event) =>
+                  writeSimple(conditions, {
+                    combinator:
+                      event.target.value === Combinator.Any
+                        ? Combinator.Any
+                        : Combinator.All,
+                    rules,
+                  })
+                }
+              >
+                <option value={Combinator.All}>all of these rules match</option>
+                <option value={Combinator.Any}>any of these rules match</option>
+              </Select>
+            )}
+          </Field>
         )
       )}
+      {advanced && !canLeaveExpression && (
+        <ReplaceExpression onChoose={replaceExpression} />
+      )}
       {rules.length > 0 && (
-        <ul className="space-y-2">
+        <ItemList label="Rules">
           {rules.map(({ name, negated }) => {
             const condition = conditions[name];
             if (!condition) return null;
@@ -294,35 +295,32 @@ export function ConditionalVisibility({
               />
             );
           })}
-        </ul>
+        </ItemList>
       )}
       <div className="flex flex-wrap items-center gap-2">
         <AddRuleMenu sources={sources} onAdd={addRule} />
         {!advanced && (
-          <button
-            type="button"
-            className={BUTTON_CLASS}
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
             onClick={() => setExpressionRequested(true)}
           >
             Edit as expression
-          </button>
+          </Button>
         )}
         {canLeaveExpression && (
-          <button
-            type="button"
-            className={BUTTON_CLASS}
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
             onClick={() => {
               setExpressionRequested(false);
               setBuffer(null);
             }}
           >
             Use all/any rules
-          </button>
+          </Button>
         )}
       </div>
-      {advanced && !canLeaveExpression && (
-        <ReplaceExpression onChoose={replaceExpression} />
-      )}
     </div>
   );
 }

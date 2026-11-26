@@ -6,7 +6,10 @@ import { useFormQuestionFieldsPeek } from "@alliance/shared/lib/useFormSchema";
 import { Menu } from "@base-ui/react/menu";
 import { Plus } from "lucide-react";
 import { useCustomValidatorTypesAdmin } from "../../../lib/useCustomValidatorTypesAdmin";
+import { ButtonVariant, buttonVariants } from "../../../ui/Button";
+import { cn } from "../../../ui/cn";
 import {
+  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "../../../ui/DropdownMenu";
@@ -14,7 +17,7 @@ import { useCustomValidatorDrafts } from "../customValidatorDrafts";
 import type { RuleSources } from "./ConditionRule";
 import { defaultFieldRule } from "./fieldConditions";
 import { crossFormRule } from "./FieldRule";
-import { RetryButton } from "./RetryButton";
+import { LoadFailure } from "./RetryButton";
 
 type MenuItem = {
   label: string;
@@ -59,7 +62,7 @@ export function AddRuleMenu({
       create: firstController
         ? () => defaultFieldRule(firstController, undefined)
         : null,
-      unavailable: "no questions to check",
+      unavailable: "There are no questions to check.",
     },
     {
       label: "Answer on another form",
@@ -67,10 +70,10 @@ export function AddRuleMenu({
         ? () => crossFormRule(firstForm.id, peekFormFields(firstForm.id))
         : null,
       unavailable: formsLoading
-        ? "loading forms…"
+        ? "Loading forms…"
         : formsFailed
-          ? "could not load forms"
-          : "no forms",
+          ? "Couldn't load forms."
+          : "There are no forms.",
     },
     {
       label: "Validator",
@@ -89,8 +92,8 @@ export function AddRuleMenu({
           }
         : null,
       unavailable: validatorsLoading
-        ? "loading validators…"
-        : (validatorsError ?? "none available"),
+        ? "Loading validators…"
+        : (validatorsError ?? "No validator can be used for visibility."),
     },
     {
       label: "Device",
@@ -118,7 +121,7 @@ export function AddRuleMenu({
             }),
           },
           {
-            label: "Completed actions",
+            label: "Completed tasks",
             create: (): Condition => ({
               kind: "completedActionCount",
               atLeast: 1,
@@ -135,39 +138,53 @@ export function AddRuleMenu({
                   isVisible: true,
                 })
               : null,
-            unavailable: "no other blocks",
+            unavailable: "There are no other blocks.",
           },
         ]),
   ];
 
   return (
     <>
-      <Menu.Root>
-        <Menu.Trigger className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
-          <Plus size={12} aria-hidden />
+      <DropdownMenu>
+        <Menu.Trigger
+          className={cn(
+            "inline-flex",
+            buttonVariants({ variant: ButtonVariant.Default, size: "small" }),
+          )}
+        >
+          <Plus aria-hidden="true" className="size-4" />
           Add rule
         </Menu.Trigger>
-        <DropdownMenuContent className="min-w-48">
+        <DropdownMenuContent className="min-w-56">
           {items.map(({ label, create, unavailable }) => (
             <DropdownMenuItem
               key={label}
-              className="text-xs"
+              label={label}
               disabled={create === null}
               onClick={() => create && onAdd(create())}
+              className={cn(
+                create === null &&
+                  "flex-col items-start data-disabled:opacity-100",
+              )}
             >
-              {label}
-              {create === null && unavailable && (
-                <span className="text-gray-400">({unavailable})</span>
+              {create === null ? (
+                <>
+                  <span className="opacity-50">{label}</span>
+                  {unavailable && (
+                    <span className="text-caption text-fg-muted">
+                      {unavailable}
+                    </span>
+                  )}
+                </>
+              ) : (
+                label
               )}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
-      </Menu.Root>
+      </DropdownMenu>
       {formsFailed && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-red-600">
-          Could not load forms
-          <RetryButton onClick={refetchForms} />
-        </span>
+        <LoadFailure onRetry={refetchForms}>Couldn't load forms.</LoadFailure>
       )}
     </>
   );

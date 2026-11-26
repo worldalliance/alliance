@@ -5,7 +5,7 @@ import type {
   RangeField,
 } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { addRule, latest, renderEditor } from "./conditionEditorTesting";
 
 serveApi(
@@ -101,12 +101,8 @@ describe("literal values", () => {
     renderEditor({ previous: [score] });
     await addRule("Answer on this form");
     expect(latest()?.conditions.condition1).toMatchObject({ equals: 1 });
-    const options = screen
+    const options = within(screen.getByRole("combobox", { name: "Value" }))
       .getAllByRole<HTMLOptionElement>("option")
-      .filter(
-        (option) =>
-          option.parentElement?.getAttribute("aria-label") === "Value",
-      )
       .map((option) => option.value);
     expect(options).toEqual(["1", "2", "3"]);
 

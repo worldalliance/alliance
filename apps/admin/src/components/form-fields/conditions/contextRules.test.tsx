@@ -29,7 +29,7 @@ it("saves a picked contract date as the matching instant", () => {
     comparison: "before",
     date: "2026-01-01T00:00:00.000Z",
   });
-  fireEvent.change(rule("c1").getByLabelText("Date"), {
+  fireEvent.change(rule("c1").getByLabelText(/^Date \(/), {
     target: { value: "2026-03-01T09:30" },
   });
   fireEvent.change(rule("c1").getByRole("combobox", { name: "Signed" }), {
@@ -45,7 +45,7 @@ it("saves a picked contract date as the matching instant", () => {
 it("saves a completed-action count, ignoring an invalid entry", () => {
   editing({ kind: "completedActionCount", atLeast: 1 });
   const input = rule("c1").getByRole("spinbutton", {
-    name: "Completed actions",
+    name: "Completed tasks, at least",
   });
   fireEvent.change(input, { target: { value: "-2" } });
   expect(latest()?.conditions.c1).toEqual({
@@ -68,12 +68,9 @@ it("switches which user property a rule checks", () => {
   const other = Object.values(UserValueProperty).find(
     (property) => property !== UserValueProperty.City,
   );
-  fireEvent.change(
-    rule("c1").getByRole("combobox", { name: "User property" }),
-    {
-      target: { value: other },
-    },
-  );
+  fireEvent.change(rule("c1").getByRole("combobox", { name: "Property" }), {
+    target: { value: other },
+  });
   expect(latest()?.conditions.c1).toEqual({
     kind: "userPropertyHasValue",
     property: other,

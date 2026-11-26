@@ -45,7 +45,7 @@ describe("answer rules", () => {
   it("types the value a rule on a formula select matches", async () => {
     renderEditor({ previous: [formulaSelect] });
     await addRule("Answer on this form");
-    expect(screen.getByText("Type the value to match.")).toBeTruthy();
+    expect(screen.getByText("Type the value to match")).toBeTruthy();
 
     fireEvent.change(screen.getByRole("textbox", { name: "Value" }), {
       target: { value: "red" },
@@ -130,9 +130,9 @@ describe("answer rules", () => {
         Response.json({ message: "Form not found" }, { status: 404 }),
     });
     renderEditor();
-    fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
     await waitFor(() =>
-      expect(screen.queryByText("Could not load forms")).toBeNull(),
+      expect(screen.queryByText("Couldn't load forms.")).toBeNull(),
     );
     await addRule("Answer on another form");
     expect(latest()?.conditions.condition1).toMatchObject({ sourceFormId: 9 });
@@ -208,7 +208,9 @@ describe("answer rules", () => {
     const remote: Condition = { ...isRed, sourceFormId: 9 };
     renderEditor({ initial: { conditions: { c1: remote }, formula: "c1" } });
 
-    fireEvent.click(await rule("c1").findByRole("button", { name: "Retry" }));
+    fireEvent.click(
+      await rule("c1").findByRole("button", { name: "Try again" }),
+    );
     expect(await rule("c1").findByDisplayValue("Red")).toBeTruthy();
     expect(latest()?.conditions.c1).toEqual(remote);
     expect(rule("c1").getByText("Answer on another form")).toBeTruthy();
@@ -242,7 +244,7 @@ it("starts a cross-form rule over afresh when its source form changes", async ()
   });
   await rule("c1").findByRole("option", { name: "Follow-up (follow-up::v1)" });
 
-  fireEvent.change(rule("c1").getByRole("combobox", { name: "Source form" }), {
+  fireEvent.change(rule("c1").getByRole("combobox", { name: "Form" }), {
     target: { value: "12" },
   });
   expect(latest()?.conditions.c1).toEqual({
@@ -302,16 +304,17 @@ describe("other rules", () => {
     expect(screen.getByRole("textbox", { name: "Expression" })).toBeTruthy();
     expect(rule("v").getByDisplayValue("passes")).toBeTruthy();
 
-    fireEvent.click(await rule("v").findByRole("button", { name: "Retry" }));
+    fireEvent.click(
+      await rule("v").findByRole("button", { name: "Try again" }),
+    );
     await waitFor(() =>
-      expect(rule("v").queryByText("Could not load validator 4.")).toBeNull(),
+      expect(rule("v").queryByText("Couldn't load validator 4.")).toBeNull(),
     );
     expect(rule("v").queryByText("Loading validator details…")).toBeNull();
 
-    fireEvent.change(
-      rule("v").getByRole("combobox", { name: "Validator result" }),
-      { target: { value: "false" } },
-    );
+    fireEvent.change(rule("v").getByRole("combobox", { name: "Result" }), {
+      target: { value: "false" },
+    });
     expect(latest()).toEqual({
       conditions: {
         v: { kind: "validator", validatorId: 4, resultEquals: false },

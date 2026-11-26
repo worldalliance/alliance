@@ -1,12 +1,14 @@
 import { getRangeValues } from "@alliance/common/forms/range";
 import { useState } from "react";
+import { Input } from "../../../ui/Input";
+import { Select } from "../../../ui/Select";
+import { Field } from "../../../ui/templates/Form";
 import { SelectedCountConditionValue } from "./SelectedCountConditionValue";
 import {
   FieldComparison,
   type ControllerField,
   type FieldCondition,
 } from "./fieldConditions";
-import { INPUT_CLASS } from "./styles";
 
 type Literal = string | number | boolean | null;
 
@@ -21,23 +23,26 @@ function OptionValue({
 }) {
   const known = options.some((option) => option.value === value);
   return (
-    <select
-      aria-label="Value"
-      className={INPUT_CLASS}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {!known && (
-        <option value={value}>
-          {value === "" ? "Choose an option" : `Missing option (${value})`}
-        </option>
+    <Field label="Value">
+      {(control) => (
+        <Select
+          {...control}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          {!known && (
+            <option value={value}>
+              {value === "" ? "Choose an option" : `Missing option (${value})`}
+            </option>
+          )}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
       )}
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    </Field>
   );
 }
 
@@ -51,29 +56,24 @@ function TypedValue({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="space-y-1">
-      <input
-        type="text"
-        aria-label="Value"
-        placeholder={formulaChoices ? "Choice value" : "Answer"}
-        className={INPUT_CLASS}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <p
-        className={
-          value === ""
-            ? "text-[11px] text-red-600"
-            : "text-[11px] text-gray-500"
-        }
-      >
-        {value === ""
-          ? "Type the value to match."
-          : formulaChoices
-            ? "This question's choices come from a formula, so its value is typed."
-            : "Matches this exact answer."}
-      </p>
-    </div>
+    <Field
+      label="Value"
+      help={
+        formulaChoices
+          ? "This question's choices come from a formula, so its value is typed."
+          : "Matches this exact answer."
+      }
+      error={value === "" ? "Type the value to match" : null}
+    >
+      {(control) => (
+        <Input
+          {...control}
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+    </Field>
   );
 }
 
@@ -93,22 +93,27 @@ function NumberValue({
     setDraft(String(value));
   }
   return (
-    <input
-      type="number"
-      aria-label="Value"
-      className={INPUT_CLASS}
-      step={controller.step !== undefined ? String(controller.step) : "any"}
-      min={controller.min}
-      max={controller.max}
-      value={draft}
-      onChange={(event) => {
-        setDraft(event.target.value);
-        const n =
-          event.target.value.trim() === "" ? NaN : Number(event.target.value);
-        if (Number.isFinite(n)) onChange(n);
-      }}
-      onBlur={() => setDraft(String(value))}
-    />
+    <Field label="Value">
+      {(control) => (
+        <Input
+          {...control}
+          type="number"
+          step={controller.step !== undefined ? String(controller.step) : "any"}
+          min={controller.min}
+          max={controller.max}
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            const n =
+              event.target.value.trim() === ""
+                ? NaN
+                : Number(event.target.value);
+            if (Number.isFinite(n)) onChange(n);
+          }}
+          onBlur={() => setDraft(String(value))}
+        />
+      )}
+    </Field>
   );
 }
 
@@ -122,15 +127,18 @@ function BooleanValue({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <select
-      aria-label="Value"
-      className={INPUT_CLASS}
-      value={String(value)}
-      onChange={(event) => onChange(event.target.value === "true")}
-    >
-      <option value="true">{labels.true}</option>
-      <option value="false">{labels.false}</option>
-    </select>
+    <Field label="Value">
+      {(control) => (
+        <Select
+          {...control}
+          value={String(value)}
+          onChange={(event) => onChange(event.target.value === "true")}
+        >
+          <option value="true">{labels.true}</option>
+          <option value="false">{labels.false}</option>
+        </Select>
+      )}
+    </Field>
   );
 }
 

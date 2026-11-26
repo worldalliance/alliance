@@ -39,9 +39,7 @@ describe("simple rules", () => {
   it("shows a single condition with its option label", () => {
     renderEditor({ initial: { conditions: { c1: isRed }, formula: "c1" } });
     expect(screen.queryByRole("textbox", { name: "Expression" })).toBeNull();
-    expect(
-      screen.queryByRole("combobox", { name: "Combine rules" }),
-    ).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Show when" })).toBeNull();
     expect(rule("c1").getByDisplayValue("Red")).toBeTruthy();
     expect(rule("c1").getByDisplayValue("is")).toBeTruthy();
   });
@@ -50,7 +48,7 @@ describe("simple rules", () => {
     const conditions = { c1: isRed, c2: named };
     renderEditor({ initial: { conditions, formula: formulaOf("c1 AND c2") } });
     const combine = screen.getByRole<HTMLSelectElement>("combobox", {
-      name: "Combine rules",
+      name: "Show when",
     });
     expect(combine.value).toBe("AND");
 
@@ -66,7 +64,7 @@ describe("simple rules", () => {
       },
     });
     expect(
-      screen.getByRole<HTMLSelectElement>("combobox", { name: "Combine rules" })
+      screen.getByRole<HTMLSelectElement>("combobox", { name: "Show when" })
         .value,
     ).toBe("OR");
   });
@@ -147,12 +145,9 @@ describe("negative values", () => {
     });
     expect(rule("c1").getByDisplayValue("is not set")).toBeTruthy();
 
-    fireEvent.change(
-      rule("c1").getByRole("combobox", { name: "Property state" }),
-      {
-        target: { value: "true" },
-      },
-    );
+    fireEvent.change(rule("c1").getByRole("combobox", { name: "State" }), {
+      target: { value: "true" },
+    });
     expect(latest()).toEqual({
       conditions: {
         c1: {
@@ -182,12 +177,9 @@ describe("negative values", () => {
       rule("c1").getByDisplayValue("is hidden in this output view"),
     ).toBeTruthy();
 
-    fireEvent.change(
-      rule("c1").getByRole("combobox", { name: "Output block" }),
-      {
-        target: { value: "b2" },
-      },
-    );
+    fireEvent.change(rule("c1").getByRole("combobox", { name: "Block" }), {
+      target: { value: "b2" },
+    });
     expect(latest()).toEqual({
       conditions: {
         c1: {
@@ -295,11 +287,7 @@ describe("expressions", () => {
       "c2",
       "condition1",
     ]);
-    expect(
-      rule("condition1").getByText(
-        "The expression doesn't use condition1 yet.",
-      ),
-    ).toBeTruthy();
+    expect(rule("condition1").getByText("Not used")).toBeTruthy();
   });
 
   it("returns to rules only through an explicit combinator choice", () => {

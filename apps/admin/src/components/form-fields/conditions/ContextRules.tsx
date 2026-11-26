@@ -7,11 +7,10 @@ import {
   USER_VALUE_PROPERTY_LABELS,
 } from "@alliance/common/forms/user-properties";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
-import {
-  formatLocalDateTime,
-  resolveDateValue,
-} from "../../../ui/DateTimePicker";
-import { INPUT_CLASS } from "./styles";
+import DateTimePicker, { timeZoneLabel } from "../../../ui/DateTimePicker";
+import { Input } from "../../../ui/Input";
+import { Select } from "../../../ui/Select";
+import { CheckboxField, Field, FieldGroup } from "../../../ui/templates/Form";
 
 type ConditionOf<K extends Condition["kind"]> = Extract<Condition, { kind: K }>;
 
@@ -19,8 +18,6 @@ type RuleProps<K extends Condition["kind"]> = {
   condition: ConditionOf<K>;
   onChange: (condition: ConditionOf<K>) => void;
 };
-
-const LABEL_CLASS = "block text-xs text-gray-700 mb-1";
 
 const DEVICE_LABELS: Record<DeviceVisibilityTarget, string> = {
   mobile: "Mobile",
@@ -38,50 +35,45 @@ function SetSelect({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <select
-      aria-label={label}
-      className={INPUT_CLASS}
-      value={String(value)}
-      onChange={(event) => onChange(event.target.value === "true")}
-    >
-      <option value="true">is set</option>
-      <option value="false">is not set</option>
-    </select>
+    <Field label={label}>
+      {(control) => (
+        <Select
+          {...control}
+          value={String(value)}
+          onChange={(event) => onChange(event.target.value === "true")}
+        >
+          <option value="true">is set</option>
+          <option value="false">is not set</option>
+        </Select>
+      )}
+    </Field>
   );
 }
 
 export function DeviceRule({ condition, onChange }: RuleProps<"deviceType">) {
   const selected = new Set(condition.deviceType);
   return (
-    <div className="space-y-1">
-      <span className={LABEL_CLASS}>Show on device types</span>
+    <FieldGroup
+      label="Devices"
+      error={selected.size === 0 ? "Tick at least one device" : null}
+    >
       {DEVICE_VISIBILITY_TARGETS.map((target) => (
-        <label key={target} className="flex items-center text-xs text-gray-700">
-          <input
-            type="checkbox"
-            className="mr-2"
-            checked={selected.has(target)}
-            onChange={(event) => {
-              const next = new Set(selected);
-              if (event.target.checked) next.add(target);
-              else next.delete(target);
-              onChange({
-                ...condition,
-                deviceType: DEVICE_VISIBILITY_TARGETS.filter((t) =>
-                  next.has(t),
-                ),
-              });
-            }}
-          />
-          {DEVICE_LABELS[target]}
-        </label>
+        <CheckboxField
+          key={target}
+          label={DEVICE_LABELS[target]}
+          checked={selected.has(target)}
+          onChange={(event) => {
+            const next = new Set(selected);
+            if (event.target.checked) next.add(target);
+            else next.delete(target);
+            onChange({
+              ...condition,
+              deviceType: DEVICE_VISIBILITY_TARGETS.filter((t) => next.has(t)),
+            });
+          }}
+        />
       ))}
-      {selected.size === 0 && (
-        <p className="text-[11px] text-red-500">
-          Select at least one device type to make this rule effective.
-        </p>
-      )}
-    </div>
+    </FieldGroup>
   );
 }
 
@@ -91,7 +83,7 @@ export function UserHasCityRule({
 }: RuleProps<"userHasCity">) {
   return (
     <SetSelect
-      label="The user's city"
+      label="City"
       value={condition.userHasCity}
       onChange={(userHasCity) => onChange({ ...condition, userHasCity })}
     />
@@ -103,70 +95,78 @@ export function UserPropertyRule({
   onChange,
 }: RuleProps<"userPropertyHasValue">) {
   return (
-    <div className="space-y-2">
-      <select
-        aria-label="User property"
-        className={INPUT_CLASS}
-        value={condition.property}
-        onChange={(event) => {
-          const property = USER_VALUE_PROPERTIES.find(
-            (value) => value === event.target.value,
-          );
-          if (property) onChange({ ...condition, property });
-        }}
-      >
-        {USER_VALUE_PROPERTIES.map((property) => (
-          <option key={property} value={property}>
-            {USER_VALUE_PROPERTY_LABELS[property]}
-          </option>
-        ))}
-      </select>
+    <>
+      <Field label="Property">
+        {(control) => (
+          <Select
+            {...control}
+            value={condition.property}
+            onChange={(event) => {
+              const property = USER_VALUE_PROPERTIES.find(
+                (value) => value === event.target.value,
+              );
+              if (property) onChange({ ...condition, property });
+            }}
+          >
+            {USER_VALUE_PROPERTIES.map((property) => (
+              <option key={property} value={property}>
+                {USER_VALUE_PROPERTY_LABELS[property]}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
       <SetSelect
-        label="Property state"
+        label="State"
         value={condition.hasValue}
         onChange={(hasValue) => onChange({ ...condition, hasValue })}
       />
-    </div>
+    </>
   );
 }
+
+const localZone = () =>
+  timeZoneLabel(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 export function FirstContractSignedRule({
   condition,
   onChange,
 }: RuleProps<"firstContractSigned">) {
   return (
-    <div className="space-y-2">
-      <select
-        aria-label="Signed"
-        className={INPUT_CLASS}
-        value={condition.comparison}
-        onChange={(event) =>
-          onChange({
-            ...condition,
-            comparison:
-              event.target.value === "onOrAfter" ? "onOrAfter" : "before",
-          })
-        }
+    <>
+      <Field label="Signed">
+        {(control) => (
+          <Select
+            {...control}
+            value={condition.comparison}
+            onChange={(event) =>
+              onChange({
+                ...condition,
+                comparison:
+                  event.target.value === "onOrAfter" ? "onOrAfter" : "before",
+              })
+            }
+          >
+            <option value="before">before</option>
+            <option value="onOrAfter">on or after</option>
+          </Select>
+        )}
+      </Field>
+      <Field
+        label={`Date (${localZone()})`}
+        help="Members who have never signed a contract match neither."
       >
-        <option value="before">before</option>
-        <option value="onOrAfter">on or after</option>
-      </select>
-      <input
-        type="datetime-local"
-        aria-label="Date"
-        className={INPUT_CLASS}
-        value={formatLocalDateTime(resolveDateValue(condition.date), "minute")}
-        onChange={(event) => {
-          const parsed = new Date(event.target.value);
-          if (Number.isNaN(parsed.getTime())) return;
-          onChange({ ...condition, date: parsed.toISOString() });
-        }}
-      />
-      <p className="text-[11px] text-gray-400">
-        Shown in your local timezone. Users who have never signed a contract
-        match neither option.
-      </p>
-    </div>
+        {(control) => (
+          <DateTimePicker
+            {...control}
+            value={condition.date}
+            onChange={({ utcValue }) => {
+              if (utcValue !== null) onChange({ ...condition, date: utcValue });
+            }}
+          />
+        )}
+      </Field>
+    </>
   );
 }
 
@@ -175,23 +175,23 @@ export function CompletedActionsRule({
   onChange,
 }: RuleProps<"completedActionCount">) {
   return (
-    <label className="flex items-center gap-2 text-xs text-gray-700">
-      At least
-      <input
-        type="number"
-        min={0}
-        step={1}
-        aria-label="Completed actions"
-        className={INPUT_CLASS}
-        value={condition.atLeast}
-        onChange={(event) => {
-          const parsed = Number.parseInt(event.target.value, 10);
-          if (Number.isNaN(parsed) || parsed < 0) return;
-          onChange({ ...condition, atLeast: parsed });
-        }}
-      />
-      actions
-    </label>
+    <Field label="Completed tasks, at least">
+      {(control) => (
+        <Input
+          {...control}
+          type="number"
+          min={0}
+          step={1}
+          className="w-24"
+          value={condition.atLeast}
+          onChange={(event) => {
+            const parsed = Number.parseInt(event.target.value, 10);
+            if (Number.isNaN(parsed) || parsed < 0) return;
+            onChange({ ...condition, atLeast: parsed });
+          }}
+        />
+      )}
+    </Field>
   );
 }
 
@@ -210,41 +210,54 @@ export function OutputBlockRule({
   const isMissing =
     referencedId.length > 0 && !outputBlocks.some((b) => b.id === referencedId);
   return (
-    <div className="space-y-2">
-      <select
-        aria-label="Output block"
-        className={INPUT_CLASS}
-        value={referencedId}
-        onChange={(event) =>
-          onChange({ ...condition, outputBlockVisible: event.target.value })
+    <>
+      <Field
+        label="Block"
+        error={
+          isMissing
+            ? "That block was deleted. Pick another block or remove this rule"
+            : null
         }
       >
-        {isMissing && (
-          <option value={referencedId}>Missing block ({referencedId})</option>
+        {(control) => (
+          <Select
+            {...control}
+            value={referencedId}
+            onChange={(event) =>
+              onChange({ ...condition, outputBlockVisible: event.target.value })
+            }
+          >
+            {isMissing && (
+              <option value={referencedId}>
+                Missing block ({referencedId})
+              </option>
+            )}
+            {outputBlocks.map((b) => (
+              <option key={b.id} value={b.id} disabled={b.id === selfId}>
+                ({b.id}) {b.label}
+                {b.id === selfId ? " (this block)" : ""}
+              </option>
+            ))}
+          </Select>
         )}
-        {outputBlocks.map((b) => (
-          <option key={b.id} value={b.id} disabled={b.id === selfId}>
-            ({b.id}) {b.label}
-            {b.id === selfId ? " (current block)" : ""}
-          </option>
-        ))}
-      </select>
-      {isMissing && (
-        <p className="text-[11px] text-red-500">
-          Referenced block was deleted. Pick another block or remove this rule.
-        </p>
-      )}
-      <select
-        aria-label="Block visibility"
-        className={INPUT_CLASS}
-        value={String(condition.isVisible ?? true)}
-        onChange={(event) =>
-          onChange({ ...condition, isVisible: event.target.value === "true" })
-        }
-      >
-        <option value="true">is visible in this output view</option>
-        <option value="false">is hidden in this output view</option>
-      </select>
-    </div>
+      </Field>
+      <Field label="Visibility">
+        {(control) => (
+          <Select
+            {...control}
+            value={String(condition.isVisible ?? true)}
+            onChange={(event) =>
+              onChange({
+                ...condition,
+                isVisible: event.target.value === "true",
+              })
+            }
+          >
+            <option value="true">is visible in this output view</option>
+            <option value="false">is hidden in this output view</option>
+          </Select>
+        )}
+      </Field>
+    </>
   );
 }
