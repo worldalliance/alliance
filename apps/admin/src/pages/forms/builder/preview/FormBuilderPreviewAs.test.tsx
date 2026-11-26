@@ -132,7 +132,7 @@ it("opens a link to preview as a member on the preview, as that member", async (
   await waitFor(() => expect(previewing()).toBe(true));
   expect(await screen.findByText("Ana")).toBeTruthy();
   expect(
-    await screen.findByRole("button", { name: /\(Preview Mode\)/ }),
+    await screen.findByRole("button", { name: /\(preview\)/ }),
   ).toBeTruthy();
   expect(router.state.location.search).toBe("");
 });
@@ -192,7 +192,7 @@ it("says so when a link names a member the user list lacks", async () => {
   expect(
     await screen.findByText("Member #999 isn't in the user list."),
   ).toBeTruthy();
-  expect(screen.queryByRole("button", { name: /\(Preview Mode\)/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /\(preview\)/ })).toBeNull();
 });
 
 it.each([

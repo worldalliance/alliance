@@ -12,7 +12,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "text",
-        label: "Text Field",
+        label: "Text field",
         required: false,
       };
     case "textarea":
@@ -20,7 +20,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "textarea",
-        label: "Textarea Field",
+        label: "Text area field",
         required: false,
         rows: 3,
       };
@@ -29,7 +29,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "email",
-        label: "Email Field",
+        label: "Email field",
         required: false,
       };
     case "phone":
@@ -37,7 +37,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "phone",
-        label: "Phone Field",
+        label: "Phone field",
         required: false,
         placeholder: "Enter phone number",
         autoExtractUserData: false,
@@ -47,7 +47,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "number",
-        label: "Number Field",
+        label: "Number field",
         required: false,
       };
     case "range":
@@ -55,7 +55,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "range",
-        label: "Range Field",
+        label: "Range field",
         required: false,
         optionCount: 10,
         startLabel: "",
@@ -66,7 +66,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "checkbox",
-        label: "Checkbox Field",
+        label: "Checkbox field",
         required: false,
       };
     case "radio":
@@ -74,7 +74,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "radio",
-        label: "Radio Field",
+        label: "Radio field",
         required: false,
         options: [{ label: "Option 1", value: "option1" }],
       };
@@ -83,7 +83,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "select",
-        label: "Select Field",
+        label: "Select field",
         required: false,
         options: [{ label: "Option 1", value: "option1" }],
       };
@@ -92,7 +92,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "multiselect",
-        label: "Multi-Select Field",
+        label: "Multi-select field",
         required: false,
         options: [{ label: "Option 1", value: "option1" }],
       };
@@ -101,7 +101,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "date",
-        label: "Date Field",
+        label: "Date field",
         required: false,
       };
     case "time":
@@ -109,7 +109,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "time",
-        label: "Time Field",
+        label: "Time field",
         required: false,
         autoExtractUserData: false,
       };
@@ -118,7 +118,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "timezone",
-        label: "Timezone Field",
+        label: "Timezone field",
         required: false,
         autoExtractUserData: false,
       };
@@ -127,7 +127,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "city",
-        label: "City Field",
+        label: "City field",
         required: false,
         placeholder: "Search for a city",
         minLength: 1,
@@ -138,7 +138,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "file",
-        label: "File Field",
+        label: "File field",
         required: false,
       };
     case "contract":
@@ -146,7 +146,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "contract",
-        label: "Contract Field",
+        label: "Contract field",
         required: false,
         contractId: null,
         signQuestion: "Sign the contract?",
@@ -158,7 +158,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "list",
-        label: "List Field",
+        label: "List field",
         fields: [],
         defaultNumber: 0,
         min: 0,
@@ -169,7 +169,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "ranking",
-        label: "Ranking Field",
+        label: "Ranking field",
         required: false,
         options: [
           { label: "Option 1", value: "option1" },
@@ -183,7 +183,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "custom",
-        label: "Custom Component",
+        label: "Custom component",
         required: false,
         componentId: defaultComponent?.id ?? "",
       };
@@ -201,7 +201,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "toggle",
-        label: "Toggle Field",
+        label: "Toggle field",
         required: false,
       };
     case "timePicker":
@@ -209,7 +209,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "timePicker",
-        label: "Time Picker Field",
+        label: "Time picker field",
         required: false,
       };
     case "conversation":
@@ -217,7 +217,7 @@ export const createField = (kind: FieldKind, id: string): AnyField => {
         id,
         type: "input",
         kind: "conversation",
-        label: "Conversation Field",
+        label: "Conversation field",
         required: false,
         expert: null,
         message: "",

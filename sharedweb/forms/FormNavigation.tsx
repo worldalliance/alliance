@@ -132,7 +132,7 @@ export default function FormNavigation({
                   onClick={onPreviewSubmit}
                 >
                   {submitLabel}
-                  {" (Preview Mode)"}
+                  {" (preview)"}
                 </BaseButton>
               </div>
             )}

@@ -107,11 +107,11 @@ describe("the form canvas", () => {
     renderFormBuilder(schema);
     insertElement(button("Add element"), "Email");
     await act(async () => {});
-    expect(heading()).toBe("Email Field: Email Field");
+    expect(heading()).toBe("Email Field: Email field");
     expect(
       settings().getByRole("tabpanel").contains(document.activeElement),
     ).toBe(true);
-    expect(canvasOrder().at(-1)).toBe("Select Email Field: Email Field");
+    expect(canvasOrder().at(-1)).toBe("Select Email Field: Email field");
   });
 
   it("moves the selected element with its keyboard controls", () => {
@@ -600,7 +600,7 @@ describe("the form canvas in a narrow window", () => {
     renderFormBuilder(schema);
     insertElement(button("Add element"), "Email");
     await act(async () => {});
-    expect(heading()).toBe("Email Field: Email Field");
+    expect(heading()).toBe("Email Field: Email field");
     expect(
       settings().getByRole("tabpanel").contains(document.activeElement),
     ).toBe(true);

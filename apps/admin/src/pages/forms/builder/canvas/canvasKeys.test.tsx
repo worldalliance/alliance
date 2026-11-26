@@ -97,10 +97,10 @@ describe("the canvas by keyboard", () => {
       "Select Text Field: Town",
       "Select Text Block: Welcome",
       "Select Text Field: Pet",
-      "Select Email Field: Email Field",
+      "Select Email Field: Email field",
       "Select Text Field: Vet",
     ]);
-    expect(heading()).toBe("Email Field: Email Field");
+    expect(heading()).toBe("Email Field: Email field");
     expect(
       screen.getByRole("region", { name: "Visibility group" }).textContent,
     ).toContain("Shared visibility · 3 elements");

@@ -52,7 +52,7 @@ it("sends nothing but reads while a previewed form is filled and submitted", asy
   fireEvent.change(await screen.findByLabelText("Why you joined"), {
     target: { value: "Because" },
   });
-  fireEvent.click(screen.getByRole("button", { name: /\(Preview Mode\)/ }));
+  fireEvent.click(screen.getByRole("button", { name: /\(preview\)/ }));
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   expect(writes).toEqual([]);
