@@ -7,8 +7,8 @@ import { cn } from "../../../../ui/cn";
 
 /**
  * Blocks whose controls stay usable on the canvas, to inspect layout: a
- * video's player, an image's lightbox. Everything else renders inert, so a
- * click anywhere on it only selects it. An accordion lays out its own
+ * video's player. Everything else renders inert, so a click anywhere on it
+ * only selects it; an image's lightbox would cover the builder. An accordion lays out its own
  * sections on the canvas.
  */
 export const INTERACTIVE_ON_CANVAS: Record<
@@ -23,7 +23,7 @@ export const INTERACTIVE_ON_CANVAS: Record<
   divider: false,
   spacer: false,
   html: false,
-  images: true,
+  images: false,
   video: true,
   biglink: false,
   copytext: false,
