@@ -1,5 +1,19 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "../../../../ui/Tabs";
+
+const scrollParent = (el: HTMLElement) => {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(node).overflowY)) return node;
+  }
+  return null;
+};
 
 export enum SidebarSection {
   Content = "content",
@@ -61,11 +75,30 @@ export function SidebarSections({
   dependencies?: ReactNode;
   children: ReactNode;
 }) {
+  // The tabs stick under the header, so a switch made while scrolled down
+  // starts the new panel under them rather than at the old offset.
+  const ref = useRef<HTMLDivElement>(null);
+  const shownSection = useRef(active);
+  useLayoutEffect(() => {
+    if (shownSection.current === active) return;
+    shownSection.current = active;
+    const list = ref.current?.querySelector<HTMLElement>('[role="tablist"]');
+    const panel = ref.current?.querySelector<HTMLElement>(
+      '[role="tabpanel"]:not([hidden])',
+    );
+    const pane = list && scrollParent(list);
+    if (!list || !panel || !pane) return;
+    const hidden =
+      list.getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
+    if (hidden > 0) pane.scrollTop -= hidden;
+  }, [active]);
+
   return (
     <SidebarSectionsContext.Provider
       value={{ sections, active, layout, actions, dependencies }}
     >
       <Tabs
+        ref={ref}
         value={active}
         onValueChange={(section: SidebarSection) => onSelect(section)}
       >

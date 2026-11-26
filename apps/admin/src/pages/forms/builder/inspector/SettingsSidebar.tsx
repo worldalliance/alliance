@@ -1,16 +1,9 @@
 import { ChevronLeft } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { focusInPlace } from "../kit/revealInPane";
 import { InspectorHeader } from "./InspectorHeader";
 import { SidebarSection, SidebarSections } from "./sidebarSections";
-
-const scrollParent = (el: HTMLElement) => {
-  for (let node = el.parentElement; node; node = node.parentElement) {
-    if (/auto|scroll/.test(getComputedStyle(node).overflowY)) return node;
-  }
-  return null;
-};
 
 const EDITING_CONTROL =
   'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
@@ -49,23 +42,6 @@ export function SettingsSidebar({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const active = sections.includes(section) ? section : sections[0]!;
-
-  // The tabs stick under the header, so a switch made while scrolled down
-  // starts the new panel under them rather than at the old offset.
-  const shownSection = useRef(active);
-  useLayoutEffect(() => {
-    if (shownSection.current === active) return;
-    shownSection.current = active;
-    const list = ref.current?.querySelector<HTMLElement>('[role="tablist"]');
-    const panel = ref.current?.querySelector<HTMLElement>(
-      '[role="tabpanel"]:not([hidden])',
-    );
-    const pane = list && scrollParent(list);
-    if (!list || !panel || !pane) return;
-    const hidden =
-      list.getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
-    if (hidden > 0) pane.scrollTop -= hidden;
-  }, [active]);
 
   useEffect(() => {
     if (!focusPending) return;
