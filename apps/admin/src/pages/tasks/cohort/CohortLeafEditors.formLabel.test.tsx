@@ -34,5 +34,6 @@ describe("LeafConditionEditor form picker", () => {
     expect(
       await screen.findByRole("option", { name: "Survey (survey::v1)" }),
     ).toBeTruthy();
+    expect(screen.getByText("equals")).toBeTruthy();
   });
 });

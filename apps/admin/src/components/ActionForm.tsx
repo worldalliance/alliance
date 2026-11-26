@@ -12,16 +12,16 @@ import {
   suiteKindUnknown,
   type ActionFieldDef,
 } from "../lib/actionFieldDefs";
+import CohortExpressionBuilder from "../pages/tasks/cohort/CohortExpressionBuilder";
+import OpenReferenceWarning from "../pages/tasks/cohort/OpenReferenceWarning";
+import PrerequisitePicker from "../pages/tasks/cohort/PrerequisitePicker";
 import type { UserSelectUser } from "../ui/UserSelect";
 import UserSelect from "../ui/UserSelect";
 import ActionFormFields, { type ActionFieldInputs } from "./ActionFormFields";
 import ActionReviewersEditor, {
   type ReviewerRow,
 } from "./ActionReviewersEditor";
-import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import FormSection, { CollapsibleFormSection } from "./FormSection";
-import OpenReferenceWarning from "./OpenReferenceWarning";
-import PrerequisitePicker from "./PrerequisitePicker";
 
 const COLLAPSIBLE_TITLES: Record<ActionFieldSection, string | null> = {
   [ActionFieldSection.Content]: null,

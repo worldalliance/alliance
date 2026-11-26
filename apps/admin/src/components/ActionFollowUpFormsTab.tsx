@@ -15,12 +15,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { followUpFormLabel } from "../lib/followUpFormLabel";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import CohortExpressionBuilder from "../pages/tasks/cohort/CohortExpressionBuilder";
 import BaseButton, { BaseButtonVariant } from "../ui/BaseButton";
 import Card from "../ui/Card";
 import DateTimePicker from "../ui/DateTimePicker";
 import { useToast } from "../ui/ToastProvider";
 import type { UserSelectUser } from "../ui/UserSelect";
-import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { FormBuilder } from "./FormBuilder";
 
 export interface ActionFollowUpFormsTabProps {

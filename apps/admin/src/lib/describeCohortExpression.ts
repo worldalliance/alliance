@@ -4,7 +4,7 @@ import type {
 } from "@alliance/common/cohort-expression";
 import { formLabel } from "@alliance/shared/lib/useFormsAdmin";
 
-export const LEAF_LABELS: Record<LeafCondition["type"], string> = {
+const LEAF_LABELS: Record<LeafCondition["type"], string> = {
   Tag: "Tag",
   Manual: "Manual users",
   CompletedAction: "Completed action",

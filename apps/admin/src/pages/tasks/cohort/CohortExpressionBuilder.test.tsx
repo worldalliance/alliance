@@ -1,7 +1,7 @@
 import { makeTag } from "@alliance/shared/lib/testFixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { ToastProvider } from "../ui/ToastProvider";
+import { ToastProvider } from "../../../ui/ToastProvider";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { ActionSelectEditor, TagEditor } from "./CohortLeafEditors";
 
@@ -78,36 +78,43 @@ describe("ActionSelectEditor", () => {
   it("disables the select and says so while actions load", () => {
     renderActionSelectEditor(7, { actionsLoading: true });
 
-    expect(selectedLabel()).toBe("Loading actions…");
+    expect(selectedLabel()).toBe("Loading tasks…");
     expect(screen.getByRole("combobox")).toHaveProperty("disabled", true);
   });
 
   it("shows an action that no longer exists as deleted rather than unset", () => {
     renderActionSelectEditor(99);
 
-    expect(selectedLabel()).toBe("Deleted action");
+    expect(selectedLabel()).toBe("Deleted task");
   });
 
   it("does not call an action deleted when the actions failed to load", () => {
     renderActionSelectEditor(7, { actionsError: true });
 
-    expect(selectedLabel()).toBe("Couldn't load actions");
+    expect(selectedLabel()).toBe("Couldn't load tasks");
   });
 
   it.each([0, NaN])("shows action id %p as unset", (actionId) => {
     renderActionSelectEditor(actionId);
 
-    expect(selectedLabel()).toBe("Select action...");
+    expect(selectedLabel()).toBe("Choose a task…");
   });
 
   it("says so for an unset action when the actions failed to load", () => {
     renderActionSelectEditor(0, { actionsError: true });
 
-    expect(selectedLabel()).toBe("Couldn't load actions");
+    expect(selectedLabel()).toBe("Couldn't load tasks");
   });
 });
 
 describe("CohortExpressionBuilder", () => {
+  const compareSelect = () =>
+    screen.getByRole<HTMLSelectElement>("combobox", {
+      name: "Task to compare with",
+    });
+  const compareSelectLabel = () =>
+    compareSelect().selectedOptions[0].textContent;
+
   const renderCompareSelect = ({
     actionsLoading = false,
     actionsError = false,
@@ -133,21 +140,23 @@ describe("CohortExpressionBuilder", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "Compare to another action" }),
+      screen.getByRole("checkbox", {
+        name: "Compare with another task's cohort",
+      }),
     );
   };
 
   it("disables the compare select and says so while actions load", () => {
     renderCompareSelect({ actionsLoading: true });
 
-    expect(selectedLabel()).toBe("Loading actions…");
-    expect(screen.getByRole("combobox")).toHaveProperty("disabled", true);
+    expect(compareSelectLabel()).toBe("Loading tasks…");
+    expect(compareSelect()).toHaveProperty("disabled", true);
   });
 
   it("says so in the compare select when actions failed to load", () => {
     renderCompareSelect({ actionsError: true });
 
-    expect(selectedLabel()).toBe("Couldn't load actions");
+    expect(compareSelectLabel()).toBe("Couldn't load tasks");
   });
 
   it("says the users failed to load in a manual condition", () => {
@@ -174,7 +183,7 @@ describe("CohortExpressionBuilder", () => {
     expect(screen.getByText("Failed to load users.")).toBeTruthy();
   });
 
-  it("highlights a clicked child of a compound expression until clicked again", () => {
+  it("highlights a child of a compound expression until pressed again", () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
         <ToastProvider>
@@ -200,17 +209,17 @@ describe("CohortExpressionBuilder", () => {
         </ToastProvider>
       </QueryClientProvider>,
     );
-    const [, firstChildType, , secondChildType] =
-      screen.getAllByRole("combobox");
-    const firstHeader = firstChildType.parentElement!;
-    const isSelected = (header: HTMLElement) =>
-      header.parentElement!.className.includes("border-blue-400");
+    const [first, second] = screen.getAllByRole("button", {
+      name: /^Highlight in chart/,
+    });
+    const isSelected = (button: HTMLElement) =>
+      button.getAttribute("aria-pressed") === "true";
 
-    fireEvent.click(firstHeader);
-    expect(isSelected(firstHeader)).toBe(true);
-    expect(isSelected(secondChildType.parentElement!)).toBe(false);
+    fireEvent.click(first);
+    expect(isSelected(first)).toBe(true);
+    expect(isSelected(second)).toBe(false);
 
-    fireEvent.click(firstHeader);
-    expect(isSelected(firstHeader)).toBe(false);
+    fireEvent.click(first);
+    expect(isSelected(first)).toBe(false);
   });
 });

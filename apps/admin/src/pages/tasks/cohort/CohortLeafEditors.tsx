@@ -12,13 +12,16 @@ import type { TagDto } from "@alliance/shared/client";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import React from "react";
-import type { UserSelectUser } from "../ui/UserSelect";
-import UserSelect from "../ui/UserSelect";
 import {
   formFieldsErrorReason,
   FormPickerError,
   FormPickerErrorReason,
-} from "./FormPickerError";
+} from "../../../components/FormPickerError";
+import { Checkbox } from "../../../ui/Checkbox";
+import { Input } from "../../../ui/Input";
+import { Select } from "../../../ui/Select";
+import type { UserSelectUser } from "../../../ui/UserSelect";
+import UserSelect from "../../../ui/UserSelect";
 
 export interface CohortLeafEditorSources {
   availableTags: TagDto[];
@@ -32,6 +35,9 @@ export interface CohortLeafEditorSources {
   usersError: boolean;
 }
 
+const inlineSelectClass = "h-control-sm w-auto min-w-40 max-w-80 flex-1";
+
+/** The option for a saved id the loaded list lacks: it may be loading, failed, or gone. */
 const UnmatchedOption: React.FC<{
   value: string | number;
   loading: boolean;
@@ -54,12 +60,13 @@ export const TagEditor: React.FC<{
   tagsLoading: boolean;
   tagsError: boolean;
 }> = ({ value, onChange, availableTags, tagsLoading, tagsError }) => (
-  <select
+  <Select
+    aria-label="Tag"
     value={value.tagId}
     onChange={(e) => onChange({ ...value, tagId: e.target.value })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    className={inlineSelectClass}
   >
-    <option value="">Select tag...</option>
+    <option value="">Choose a tag…</option>
     {value.tagId && !availableTags.some((tag) => tag.id === value.tagId) && (
       <UnmatchedOption
         value={value.tagId}
@@ -73,7 +80,7 @@ export const TagEditor: React.FC<{
         {tag.name}
       </option>
     ))}
-  </select>
+  </Select>
 );
 
 const ManualEditor: React.FC<{
@@ -89,7 +96,8 @@ const ManualEditor: React.FC<{
     onChange={(ids) => onChange({ ...value, userIds: ids })}
     loading={usersLoading}
     loadFailed={usersError}
-    label="Select users"
+    label="Members"
+    hint="The members you pick appear here."
   />
 );
 
@@ -104,18 +112,19 @@ export const ActionSelectEditor: React.FC<{
   actionsLoading: boolean;
   actionsError: boolean;
 }> = ({ value, onChange, availableActions, actionsLoading, actionsError }) => (
-  <select
+  <Select
+    aria-label="Task"
     value={value.actionId || ""}
     disabled={actionsLoading}
     onChange={(e) => onChange({ ...value, actionId: parseInt(e.target.value) })}
-    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    className={inlineSelectClass}
   >
     <option value="">
       {actionsLoading
-        ? "Loading actions…"
+        ? "Loading tasks…"
         : actionsError
-          ? "Couldn't load actions"
-          : "Select action..."}
+          ? "Couldn't load tasks"
+          : "Choose a task…"}
     </option>
     {!!value.actionId &&
       !availableActions.some((a) => a.id === value.actionId) && (
@@ -123,7 +132,7 @@ export const ActionSelectEditor: React.FC<{
           value={value.actionId}
           loading={actionsLoading}
           error={actionsError}
-          noun="action"
+          noun="task"
         />
       )}
     {availableActions.map((a) => (
@@ -131,7 +140,7 @@ export const ActionSelectEditor: React.FC<{
         {a.name}
       </option>
     ))}
-  </select>
+  </Select>
 );
 
 const FormFieldEditor: React.FC<{
@@ -155,112 +164,123 @@ const FormFieldEditor: React.FC<{
     selectedField.kind !== "ranking"
       ? selectedField.options
       : null;
+  const setAnswer = (answer: string) =>
+    onChange({ ...value, responseEqualTo: answer || undefined });
 
   return (
-    <div className="space-y-2">
-      <select
-        value={value.formId || ""}
-        onChange={(e) =>
-          onChange({
-            ...value,
-            formId: parseInt(e.target.value) || 0,
-            fieldId: "",
-            responseEqualTo: undefined,
-          })
-        }
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-      >
-        <option value="">Select form...</option>
-        {availableForms.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.title} ({f.displaySlug})
-          </option>
-        ))}
-      </select>
-      <select
-        value={value.fieldId}
-        onChange={(e) =>
-          onChange({
-            ...value,
-            fieldId: e.target.value,
-            responseEqualTo: undefined,
-          })
-        }
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        disabled={!value.formId}
-      >
-        <option value="">Select field...</option>
-        {sourceFields.map((f) => (
-          <option key={f.id} value={f.id}>
-            {fieldPickerLabel(f)}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          aria-label="Form"
+          value={value.formId || ""}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              formId: parseInt(e.target.value) || 0,
+              fieldId: "",
+              responseEqualTo: undefined,
+            })
+          }
+          className={inlineSelectClass}
+        >
+          <option value="">Choose a form…</option>
+          {availableForms.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.title} ({f.displaySlug})
+            </option>
+          ))}
+        </Select>
+        <Select
+          aria-label="Field"
+          value={value.fieldId}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              fieldId: e.target.value,
+              responseEqualTo: undefined,
+            })
+          }
+          disabled={!value.formId}
+          className={inlineSelectClass}
+        >
+          <option value="">Choose a field…</option>
+          {sourceFields.map((f) => (
+            <option key={f.id} value={f.id}>
+              {fieldPickerLabel(f)}
+            </option>
+          ))}
+        </Select>
+      </div>
       {formListFailed && (
         <FormPickerError reason={FormPickerErrorReason.FormList} />
       )}
       {sourceFormError && <FormPickerError reason={sourceFormError} />}
-      {!value.responseAny ? (
-        fieldOptions ? (
-          <select
-            value={value.responseEqualTo ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                responseEqualTo: e.target.value || undefined,
-              })
-            }
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Response equals (optional)...</option>
-            {value.responseEqualTo &&
-              !fieldOptions.some((o) => o.value === value.responseEqualTo) && (
-                <option value={value.responseEqualTo}>
-                  {value.responseEqualTo} (not in options)
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-fg-muted">equals</span>
+          {fieldOptions ? (
+            <Select
+              aria-label="Answer equals"
+              value={value.responseEqualTo ?? ""}
+              disabled={value.responseAny}
+              onChange={(e) => setAnswer(e.target.value)}
+              className={inlineSelectClass}
+            >
+              <option value="">Any answer, or choose one…</option>
+              {value.responseEqualTo &&
+                !fieldOptions.some(
+                  (o) => o.value === value.responseEqualTo,
+                ) && (
+                  <option value={value.responseEqualTo}>
+                    {value.responseEqualTo} (not in options)
+                  </option>
+                )}
+              {fieldOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                  {o.value !== o.label ? ` (${o.value})` : ""}
                 </option>
-              )}
-            {fieldOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-                {o.value !== o.label ? ` (${o.value})` : ""}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type="text"
-            placeholder="Response equals (optional)"
-            value={value.responseEqualTo ?? ""}
+              ))}
+            </Select>
+          ) : (
+            <Input
+              aria-label="Answer equals"
+              placeholder="Any answer, or type one"
+              value={value.responseEqualTo ?? ""}
+              disabled={value.responseAny}
+              onChange={(e) => setAnswer(e.target.value)}
+              className="h-control-sm w-auto min-w-40 max-w-80 flex-1"
+            />
+          )}
+        </span>
+        <label className="flex items-center gap-2">
+          <Checkbox
+            checked={value.responseAny ?? false}
             onChange={(e) =>
               onChange({
                 ...value,
-                responseEqualTo: e.target.value || undefined,
+                responseAny: e.target.checked || undefined,
+                responseEqualTo: e.target.checked
+                  ? undefined
+                  : value.responseEqualTo,
               })
             }
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           />
-        )
-      ) : null}
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={value.responseAny ?? false}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              responseAny: e.target.checked || undefined,
-              responseEqualTo: e.target.checked
-                ? undefined
-                : value.responseEqualTo,
-            })
-          }
-          className="h-4 w-4 rounded border-gray-300"
-        />
-        Any response (ignore value)
-      </label>
+          Any answer (ignore the value)
+        </label>
+      </div>
     </div>
   );
 };
+
+/** What a condition with nothing to choose matches, as the server's evaluator reads it. */
+const FIXED_CONDITION_TEXT = {
+  GroupLead: "Every community group leader.",
+  USMember: "City in the US, or time zone if no city is set.",
+  NonUSMember: "City outside the US, or time zone if no city is set.",
+  AllMembers: "Every user.",
+  Staff: "Users marked as staff.",
+} as const;
 
 export const LeafConditionEditor: React.FC<{
   expr: LeafCondition;
@@ -302,28 +322,16 @@ export const LeafConditionEditor: React.FC<{
     case "FormFieldValue":
       return <FormFieldEditor value={expr} onChange={onChange} />;
     case "GroupLead":
-      return (
-        <p className="text-sm text-gray-500 italic">
-          All community group leaders
-        </p>
-      );
     case "USMember":
-      return (
-        <p className="text-sm text-gray-500 italic">
-          City in the US, or time zone if no city is set.
-        </p>
-      );
     case "NonUSMember":
-      return (
-        <p className="text-sm text-gray-500 italic">
-          City outside the US, or time zone if no city is set.
-        </p>
-      );
     case "AllMembers":
-      return <p className="text-sm text-gray-500 italic">Every user</p>;
     case "Staff":
       return (
-        <p className="text-sm text-gray-500 italic">Users marked as staff</p>
+        <span className="text-fg-muted">{FIXED_CONDITION_TEXT[expr.type]}</span>
+      );
+    default:
+      throw new Error(
+        `unknown condition: ${JSON.stringify(expr satisfies never)}`,
       );
   }
 };

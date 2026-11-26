@@ -44,7 +44,7 @@ describe("OpenReferenceWarning", () => {
     renderWarning([{ id: 1, name: "Call", deadline: OPEN }]);
 
     expect(screen.getByText(/Add it as a prerequisite/)).toBeDefined();
-    expect(screen.queryByText(/closes with this action/)).toBeNull();
+    expect(screen.queryByText(/closes with this task/)).toBeNull();
   });
 
   it("suggests prerequisites for several open actions", () => {
@@ -82,7 +82,7 @@ describe("OpenReferenceWarning", () => {
     expect(screen.getByText(/Add it as a prerequisite/)).toBeDefined();
     expect(
       screen.getByText(
-        /"Call" closes with this action, so a member who never finishes it is decided only as this action closes/,
+        /"Call" closes with this task, so a member who never finishes it is decided only as this task closes/,
       ),
     ).toBeDefined();
   });
@@ -91,7 +91,7 @@ describe("OpenReferenceWarning", () => {
     renderWarning([{ id: 1, name: "Call", deadline: AFTER_DEADLINE }]);
 
     expect(
-      screen.getByText(/closes after this action or has no deadline/),
+      screen.getByText(/closes after this task or has no deadline/),
     ).toBeDefined();
     expect(screen.queryByText(/Add it as a prerequisite/)).toBeNull();
   });
@@ -102,7 +102,7 @@ describe("OpenReferenceWarning", () => {
     ]);
 
     expect(
-      screen.getByText(/an onboarding action that stays open/),
+      screen.getByText(/an onboarding task that stays open/),
     ).toBeDefined();
     expect(screen.queryByText(/Add it as a prerequisite/)).toBeNull();
     expect(screen.queryByText(/closes after/)).toBeNull();
@@ -112,7 +112,7 @@ describe("OpenReferenceWarning", () => {
     renderWarning([{ id: 1, name: "Call", deadline: null }]);
 
     expect(
-      screen.getByText(/closes after this action or has no deadline/),
+      screen.getByText(/closes after this task or has no deadline/),
     ).toBeDefined();
     expect(screen.queryByText(/Add it as a prerequisite/)).toBeNull();
   });
