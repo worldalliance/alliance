@@ -43,6 +43,7 @@ import {
   type ResolvedChild,
 } from "../selection/canvasSelection";
 import { subFieldEditsConditions } from "../inspector/ChildSettings";
+import { keepBrowserMenu } from "../inspector/ElementActionsMenu";
 import { ElementConditionsIndicator } from "./ConditionsIndicator";
 import {
   EditTextButton,
@@ -96,7 +97,7 @@ function CanvasChild({
         onSelect(SidebarSection.Content);
       }}
       // A child's actions are in its settings, so it keeps the browser's menu.
-      onContextMenu={(event) => event.stopPropagation()}
+      onContextMenu={keepBrowserMenu}
     >
       <button
         type="button"
@@ -323,7 +324,7 @@ export function CanvasAccordion({
                     onKeyDown={
                       titleInline ? startOnEnter(titleInline) : undefined
                     }
-                    onContextMenu={(event) => event.stopPropagation()}
+                    onContextMenu={keepBrowserMenu}
                     className="w-full rounded-md py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     <span

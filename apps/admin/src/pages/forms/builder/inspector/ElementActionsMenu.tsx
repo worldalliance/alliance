@@ -1,5 +1,5 @@
 import { ContextMenu } from "@base-ui/react/context-menu";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { DropdownMenuContent } from "../../../../ui/DropdownMenu";
 import {
   MoreMenu,
@@ -118,4 +118,16 @@ export function ElementActionsMenu({
       </DropdownMenuContent>
     </ContextMenu.Root>
   );
+}
+
+/**
+ * Leaves a right-click to the browser's menu, even inside a context
+ * `ElementActionsMenu`, whose document listener otherwise cancels it. The
+ * admin hydrates into the document, so that listener shares React's root node
+ * and only `stopImmediatePropagation` skips it; this relies on React adding its
+ * root listener first, which it does on hydrating, before any effect runs.
+ */
+export function keepBrowserMenu(event: MouseEvent) {
+  event.stopPropagation();
+  event.nativeEvent.stopImmediatePropagation();
 }

@@ -222,6 +222,21 @@ describe("inline text on the canvas", () => {
     expect(canvasButton("Select Number Field: Age")).toBeTruthy();
   });
 
+  it("leaves a right-click in the editor or on a list's sub-field to the browser", () => {
+    renderFormBuilder(nestedSchema);
+    // In the app the menu's cancelling listener shares React's root node.
+    document.body.firstElementChild!.addEventListener("contextmenu", (event) =>
+      event.preventDefault(),
+    );
+    selectElement("List Field: Kids");
+    expect(fireEvent.contextMenu(canvasButton("Select Text Field: Name"))).toBe(
+      true,
+    );
+    fireEvent.click(canvasButton("Edit label"));
+    expect(fireEvent.contextMenu(canvasText("Label"))).toBe(true);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
   it("edits an accordion's section title and a block inside it", () => {
     const [list, accordion] = nestedSchema.pages[0]!.fields;
     if (accordion?.kind !== "accordion") throw new Error("no accordion");

@@ -12,8 +12,9 @@ import { headerClassName } from "@alliance/sharedweb/forms/headerStyles";
 import { Pencil } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { isTextEntry } from "../../../../lib/useDraftHistory";
-import { focusInPlace } from "../kit/revealInPane";
 import { cn } from "../../../../ui/cn";
+import { keepBrowserMenu } from "../inspector/ElementActionsMenu";
+import { focusInPlace } from "../kit/revealInPane";
 import { VariableTextField } from "../questions/VariableTextField";
 import { CanvasContent, CanvasQuestion } from "./CanvasContent";
 
@@ -162,6 +163,7 @@ export function InlineTextEditor({
       ref={ref}
       className="relative"
       onClick={(event) => event.stopPropagation()}
+      onContextMenu={keepBrowserMenu}
       onKeyDown={(event) => {
         if (event.defaultPrevented || event.nativeEvent.isComposing) return;
         const finished =

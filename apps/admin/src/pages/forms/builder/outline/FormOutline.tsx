@@ -15,6 +15,7 @@ import { cn } from "../../../../ui/cn";
 import { NO_ACTIONS } from "../canvas/noActions";
 import {
   ElementActionsMenu,
+  keepBrowserMenu,
   type ElementActions,
 } from "../inspector/ElementActionsMenu";
 import {
@@ -423,7 +424,7 @@ export function FormOutline({
           const handle = handles.get(key);
           // A list's or accordion's child keeps its actions in its settings.
           if (!handle || CHILD_KEY.test(key) || (handle.current && !actions)) {
-            event.stopPropagation();
+            keepBrowserMenu(event);
             return;
           }
           if (!handle.current) handle.select({ reveal: false });
