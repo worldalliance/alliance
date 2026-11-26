@@ -116,7 +116,7 @@ export default function FormulasPage() {
             <TableBody>
               {rows.map(({ formula, usedBy }) => (
                 <TableRow key={formula.id}>
-                  <TableCell>
+                  <TableCell truncate className="max-w-96" title={formula.name}>
                     <Link
                       to={href("/tasks/formulas/:formulaId", {
                         formulaId: formula.id,

@@ -302,6 +302,7 @@ function FormulaLinks({
         <li key={formula.id} className="min-w-0 truncate">
           <Link
             to={formulaPath(formula.id)}
+            title={formula.name}
             className={cn(linkClass, "font-mono text-xs")}
           >
             {formula.name}
