@@ -91,10 +91,13 @@ export function StackedBlockCard({
             <Popover open={options.open} onOpenChange={options.onOpenChange}>
               <PopoverTrigger
                 aria-label="Display block options"
-                className={buttonVariants({
-                  variant: ButtonVariant.Ghost,
-                  size: "small",
-                })}
+                className={cn(
+                  "inline-flex",
+                  buttonVariants({
+                    variant: ButtonVariant.Ghost,
+                    size: "small",
+                  }),
+                )}
               >
                 <Settings2 aria-hidden="true" className="size-4" />
                 Options
