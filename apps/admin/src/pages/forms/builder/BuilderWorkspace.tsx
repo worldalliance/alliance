@@ -1,19 +1,15 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { AggregateBuilder } from "./aggregates/AggregateBuilder";
-import { DisplayOnlyPreview } from "./preview/DisplayOnlyPreview";
-import { selectedOnCanvas } from "./canvas/CanvasWorkspace";
-import { PreviewBoundary } from "./canvas/ElementBoundary";
-import { useRestoreFocusWithin } from "./selection/useRestoreFocusWithin";
-import { FormBuilderCanvas } from "./canvas/FormBuilderCanvas";
-import { FormBuilderPreview } from "./preview/FormBuilderPreview";
-import { OutputBuilder } from "./outputs/OutputBuilder";
-import { RowListBuilder } from "./rows/RowListBuilder";
-import { ShareableTextBuilder } from "./shareable/ShareableTextBuilder";
-import { VariableBuilder } from "./formulas/VariableBuilder";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import Button, { ButtonVariant } from "../../../ui/Button";
 import { cn } from "../../../ui/cn";
 import { ErrorState } from "../../../ui/templates/States";
 import { PaneHeader, Workspace } from "../../../ui/templates/Workspace";
+import { AggregateBuilder } from "./aggregates/AggregateBuilder";
 import { useBuilder } from "./BuilderContext";
 import {
   CanvasSkeleton,
@@ -21,9 +17,19 @@ import {
   OutlineSkeleton,
 } from "./BuilderSkeletons";
 import { BuilderToolbar } from "./BuilderToolbar";
+import { selectedOnCanvas } from "./canvas/CanvasWorkspace";
+import { PreviewBoundary } from "./canvas/ElementBoundary";
+import { FormBuilderCanvas } from "./canvas/FormBuilderCanvas";
+import { VariableBuilder } from "./formulas/VariableBuilder";
 import { revealInPane } from "./kit/revealInPane";
 import { MainPaneHeader } from "./MainPaneHeader";
+import { useOutputPanes } from "./outputs/OutputBuilder";
 import { pageChunks } from "./pageChunks";
+import { DisplayOnlyPreview } from "./preview/DisplayOnlyPreview";
+import { FormBuilderPreview } from "./preview/FormBuilderPreview";
+import { RowListBuilder } from "./rows/RowListBuilder";
+import { useRestoreFocusWithin } from "./selection/useRestoreFocusWithin";
+import { ShareableTextBuilder } from "./shareable/ShareableTextBuilder";
 import { useCanvasScrollMemory } from "./useCanvasScrollMemory";
 import { useFillHeight } from "./useFillHeight";
 import { FormEditor } from "./useFormBuilder";
@@ -47,53 +53,16 @@ const PANE_SCROLL = "min-h-0 flex-1 overflow-x-hidden overflow-y-auto";
  * It fills its parent and never scrolls with it.
  */
 export function BuilderWorkspace() {
-  const builder = useBuilder();
   const rootRef = useRef<HTMLDivElement>(null);
   const height = useFillHeight(rootRef);
-  const { activeEditor } = builder;
   return (
     <div
       ref={rootRef}
       style={height === null ? undefined : { height, flex: "none" }}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {activeEditor === FormEditor.Form ? (
-        <FormPanes />
-      ) : activeEditor === FormEditor.Outputs ? (
-        <OutputViews />
-      ) : (
-        <Workspace toolbar={<BuilderToolbar />}>
-          <MainPaneHeader title={EDITOR_TITLES[activeEditor]} />
-          <div className={cn(PANE_SCROLL, "p-card")}>
-            <OtherEditor editor={activeEditor} />
-          </div>
-        </Workspace>
-      )}
+      <Panes />
     </div>
-  );
-}
-
-/** Output views fill all three panes, so they lay out their own workspace. */
-function OutputViews() {
-  const {
-    schema,
-    updateSchema,
-    updateBlockById,
-    schemaLoads,
-    outputViewId,
-    setOutputViewId,
-  } = useBuilder();
-  return (
-    <OutputBuilder
-      schema={schema}
-      onSchemaChange={updateSchema}
-      onUpdateBlockById={updateBlockById}
-      editorsKey={schemaLoads}
-      selectedViewId={outputViewId}
-      onSelectView={setOutputViewId}
-      toolbar={<BuilderToolbar />}
-      header={(title) => <MainPaneHeader title={title} />}
-    />
   );
 }
 
@@ -131,8 +100,11 @@ function OtherEditor({ editor }: { editor: FormEditor }) {
   }
 }
 
-function FormPanes() {
-  const builder = useBuilder();
+/**
+ * One Workspace for every editor, so switching editors keeps the toolbar, and
+ * focus on its tabs, in place.
+ */
+function Panes() {
   const {
     schema,
     visibilityGroups,
@@ -147,43 +119,27 @@ function FormPanes() {
     setJsonScope,
     isPreviewMode,
     outline,
-    reach,
+    activeEditor,
+    updateSchema,
+    schemaLoads,
+    outputViewId,
+    setOutputViewId,
     saved: { isLoading },
     loadFailure,
     props: { displayOnly, taskFlow },
-  } = builder;
-  const { currentPage, revealPending, revealed, selectionKey } = canvas;
-  const canvasRef = useRef<HTMLDivElement>(null);
+  } = useBuilder();
   const settingsRef = useRef<HTMLDivElement>(null);
-
-  useCanvasScrollMemory({
-    pane: canvasRef,
-    pageId: currentPage.id,
-    revealing: revealPending,
-  });
-  useEffect(() => {
-    if (!revealPending) return;
-    const pane = canvasRef.current;
-    const selected = selectedOnCanvas(pane);
-    if (pane && selected) revealInPane(pane, selected);
-    revealed();
-  }, [revealPending, revealed]);
-
-  const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
-  const shownKey = useRef(selectionKey);
-  useEffect(() => {
-    if (shownKey.current === selectionKey) return;
-    shownKey.current = selectionKey;
-    if (settingsRef.current) settingsRef.current.scrollTop = 0;
-    restoreSettingsFocus();
-  }, [selectionKey, restoreSettingsFocus]);
-
-  const chunks = useCallback(() => pageChunks(currentPage), [currentPage]);
-  const settled = useSettleGate({
-    pane: canvasRef,
-    key: `${currentPage.id}:${isPreviewMode ? "preview" : "edit"}`,
-    ready: !isLoading && !reach.loading,
-    chunks,
+  const onForm = activeEditor === FormEditor.Form;
+  const onOutputs = activeEditor === FormEditor.Outputs;
+  const outputPanes = useOutputPanes({
+    schema,
+    onSchemaChange: updateSchema,
+    onUpdateBlockById: updateBlockById,
+    editorsKey: schemaLoads,
+    selectedViewId: outputViewId,
+    onSelectView: setOutputViewId,
+    header: (title) => <MainPaneHeader title={title} />,
+    active: onOutputs,
   });
 
   return (
@@ -206,7 +162,9 @@ function FormPanes() {
         <Workspace
           toolbar={<BuilderToolbar />}
           navigator={
-            outline.hidden ? undefined : (
+            onOutputs ? (
+              outputPanes.navigator
+            ) : !onForm || outline.hidden ? undefined : (
               <nav
                 aria-label="Outline"
                 className="flex min-h-0 flex-1 flex-col"
@@ -223,7 +181,9 @@ function FormPanes() {
             )
           }
           inspector={
-            isPreviewMode ? undefined : (
+            onOutputs ? (
+              outputPanes.inspector
+            ) : !onForm || isPreviewMode ? undefined : (
               <aside
                 aria-label="Settings"
                 className="flex min-h-0 flex-1 flex-col"
@@ -243,39 +203,107 @@ function FormPanes() {
             )
           }
         >
-          <MainPaneHeader />
-          <div
-            ref={canvasRef}
-            role="region"
-            aria-label={isPreviewMode ? "Preview" : "Form canvas"}
-            className={cn(
-              PANE_SCROLL,
-              "relative",
-              !isPreviewMode && "p-4 pb-16",
-            )}
-          >
-            {loadFailure ? (
-              <div className="flex flex-col items-center">
-                <ErrorState
-                  title="Couldn't load this form"
-                  reason={loadFailure.message}
-                />
-                <Button
-                  variant={ButtonVariant.Default}
-                  onClick={loadFailure.onRetry}
-                >
-                  {loadFailure.retryLabel}
-                </Button>
+          {onForm ? (
+            <FormCanvasPane
+              canvasPart={parts.canvas}
+              settingsRef={settingsRef}
+            />
+          ) : onOutputs ? (
+            outputPanes.main
+          ) : (
+            <>
+              <MainPaneHeader title={EDITOR_TITLES[activeEditor]} />
+              <div className={cn(PANE_SCROLL, "p-card")}>
+                <OtherEditor editor={activeEditor} />
               </div>
-            ) : (
-              <Settling settled={settled}>
-                {isPreviewMode ? <PreviewBody /> : parts.canvas}
-              </Settling>
-            )}
-          </div>
+            </>
+          )}
         </Workspace>
       )}
     </FormBuilderCanvas>
+  );
+}
+
+/** The Form tab's canvas, which also keeps the settings pane in step with the selection. */
+function FormCanvasPane({
+  canvasPart,
+  settingsRef,
+}: {
+  canvasPart: ReactNode;
+  settingsRef: RefObject<HTMLDivElement | null>;
+}) {
+  const {
+    canvas,
+    isPreviewMode,
+    reach,
+    saved: { isLoading },
+    loadFailure,
+  } = useBuilder();
+  const { currentPage, revealPending, revealed, selectionKey, selections } =
+    canvas;
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  const view = `${currentPage.id}:${isPreviewMode ? "preview" : "edit"}`;
+  useCanvasScrollMemory({ pane: canvasRef, view, revealing: revealPending });
+  useEffect(() => {
+    if (!revealPending) return;
+    const pane = canvasRef.current;
+    const selected = selectedOnCanvas(pane);
+    if (pane && selected) revealInPane(pane, selected);
+    revealed();
+  }, [revealPending, revealed]);
+
+  const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
+  const shown = useRef({ key: selectionKey, selections });
+  useEffect(() => {
+    const previous = shown.current;
+    shown.current = { key: selectionKey, selections };
+    if (previous.key === selectionKey) return;
+    // An element without an id is keyed by its index, so moving it changes the
+    // key while the settings still show it: only a new selection scrolls up.
+    if (previous.selections !== selections && settingsRef.current) {
+      settingsRef.current.scrollTop = 0;
+    }
+    restoreSettingsFocus();
+  }, [selectionKey, selections, restoreSettingsFocus, settingsRef]);
+
+  const chunks = useCallback(() => pageChunks(currentPage), [currentPage]);
+  const settled = useSettleGate({
+    pane: canvasRef,
+    key: view,
+    ready: !isLoading && !reach.loading,
+    chunks,
+  });
+
+  return (
+    <>
+      <MainPaneHeader />
+      <div
+        ref={canvasRef}
+        role="region"
+        aria-label={isPreviewMode ? "Preview" : "Form canvas"}
+        className={cn(PANE_SCROLL, "relative", !isPreviewMode && "p-4 pb-16")}
+      >
+        {loadFailure ? (
+          <div className="flex flex-col items-center">
+            <ErrorState
+              title="Couldn't load this form"
+              reason={loadFailure.message}
+            />
+            <Button
+              variant={ButtonVariant.Default}
+              onClick={loadFailure.onRetry}
+            >
+              {loadFailure.retryLabel}
+            </Button>
+          </div>
+        ) : (
+          <Settling settled={settled}>
+            {isPreviewMode ? <PreviewBody /> : canvasPart}
+          </Settling>
+        )}
+      </div>
+    </>
   );
 }
 

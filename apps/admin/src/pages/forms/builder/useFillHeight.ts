@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
+import { flushSync } from "react-dom";
 
 /** The builder's panes need at least this much height to be usable. */
 const MIN_HEIGHT = 480;
@@ -39,7 +40,8 @@ export function useFillHeight(
       setHeight(measure());
     };
     check();
-    const observer = new ResizeObserver(check);
+    // Commits the height before paint, so no frame shows the page overflowing.
+    const observer = new ResizeObserver(() => flushSync(check));
     observer.observe(element);
     return () => observer.disconnect();
   }, [height, root]);

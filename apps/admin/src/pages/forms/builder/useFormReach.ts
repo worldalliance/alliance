@@ -18,9 +18,9 @@ export type FormReach = {
   task: FormTask | null;
   /** Whether members can open that task now; undefined without one, or while it loads. */
   taskLive: boolean | undefined;
-  /** Members can open this form now or have answered it. */
+  /** Members can open the form's task now, or have answered it outside a draft. */
   live: boolean;
-  /** The response count or the task couldn't load, so whether it is live is unknown. */
+  /** The task, or for a form without one its response count, couldn't load, so whether it is live is unknown. */
   failed: boolean;
   loading: boolean;
   retry: () => void;
@@ -29,10 +29,11 @@ export type FormReach = {
 const NO_FORMS: readonly number[] = [];
 
 /**
- * Who a save of this form reaches. A form is live when members can open its
- * task (the server's rule: public-only, or not archived and past Draft) or it
- * has responses. A follow-up form has no task in the index, so its responses
- * decide.
+ * Who a save of this form reaches. A form with a task is live when members
+ * can open that task (the server's rule: public-only, or not archived and past
+ * Draft), or when the task is past Draft and has responses, which an archived
+ * task keeps for when it is unarchived; a draft's come from staff previews. A
+ * follow-up form has no task in the index, so its responses decide.
  */
 export function useFormReach({
   formId,
@@ -44,7 +45,11 @@ export function useFormReach({
   displayOnly: boolean;
 }): FormReach {
   const counted = !displayOnly && formId !== undefined;
-  const { forms, isLoading: formsLoading } = useFormsAdmin();
+  const {
+    forms,
+    isLoading: formsLoading,
+    isError: formsFailed,
+  } = useFormsAdmin();
   const task =
     given ??
     (counted ? forms.find(({ id }) => id === formId)?.usedInAction : null) ??
@@ -77,22 +82,37 @@ export function useFormReach({
   const taskLive = loaded
     ? loaded.publicOnly || (!loaded.archived && loaded.status !== "draft")
     : undefined;
-  const live = taskLive === true || (responses ?? 0) > 0;
+  const indexFailed = given === undefined && formsFailed;
+  const answered = (responses ?? 0) > 0;
+  const live =
+    task === null
+      ? answered
+      : taskLive === true ||
+        (loaded !== undefined && loaded.status !== "draft" && answered);
+  const countDecides =
+    task === null ||
+    (loaded !== undefined && loaded.status !== "draft" && !taskLive);
+  const unknown =
+    (task === null ? indexFailed : action.isError) ||
+    (countDecides && status === ResponseCountStatus.Error);
   return {
     responses,
     task,
     taskLive,
     live,
-    failed: !live && (status === ResponseCountStatus.Error || action.isError),
+    failed: !live && unknown,
     loading:
       (given === undefined && formsLoading) ||
-      status === ResponseCountStatus.Pending ||
-      (task !== null && action.isPending),
+      (task !== null && action.isPending) ||
+      (countDecides && status === ResponseCountStatus.Pending),
     retry: () => {
       void queryClient.refetchQueries({
         queryKey: queryKeys.formResponseCountsAdmin(formIds),
       });
       if (action.isError) void action.refetch();
+      if (indexFailed) {
+        void queryClient.refetchQueries({ queryKey: queryKeys.formsAdmin() });
+      }
     },
   };
 }

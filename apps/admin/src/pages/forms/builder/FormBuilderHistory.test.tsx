@@ -8,8 +8,8 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
 import {
   fromMainMenu,
-  insertElement,
   fromSelectionMenu,
+  insertElement,
   openSection,
   pageTitle,
   saveState,
@@ -187,7 +187,7 @@ it("keeps redo through a write that changes nothing", async () => {
   await nextTask();
   fireEvent.click(button("Undo"));
 
-  fireEvent.click(screen.getByRole("tab", { name: "Aggregate views" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Aggregates" }));
   fireEvent.blur(screen.getAllByRole("spinbutton")[0]!);
   await nextTask();
   expect(button("Redo").disabled).toBe(false);
@@ -436,7 +436,7 @@ it("keeps the aggregate views listed through undo", async () => {
     ...twoPages,
     aggregateViews: [view("v1", "First"), view("v2", "Second")],
   });
-  fireEvent.click(screen.getByRole("tab", { name: "Aggregate views" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Aggregates" }));
   const title = () =>
     screen.getAllByPlaceholderText<HTMLInputElement>("Progress title")[1]!;
   fireEvent.change(title(), { target: { value: "Changed" } });

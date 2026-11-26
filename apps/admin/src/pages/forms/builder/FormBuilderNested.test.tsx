@@ -7,6 +7,7 @@ import {
   fromSelectionMenu,
   heading,
   selectElement,
+  selectionMenuItems,
   settings,
 } from "../../../lib/testing/formCanvas";
 import { nestedSchema, subFieldOrder } from "../../../lib/testing/nestedForm";
@@ -72,6 +73,25 @@ describe("a container's settings", () => {
     ]);
   });
 
+  it("moves and deletes a sub-field from the header's menu", () => {
+    renderFormBuilder(nestedSchema);
+    selectElement("Text Field: Name");
+    expect(selectionMenuItems()).toEqual([
+      "Move upIt's at the top.",
+      "Move down",
+      "Delete question",
+    ]);
+    fromSelectionMenu("Move down");
+    expect(heading()).toBe("Text Field: Name");
+    expect(subFieldOrder()).toEqual([
+      "Select Number Field: Age",
+      "Select Text Field: Name",
+    ]);
+    fromSelectionMenu("Delete question");
+    expect(heading()).toBe("List Field: Kids");
+    expect(subFieldOrder()).toEqual(["Select Number Field: Age"]);
+  });
+
   it("deletes a sub-field it has no editor for", () => {
     renderFormBuilder({
       ...nestedSchema,
@@ -100,7 +120,11 @@ describe("a container's settings", () => {
       ],
     });
     selectElement("List Field: Kids");
-    fireEvent.click(settings().getByRole("button", { name: /^Custom Component Field: Share$/ }));
+    fireEvent.click(
+      settings().getByRole("button", {
+        name: /^Custom Component Field: Share$/,
+      }),
+    );
     expect(
       settings().getByText("No settings to edit for this kind of question."),
     ).toBeTruthy();

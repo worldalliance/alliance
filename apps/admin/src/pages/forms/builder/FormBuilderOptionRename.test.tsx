@@ -93,6 +93,10 @@ describe("FormBuilder option value rename", () => {
       .getAllByPlaceholderText<HTMLInputElement>("Value")
       .find((input) => input.value === "alpha");
     fireEvent.change(valueInput!, { target: { value: "zeta" } });
+    // A save before the live-form check settles asks first.
+    await waitFor(() =>
+      expect(document.querySelector('[aria-busy="true"]')).toBeNull(),
+    );
     fireEvent.click(screen.getByText("Save form"));
     await waitFor(() => expect(bodies).toHaveLength(1));
 

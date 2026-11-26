@@ -13,6 +13,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import LeaveGuard from "../../../components/LeaveGuard";
 import {
   canvasGroups,
   fromMainMenu,
@@ -31,7 +32,6 @@ import { renderFormBuilder } from "../../../lib/testing/renderFormBuilder";
 import { SiteOriginLinkProvider } from "../../../ui/SiteAppProvider";
 import { ToastProvider } from "../../../ui/ToastProvider";
 import { FormBuilder } from "./FormBuilder";
-import LeaveGuard from "../../../components/LeaveGuard";
 
 const shownWhen = (when: string): VisibleIfFormula => ({
   conditions: { c1: { kind: "hasValue", when, hasValue: true } },
@@ -73,8 +73,7 @@ const fromMemberMenu = (index: number, item: RegExp) => {
   fireEvent.click(memberMenus()[index]!);
   fireEvent.click(screen.getByRole("menuitem", { name: item }));
 };
-const split = (index: number) =>
-  fromMemberMenu(index, /^Split group before /);
+const split = (index: number) => fromMemberMenu(index, /^Split group before /);
 const detach = (index: number) =>
   fromMemberMenu(index, /^Edit .* visibility separately$/);
 

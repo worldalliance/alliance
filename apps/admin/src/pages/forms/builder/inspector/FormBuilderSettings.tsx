@@ -5,55 +5,55 @@ import {
 } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { conditionSourceFields } from "../../../../lib/conditionSourceFields";
-import { addressedWrite, type BlockWriteById } from "../../../../lib/displayBlockById";
+import {
+  addressedWrite,
+  type BlockWriteById,
+} from "../../../../lib/displayBlockById";
 import { JsonScopeKind, type JsonScope } from "../../../../lib/formJson";
 import { type VisibilityGroups } from "../../../../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../../../../lib/visibilitySummary";
-import { FormScopeInspector } from "./FormScopeInspector";
-import { InspectorHeader } from "./InspectorHeader";
 import { PerViewerOptions } from "../blocks";
 import { renderBlockEditor } from "../blocks/blockEditors";
 import {
   OverrideTargetContext,
   type OverrideTarget,
 } from "../blocks/perUserContent";
-import {
-  addressOf,
-  CanvasTargetKind,
-  ChildKind,
-  childPlace,
-  elementTarget,
-} from "../selection/canvasSelection";
-import { SelectChildProvider } from "./ChildRows";
-import { ChildSettings } from "./ChildSettings";
-import { DependencyLinks } from "./DependencyLinks";
-import {
-  ElementBoundary,
-  FlaggedSettings,
-} from "../canvas/ElementBoundary";
-import { ElementSettings } from "./ElementSettings";
-import { GreyBoxPanel } from "./GreyBoxPanel";
-import { PageSettings, PageSettingsSidebar } from "./PageSettings";
-import { RangeSettings } from "./RangeSettings";
-import { SettingsSidebar } from "./SettingsSidebar";
-import { SidebarSection } from "./sidebarSections";
-import type { CanvasEdits } from "../selection/useCanvasEdits";
-import {
-  InspectorScope,
-  type CanvasSelectionState,
-} from "../selection/useCanvasSelection";
-import { VisibilityGroupSettings } from "./VisibilityGroupSettings";
+import { ElementBoundary, FlaggedSettings } from "../canvas/ElementBoundary";
 import {
   ElementExpressionScope,
   expressionKeys,
 } from "../conditions/expressionBuffers";
 import { renderFieldEditor } from "../questions/fieldEditors";
 import {
+  addressOf,
+  CanvasTargetKind,
+  ChildKind,
+  elementTarget,
+} from "../selection/canvasSelection";
+import type { CanvasEdits } from "../selection/useCanvasEdits";
+import {
+  InspectorScope,
+  type CanvasSelectionState,
+} from "../selection/useCanvasSelection";
+import { childWiring } from "./childActions";
+import { SelectChildProvider } from "./ChildRows";
+import { ChildSettings } from "./ChildSettings";
+import { DependencyLinks } from "./DependencyLinks";
+import { ElementSettings } from "./ElementSettings";
+import { FormScopeInspector } from "./FormScopeInspector";
+import { GreyBoxPanel } from "./GreyBoxPanel";
+import { InspectorHeader } from "./InspectorHeader";
+import { PageSettings, PageSettingsSidebar } from "./PageSettings";
+import { RangeSettings } from "./RangeSettings";
+import { SettingsSidebar } from "./SettingsSidebar";
+import { SidebarSection } from "./sidebarSections";
+import {
   VisibilityGroupContext,
   visibilityGroupMember,
 } from "./VisibilityGroupContext";
+import { VisibilityGroupSettings } from "./VisibilityGroupSettings";
 
 const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 const RANGE_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
@@ -88,7 +88,6 @@ export function FormBuilderSettings({
   const {
     currentPage,
     selectedPageIndex,
-    setSelection,
     resolvedTarget,
     selectionKey,
     schemaLoads,
@@ -100,13 +99,20 @@ export function FormBuilderSettings({
     selectFromOutline,
   } = canvas;
   const {
-    guardDeletion,
     updateCurrentPage,
     deleteElement,
     applyGrouped,
     updateElementAt,
     selectChildOf,
   } = edits;
+
+  // Deleting the selected block selects the page, which a display-only
+  // builder shows without settings to take the pending focus.
+  const nothingToFocus =
+    displayOnly && resolvedTarget.kind === CanvasTargetKind.Page;
+  useEffect(() => {
+    if (focusPending && nothingToFocus) focused();
+  }, [focusPending, nothingToFocus, focused]);
 
   // Fields a page-level visibility condition can reference: anything answered
   // before this page can show, i.e. fields on earlier pages.
@@ -270,31 +276,20 @@ export function FormBuilderSettings({
             <ChildSettings
               element={element}
               child={child}
-              onUpdate={updateElementAt(index)}
-              updateCurrent={addressedWrite(element, updateBlockById)}
-              onReselect={(next) =>
-                setSelection({
-                  pageId: currentPage.id,
-                  target: { ...elementTarget(element, index), child: next },
-                })
-              }
-              onSelectParent={() =>
-                select(elementTarget(element, index), SidebarSection.Content)
-              }
+              {...childWiring({
+                canvas,
+                edits,
+                updateBlockById,
+                element,
+                index,
+                child,
+              })}
               section={section}
               onSection={setSection}
               focusPending={focusPending}
               onFocused={focused}
               editorKey={`${selectionKey}-${schemaLoads}`}
               dependencies={sub && renderDependencies(sub, sub.id)}
-              guardDelete={(run) => {
-                const place = childPlace({
-                  pageIndex: selectedPageIndex,
-                  index,
-                  child,
-                });
-                return place ? guardDeletion(place, run) : run();
-              }}
             />
           </ElementExpressionScope>
         );
@@ -320,7 +315,7 @@ export function FormBuilderSettings({
                 fallback={(message) => (
                   <FlaggedSettings
                     message={message}
-                    repair="Edit its JSON, or delete it, under Advanced."
+                    repair="Edit its JSON, or delete it, from More."
                   />
                 )}
               >

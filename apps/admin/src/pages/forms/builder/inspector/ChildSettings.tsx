@@ -1,5 +1,4 @@
 import type { AccordionSection } from "@alliance/common/forms/display-blocks";
-import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type {
   ListSubField,
   PageItem,
@@ -7,18 +6,19 @@ import type {
 import type { ReactNode } from "react";
 import type { AddressedWrite } from "../../../../lib/displayBlockById";
 import { updateListSubField } from "../../../../lib/updateListSubField";
-import { ReadOnlyId } from "../kit/ReadOnlyId";
+import { cn } from "../../../../ui/cn";
 import { controlClass } from "../../../../ui/styles";
 import { EditableNestedBlock } from "../blocks/EditableNestedBlock";
 import { PerViewerOptions } from "../blocks/PerViewerOptionsContext";
+import { ElementBoundary, FlaggedSettings } from "../canvas/ElementBoundary";
 import { ElementExpressionScope } from "../conditions/expressionBuffers";
+import { ReadOnlyId } from "../kit/ReadOnlyId";
 import { SUB_FIELD_EDITORS } from "../questions/subFieldEditors";
 import type {
   BaseFieldProps,
   FieldEditor,
   FieldOfKind,
 } from "../questions/types";
-import { cn } from "../../../../ui/cn";
 import { VariableTextField } from "../questions/VariableTextField";
 import { accordionWrites } from "../selection/accordionWrites";
 import {
@@ -26,14 +26,10 @@ import {
   describeElement,
   describeHeading,
   describeSection,
-  sectionBlockChild,
-  sectionChild,
-  subFieldChild,
   type ChildTarget,
   type ResolvedChild,
 } from "../selection/canvasSelection";
-import { neighborMoves } from "./ChildRows";
-import { ElementBoundary, FlaggedSettings } from "../canvas/ElementBoundary";
+import { childActions } from "./childActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import {
   ALL_SECTIONS,
@@ -41,7 +37,6 @@ import {
   SidebarSection,
   UNCONDITIONAL_SECTIONS,
 } from "./sidebarSections";
-import { DELETION } from "./useGuardedDeletion";
 
 type ListSubFieldKind = ListSubField["kind"];
 
@@ -73,13 +68,8 @@ function renderSubFieldEditor<K extends ListSubFieldKind>(
 type ChildView = {
   heading: string;
   sections: readonly SidebarSection[];
-  moves: ReturnType<typeof neighborMoves>;
   idLabel: string;
   id: string | undefined;
-  deleteLabel: string;
-  remove: () => void;
-  /** Where a delete lands; null to land on the element. */
-  parent: ChildTarget | null;
   editor: ReactNode;
 };
 
@@ -119,37 +109,27 @@ export function ChildSettings({
   /** Runs a deletion, or holds it for confirmation when something reads the child. */
   guardDelete: (run: () => void) => void;
 }) {
-  const view = childView({
+  const actions = childActions({
     element,
     child,
     onUpdate,
     updateCurrent,
     onReselect,
+    onSelectParent,
+    guardDelete,
+    onSection,
   });
-  const remove = () =>
-    guardDelete(() => {
-      view.remove();
-      if (view.parent) onReselect(view.parent);
-      else onSelectParent();
-      onSection(SidebarSection.Content);
-    });
+  const view = childView({
+    element,
+    child,
+    onUpdate,
+    updateCurrent,
+    remove: actions.remove,
+  });
   return (
     <SettingsSidebar
       parent={{ label: describeElement(element), onSelect: onSelectParent }}
       heading={view.heading}
-      ownActions={{
-        moveNoun: null,
-        ...view.moves,
-        moveToPage: null,
-        duplicateLabel: "Duplicate",
-        onDuplicate: null,
-        onAddBelow: null,
-        editJsonLabel: "",
-        onEditJson: null,
-        onShowInOutline: null,
-        deleteLabel: view.deleteLabel,
-        onDelete: remove,
-      }}
       sections={view.sections}
       section={section}
       onSection={onSection}
@@ -180,13 +160,13 @@ function childView({
   child,
   onUpdate,
   updateCurrent,
-  onReselect,
+  remove,
 }: {
   element: PageItem;
   child: ResolvedChild;
   onUpdate: (updates: Partial<PageItem>) => void;
   updateCurrent: AddressedWrite | undefined;
-  onReselect: (child: ChildTarget) => void;
+  remove: () => void;
 }): ChildView {
   switch (child.kind) {
     case ChildKind.SubField: {
@@ -195,22 +175,13 @@ function childView({
       const fields = element.fields;
       const { index } = child;
       const sub = fields[index]!;
-      const remove = () =>
-        onUpdate({ fields: fields.filter((_, i) => i !== index) });
       return {
         heading: describeHeading(sub),
         sections: subFieldEditsConditions(sub)
           ? ALL_SECTIONS
           : UNCONDITIONAL_SECTIONS,
-        moves: neighborMoves(fields, index, (next, to) => {
-          onUpdate({ fields: next });
-          onReselect(subFieldChild(next[to]!, to));
-        }),
         idLabel: "Element ID",
         id: sub.id,
-        deleteLabel: DELETION[PlaceKind.SubField].action,
-        remove,
-        parent: null,
         editor: (
           <ElementExpressionScope id={sub.id}>
             {renderSubFieldEditor(sub.kind, {
@@ -234,11 +205,11 @@ function childView({
       const sections = element.sections;
       const sectionIndex = child.section;
       const section = sections[sectionIndex]!;
-      const {
-        writeSections,
-        updateSection: updateSectionAt,
-        blockWrite,
-      } = accordionWrites({ sections, onUpdate, updateCurrent });
+      const { updateSection: updateSectionAt, blockWrite } = accordionWrites({
+        sections,
+        onUpdate,
+        updateCurrent,
+      });
       const updateSection = (
         update: (current: AccordionSection) => Partial<AccordionSection>,
       ) => updateSectionAt(sectionIndex, update);
@@ -246,18 +217,8 @@ function childView({
         return {
           heading: describeSection(section),
           sections: UNCONDITIONAL_SECTIONS,
-          moves: neighborMoves(sections, sectionIndex, (next, to) => {
-            writeSections(() => next);
-            onReselect(sectionChild(next[to]!, to));
-          }),
           idLabel: "Section ID",
           id: section.id,
-          deleteLabel: "Delete section",
-          remove: () =>
-            writeSections((current) =>
-              current.filter((_, i) => i !== sectionIndex),
-            ),
-          parent: null,
           editor: (
             <SectionPanels
               content={
@@ -278,33 +239,14 @@ function childView({
           ),
         };
       }
-      const blocks = section.blocks;
       const blockIndex = child.block;
-      const block = blocks[blockIndex]!;
-      const remove = () =>
-        updateSection(() => ({
-          blocks: blocks.filter((_, i) => i !== blockIndex),
-        }));
+      const block = section.blocks[blockIndex]!;
       const updateCurrentBlock = blockWrite({ sectionIndex, blockIndex });
       return {
         heading: describeHeading(block),
         sections: UNCONDITIONAL_SECTIONS,
-        moves: neighborMoves(blocks, blockIndex, (next, to) => {
-          updateSection(() => ({ blocks: next }));
-          onReselect(
-            sectionBlockChild({
-              section,
-              sectionIndex,
-              block: next[to]!,
-              blockIndex: to,
-            }),
-          );
-        }),
         idLabel: "Element ID",
         id: block.id,
-        deleteLabel: "Delete block",
-        remove,
-        parent: sectionChild(section, sectionIndex),
         editor: (
           <PerViewerOptions allowed={false}>
             <EditableNestedBlock

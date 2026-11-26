@@ -1,6 +1,5 @@
 import { withCount } from "@alliance/common/plural";
 import type { ReactNode } from "react";
-import { selectionIssues } from "../issues/IssueList";
 import { ButtonVariant, buttonVariants } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
 import {
@@ -10,8 +9,9 @@ import {
 } from "../../../../ui/Popover";
 import { PaneHeader } from "../../../../ui/templates/Workspace";
 import { useBuilder } from "../BuilderContext";
+import { selectionIssues } from "../issues/IssueList";
 import { HEADER_TRUNCATES } from "../paneHeader";
-import { ElementActionsMenu, type ElementActions } from "./ElementActionsMenu";
+import { ElementActionsMenu } from "./ElementActionsMenu";
 import { useSelectionActions } from "./useSelectionActions";
 
 /** The selection's issues behind a button of fixed width, so the settings under it never move. */
@@ -60,15 +60,12 @@ function IssuesHere() {
 export function InspectorHeader({
   title,
   extra,
-  ownActions,
 }: {
   title: string;
   /** Controls the selection's own settings still put here. */
   extra?: ReactNode;
-  /** The actions of a selection `useSelectionActions` leaves to its settings, as a child's. */
-  ownActions?: ElementActions;
 }) {
-  const actions = useSelectionActions() ?? ownActions;
+  const actions = useSelectionActions();
   return (
     <PaneHeader
       title={title}

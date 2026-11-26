@@ -4,16 +4,13 @@ import {
   type UnresolvedVariableReference,
 } from "@alliance/common/forms/variable-interpolation";
 import { useCallback, useMemo, useState } from "react";
-import { countOf } from "../../../../lib/formatNumber";
-import { useConfirmOnPage } from "../../../../lib/useConfirmOnPage";
-import {
-  describeLiveChanges,
-  liveFormChanges,
-} from "../liveFormChanges";
-import type { FormReach } from "../useFormReach";
 import ConfirmDialog from "../../../../components/ConfirmDialog";
 import { linkCheckedText } from "../../../../components/linkCheckedText";
 import { useContentConfirm } from "../../../../components/useContentConfirm";
+import { countOf } from "../../../../lib/formatNumber";
+import { useConfirmOnPage } from "../../../../lib/useConfirmOnPage";
+import { describeLiveChanges, liveFormChanges } from "../liveFormChanges";
+import type { FormReach } from "../useFormReach";
 
 function describeUnresolvedReferences(
   references: UnresolvedVariableReference[],
@@ -31,17 +28,20 @@ function describeUnresolvedReferences(
 }
 
 /** Who the live-change confirmation says a save reaches. */
-function reachLine({ taskLive, responses }: FormReach): string {
+function reachLine({ task, taskLive, responses }: FormReach): string {
   if (taskLive) return "Members can open this task now.";
   if (responses !== null && responses > 0) {
     return `This form has ${countOf(responses, "response")}.`;
   }
-  return "This form may have responses.";
+  if (task && taskLive === undefined) {
+    return "Members may be able to open this task.";
+  }
+  return "This form may reach members.";
 }
 
 /**
  * Save, unless `blocked`, which runs `onBlocked` instead. On a live form, or
- * one whose reach couldn't be checked, a save that removes questions or
+ * one whose reach is still loading or couldn't be checked, a save that removes questions or
  * options or changes a question's kind asks first. A schema with unmatched
  * variable references, absolute links to the site or worldalliance text
  * saves only once each dialog is confirmed.
@@ -80,7 +80,7 @@ export function useSaveGate({
 
   const { reach, savedSchema } = live;
   const confirmLiveChanges = useCallback(async () => {
-    if (!reach.live && !reach.failed) return true;
+    if (!reach.live && !reach.failed && !reach.loading) return true;
     const changes = liveFormChanges(savedSchema, schema);
     if (changes.length === 0) return true;
     return confirm({

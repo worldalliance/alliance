@@ -8,8 +8,10 @@ import type {
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { addressedWrite, type BlockWriteById } from "../../../../lib/displayBlockById";
-import { HEADER_TRUNCATES } from "../paneHeader";
+import {
+  addressedWrite,
+  type BlockWriteById,
+} from "../../../../lib/displayBlockById";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
 import { EmptyState } from "../../../../ui/EmptyState";
@@ -17,16 +19,14 @@ import { MoreMenu } from "../../../../ui/MoreMenu";
 import { PaneHeader, Workspace } from "../../../../ui/templates/Workspace";
 import { createDisplayBlock } from "../blocks";
 import { renderBlockEditor } from "../blocks/blockEditors";
-import { SidebarSection, SidebarSections } from "../inspector/sidebarSections";
 import {
   ElementExpressionScope,
   expressionKeys,
 } from "../conditions/expressionBuffers";
+import { SidebarSection, SidebarSections } from "../inspector/sidebarSections";
+import { HEADER_TRUNCATES } from "../paneHeader";
 import { EditableOutputFieldBlock } from "./EditableOutputFieldBlock";
-import {
-  AllViewsInspector,
-  ViewInspector,
-} from "./OutputInspector";
+import { AllViewsInspector, ViewInspector } from "./OutputInspector";
 import {
   OutputNavigator,
   blockMenuItems,
@@ -79,42 +79,67 @@ interface OutputBuilderProps {
   /** Null, or a view that's gone, shows the first view. */
   selectedViewId: string | null;
   onSelectView: (viewId: string | null) => void;
-  /** The builder's toolbar, above the three panes. */
-  toolbar?: ReactNode;
   /** The canvas pane's header for a title. */
   header?: (title: string) => ReactNode;
+}
+
+/** The Output views tab's three panes, for a `Workspace`. */
+export interface OutputPanes {
+  navigator: ReactNode;
+  inspector: ReactNode;
+  main: ReactNode;
+}
+
+/** The Output views tab, laid out on its own. */
+export function OutputBuilder(props: OutputBuilderProps) {
+  const panes = useOutputPanes({ ...props, active: true });
+  return (
+    <Workspace navigator={panes.navigator} inspector={panes.inspector}>
+      {panes.main}
+    </Workspace>
+  );
 }
 
 /**
  * The Output views tab: views and their blocks in the navigator, the selected
  * view previewed with sample answers, and the selection's settings beside it.
+ * A hook, so the builder lays these panes in the Workspace every tab shares;
+ * it does nothing while `active` is false.
  */
-export function OutputBuilder({
+export function useOutputPanes({
   schema,
   onSchemaChange,
   onUpdateBlockById,
   editorsKey,
   selectedViewId,
   onSelectView,
-  toolbar,
   header,
-}: OutputBuilderProps) {
+  active,
+}: OutputBuilderProps & { active: boolean }): OutputPanes {
   const views = useMemo(() => schema.outputViews ?? [], [schema.outputViews]);
-  const outputFields = useMemo(() => collectOutputFields(schema), [schema]);
+  const outputFields = useMemo(
+    () => (active ? collectOutputFields(schema) : []),
+    [active, schema],
+  );
   const selectedView: OutputViewSchema | null =
     views.find((view) => view.id === selectedViewId) ?? views[0] ?? null;
   const activeViewId = selectedView?.id ?? null;
 
   useEffect(() => {
-    if (activeViewId !== selectedViewId) onSelectView(activeViewId);
-  }, [activeViewId, selectedViewId, onSelectView]);
+    if (active && activeViewId !== selectedViewId) onSelectView(activeViewId);
+  }, [active, activeViewId, selectedViewId, onSelectView]);
 
   // A view already chosen on arrival, as by an issue's link, opens its settings.
-  const [chosen, setChosen] = useState<OutputSelection>(() =>
+  const arrival = (): OutputSelection =>
     selectedViewId !== null && activeViewId !== null
       ? { target: OutputTarget.View, viewId: activeViewId }
-      : { target: OutputTarget.All, viewId: activeViewId },
-  );
+      : { target: OutputTarget.All, viewId: activeViewId };
+  const [chosen, setChosen] = useState<OutputSelection>(arrival);
+  const [wasActive, setWasActive] = useState(active);
+  if (wasActive !== active) {
+    setWasActive(active);
+    if (active) setChosen(arrival());
+  }
   const selection = useMemo<OutputSelection>(() => {
     if (chosen.viewId !== activeViewId) {
       return activeViewId === null
@@ -204,76 +229,76 @@ export function OutputBuilder({
     ? `Preview of ${selectedView.title || "Untitled view"}`
     : "Preview";
 
-  return (
-    <Workspace
-      toolbar={toolbar}
-      navigator={
-        <nav aria-label="Output views" className="flex min-h-0 flex-1 flex-col">
-          <PaneHeader
-            title="Output views"
-            action={
-              <Button
-                variant={ButtonVariant.Default}
-                size="small"
-                onClick={addView}
-              >
-                Add output view
-              </Button>
-            }
-          />
-          <div className={PANE_SCROLL}>
-            <OutputNavigator
-              views={views}
-              outputFields={outputFields}
-              selection={selection}
-              actions={actions}
-            />
-          </div>
-        </nav>
-      }
-      inspector={
-        <aside
-          aria-label="Output view settings"
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <InspectorPane
-            key={`${selection.target}:${selection.viewId}:${selection.target === OutputTarget.Block ? selection.blockKey : ""}`}
-            schema={schema}
-            onSchemaChange={onSchemaChange}
+  return {
+    navigator: (
+      <nav aria-label="Output views" className="flex min-h-0 flex-1 flex-col">
+        <PaneHeader
+          title="Output views"
+          action={
+            <Button
+              variant={ButtonVariant.Default}
+              size="small"
+              onClick={addView}
+            >
+              Add output view
+            </Button>
+          }
+        />
+        <div className={PANE_SCROLL}>
+          <OutputNavigator
             views={views}
             outputFields={outputFields}
             selection={selection}
-            editorsKey={editorsKey}
-            onUpdateBlockById={onUpdateBlockById}
-            updateView={updateView}
-            removeView={removeView}
             actions={actions}
           />
-        </aside>
-      }
-    >
-      {header ? header(previewTitle) : <PaneHeader title={previewTitle} />}
-      <div className={cn(PANE_SCROLL, "p-card")}>
-        {selectedView ? (
-          <OutputPreview
-            schema={schema}
-            view={selectedView}
-            outputFields={outputFields}
-          />
-        ) : (
-          <EmptyState
-            title="No output views yet"
-            description="An output view shows members' answers back to them once they finish."
-            action={
-              <Button variant={ButtonVariant.Primary} onClick={addView}>
-                Add output view
-              </Button>
-            }
-          />
-        )}
-      </div>
-    </Workspace>
-  );
+        </div>
+      </nav>
+    ),
+    inspector: (
+      <aside
+        aria-label="Output view settings"
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <InspectorPane
+          key={`${selection.target}:${selection.viewId}:${selection.target === OutputTarget.Block ? selection.blockKey : ""}`}
+          schema={schema}
+          onSchemaChange={onSchemaChange}
+          views={views}
+          outputFields={outputFields}
+          selection={selection}
+          editorsKey={editorsKey}
+          onUpdateBlockById={onUpdateBlockById}
+          updateView={updateView}
+          removeView={removeView}
+          actions={actions}
+        />
+      </aside>
+    ),
+    main: (
+      <>
+        {header ? header(previewTitle) : <PaneHeader title={previewTitle} />}
+        <div className={cn(PANE_SCROLL, "p-card")}>
+          {selectedView ? (
+            <OutputPreview
+              schema={schema}
+              view={selectedView}
+              outputFields={outputFields}
+            />
+          ) : (
+            <EmptyState
+              title="No output views yet"
+              description="An output view shows members' answers back to them once they finish."
+              action={
+                <Button variant={ButtonVariant.Primary} onClick={addView}>
+                  Add output view
+                </Button>
+              }
+            />
+          )}
+        </div>
+      </>
+    ),
+  };
 }
 
 /** The inspector's body for the selection; keyed by it so each selection starts on Content. */

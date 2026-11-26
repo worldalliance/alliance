@@ -27,9 +27,23 @@ const schema: FormSchema = {
 const writes: string[] = [];
 const state: {
   responses: number;
-  task: { id: number; status: "draft" | "member_action" } | null;
+  task: {
+    id: number;
+    status: "draft" | "member_action";
+    archived?: boolean;
+  } | null;
   countsFail: boolean;
-} = { responses: 0, task: null, countsFail: false };
+  countsHang: boolean;
+  indexFails: boolean;
+  taskFails: boolean;
+} = {
+  responses: 0,
+  task: null,
+  countsFail: false,
+  countsHang: false,
+  indexFails: false,
+  taskFails: false,
+};
 
 serveApi(
   routes(
@@ -37,29 +51,36 @@ serveApi(
       "GET /tasks/adminForm/:id": () =>
         Response.json({ id: 1, schema, formSnapshotId: 3 }),
       "GET /tasks/listForms": () =>
-        Response.json([
-          {
-            id: 1,
-            title: "Survey",
-            slug: "survey",
-            displaySlug: "survey",
-            formSnapshotId: 3,
-            ...(state.task && {
-              usedInAction: { id: state.task.id, name: "Sign up" },
-            }),
-          },
-        ]),
-      "POST /tasks/responses/counts": () =>
-        state.countsFail
+        state.indexFails
           ? new Response(null, { status: 500 })
-          : Response.json([{ formId: 1, count: state.responses }]),
+          : Response.json([
+              {
+                id: 1,
+                title: "Survey",
+                slug: "survey",
+                displaySlug: "survey",
+                formSnapshotId: 3,
+                ...(state.task && {
+                  usedInAction: { id: state.task.id, name: "Sign up" },
+                }),
+              },
+            ]),
+      "POST /tasks/responses/counts": () =>
+        state.countsHang
+          ? new Promise<Response>(() => {})
+          : state.countsFail
+            ? new Response(null, { status: 500 })
+            : Response.json([{ formId: 1, count: state.responses }]),
       "GET /actions/adminslug/:id": () =>
-        Response.json(
-          makeParsedAction({
-            id: state.task?.id,
-            status: state.task?.status,
-          }),
-        ),
+        state.taskFails
+          ? new Response(null, { status: 500 })
+          : Response.json(
+              makeParsedAction({
+                id: state.task?.id,
+                status: state.task?.status,
+                archived: state.task?.archived ?? false,
+              }),
+            ),
       "PUT /tasks/updateForm/:formId": ({ params }) => {
         writes.push(params.formId!);
         return Response.json({ id: 1, formSnapshotId: 4 });
@@ -74,6 +95,9 @@ beforeEach(() => {
   state.responses = 0;
   state.task = null;
   state.countsFail = false;
+  state.countsHang = false;
+  state.indexFails = false;
+  state.taskFails = false;
 });
 
 const removeTown = () => {
@@ -150,11 +174,106 @@ describe("FormBuilder on a live form", () => {
     state.countsFail = true;
     renderSavedFormBuilder(1, "/");
     expect(
-      await screen.findByRole("button", { name: "Unchecked" }),
+      await screen.findByRole("button", { name: "Live check failed" }),
     ).toBeTruthy();
     removeTown();
     await save();
     const dialog = await screen.findByRole("dialog");
-    expect(dialog.textContent).toContain("This form may have responses.");
+    expect(dialog.textContent).toContain("This form may reach members.");
+  });
+
+  it("lets a draft task's responses, which come from staff previews, save without asking", async () => {
+    state.task = { id: 9, status: "draft" };
+    state.responses = 4;
+    renderSavedFormBuilder(1, "/");
+    await screen.findByDisplayValue("One");
+    await act(async () => {});
+    expect(screen.queryByText("Live")).toBeNull();
+    removeTown();
+    await save();
+    await waitFor(() => expect(writes).toEqual(["1"]));
+  });
+
+  it("asks before a save reaches the responses of an archived task's form", async () => {
+    state.task = { id: 9, status: "member_action", archived: true };
+    state.responses = 4;
+    renderSavedFormBuilder(1, "/");
+    expect(await screen.findByText("Live")).toBeTruthy();
+    removeTown();
+    await save();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("This form has 4 responses.");
+    expect(writes).toEqual([]);
+  });
+
+  it("asks when it couldn't count an archived task's form's responses", async () => {
+    state.task = { id: 9, status: "member_action", archived: true };
+    state.countsFail = true;
+    renderSavedFormBuilder(1, "/");
+    expect(
+      await screen.findByRole("button", { name: "Live check failed" }),
+    ).toBeTruthy();
+    removeTown();
+    await save();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("This form may reach members.");
+  });
+
+  it("asks when a save comes before an archived task's form's count", async () => {
+    state.task = { id: 9, status: "member_action", archived: true };
+    state.countsHang = true;
+    renderSavedFormBuilder(1, "/");
+    await screen.findByDisplayValue("One");
+    await act(async () => {});
+    removeTown();
+    await save();
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(writes).toEqual([]);
+  });
+
+  it("asks, naming the task, when it couldn't check the form's task", async () => {
+    state.task = { id: 9, status: "member_action" };
+    state.taskFails = true;
+    renderSavedFormBuilder(1, "/");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Live check failed" }),
+    );
+    expect((await screen.findByRole("dialog")).textContent).toContain(
+      "Couldn't check whether members can open this task",
+    );
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    removeTown();
+    await save();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain(
+      "Members may be able to open this task.",
+    );
+  });
+
+  it("asks when the forms index, which names the form's task, couldn't load", async () => {
+    state.indexFails = true;
+    renderSavedFormBuilder(1, "/");
+    expect(
+      await screen.findByRole("button", { name: "Live check failed" }),
+    ).toBeTruthy();
+    removeTown();
+    await save();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("Save changes that affect answers?");
+    expect(dialog.textContent).toContain("This form may reach members.");
+  });
+
+  it("asks when a save comes before the check finishes", async () => {
+    state.countsHang = true;
+    renderSavedFormBuilder(1, "/");
+    await screen.findByDisplayValue("One");
+    removeTown();
+    await save();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("This form may reach members.");
+    expect(writes).toEqual([]);
   });
 });

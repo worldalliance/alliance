@@ -1,10 +1,16 @@
 import { ChevronLeft } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
-import type { ElementActions } from "./ElementActionsMenu";
-import { InspectorHeader } from "./InspectorHeader";
-import { focusInPlace } from "../kit/revealInPane";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import Button, { ButtonVariant } from "../../../../ui/Button";
+import { focusInPlace } from "../kit/revealInPane";
+import { InspectorHeader } from "./InspectorHeader";
 import { SidebarSection, SidebarSections } from "./sidebarSections";
+
+const scrollParent = (el: HTMLElement) => {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(node).overflowY)) return node;
+  }
+  return null;
+};
 
 const EDITING_CONTROL =
   'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
@@ -18,7 +24,6 @@ export function SettingsSidebar({
   parent,
   heading,
   headingActions,
-  ownActions,
   sections,
   section,
   onSection,
@@ -32,7 +37,6 @@ export function SettingsSidebar({
   parent?: { label: string; onSelect: () => void };
   heading: string;
   headingActions?: ReactNode;
-  ownActions?: ElementActions;
   sections: readonly SidebarSection[];
   section: SidebarSection;
   onSection: (section: SidebarSection) => void;
@@ -44,6 +48,24 @@ export function SettingsSidebar({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const active = sections.includes(section) ? section : sections[0]!;
+
+  // The tabs stick under the header, so a switch made while scrolled down
+  // starts the new panel under them rather than at the old offset.
+  const shownSection = useRef(active);
+  useLayoutEffect(() => {
+    if (shownSection.current === active) return;
+    shownSection.current = active;
+    const list = ref.current?.querySelector<HTMLElement>('[role="tablist"]');
+    const panel = ref.current?.querySelector<HTMLElement>(
+      '[role="tabpanel"]:not([hidden])',
+    );
+    const pane = list && scrollParent(list);
+    if (!list || !panel || !pane) return;
+    const hidden =
+      list.getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
+    if (hidden > 0) pane.scrollTop -= hidden;
+  }, [active]);
 
   useEffect(() => {
     if (!focusPending) return;
@@ -71,14 +93,10 @@ export function SettingsSidebar({
           </Button>
         </div>
       )}
-      <InspectorHeader
-        title={heading}
-        extra={headingActions}
-        ownActions={ownActions}
-      />
+      <InspectorHeader title={heading} extra={headingActions} />
       <SidebarSections
         sections={sections}
-        active={sections.includes(section) ? section : sections[0]!}
+        active={active}
         onSelect={onSection}
         layout={layout}
         actions={actions}

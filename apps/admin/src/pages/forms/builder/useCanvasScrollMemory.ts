@@ -1,21 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 
 /**
- * Keeps each page's scroll position in the canvas pane for the session, and
- * returns to it when the page is shown again, unless the switch reveals
- * something, which scrolls the pane itself.
+ * Keeps each view's scroll position in the canvas pane for the session, a
+ * view being a page in Edit or Preview, and returns to it when the view is
+ * shown again, unless the switch reveals something, which scrolls the pane
+ * itself.
  */
 export function useCanvasScrollMemory({
   pane,
-  pageId,
+  view,
   revealing,
 }: {
   pane: RefObject<HTMLElement | null>;
-  pageId: string;
+  view: string;
   revealing: boolean;
 }) {
   const positions = useRef(new Map<string, number>());
-  const shown = useRef(pageId);
+  const shown = useRef(view);
   useEffect(() => {
     const element = pane.current;
     if (!element) return;
@@ -25,11 +26,11 @@ export function useCanvasScrollMemory({
     return () => element.removeEventListener("scroll", remember);
   }, [pane]);
   useLayoutEffect(() => {
-    if (shown.current === pageId) return;
-    shown.current = pageId;
+    if (shown.current === view) return;
+    shown.current = view;
     const element = pane.current;
     if (element && !revealing) {
-      element.scrollTop = positions.current.get(pageId) ?? 0;
+      element.scrollTop = positions.current.get(view) ?? 0;
     }
-  }, [pageId, pane, revealing]);
+  }, [view, pane, revealing]);
 }

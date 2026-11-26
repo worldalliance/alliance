@@ -94,12 +94,15 @@ export function useCanvasSelection({
   const [inspectorScope, setInspectorScope] = useState(
     InspectorScope.Selection,
   );
+  /** Counts new selections, which a structural edit's update isn't. */
+  const [selections, setSelections] = useState(0);
   /** A new selection takes the inspector back from the form's settings; a structural edit's update doesn't. */
   const setSelection = (
     next: CanvasSelection | ((current: CanvasSelection) => CanvasSelection),
   ) => {
     if (typeof next !== "function") {
       setInspectorScope(InspectorScope.Selection);
+      setSelections((count) => count + 1);
     }
     setSelectionState(next);
   };
@@ -193,6 +196,7 @@ export function useCanvasSelection({
     setSelection,
     resolvedTarget,
     selectionKey,
+    selections,
     section,
     setSection,
     inspectorScope,

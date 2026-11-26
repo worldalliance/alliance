@@ -1,19 +1,17 @@
 import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
-import {
-  CanvasTargetKind,
-  pageTitle,
-} from "../selection/canvasSelection";
-import { InsertMode } from "../canvas/InsertPoint";
-import { InspectorScope } from "../selection/useCanvasSelection";
-import { DELETION } from "./useGuardedDeletion";
 import { JsonScopeKind } from "../../../../lib/formJson";
 import { DropPosition } from "../../../../lib/useDragReorder";
 import { NeighborDirection, stepPast } from "../../../../lib/visibilityGroups";
 import { useBuilder } from "../BuilderContext";
 import { insertBelow } from "../canvas/insertBelow";
+import { InsertMode } from "../canvas/InsertPoint";
 import { revealInPane } from "../kit/revealInPane";
+import { CanvasTargetKind, pageTitle } from "../selection/canvasSelection";
+import { InspectorScope } from "../selection/useCanvasSelection";
+import { childActions, childWiring } from "./childActions";
 import type { ElementActions } from "./ElementActionsMenu";
+import { DELETION } from "./useGuardedDeletion";
 
 const NONE: Omit<ElementActions, "deleteLabel"> = {
   moveNoun: null,
@@ -39,9 +37,8 @@ function showInOutline() {
 
 /**
  * The actions for the current selection, one source for the inspector header
- * and the outline's and canvas's context menus. Null for a selection whose
- * actions its own settings still offer: a list sub-field, accordion section
- * or section block, and the form itself.
+ * and the outline's and canvas's context menus. Null for the form itself
+ * and a display-only builder's page.
  */
 export function useSelectionActions(): ElementActions | null {
   const {
@@ -49,6 +46,7 @@ export function useSelectionActions(): ElementActions | null {
     canvas,
     edits,
     canvasGroups,
+    updateBlockById,
     setJsonScope,
     outline,
     props: { displayOnly },
@@ -122,10 +120,31 @@ export function useSelectionActions(): ElementActions | null {
       };
     }
     case CanvasTargetKind.Element: {
-      if (target.child) return null;
-      const { index } = target;
+      const { index, child } = target;
       const element = currentPage.fields[index];
       if (!element) return null;
+      if (child) {
+        const actions = childActions({
+          element,
+          child,
+          ...childWiring({
+            canvas,
+            edits,
+            updateBlockById,
+            element,
+            index,
+            child,
+          }),
+          onSection: canvas.setSection,
+        });
+        return {
+          ...NONE,
+          onMoveUp: actions.onMoveUp,
+          onMoveDown: actions.onMoveDown,
+          deleteLabel: actions.deleteLabel,
+          onDelete: actions.onDelete,
+        };
+      }
       const stepTo = (direction: NeighborDirection) => {
         const step = stepPast({
           fields: currentPage.fields,
@@ -159,6 +178,7 @@ export function useSelectionActions(): ElementActions | null {
     case CanvasTargetKind.Group:
       return {
         ...NONE,
+        offersMoves: false,
         moveToPage: moveToPage(target.start, target.end),
         onAddBelow: addBelow,
         onShowInOutline: shownInOutline,

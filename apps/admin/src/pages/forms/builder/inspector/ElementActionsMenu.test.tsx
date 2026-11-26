@@ -50,6 +50,25 @@ describe("actionItems", () => {
     });
     expect(items.map(({ label }) => label)).toContain("Move to page 2: Two");
   });
+
+  it("offers a range no up or down moves", () => {
+    const items = actionItems({
+      ...pageActions(false),
+      moveNoun: null,
+      onMoveDown: null,
+      offersMoves: false,
+      moveToPage: { pages: [{ index: 1, title: "Two" }], onMove: jest.fn() },
+      onDuplicate: null,
+      onEditJson: null,
+      onShowInOutline: jest.fn(),
+      onDelete: null,
+      deleteDisabledReason: undefined,
+    });
+    expect(items.map(({ label }) => label)).toEqual([
+      "Move to page 2: Two",
+      "Show in outline",
+    ]);
+  });
 });
 
 describe("ElementActionsMenu", () => {
@@ -71,5 +90,23 @@ describe("ElementActionsMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "More: Page 1" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete page" }));
     expect(actions.onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no More button when no action applies", () => {
+    render(
+      <ElementActionsMenu
+        label="2 elements selected"
+        actions={{
+          ...pageActions(true),
+          offersMoves: false,
+          onMoveDown: null,
+          onDuplicate: null,
+          onEditJson: null,
+          deleteLabel: "",
+          deleteDisabledReason: undefined,
+        }}
+      />,
+    );
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

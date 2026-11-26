@@ -16,7 +16,7 @@ const EDITOR_LABELS: Record<FormEditor, string> = {
   [FormEditor.Form]: "Form",
   [FormEditor.Shareable]: "Shareable text",
   [FormEditor.Outputs]: "Output views",
-  [FormEditor.Aggregates]: "Aggregate views",
+  [FormEditor.Aggregates]: "Aggregates",
   [FormEditor.Variables]: "Formulas",
   [FormEditor.Rows]: "Rows",
 };

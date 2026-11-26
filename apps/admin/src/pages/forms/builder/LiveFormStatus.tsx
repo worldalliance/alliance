@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import { countOf } from "../../../lib/formatNumber";
 import Badge, { BadgeTone } from "../../../ui/Badge";
 import Button, { ButtonVariant, buttonVariants } from "../../../ui/Button";
@@ -30,17 +31,21 @@ export function LiveFormStatus({ reach }: { reach: FormReach }) {
       {reach.failed && (
         <Popover>
           <PopoverTrigger
+            aria-label="Live check failed"
             className={cn(
               "inline-flex text-warning",
               buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
             )}
           >
-            Unchecked
+            <TriangleAlert aria-hidden="true" className="size-3.5" />
           </PopoverTrigger>
           <PopoverContent className="flex w-72 flex-col items-start gap-2">
             <p>
-              Couldn't check whether this form has responses, so saves that
-              remove questions or options ask first.
+              {reach.task && reach.taskLive === undefined
+                ? "Couldn't check whether members can open this task"
+                : "Couldn't check whether this form reaches members"}
+              , so saves that remove questions or options, or change a
+              question's kind, ask first.
             </p>
             <Button
               variant={ButtonVariant.Ghost}

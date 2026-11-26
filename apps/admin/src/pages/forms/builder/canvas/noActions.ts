@@ -5,6 +5,7 @@ export const NO_ACTIONS: ElementActions = {
   moveNoun: null,
   onMoveUp: null,
   onMoveDown: null,
+  offersMoves: false,
   moveToPage: null,
   duplicateLabel: "Duplicate",
   onDuplicate: null,
