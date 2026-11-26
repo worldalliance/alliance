@@ -6,12 +6,13 @@ import type {
 } from "@alliance/shared/client";
 import { DEFAULT_EVENT_NAMES } from "../../lib/actionStatusDisplay";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { fromApi } from "../../lib/fromApi";
 import { eventBeforeDeadline, existingLaunchEvent } from "./launchBlockers";
 import type { LaunchSchedule } from "./launchSchedule";
 
 export async function launchSuite(params: {
   /** Reads the suite fresh, so a launch from another tab or person shows. */
-  fetchSuite: () => Promise<Result<Pick<ActionSuiteDto, "events">, Error>>;
+  fetchSuite: () => Promise<Result<Pick<ActionSuiteDto, "events">, unknown>>;
   schedule: LaunchSchedule;
   reminderBodies: CreateReminderGroupDto[];
   /** Resolves `null` when staff decline to move a deadline earlier. */
@@ -41,7 +42,7 @@ export async function launchSuite(params: {
     latest.value.events.map((event) => event.id),
   );
 
-  const withMemberEvent = await R.fromPromise(
+  const withMemberEvent = await fromApi(
     addEvent({
       title: DEFAULT_EVENT_NAMES.member_action,
       description: "",
@@ -67,7 +68,7 @@ export async function launchSuite(params: {
     );
   }
 
-  const withOfficeEvent = await R.fromPromise(
+  const withOfficeEvent = await fromApi(
     addEvent({
       title: DEFAULT_EVENT_NAMES.office_action,
       description: "",
@@ -84,7 +85,7 @@ export async function launchSuite(params: {
     );
   }
 
-  const reminders = await R.fromPromise(
+  const reminders = await fromApi(
     createReminders({
       eventId: memberEvent.id,
       bodies: reminderBodies,

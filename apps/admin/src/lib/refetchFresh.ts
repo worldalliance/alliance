@@ -3,6 +3,7 @@ import type {
   QueryObserverResult,
   RefetchOptions,
 } from "@tanstack/react-query";
+import { fromApi } from "./fromApi";
 
 /**
  * Refetches, failing unless the data was fetched since the call began: a
@@ -11,9 +12,9 @@ import type {
  */
 export const refetchFresh = async <T>(
   refetch: (options: RefetchOptions) => Promise<QueryObserverResult<T>>,
-): Promise<Result<T, Error>> => {
+): Promise<Result<T, unknown>> => {
   const startedAt = Date.now();
-  const reload = await R.fromPromise(refetch({ throwOnError: true }));
+  const reload = await fromApi(refetch({ throwOnError: true }));
   if (!reload.ok) return reload;
   const { data, dataUpdatedAt } = reload.value;
   if (data === undefined) {

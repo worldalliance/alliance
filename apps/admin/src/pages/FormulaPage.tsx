@@ -94,7 +94,7 @@ const LoadedFormula: React.FC<{
 const FormulaEditor: React.FC<{
   formulaId: string;
   formulas: FormulaDto[];
-  refresh: () => Promise<Result<FormulaDto[], Error>>;
+  refresh: () => Promise<Result<FormulaDto[], unknown>>;
   /** True once, on the mount that follows the editor's own save. */
   takeFocus: () => boolean;
   requestFocus: () => void;

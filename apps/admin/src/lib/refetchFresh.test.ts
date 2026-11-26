@@ -21,7 +21,9 @@ describe("refetchFresh", () => {
       R.success({ events: [] }),
     );
     const failed = await refetchFresh(observer.refetch);
-    expect(!failed.ok && failed.error.message).toBe("network down");
+    expect(
+      !failed.ok && failed.error instanceof Error && failed.error.message,
+    ).toBe("network down");
     unsubscribe();
   });
 
@@ -44,7 +46,10 @@ describe("refetchFresh", () => {
     const reload = refetchFresh(observer.refetch);
     await client.cancelQueries({ queryKey: ["suite"] });
     const cancelled = await reload;
-    expect(!cancelled.ok && cancelled.error.message).toContain("cancelled");
+    expect(
+      !cancelled.ok &&
+        (cancelled.error instanceof Error ? cancelled.error.message : ""),
+    ).toContain("cancelled");
     unsubscribe();
   });
 });

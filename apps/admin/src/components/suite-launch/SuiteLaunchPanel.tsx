@@ -64,7 +64,7 @@ const SuiteLaunchPanel = ({
   onClose,
 }: {
   suite: ActionSuiteDto;
-  fetchSuite: () => Promise<Result<ActionSuiteDto, Error>>;
+  fetchSuite: () => Promise<Result<ActionSuiteDto, unknown>>;
   /** Resolves `null` when staff decline to move a deadline earlier. */
   addEvent: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
   onClose: () => void;

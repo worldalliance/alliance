@@ -107,6 +107,20 @@ describe("launchSuite", () => {
     expect(createReminders).not.toHaveBeenCalled();
   });
 
+  it("shows the server's refusal when the member event is refused", async () => {
+    const result = await launchSuite({
+      reminderBodies,
+      fetchSuite: async () => R.success(suiteWith([])),
+      schedule,
+      addEvent: async () => {
+        throw { statusCode: 409, message: "The deadline has passed." };
+      },
+      createReminders: async () => [],
+    });
+
+    expect(!result.ok && result.error).toContain("The deadline has passed");
+  });
+
   it("reports a declined member event as cancelled", async () => {
     const result = await launchSuite({
       reminderBodies,
