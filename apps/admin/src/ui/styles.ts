@@ -15,8 +15,9 @@ export const linkClass = "rounded-sm text-accent underline focus-ring";
 
 /**
  * A row of a Workspace navigator (thread list, outline): the table's hover and
- * selected tones, selected by `aria-current="page"` on a link or
- * `aria-selected` on an option. Padding and layout are the caller's.
+ * selected tones, selected by `aria-current="page"` on a link,
+ * `aria-current="true"` on an outline item or `aria-selected` on an option.
+ * Padding and layout are the caller's.
  */
 export const navRowClass =
-  "rounded-md focus-ring hover:bg-surface-2 aria-selected:bg-accent-soft aria-[current=page]:bg-accent-soft";
+  "rounded-md focus-ring hover:bg-surface-2 aria-selected:bg-accent-soft aria-[current=page]:bg-accent-soft aria-[current=true]:bg-accent-soft";
