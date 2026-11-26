@@ -30,6 +30,8 @@ interface FormConflictModalProps {
   onTakeTheirs: () => void;
   onCopyMine: () => void;
   onCancel: () => void;
+  /** A failed Keep mine, merge or copy, said above the buttons. */
+  error?: string | null;
 }
 
 /** Stale-save conflict modal. */
@@ -46,6 +48,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
   onTakeTheirs,
   onCopyMine,
   onCancel,
+  error,
 }) => {
   const merge = useMemo(
     () =>
@@ -92,7 +95,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
         </div>
       </ModalBody>
 
-      <ModalFooter className="p-4">
+      <ModalFooter className="p-4" error={error}>
         {sourceFormsLoading ? (
           <p className="mb-3 text-sm text-zinc-600">
             Loading the forms your formulas read…

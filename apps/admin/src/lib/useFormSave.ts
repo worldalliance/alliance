@@ -262,7 +262,10 @@ export function useFormSave({
     validation,
   ]);
 
-  const closeConflict = useCallback(() => setConflict(null), [setConflict]);
+  const closeConflict = useCallback(() => {
+    setSaveError(null);
+    setConflict(null);
+  }, [setConflict]);
 
   // Overwrite only if their snapshot is still current.
   const handleKeepMine = useCallback(async () => {

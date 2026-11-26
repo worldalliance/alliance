@@ -343,6 +343,7 @@ export function FormBuilder(props: FormBuilderProps) {
           onTakeTheirs={handleTakeTheirs}
           onCopyMine={handleCopyMine}
           onCancel={closeConflict}
+          error={saveError}
         />
       )}
       {saveGateDialog}
