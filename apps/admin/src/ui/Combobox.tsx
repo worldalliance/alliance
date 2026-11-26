@@ -60,6 +60,7 @@ export function Combobox<V extends string | number>({
     value === null
       ? null
       : (found ?? (picked.current?.value === value ? picked.current : null));
+  const [open, setOpen] = useState(false);
   return (
     <Primitive.Root<ComboboxOption<V>>
       items={options}
@@ -76,10 +77,15 @@ export function Combobox<V extends string | number>({
       onInputValueChange={onQueryChange}
       autoHighlight
       disabled={disabled}
+      onOpenChange={setOpen}
     >
       <div className="relative">
         <Primitive.Input
           {...inputProps}
+          onKeyDown={(event) => {
+            // Base UI blanks the pick on Escape while the list is closed, without a change to report.
+            if (event.key === "Escape" && !open) event.preventBaseUIHandler();
+          }}
           placeholder={placeholder}
           className={cn(controlClass, "h-control pr-8", className)}
         />

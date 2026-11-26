@@ -22,8 +22,9 @@ function TaskField(props: {
   onChange?: (value: number) => void;
   loading?: boolean;
   loadError?: string;
+  initial?: number;
 }) {
-  const [value, setValue] = useState<number | null>(null);
+  const [value, setValue] = useState<number | null>(props.initial ?? null);
   return (
     <Field label="Task">
       {(control) => (
@@ -112,5 +113,17 @@ describe("Combobox", () => {
     type(box, "zzzz");
     expect(onQueryChange.mock.calls[0]?.[0]).toBe("zzzz");
     await waitFor(() => expect(screen.getAllByRole("option").length).toBe(3));
+  });
+
+  it("keeps its pick on Escape with the list closed", async () => {
+    render(<TaskField initial={2} />);
+    const box = input();
+    box.focus();
+    await waitFor(() =>
+      expect((box as HTMLInputElement).value).toBe("Sign the petition"),
+    );
+    fireEvent.keyDown(box, { key: "Escape" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect((box as HTMLInputElement).value).toBe("Sign the petition");
   });
 });
