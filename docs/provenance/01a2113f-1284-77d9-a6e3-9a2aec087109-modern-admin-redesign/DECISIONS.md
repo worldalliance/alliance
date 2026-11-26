@@ -464,3 +464,63 @@ Agent judgement by the inbox area's lead and its page agent; the user was asleep
 - **The All tab's search runs as staff type, kept in `?q=`**; an old bookmarked `?search=` link shows the whole list. Searching on every keystroke is ALL-2611.
 - **A failed refresh of a conversation reads "Couldn't refresh texts." with "Try again"**, in place of "Reload to see the latest.", since the button does the reload.
 - **The inbox's review loop stopped after round 7**, the first round with no HIGH finding once the owner's stop rule applied; round 7's two tested fixes were not re-reviewed. The conversation at a 1024 px window is ALL-2610.
+
+## Area: projects
+
+Agent decisions by the projects area's lead and its units (Tasks › Projects list and record, Formulas list and record, Contracts list and record); the user was asleep.
+
+### Projects
+
+- **Standalone tasks stay on the projects board**, after the projects in each section, so no task loses its place on the board.
+- **"Schedule release" is reachable only from a row's More menu, not foregrounded**, per the owner's no-prominence instruction for that flow.
+- **A draft's Start staff testing is the first item in its More menu**, disabled until the draft is ready, with "Needs N" beside the phase badge and the menu item naming what is missing. As a row button it was pushed off the panel at 1280.
+- **A card's mini timeline runs to today only while some task's last phase is still open**, so a finished project doesn't look ongoing.
+- **On standalone-task cards the badge sits under the name and names wrap to two lines**, because single-line names were cut to about 82 px.
+- **Project record tabs are unchanged** (Tasks by suite, Timeline, Project updates); the side panel adds a Suites list.
+- **The record's tasks table puts phase and dates in one column, files won't and dismissed under Completed, and gives the Task column a 192 px minimum**, so it fits beside the side panel at 1280.
+- **The per-task slug is dropped from the record's tasks table**; it is on the task's own page.
+- **Retention shows as text in the tasks table; the funnel bar stays on the board card.**
+- **"N% of previous" shows only where the compared task is the row directly above**, since beside any other row it compared the wrong steps. Each row shows its number in the project's order, and row labels add "task N" where task names repeat.
+- **Name and slug are edited in one dialog from the More menu** instead of inline pencils, and project dialogs don't autofocus their name field, which is what lets focus return to the opener.
+- **Remove from project keeps no confirmation, as on `main`, and focus moves to the next row's More, then the previous row's, then Add task.** The page agent's stated reason, "reversible, reaches no member", is wrong: members lose the project name shown on that task. ALL-2636 proposes an Undo toast.
+- **Focus after Remove from project stays hand-written rather than using `useFocusAfterRemoval`**: the hook focuses a row's first button, which on a draft row is the "Needs" tooltip trigger, not More.
+- **The updates tab has three columns**: Update (with its task as a caption), Status, and Date, with "Sent <date>", "No notification" or "Not sent yet" under it, rather than "Not sent" for updates that never send.
+- **The page loads every task update alongside the tasks and projects and waits for all three**, because `GET /actions/all` omits updates and the "no update posted" flags were firing on tasks that had one. A failed refresh shows one "project updates" banner.
+- **The board and record keep passing `loading`/`error` to `ContentState` by hand** rather than adopting `things`/`query`, since `useProjectsPageData` already treats only a first-load failure as failed, reviewed and tested; moving it is redesign, not port.
+- **The record's row More menus are icon-only**, with the task name as tooltip and accessible name, because `MoreMenu`'s busy spinner widened the Actions column and no fixed width fit at 1280 (the menu's own widening is ALL-2653).
+- **Only one row write runs at a time on the record**: while one runs, the other rows' write items are disabled with "Another change is saving", since concurrent writes raced the list refetch.
+- **Deferred:** ALL-2534 to ALL-2537, ALL-2573, ALL-2574, ALL-2595 to ALL-2597, ALL-2635 to ALL-2638, ALL-2695, including Delete project's pending state in the toast confirm (ALL-2635); for the system owner ALL-2653 to ALL-2657; for the tasks area ALL-2658 (the task page doesn't scroll to `#release`).
+
+### Formulas
+
+- **The list column reads "Used by (formulas)"** because its count covers formulas' reads only, not suite partitions.
+- **A name filter, kept in `?q=`, with a no-results state.**
+- **Delete sits in the page header as a danger-outline button**, not an overflow menu or the form's foot, as the record's only secondary action; the SaveBar says "Deleting…" while it runs.
+- **History is a disclosure card under the form, not a tab**: the record holds one form, and a tab would hide history behind a click without saving space.
+- **The edit form has no maximum width inside the record's main column**, which also holds History; the new-formula form keeps its limit.
+- **Save failures that need Reload (a 409, a failed reload after a save) and failed deletes show as an inline banner above the form; other save failures show in the SaveBar.**
+- **After "Saved, but couldn't load it again", Save stays enabled with "Reload to keep editing" beside it**, rather than being disabled.
+- **The deleted-formula check lives in the page component, not the editor hook**, so one check covers both remount paths; without it Discard after another admin's delete turned the page into a blank "New formula" form.
+- **The formula pages keep `href("/tasks/formulas/:formulaId")` instead of `formulaHref`**, which is typed `number | "new"` while formula ids are UUID strings; the system owner should retype it.
+- **Deferred:** a heading-level prop on the shared formula-fix components for the old member list page (ALL-2530).
+
+### Contracts
+
+- **A contract's text stays read-only after creation**, and the page says so and points to creating a new contract, because `UpdateContractDto` picks only name, dates and description and the whitelist pipe strips `markdown`. Editing before anyone signs, or a "Duplicate as new version", needs the server (ALL-2512).
+- **Copy about what a save does to members is cut to the plainest true fact rather than qualified**, and the guards stay. Review rounds 4 to 9 kept finding gaps in qualified sentences; true but incomplete member copy is not extended.
+- **Start and end are edited and shown in Pacific time ("PT")**, sending the server's instants back unchanged; created times follow DESIGN.md with no zone.
+- **Emptying a date clears it** (sent as `null`, checked on the live server). The Clear buttons were restored because the shared date picker treats a half-cleared date as empty and has no clear control (ALL-2544).
+- **A save that leaves no contract in force is warned about but allowed**, so a contract can still be retired on purpose, as the old page allowed.
+- **A date change is refused until the other contracts have loaded**, since the save note and guards depend on them (fails closed).
+- **A point is required only on a contract that is scheduled or that the save puts in force**, so superseded contracts with no points stay editable.
+- **A point with subtext or admin notes but no point text is refused, not dropped silently**; **an end at or before the start is refused**, although the server accepts it, because such a contract can never be active.
+- **The Active contract's record carries a banner that members are signing it and the public site quotes it**, and the save note names which contract members will be asked to sign after the save, naming the other contract when this one is superseded.
+- **"A task form that names it still asks" stays on existing contracts**, so staff know a live task may still collect signatures.
+- **Fields stay editable while saving, and typing done meanwhile is kept and stays unsaved**, since disabling them would drop focus. The same gap in the explicit-save exemplar is ALL-2641.
+- **The list's Text column shows the first 80 characters of the raw markdown**, as the old card did; plain text needs a markdown-to-text dependency, left for a follow-up.
+- **The record has no side panel**: its few facts fit the description line.
+
+### Process
+
+- **The area was split into three page units (projects, formulas, contracts), built in parallel and review-looped separately**, so each loop reviewed one cohesive unit and none waited on another. They were then joined onto `ma-projects` and rebased onto `ma-sys`, and the port's changes were reviewed as a delta rather than re-reviewing the pages.
+- **Loops stopped under the owner's no-HIGH stop rule**: projects after round 7, formulas after round 4, contracts after round 9 (round 9's small fix was hub-checked, not re-reviewed). Every reviewer ran on Opus 5.5 in a fresh context, so review was same-model.
