@@ -269,6 +269,21 @@ it("refuses mod+shift+ with a key Shift changes", () => {
   }
 });
 
+it("takes mod+shift+ with a named key", () => {
+  const run = mock();
+  const SendAndClose = () => {
+    useShortcut({ keys: "mod+shift+enter", label: "Send and close", run });
+    return null;
+  };
+  render(
+    <ShortcutsProvider>
+      <SendAndClose />
+    </ShortcutsProvider>,
+  );
+  fireEvent.keyDown(window, { key: "Enter", ctrlKey: true, shiftKey: true });
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
 const UndoRedo = ({
   onUndo,
   onRedo,

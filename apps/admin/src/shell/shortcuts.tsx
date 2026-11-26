@@ -18,7 +18,8 @@ import { Switch } from "../ui/Switch";
 export type Shortcut = {
   /**
    * Keys pressed one after another, separated by spaces: `[`, `g t`. `mod+k`
-   * is ⌘K on a Mac and Ctrl+K elsewhere; `mod+shift+z` is ⇧⌘Z (a letter only).
+   * is ⌘K on a Mac and Ctrl+K elsewhere; `mod+shift+z` is ⇧⌘Z
+   * (a letter or a named key such as `enter`).
    */
   keys: string;
   /** What it does, as the shortcut list words it. */
@@ -178,9 +179,9 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
       ? shortcut.keys.slice((MOD + SHIFT).length)
       : null;
     // With Shift held the browser reports the shifted character, `?` for `/`.
-    if (shifted !== null && !/^[a-z]$/.test(shifted)) {
+    if (shifted?.length === 1 && !/^[a-z]$/.test(shifted)) {
       throw new Error(
-        `shortcut ${shortcut.keys} ("${shortcut.label}") never fires: only a letter takes mod+shift+`,
+        `shortcut ${shortcut.keys} ("${shortcut.label}") never fires: only a letter or a named key takes mod+shift+`,
       );
     }
     setShortcuts((prev) => {
