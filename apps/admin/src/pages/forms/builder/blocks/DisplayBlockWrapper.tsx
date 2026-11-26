@@ -8,14 +8,14 @@ import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { withBlockVisibility } from "../../../../lib/blockVisibility";
 import type { AddressedWrite } from "../../../../lib/displayBlockById";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import Button, { ButtonVariant } from "../../../../ui/Button";
+import type { OutputBlockOption } from "../conditions/ContextRules";
+import { ElementConditions } from "../conditions/VisibilityConditions";
 import {
   SectionPanels,
   useSidebarSections,
 } from "../inspector/sidebarSections";
-import type { OutputBlockOption } from "../conditions/ContextRules";
-import { ElementConditions } from "../conditions/VisibilityConditions";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { BlockPreviewAllowed } from "./BlockPreview";
 import { ManualUserList } from "./ManualUserList";
 import {
@@ -271,9 +271,9 @@ function PerUserStatus({ targets }: { targets: ManualTargets }) {
     handleCycleUser,
   } = targets;
   return (
-    <div className="flex items-start justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
-      <div className="flex min-w-0 flex-col">
-        <p className="truncate font-semibold">
+    <div className="flex flex-col gap-2 rounded-md bg-surface-2 px-3 py-2">
+      <div className="flex flex-col">
+        <p className="font-semibold">
           {activeManualUserId
             ? `Editing content for ${targetLabel(activeManualUserId)}`
             : "Editing default content"}
@@ -284,8 +284,8 @@ function PerUserStatus({ targets }: { targets: ManualTargets }) {
             : "Using the default content."}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <span className="px-1 text-caption text-fg-muted tabular-nums">
+      <div className="flex items-center gap-1">
+        <span className="mr-auto text-caption text-fg-muted tabular-nums">
           {paginationLabel}
         </span>
         <Button

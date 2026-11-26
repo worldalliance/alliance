@@ -1,9 +1,9 @@
 import type { ImagesItem } from "@alliance/common/forms/display-blocks";
 import { resolveImageSrc } from "@alliance/sharedweb/lib/imageSrc";
 import { useDragReorder } from "../../../../lib/useDragReorder";
-import { ItemList, ItemRow } from "../kit/ItemList";
 import { Input } from "../../../../ui/Input";
 import { Field } from "../../../../ui/templates/Form";
+import { ItemList, ItemRow } from "../kit/ItemList";
 import { BlockTextField } from "./BlockTextField";
 import { rowKeys } from "./imageItems";
 
@@ -53,13 +53,13 @@ export function ImageRows({
             dragging: drag.draggedIndex === index,
           }}
         >
-          <div className="flex items-start gap-3">
+          <div className="flex flex-col gap-3">
             <img
               src={resolveImageSrc(image.src)}
               alt=""
-              className="size-12 shrink-0 rounded-md bg-surface-2 object-cover"
+              className="h-16 w-24 rounded-md bg-surface-2 object-cover"
             />
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <BlockTextField
                 label="Caption"
                 ariaLabel={`Caption, image ${index + 1}`}
