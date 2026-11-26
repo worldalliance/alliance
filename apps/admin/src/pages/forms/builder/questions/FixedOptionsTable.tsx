@@ -91,7 +91,11 @@ export function FixedOptionsTable<O extends Option>({
                   <div className="flex">{cells.value(index)}</div>
                 </TableCell>
                 <TableCell>{cells.default(index)}</TableCell>
-                {withCategory && <TableCell>{cells.category(index)}</TableCell>}
+                {withCategory && (
+                  <TableCell className="min-w-44">
+                    {cells.category(index)}
+                  </TableCell>
+                )}
                 <TableCell actions>
                   <MoreMenu
                     items={menu(section.indices, position)}

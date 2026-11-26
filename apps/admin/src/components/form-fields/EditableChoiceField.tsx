@@ -85,10 +85,18 @@ export function EditableChoiceField({
         {field.kind === "multiselect" && (
           <MultiSelectSettings field={field} onUpdate={onUpdate} />
         )}
+        <OptionsSourcePicker field={field} onUpdate={onUpdate} />
       </InspectorGroup>
 
+      {field.optionsFormula === undefined && (
+        <OptionCategoriesEditor
+          categories={field.categories ?? []}
+          options={field.options}
+          onUpdate={onUpdate}
+        />
+      )}
+
       <InspectorGroup title="Options">
-        <OptionsSourcePicker field={field} onUpdate={onUpdate} />
         {field.optionsFormula !== undefined ? (
           <OptionsFormulaEditor
             fieldId={field.id}
@@ -99,14 +107,6 @@ export function EditableChoiceField({
           <FixedOptionsEditor field={field} onUpdate={onUpdate} />
         )}
       </InspectorGroup>
-
-      {field.optionsFormula === undefined && (
-        <OptionCategoriesEditor
-          categories={field.categories ?? []}
-          options={field.options}
-          onUpdate={onUpdate}
-        />
-      )}
     </FieldWrapper>
   );
 }
