@@ -165,6 +165,39 @@ function classNameText(element) {
   return staticText(value);
 }
 
+const FUNCTION = new Set([
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "ArrowFunctionExpression",
+]);
+const MODULE_LEVEL = new Set([
+  "VariableDeclarator",
+  "VariableDeclaration",
+  "ExportNamedDeclaration",
+  "ExportDefaultDeclaration",
+  "CallExpression",
+]);
+
+/**
+ * Whether a JSX element is what a module-level component returns, so a
+ * `.map` callback's or a render prop's element, which sits inside the page,
+ * is not its root.
+ */
+function isComponentRoot(element) {
+  const parent = element.parent;
+  let fn;
+  if (parent.type === "ArrowFunctionExpression" && parent.body === element) {
+    fn = parent;
+  } else if (parent.type === "ReturnStatement") {
+    fn = parent.parent;
+    while (fn && !FUNCTION.has(fn.type)) fn = fn.parent;
+  }
+  if (!fn) return false;
+  let node = fn.parent;
+  while (MODULE_LEVEL.has(node.type)) node = node.parent;
+  return node.type === "Program";
+}
+
 const pageHeight = {
   meta: {
     type: "problem",
@@ -181,10 +214,7 @@ const pageHeight = {
       JSXElement(node) {
         const text = classNameText(node);
         if (text === null) return;
-        const parent = node.parent;
-        const isRoot =
-          parent.type === "ReturnStatement" ||
-          (parent.type === "ArrowFunctionExpression" && parent.body === node);
+        const isRoot = isComponentRoot(node);
         for (const className of text.split(/\s+/)) {
           const utility = utilityOf(className);
           if (VIEWPORT_HEIGHT.test(utility)) {

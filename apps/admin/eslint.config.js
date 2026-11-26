@@ -118,9 +118,15 @@ export default defineConfig([
     },
   },
   {
-    // Pages take the shell's height through `Page fill`.
+    // Pages take the shell's height through `Page fill`. These three render
+    // outside the shell (`routes.ts`), so they size themselves.
     files: ["src/pages/**/*.tsx"],
-    ignores: readLegacyFiles(),
+    ignores: [
+      ...readLegacyFiles(),
+      "src/pages/LoginPage.tsx",
+      "src/pages/InviteFeedPage.tsx",
+      "src/pages/KoraTranscriptPreviewPage.tsx",
+    ],
     plugins: { admin: design },
     rules: { "admin/page-height": "error" },
   },

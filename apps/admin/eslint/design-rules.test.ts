@@ -209,6 +209,18 @@ describe("admin/page-height", () => {
       ),
     ).toEqual(["h-full", "h-full"]);
   });
+
+  it("takes h-full in a map callback or render prop as inside the page", () => {
+    expect(
+      lint(
+        "export function A({ items }) {\n" +
+          '  const cell = () => <td className="h-full" />;\n' +
+          '  return <Page fill><ul>{items.map((i) => <li className="h-full" />)}</ul><T renderCell={() => { return <div className="h-full" />; }} />{cell()}</Page>;\n' +
+          "}\n" +
+          'export default memo(() => <div className="h-full" />);',
+      ),
+    ).toEqual(["h-full"]);
+  });
 });
 
 describe("admin/test-clock", () => {
