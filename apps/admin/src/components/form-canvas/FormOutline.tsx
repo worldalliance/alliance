@@ -11,6 +11,7 @@ import {
   SegmentKind,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
+import { NO_ACTIONS } from "../../pages/forms/builder/canvas/noActions";
 import {
   ElementActionsMenu,
   type ElementActions,
@@ -64,21 +65,6 @@ type FormOutlineProps = {
   reveal?: boolean;
   /** Pages only, as Preview lists them. */
   pagesOnly?: boolean;
-};
-
-const NO_ACTIONS: ElementActions = {
-  moveNoun: null,
-  onMoveUp: null,
-  onMoveDown: null,
-  moveToPage: null,
-  duplicateLabel: "Duplicate",
-  onDuplicate: null,
-  onAddBelow: null,
-  editJsonLabel: "Edit element JSON…",
-  onEditJson: null,
-  onShowInOutline: null,
-  deleteLabel: "",
-  onDelete: null,
 };
 
 const selectedRow = (root: HTMLElement) =>

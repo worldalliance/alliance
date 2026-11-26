@@ -93,7 +93,16 @@ const ICONS: Record<PageItem["kind"], LucideIcon> = {
 
 /** The icon before an element's row in the outline; the row's name says its kind in words. */
 export const elementIcon = (item: PageItem): LucideIcon =>
-  item.kind === "text" && !isQuestionField(item) ? Pilcrow : ICONS[item.kind];
+  kindIcon({ kind: item.kind, question: isQuestionField(item) });
+
+/** A question's `text` is a short answer, a block's is a paragraph. */
+export const kindIcon = ({
+  kind,
+  question,
+}: {
+  kind: PageItem["kind"];
+  question: boolean;
+}): LucideIcon => (kind === "text" && !question ? Pilcrow : ICONS[kind]);
 
 // Their preview is a size, not something to recognise them by.
 const SIZE_ONLY = new Set<PageItem["kind"]>(["divider", "spacer"]);

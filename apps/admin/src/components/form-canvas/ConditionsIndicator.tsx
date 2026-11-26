@@ -1,32 +1,40 @@
-import { cn } from "@alliance/shared/styles/util";
 import { Eye } from "lucide-react";
 import type { MouseEvent } from "react";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { cn } from "../../ui/cn";
 
-/** The canvas marker on a conditionally shown target, opening its Conditions. */
+/**
+ * The line under a conditionally shown item saying when members see it, in
+ * words; it opens the item's Conditions. It is there whenever the item has
+ * conditions, so only editing them adds or removes it.
+ */
 export function ConditionsIndicator({
   label,
-  title,
+  summary,
   onClick,
   className,
 }: {
   label: string;
-  title: string;
+  /** The rule in words, after "Shown when". */
+  summary: string;
   onClick: (event: MouseEvent) => void;
-  className: string;
+  className?: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant={ButtonVariant.Ghost}
+      size="small"
       onClick={onClick}
       aria-label={label}
-      title={title}
+      title={`Shown when ${summary}`}
       className={cn(
-        "flex h-6 w-6 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+        "relative max-w-full text-caption text-fg-muted",
         className,
       )}
     >
-      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-    </button>
+      <Eye aria-hidden="true" className="size-3.5 shrink-0" />
+      <span className="min-w-0 truncate">Shown when {summary}</span>
+    </Button>
   );
 }
 
@@ -44,8 +52,8 @@ export function ElementConditionsIndicator({
         onOpen();
       }}
       label={`Edit conditions: shown when ${summary}`}
-      title={`Shown when ${summary}`}
-      className="absolute -right-2 -top-2 z-10 shadow-sm"
+      summary={summary}
+      className="-ml-2 mt-1"
     />
   );
 }

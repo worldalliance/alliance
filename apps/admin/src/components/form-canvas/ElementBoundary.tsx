@@ -77,12 +77,12 @@ function ErrorCard({
   repair: string;
 }) {
   return (
-    <div className="flex gap-2 rounded-md border border-dashed border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
-      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <div>
+    <div className="flex gap-2 rounded-md border border-dashed border-danger bg-danger-soft px-3 py-2 font-sans text-danger">
+      <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <div className="min-w-0">
         <p className="font-medium">{heading}</p>
-        <p className="break-words text-xs">{message}</p>
-        <p className="text-xs">{repair}</p>
+        <p className="break-words text-caption">{message}</p>
+        <p className="text-caption">{repair}</p>
       </div>
     </div>
   );

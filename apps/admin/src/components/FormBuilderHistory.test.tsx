@@ -303,7 +303,7 @@ it("closes the copy picker on undo, since its position may no longer hold", asyn
   renderFormBuilder(twoPages, 1);
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await nextTask();
-  insertElement(button("Add element"), "Copy Existing Element");
+  insertElement(button("Add element"), "Copy an existing element…");
   expect(screen.queryByText("Choose an element to copy…")).not.toBeNull();
 
   fireEvent.click(button("Undo"));
@@ -489,7 +489,7 @@ it("drops expression text on returning to all/any rules", async () => {
 
 it("undoes a contract question with the contract it defaults to", async () => {
   renderFormBuilder(twoPages, 1);
-  insertElement(button("Add element"), "Contract Field");
+  insertElement(button("Add element"), "Contract");
   // The preview shows the markdown once the default contract is on the field.
   await screen.findByText("I pledge");
 

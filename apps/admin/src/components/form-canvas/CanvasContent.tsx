@@ -1,9 +1,9 @@
 import type { DisplayKind } from "@alliance/common/forms/display-blocks";
-import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import type { ComponentProps, FormEvent, MouseEvent, ReactNode } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
+import { cn } from "../../ui/cn";
 
 /**
  * Blocks whose controls stay usable on the canvas, to inspect layout: a
@@ -32,12 +32,13 @@ export const INTERACTIVE_ON_CANVAS: Record<
   chatTranscript: false,
 };
 
+/** Rings are box shadows, so selecting or hovering never changes an item's size. */
 export const selectionRing = (selected: boolean) =>
-  selected ? "ring-2 ring-blue-500" : "hover:ring-1 hover:ring-blue-200";
+  selected ? "ring-2 ring-accent" : "hover:ring-1 hover:ring-accent/40";
 
 /** A button covering an item, so a click anywhere on it selects it. */
 export const SELECT_OVERLAY =
-  "absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+  "absolute inset-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent";
 
 /** Links inside an interactive block lead respondents away; authoring stays. */
 const blockLinks = (event: MouseEvent) => {

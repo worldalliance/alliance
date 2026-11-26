@@ -108,16 +108,15 @@ export const selectGroup = (group: HTMLElement) =>
   fireEvent.click(within(group).getByRole("button", { name: /^Shared/ }));
 
 /** Opens the insert picker at `addButton`, then inserts the element named `name`. */
+/** The add picker's search box. */
+export const searchElements = () =>
+  screen.getByRole("combobox", { name: "Search elements" });
+
+/** Opens the add picker at `addButton`, then picks the option named `name`, as "Email" or "Copy an existing element…". */
 export const insertElement = (addButton: HTMLElement, name: string) => {
   fireEvent.click(addButton);
-  fireEvent.change(screen.getByRole("textbox", { name: "Search elements" }), {
-    target: { value: name },
-  });
-  fireEvent.click(
-    screen.getByRole("button", {
-      name: new RegExp(`^${escapeRegExp(name)}\\s*(Field|Block|Copy)$`),
-    }),
-  );
+  fireEvent.change(searchElements(), { target: { value: name } });
+  fireEvent.click(screen.getByRole("option", { name }));
 };
 
 declare const happyDOM: { setViewport: (viewport: { width: number }) => void };

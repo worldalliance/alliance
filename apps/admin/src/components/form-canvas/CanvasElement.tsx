@@ -4,11 +4,11 @@ import {
 } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
-import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { GripVertical } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { cn } from "../../ui/cn";
 import { writeBlockFor } from "../display-blocks/perUserContent";
 import { CanvasAccordion, CanvasList } from "./CanvasContainers";
 import {
@@ -167,11 +167,11 @@ export function CanvasElement({
   return (
     <div
       className={cn(
-        "group/element relative -mx-3 rounded-md px-3 py-2 transition-shadow",
+        "relative -mx-2 rounded-md px-2 py-2",
         selectedChild && !selected
-          ? "ring-1 ring-blue-300"
+          ? "ring-1 ring-accent"
           : issueCount > 0 && !selected
-            ? "ring-1 ring-red-300"
+            ? "ring-1 ring-danger"
             : selectionRing(selected),
         drag.dragging && "opacity-50",
       )}
@@ -179,19 +179,23 @@ export function CanvasElement({
         onSelect: () => onSelect(SidebarSection.Content),
         onExtend,
       })}
+      onContextMenu={() => {
+        if (!selected) onSelect(SidebarSection.Content);
+      }}
       onDragOver={drag.onDragOver}
     >
       {drag.dropPosition && (
         <DropLine
           position={drag.dropPosition}
-          before="-top-3"
-          after="-bottom-3"
+          before="-top-3.5"
+          after="-bottom-3.5"
         />
       )}
       <button
         type="button"
         aria-label={`Select ${label}`}
         aria-pressed={selected}
+        data-canvas-select=""
         data-selection-focus={rangeFocus || undefined}
         onKeyDown={editing && text ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
@@ -219,6 +223,12 @@ export function CanvasElement({
           />
         )}
       </ElementBoundary>
+      {conditionSummary && (
+        <ElementConditionsIndicator
+          summary={conditionSummary}
+          onOpen={() => onSelect(SidebarSection.Conditions)}
+        />
+      )}
       {editing && !editing.editing && text && (
         <EditTextButton
           label={text.editLabel}
@@ -232,28 +242,16 @@ export function CanvasElement({
         onDragEnd={drag.onDragEnd}
         title="Drag to reorder"
         aria-hidden="true"
-        className={cn(
-          "absolute -left-6 top-2 cursor-grab rounded p-0.5 text-gray-400 opacity-0 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing group-hover/element:opacity-100",
-          selected && "opacity-100",
-        )}
+        className="absolute -left-7 top-2 cursor-grab rounded-sm p-0.5 text-fg-muted opacity-50 hover:bg-surface-2 hover:opacity-100 active:cursor-grabbing"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="size-4" />
       </span>
       {shown && (
-        <span className="absolute -top-2.5 left-3 z-10 max-w-[70%] truncate rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm">
+        <span className="absolute -top-2.5 left-2 z-10 max-w-3/4 truncate rounded-sm bg-accent px-1.5 py-0.5 text-caption font-medium text-accent-fg shadow-pop">
           Editing content for {shown.label}
         </span>
       )}
-      <IssueMarker
-        count={issueCount}
-        className="absolute -top-2 right-6 z-10 rounded-full bg-white p-0.5 shadow-sm"
-      />
-      {conditionSummary && (
-        <ElementConditionsIndicator
-          summary={conditionSummary}
-          onOpen={() => onSelect(SidebarSection.Conditions)}
-        />
-      )}
+      <IssueMarker count={issueCount} className="absolute -right-7 top-2.5" />
     </div>
   );
 }

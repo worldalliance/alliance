@@ -4,12 +4,14 @@ import {
   CanvasTargetKind,
   pageTitle,
 } from "../../../../components/form-canvas/canvasSelection";
+import { InsertMode } from "../../../../components/form-canvas/InsertPoint";
 import { InspectorScope } from "../../../../components/form-canvas/useCanvasSelection";
 import { DELETION } from "../../../../components/form-canvas/useGuardedDeletion";
 import { JsonScopeKind } from "../../../../lib/formJson";
 import { DropPosition } from "../../../../lib/useDragReorder";
 import { NeighborDirection, stepPast } from "../../../../lib/visibilityGroups";
 import { useBuilder } from "../BuilderContext";
+import { insertBelow } from "../canvas/insertBelow";
 import { revealInPane } from "../kit/revealInPane";
 import type { ElementActions } from "./ElementActionsMenu";
 
@@ -70,6 +72,15 @@ export function useSelectionActions(): ElementActions | null {
             ),
         };
   const shownInOutline = outline.hidden ? null : showInOutline;
+  const addBelow = () =>
+    edits.setInsertion({
+      loc: insertBelow({
+        page: currentPage,
+        groups: canvasGroups,
+        selected: target,
+      }),
+      mode: InsertMode.Search,
+    });
 
   if (canvas.inspectorScope === InspectorScope.Form) return null;
   switch (target.kind) {
@@ -130,6 +141,7 @@ export function useSelectionActions(): ElementActions | null {
         onMoveDown: stepTo(NeighborDirection.Next),
         moveToPage: moveToPage(index, index + 1),
         onDuplicate: () => edits.duplicateElement(index),
+        onAddBelow: addBelow,
         onEditJson: () =>
           setJsonScope({
             kind: JsonScopeKind.Element,
@@ -148,6 +160,7 @@ export function useSelectionActions(): ElementActions | null {
       return {
         ...NONE,
         moveToPage: moveToPage(target.start, target.end),
+        onAddBelow: addBelow,
         onShowInOutline: shownInOutline,
         deleteLabel: "",
       };

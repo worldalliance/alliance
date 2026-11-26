@@ -7,7 +7,9 @@ import type { IssueIndex } from "../lib/formIssues";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { summarizeVisibility } from "../lib/visibilitySummary";
 import { useBuilder } from "../pages/forms/builder/BuilderContext";
+import { insertBelow } from "../pages/forms/builder/canvas/insertBelow";
 import { useSelectionActions } from "../pages/forms/builder/inspector/useSelectionActions";
+import { useShortcutInShell } from "../shell/shortcuts";
 import Button, { ButtonVariant } from "../ui/Button";
 import type { ContentOverride } from "./form-canvas/CanvasElement";
 import { FormCanvas } from "./form-canvas/FormCanvas";
@@ -79,6 +81,21 @@ export function FormBuilderCanvas({
   } = edits;
   const { isPreviewMode } = useBuilder();
   const actions = useSelectionActions();
+  useShortcutInShell({
+    keys: "a",
+    label: "Add an element below the selection",
+    run: () => {
+      if (isPreviewMode) return;
+      setInsertion({
+        loc: insertBelow({
+          page: currentPage,
+          groups: canvasGroups,
+          selected: resolvedTarget,
+        }),
+        mode: InsertMode.Search,
+      });
+    },
+  });
   const availableElements = displayOnly
     ? DISPLAY_ONLY_ELEMENTS
     : AVAILABLE_ELEMENTS;
@@ -96,11 +113,16 @@ export function FormBuilderCanvas({
       onOpen={() => setInsertion({ loc, mode: InsertMode.Search })}
       onClose={closeInsertion}
       elements={availableElements}
-      onPick={(element) => pickElement(element, loc)}
+      onPick={(element) => {
+        pickElement(element, loc);
+        // Copying opens its own choice first; anything else is added now.
+        if (element.type !== "copy") canvas.reveal();
+      }}
       pages={schema.pages}
-      onCopy={(source) =>
-        insertAndSelect(copyElementWithUniqueIds(source, schema), loc)
-      }
+      onCopy={(source) => {
+        insertAndSelect(copyElementWithUniqueIds(source, schema), loc);
+        canvas.reveal();
+      }}
       prominent={options?.prominent}
     />
   );
@@ -179,6 +201,7 @@ export function FormBuilderCanvas({
         onUpdateBlockById={updateBlockById}
         onUpdatePage={updateCurrentPage}
         override={override}
+        actions={actions}
         step={
           taskFlow
             ? (flowStepPreviews(schema)[selectedPageIndex] ?? null)

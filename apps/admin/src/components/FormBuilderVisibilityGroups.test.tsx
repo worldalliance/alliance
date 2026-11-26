@@ -22,6 +22,7 @@ import {
   issuesHere,
   openSection,
   saveState,
+  searchElements,
   selectElement,
   selectGroup,
   settings,
@@ -145,7 +146,7 @@ describe("FormBuilder visibility groups", () => {
     const addButtons = within(canvasGroups()[0]!).getAllByTitle(
       "Add element here",
     );
-    insertElement(addButtons[addButtons.length - 1]!, "Email Field");
+    insertElement(addButtons[addButtons.length - 1]!, "Email");
     expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]);
   });
 
@@ -156,12 +157,9 @@ describe("FormBuilder visibility groups", () => {
       cleanup();
       renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
       fireEvent.click(addButton(canvasGroups()));
-      fireEvent.change(
-        screen.getByRole("textbox", { name: "Search elements" }),
-        { target: { value: "Copy Existing" } },
-      );
-      return screen.queryByRole("button", {
-        name: /^Copy Existing Element\s*Copy$/,
+      fireEvent.change(searchElements(), { target: { value: "Copy an" } });
+      return screen.queryByRole("option", {
+        name: "Copy an existing element…",
       });
     };
     expect(

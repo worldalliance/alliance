@@ -1,7 +1,13 @@
 /* alliance/max-lines 600 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { dragOverAt } from "../lib/testing/dragOverAt";
 import {
   canvasOrder,
@@ -10,6 +16,7 @@ import {
   inNarrowWindow,
   insertElement,
   openSection,
+  searchElements,
   selectElement,
   selectionMenuState,
   settings,
@@ -98,7 +105,7 @@ describe("the form canvas", () => {
 
   it("selects what it inserts, and focuses its first control", async () => {
     renderFormBuilder(schema);
-    insertElement(button("Add element"), "Email Field");
+    insertElement(button("Add element"), "Email");
     await act(async () => {});
     expect(heading()).toBe("Email Field: Email Field");
     expect(
@@ -174,7 +181,7 @@ describe("the form canvas", () => {
 
   it("inserts a copy of an existing element", () => {
     renderFormBuilder(schema);
-    insertElement(button("Add element"), "Copy Existing Element");
+    insertElement(button("Add element"), "Copy an existing element…");
     const source = screen.getByRole<HTMLSelectElement>("combobox", {
       name: "Element to copy",
     });
@@ -186,20 +193,19 @@ describe("the form canvas", () => {
     expect(settings().queryByText("town")).toBeNull();
   });
 
-  it("closes the picker on Escape, back on its button", () => {
+  it("closes the picker on Escape, back on its button", async () => {
     renderFormBuilder(schema);
     const add = button("Add element");
     fireEvent.click(add);
-    fireEvent.keyDown(
-      screen.getByRole("textbox", { name: "Search elements" }),
-      {
-        key: "Escape",
-      },
+    fireEvent.keyDown(searchElements(), {
+      key: "Escape",
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Search elements" })).toBe(
+        null,
+      ),
     );
-    expect(screen.queryByRole("textbox", { name: "Search elements" })).toBe(
-      null,
-    );
-    expect(document.activeElement).toBe(add);
+    await waitFor(() => expect(document.activeElement).toBe(add));
   });
 
   it("steps the selected element past a whole group, keeping it intact", () => {
@@ -410,34 +416,40 @@ describe("the form canvas", () => {
     ).toBe(true);
   });
 
-  it("picks the first match on Enter, and closes on a click elsewhere", () => {
+  it("picks the first match on Enter, and closes on a click elsewhere", async () => {
     renderFormBuilder(schema);
     fireEvent.click(button("Add element"));
-    fireEvent.mouseDown(document.body);
-    expect(screen.queryByRole("textbox", { name: "Search elements" })).toBe(
-      null,
+    fireEvent.click(document.body);
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Search elements" })).toBe(
+        null,
+      ),
     );
     fireEvent.click(button("Add element"));
-    const search = screen.getByRole("textbox", { name: "Search elements" });
+    const search = searchElements();
     fireEvent.change(search, { target: { value: "header" } });
     fireEvent.keyDown(search, { key: "Enter" });
     expect(heading()).toBe("Header Block: Header Text");
   });
 
-  it("copies on Enter in the copy picker, and Escape backs out of it", () => {
+  it("copies on Enter in the copy picker, and Escape backs out of it", async () => {
     renderFormBuilder(schema);
-    insertElement(button("Add element"), "Copy Existing Element");
+    insertElement(button("Add element"), "Copy an existing element…");
     const source = () =>
       screen.getByRole<HTMLSelectElement>("combobox", {
         name: "Element to copy",
       });
     fireEvent.keyDown(source(), { key: "Escape" });
-    expect(
-      screen.queryByRole("combobox", { name: "Element to copy" }),
-    ).toBeNull();
-    expect(document.activeElement).toBe(button("Add element"));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("combobox", { name: "Element to copy" }),
+      ).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(button("Add element")),
+    );
 
-    insertElement(button("Add element"), "Copy Existing Element");
+    insertElement(button("Add element"), "Copy an existing element…");
     fireEvent.change(source(), { target: { value: "0:2" } });
     fireEvent.keyDown(source(), { key: "Enter" });
     expect(canvasOrder().at(-1)).toBe("Select Radio Field: Pet");
@@ -586,7 +598,7 @@ describe("the form canvas in a narrow window", () => {
   });
   it("focuses an inserted element's first control in its settings", async () => {
     renderFormBuilder(schema);
-    insertElement(button("Add element"), "Email Field");
+    insertElement(button("Add element"), "Email");
     await act(async () => {});
     expect(heading()).toBe("Email Field: Email Field");
     expect(
@@ -619,10 +631,7 @@ describe("the display-only canvas", () => {
     ]);
 
     fireEvent.click(button("Add element"));
-    const picker = within(
-      screen.getByRole("textbox", { name: "Search elements" }).parentElement!,
-    );
-    expect(picker.queryByRole("button", { name: /^Text Field/ })).toBeNull();
-    expect(picker.getByRole("button", { name: /^Header Block/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Text area" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Header" })).toBeTruthy();
   });
 });
