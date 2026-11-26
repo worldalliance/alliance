@@ -201,7 +201,7 @@ export default function TextareaWithHighlight({
         onKeyUp={onKeyUp}
         placeholder={placeholder}
         className={cn(
-          "w-full resize-y",
+          "relative w-full resize-y",
           "rounded-md border border-line-control bg-transparent text-fg",
           "text-body",
           "px-3 py-2",

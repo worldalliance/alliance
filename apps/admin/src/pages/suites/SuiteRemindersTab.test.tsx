@@ -241,6 +241,10 @@ it("schedules a from-deadline group from the event after the member-action event
     }),
   ]);
 
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Details: Last call" }),
+  );
+
   expect(await screen.findByText("Sends when Close begins")).toBeTruthy();
 });
 

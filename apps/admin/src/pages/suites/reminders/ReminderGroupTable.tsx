@@ -6,14 +6,11 @@ import type {
   ReminderGroupDto,
 } from "@alliance/shared/client";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
 import { formatDateTime } from "../../../lib/formatDate";
 import { formatCount } from "../../../lib/formatNumber";
-import { taskHref } from "../../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import Badge, { BadgeTone } from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";
-import { linkClass } from "../../../ui/styles";
 import {
   ExpandToggle,
   Table,
@@ -105,7 +102,7 @@ export function ReminderGroupTable({
     }
   }, [highlighted]);
   const severalTasks = suite.actions.length > 1;
-  const columns = severalTasks ? 8 : 7;
+  const columns = 4;
   const anchorLabelOf = (group: ReminderGroupDto) => {
     const anchor = group.timingAnchorEvent;
     if (!anchor) return null;
@@ -121,11 +118,7 @@ export function ReminderGroupTable({
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>First send</TableHead>
-          <TableHead>Timing</TableHead>
-          <TableHead>Recipients</TableHead>
-          {severalTasks && <TableHead>Task</TableHead>}
           <TableHead>State</TableHead>
-          <TableHead>Details</TableHead>
           <TableHead actions>Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -150,43 +143,23 @@ export function ReminderGroupTable({
                 aria-selected={isHighlighted || undefined}
                 {...focusRow(group.id)}
               >
-                <TableCell truncate className="font-medium">
-                  {group.name}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {sendStart
-                    ? formatDateTime(sendStart, { timeZone: LAUNCH_TIME_ZONE })
-                    : "—"}
-                </TableCell>
-                <TableCell truncate>{schedule.primary}</TableCell>
-                <TableCell truncate>
-                  {group.cohortType === "tag" && group.userTag
-                    ? `Tag ${group.userTag.name}`
-                    : COHORT_LABELS[group.cohortType]}
-                </TableCell>
-                {severalTasks && (
-                  <TableCell truncate title={task?.name ?? "—"}>
-                    {task ? (
-                      <Link to={taskHref(task.id)} className={linkClass}>
-                        {task.name}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                )}
-                <TableCell>
-                  <StateBadge state={state} sent={details?.sent.length ?? 0} />
-                </TableCell>
-                <TableCell>
+                <TableCell title={group.name}>
                   <ExpandToggle
                     expanded={open}
                     controls={detailId}
                     onToggle={() => toggle(group.id)}
                     aria-label={`Details: ${group.name}`}
                   >
-                    Copy and sends
+                    <span className="max-w-40 truncate">{group.name}</span>
                   </ExpandToggle>
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {sendStart
+                    ? formatDateTime(sendStart, { timeZone: LAUNCH_TIME_ZONE })
+                    : "—"}
+                </TableCell>
+                <TableCell>
+                  <StateBadge state={state} sent={details?.sent.length ?? 0} />
                 </TableCell>
                 <TableCell actions>
                   {state !== GroupState.Sent && (
@@ -214,6 +187,12 @@ export function ReminderGroupTable({
                 <TableDetailRow id={detailId} colSpan={columns}>
                   <ReminderGroupDetail
                     group={group}
+                    recipients={
+                      group.cohortType === "tag" && group.userTag
+                        ? `Tag ${group.userTag.name}`
+                        : COHORT_LABELS[group.cohortType]
+                    }
+                    task={severalTasks ? task : null}
                     schedule={schedule}
                     anchorLabel={anchorLabel}
                     plans={details?.plans}

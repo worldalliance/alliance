@@ -1,4 +1,5 @@
 import type {
+  ActionDto,
   ActionEventNotifDto,
   PreviewNotificationPlanDto,
   ReminderGroupDto,
@@ -7,7 +8,7 @@ import { useId, useState } from "react";
 import { Link } from "react-router";
 import { formatDateTime } from "../../../lib/formatDate";
 import { countOf } from "../../../lib/formatNumber";
-import { memberHref } from "../../../lib/hrefs";
+import { memberHref, taskHref } from "../../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import {
   useReminderEmailPreviewAdmin,
@@ -24,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../../ui/Table";
+import { Fact, FactList } from "../../../ui/templates/Record";
 import type { GroupScheduleLabels } from "./groupSchedule";
 import MissedSuiteNote from "./MissedSuiteNote";
 
@@ -44,11 +46,11 @@ function Copy({
   return (
     <div className="flex flex-col gap-1">
       <h4 className="text-caption font-medium text-fg-muted">{label}</h4>
-      <div className="grid gap-3 rounded-md border border-line bg-surface-2 p-3 @3xl:grid-cols-2">
-        <p className="whitespace-pre-wrap break-words font-mono text-xs">
+      <div className="flex flex-col divide-y divide-line rounded-md border border-line">
+        <p className="bg-surface-2 p-3 font-mono text-xs whitespace-pre-wrap break-words">
           {stored}
         </p>
-        <div className="member-surface min-w-0 whitespace-pre-wrap break-words">
+        <div className="member-surface min-w-0 overflow-x-auto p-3 whitespace-pre-wrap break-words">
           {rendered == null ? (
             <span className="text-fg-muted">Rendering…</span>
           ) : html ? (
@@ -199,6 +201,8 @@ function Disclosure({
 /** A group's stored copy rendered for its own task count, its plans and its sends. */
 export function ReminderGroupDetail({
   group,
+  recipients,
+  task,
   schedule,
   anchorLabel,
   plans,
@@ -206,6 +210,9 @@ export function ReminderGroupDetail({
   suiteTaskCount,
 }: {
   group: ReminderGroupDto;
+  recipients: string;
+  /** Shown for a suite of several tasks. */
+  task: ActionDto | null;
   schedule: GroupScheduleLabels;
   anchorLabel: string | null;
   plans: PreviewNotificationPlanDto[] | undefined;
@@ -228,25 +235,36 @@ export function ReminderGroupDetail({
     textMessage: group.pushMessage,
   });
   const notes = [
+    schedule.primary,
     schedule.secondary,
     anchorLabel && `Anchored to the ${anchorLabel}.`,
     group.excludePreviouslyNotified &&
       "Only covers tasks the member hasn't been notified about, and skips members with nothing new.",
   ].filter(Boolean);
   return (
-    <div className="@container flex flex-col gap-4 pt-2">
-      {notes.length > 0 && (
-        <ul className="flex flex-col gap-0.5 text-fg-muted">
-          {notes.map((note) => (
-            <li key={String(note)}>{note}</li>
-          ))}
-        </ul>
-      )}
+    <div className="flex min-w-0 flex-col gap-4 pt-2">
+      <FactList>
+        <Fact label="Timing">
+          <span className="flex flex-col py-2">
+            {notes.map((note) => (
+              <span key={String(note)}>{note}</span>
+            ))}
+          </span>
+        </Fact>
+        <Fact label="Recipients">{recipients}</Fact>
+        {task && (
+          <Fact label="Task">
+            <Link to={taskHref(task.id)} className={linkClass}>
+              {task.name}
+            </Link>
+          </Fact>
+        )}
+      </FactList>
       {group.isMissedSuite && (
         <MissedSuiteNote hasSuite={Boolean(group.actionSuite)} />
       )}
       <p className="text-caption text-fg-muted">
-        Stored copy on the left; on the right, as the server renders it for{" "}
+        Each message as stored, then as the server renders it for{" "}
         {countOf(suiteTaskCount, "task")}.
       </p>
       <Copy

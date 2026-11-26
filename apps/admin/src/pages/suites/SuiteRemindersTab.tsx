@@ -348,7 +348,7 @@ export function SuiteRemindersTab({
         <ContentState
           things="reminders"
           query={reminders.groupsQuery}
-          skeleton={<TableSkeleton columns={7} rows={3} />}
+          skeleton={<TableSkeleton columns={4} rows={3} />}
           empty={sorted.length === 0}
           emptyTitle="No reminders yet"
           emptyDescription="Populate default reminders adds the standard set; New reminder adds one."
