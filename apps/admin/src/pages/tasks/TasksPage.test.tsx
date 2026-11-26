@@ -101,6 +101,21 @@ it("keeps the loaded tasks beside a refetch error", async () => {
   expect(taskLink("Call your rep")).toBeTruthy();
 });
 
+it("keeps the timeline beside one refetch error", async () => {
+  const query = queryWrapper();
+  renderPage(query, "/tasks");
+  await screen.findByRole("link", { name: "Call your rep" });
+
+  loadStatus = 500;
+  await act(() => query.client.refetchQueries());
+
+  expect(await screen.findAllByText(/^Couldn't refresh tasks\./)).toHaveLength(
+    1,
+  );
+  expect(screen.getByRole("region", { name: "Tasks timeline" })).toBeTruthy();
+  expect(taskLink("Call your rep")).toBeTruthy();
+});
+
 it("shows a write once the list is invalidated", async () => {
   const query = queryWrapper();
   renderPage(query);

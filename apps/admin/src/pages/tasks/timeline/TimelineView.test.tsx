@@ -5,7 +5,7 @@ import type {
 } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { adminActionListItem } from "../../../lib/testing/adminActionListItem";
@@ -191,17 +191,6 @@ it("says the tasks failed to load instead of showing none", async () => {
   renderView();
   expect(await screen.findByText("Couldn't load tasks")).toBeTruthy();
   expect(screen.queryByText("No tasks yet")).toBeNull();
-});
-
-it("keeps the timeline beside a refetch error", async () => {
-  const { query } = renderView();
-  await screen.findByRole("link", { name: "Winter heat survey" });
-
-  loadStatus = 500;
-  await act(() => query.client.refetchQueries());
-
-  expect(await screen.findByText(/Couldn't refresh tasks/)).toBeTruthy();
-  expect(screen.getByRole("link", { name: "Winter heat survey" })).toBeTruthy();
 });
 
 it("shows the loading region and neither empty nor failed while loading", () => {

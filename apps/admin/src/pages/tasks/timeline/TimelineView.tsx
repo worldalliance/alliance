@@ -11,7 +11,6 @@ import { ViewSwitch } from "../../../ui/templates/List";
 import {
   ContentState,
   LOAD_FAILED_FALLBACK,
-  RefreshFailedBanner,
 } from "../../../ui/templates/States";
 import {
   filteredOutReason,
@@ -118,7 +117,6 @@ export function TimelineView() {
       tabIndex={-1}
       className="flex min-h-0 grow basis-0 flex-col outline-none"
     >
-      <RefreshFailedBanner things="tasks" query={list} />
       <ContentState
         loading={list.isPending}
         skeleton={<TimelineSkeleton />}
