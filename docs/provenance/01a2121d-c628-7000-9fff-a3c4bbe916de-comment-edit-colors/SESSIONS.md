@@ -1,0 +1,4 @@
+- claude:c098b799-b2b9-4038-ada2-83fd6d8a0d2f
+- claude:5d1dbbf0-8ba6-41ee-b9d4-02e0332c8909 (subagent)
+- claude:cfac23d7-d916-4242-915b-9e5ac9011533 (subagent)
+- claude:f7b7cbb7-8a3c-4ef3-b5f8-2b5c783b8f1c (subagent)
