@@ -6,6 +6,7 @@ import { taskHref } from "../../lib/hrefs";
 import { useScheduledPlansAdmin } from "../../lib/useScheduledPlansAdmin";
 import { PlaceId } from "../../places";
 import Badge from "../../ui/Badge";
+import { InfoTip } from "../../ui/InfoTip";
 import { PersonChip } from "../../ui/PersonCell";
 import { linkClass } from "../../ui/styles";
 import {
@@ -79,7 +80,13 @@ export default function ScheduledJobsPage() {
           <Table bleed>
             <TableHeader>
               <TableRow>
-                <TableHead>When</TableHead>
+                <TableHead>
+                  When{" "}
+                  <InfoTip label="About When">
+                    Pacific time. Open a job's members to see its time in UTC
+                    and how early it can run.
+                  </InfoTip>
+                </TableHead>
                 <TableHead>Job</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead>Members</TableHead>

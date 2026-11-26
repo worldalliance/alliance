@@ -78,7 +78,7 @@ describe("scheduled jobs with members", () => {
     expect(when.title).toMatch(/Fri, Jan 2(, 2026)?, 8:00 AM UTC/);
   });
 
-  it("expands a job to its members, each linked to their record", async () => {
+  it("expands a job to its exact time and its members, each linked to their record", async () => {
     renderPage();
     const toggle = await screen.findByRole("button", { name: /^1 member: / });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
@@ -87,6 +87,11 @@ describe("scheduled jobs with members", () => {
     fireEvent.click(toggle);
 
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.getByText(
+        /Fri, Jan 2(, 2026)?, 8:00 AM UTC.*up to 6 hours sooner/,
+      ),
+    ).toBeDefined();
     expect(
       screen.getByRole("link", { name: "Sam Lee" }).getAttribute("href"),
     ).toBe("/members/3");
