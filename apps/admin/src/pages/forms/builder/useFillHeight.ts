@@ -4,6 +4,25 @@ import { flushSync } from "react-dom";
 /** The builder's panes need at least this much height to be usable. */
 const MIN_HEIGHT = 480;
 
+/** What sits above `element` in its page: earlier siblings of it and of each ancestor below `main`. */
+function contentAbove(element: Element): Element[] {
+  const above: Element[] = [];
+  for (
+    let node: Element | null = element;
+    node && node.tagName !== "MAIN";
+    node = node.parentElement
+  ) {
+    for (
+      let sibling = node.previousElementSibling;
+      sibling;
+      sibling = sibling.previousElementSibling
+    ) {
+      above.push(sibling);
+    }
+  }
+  return above;
+}
+
 /**
  * BACKCOMPAT(builder-fill): a height for the builder when its mount gives it
  * none to fill, so its panes scroll and the page doesn't: from its top to the
@@ -26,7 +45,14 @@ export function useFillHeight(
     if (height !== null) {
       const resize = () => setHeight(measure());
       window.addEventListener("resize", resize);
-      return () => window.removeEventListener("resize", resize);
+      // Content above the builder that grows or shrinks, such as a header
+      // that wraps, moves its top without resizing the window.
+      const observer = new ResizeObserver(resize);
+      for (const above of contentAbove(element)) observer.observe(above);
+      return () => {
+        window.removeEventListener("resize", resize);
+        observer.disconnect();
+      };
     }
     const overflows = () =>
       element.getBoundingClientRect().bottom > window.innerHeight + 1;
