@@ -75,11 +75,20 @@ export const computeStructuralChange = (
   return { added, removed, changed };
 };
 
+const MAX_LABEL = 60;
+
+/** A question by its label; a block, which has none, by its title or text. */
 const getFieldLabel = (field: FieldEntry): string => {
-  const label = field.node["label"];
   const kind = field.node["kind"];
+  const text = ["label", "title", "text"]
+    .map((key) => field.node[key])
+    .find((value) => typeof value === "string" && value.trim());
   const labelStr =
-    typeof label === "string" && label.trim() ? label : "(no label)";
+    typeof text !== "string"
+      ? "(no label)"
+      : text.length > MAX_LABEL
+        ? `${text.slice(0, MAX_LABEL)}…`
+        : text;
   const kindStr = typeof kind === "string" ? kind : "?";
   return `${field.id} · ${kindStr} · ${labelStr}`;
 };
