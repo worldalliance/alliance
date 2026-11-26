@@ -62,7 +62,6 @@ export function FormBuilderCanvas({
     currentPage,
     resolvedTarget,
     select,
-    revealPending,
     selectFromOutline,
     extendTo,
   } = canvas;
@@ -174,7 +173,6 @@ export function FormBuilderCanvas({
         onMovePage={movePage}
         onMoveElements={moveElementsTo}
         actions={actions}
-        reveal={revealPending}
         pagesOnly={isPreviewMode}
       />
     ),

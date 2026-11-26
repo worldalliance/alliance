@@ -23,6 +23,7 @@ import { FormBuilderCanvas } from "./canvas/FormBuilderCanvas";
 import { VariableBuilder } from "./formulas/VariableBuilder";
 import { revealInPane } from "./kit/revealInPane";
 import { MainPaneHeader } from "./MainPaneHeader";
+import { selectedRow } from "./outline/FormOutline";
 import { useOutputPanes } from "./outputs/OutputBuilder";
 import { pageChunks } from "./pageChunks";
 import { DisplayOnlyPreview } from "./preview/DisplayOnlyPreview";
@@ -129,6 +130,7 @@ function Panes() {
     props: { displayOnly, taskFlow },
   } = useBuilder();
   const settingsRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLDivElement>(null);
   const canvasScroll = useRef(new Map<string, number>());
   const onForm = activeEditor === FormEditor.Form;
   const onOutputs = activeEditor === FormEditor.Outputs;
@@ -171,7 +173,7 @@ function Panes() {
                 className="flex min-h-0 flex-1 flex-col"
               >
                 <PaneHeader title="Outline" action={parts.outlineAction} />
-                <div className={PANE_SCROLL}>
+                <div ref={outlineRef} className={PANE_SCROLL}>
                   {isLoading ? (
                     <OutlineSkeleton />
                   ) : (
@@ -208,6 +210,7 @@ function Panes() {
             <FormCanvasPane
               canvasPart={parts.canvas}
               settingsRef={settingsRef}
+              outlineRef={outlineRef}
               scrollPositions={canvasScroll.current}
             />
           ) : onOutputs ? (
@@ -230,10 +233,12 @@ function Panes() {
 function FormCanvasPane({
   canvasPart,
   settingsRef,
+  outlineRef,
   scrollPositions,
 }: {
   canvasPart: ReactNode;
   settingsRef: RefObject<HTMLDivElement | null>;
+  outlineRef: RefObject<HTMLDivElement | null>;
   scrollPositions: Map<string, number>;
 }) {
   const {
@@ -267,8 +272,12 @@ function FormCanvasPane({
     const pane = canvasRef.current;
     const selected = selectedOnCanvas(pane);
     if (pane && selected) revealInPane(pane, selected);
+    // Only once the page has laid out does the outline's pane have its final height.
+    const outline = outlineRef.current;
+    const row = outline && selectedRow(outline);
+    if (outline && row) revealInPane(outline, row, 8);
     revealed();
-  }, [revealPending, revealed, settled]);
+  }, [revealPending, revealed, settled, outlineRef]);
 
   const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
   const shown = useRef({ key: selectionKey, selections });

@@ -16,12 +16,7 @@ import {
   ElementActionsMenu,
   type ElementActions,
 } from "../inspector/ElementActionsMenu";
-import { revealInPane } from "../kit/revealInPane";
-import {
-  outlinePane,
-  useTreeKeys,
-  type RowHandle,
-} from "./useTreeKeys";
+import { useTreeKeys, type RowHandle } from "./useTreeKeys";
 import { cn } from "../../../../ui/cn";
 import {
   CanvasTargetKind,
@@ -65,13 +60,11 @@ type FormOutlineProps = {
   onMoveElements: (from: ElementSpan, to: ElementDrop) => void;
   /** The selection's actions, for the context menu and Alt+arrows and Delete. */
   actions?: ElementActions | null;
-  /** Set when the selection was taken somewhere the outline should follow: an add, a deep link, an issue. */
-  reveal?: boolean;
   /** Pages only, as Preview lists them. */
   pagesOnly?: boolean;
 };
 
-const selectedRow = (root: HTMLElement) =>
+export const selectedRow = (root: HTMLElement) =>
   root.querySelector<HTMLElement>("[data-selection-focus]") ??
   root.querySelector<HTMLElement>('[aria-current="true"]');
 
@@ -102,7 +95,6 @@ export function FormOutline({
   onMovePage,
   onMoveElements,
   actions = null,
-  reveal = false,
   pagesOnly = false,
 }: FormOutlineProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -368,12 +360,6 @@ export function FormOutline({
   useEffect(() => {
     restoreFocus();
   });
-  useEffect(() => {
-    if (!reveal || !ref.current) return;
-    const row = selectedRow(ref.current);
-    const pane = outlinePane(ref.current);
-    if (row && pane) revealInPane(pane, row, 8);
-  }, [reveal]);
 
   const renderEntry = (entry: OutlineEntry) => (
     <div
