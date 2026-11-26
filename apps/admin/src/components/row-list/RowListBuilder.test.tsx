@@ -44,7 +44,7 @@ const mount = () => {
 };
 
 const pasteRows = (text: string) => {
-  fireEvent.change(screen.getByLabelText("Rows as JSON"), {
+  fireEvent.change(screen.getByLabelText("Rows (JSON)"), {
     target: { value: text },
   });
   fireEvent.click(screen.getByText("Use these rows"));

@@ -1,14 +1,19 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { rowFieldNames } from "@alliance/common/forms/row-list";
-import { cn } from "@alliance/shared/styles/util";
 import { useState } from "react";
 import {
   conditionableItems,
   parseRowsJson,
   withRowCondition,
 } from "../../lib/rowListEdits";
-import Button, { ButtonColor } from "../../ui/Button";
-import { inputPad } from "../VariableSamples";
+import Button, { ButtonVariant } from "../../ui/Button";
+import { Textarea } from "../../ui/Textarea";
+import {
+  CheckboxField,
+  Field,
+  FieldGroup,
+  FormSection,
+} from "../../ui/templates/Form";
 import { RowConditionEditor } from "./RowConditionEditor";
 
 const rowsText = (schema: FormSchema) =>
@@ -46,28 +51,43 @@ export function RowListBuilder({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-gray-900">Rows</h2>
-        <p className="text-xs text-gray-600">
-          Each member is given one row, the one fewest members hold, and keeps
-          it. Use a row&apos;s values in text, labels, prefilled answers and
-          link URLs as <code>#{"{row.field}"}</code>. Members never see the list
-          itself.
-        </p>
-        <textarea
-          aria-label="Rows as JSON"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          rows={12}
-          spellCheck={false}
-          placeholder='[{ "jurisdiction": "Springfield", "email": null }]'
-          className={cn(inputPad, "font-mono text-xs")}
-        />
-        {parseError && <p className="text-xs text-red-600">{parseError}</p>}
+    <div className="mx-auto flex w-full max-w-176 flex-col gap-section">
+      <FormSection
+        title="Row list"
+        description={
+          list
+            ? `${list.rows.length} rows`
+            : "Give each member one row of values to use in this form."
+        }
+      >
+        <Field
+          label="Rows (JSON)"
+          help={
+            <>
+              Each member is given one row, the one fewest members hold, and
+              keeps it. Use a row&apos;s values in text, labels, prefilled
+              answers and link URLs as{" "}
+              <code className="font-mono">#{"{row.field}"}</code>. Members never
+              see the list itself.
+            </>
+          }
+          error={parseError}
+        >
+          {(control) => (
+            <Textarea
+              {...control}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              rows={12}
+              spellCheck={false}
+              placeholder='[{ "jurisdiction": "Springfield", "email": null }]'
+              className="font-mono text-xs"
+            />
+          )}
+        </Field>
         <div className="flex items-center gap-2">
           <Button
-            color={ButtonColor.Blue}
+            variant={ButtonVariant.Primary}
             onClick={applyRows}
             disabled={!edited}
           >
@@ -75,7 +95,7 @@ export function RowListBuilder({
           </Button>
           {list && (
             <Button
-              color={ButtonColor.RedOutline}
+              variant={ButtonVariant.DangerOutline}
               onClick={() => {
                 const { rowList: _removed, ...rest } = schema;
                 onSchemaChange(rest);
@@ -85,48 +105,38 @@ export function RowListBuilder({
               Remove the row list
             </Button>
           )}
-          {list && (
-            <span className="text-xs text-gray-500">
-              {list.rows.length} rows
-            </span>
-          )}
         </div>
-      </section>
-
-      {list && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Fields that identify a row
-          </h2>
-          <p className="text-xs text-gray-600">
-            Together they must be unique. Editing a row&apos;s other fields
-            later reaches the members who already hold it.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {fields.map((field) => (
-              <label key={field} className="flex items-center gap-1 text-sm">
-                <input
-                  type="checkbox"
+        {list && (
+          <FieldGroup
+            label="Fields that identify a row"
+            help="Together they must be unique. Editing a row's other fields later reaches the members who already hold it."
+          >
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {fields.map((field) => (
+                <CheckboxField
+                  key={field}
+                  label={field}
                   checked={list.keyFields.includes(field)}
                   onChange={() => toggleKeyField(field)}
                 />
-                <code>{field}</code>
-              </label>
-            ))}
-          </div>
-        </section>
-      )}
+              ))}
+            </div>
+          </FieldGroup>
+        )}
+      </FormSection>
 
       {list && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Show only for some rows
-          </h2>
-          <div className="divide-y divide-gray-200 border border-gray-200 rounded bg-white">
+        <FormSection title="Show only for some rows">
+          <ul className="flex flex-col divide-y divide-line">
             {conditionableItems(schema).map((item) => (
-              <div key={`${item.where}:${item.id}`} className="p-3 space-y-1">
-                <div className="text-xs text-gray-500">{item.where}</div>
-                <div className="text-sm text-gray-900">{item.label}</div>
+              <li
+                key={`${item.where}:${item.id}`}
+                className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0"
+              >
+                <div>
+                  <p className="text-caption text-fg-muted">{item.where}</p>
+                  <p className="font-medium">{item.label}</p>
+                </div>
                 <RowConditionEditor
                   itemLabel={item.label}
                   list={list}
@@ -138,10 +148,10 @@ export function RowListBuilder({
                     )
                   }
                 />
-              </div>
+              </li>
             ))}
-          </div>
-        </section>
+          </ul>
+        </FormSection>
       )}
     </div>
   );

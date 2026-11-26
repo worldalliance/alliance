@@ -27,12 +27,15 @@ export function InsertableTokenButton({
         event.dataTransfer.setData("text/plain", item.token);
       }}
       onClick={onInsert}
-      className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+      title={`${item.token} · ${item.pageTitle}`}
+      className="inline-flex max-w-full cursor-grab items-center gap-1.5 rounded-full border border-line-control bg-surface px-2.5 py-1 text-left transition-colors duration-fast hover:bg-surface-2 focus-ring"
     >
-      <div className="font-medium text-gray-900">{item.label}</div>
-      <div className="mt-1 text-xs text-gray-500">
-        {item.token} · {item.pageTitle}
-      </div>
+      <span className="truncate font-medium">{item.label}</span>
+      {item.label !== item.token && (
+        <span className="truncate font-mono text-xs text-fg-muted">
+          {item.token}
+        </span>
+      )}
     </button>
   );
 }

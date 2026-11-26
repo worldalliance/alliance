@@ -4,9 +4,12 @@ import {
   FIRST_NAME_TOKEN,
   FULL_NAME_TOKEN,
 } from "@alliance/shared/lib/shareText";
-import { cn } from "@alliance/shared/styles/util";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "../ui/cn";
+import { controlClass } from "../ui/styles";
+import { Banner, BannerTone } from "../ui/templates/Banner";
+import { FormSection } from "../ui/templates/Form";
 import {
   findDroppedInsertable,
   InsertableTokenButton,
@@ -30,6 +33,7 @@ const COMPLETED_SHAREABLE_INSERTION_DATA_KEY =
 const DEFAULT_SHAREABLE_INSERTION_DATA_KEY =
   "application/x-default-shareable-text-token";
 
+const TEXTAREA_CLASS = cn(controlClass, "py-2 leading-6");
 const SHAREABLE_NAME_TOKENS = [
   {
     id: "member-first-name",
@@ -238,211 +242,172 @@ export function ShareableTextBuilder({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Shareable Text for Completed Tasks
-          </h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Build the text copied when a member shares a completed action. Type
-            <span className="mx-1 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">
-              #{"{field}"}
-            </span>
-            to insert a field token, or drag a field into the text box.
-          </p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="relative">
-            <TextareaWithHighlights
-              value={completedTemplate}
-              onChange={(next) => {
-                updateCompletedTemplate(next);
-                window.requestAnimationFrame(syncCompletedCaret);
-              }}
-              keywords={keywords}
-              placeholder="Example: I have #{field-123} things!"
-              rows={10}
-              textareaRef={completedTextareaRef}
-              onClick={syncCompletedCaret}
-              onKeyUp={syncCompletedCaret}
-              onKeyDown={handleKeyDown}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                const item = findDroppedInsertable({
-                  event,
-                  dataKey: COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
-                  insertables: completedInsertables,
-                });
-                if (!item) {
-                  return;
-                }
-                insertCompletedToken(item, false);
-              }}
-            />
-
-            <ReferralUrlNotice />
-
-            {activeToken && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-gray-200 bg-white shadow-xl">
-                {suggestions.map((field, index) => (
-                  <button
-                    key={field.id}
-                    type="button"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      insertCompletedToken(field, true);
-                    }}
-                    className={cn(
-                      "flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-blue-50",
-                      index === activeIndex && "bg-blue-50",
-                    )}
-                  >
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {field.label}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        {field.token} · {field.pageTitle}
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                      {field.kind}
+    <div className="mx-auto flex w-full max-w-176 flex-col gap-section">
+      <FormSection
+        title="Shareable text for completed tasks"
+        description={
+          <>
+            The text copied when a member shares a completed task. Type{" "}
+            <span className="font-mono text-xs">#{"{"}</span> to pick a field,
+            or click or drag a token below into the text.
+          </>
+        }
+      >
+        <div className="relative">
+          <TextareaWithHighlights
+            value={completedTemplate}
+            onChange={(next) => {
+              updateCompletedTemplate(next);
+              window.requestAnimationFrame(syncCompletedCaret);
+            }}
+            keywords={keywords}
+            placeholder="Example: I have #{field-123} things!"
+            rows={8}
+            textareaRef={completedTextareaRef}
+            onClick={syncCompletedCaret}
+            onKeyUp={syncCompletedCaret}
+            onKeyDown={handleKeyDown}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const item = findDroppedInsertable({
+                event,
+                dataKey: COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
+                insertables: completedInsertables,
+              });
+              if (!item) {
+                return;
+              }
+              insertCompletedToken(item, false);
+            }}
+            textareaClassName={TEXTAREA_CLASS}
+          />
+          {activeToken && suggestions.length > 0 && (
+            <div
+              role="listbox"
+              aria-label="Fields to insert"
+              className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-md bg-surface shadow-pop"
+            >
+              {suggestions.map((field, index) => (
+                <button
+                  key={field.id}
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    insertCompletedToken(field, true);
+                  }}
+                  className={cn(
+                    "flex w-full items-start justify-between gap-3 px-3 py-2 text-left hover:bg-surface-2",
+                    index === activeIndex && "bg-surface-2",
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block font-medium">{field.label}</span>
+                    <span className="block truncate text-caption text-fg-muted">
+                      {field.token} · {field.pageTitle}
                     </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Form Fields
-              </h3>
-              <p className="mt-1 text-xs text-gray-500">
-                Drag or click a field to insert its token.
-              </p>
-            </div>
-
-            <div className="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Member Details
-                </p>
-                {SHAREABLE_NAME_TOKENS.map((item) => (
-                  <InsertableTokenButton
-                    key={item.id}
-                    item={item}
-                    dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
-                    onInsert={() => insertCompletedToken(item, false)}
-                  />
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Form Fields
-                </p>
-                {fields.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
-                    Add form fields in Form Builder first.
-                  </p>
-                ) : (
-                  fields.map((field) => (
-                    <InsertableTokenButton
-                      key={field.id}
-                      item={field}
-                      dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
-                      onInsert={() => insertCompletedToken(field, false)}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Default Shareable Text
-          </h2>
-          <p className="mt-1 text-sm text-gray-600">
-            This text is copied when a user shares the action before completing
-            it. Only member-detail tokens are supported in this box.
-          </p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div>
-            <TextareaWithHighlights
-              value={defaultTemplate}
-              onChange={updateDefaultTemplate}
-              keywords={defaultKeywords}
-              placeholder="Example: Join me in taking this action."
-              rows={6}
-              textareaRef={defaultTextareaRef}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                const item = findDroppedInsertable({
-                  event,
-                  dataKey: DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
-                  insertables: defaultInsertables,
-                });
-                if (!item) {
-                  return;
-                }
-                insertDefaultToken(item);
-              }}
-              textareaClassName="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
-              <p className="text-sm font-medium text-amber-950">
-                No form-field inputs in this text box
-              </p>
-              <p className="mt-1 text-xs text-amber-900">
-                Entries like <span className="font-mono">#{"{field}"}</span> are
-                removed here because this default message is used before the
-                user has completed the task. Member-detail tokens like{" "}
-                <span className="font-mono">{FIRST_NAME_TOKEN}</span> and{" "}
-                <span className="font-mono">{FULL_NAME_TOKEN}</span> are
-                supported.
-              </p>
-            </div>
-
-            <ReferralUrlNotice />
-          </div>
-
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Member Details
-              </h3>
-              <p className="mt-1 text-xs text-gray-500">
-                Drag or click a member detail to insert it into Default
-                Shareable Text.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              {defaultInsertables.map((item) => (
-                <InsertableTokenButton
-                  key={`default-${item.id}`}
-                  item={item}
-                  dataKey={DEFAULT_SHAREABLE_INSERTION_DATA_KEY}
-                  onInsert={() => insertDefaultToken(item)}
-                />
+                  </span>
+                  <span className="text-caption text-fg-muted">
+                    {field.kind}
+                  </span>
+                </button>
               ))}
             </div>
-          </div>
+          )}
         </div>
-      </div>
+
+        <TokenGroup label="Member details">
+          {SHAREABLE_NAME_TOKENS.map((item) => (
+            <InsertableTokenButton
+              key={item.id}
+              item={item}
+              dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
+              onInsert={() => insertCompletedToken(item, false)}
+            />
+          ))}
+        </TokenGroup>
+        <TokenGroup label="Form fields">
+          {fields.length === 0 ? (
+            <p className="text-fg-muted">
+              This form has no labelled questions yet.
+            </p>
+          ) : (
+            fields.map((field) => (
+              <InsertableTokenButton
+                key={field.id}
+                item={field}
+                dataKey={COMPLETED_SHAREABLE_INSERTION_DATA_KEY}
+                onInsert={() => insertCompletedToken(field, false)}
+              />
+            ))
+          )}
+        </TokenGroup>
+        <ReferralUrlNotice />
+      </FormSection>
+
+      <FormSection
+        title="Default shareable text"
+        description="Copied when a member shares the task before completing it, so it can only use the member's name."
+      >
+        <TextareaWithHighlights
+          value={defaultTemplate}
+          onChange={updateDefaultTemplate}
+          keywords={defaultKeywords}
+          placeholder="Example: Join me in taking this action."
+          rows={5}
+          textareaRef={defaultTextareaRef}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            const item = findDroppedInsertable({
+              event,
+              dataKey: DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
+              insertables: defaultInsertables,
+            });
+            if (!item) {
+              return;
+            }
+            insertDefaultToken(item);
+          }}
+          textareaClassName={TEXTAREA_CLASS}
+        />
+        <TokenGroup label="Member details">
+          {defaultInsertables.map((item) => (
+            <InsertableTokenButton
+              key={`default-${item.id}`}
+              item={item}
+              dataKey={DEFAULT_SHAREABLE_INSERTION_DATA_KEY}
+              onInsert={() => insertDefaultToken(item)}
+            />
+          ))}
+        </TokenGroup>
+        <Banner inline tone={BannerTone.Warning}>
+          <p className="font-medium">Form-field tokens are removed here</p>
+          <p className="text-fg-muted">
+            A token like <span className="font-mono text-xs">#{"{field}"}</span>{" "}
+            is dropped from this text as you type, since nothing has been
+            answered yet. The member tokens{" "}
+            <span className="font-mono text-xs">{FIRST_NAME_TOKEN}</span> and{" "}
+            <span className="font-mono text-xs">{FULL_NAME_TOKEN}</span> stay.
+          </p>
+        </Banner>
+        <ReferralUrlNotice />
+      </FormSection>
+    </div>
+  );
+}
+
+function TokenGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-caption font-medium text-fg-muted">{label}</p>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
 }

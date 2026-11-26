@@ -7,15 +7,12 @@ import {
   type AnyField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
-import { cn } from "@alliance/shared/styles/util";
-import { X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import Button, { ButtonColor } from "../ui/Button";
-
-const inputBase =
-  "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
-const inputText = cn(inputBase, "px-3 py-1.5");
-const inputPad = cn(inputBase, "px-3 py-2");
+import { useId, useMemo, useState } from "react";
+import Button, { ButtonVariant } from "../ui/Button";
+import { EmptyState } from "../ui/EmptyState";
+import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { Field, FieldGroup, FormSection } from "../ui/templates/Form";
 
 const collectFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
@@ -48,6 +45,118 @@ const buildNewView = (schema: FormSchema): AggregateViewSchema => {
   };
 };
 
+const DISPLAY_TYPES: { value: AggregateViewDisplayType; label: string }[] = [
+  { value: "number", label: "Number" },
+  { value: "dollars", label: "Dollars" },
+];
+
+/** Holds what is typed until it is committed on blur or Enter. */
+function StaticNumber({
+  label,
+  value,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const commit = () => {
+    const raw = draft.trim();
+    const parsed = raw === "" ? 0 : Number(raw);
+    if (Number.isNaN(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    setDraft(String(parsed));
+    onCommit(parsed);
+  };
+  return (
+    <Input
+      type="number"
+      aria-label={label}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+      }}
+    />
+  );
+}
+
+function ValueEditor({
+  label,
+  value,
+  availableFields,
+  onChange,
+}: {
+  label: string;
+  value: AggregateViewValue;
+  availableFields: AnyField[];
+  onChange: (value: AggregateViewValue) => void;
+}) {
+  const firstField = availableFields[0];
+  const name = `${label}-${useId()}`;
+  return (
+    <FieldGroup label={label}>
+      <div className="flex gap-4">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name={name}
+            className="size-4 accent-accent focus-ring"
+            checked={value.type === "number"}
+            onChange={() => onChange({ type: "number", value: 0 })}
+          />
+          Static number
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name={name}
+            className="size-4 accent-accent focus-ring"
+            checked={value.type === "numberfield"}
+            disabled={!firstField}
+            onChange={() =>
+              firstField &&
+              onChange({ type: "numberfield", fieldId: firstField.id })
+            }
+          />
+          Number question
+        </label>
+      </div>
+      {value.type === "number" ? (
+        <StaticNumber
+          key={value.value}
+          label={`${label} value`}
+          value={value.value}
+          onCommit={(next) => onChange({ type: "number", value: next })}
+        />
+      ) : (
+        <Select
+          aria-label={`${label} question`}
+          value={value.fieldId}
+          onChange={(event) =>
+            onChange({ type: "numberfield", fieldId: event.target.value })
+          }
+        >
+          {availableFields.map((field) => (
+            <option key={field.id} value={field.id}>
+              {fieldPickerLabel(field)}
+            </option>
+          ))}
+        </Select>
+      )}
+      {!firstField && (
+        <p className="text-caption text-fg-muted">
+          Add a number question to the form to use one here.
+        </p>
+      )}
+    </FieldGroup>
+  );
+}
+
 interface AggregateBuilderProps {
   schema: FormSchema;
   onSchemaChange: (schema: FormSchema) => void;
@@ -57,92 +166,26 @@ export function AggregateBuilder({
   schema,
   onSchemaChange,
 }: AggregateBuilderProps) {
-  const [selectedViewId, setSelectedViewId] = useState<string | null>(
-    () => schema.aggregateViews?.[0]?.id ?? null,
-  );
-  const [numberDrafts, setNumberDrafts] = useState({
-    numerator: "0",
-    denominator: "100",
-  });
   const availableFields = useMemo(() => collectNumberFields(schema), [schema]);
+  const views = schema.aggregateViews ?? [];
 
-  useEffect(() => {
-    if (!schema.aggregateViews || schema.aggregateViews.length === 0) {
-      setSelectedViewId(null);
-      return;
-    }
-    if (
-      !selectedViewId ||
-      !schema.aggregateViews.some((view) => view.id === selectedViewId)
-    ) {
-      setSelectedViewId(schema.aggregateViews[0].id);
-    }
-  }, [schema.aggregateViews, selectedViewId]);
+  const updateViews = (next: AggregateViewSchema[]) =>
+    onSchemaChange({ ...schema, aggregateViews: next });
 
-  const selectedView: AggregateViewSchema | null = useMemo(() => {
-    if (!schema.aggregateViews || schema.aggregateViews.length === 0) {
-      return null;
-    }
-    return (
-      schema.aggregateViews.find((view) => view.id === selectedViewId) ??
-      schema.aggregateViews[0]
+  const updateView = (viewId: string, updates: Partial<AggregateViewSchema>) =>
+    updateViews(
+      views.map((view) =>
+        view.id === viewId ? { ...view, ...updates } : view,
+      ),
     );
-  }, [schema.aggregateViews, selectedViewId]);
-
-  useEffect(() => {
-    if (!selectedView) {
-      return;
-    }
-    setNumberDrafts({
-      numerator:
-        selectedView.numerator.type === "number"
-          ? String(selectedView.numerator.value)
-          : "0",
-      denominator:
-        selectedView.denominator.type === "number"
-          ? String(selectedView.denominator.value)
-          : "0",
-    });
-  }, [selectedView]);
-
-  const updateViews = (views: AggregateViewSchema[]) => {
-    onSchemaChange({
-      ...schema,
-      aggregateViews: views,
-    });
-  };
-
-  const addView = () => {
-    const nextView = buildNewView(schema);
-    updateViews([...(schema.aggregateViews ?? []), nextView]);
-    setSelectedViewId(nextView.id);
-  };
-
-  const removeView = (viewId: string) => {
-    const nextViews = (schema.aggregateViews ?? []).filter(
-      (view) => view.id !== viewId,
-    );
-    updateViews(nextViews);
-    if (selectedViewId === viewId) {
-      setSelectedViewId(nextViews[0]?.id ?? null);
-    }
-  };
-
-  const updateSelectedView = (updates: Partial<AggregateViewSchema>) => {
-    if (!selectedView) return;
-    const nextViews = (schema.aggregateViews ?? []).map((view) =>
-      view.id === selectedView.id ? { ...view, ...updates } : view,
-    );
-    updateViews(nextViews);
-  };
 
   const normalizeFieldValue = (
     value: AggregateViewValue,
   ): AggregateViewValue => {
-    if (value.type !== "numberfield") {
-      return value;
-    }
-    if (availableFields.some((field) => field.id === value.fieldId)) {
+    if (
+      value.type !== "numberfield" ||
+      availableFields.some((field) => field.id === value.fieldId)
+    ) {
       return value;
     }
     const firstField = availableFields[0];
@@ -151,231 +194,90 @@ export function AggregateBuilder({
       : { type: "number", value: 0 };
   };
 
-  const updateValue = (
-    key: "numerator" | "denominator",
-    value: AggregateViewValue,
-  ) => {
-    updateSelectedView({ [key]: normalizeFieldValue(value) });
-  };
-
-  const commitNumberDraft = (key: "numerator" | "denominator") => {
-    const raw = numberDrafts[key].trim();
-    if (raw === "") {
-      updateValue(key, { type: "number", value: 0 });
-      setNumberDrafts((prev) => ({ ...prev, [key]: "0" }));
-      return;
-    }
-    const parsed = Number(raw);
-    if (Number.isNaN(parsed)) {
-      const fallback =
-        selectedView && selectedView[key].type === "number"
-          ? String(selectedView[key].value)
-          : "0";
-      setNumberDrafts((prev) => ({ ...prev, [key]: fallback }));
-      return;
-    }
-    updateValue(key, { type: "number", value: parsed });
-    setNumberDrafts((prev) => ({ ...prev, [key]: String(parsed) }));
-  };
-
-  const renderValueEditor = (
-    label: string,
-    value: AggregateViewValue,
-    key: "numerator" | "denominator",
-  ) => (
-    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-      <p className="text-sm font-medium text-gray-700">{label}</p>
-      <select
-        value={value.type}
-        onChange={(event) => {
-          const nextType = event.target.value as AggregateViewValue["type"];
-          if (nextType === "number") {
-            updateValue(key, { type: "number", value: 0 });
-            return;
-          }
-          const firstField = availableFields[0];
-          updateValue(
-            key,
-            firstField
-              ? { type: "numberfield", fieldId: firstField.id }
-              : { type: "number", value: 0 },
-          );
-        }}
-        className={cn(inputPad, "bg-white")}
-      >
-        <option value="number">Static number</option>
-        {availableFields.length > 0 && (
-          <option value="numberfield">Number field</option>
-        )}
-      </select>
-      {value.type === "number" ? (
-        <input
-          type="number"
-          value={numberDrafts[key]}
-          onChange={(event) =>
-            setNumberDrafts((prev) => ({ ...prev, [key]: event.target.value }))
-          }
-          onBlur={() => commitNumberDraft(key)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.currentTarget.blur();
-            }
-          }}
-          className={inputPad}
-        />
-      ) : (
-        <select
-          value={value.fieldId}
-          onChange={(event) =>
-            updateValue(key, {
-              type: "numberfield",
-              fieldId: event.target.value,
-            })
-          }
-          disabled={availableFields.length === 0}
-          className={cn(
-            inputPad,
-            "bg-white disabled:bg-gray-100 disabled:text-gray-400",
-          )}
-        >
-          {availableFields.length > 0 ? (
-            availableFields.map((field) => (
-              <option key={field.id} value={field.id}>
-                {fieldPickerLabel(field)}
-              </option>
-            ))
-          ) : (
-            <option value="">No fields available</option>
-          )}
-        </select>
-      )}
-    </div>
-  );
-
   return (
-    <div className="flex flex-col h-full">
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mx-auto w-full max-w-4xl">
-        <div className="mb-6 space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Aggregate views
-            </h2>
-            <Button onClick={addView} color={ButtonColor.Blue}>
-              Add aggregate view
-            </Button>
-          </div>
-          <p className="text-sm text-gray-600">
-            Configure action-level summary visuals from form responses.
-          </p>
-        </div>
-
-        {schema.aggregateViews && schema.aggregateViews.length > 0 ? (
-          <>
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              {(schema.aggregateViews ?? []).map((view, index) => {
-                const isActive =
-                  (selectedView?.id ?? selectedViewId) === view.id;
-                return (
-                  <div key={view.id} className="flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedViewId(view.id)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-l-md border text-sm",
-                        isActive
-                          ? "bg-blue-100 text-blue-700 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200",
-                      )}
-                    >
-                      View {index + 1}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeView(view.id)}
-                      className={cn(
-                        "px-2 py-1.5 rounded-r-md border border-l-0 text-sm",
-                        "bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 border-gray-200",
-                      )}
-                    >
-                      <X size={16} strokeWidth={2.25} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {selectedView ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedView.title}
-                      onChange={(event) =>
-                        updateSelectedView({ title: event.target.value })
-                      }
-                      placeholder="Progress title"
-                      className={inputText}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">
-                      Caption
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedView.caption}
-                      onChange={(event) =>
-                        updateSelectedView({ caption: event.target.value })
-                      }
-                      placeholder="Optional caption shown beside totals"
-                      className={inputText}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">
-                    Display type
-                  </label>
-                  <select
-                    value={selectedView.displayType ?? "number"}
-                    onChange={(event) =>
-                      updateSelectedView({
-                        displayType: event.target
-                          .value as AggregateViewDisplayType,
-                      })
-                    }
-                    className={cn(inputPad, "md:w-64 bg-white")}
-                  >
-                    <option value="number">Number</option>
-                    <option value="dollars">Dollars</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {renderValueEditor(
-                    "Numerator",
-                    selectedView.numerator,
-                    "numerator",
-                  )}
-                  {renderValueEditor(
-                    "Denominator",
-                    selectedView.denominator,
-                    "denominator",
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <div className="text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-8">
-            No aggregate views yet. Click &ldquo;Add aggregate view&rdquo; to
-            get started.
-          </div>
-        )}
+    <div className="mx-auto flex w-full max-w-176 flex-col gap-section">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-fg-muted">
+          Summary visuals for the task, calculated from members' responses.
+        </p>
+        <Button onClick={() => updateViews([...views, buildNewView(schema)])}>
+          Add aggregate view
+        </Button>
       </div>
+      {views.length === 0 && (
+        <EmptyState
+          title="No aggregate views yet"
+          description="Add one to show a total from members' responses."
+        />
+      )}
+      {views.map((view, index) => (
+        <FormSection key={view.id} title={`View ${index + 1}`}>
+          <Field label="Title">
+            {(control) => (
+              <Input
+                {...control}
+                value={view.title}
+                onChange={(event) =>
+                  updateView(view.id, { title: event.target.value })
+                }
+                placeholder="Progress title"
+              />
+            )}
+          </Field>
+          <Field label="Caption">
+            {(control) => (
+              <Input
+                {...control}
+                value={view.caption}
+                onChange={(event) =>
+                  updateView(view.id, { caption: event.target.value })
+                }
+                placeholder="Shown beside the totals"
+              />
+            )}
+          </Field>
+          <Field label="Display type">
+            {(control) => (
+              <Select
+                {...control}
+                value={view.displayType ?? "number"}
+                onChange={(event) => {
+                  const displayType = DISPLAY_TYPES.find(
+                    (type) => type.value === event.target.value,
+                  );
+                  if (displayType)
+                    updateView(view.id, { displayType: displayType.value });
+                }}
+              >
+                {DISPLAY_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          {(["numerator", "denominator"] as const).map((key) => (
+            <ValueEditor
+              key={key}
+              label={key === "numerator" ? "Numerator" : "Denominator"}
+              value={view[key]}
+              availableFields={availableFields}
+              onChange={(value) =>
+                updateView(view.id, { [key]: normalizeFieldValue(value) })
+              }
+            />
+          ))}
+          <Button
+            variant={ButtonVariant.DangerOutline}
+            onClick={() =>
+              updateViews(views.filter((other) => other.id !== view.id))
+            }
+          >
+            Remove view
+          </Button>
+        </FormSection>
+      ))}
     </div>
   );
 }

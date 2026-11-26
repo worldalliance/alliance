@@ -420,7 +420,7 @@ it("reopens the Output View's expression editor when undo restores its text", as
   expect(expression()?.value).toBe("c1 AND");
 });
 
-it("stays on the selected aggregate view through undo", async () => {
+it("keeps the aggregate views listed through undo", async () => {
   const view = (id: string, title: string) => ({
     id,
     kind: "progressbar" as const,
@@ -435,9 +435,8 @@ it("stays on the selected aggregate view through undo", async () => {
     aggregateViews: [view("v1", "First"), view("v2", "Second")],
   });
   fireEvent.click(screen.getByRole("tab", { name: "Aggregate views" }));
-  fireEvent.click(button("View 2"));
   const title = () =>
-    screen.getByPlaceholderText<HTMLInputElement>("Progress title");
+    screen.getAllByPlaceholderText<HTMLInputElement>("Progress title")[1]!;
   fireEvent.change(title(), { target: { value: "Changed" } });
   await nextTask();
 
