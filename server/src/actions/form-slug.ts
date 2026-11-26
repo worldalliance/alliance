@@ -1,6 +1,8 @@
 import { ConflictException } from "@nestjs/common";
 import { updateLive } from "src/datasources/soft-delete";
 import { Form } from "src/tasks/entities/form.entity";
+import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
+import { recordHistoricalSnapshot } from "src/tasks/formsnapshot.service";
 import { slugCandidates } from "src/utils/slug";
 import type { EntityManager } from "typeorm";
 import { lockActionRow } from "./lock-action-row";
@@ -121,13 +123,26 @@ function assertSlugFree(slug: string, taken: readonly string[]): void {
   }
 }
 
-/** Takes the action row lock. */
+/** Takes the action row lock, and records the form's snapshot in its history. */
 export async function insertForm(
   em: EntityManager,
   params: {
     form: Pick<Form, "title" | "formSnapshotId"> & Partial<Form>;
     placement: FormPlacement;
   },
+): Promise<Form> {
+  const form = await saveSluggedForm(em, params);
+  await recordHistoricalSnapshot(em, {
+    owner: SnapshotHistoryOwner.Form,
+    ownerId: form.id,
+    snapshotId: form.formSnapshotId,
+  });
+  return form;
+}
+
+async function saveSluggedForm(
+  em: EntityManager,
+  params: Parameters<typeof insertForm>[1],
 ): Promise<Form> {
   const { placement } = params;
   const repo = em.getRepository(Form);

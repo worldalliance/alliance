@@ -2,6 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import request from "supertest";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
 import { Action } from "../src/actions/entities/action.entity";
+import { Form } from "../src/tasks/entities/form.entity";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   createActionAsAdmin,
@@ -19,6 +20,16 @@ const schema: FormSchema = {
   ],
   outputViews: [],
   aggregateViews: [],
+};
+
+const otherSchema: FormSchema = {
+  ...schema,
+  pages: [
+    {
+      id: "page-1",
+      fields: [{ id: "other", type: "input", kind: "text", label: "Other" }],
+    },
+  ],
 };
 
 describe("Action task form id (e2e)", () => {
@@ -146,9 +157,66 @@ describe("Action task form id (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200);
     expect(copied.body.taskForm.formSnapshot.schema).toEqual(schema);
+    const pastedForm = await ctx.dataSource.getRepository(Form).findOneOrFail({
+      where: { id: copied.body.taskForm.id },
+      relations: { historicalFormSnapshots: true },
+    });
+    expect(pastedForm.historicalFormSnapshots?.map((s) => s.id)).toContain(
+      copied.body.taskForm.formSnapshotId,
+    );
 
     const kept = await getActionAsAdmin(ctx, original.body.id).expect(200);
     expect(kept.body.taskFormId).toBe(taskFormId);
+  });
+
+  const exportWithForm = async (taskFormId: number) => {
+    const original = await create({ taskFormId }).expect(201);
+    const exported = await request(ctx.app.getHttpServer())
+      .get(`/actions/export/${original.body.id}?taskForm=true`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    return exported.body;
+  };
+
+  const paste = (body: unknown) =>
+    request(ctx.app.getHttpServer())
+      .post("/actions/pasteJson")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ body: JSON.stringify(body) });
+
+  it("pastes a form's content even when its snapshot id names another form's snapshot", async () => {
+    const exported = await exportWithForm(await createForm());
+    const other = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ title: "Other form", schema: otherSchema })
+      .expect(201);
+    const otherSnapshotId = other.body.formSnapshotId;
+    exported.taskForm.formSnapshotId = otherSnapshotId;
+    exported.taskForm.formSnapshot.id = otherSnapshotId;
+
+    const pasted = await paste(exported).expect(201);
+    const copied = await request(ctx.app.getHttpServer())
+      .get(`/actions/export/${pasted.body.id}?taskForm=true`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    expect(copied.body.taskForm.formSnapshot.schema).toEqual(schema);
+    expect(copied.body.taskForm.formSnapshotId).not.toBe(otherSnapshotId);
+  });
+
+  it("refuses a pasted form without its content", async () => {
+    const exported = await exportWithForm(await createForm());
+    delete exported.taskForm.formSnapshot;
+
+    await paste(exported).expect(400);
+    expect(await ctx.dataSource.getRepository(Action).count()).toBe(1);
+  });
+
+  it("refuses a pasted form whose content is not a valid form", async () => {
+    const exported = await exportWithForm(await createForm());
+    exported.taskForm.formSnapshot.schema = { pages: "not pages" };
+
+    await paste(exported).expect(400);
   });
 
   it("pastes an action exported without its form with no form", async () => {

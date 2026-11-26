@@ -9,7 +9,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { assertNoPartitionLaunch } from "src/suite-partitions/partition-guards";
-import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { DataSource, Repository } from "typeorm";
@@ -104,12 +103,6 @@ export class ProjectActionsService {
           formSnapshot: snapshot,
         },
         placement: null,
-      });
-      await this.formSnapshotService.recordHistorical({
-        owner: SnapshotHistoryOwner.Form,
-        ownerId: form.id,
-        snapshotId: snapshot.id,
-        em,
       });
       const inserted = await this.actionsService.insertAction(em, {
         name: body.name,

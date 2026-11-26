@@ -1,4 +1,3 @@
-/* alliance/max-lines 550 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import { actionFormIds } from "@alliance/common/cohort-expression";
 import {
@@ -11,8 +10,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteWhere, writeUnderLive } from "src/datasources/soft-delete";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
-import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, QueryFailedError, Repository } from "typeorm";
@@ -57,7 +54,6 @@ export class ActionFormVariantService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Form)
     private readonly formRepo: Repository<Form>,
-    private readonly formSnapshotService: FormSnapshotService,
   ) {}
 
   async listForAction(actionId: number): Promise<ActionFormVariant[]> {
@@ -151,12 +147,6 @@ export class ActionFormVariantService {
           formSnapshot: sourceForm.formSnapshot,
         },
         placement: { actionId, sequence: FormSlugSequence.Main },
-      });
-      await this.formSnapshotService.recordHistorical({
-        owner: SnapshotHistoryOwner.Form,
-        ownerId: newForm.id,
-        snapshotId: sourceForm.formSnapshotId,
-        em,
       });
       return variantTxRepo.save(
         variantTxRepo.create({
