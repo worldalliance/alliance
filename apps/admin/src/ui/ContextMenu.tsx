@@ -11,15 +11,18 @@ import { MoreMenuItems, type MoreMenuItem } from "./MoreMenu";
 export function ContextMenu({
   items,
   label,
+  busy = false,
   children,
 }: {
   items: readonly MoreMenuItem[];
   /** What the menu acts on, as `MoreMenu`'s `subject`: "Text field: Town". */
   label: string;
+  /** As `MoreMenu`'s: an item's write is running, so the menu doesn't open. */
+  busy?: boolean;
   children: ReactNode;
 }) {
   return (
-    <ContextMenuPrimitive.Root>
+    <ContextMenuPrimitive.Root disabled={busy}>
       <ContextMenuTrigger>{children}</ContextMenuTrigger>
       <DropdownMenuContent aria-label={`More: ${label}`} className="min-w-48">
         <MoreMenuItems items={items} />

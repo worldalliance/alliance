@@ -16,4 +16,18 @@ describe("ContextMenu", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "Duplicate" }));
     expect(run).toHaveBeenCalledTimes(1);
   });
+
+  it("stays closed while busy", () => {
+    render(
+      <ContextMenu
+        busy
+        label="Town"
+        items={[{ label: "Duplicate", onSelect: jest.fn() }]}
+      >
+        <div>Row</div>
+      </ContextMenu>,
+    );
+    fireEvent.contextMenu(screen.getByText("Row"));
+    expect(screen.queryByRole("menuitem")).toBeNull();
+  });
 });
