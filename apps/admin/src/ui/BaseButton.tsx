@@ -31,7 +31,6 @@ export default function BaseButton({
   return (
     <BaseUIButton
       className={cn(
-        "inline-flex",
         buttonVariants({ variant: VARIANT[variant], size: "medium" }),
         className,
       )}

@@ -58,7 +58,7 @@ export function MultiFilter<T extends string>({
         aria-label={`${title}: ${summary}`}
         className={cn(
           buttonVariants({ variant: ButtonVariant.Default, size: "small" }),
-          "inline-flex max-w-56 whitespace-nowrap",
+          "max-w-56 whitespace-nowrap",
           disabled && "cursor-not-allowed opacity-50",
         )}
       >

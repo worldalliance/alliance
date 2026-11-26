@@ -52,7 +52,7 @@ export function FileInput({
         htmlFor={id}
         className={cn(
           buttonVariants({ variant: ButtonVariant.Default, size: "medium" }),
-          "inline-flex shrink-0 cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:pointer-events-none peer-disabled:opacity-50 peer-aria-invalid:border-danger",
+          "shrink-0 cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:pointer-events-none peer-disabled:opacity-50 peer-aria-invalid:border-danger",
         )}
       >
         {multiple ? "Choose files…" : "Choose file…"}

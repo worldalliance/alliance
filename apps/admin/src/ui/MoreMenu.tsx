@@ -134,7 +134,6 @@ export function MoreMenu({
       aria-label={compact || subject !== undefined ? name : undefined}
       {...(busy && { "aria-busy": true, "aria-disabled": true })}
       className={cn(
-        "inline-flex",
         buttonVariants({ variant: ButtonVariant.Default, size }),
         compact && "aspect-square justify-center px-0",
       )}

@@ -10,6 +10,8 @@ export enum ButtonVariant {
   Soft = "soft",
   Ghost = "ghost",
   Danger = "danger",
+  /** A destructive action that is not the view's main one, such as "Remove all conditions". */
+  GhostDanger = "ghostDanger",
   DangerOutline = "dangerOutline",
   AccentOutline = "accentOutline",
 }
@@ -46,10 +48,11 @@ const VARIANT_OF_COLOR: Record<ButtonColor, ButtonVariant> = {
 
 // A string union, not an enum, because the pages written against the shared
 // button pass these as literals.
-export type ButtonSize = "small" | "medium" | "large";
+/** `icon`: a square the height of `small`, for an icon DESIGN.md lets stand alone; name it in `aria-label`. */
+export type ButtonSize = "small" | "medium" | "large" | "icon";
 
 export const buttonVariants = cva(
-  "relative box-border items-center justify-center gap-1.5 rounded-md border text-body font-medium transition-colors duration-fast focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress",
+  "relative box-border inline-flex items-center justify-center gap-1.5 rounded-md border text-body font-medium transition-colors duration-fast focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress",
   {
     variants: {
       variant: {
@@ -63,6 +66,8 @@ export const buttonVariants = cva(
           "border-transparent bg-transparent text-fg not-disabled:not-aria-busy:hover:bg-line",
         [ButtonVariant.Danger]:
           "border-danger bg-danger text-on-danger not-disabled:not-aria-busy:hover:border-danger-hover not-disabled:not-aria-busy:hover:bg-danger-hover",
+        [ButtonVariant.GhostDanger]:
+          "border-transparent bg-transparent text-danger not-disabled:not-aria-busy:hover:bg-danger-soft",
         [ButtonVariant.DangerOutline]:
           "border-danger bg-surface text-danger not-disabled:not-aria-busy:hover:bg-danger-soft",
         [ButtonVariant.AccentOutline]:
@@ -72,6 +77,7 @@ export const buttonVariants = cva(
         small: "min-h-control-sm px-2.5 py-1",
         medium: "min-h-control px-3 py-1",
         large: "min-h-10 px-4 py-2 text-heading",
+        icon: "size-control-sm p-0",
       } satisfies Record<ButtonSize, string>,
     },
   },
@@ -144,8 +150,9 @@ const Button: React.FC<ButtonProps> = ({
   const classes = cn(
     // Block-level and sized to its content, as the shared button was, so the
     // pages laid out around it keep their flow.
-    "flex w-fit",
+    "w-fit",
     buttonVariants({ variant: variant ?? VARIANT_OF_COLOR[color], size }),
+    "flex",
     disabled && "cursor-not-allowed opacity-50",
     className,
   );

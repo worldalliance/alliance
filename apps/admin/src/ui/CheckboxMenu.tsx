@@ -45,7 +45,7 @@ export function CheckboxMenu({
       <Menu.Trigger
         aria-label={ariaLabel}
         className={cn(
-          "inline-flex whitespace-nowrap",
+          "whitespace-nowrap",
           buttonVariants({ variant: ButtonVariant.Default, size }),
         )}
       >
