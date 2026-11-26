@@ -129,6 +129,7 @@ function Panes() {
     props: { displayOnly, taskFlow },
   } = useBuilder();
   const settingsRef = useRef<HTMLDivElement>(null);
+  const canvasScroll = useRef(new Map<string, number>());
   const onForm = activeEditor === FormEditor.Form;
   const onOutputs = activeEditor === FormEditor.Outputs;
   const outputPanes = useOutputPanes({
@@ -207,6 +208,7 @@ function Panes() {
             <FormCanvasPane
               canvasPart={parts.canvas}
               settingsRef={settingsRef}
+              scrollPositions={canvasScroll.current}
             />
           ) : onOutputs ? (
             outputPanes.main
@@ -228,9 +230,11 @@ function Panes() {
 function FormCanvasPane({
   canvasPart,
   settingsRef,
+  scrollPositions,
 }: {
   canvasPart: ReactNode;
   settingsRef: RefObject<HTMLDivElement | null>;
+  scrollPositions: Map<string, number>;
 }) {
   const {
     canvas,
@@ -244,14 +248,27 @@ function FormCanvasPane({
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const view = `${currentPage.id}:${isPreviewMode ? "preview" : "edit"}`;
-  useCanvasScrollMemory({ pane: canvasRef, view, revealing: revealPending });
+  const chunks = useCallback(() => pageChunks(currentPage), [currentPage]);
+  const settled = useSettleGate({
+    pane: canvasRef,
+    key: view,
+    ready: !isLoading && !reach.loading,
+    chunks,
+  });
+  useCanvasScrollMemory({
+    pane: canvasRef,
+    view,
+    settled,
+    revealing: revealPending,
+    positions: scrollPositions,
+  });
   useEffect(() => {
-    if (!revealPending) return;
+    if (!revealPending || !settled) return;
     const pane = canvasRef.current;
     const selected = selectedOnCanvas(pane);
     if (pane && selected) revealInPane(pane, selected);
     revealed();
-  }, [revealPending, revealed]);
+  }, [revealPending, revealed, settled]);
 
   const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
   const shown = useRef({ key: selectionKey, selections });
@@ -266,14 +283,6 @@ function FormCanvasPane({
     }
     restoreSettingsFocus();
   }, [selectionKey, selections, restoreSettingsFocus, settingsRef]);
-
-  const chunks = useCallback(() => pageChunks(currentPage), [currentPage]);
-  const settled = useSettleGate({
-    pane: canvasRef,
-    key: view,
-    ready: !isLoading && !reach.loading,
-    chunks,
-  });
 
   return (
     <>

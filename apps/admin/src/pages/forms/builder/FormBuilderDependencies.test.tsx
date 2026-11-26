@@ -205,9 +205,12 @@ describe("FormBuilder dependency links", () => {
     expect(
       await screen.findByRole("heading", { name: "Text Field: Label c" }),
     ).toBeTruthy();
-    expect(reveals.targets()).toContain(
-      canvasButton("Select Text Field: Label c"),
+    await waitFor(() =>
+      expect(reveals.targets()).toContain(
+        canvasButton("Select Text Field: Label c"),
+      ),
     );
+    expect(reveals.whileHidden()).toEqual([]);
     expect(router.state.location.search).toBe("?editor=form");
   });
 
@@ -217,8 +220,10 @@ describe("FormBuilder dependency links", () => {
     expect(
       await screen.findByRole("heading", { name: "Text Field: Name" }),
     ).toBeTruthy();
-    expect(reveals.targets()).toContain(
-      canvasButton("Select Text Field: Name"),
+    await waitFor(() =>
+      expect(reveals.targets()).toContain(
+        canvasButton("Select Text Field: Name"),
+      ),
     );
   });
 

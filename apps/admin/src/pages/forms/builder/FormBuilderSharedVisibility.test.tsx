@@ -1,6 +1,6 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   canvas,
   canvasGroups,
@@ -136,7 +136,7 @@ describe("FormBuilder range selection", () => {
     expect(heading()).toBe("3 elements selected");
   });
 
-  it("reveals the element a selection was extended to", () => {
+  it("reveals the element a selection was extended to", async () => {
     renderFormBuilder(schemaWith(["a", "b", "c", "d"].map((id) => text(id))));
     const onCanvas = (label: string) =>
       canvas().getByRole("button", { name: `Select Text Field: ${label}` });
@@ -145,7 +145,9 @@ describe("FormBuilder range selection", () => {
     selectElement("Label a");
     reveals.clear();
     fireEvent.click(checkbox("Label d"));
-    expect(reveals.targets()).toContain(onCanvas("Label d"));
+    await waitFor(() =>
+      expect(reveals.targets()).toContain(onCanvas("Label d")),
+    );
     expect(reveals.targets()).toContain(
       outline().getByRole("treeitem", { name: "Text Field: Label d" }),
     );
@@ -154,7 +156,9 @@ describe("FormBuilder range selection", () => {
     selectElement("Label d");
     reveals.clear();
     fireEvent.click(checkbox("Label a"));
-    expect(reveals.targets()).toContain(onCanvas("Label a"));
+    await waitFor(() =>
+      expect(reveals.targets()).toContain(onCanvas("Label a")),
+    );
     expect(reveals.targets()).not.toContain(onCanvas("Label d"));
   });
 

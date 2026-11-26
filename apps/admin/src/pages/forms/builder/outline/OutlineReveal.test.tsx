@@ -1,5 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { renderFormBuilder } from "../../../../lib/testing/renderFormBuilder";
 
@@ -41,22 +41,30 @@ function setup() {
   };
   const row = within(screen.getByRole("tree", { name: "Form outline" }))
     .getByRole("treeitem", { name: /Last/ });
-  return { scrolls, row };
+  const settled = () =>
+    waitFor(() =>
+      expect(canvas.querySelector('[aria-busy="false"]')).not.toBeNull(),
+    );
+  return { scrolls, row, settled };
 }
 
 describe("selecting from the outline", () => {
   it("animates the canvas to an element below the view", async () => {
     const { scrolls, row } = setup();
     await act(async () => fireEvent.click(row));
-    expect(scrolls).toEqual([
-      expect.objectContaining({ behavior: "smooth" }),
-    ]);
+    await waitFor(() =>
+      expect(scrolls).toEqual([
+        expect.objectContaining({ behavior: "smooth" }),
+      ]),
+    );
   });
 
   it("leaves the canvas where it is when a right-click opens the menu", async () => {
-    const { scrolls, row } = setup();
+    const { scrolls, row, settled } = setup();
+    await settled();
     await act(async () => fireEvent.contextMenu(row));
     expect(row.getAttribute("aria-selected")).toBe("true");
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(scrolls).toEqual([]);
   });
 });

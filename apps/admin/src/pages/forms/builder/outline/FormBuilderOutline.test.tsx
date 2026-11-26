@@ -1,5 +1,5 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import {
   canvas,
   fromMainMenu,
@@ -54,7 +54,7 @@ describe("the form outline", () => {
     ]);
   });
 
-  it("opens an element on another page, in its settings", () => {
+  it("opens an element on another page, in its settings", async () => {
     const reveals = spyOnReveals();
     renderFormBuilder(schema);
     fireEvent.click(entry("Text Field: Vet"));
@@ -66,8 +66,10 @@ describe("the form outline", () => {
     ).toBe("true");
     expect(entry("Text Field: Vet").getAttribute("aria-current")).toBe("true");
     expect(entry("Text Field: Vet").getAttribute("aria-selected")).toBe("true");
-    expect(reveals.targets()).toContain(
-      canvas().getByRole("button", { name: "Select Text Field: Vet" }),
+    await waitFor(() =>
+      expect(reveals.targets()).toContain(
+        canvas().getByRole("button", { name: "Select Text Field: Vet" }),
+      ),
     );
   });
 
