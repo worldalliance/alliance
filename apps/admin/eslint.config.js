@@ -118,6 +118,13 @@ export default defineConfig([
     },
   },
   {
+    // Pages take the shell's height through `Page fill`.
+    files: ["src/pages/**/*.tsx"],
+    ignores: readLegacyFiles(),
+    plugins: { admin: design },
+    rules: { "admin/page-height": "error" },
+  },
+  {
     // The admin's components wrap or re-export the shared ones on purpose.
     files: ["src/ui/**/*.{ts,tsx}"],
     plugins: { admin: design },

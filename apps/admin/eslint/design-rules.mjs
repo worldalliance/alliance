@@ -149,6 +149,67 @@ const designValues = {
   },
 };
 
+const VIEWPORT_HEIGHT = /^!?(?:min-|max-)?h-(?:screen|dvh|svh|lvh)!?$/;
+const ROOT_FILL = /^!?h-full!?$/;
+
+/** The `className` text of a JSX element, or `null` when it is computed. */
+function classNameText(element) {
+  const attribute = element.openingElement.attributes.find(
+    (candidate) =>
+      candidate.type === "JSXAttribute" && candidate.name.name === "className",
+  );
+  const value =
+    attribute?.value?.type === "JSXExpressionContainer"
+      ? attribute.value.expression
+      : attribute?.value;
+  return staticText(value);
+}
+
+const pageHeight = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      viewportHeight:
+        "`{{className}}` sizes a page against the window. The shell's frame already has the height: use `<Page fill>` (apps/admin/DESIGN.md, Page) and let its body scroll.",
+      rootFill:
+        "`{{className}}` on a page's root repeats the height chain `<Page fill>` gives. Wrap the page in `<Page fill>` and put the pane layout in `Workspace` or `List`.",
+    },
+  },
+  create(context) {
+    return {
+      JSXElement(node) {
+        const text = classNameText(node);
+        if (text === null) return;
+        const parent = node.parent;
+        const isRoot =
+          parent.type === "ReturnStatement" ||
+          (parent.type === "ArrowFunctionExpression" && parent.body === node);
+        for (const className of text.split(/\s+/)) {
+          const utility = utilityOf(className);
+          if (VIEWPORT_HEIGHT.test(utility)) {
+            context.report({
+              node,
+              messageId: "viewportHeight",
+              data: { className },
+            });
+          } else if (isRoot && ROOT_FILL.test(utility)) {
+            context.report({
+              node,
+              messageId: "rootFill",
+              data: { className },
+            });
+          }
+        }
+      },
+    };
+  },
+};
+
 export default {
-  rules: { "design-tokens": designTokens, "design-values": designValues },
+  rules: {
+    "design-tokens": designTokens,
+    "design-values": designValues,
+    "page-height": pageHeight,
+  },
 };

@@ -173,3 +173,40 @@ describe("admin/design-values", () => {
     ).toEqual([]);
   });
 });
+
+describe("admin/page-height", () => {
+  const lint = (code: string) =>
+    new Linter()
+      .verify(
+        code,
+        {
+          files: ["**/*.tsx"],
+          languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: { ecmaFeatures: { jsx: true } },
+          },
+          plugins: { admin: plugin },
+          rules: { "admin/page-height": "error" },
+        },
+        "Page.tsx",
+      )
+      .map((message) => message.message.split("`")[1]);
+
+  it.each(["h-screen", "min-h-screen", "md:h-dvh", "max-h-svh"])(
+    "reports %s anywhere",
+    (className) => {
+      expect(
+        lint(`const a = <main><div className="${className}" /></main>;`),
+      ).toEqual([className]);
+    },
+  );
+
+  it("reports h-full on a returned root, not on a nested element", () => {
+    expect(
+      lint(
+        'const A = () => <div className="flex h-full"><i className="h-full" /></div>;\n' +
+          'function B() { return <div className="h-full" />; }',
+      ),
+    ).toEqual(["h-full", "h-full"]);
+  });
+});
