@@ -199,6 +199,8 @@ export function FollowUpFormEditor({
             )}
             <CohortExpressionBuilder
               value={draft.cohortExpression}
+              unreadable={cohortExpressionError != null}
+              emptyHint="Nobody sees this form until it has a cohort."
               onChange={(cohortExpression) => change({ cohortExpression })}
               availableTags={lookups.availableTags}
               tagsLoading={lookups.tagsLoading}

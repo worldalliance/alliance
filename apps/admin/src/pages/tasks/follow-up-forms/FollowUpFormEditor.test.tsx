@@ -78,6 +78,9 @@ describe("FollowUpFormEditor", () => {
       screen.getByText("With no target cohort, nobody sees this form."),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save fields" })).toBeTruthy();
+    expect(
+      screen.getByText("Nobody sees this form until it has a cohort."),
+    ).toBeTruthy();
   });
 
   it("saves only on pressing Save fields", async () => {
@@ -127,7 +130,7 @@ describe("FollowUpFormEditor", () => {
     expect(
       screen.getAllByText(/stored cohort couldn.t be read/).length,
     ).toBeGreaterThan(0);
-    expect(screen.queryByText(/nobody sees this form/)).toBeNull();
+    expect(screen.queryByText(/nobody sees this form/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save fields" }));
     expect(onSave).not.toHaveBeenCalled();
     expect(
