@@ -1,6 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, it, mock } from "bun:test";
-import FilterBar, { FilterKind, type FilterDefinition } from "./FilterBar";
+import { createRef } from "react";
+import FilterBar, {
+  FilterKind,
+  type FilterBarHandle,
+  type FilterDefinition,
+} from "./FilterBar";
 
 const OPTIONS = [
   { value: "a", label: "Alpha" },
@@ -102,6 +107,34 @@ it("moves focus to the Filters button when the last chip goes", () => {
   expect(document.activeElement).toBe(
     screen.getByRole("button", { name: "Filters" }),
   );
+});
+
+it("focuses a chip that appears when its filter turns on, and throws once it's gone", () => {
+  const ref = createRef<FilterBarHandle>();
+  const bar = (checked: boolean) => (
+    <FilterBar
+      ref={ref}
+      search={{ label: "Search things", value: "", onChange: mock() }}
+      filters={[
+        {
+          kind: FilterKind.Toggle,
+          key: "old",
+          label: "Include old",
+          checked,
+          onChange: mock(),
+        },
+      ]}
+    />
+  );
+  const { rerender } = render(bar(false));
+  expect(() => ref.current?.focusChip("old")).toThrow();
+  rerender(bar(true));
+  act(() => ref.current?.focusChip("old"));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Remove filter: Include old" }),
+  );
+  rerender(bar(false));
+  expect(() => ref.current?.focusChip("old")).toThrow();
 });
 
 it("edits filters from the popover", async () => {

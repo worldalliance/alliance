@@ -2,7 +2,13 @@ import { cn } from "@alliance/shared/styles/util";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Popover } from "@base-ui/react/popover";
 import { ListFilter, Search, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  type Ref,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { inputClass, secondaryButtonClass } from "./controlStyles";
 
 export enum FilterKind {
@@ -104,16 +110,19 @@ const FilterControl = ({ filter }: { filter: FilterDefinition }) => {
   }
 };
 
+export type FilterBarHandle = { focusChip: (key: string) => void };
+
 type FilterBarProps = {
   search: { label: string; value: string; onChange: (value: string) => void };
   filters: FilterDefinition[];
+  ref?: Ref<FilterBarHandle>;
 };
 
 /**
  * A search box, a Filters popover and a chip per active filter. The page owns
  * the values.
  */
-const FilterBar = ({ search, filters }: FilterBarProps) => {
+const FilterBar = ({ search, filters, ref }: FilterBarProps) => {
   // The page's value can lag behind typing, as a URL updated in a transition
   // does. Values the box sent are expected back in order and keep the draft;
   // any other value, such as one Back restored, replaces it. The page can skip
@@ -133,6 +142,13 @@ const FilterBar = ({ search, filters }: FilterBarProps) => {
   }, [search.value]);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const removeButtons = useRef(new Map<string, HTMLButtonElement>());
+  useImperativeHandle(ref, () => ({
+    focusChip: (key) => {
+      const button = removeButtons.current.get(key);
+      if (!button) throw new Error(`no chip for filter ${key}`);
+      button.focus();
+    },
+  }));
   const chips = filters.map(chipFor).filter((chip) => chip !== null);
   const removeChip = (index: number) => {
     chips[index].clear();
