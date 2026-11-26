@@ -37,9 +37,7 @@ describe("the canvas pane", () => {
       fireEvent.click(screen.getByRole("button", { name: "Preview" })),
     );
     await waitFor(() =>
-      expect(screen.getByRole("region", { name: "Preview" }).scrollTop).toBe(
-        0,
-      ),
+      expect(screen.getByRole("region", { name: "Preview" }).scrollTop).toBe(0),
     );
     pane.scrollTop = 50;
     fireEvent.scroll(pane);

@@ -26,7 +26,8 @@ export function useCanvasScrollMemory({
     const element = pane.current;
     if (!element) return;
     const remember = () => {
-      if (shown.current !== null) positions.set(shown.current, element.scrollTop);
+      if (shown.current !== null)
+        positions.set(shown.current, element.scrollTop);
     };
     element.addEventListener("scroll", remember, { passive: true });
     return () => element.removeEventListener("scroll", remember);

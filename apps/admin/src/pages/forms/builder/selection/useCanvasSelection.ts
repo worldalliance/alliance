@@ -3,6 +3,7 @@ import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import { useCallback, useState } from "react";
 import { useSelectedPage } from "../../../../lib/useSelectedPage";
 import type { VisibilityGroups } from "../../../../lib/visibilityGroups";
+import { SidebarSection } from "../inspector/sidebarSections";
 import {
   CanvasTargetKind,
   forgetPositions,
@@ -14,7 +15,6 @@ import {
   type ResolvedTarget,
 } from "./canvasSelection";
 import { extendSelection, type Span } from "./rangeSelection";
-import { SidebarSection } from "../inspector/sidebarSections";
 
 /** The element the selection starts at, whose position history travel may shift. */
 function heldElement(page: Page, resolved: ResolvedTarget): PageItem | null {

@@ -6,14 +6,16 @@ import { copyElementWithUniqueIds } from "../../../../lib/copyWithUniqueIds";
 import type { IssueIndex } from "../../../../lib/formIssues";
 import { useConditionFieldLookup } from "../../../../lib/useConditionFieldLookup";
 import { summarizeVisibility } from "../../../../lib/visibilitySummary";
-import { useBuilder } from "../BuilderContext";
-import { insertBelow } from "./insertBelow";
-import { useSelectionActions } from "../inspector/useSelectionActions";
 import { useShortcutInShell } from "../../../../shell/shortcuts";
 import Button, { ButtonVariant } from "../../../../ui/Button";
+import { useBuilder } from "../BuilderContext";
+import { FormBuilderSettings } from "../inspector/FormBuilderSettings";
+import { useSelectionActions } from "../inspector/useSelectionActions";
+import { FormOutline } from "../outline/FormOutline";
+import { SECTION_ON_SELECT } from "../selection/useCanvasSelection";
 import type { ContentOverride } from "./CanvasElement";
 import { FormCanvas } from "./FormCanvas";
-import { FormOutline } from "../outline/FormOutline";
+import { insertBelow } from "./insertBelow";
 import {
   AVAILABLE_ELEMENTS,
   DISPLAY_ONLY_ELEMENTS,
@@ -22,8 +24,6 @@ import {
   sameInsertLoc,
   type InsertLoc,
 } from "./InsertPoint";
-import { SECTION_ON_SELECT } from "../selection/useCanvasSelection";
-import { FormBuilderSettings } from "../inspector/FormBuilderSettings";
 
 export function FormBuilderCanvas({
   schema,

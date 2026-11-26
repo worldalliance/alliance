@@ -1,5 +1,11 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { renderFormBuilder } from "../../../../lib/testing/renderFormBuilder";
 
@@ -39,8 +45,9 @@ function setup() {
   canvas.scrollTo = (options?: ScrollToOptions | number) => {
     scrolls.push(options);
   };
-  const row = within(screen.getByRole("tree", { name: "Form outline" }))
-    .getByRole("treeitem", { name: /Last/ });
+  const row = within(
+    screen.getByRole("tree", { name: "Form outline" }),
+  ).getByRole("treeitem", { name: /Last/ });
   const settled = () =>
     waitFor(() =>
       expect(canvas.querySelector('[aria-busy="false"]')).not.toBeNull(),

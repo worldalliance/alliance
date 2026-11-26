@@ -11,13 +11,12 @@ import {
   SegmentKind,
   type VisibilityGroups,
 } from "../../../../lib/visibilityGroups";
+import { cn } from "../../../../ui/cn";
 import { NO_ACTIONS } from "../canvas/noActions";
 import {
   ElementActionsMenu,
   type ElementActions,
 } from "../inspector/ElementActionsMenu";
-import { useTreeKeys, type RowHandle } from "./useTreeKeys";
-import { cn } from "../../../../ui/cn";
 import {
   CanvasTargetKind,
   elementTarget,
@@ -25,9 +24,6 @@ import {
   type CanvasTarget,
   type ResolvedTarget,
 } from "../selection/canvasSelection";
-import { DropLine } from "./DropLine";
-import { containerEntries, isContainer, leafRow } from "./OutlineContents";
-import { OutlineRow, type OutlineEntry } from "./OutlineRow";
 import {
   checkStateOf,
   inRange,
@@ -36,8 +32,12 @@ import {
   toggleChecked,
   type Span,
 } from "../selection/rangeSelection";
-import { useOutlineDrag } from "./useOutlineDrag";
 import { useRestoreFocusWithin } from "../selection/useRestoreFocusWithin";
+import { DropLine } from "./DropLine";
+import { containerEntries, isContainer, leafRow } from "./OutlineContents";
+import { OutlineRow, type OutlineEntry } from "./OutlineRow";
+import { useOutlineDrag } from "./useOutlineDrag";
+import { useTreeKeys, type RowHandle } from "./useTreeKeys";
 
 type FormOutlineProps = {
   pages: Page[];

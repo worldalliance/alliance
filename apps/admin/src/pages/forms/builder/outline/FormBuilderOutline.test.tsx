@@ -3,14 +3,14 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import {
   canvas,
   fromMainMenu,
+  fromSelectionMenu,
   heading,
   inNarrowWindow,
-  fromSelectionMenu,
   openSection,
-  selectionMenuState,
   outline,
   pageTitle,
   selectElement,
+  selectionMenuState,
   settings,
 } from "../../../../lib/testing/formCanvas";
 import {

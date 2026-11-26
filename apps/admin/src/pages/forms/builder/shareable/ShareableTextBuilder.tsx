@@ -6,18 +6,18 @@ import {
 } from "@alliance/shared/lib/shareText";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import TextareaWithHighlights from "../../../../components/TextareaWithHighlights";
 import { cn } from "../../../../ui/cn";
 import { controlClass } from "../../../../ui/styles";
 import { Banner, BannerTone } from "../../../../ui/templates/Banner";
 import { FormSection } from "../../../../ui/templates/Form";
+import { focusInPlace } from "../kit/revealInPane";
 import {
   findDroppedInsertable,
   InsertableTokenButton,
   type ShareableInsertable,
 } from "./InsertableTokenButton";
 import { ReferralUrlNotice } from "./ReferralUrlNotice";
-import { focusInPlace } from "../kit/revealInPane";
-import TextareaWithHighlights from "../../../../components/TextareaWithHighlights";
 
 interface ShareableTextBuilderProps {
   schema: FormSchema;
