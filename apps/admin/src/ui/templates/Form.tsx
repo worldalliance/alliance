@@ -1,5 +1,6 @@
 import type React from "react";
 import {
+  Children,
   useCallback,
   useEffect,
   useId,
@@ -109,9 +110,12 @@ export function Field({
   const id = useId();
   const helpId = `${id}-help`;
   const errorId = `${id}-error`;
+  // An empty list of problems is no error, though `[]` is truthy.
+  const hasError = Children.toArray(error).some((node) => node !== "");
   const describedBy =
-    [help ? helpId : null, error ? errorId : null].filter(Boolean).join(" ") ||
-    undefined;
+    [help ? helpId : null, hasError ? errorId : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label htmlFor={id} className="font-medium">
@@ -121,14 +125,14 @@ export function Field({
       {children({
         id,
         "aria-describedby": describedBy,
-        "aria-invalid": error ? true : undefined,
+        "aria-invalid": hasError ? true : undefined,
       })}
       {help && (
         <p id={helpId} className="text-caption text-fg-muted">
           {help}
         </p>
       )}
-      {error && (
+      {hasError && (
         <div id={errorId} role="alert" className="text-caption text-danger">
           {error}
         </div>
