@@ -23,7 +23,7 @@ export function Disclosure({
       <summary className="-ml-1.5 inline-flex h-control-sm cursor-default list-none items-center gap-1 rounded-md px-1.5 font-medium focus-ring hover:bg-line [&::-webkit-details-marker]:hidden">
         <ChevronRight
           aria-hidden="true"
-          className="size-4 text-fg-muted transition-transform duration-fast group-open:rotate-90"
+          className="size-4 text-fg-muted transition-transform duration-fast [details[open]>summary>&]:rotate-90"
         />
         {summary}
       </summary>
