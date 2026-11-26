@@ -21,7 +21,7 @@ export function InfoTip({
 }) {
   const descriptionId = useId();
   return (
-    <Tooltip>
+    <Tooltip disableHoverablePopup={false}>
       <TooltipTrigger
         closeOnClick={false}
         aria-label={label}
