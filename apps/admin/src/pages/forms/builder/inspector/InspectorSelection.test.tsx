@@ -1,8 +1,11 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { act, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
 import {
+  canvasButton,
+  fromMainMenu,
   fromSelectionMenu,
+  heading,
   openSection,
   selectElement,
   settings,
@@ -51,6 +54,51 @@ describe("the inspector", () => {
     expect(scroller.scrollTop).toBe(0);
   });
 
+  it("keeps its scroll when a section's block without an id moves", async () => {
+    renderFormBuilder({
+      ...schema,
+      pages: [
+        {
+          id: "p1",
+          title: "One",
+          fields: [
+            {
+              type: "display",
+              kind: "accordion",
+              sections: [
+                {
+                  title: "Shipping",
+                  blocks: [
+                    { type: "display", kind: "text", text: "First" },
+                    { type: "display", kind: "text", text: "Second" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    fireEvent.click(canvasButton("Contents of Section: Shipping"));
+    fireEvent.click(canvasButton("Select Text Block: First"));
+    const scroller = settingsScroller();
+    scroller.scrollTop = 120;
+    fromSelectionMenu("Move down");
+    await act(async () => {});
+    expect(heading()).toBe("Text Block: First");
+    expect(scroller.scrollTop).toBe(120);
+  });
+
+  it("opens the form's settings at their top", async () => {
+    renderFormBuilder(schema);
+    selectElement("Beta");
+    const scroller = settingsScroller();
+    scroller.scrollTop = 120;
+    fromMainMenu("Form settings");
+    await act(async () => {});
+    expect(scroller.scrollTop).toBe(0);
+  });
+
   it("starts a tab opened while scrolled down right under the stuck tabs", async () => {
     renderFormBuilder(schema);
     selectElement("Beta");
@@ -68,6 +116,25 @@ describe("the inspector", () => {
       });
     await act(async () => openSection("Advanced"));
     expect(scroller.scrollTop).toBe(100);
+  });
+
+  it("shows the selection's issues in danger", () => {
+    renderFormBuilder({
+      ...schema,
+      pages: [
+        {
+          id: "p1",
+          title: "One",
+          fields: [
+            { id: "acc", type: "display", kind: "accordion", sections: [] },
+          ],
+        },
+      ],
+    });
+    fireEvent.click(canvasButton("Select Accordion Block"));
+    expect(
+      settings().getByRole("button", { name: "1 issue here" }).className,
+    ).toContain("text-danger");
   });
 
   it("leaves focus on the canvas after a display-only builder deletes the selected block", async () => {

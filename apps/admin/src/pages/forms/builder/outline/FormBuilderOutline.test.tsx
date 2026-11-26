@@ -120,7 +120,7 @@ describe("the form outline", () => {
     expect(pageTitle().value).toBe("Page 3");
   });
 
-  it("moves the open page with its keyboard controls, keeping it open", () => {
+  it("moves the open page from its selection menu, keeping it open", () => {
     renderFormBuilder(schema);
     expect(selectionMenuState("Move page up")).toBe("disabled");
 

@@ -27,6 +27,7 @@ export function IssuesButton({
   rows,
   sources,
   loadFailure,
+  loading,
   open,
   gate,
   onOpenChange,
@@ -34,6 +35,8 @@ export function IssuesButton({
   rows: readonly IssueRow[];
   sources: SourceCheck;
   loadFailure: LoadFailure | null;
+  /** Empties the closed slot, whose issues would be the unloaded form's. */
+  loading: boolean;
   open: boolean;
   gate: IssueGate | null;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +52,9 @@ export function IssuesButton({
   });
   const nothingToSay =
     count === 0 && sources.pending === 0 && sources.failed === 0;
+
+  const formLoading = loading && !loadFailure;
+  if (formLoading && !open) return <div className="w-24 shrink-0" />;
 
   if (nothingToSay && !open) {
     return (
@@ -81,7 +87,7 @@ export function IssuesButton({
               <CircleAlert aria-hidden="true" className="size-4" />
               {withCount(count, "issue")}
             </>
-          ) : sources.pending > 0 ? (
+          ) : formLoading || sources.pending > 0 ? (
             <>
               <LoaderCircle
                 aria-hidden="true"
@@ -108,7 +114,9 @@ export function IssuesButton({
           >
             <h2 className="font-semibold">
               {count === 0
-                ? "No issues"
+                ? formLoading
+                  ? "Loading the form"
+                  : "No issues"
                 : gate
                   ? `Fix ${withCount(count, "issue")} before ${GATED_ACTION[gate]}`
                   : "Issues"}

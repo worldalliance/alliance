@@ -33,8 +33,8 @@ export function LiveFormStatus({ reach }: { reach: FormReach }) {
           <PopoverTrigger
             aria-label="Live check failed"
             className={cn(
-              "inline-flex text-warning",
               buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
+              "inline-flex text-warning",
             )}
           >
             <TriangleAlert aria-hidden="true" className="size-3.5" />

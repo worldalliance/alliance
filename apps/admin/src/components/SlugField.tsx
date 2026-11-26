@@ -110,7 +110,7 @@ export function SlugField({
       <InlineError
         message={
           copyFailed
-            ? "Couldn't copy the slug. Select it and copy it yourself."
+            ? "Couldn't copy the slug. Click it to edit, then copy it from the field."
             : null
         }
       />

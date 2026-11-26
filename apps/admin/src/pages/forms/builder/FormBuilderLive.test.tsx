@@ -174,8 +174,9 @@ describe("FormBuilder on a live form", () => {
     state.countsFail = true;
     renderSavedFormBuilder(1, "/");
     expect(
-      await screen.findByRole("button", { name: "Live check failed" }),
-    ).toBeTruthy();
+      (await screen.findByRole("button", { name: "Live check failed" }))
+        .className,
+    ).toContain("text-warning");
     removeTown();
     await save();
     const dialog = await screen.findByRole("dialog");

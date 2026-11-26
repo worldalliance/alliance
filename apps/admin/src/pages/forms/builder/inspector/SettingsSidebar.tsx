@@ -16,7 +16,6 @@ const EDITING_CONTROL =
 export function SettingsSidebar({
   parent,
   heading,
-  headingActions,
   sections,
   section,
   onSection,
@@ -29,7 +28,6 @@ export function SettingsSidebar({
 }: {
   parent?: { label: string; onSelect: () => void };
   heading: string;
-  headingActions?: ReactNode;
   sections: readonly SidebarSection[];
   section: SidebarSection;
   onSection: (section: SidebarSection) => void;
@@ -69,7 +67,7 @@ export function SettingsSidebar({
           </Button>
         </div>
       )}
-      <InspectorHeader title={heading} extra={headingActions} />
+      <InspectorHeader title={heading} />
       <SidebarSections
         sections={sections}
         active={active}

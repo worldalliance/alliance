@@ -42,12 +42,18 @@ export function childWiring({
   return {
     onUpdate: edits.updateElementAt(index),
     updateCurrent: addressedWrite(element, updateBlockById),
-    /** Selects another child of the same element, as after a move or delete. */
+    /** Selects another child of the same element, as after a delete. */
     onReselect: (next: ChildTarget) =>
       setSelection({
         pageId: currentPage.id,
         target: { ...elementTarget(element, index), child: next },
       }),
+    /** Follows the selected child to where it moved, which isn't a new selection. */
+    onMoved: (next: ChildTarget) =>
+      setSelection((current) => ({
+        ...current,
+        target: { ...elementTarget(element, index), child: next },
+      })),
     onSelectParent: () =>
       select(elementTarget(element, index), SidebarSection.Content),
     /** Runs a deletion, or holds it for confirmation when something reads the child. */
@@ -71,6 +77,7 @@ export function childActions({
   onUpdate,
   updateCurrent,
   onReselect,
+  onMoved,
   onSelectParent,
   guardDelete,
   onSection,
@@ -85,7 +92,7 @@ export function childActions({
     child,
     onUpdate,
     updateCurrent,
-    onReselect,
+    onMoved,
   });
   return {
     ...base,
@@ -104,13 +111,13 @@ function baseActions({
   child,
   onUpdate,
   updateCurrent,
-  onReselect,
+  onMoved,
 }: {
   element: PageItem;
   child: ResolvedChild;
   onUpdate: (updates: Partial<PageItem>) => void;
   updateCurrent: AddressedWrite | undefined;
-  onReselect: (child: ChildTarget) => void;
+  onMoved: (child: ChildTarget) => void;
 }) {
   switch (child.kind) {
     case ChildKind.SubField: {
@@ -121,7 +128,7 @@ function baseActions({
       return {
         ...neighborMoves(fields, index, (next, to) => {
           onUpdate({ fields: next });
-          onReselect(subFieldChild(next[to]!, to));
+          onMoved(subFieldChild(next[to]!, to));
         }),
         deleteLabel: DELETION[PlaceKind.SubField].action,
         remove: () =>
@@ -147,7 +154,7 @@ function baseActions({
         return {
           ...neighborMoves(sections, sectionIndex, (next, to) => {
             writeSections(() => next);
-            onReselect(sectionChild(next[to]!, to));
+            onMoved(sectionChild(next[to]!, to));
           }),
           deleteLabel: "Delete section",
           remove: () =>
@@ -162,7 +169,7 @@ function baseActions({
       return {
         ...neighborMoves(blocks, blockIndex, (next, to) => {
           updateSection(sectionIndex, () => ({ blocks: next }));
-          onReselect(
+          onMoved(
             sectionBlockChild({
               section,
               sectionIndex,

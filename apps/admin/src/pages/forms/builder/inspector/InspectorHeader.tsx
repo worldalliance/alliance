@@ -1,5 +1,4 @@
 import { withCount } from "@alliance/common/plural";
-import type { ReactNode } from "react";
 import { ButtonVariant, buttonVariants } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
 import {
@@ -30,8 +29,8 @@ function IssuesHere() {
       <PopoverTrigger
         aria-label={`${count} here`}
         className={cn(
-          "inline-flex text-danger",
           buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
+          "inline-flex text-danger",
         )}
       >
         {count}
@@ -54,14 +53,7 @@ function IssuesHere() {
  * The inspector's title row: the selection's name, its issues and its
  * actions, one line high whatever is selected.
  */
-export function InspectorHeader({
-  title,
-  extra,
-}: {
-  title: string;
-  /** Controls the selection's own settings still put here. */
-  extra?: ReactNode;
-}) {
+export function InspectorHeader({ title }: { title: string }) {
   const actions = useSelectionActions();
   return (
     <PaneHeader
@@ -69,7 +61,6 @@ export function InspectorHeader({
       className={cn(HEADER_TRUNCATES, "z-20 bg-canvas")}
       action={
         <div className="flex shrink-0 items-center gap-1">
-          {extra}
           <IssuesHere />
           {actions && <ElementActionsMenu label={title} actions={actions} />}
         </div>

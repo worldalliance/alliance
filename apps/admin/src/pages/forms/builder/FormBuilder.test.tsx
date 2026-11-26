@@ -512,17 +512,20 @@ describe("FormBuilder load", () => {
     expect(screen.getByText("Failed to load form")).toBeTruthy();
   });
 
-  it("names why the server refused the form", async () => {
-    api.alsoServing({
-      "GET /tasks/adminForm/:id": () =>
-        Response.json(
-          { statusCode: 404, message: "Form not found" },
-          { status: 404 },
-        ),
-    });
-    renderSavedFormBuilder(5, "/");
+  it.each(["rows", "outputs"])(
+    "names why the server refused the form, on the %s tab",
+    async (editor) => {
+      api.alsoServing({
+        "GET /tasks/adminForm/:id": () =>
+          Response.json(
+            { statusCode: 404, message: "Form not found" },
+            { status: 404 },
+          ),
+      });
+      renderSavedFormBuilder(5, `/?editor=${editor}`);
 
-    expect(await screen.findByText("Couldn't load this form")).toBeTruthy();
-    expect(screen.getByText("Form not found")).toBeTruthy();
-  });
+      expect(await screen.findByText("Couldn't load this form")).toBeTruthy();
+      expect(screen.getByText("Form not found")).toBeTruthy();
+    },
+  );
 });

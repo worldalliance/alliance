@@ -133,7 +133,8 @@ function Panes() {
   const outlineRef = useRef<HTMLDivElement>(null);
   const canvasScroll = useRef(new Map<string, number>());
   const onForm = activeEditor === FormEditor.Form;
-  const onOutputs = activeEditor === FormEditor.Outputs;
+  // A form that didn't load shows the error on every editor, not an empty form to edit.
+  const onOutputs = activeEditor === FormEditor.Outputs && loadFailure === null;
   const outputPanes = useOutputPanes({
     schema,
     onSchemaChange: updateSchema,
@@ -219,7 +220,11 @@ function Panes() {
             <>
               <MainPaneHeader title={EDITOR_TITLES[activeEditor]} />
               <div className={cn(PANE_SCROLL, "p-card")}>
-                <OtherEditor editor={activeEditor} />
+                {loadFailure ? (
+                  <LoadFailed />
+                ) : (
+                  <OtherEditor editor={activeEditor} />
+                )}
               </div>
             </>
           )}
@@ -248,8 +253,14 @@ function FormCanvasPane({
     saved: { isLoading },
     loadFailure,
   } = useBuilder();
-  const { currentPage, revealPending, revealed, selectionKey, selections } =
-    canvas;
+  const {
+    currentPage,
+    revealPending,
+    revealed,
+    selectionKey,
+    selections,
+    inspectorScope,
+  } = canvas;
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const view = `${currentPage.id}:${isPreviewMode ? "preview" : "edit"}`;
@@ -280,18 +291,19 @@ function FormCanvasPane({
   }, [revealPending, revealed, settled, outlineRef]);
 
   const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
-  const shown = useRef({ key: selectionKey, selections });
+  const shownKey = `${inspectorScope}:${selectionKey}`;
+  const shown = useRef({ key: shownKey, selections });
   useEffect(() => {
     const previous = shown.current;
-    shown.current = { key: selectionKey, selections };
-    if (previous.key === selectionKey) return;
+    shown.current = { key: shownKey, selections };
+    if (previous.key === shownKey) return;
     // An element without an id is keyed by its index, so moving it changes the
     // key while the settings still show it: only a new selection scrolls up.
     if (previous.selections !== selections && settingsRef.current) {
       settingsRef.current.scrollTop = 0;
     }
     restoreSettingsFocus();
-  }, [selectionKey, selections, restoreSettingsFocus, settingsRef]);
+  }, [shownKey, selections, restoreSettingsFocus, settingsRef]);
 
   return (
     <>
@@ -303,18 +315,7 @@ function FormCanvasPane({
         className={cn(PANE_SCROLL, "relative", !isPreviewMode && "p-4 pb-16")}
       >
         {loadFailure ? (
-          <div className="flex flex-col items-center">
-            <ErrorState
-              title="Couldn't load this form"
-              reason={loadFailure.message}
-            />
-            <Button
-              variant={ButtonVariant.Default}
-              onClick={loadFailure.onRetry}
-            >
-              {loadFailure.retryLabel}
-            </Button>
-          </div>
+          <LoadFailed />
         ) : isPreviewMode ? (
           <PreviewBody settled={settled} />
         ) : (
@@ -322,6 +323,22 @@ function FormCanvasPane({
         )}
       </div>
     </>
+  );
+}
+
+function LoadFailed() {
+  const { loadFailure } = useBuilder();
+  if (!loadFailure) return null;
+  return (
+    <div className="flex flex-col items-center">
+      <ErrorState
+        title="Couldn't load this form"
+        reason={loadFailure.message}
+      />
+      <Button variant={ButtonVariant.Default} onClick={loadFailure.onRetry}>
+        {loadFailure.retryLabel}
+      </Button>
+    </div>
   );
 }
 

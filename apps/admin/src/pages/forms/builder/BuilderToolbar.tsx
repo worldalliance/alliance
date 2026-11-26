@@ -2,6 +2,7 @@ import { issueLocation } from "./issues/IssueList";
 import { IssueTargetKind } from "../../../lib/formIssues";
 import Badge from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";
+import { cn } from "../../../ui/cn";
 import { Kbd } from "../../../ui/Kbd";
 import { Tabs, TabsList, TabsTab } from "../../../ui/Tabs";
 import { WorkspaceToolbar } from "../../../ui/templates/Workspace";
@@ -43,6 +44,7 @@ export function BuilderToolbar() {
     props: { displayOnly },
   } = useBuilder();
   const formulas = schema.variables?.length ?? 0;
+  const hideCount = isLoading || formulas === 0;
 
   return (
     <WorkspaceToolbar>
@@ -59,8 +61,14 @@ export function BuilderToolbar() {
             {EDITORS.map((editor) => (
               <TabsTab key={editor} value={editor} className="h-14">
                 {EDITOR_LABELS[editor]}
-                {editor === FormEditor.Variables && formulas > 0 && (
-                  <Badge>{formulas}</Badge>
+                {editor === FormEditor.Variables && (
+                  // Laid out with no formulas and while loading, so the count landing moves no tab.
+                  <span
+                    aria-hidden={hideCount}
+                    className={cn("flex", hideCount && "invisible")}
+                  >
+                    <Badge>{formulas}</Badge>
+                  </span>
                 )}
               </TabsTab>
             ))}
@@ -79,6 +87,7 @@ export function BuilderToolbar() {
           }))}
           sources={sources}
           loadFailure={loadFailure}
+          loading={isLoading}
           open={issueList !== null}
           gate={issueList?.gate ?? null}
           onOpenChange={(open) => setIssueList(open ? { gate: null } : null)}

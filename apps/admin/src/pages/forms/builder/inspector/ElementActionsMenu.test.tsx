@@ -84,6 +84,21 @@ describe("ElementActionsMenu", () => {
     expect(actions.onDuplicate).toHaveBeenCalledTimes(1);
   });
 
+  it("says in the context menu why an item can't be used", () => {
+    render(
+      <ElementActionsMenu
+        label="Page 1"
+        actions={pageActions(true)}
+        trigger="context"
+      >
+        <button type="button">Page 1</button>
+      </ElementActionsMenu>,
+    );
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Page 1" }));
+    expect(screen.getByText("It's at the top.")).toBeTruthy();
+    expect(screen.getByText("A form needs at least one page")).toBeTruthy();
+  });
+
   it("opens from a More button named for the selection", () => {
     const actions = pageActions(false);
     render(<ElementActionsMenu label="Page 1" actions={actions} />);

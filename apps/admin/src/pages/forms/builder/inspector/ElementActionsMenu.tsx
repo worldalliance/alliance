@@ -1,12 +1,11 @@
 import { ContextMenu } from "@base-ui/react/context-menu";
-import { Fragment, type ReactNode } from "react";
-import { cn } from "../../../../ui/cn";
+import type { ReactNode } from "react";
+import { DropdownMenuContent } from "../../../../ui/DropdownMenu";
 import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "../../../../ui/DropdownMenu";
-import { MoreMenu, type MoreMenuItem } from "../../../../ui/MoreMenu";
+  MoreMenu,
+  type MoreMenuItem,
+  MoreMenuItems,
+} from "../../../../ui/MoreMenu";
 
 /** What can be done to the selection. A null action is offered but unavailable; see each reason. */
 export type ElementActions = {
@@ -111,26 +110,11 @@ export function ElementActionsMenu({
   if (trigger === "button") {
     return <MoreMenu items={items} subject={label} size="small" />;
   }
-  const firstDestructive = items.findIndex((item) => item.destructive);
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger className="contents">{children}</ContextMenu.Trigger>
       <DropdownMenuContent aria-label={label} className="min-w-48">
-        {items.map((item, index) => (
-          <Fragment key={item.label}>
-            {index === firstDestructive && index > 0 && (
-              <DropdownMenuSeparator />
-            )}
-            <DropdownMenuItem
-              label={item.label}
-              disabled={item.disabledReason !== undefined}
-              onClick={item.onSelect}
-              className={cn(item.destructive && "text-danger")}
-            >
-              {item.label}
-            </DropdownMenuItem>
-          </Fragment>
-        ))}
+        <MoreMenuItems items={items} />
       </DropdownMenuContent>
     </ContextMenu.Root>
   );

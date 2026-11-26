@@ -83,6 +83,7 @@ export function ChildSettings({
   onUpdate,
   updateCurrent,
   onReselect,
+  onMoved,
   onSelectParent,
   section,
   onSection,
@@ -96,8 +97,10 @@ export function ChildSettings({
   child: ResolvedChild;
   onUpdate: (updates: Partial<PageItem>) => void;
   updateCurrent: AddressedWrite | undefined;
-  /** Selects another child of the same element, as after a move or delete. */
+  /** Selects another child of the same element, as after a delete. */
   onReselect: (child: ChildTarget) => void;
+  /** Follows the selected child to where it moved. */
+  onMoved: (child: ChildTarget) => void;
   onSelectParent: () => void;
   section: SidebarSection;
   onSection: (section: SidebarSection) => void;
@@ -115,6 +118,7 @@ export function ChildSettings({
     onUpdate,
     updateCurrent,
     onReselect,
+    onMoved,
     onSelectParent,
     guardDelete,
     onSection,

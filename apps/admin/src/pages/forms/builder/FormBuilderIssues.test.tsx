@@ -66,6 +66,7 @@ const readsForm9: FormSchema = {
 
 const writes: string[] = [];
 const failing = new Set<string>();
+let heldLoad: Promise<false> | null = null;
 const readsA = {
   inputs: { input1: { kind: "field", fieldId: "a" } },
   formula: "input1",
@@ -82,8 +83,8 @@ const savedForms: Record<string, FormSchema> = {
 const api = serveApi(
   routes(
     {
-      "GET /tasks/adminForm/:id": ({ params }) =>
-        failing.has(params.id!)
+      "GET /tasks/adminForm/:id": async ({ params }) =>
+        (await heldLoad) || failing.has(params.id!)
           ? new Response(null, { status: 500 })
           : Response.json({
               id: Number(params.id),
@@ -116,6 +117,7 @@ const api = serveApi(
 beforeEach(() => {
   writes.length = 0;
   failing.clear();
+  heldLoad = null;
 });
 
 const issueButton = () =>
@@ -378,6 +380,27 @@ describe("FormBuilder issues", () => {
     );
   });
 
+  it("keeps the list, and focus in it, while a retry loads", async () => {
+    failing.add("5");
+    renderSavedFormBuilder(5, "/");
+    fireEvent.click(await screen.findByRole("button", { name: "1 issue" }));
+    failing.clear();
+    let release = () => {};
+    heldLoad = new Promise((resolve) => (release = () => resolve(false)));
+    const retry = issueList().getByRole("button", { name: "Try again" });
+    retry.focus();
+    await act(async () => fireEvent.click(retry));
+    const list = screen.getByRole("region", { name: "Issues" });
+    expect(list.contains(document.activeElement)).toBe(true);
+    within(list).getByRole("heading", { name: "Loading the form" });
+    screen.getByRole("button", { name: "Checking" });
+
+    await act(async () => release());
+    heldLoad = null;
+    await waitFor(() => expect(issueButton()).toBeNull());
+    expect(list.contains(document.activeElement)).toBe(true);
+  });
+
   it("retries a form that didn't load from its error", async () => {
     failing.add("5");
     renderSavedFormBuilder(5, "/");
@@ -391,7 +414,7 @@ describe("FormBuilder issues", () => {
     expect(screen.queryByText("Couldn't load this form")).toBeNull();
   });
 
-  it("clears what the editors held for the blank form once a retry loads it", async () => {
+  it("clears the edits made to the blank form once a retry loads it", async () => {
     answerLeaveGuard(true);
     failing.add("7");
     renderSavedFormBuilder(7, "/");
@@ -408,9 +431,7 @@ describe("FormBuilder issues", () => {
       fireEvent.click(confirm);
     });
     fireEvent.click(screen.getByRole("tab", { name: /^Formulas/ }));
-    fireEvent.change(await screen.findByLabelText("Sample answer for input1"), {
-      target: { value: "Oslo" },
-    });
+    expect(screen.getByText("Couldn't load this form")).toBeTruthy();
 
     failing.clear();
     fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
