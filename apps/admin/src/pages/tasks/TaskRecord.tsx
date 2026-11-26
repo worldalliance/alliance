@@ -102,6 +102,15 @@ export type TaskRoute =
   /** `actionId` is `null` for an id that can't exist. */
   | { kind: "task"; actionId: number | null };
 
+export type TaskRecordContext = {
+  /** Details has edits not saved yet. */
+  unsaved: boolean;
+  /** A write to the task, such as a staff preview one, is running. */
+  busy: boolean;
+  setStaffPreview: (staffPreview: boolean) => Promise<void>;
+  openTab: TaskTabProps["openTab"];
+};
+
 /**
  * The task record: header, commands, tabs, and the side panel of facts. A
  * task's own route and its project's route both render it; the project's
@@ -116,8 +125,12 @@ export function TaskRecord({
   route: TaskRoute;
   record: TaskRecordKind;
   parents?: readonly Crumb[];
-  /** Side panel sections after the facts, such as a project task's release. */
-  sideExtra?: ReactNode;
+  /**
+   * Side panel sections after the facts, such as a project task's release.
+   * It gets the page's Details editor state: a staff preview write must go
+   * through the editor, or its stale draft undoes it on the next save.
+   */
+  sideExtra?: (context: TaskRecordContext) => ReactNode;
 }) {
   const isNew = route.kind === "new";
   const actionId = route.kind === "task" ? route.actionId : null;
@@ -217,7 +230,12 @@ export function TaskRecord({
                 admin={admin}
                 lookups={lookups}
                 openTab={openTab}
-                extra={sideExtra}
+                extra={sideExtra?.({
+                  unsaved: editor.dirty,
+                  busy: admin.isUpdating,
+                  setStaffPreview: editor.setStaffPreview,
+                  openTab,
+                })}
               />
             }
           >

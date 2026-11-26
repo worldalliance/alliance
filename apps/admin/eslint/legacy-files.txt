@@ -21,11 +21,5 @@ src/components/NewActionTimeline.tsx
 src/components/PriorityFollowUps.tsx
 src/pages/Actions.tsx
 src/pages/PriorityPage.tsx
-src/pages/ProjectActionPage.tsx
 src/pages/action-dashboard/ActionEditor.tsx
 src/pages/action-dashboard/ActionReadinessChecklist.tsx
-src/pages/project-action/PacificDateTimeInput.tsx
-src/pages/project-action/PhaseHeader.tsx
-src/pages/project-action/ReleasePanel.tsx
-src/pages/project-action/ScheduleReleaseForm.tsx
-src/pages/project-action/ScheduledReleaseEditor.tsx
