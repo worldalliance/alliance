@@ -7,6 +7,7 @@ it("says when a link was clicked and how long after it was sent", () => {
       clickedAt: new Date(2030, 0, 2, 14, 15).toISOString(),
       sentAt: new Date(2030, 0, 2, 12, 15).toISOString(),
     }),
+    // eslint-disable-next-line admin/test-clock -- date-fns format, always without a year
   ).toBe("Link clicked Jan 2, 2:15 PM, 2 hours after sending");
 });
 

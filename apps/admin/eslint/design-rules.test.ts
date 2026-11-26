@@ -210,3 +210,38 @@ describe("admin/page-height", () => {
     ).toEqual(["h-full", "h-full"]);
   });
 });
+
+describe("admin/test-clock", () => {
+  const lint = (code: string) =>
+    new Linter()
+      .verify(
+        code,
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tseslint.parser },
+          plugins: { admin: plugin },
+          rules: { "admin/test-clock": "error" },
+        },
+        "a.test.ts",
+      )
+      .map((message) => message.message.split("`")[1]);
+
+  it("reports a month and day asserted with the clock free", () => {
+    expect(
+      lint('expect(x).toBe("Nov 30"); expect(y).toMatch(/^Thu, Jan 1, 4/);'),
+    ).toEqual(["Nov 30", "^Thu, Jan 1, 4"]);
+  });
+
+  it("lets through a date with its year, and words that only look like months", () => {
+    expect(
+      lint('a("Nov 30, 2025"); b("Marked 1 entry"); c("Mayor 3");'),
+    ).toEqual([]);
+  });
+
+  it.each([
+    'import { setSystemTime } from "bun:test"; a("Nov 30");',
+    'a("Nov 30"); formatDate(d, { now });',
+  ])("accepts a file that fixes the clock: %s", (code) => {
+    expect(lint(code)).toEqual([]);
+  });
+});

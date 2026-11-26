@@ -206,10 +206,57 @@ const pageHeight = {
   },
 };
 
+const MONTH_DAY =
+  /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.? \d{1,2}\b(?!, \d{4})/;
+
+const testClock = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      freeClock:
+        "`{{text}}` is a date that shows its year only when it isn't this year (`formatDate`), so this test breaks when the year turns. Call `setSystemTime` from `bun:test` (restore it in `afterEach`), or pass `now`. A formatter with no year (date-fns `format`) is a false positive: disable the rule on that line and say why.",
+    },
+  },
+  create(context) {
+    const found = [];
+    let fixesClock = false;
+    return {
+      ImportSpecifier(node) {
+        if (node.imported.name === "setSystemTime") fixesClock = true;
+      },
+      // `formatDate(…, { now })` and `jest.useFakeTimers({ now })` fix it too.
+      Property(node) {
+        if (node.key.type === "Identifier" && node.key.name === "now") {
+          fixesClock = true;
+        }
+      },
+      Literal(node) {
+        const text =
+          typeof node.value === "string"
+            ? node.value
+            : (node.regex?.pattern ?? "");
+        if (MONTH_DAY.test(text)) found.push({ node, text });
+      },
+      TemplateElement(node) {
+        const text = node.value.cooked ?? "";
+        if (MONTH_DAY.test(text)) found.push({ node, text });
+      },
+      "Program:exit"() {
+        if (fixesClock) return;
+        for (const { node, text } of found) {
+          context.report({ node, messageId: "freeClock", data: { text } });
+        }
+      },
+    };
+  },
+};
+
 export default {
   rules: {
     "design-tokens": designTokens,
     "design-values": designValues,
     "page-height": pageHeight,
+    "test-clock": testClock,
   },
 };

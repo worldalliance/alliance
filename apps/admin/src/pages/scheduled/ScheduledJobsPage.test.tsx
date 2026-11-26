@@ -3,11 +3,22 @@ import { makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  setSystemTime,
+} from "bun:test";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../../lib/sessionExpired";
 import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
 import ScheduledJobsPage from "./ScheduledJobsPage";
+
+beforeEach(() => setSystemTime(new Date(2026, 5, 1)));
+afterEach(() => setSystemTime());
 
 const renderPage = (query = queryWrapper()) =>
   render(
@@ -50,8 +61,8 @@ describe("scheduled plans", () => {
 
   it("shows when a forum auto-complete runs in Pacific time, with UTC as its tooltip", async () => {
     renderPage();
-    const when = await screen.findByText(/^Thu, Jan 1(, 2026)?, 4:00 PM PT$/);
-    expect(when.title).toMatch(/^Fri, Jan 2(, 2026)?, 12:00 AM UTC\./);
+    const when = await screen.findByText(/^Thu, Jan 1, 4:00 PM PT$/);
+    expect(when.title).toMatch(/^Fri, Jan 2, 12:00 AM UTC\./);
   });
 
   it("counts the jobs in the description", async () => {
@@ -73,9 +84,9 @@ describe("scheduled jobs with members", () => {
 
   it("shows the day a suspension is due by, with the sampled time in Pacific time and UTC as its tooltip", async () => {
     renderPage();
-    const when = await screen.findByText(/^By Fri, Jan 2(, 2026)?$/);
-    expect(when.title).toMatch(/Fri, Jan 2(, 2026)?, 12:00 AM PT/);
-    expect(when.title).toMatch(/Fri, Jan 2(, 2026)?, 8:00 AM UTC/);
+    const when = await screen.findByText(/^By Fri, Jan 2$/);
+    expect(when.title).toMatch(/Fri, Jan 2, 12:00 AM PT/);
+    expect(when.title).toMatch(/Fri, Jan 2, 8:00 AM UTC/);
   });
 
   it("expands a job to its exact time and its members, each linked to their record", async () => {
@@ -88,9 +99,7 @@ describe("scheduled jobs with members", () => {
 
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(
-      screen.getByText(
-        /Fri, Jan 2(, 2026)?, 8:00 AM UTC.*up to 6 hours sooner/,
-      ),
+      screen.getByText(/Fri, Jan 2, 8:00 AM UTC.*up to 6 hours sooner/),
     ).toBeDefined();
     expect(
       screen.getByRole("link", { name: "Sam Lee" }).getAttribute("href"),

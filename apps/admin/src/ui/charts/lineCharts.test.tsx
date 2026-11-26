@@ -1,13 +1,25 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  setSystemTime,
+} from "bun:test";
 import { DateAxisChart } from "./DateAxisChart";
 import { NumericAxisChart } from "./NumericAxisChart";
 import type { DataPoint } from "./types";
 
 beforeEach(() => {
+  setSystemTime(new Date(2026, 6, 1));
   jest
     .spyOn(Element.prototype, "getBoundingClientRect")
     .mockReturnValue(new DOMRect(0, 0, 500, 175));
 });
+
+afterEach(() => setSystemTime());
 
 const at = (chartX: number, chartY: number) => ({
   clientX: chartX / 2,

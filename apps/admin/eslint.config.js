@@ -125,6 +125,11 @@ export default defineConfig([
     rules: { "admin/page-height": "error" },
   },
   {
+    files: ["src/**/*.test.{ts,tsx}"],
+    plugins: { admin: design },
+    rules: { "admin/test-clock": "error" },
+  },
+  {
     // The admin's components wrap or re-export the shared ones on purpose.
     files: ["src/ui/**/*.{ts,tsx}"],
     plugins: { admin: design },
