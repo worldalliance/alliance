@@ -12,10 +12,16 @@ import type {
   PageItem,
 } from "@alliance/common/forms/form-schema";
 import { Plus } from "lucide-react";
-import { InsertPicker } from "./InsertPicker";
+import { useEffect, useRef } from "react";
 import { ButtonVariant, buttonVariants } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
-import { Popover, PopoverContent, PopoverTrigger } from "../../../../ui/Popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../../../ui/Popover";
+import { revealInPane } from "../kit/revealInPane";
+import { InsertPicker } from "./InsertPicker";
 
 /** `groupKey` marks an insert point inside a visibility group. */
 export type InsertLoc = { groupKey: string | null; index: number };
@@ -84,10 +90,19 @@ export function InsertPoint({
   prominent = false,
 }: InsertPointProps) {
   const open = mode !== null;
+  const anchor = useRef<HTMLElement>(null);
+  // `a` and "Add element below…" open a picker whose place may be off-screen.
+  useEffect(() => {
+    const pane = anchor.current?.closest<HTMLElement>('[role="region"]');
+    if (open && pane && anchor.current) revealInPane(pane, anchor.current);
+  }, [open]);
   return (
     <Popover open={open} onOpenChange={(next) => (next ? onOpen() : onClose())}>
       {prominent ? (
         <PopoverTrigger
+          ref={(el: HTMLButtonElement | null) => {
+            anchor.current = el;
+          }}
           className={cn(
             buttonVariants({ variant: ButtonVariant.Default }),
             "mt-6 flex w-full justify-center font-sans",
@@ -97,7 +112,12 @@ export function InsertPoint({
           Add element
         </PopoverTrigger>
       ) : (
-        <div className="group/gap relative h-6">
+        <div
+          ref={(el) => {
+            anchor.current = el;
+          }}
+          className="group/gap relative h-6"
+        >
           <div
             aria-hidden="true"
             className={cn(

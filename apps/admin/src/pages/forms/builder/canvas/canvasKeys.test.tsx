@@ -11,6 +11,7 @@ import {
   selectElement,
 } from "../../../../lib/testing/formCanvas";
 import { renderFormBuilder } from "../../../../lib/testing/renderFormBuilder";
+import { spyOnReveals } from "../../../../lib/testing/reveals";
 
 serveApi(routes({}, () => Response.json([])));
 
@@ -104,6 +105,18 @@ describe("the canvas by keyboard", () => {
     expect(
       screen.getByRole("region", { name: "Visibility group" }).textContent,
     ).toContain("Shared visibility · 3 elements");
+  });
+
+  it("brings the picker's place into view when the menu opens it", async () => {
+    renderFormBuilder(schema);
+    selectElement("Welcome");
+    const reveals = spyOnReveals();
+    fromSelectionMenu("Add element below…");
+    await waitFor(() => expect(searchElements()).toBeTruthy());
+    const opened = canvas().getByRole("button", { expanded: true });
+    expect(reveals.targets().some((target) => target.contains(opened))).toBe(
+      true,
+    );
   });
 
   it("selects an element right-clicked, for its actions", async () => {
