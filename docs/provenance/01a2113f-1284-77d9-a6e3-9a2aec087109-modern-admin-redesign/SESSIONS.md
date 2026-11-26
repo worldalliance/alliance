@@ -16,3 +16,5 @@
 - claude:073d8aac-e74a-4c4a-8a2e-630954050098 (review loop round 14 fixer, foundation-lead.loop3.fix14)
 - claude:cd753972-5a67-4bbf-991e-84388bc57335
 - claude:fdb9002f-c798-4227-8879-068ac14f0b42 (members role badges, fanout-lead.members-roles)
+- claude:d93e0e7f-cc1a-47ec-8589-ccd78cf8c5dc (review loop round 1 fixer, area-builder-lead.loop.fix1)
+- claude:f1233145-a61d-4fe0-ba6d-64497f4bcf8e (review loop round 2 fixer, area-builder-lead.loop.fix2)

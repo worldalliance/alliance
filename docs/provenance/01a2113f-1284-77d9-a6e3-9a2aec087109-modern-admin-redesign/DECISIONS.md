@@ -657,3 +657,22 @@ The suites list, New suite, the suite record and its tabs, and Launch, rebuilt o
 - **The badges sit inside the name cell** through a `badge` slot on `PersonCell`, after the name, which truncates first.
 - **Tags stay in the filter bar and in a row's details**; only the column went, replacing the Tags column **Area: members** describes.
 - **Review:** one same-model (Opus 5.5) reviewer over the commit found no fix-now issue. Its two owner decisions became ALL-2698 (staff hides a member's Ambassador and Lead badges) and ALL-2699 (the badges' white text fails contrast, inherited from the member app).
+
+## Area: builder
+
+Agent decisions of the form builder's review loop, round 1 (fixer `area-builder-lead.loop.fix1`); the user was unreachable.
+
+- **Where round 1's fixes sit:** a fix to a commit before "Move the form builder into its page folder" that touches code the move relocated is its own commit after the move, naming in its message the commit it fixes, because folding it earlier would need its import paths rewritten again at the move. Fixes to later commits are folded into them.
+- **A list's sub-field rows offer moves only:** deleting a sub-field happens in its own settings, where the "conditions read this question" confirmation guards it (inventory B37). Giving the row's menu the guard would mean passing the canvas's deletion guard into every container editor; the guarded delete is one click away.
+- **A task form is live** when members can open its task, or when the task is past Draft and the form has responses, as an archived task keeps for when it is unarchived. A draft's responses come from staff previews and don't make it live. When the forms index fails, the toolbar says "Couldn't check whether this form reaches members" and the save confirmation "This form may reach members.", since what failed may be the task lookup, not the response count.
+- **The builder's member picker** (`UserSelect`) matches names; a user without a name is listed and found as "User #<id>". Finding a named user by id waits on the system owner (asks/builder-06, ALL-2664).
+- **Undo and Redo stay icon-only** in the canvas header, named in their aria-label and tooltip, so the header fits at 1280 px. DESIGN.md's lone-icon list doesn't name them; asks/builder-06 puts the choice to the system owner.
+- **Copy:** the Output views empty state says "Add a view to show answers from this form once members finish it.", making no claim about who sees the answers, since the first output view also feeds the activity and home feeds. Preview's Visibility profiles sheet, for a form with member conditions and no member to group, says "Loading members…", "Couldn't load members, so profiles can't be grouped." or "No member has an active contract to group.". The number question's Step always carries "Allowing decimals replaces the step.", so ticking the box moves nothing. The Conditions tab's replace choice reads "Replace with [All rules] [Any rule]" on one row, as tall as the button it replaces.
+- **Preview's outline** takes no actions: no keys, menu or drag edit the form while previewing.
+- **An outline click** reveals the selection on the canvas only; the outline itself scrolls only for arrow keys, an add, a deep link or an issue jump.
+
+Round 2 (fixer `area-builder-lead.loop.fix2`):
+
+- **Leaving a right-click to the browser** inside a context `ElementActionsMenu` uses `stopImmediatePropagation` on the native event. The admin hydrates into the document, where base-ui's trigger also listens, and React's root listener is added at hydration, before any effect adds base-ui's, so it runs first. Disabling the trigger while editing would cover the inline editor but not a list's children, which need the trigger to ignore part of its subtree.
+- **An archived task's form whose response count is loading or failed** asks before a reaching save, and shows "Live check failed" once the count fails. The task sentences ("Couldn't check whether members can open this task", "Members may be able to open this task.") are kept for when the task check itself is unresolved; once the task is known, the form sentences are used, since what is unknown is the responses.
+- **The open issue list during a retry of a failed load** says "Loading the form" and its trigger "Checking", rather than "No issues".
