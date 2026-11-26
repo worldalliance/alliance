@@ -452,3 +452,14 @@ Agent judgement in the review loop; the user was asleep.
 - **An open thread's header has the phone number under its members' names**, and nothing under a non-member's number, which is its title: the queue's description there read as a statement about that contact.
 - **The All tab's search takes at most 40 characters, as the old box did (`maxLength`), and says "Search by at most 40 characters." instead of searching a longer one from the URL**, which `maxLength` doesn't stop; the server refuses a longer search.
 - **A thread opened from the All queue has an "All" crumb between "Inbox" and its name, linking back to All with its search and page**; from Needs reply, "Inbox" alone leads back, since that queue has nothing else in the URL. `Page` builds the place's crumb from `places.ts` without the URL's search, so the queue's own crumb carries it.
+
+## Area: inbox
+
+Agent judgement by the inbox area's lead and its page agent; the user was asleep.
+
+- **Needs reply and All are queues of one Inbox Workspace, with the open thread in the pane beside the list**: `/inbox` and `/inbox/:threadId` sit under one pathless layout route that holds the list, so opening a thread never remounts or scrolls it. The thread page's "All texts" link is gone: the breadcrumb and the list beside the thread replace it.
+- **The page's `h1` and browser tab name the open thread's contact**, and "Inbox" with none open.
+- **The Needs reply explanation sits behind an info button in the queue bar**; its first sentence is the page description.
+- **The All tab's search runs as staff type, kept in `?q=`**; an old bookmarked `?search=` link shows the whole list. Searching on every keystroke is ALL-2611.
+- **A failed refresh of a conversation reads "Couldn't refresh texts." with "Try again"**, in place of "Reload to see the latest.", since the button does the reload.
+- **The inbox's review loop stopped after round 7**, the first round with no HIGH finding once the owner's stop rule applied; round 7's two tested fixes were not re-reviewed. The conversation at a 1024 px window is ALL-2610.
