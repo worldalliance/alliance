@@ -203,7 +203,7 @@ Anatomy, top to bottom:
 4. **Body** (`ListContent`, the only part that scrolls). A table, edge to edge with no card around it (`<Table bleed>`), when rows share columns that staff compare. A stack of cards (`<ListContent cards>`) when each item is several lines of prose or holds its own controls (tags, organizations, partnership responses, the projects board).
 5. **Footer** (`ListFooter`): pagination, only where the data hook paginates.
 
-A list that offers views of the same items (Tasks: Timeline, List, Priority; People: Table, Map) puts `<ViewSwitch label="View" {...usePlaceViews(place, ids)} />` in the header's actions for a two-way switch, or passes the views as `Page`'s `tabs` when there are three or more and the place has no tabs of its own, and keeps the filter bar across views.
+A list that offers views of the same items (Tasks: Timeline, List, Priority; People: Table, Map) puts `<ViewSwitch label="View" {...usePlaceViews(place, ids)} />` in the header's actions for a two-way switch, or passes the views as `Page`'s `tabs` when there are three or more and the place has no tabs of its own, and keeps the filter bar across views, except a view whose data can't be filtered (an aggregate map), which drops it.
 
 ### Record
 
@@ -535,7 +535,7 @@ The URL holds what a colleague needs to see the same thing from a pasted link, a
 
 - Defaults stay out of the URL, and an unknown value falls back to the default without an error.
 - Bind `SearchField` straight to the search param: it keeps its own text while the URL catches up. Any other text input bound to the URL needs the same care.
-- Changing a filter resets `page`. Changing a tab through the hooks drops every param but `view`; changing a view keeps them all, so a view whose data can't be filtered (an aggregate map) drops the filter bar rather than keep filters with nothing to act on. `useListSearch`'s setter already drops `page` with a new term.
+- Changing a filter resets `page`. Changing a tab through the hooks drops every param but `view`; changing a view keeps them all, so filters survive a view that drops the filter bar. `useListSearch`'s setter already drops `page` with a new term.
 - A place's tabs share one URL, so write a search param from the current ones (`setSearchParams((prev) => …)`): replacing the whole query drops `tab` and `view`. Link to a tab with `tabHref(placeById(PlaceId.Groups), { tab: "awaiting" })`, and to a record with `lib/hrefs.ts`. `lib/useSearchParamTab.ts` is the old pages'.
 - Old URLs already redirect, query and hash kept (`legacyRoutes.ts`, tested by `routes.test.ts`); link to the new URLs.
 - Launch progress stays in local storage as today, so a reload keeps it.
