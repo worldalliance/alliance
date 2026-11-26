@@ -4,9 +4,7 @@ import { MemberRole, RoleBadge } from "./RoleBadge";
 
 afterEach(cleanup);
 
-it("shows the frontend's role words and tooltip", () => {
+it("shows the frontend's role word, with no tooltip only a pointer can reach", () => {
   render(<RoleBadge role={MemberRole.GroupLead} />);
-  expect(screen.getByText("Lead").getAttribute("title")).toBe(
-    "Leads a group of members",
-  );
+  expect(screen.getByText("Lead").hasAttribute("title")).toBe(false);
 });

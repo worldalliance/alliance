@@ -9,27 +9,21 @@ export enum MemberRole {
   GroupLead = "grouplead",
 }
 
-const LOOK: Record<
-  MemberRole,
-  { label: string; tip?: string; className: string }
-> = {
+const LOOK: Record<MemberRole, { label: string; className: string }> = {
   [MemberRole.Admin]: {
     label: "Admin",
     className: BADGE_TONE_CLASS[BadgeTone.Neutral],
   },
   [MemberRole.Staff]: {
     label: roleBadges.staff.label,
-    tip: roleBadges.staff.tooltip,
     className: "bg-role-staff-soft text-role-staff",
   },
   [MemberRole.Ambassador]: {
     label: roleBadges.ambassador.label,
-    tip: roleBadges.ambassador.tooltip,
     className: "bg-role-ambassador-soft text-role-ambassador",
   },
   [MemberRole.GroupLead]: {
     label: roleBadges.grouplead.label,
-    tip: roleBadges.grouplead.tooltip,
     className: "bg-role-grouplead-soft text-role-grouplead",
   },
 };
@@ -40,10 +34,9 @@ const LOOK: Record<
  * solid hue doesn't). Admin has no frontend badge, so it is neutral.
  */
 export function RoleBadge({ role }: { role: MemberRole }) {
-  const { label, tip, className } = LOOK[role];
+  const { label, className } = LOOK[role];
   return (
     <span
-      title={tip}
       className={cn(
         "inline-flex h-5 items-center self-start rounded-full px-2 text-caption font-medium whitespace-nowrap",
         className,
