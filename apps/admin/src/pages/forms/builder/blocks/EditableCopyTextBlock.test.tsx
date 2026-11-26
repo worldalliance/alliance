@@ -11,6 +11,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 import { SiteOriginLinkProvider } from "../../../../ui/SiteAppProvider";
@@ -121,6 +122,16 @@ describe("a per-user copy text block's user list", () => {
       { id: 7, name: "Ana", hasActiveContract: true },
       { id: 8, name: "Ben", hasActiveContract: true },
     ]);
+
+  it("says in the user sheet when the users fail to load", async () => {
+    userList = () => Response.json({}, { status: 500 });
+    renderEditor(perUser);
+    await screen.findByText("Unable to load users");
+    fireEvent.click(screen.getByRole("button", { name: / set \/ / }));
+    const sheet = within(await screen.findByRole("dialog"));
+    expect(sheet.getByText("Unable to load users")).toBeTruthy();
+    expect(sheet.queryByText("No users match your search.")).toBeNull();
+  });
 
   it("says when the users fail to load and loads them on retry", async () => {
     userList = () => Response.json({}, { status: 500 });

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Badge, { BadgeTone } from "../../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
+import InlineError from "../../../../ui/InlineError";
 import { Input } from "../../../../ui/Input";
 import Sheet from "../../../../ui/Sheet";
 import type { ManualTargets } from "./useManualTargets";
@@ -60,6 +61,8 @@ function UserListBody({
     manualUserContent,
     manualUsers,
     isLoadingUsers,
+    userLoadError,
+    refetchUsers,
     selectManualTarget,
     activeManualUserId,
   },
@@ -146,8 +149,21 @@ function UserListBody({
           );
         })}
       </ul>
-      {shown.length === 0 && !isLoadingUsers && (
-        <p className="text-fg-muted">No users match your search.</p>
+      {userLoadError ? (
+        <InlineError message={userLoadError}>
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
+            onClick={refetchUsers}
+          >
+            Retry
+          </Button>
+        </InlineError>
+      ) : (
+        shown.length === 0 &&
+        !isLoadingUsers && (
+          <p className="text-fg-muted">No users match your search.</p>
+        )
       )}
     </div>
   );
