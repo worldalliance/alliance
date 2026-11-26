@@ -6,8 +6,6 @@ type FailedLoadsBannerProps = {
   failed: string[];
   /** What the failure means for what is shown: "The graph is incomplete." */
   consequence: string;
-  /** BACKCOMPAT(failed-loads-class): ignored, the banner brings its own frame; remove once ActionOverviewTab stops passing it. */
-  className?: string;
   /** A box inside the body; false runs edge to edge as `Page`'s `banner`. */
   inline?: boolean;
   onRetry?: () => void;

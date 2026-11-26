@@ -230,6 +230,17 @@ const funnelOf = (steps: ProjectStep[]): FunnelStep[] =>
     };
   });
 
+/** Every step, archived and onboarding ones included, as the server lists them. */
+export const allStepsOf = (params: {
+  projectId: number;
+  actions: ProjectStep[];
+}) => {
+  const steps = params.actions
+    .filter((action) => action.project?.id === params.projectId)
+    .sort(byStepOrder);
+  return { steps, funnel: funnelOf(steps) };
+};
+
 const emptyCounts = (): Record<StepCountBucket, number> => ({
   [StepCountBucket.Live]: 0,
   [StepCountBucket.Planned]: 0,

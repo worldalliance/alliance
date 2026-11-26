@@ -10,7 +10,6 @@ src/components/ActionFormVariantCoverage.tsx
 src/components/ActionFormVariantsTab.tsx
 src/components/ActionListCard.tsx
 src/components/ActionProgressBar.tsx
-src/components/ActionProjectControls.tsx
 src/components/ActionReviewersEditor.tsx
 src/components/ActionStatusBucketFilter.tsx
 src/components/ActionTimeline.test.tsx
@@ -37,10 +36,7 @@ src/pages/Actions.tsx
 src/pages/PriorityPage.tsx
 src/pages/ProjectActionPage.tsx
 src/pages/action-dashboard/ActionEditor.tsx
-src/pages/action-dashboard/ActionOverviewTab.tsx
-src/pages/action-dashboard/ActionParticipationStats.tsx
 src/pages/action-dashboard/ActionReadinessChecklist.tsx
-src/pages/action-dashboard/ActionResponseReports.tsx
 src/pages/project-action/PacificDateTimeInput.tsx
 src/pages/project-action/PhaseHeader.tsx
 src/pages/project-action/ReleasePanel.tsx
