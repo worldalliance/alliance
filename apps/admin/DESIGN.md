@@ -270,7 +270,7 @@ Every place in `PLACES.md`. Where a place's tabs differ in kind, the place takes
 | Content  | Media                 | List          | Tabs Image upload (Settings form body: an upload, no library), Videos.                                                                                      |
 | Activity | Event log             | List          | New rows stream in at the top; announce them without moving focus.                                                                                          |
 | Activity | Scheduled jobs        | List          | Rows expand to their members. No search or filters today: no filter bar.                                                                                    |
-| Research | Kora participants     | List          | Tabs Participants (totals, signups, the tables, the export), Assignments (project status, transcript batches, notices, results).                            |
+| Research | Kora participants     | List          | Tabs Participants (totals, signups, the tables, the export), Assignments (project status, transcript batches, notices, conversations, results).             |
 | Settings | Settings              | Settings form |                                                                                                                                                             |
 | —        | Login                 | unchanged     | Outside the shell.                                                                                                                                          |
 
