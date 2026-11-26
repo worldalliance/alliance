@@ -26,7 +26,7 @@ export function InlineTextOverlay({
         {children}
       </div>
       {open && (
-        <div className="absolute inset-x-0 top-0 z-20 min-h-full rounded-md bg-surface p-2 shadow-pop">
+        <div className="absolute inset-x-0 top-0 z-20 min-h-full rounded-md bg-surface p-1 shadow-pop">
           {editor}
         </div>
       )}

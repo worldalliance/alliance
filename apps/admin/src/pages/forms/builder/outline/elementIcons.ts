@@ -7,6 +7,7 @@ import {
   isQuestionField,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
+import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import {
   AlignLeft,
   ArrowDownUp,
@@ -104,12 +105,18 @@ export const kindIcon = ({
   question: boolean;
 }): LucideIcon => (kind === "text" && !question ? Pilcrow : ICONS[kind]);
 
-// Their preview is a size, not something to recognise them by.
-const SIZE_ONLY = new Set<PageItem["kind"]>(["divider", "spacer"]);
+// Their preview is a size or markup, not something to recognise them by.
+const KIND_ONLY = new Set<PageItem["kind"]>(["divider", "spacer", "html"]);
 
-/** An element's row text beside its icon: its label or text, else its kind. */
-export const elementText = (item: PageItem): string =>
-  isQuestionField(item)
-    ? item.label?.trim() || FIELD_KIND_NAMES[item.kind]
-    : (!SIZE_ONLY.has(item.kind) && displayBlockPreview(item).trim()) ||
-      DISPLAY_KIND_NAMES[item.kind];
+const plain = (markdown: string) =>
+  markdownPlainText(markdown).replace(/\s+/g, " ").trim();
+
+/** An element's row text beside its icon: its label or text as members read it, else its kind. */
+export const elementText = (item: PageItem): string => {
+  if (isQuestionField(item))
+    return plain(item.label ?? "") || FIELD_KIND_NAMES[item.kind];
+  const name = DISPLAY_KIND_NAMES[item.kind];
+  if (item.kind === "images") return item.images[0]?.alt?.trim() || name;
+  if (KIND_ONLY.has(item.kind)) return name;
+  return plain(displayBlockPreview(item)) || name;
+};
