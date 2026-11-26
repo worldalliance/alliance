@@ -552,12 +552,18 @@ it("requires an option selection even after searching", async () => {
     fireEvent.click(screen.getByRole("button", { name: /\(preview\)/ }));
   });
   expect(await screen.findByText("This field is required.")).toBeTruthy();
+  expect(screen.queryByText(/^Every answer is valid/)).toBeNull();
   fireEvent.click(screen.getByRole("combobox", { name: "Location" }));
   fireEvent.click(await screen.findByRole("option", { name: "New York" }));
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: /\(preview\)/ }));
   });
   expect(screen.queryByText("This field is required.")).toBeNull();
+  expect(await screen.findByText(/^Every answer is valid/)).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("combobox", { name: "Location" }));
+  fireEvent.click(await screen.findByRole("option", { name: "California" }));
+  expect(screen.queryByText(/^Every answer is valid/)).toBeNull();
 });
 
 it("names a searchable dropdown from its rendered Markdown label", () => {
