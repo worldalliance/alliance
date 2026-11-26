@@ -54,10 +54,7 @@ export function EditableNumberField({
             )}
           </Field>
         </div>
-        <Field
-          label="Step"
-          help={decimals ? "Decimal places replace the step." : undefined}
-        >
+        <Field label="Step" help="Allowing decimals replaces the step.">
           {(control) => (
             <Input
               {...control}
