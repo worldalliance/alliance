@@ -26,7 +26,12 @@ type SharedToast = ReturnType<typeof useSharedToast>;
 
 // `mode`, `anchorEl` and `placement` are ignored: every confirm is the admin's
 // centred dialog. Pages not yet redesigned still pass them; new code doesn't.
-export type ConfirmOptions = Parameters<SharedToast["confirm"]>[0] & {
+export type ConfirmOptions = Omit<
+  Parameters<SharedToast["confirm"]>[0],
+  "cancelLabel"
+> & {
+  /** `null` shows the confirm button alone; Escape still settles `false`. */
+  cancelLabel?: string | null;
   /** Danger-styled confirm button. Implied by the label "Delete". */
   destructive?: boolean;
 };

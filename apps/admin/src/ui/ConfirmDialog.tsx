@@ -17,7 +17,8 @@ export type ConfirmDialogProps = {
   message?: React.ReactNode;
   /** A verb naming the result: "Delete tag". */
   confirmLabel?: string;
-  cancelLabel?: string;
+  /** `null` leaves the confirm button alone, for a dialog that only acknowledges: "OK". */
+  cancelLabel?: string | null;
   /** Styles the confirm button as danger and drops the Enter shortcut. */
   destructive?: boolean;
   /**
@@ -120,13 +121,15 @@ export default function ConfirmDialog({
           </div>
         )}
         <ModalActions className="mt-4">
-          <Button
-            variant={ButtonVariant.Default}
-            onClick={onCancel}
-            disabled={busy}
-          >
-            {cancelLabel}
-          </Button>
+          {cancelLabel !== null && (
+            <Button
+              variant={ButtonVariant.Default}
+              onClick={onCancel}
+              disabled={busy}
+            >
+              {cancelLabel}
+            </Button>
+          )}
           <Button
             variant={destructive ? ButtonVariant.Danger : ButtonVariant.Primary}
             onClick={onConfirm}

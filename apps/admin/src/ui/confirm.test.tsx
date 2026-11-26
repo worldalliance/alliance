@@ -136,6 +136,24 @@ describe("useToast().confirm", () => {
     expect(results).toEqual([false]);
   });
 
+  it("shows the confirm button alone to acknowledge", async () => {
+    await ask({
+      title: "Nothing was deleted",
+      confirmLabel: "OK",
+      cancelLabel: null,
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(
+      [...dialog.querySelectorAll("button")]
+        .map((button) => button.textContent)
+        .filter((name) => name !== ""),
+    ).toEqual(["OK"]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    });
+    expect(results).toEqual([true]);
+  });
+
   it("resolves false and closes when its signal aborts", async () => {
     const controller = new AbortController();
     await ask({ title: "Remove the leader?", signal: controller.signal });
