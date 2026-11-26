@@ -253,6 +253,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
               availableActions={allActions}
               actionId={actionId}
               loading={allActionsLoading}
+              loadFailed={allActionsLoadFailed}
             />
           </FormSection>
 

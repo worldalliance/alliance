@@ -200,4 +200,13 @@ describe("ActionForm", () => {
       ["users_invited", "Users invited"],
     ]);
   });
+
+  it("says when the prerequisite tasks failed to load", () => {
+    renderForm({ props: { allActionsLoadFailed: true } });
+    expect(
+      within(section("Prerequisites")).getByRole("option", {
+        name: "Couldn't load tasks",
+      }),
+    ).toBeTruthy();
+  });
 });
