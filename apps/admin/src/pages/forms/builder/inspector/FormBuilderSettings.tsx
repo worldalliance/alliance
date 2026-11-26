@@ -1,5 +1,4 @@
 import type { ConditionHolder } from "@alliance/common/forms/form-conditions";
-import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import {
   isQuestionField,
   type FormSchema,
@@ -10,7 +9,6 @@ import { useMemo } from "react";
 import { conditionSourceFields } from "../../../../lib/conditionSourceFields";
 import { addressedWrite, type BlockWriteById } from "../../../../lib/displayBlockById";
 import { JsonScopeKind, type JsonScope } from "../../../../lib/formJson";
-import { DropPosition } from "../../../../lib/useDragReorder";
 import { type VisibilityGroups } from "../../../../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../../../../lib/visibilitySummary";
 import { FormScopeInspector } from "./FormScopeInspector";
@@ -104,9 +102,6 @@ export function FormBuilderSettings({
   const {
     guardDeletion,
     updateCurrentPage,
-    movePage,
-    copyPage,
-    removePage,
     deleteElement,
     applyGrouped,
     updateElementAt,
@@ -242,41 +237,11 @@ export function FormBuilderSettings({
           onSection={setSection}
           focusPending={focusPending}
           onFocused={focused}
-          onMoveUp={
-            selectedPageIndex > 0
-              ? () =>
-                  movePage({
-                    from: selectedPageIndex,
-                    dropIndex: selectedPageIndex - 1,
-                    position: DropPosition.Before,
-                  })
-              : null
-          }
-          onMoveDown={
-            selectedPageIndex < schema.pages.length - 1
-              ? () =>
-                  movePage({
-                    from: selectedPageIndex,
-                    dropIndex: selectedPageIndex + 1,
-                    position: DropPosition.After,
-                  })
-              : null
-          }
           onEditJson={() =>
             onEditJson({
               kind: JsonScopeKind.Page,
               pageIndex: selectedPageIndex,
             })
-          }
-          onCopy={() => copyPage(selectedPageIndex)}
-          onDelete={
-            schema.pages.length > 1
-              ? () =>
-                  guardDeletion(
-                    { kind: PlaceKind.Page, pageIndex: selectedPageIndex },
-                    () => removePage(selectedPageIndex),
-                  )
-              : null
           }
           dependencies={renderDependencies(currentPage, null)}
         >

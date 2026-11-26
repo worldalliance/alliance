@@ -32,11 +32,6 @@ export function PageSettingsSidebar({
   onSection: (section: SidebarSection) => void;
   focusPending: boolean;
   onFocused: () => void;
-  /** BACKCOMPAT(builder-page-actions): unused since the More menu offers them; Z drops them from FormBuilderSettings. */
-  onMoveUp?: (() => void) | null;
-  onMoveDown?: (() => void) | null;
-  onCopy?: () => void;
-  onDelete?: (() => void) | null;
   onEditJson: () => void;
   dependencies: ReactNode;
   children: ReactNode;
