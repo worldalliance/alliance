@@ -249,6 +249,26 @@ it.each([
   },
 );
 
+it("refuses mod+shift+ with a key Shift changes", () => {
+  const Unreachable = () => {
+    useShortcut({ keys: "mod+shift+/", label: "Help", run: () => {} });
+    return null;
+  };
+  const error = console.error;
+  console.error = () => {};
+  try {
+    expect(() =>
+      render(
+        <ShortcutsProvider>
+          <Unreachable />
+        </ShortcutsProvider>,
+      ),
+    ).toThrow('shortcut mod+shift+/ ("Help") never fires');
+  } finally {
+    console.error = error;
+  }
+});
+
 const UndoRedo = ({
   onUndo,
   onRedo,
