@@ -113,6 +113,7 @@ export class GeneralUpdate {
   @IsOptional()
   activities?: Relation<GeneralUpdateActivity>[];
 
+  // BACKCOMPAT(tags)
   @ManyToMany(() => Tag, (tag) => tag.generalUpdates, {
     onDelete: "CASCADE",
   })

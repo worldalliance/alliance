@@ -11,7 +11,7 @@ export enum CustomValidatorType {
   RepliedToForumPostOrChild = "RepliedToForumPostOrChild",
   HasPhoneNumber = "HasPhoneNumber",
   IsPhoneNumberValid = "IsPhoneNumberValid",
-  MemberTag = "MemberTag",
+  MemberTag = "MemberTag", // BACKCOMPAT(tags)
   MemberCommunity = "MemberCommunity",
   AnyCommunity = "AnyCommunity",
 }
