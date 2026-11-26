@@ -69,9 +69,9 @@ export function CheckboxMenu({
               label={item.label}
               onCheckedChange={(checked) => onToggle(item.value, checked)}
               {...(item.pending && { "aria-busy": true })}
-              className="flex min-h-control-sm cursor-default items-start gap-2 rounded-sm px-2 py-1.5 outline-none select-none data-disabled:opacity-50 data-highlighted:bg-surface-2"
+              className="group flex min-h-control-sm cursor-default items-start gap-2 rounded-sm px-2 py-1.5 outline-none select-none data-disabled:opacity-50 data-highlighted:bg-surface-2"
             >
-              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-line bg-surface data-checked:border-accent data-checked:bg-accent">
+              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-line bg-surface group-data-checked:border-accent group-data-checked:bg-accent">
                 <Menu.CheckboxItemIndicator keepMounted={false}>
                   <Check aria-hidden="true" className="size-3 text-accent-fg" />
                 </Menu.CheckboxItemIndicator>
