@@ -536,7 +536,7 @@ describe("EditableImagesBlock", () => {
 
     await settle(uploads, R.failure("Failed to upload image."));
 
-    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(screen.queryByText("Uploading…")).toBeNull();
     expect(screen.getByText("images: 1")).toBeTruthy();
     expect(document.body.textContent).not.toContain("Failed to upload image.");
   });
@@ -592,7 +592,7 @@ describe("EditableImagesBlock", () => {
     await cancel();
 
     expect(reads).toHaveLength(1);
-    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(screen.queryByText("Uploading…")).toBeNull();
     expect(fileInput().disabled).toBe(false);
   });
 
@@ -682,7 +682,7 @@ describe("EditableImagesBlock", () => {
 
     expect(uploads).toHaveLength(0);
     expect(reads).toHaveLength(0);
-    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(screen.queryByText("Uploading…")).toBeNull();
     expect(document.body.textContent).not.toContain("Could not read the file.");
   });
 
@@ -703,7 +703,7 @@ describe("EditableImagesBlock", () => {
 
     await throwOn(uploads, new Error("boom"));
 
-    expect(screen.queryByText("Uploading...")).toBeNull();
+    expect(screen.queryByText("Uploading…")).toBeNull();
     expect(fileInput().disabled).toBe(false);
     expect(screen.getByText("Failed to upload image")).toBeTruthy();
   });
@@ -716,7 +716,7 @@ describe("EditableImagesBlock", () => {
     await pick(["c.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
-    expect(screen.getByText("Uploading...")).toBeTruthy();
+    expect(screen.getByText("Uploading…")).toBeTruthy();
     expect(fileInput().disabled).toBe(true);
   });
 

@@ -2,13 +2,18 @@ import { refusalMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
 // eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
 import { videosUploadVideoAdmin } from "@alliance/shared/client";
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, href } from "react-router";
 import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
-import { VariableTextField } from "../VariableTextField";
+import { FileInput } from "../../ui/FileInput";
+import { linkClass } from "../../ui/styles";
+import { Field } from "../../ui/templates/Form";
 import { BlockPreview } from "./BlockPreview";
+import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
+
+const NO_FILES: File[] = [];
 
 export function EditableVideoBlock({
   block,
@@ -21,21 +26,21 @@ export function EditableVideoBlock({
   previousFields,
   laterFields,
 }: BaseDisplayBlockProps<VideoBlock>) {
+  // Handing the input an empty list again lets the same files be picked twice.
+  const [picked, setPicked] = useState<File[]>(NO_FILES);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
+  const upload = async (
+    files: File[],
     update: (updates: Partial<VideoBlock>) => void,
   ) => {
-    const files = Array.from(e.target.files ?? []);
-    // Picking the same files again fires no change event unless this is cleared.
-    e.target.value = "";
     if (files.length === 0) return;
+    setPicked(files);
 
-    const hasPlaylist = files.some((f) => f.name.endsWith(".m3u8"));
-    if (!hasPlaylist) {
+    if (!files.some((file) => file.name.endsWith(".m3u8"))) {
       setUploadError("At least one .m3u8 playlist file is required");
+      setPicked(NO_FILES);
       return;
     }
 
@@ -56,15 +61,14 @@ export function EditableVideoBlock({
             sessionExpired: uploadSessionExpiredMessage,
           }),
         );
-        setIsUploading(false);
-        return;
+      } else {
+        update({ src: data.key, videoId: data.id });
       }
-
-      update({ src: data.key, videoId: data.id });
     } catch {
       setUploadError("Upload failed");
     }
     setIsUploading(false);
+    setPicked(NO_FILES);
   };
 
   return (
@@ -80,50 +84,45 @@ export function EditableVideoBlock({
       laterFields={laterFields}
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <label className="block text-sm font-medium text-black">
-              Video
-            </label>
-            {activeBlock.videoId && (
-              <Link
-                to={href(`/content/media/videos/:videoId`, {
-                  videoId: activeBlock.videoId.toString(),
-                })}
-                className="text-xs text-blue-600"
-              >
-                Manage video file
-              </Link>
+        <div className="flex flex-col gap-4">
+          <Field
+            label="Video files"
+            help="Choose the .m3u8 playlist with its .ts segments and any .vtt files."
+            error={uploadError}
+          >
+            {(control) => (
+              <FileInput
+                {...control}
+                multiple
+                accept=".m3u8,.ts,.vtt"
+                value={picked}
+                onChange={(files) => void upload(files, handleUpdate)}
+                disabled={isUploading}
+              />
             )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="file"
-              multiple
-              accept=".m3u8,.ts,.vtt"
-              onChange={(event) => handleFileChange(event, handleUpdate)}
-              disabled={isUploading}
-              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-            />
-            {isUploading && (
-              <span className="text-xs text-blue-600">Uploading...</span>
-            )}
-          </div>
-
-          {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
-
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-gray-600">
-              Caption
-            </label>
-            <VariableTextField
-              value={activeBlock.caption ?? ""}
-              onChange={(caption) => handleUpdate({ caption })}
-              placeholder="Add an optional caption"
-              className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
+          </Field>
+          {isUploading && (
+            <p role="status" className="text-caption text-fg-muted">
+              Uploading…
+            </p>
+          )}
+          {activeBlock.videoId && (
+            <Link
+              to={href(`/content/media/videos/:videoId`, {
+                videoId: activeBlock.videoId.toString(),
+              })}
+              className={`${linkClass} self-start`}
+            >
+              Manage video file
+            </Link>
+          )}
+          <BlockTextField
+            label="Caption"
+            mark="optional"
+            value={activeBlock.caption ?? ""}
+            onChange={(caption) => handleUpdate({ caption })}
+            placeholder="Add an optional caption"
+          />
           {activeBlock.src && <BlockPreview block={activeBlock} />}
         </div>
       )}

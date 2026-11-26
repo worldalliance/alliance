@@ -64,10 +64,6 @@ src/components/VariableInputPickers.tsx
 src/components/VariableInputRow.tsx
 src/components/VariableSamples.tsx
 src/components/VisibilityProfilePicker.tsx
-src/components/display-blocks/EditableImagesBlock.tsx
-src/components/display-blocks/EditableVideoBlock.tsx
-src/components/display-blocks/ManualUserList.tsx
-src/components/display-blocks/PerUserOptions.tsx
 src/components/form-fields/conditions/AddRuleMenu.tsx
 src/components/form-fields/conditions/ConditionRule.tsx
 src/components/form-fields/conditions/ConditionalVisibility.tsx
