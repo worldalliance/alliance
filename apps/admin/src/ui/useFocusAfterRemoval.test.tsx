@@ -109,4 +109,37 @@ describe("useFocusAfterRemoval", () => {
       screen.getByRole("button", { name: "Remove b" }),
     );
   });
+
+  it("falls back when the neighbour it chose is removed too", () => {
+    function Batch() {
+      const [ids, setIds] = useState(["a", "b"]);
+      const fallback = useRef<HTMLButtonElement>(null);
+      const focus = useFocusAfterRemoval({ ids, fallback });
+      return (
+        <>
+          {ids.map((id) => (
+            <div key={id} {...focus.row(id)}>
+              <button
+                type="button"
+                onClick={() => {
+                  focus.removing(id)();
+                  setIds([]);
+                }}
+              >
+                Remove {id}
+              </button>
+            </div>
+          ))}
+          <button type="button" ref={fallback}>
+            Add
+          </button>
+        </>
+      );
+    }
+    render(<Batch />);
+    remove("a");
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Add" }),
+    );
+  });
 });
