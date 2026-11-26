@@ -153,6 +153,7 @@ export function AllGroupsTab({ groups }: { groups: UseQueryResult<CommunityDto[]
         <ContentState
           things="groups"
           query={groups}
+          refreshBanner={false}
           skeleton={<TableSkeleton bleed columns={4} />}
           empty={rows.length === 0}
           filtered={q !== ""}
