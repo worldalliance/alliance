@@ -99,6 +99,32 @@ it("asks before a change of search params by default", async () => {
   expect(router.state.location.search).toBe("");
 });
 
+const Peeking = () => {
+  useLeaveGuard(true, { ignoreParams: ["member"] });
+  return null;
+};
+
+it("lets a change of only the ignored params through", async () => {
+  const router = routerWith(<Peeking />);
+
+  expect(await leave({ router, to: "/a?member=1", answer: false })).toBe(0);
+  expect(router.state.location.search).toBe("?member=1");
+  expect(await leave({ router, to: "/a", answer: false })).toBe(0);
+  expect(router.state.location.search).toBe("");
+});
+
+it.each(["/a?tab=events&member=1", "/b?member=1"])(
+  "asks before %s, which changes more than the ignored params",
+  async (to) => {
+    const router = routerWith(<Peeking />);
+
+    expect(await leave({ router, to, answer: false })).toBe(1);
+    expect(router.state.location.pathname + router.state.location.search).toBe(
+      "/a",
+    );
+  },
+);
+
 it("still asks for a clean page whose nested guard is dirty", async () => {
   const Dirty = () => {
     useLeaveGuard(true);

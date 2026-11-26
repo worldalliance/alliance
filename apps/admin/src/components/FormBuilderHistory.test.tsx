@@ -122,7 +122,6 @@ it("starts with nothing to undo, then steps back through edits on every tab", as
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await nextTask();
   fireEvent.click(screen.getByText("Shareable Text"));
-  await waitFor(() => expect(leaveAsked).toHaveBeenCalledTimes(1));
   const placeholder = "Example: Join me in taking this action.";
   const template = () =>
     screen.getByPlaceholderText<HTMLTextAreaElement>(placeholder);
@@ -143,6 +142,7 @@ it("starts with nothing to undo, then steps back through edits on every tab", as
 
   fireEvent.click(button("Redo"));
   expect(pageTitle().value).toBe("First");
+  expect(leaveAsked).not.toHaveBeenCalled();
 });
 
 it("folds typing into one step until the field loses focus", async () => {

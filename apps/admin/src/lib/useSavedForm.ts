@@ -135,7 +135,9 @@ export function useSavedForm({
     setHasUnsavedChanges(currentSchemaJSON !== lastSavedSchemaJSON);
   }, [schema, lastSavedSchemaJSON]);
 
-  const navigateUnprompted = useLeaveGuard(hasUnsavedChanges);
+  const navigateUnprompted = useLeaveGuard(hasUnsavedChanges, {
+    ignoreParams: ["editor", "select"],
+  });
 
   /** Runs `navigate` to the form a save created or updated, without reloading it. */
   const navigateToSaved = useCallback(
