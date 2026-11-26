@@ -101,3 +101,15 @@ it.each([false, true])(
     ).toBeTruthy();
   },
 );
+
+describe("VariableTextField id", () => {
+  it("binds a label to the input", () => {
+    render(
+      <FormVariablesProvider variables={[total]}>
+        <label htmlFor="header">Header</label>
+        <VariableTextField id="header" value="" onChange={() => {}} />
+      </FormVariablesProvider>,
+    );
+    expect(screen.getByLabelText("Header").id).toBe("header");
+  });
+});

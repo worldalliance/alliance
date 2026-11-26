@@ -64,6 +64,8 @@ export type VariableTextFieldProps = {
   minRows?: number;
   style?: TextareaAutosizeProps["style"];
   spellCheck?: boolean;
+  /** Lets a `Field` label bind to the input. */
+  id?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
 };
@@ -79,6 +81,7 @@ export function VariableTextField({
   minRows,
   style,
   spellCheck,
+  id,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
 }: VariableTextFieldProps) {
@@ -212,6 +215,7 @@ export function VariableTextField({
     // because a caller's own background rule can outrank the utility class,
     // and an opaque input hides the highlight painted behind it.
     style: segments ? { backgroundColor: "transparent", ...style } : style,
+    id,
     "aria-label": ariaLabel,
     "aria-describedby": ariaDescribedBy,
     className: cn(sharedClassName, "relative"),
