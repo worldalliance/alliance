@@ -82,13 +82,16 @@ export function TableSkeleton({
   columnClassNames?: readonly (string | undefined)[];
 }) {
   const cols = Array.from({ length: columns }, (_, i) => i);
+  // A bar is a block, so `text-right` on the cell doesn't move it.
+  const end = (col: number) =>
+    columnClassNames[col]?.split(/\s+/).includes("text-right") ? "ml-auto" : "";
   return (
     <Table bleed={bleed} aria-hidden="true">
       <TableHeader>
         <TableRow>
           {cols.map((col) => (
             <TableHead key={col} className={columnClassNames[col]}>
-              <Skeleton className="h-3 w-full max-w-16" />
+              <Skeleton className={cn("h-3 w-full max-w-16", end(col))} />
             </TableHead>
           ))}
         </TableRow>
@@ -99,7 +102,11 @@ export function TableSkeleton({
             {cols.map((col) => (
               <TableCell key={col} className={columnClassNames[col]}>
                 <Skeleton
-                  className={`h-3.5 w-full ${WIDTHS[(row + col) % WIDTHS.length]}`}
+                  className={cn(
+                    "h-3.5 w-full",
+                    WIDTHS[(row + col) % WIDTHS.length],
+                    end(col),
+                  )}
                 />
               </TableCell>
             ))}
