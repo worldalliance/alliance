@@ -170,7 +170,9 @@ it("says no task matches the statuses, and can show every status", async () => {
   served = [adminActionListItem(4, "Wrapped up", { status: "completed" })];
   renderView();
 
-  expect(await screen.findByText("No tasks in these statuses.")).toBeTruthy();
+  expect(
+    await screen.findByText("No tasks match the selected statuses."),
+  ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Show every status" }));
 
   expect(await screen.findByRole("link", { name: "Wrapped up" })).toBeTruthy();

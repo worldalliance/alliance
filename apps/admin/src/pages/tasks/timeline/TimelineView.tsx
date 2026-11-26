@@ -1,11 +1,7 @@
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { readBuckets, writeBuckets } from "../../../lib/actionListBuckets";
-import {
-  ActionStatusBucket,
-  actionStatusBucket,
-} from "../../../lib/actionStatusBucket";
+import { ActionStatusBucket } from "../../../lib/actionStatusBucket";
 import { buildTimelineData } from "../../../lib/actionTimelineData";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { useActionParticipants } from "../../../lib/useActionParticipants";
@@ -17,6 +13,12 @@ import {
   LOAD_FAILED_FALLBACK,
   RefreshFailedBanner,
 } from "../../../ui/templates/States";
+import {
+  filteredOutReason,
+  filterTasks,
+  NO_STATUS_MATCH,
+  useTaskFilters,
+} from "../taskFilters";
 import { TaskTimeline } from "./TaskTimeline";
 import { TimelineSkeleton } from "./TimelineSkeleton";
 import {
@@ -26,48 +28,35 @@ import {
   readGroupBy,
 } from "./timelineRules";
 
-const ALL_ARCHIVED = "Every task is archived.";
-const NO_STATUS_MATCH = "No tasks in these statuses.";
-
 const GROUP_BY_ITEMS = [
   { id: GroupBy.Suite, label: "Suite" },
   { id: GroupBy.Project, label: "Project" },
 ] as const;
 
-/**
- * All tasks as a timeline, grouped by suite or by project. The statuses and
- * Show archived come from the URL.
- */
+/** All tasks as a timeline, grouped by suite or by project, under the place's filters. */
 export function TimelineView() {
   const list = useActionsAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
+  const filters = useTaskFilters();
   const [now] = useState(() => new Date());
   const region = useRef<HTMLDivElement>(null);
-  const setParam = (key: string, value: string | null) =>
+  const groupBy = readGroupBy(searchParams.get(GROUP_BY_PARAM));
+  const setGroupBy = (by: GroupBy) =>
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (value === null) next.delete(key);
-        else next.set(key, value);
+        if (by === GroupBy.Suite) next.delete(GROUP_BY_PARAM);
+        else next.set(GROUP_BY_PARAM, by);
         return next;
       },
       { replace: true },
     );
-  const statusParam = searchParams.get("status");
-  const showArchived = searchParams.get("archived") === "1";
-  const groupBy = readGroupBy(searchParams.get(GROUP_BY_PARAM));
 
-  const unarchived = useMemo(
-    () =>
-      (list.data ?? []).filter((action) => showArchived || !action.archived),
-    [list.data, showArchived],
+  const { buckets, showArchived } = filters;
+  const { unarchived, shown } = useMemo(
+    () => filterTasks(list.data ?? [], { buckets, showArchived }),
+    [list.data, buckets, showArchived],
   );
-  const shown = useMemo(() => {
-    const buckets = readBuckets(statusParam);
-    return unarchived.filter((action) =>
-      buckets.has(actionStatusBucket(action)),
-    );
-  }, [unarchived, statusParam]);
   const participantsById = useActionParticipants(unarchived);
   const data = useMemo(
     () =>
@@ -95,44 +84,33 @@ export function TimelineView() {
     [data, list.data, groupBy, now],
   );
 
-  const allArchived =
-    list.data !== undefined && list.data.length > 0 && unarchived.length === 0;
-  const noMatch = unarchived.length > 0 && shown.length === 0;
+  const filteredOut = filteredOutReason({
+    total: list.data?.length ?? 0,
+    unarchived: unarchived.length,
+    shown: shown.length,
+  });
+  const noMatch = filteredOut === NO_STATUS_MATCH;
 
-  const empty = allArchived ? (
+  const empty = filteredOut && (
     <EmptyState
-      title={ALL_ARCHIVED}
+      title={filteredOut}
       action={
         <Button
           variant={ButtonVariant.Default}
           onClick={() => {
-            setParam("archived", "1");
+            if (noMatch) {
+              filters.setBuckets(new Set(Object.values(ActionStatusBucket)));
+            } else {
+              filters.setShowArchived(true);
+            }
             region.current?.focus();
           }}
         >
-          Show archived tasks
+          {noMatch ? "Show every status" : "Show archived tasks"}
         </Button>
       }
     />
-  ) : noMatch ? (
-    <EmptyState
-      title={NO_STATUS_MATCH}
-      action={
-        <Button
-          variant={ButtonVariant.Default}
-          onClick={() => {
-            setParam(
-              "status",
-              writeBuckets(new Set(Object.values(ActionStatusBucket))),
-            );
-            region.current?.focus();
-          }}
-        >
-          Show every status
-        </Button>
-      }
-    />
-  ) : null;
+  );
 
   return (
     <div
@@ -173,9 +151,7 @@ export function TimelineView() {
                 label="Group by"
                 items={GROUP_BY_ITEMS}
                 value={groupBy}
-                onChange={(by) =>
-                  setParam(GROUP_BY_PARAM, by === GroupBy.Suite ? null : by)
-                }
+                onChange={setGroupBy}
               />
             </>
           }

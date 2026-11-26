@@ -1,5 +1,5 @@
 import type { AdminActionListItemDto } from "@alliance/shared/client";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { readBuckets, writeBuckets } from "../../lib/actionListBuckets";
 import {
@@ -33,8 +33,10 @@ export function useTaskFilters() {
       }),
     [setSearchParams],
   );
+  const status = searchParams.get("status");
+  const buckets = useMemo(() => readBuckets(status), [status]);
   return {
-    buckets: readBuckets(searchParams.get("status")),
+    buckets,
     showArchived: searchParams.get("archived") === "1",
     setBuckets: (buckets: ReadonlySet<ActionStatusBucket>) =>
       setParam("status", writeBuckets(buckets)),
