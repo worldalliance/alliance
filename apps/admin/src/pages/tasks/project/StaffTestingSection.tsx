@@ -5,9 +5,10 @@ import {
   missingForStaffTesting,
 } from "../../../lib/staffTestingGate";
 import { useConfirmOnPage } from "../../../lib/useConfirmOnPage";
+import Badge, { BadgeTone } from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";
-import PhaseBadge from "../../../ui/PhaseBadge";
 import { cn } from "../../../ui/cn";
+import PhaseBadge from "../../../ui/PhaseBadge";
 import { linkClass } from "../../../ui/styles";
 import { SidePanelSection } from "../../../ui/templates/Record";
 import type { TaskRecordContext } from "../TaskRecord";
@@ -49,9 +50,11 @@ export function StaffTestingSection({
     if (ok) await setStaffPreview(true);
   };
 
-  let control: React.ReactNode = null;
+  let control: React.ReactNode;
+  let badge: React.ReactNode;
   switch (phase) {
     case ActionPhase.Draft:
+      badge = <PhaseBadge status={action.status} />;
       control = (
         <Button
           variant={ButtonVariant.Default}
@@ -63,6 +66,7 @@ export function StaffTestingSection({
       );
       break;
     case ActionPhase.StaffTesting:
+      badge = <Badge tone={BadgeTone.Info}>Staff testing</Badge>;
       control = (
         <Button
           variant={ButtonVariant.Default}
@@ -76,7 +80,7 @@ export function StaffTestingSection({
     case ActionPhase.Scheduled:
     case ActionPhase.Live:
     case ActionPhase.Closed:
-      break;
+      return null;
     default:
       throw new Error(`unknown phase: ${phase satisfies never}`);
   }
@@ -84,7 +88,7 @@ export function StaffTestingSection({
   return (
     <SidePanelSection title="Staff testing">
       <div className="flex flex-wrap items-center gap-2">
-        <PhaseBadge status={action.status} />
+        {badge}
         {control}
       </div>
       {unsaved && control && (

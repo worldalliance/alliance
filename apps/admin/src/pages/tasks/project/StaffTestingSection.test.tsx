@@ -85,11 +85,21 @@ describe("StaffTestingSection", () => {
     );
   });
 
+  it("shows the status in effect before staff testing, not always Draft", () => {
+    renderSection({
+      phase: ActionPhase.Draft,
+      action: { status: "planned", events: [] },
+    });
+    screen.getByText("Planned");
+    expect(screen.queryByText("Draft")).toBeNull();
+  });
+
   it("stops staff testing", () => {
     const context = renderSection({
       phase: ActionPhase.StaffTesting,
       action: { staffPreview: true },
     });
+    screen.getByText("Staff testing", { selector: "span" });
     fireEvent.click(screen.getByRole("button", { name: "Stop staff testing" }));
     expect(context.setStaffPreview).toHaveBeenCalledWith(false);
   });
@@ -106,6 +116,6 @@ describe("StaffTestingSection", () => {
 
   it("offers nothing once the release is scheduled", () => {
     renderSection({ phase: ActionPhase.Scheduled });
-    expect(screen.queryByRole("button", { name: /staff testing/ })).toBeNull();
+    expect(screen.queryByText("Staff testing")).toBeNull();
   });
 });
