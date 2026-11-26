@@ -55,13 +55,25 @@ function DropdownMenuSeparator({ className, ...props }: Menu.Separator.Props) {
   );
 }
 
+function DropdownMenuLabel({ className, ...props }: Menu.GroupLabel.Props) {
+  return (
+    <Menu.GroupLabel
+      className={cn("px-2 pt-1.5 pb-1 text-caption text-fg-muted", className)}
+      {...props}
+    />
+  );
+}
+
+const DropdownMenuGroup = Menu.Group;
 const DropdownMenu = Menu.Root;
 const DropdownMenuTrigger = Menu.Trigger;
 
 export {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 };

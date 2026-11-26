@@ -46,4 +46,65 @@ describe("MoreMenu", () => {
     fireEvent.click(trigger);
     expect(screen.queryByRole("menu")).toBeNull();
   });
+
+  it("keeps a disabled item's reason out of its name", async () => {
+    render(
+      <MoreMenu
+        items={[
+          {
+            label: "Move up",
+            onSelect: jest.fn(),
+            disabledReason: "It's at the top.",
+          },
+        ]}
+      />,
+    );
+    open("More");
+    const item = await screen.findByRole("menuitem", { name: "Move up" });
+    expect(item.getAttribute("aria-describedby")).toBeTruthy();
+    expect(
+      document.getElementById(item.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toBe("It's at the top.");
+  });
+
+  it("heads adjacent items that share a group", async () => {
+    render(
+      <MoreMenu
+        items={[
+          { label: "Edit", onSelect: jest.fn() },
+          { label: "Page 1", onSelect: jest.fn(), group: "Move to page" },
+          { label: "Page 2", onSelect: jest.fn(), group: "Move to page" },
+          { label: "Delete", onSelect: jest.fn(), destructive: true },
+        ]}
+      />,
+    );
+    open("More");
+    const group = await screen.findByRole("group", { name: "Move to page" });
+    expect(group.querySelectorAll("[role=menuitem]")).toHaveLength(2);
+    expect(screen.getAllByText("Move to page")).toHaveLength(1);
+  });
+
+  it("is an icon-only button with the same name when compact", async () => {
+    render(
+      <MoreMenu
+        compact
+        subject="Town"
+        items={[{ label: "Archive", onSelect: jest.fn() }]}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "More: Town" });
+    expect(trigger.textContent).toBe("");
+    fireEvent.click(trigger);
+    expect(
+      await screen.findByRole("menuitem", { name: "Archive" }),
+    ).toBeDefined();
+  });
+
+  it("shows a decorative spinner, not a status, while busy", () => {
+    render(
+      <MoreMenu busy items={[{ label: "Archive", onSelect: jest.fn() }]} />,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+  });
 });
