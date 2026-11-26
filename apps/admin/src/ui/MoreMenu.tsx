@@ -33,7 +33,11 @@ type Run = { group: string | undefined; items: MoreMenuItem[] };
 /** Adjacent items with one group; destructive items form the last run, after a separator. */
 function runsOf(items: readonly MoreMenuItem[]): Run[] {
   const runs: Run[] = [];
-  for (const item of items) {
+  const ordered = [
+    ...items.filter((i) => !i.destructive),
+    ...items.filter((i) => i.destructive),
+  ];
+  for (const item of ordered) {
     const group = item.destructive ? undefined : item.group;
     const last = runs.at(-1);
     const same =
@@ -121,6 +125,9 @@ export function MoreMenu({
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // A prop-driven close fires no onOpenChange, so a menu hidden by `busy`
+  // would reopen when the write ends.
+  if (busy && open) setOpen(false);
   const name = subject === undefined ? "More" : `More: ${subject}`;
   const trigger = (
     <Menu.Trigger
@@ -150,7 +157,7 @@ export function MoreMenu({
   );
   return (
     <DropdownMenu
-      open={open && !busy}
+      open={open}
       onOpenChange={(next: boolean) => setOpen(next && !busy)}
     >
       {compact ? (

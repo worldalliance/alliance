@@ -47,6 +47,33 @@ describe("MoreMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("stays closed when a write starts and ends while it is open", async () => {
+    const items = [{ label: "Archive", onSelect: jest.fn() }];
+    const { rerender } = render(<MoreMenu items={items} />);
+    open("More");
+    await screen.findByRole("menu");
+    rerender(<MoreMenu busy items={items} />);
+    rerender(<MoreMenu items={items} />);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("puts destructive items last whatever order they come in", async () => {
+    render(
+      <MoreMenu
+        items={[
+          { label: "Edit", onSelect: jest.fn() },
+          { label: "Delete", onSelect: jest.fn(), destructive: true },
+          { label: "Duplicate", onSelect: jest.fn() },
+        ]}
+      />,
+    );
+    open("More");
+    await screen.findByRole("menu");
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Edit", "Duplicate", "Delete"]);
+  });
+
   it("keeps a disabled item's reason out of its name", async () => {
     render(
       <MoreMenu
