@@ -202,8 +202,9 @@ export function VariantsTab({
             )}
             {staged.length > 0 && (
               <Banner inline tone={BannerTone.Warning}>
-                {countOf(staged.length, "staged variant")} exist only in this
-                browser. Nothing reaches the server until you publish them, and
+                {countOf(staged.length, "staged variant")}{" "}
+                {staged.length === 1 ? "exists" : "exist"} only in this browser.
+                Nothing reaches the server until you publish them, and
                 refreshing the page discards them.
               </Banner>
             )}

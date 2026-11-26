@@ -100,7 +100,7 @@ it("warns that staged variants are lost on refresh", async () => {
 
   expect(
     screen.getByText(
-      /exist only in this browser.*refreshing the page discards/,
+      /exists? only in this browser.*refreshing the page discards/,
     ),
   ).toBeTruthy();
 });
