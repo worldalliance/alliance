@@ -325,6 +325,11 @@
   scrollbar-gutter: stable;
 }
 
+/* Base UI's room between a popup's anchor and the window's edge. */
+@utility max-h-available {
+  max-height: var(--available-height);
+}
+
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--color-accent);

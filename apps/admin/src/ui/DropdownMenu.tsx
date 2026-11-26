@@ -25,7 +25,7 @@ function DropdownMenuContent({
         <Menu.Popup
           className={cn(
             popupClass,
-            "min-w-32 overflow-x-hidden overflow-y-auto p-1",
+            "max-h-available min-w-32 overflow-x-hidden overflow-y-auto p-1",
             className,
           )}
           {...props}

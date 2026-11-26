@@ -28,6 +28,7 @@ const twMerge = extendTailwindMerge({
     },
     classGroups: {
       duration: [{ duration: ["fast", "base", "slow"] }],
+      "max-h": [{ "max-h": ["available"] }],
     },
   },
 });
