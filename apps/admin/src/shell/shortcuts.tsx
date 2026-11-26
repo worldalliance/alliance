@@ -19,7 +19,8 @@ export type Shortcut = {
   /**
    * Keys pressed one after another, separated by spaces: `[`, `g t`. `mod+k`
    * is ⌘K on a Mac and Ctrl+K elsewhere; `mod+shift+z` is ⇧⌘Z
-   * (a letter or a named key such as `enter`).
+   * (a letter or a named key such as `enter`). `escape` alone runs outside
+   * text fields, popups and dialogs, and stays on with single keys off.
    */
   keys: string;
   /** What it does, as the shortcut list words it. */
@@ -55,6 +56,14 @@ const readSingleKeysOn = (): boolean =>
   );
 
 const usesModifier = (keys: string) => keys.startsWith(MOD);
+// Not a character key (WCAG 2.1.4), so the single-key switch leaves it on.
+const NAMED_KEYS = new Set(["escape"]);
+const isNamed = (keys: string) => NAMED_KEYS.has(keys);
+const takesSingleKeysSwitch = (keys: string) =>
+  !usesModifier(keys) && !isNamed(keys);
+// Escape there closes or clears what holds it.
+const OWNS_ESCAPE =
+  "[role=menu], [role=listbox], [role=combobox], [role=dialog], [role=alertdialog]";
 
 const isMac = () =>
   typeof navigator !== "undefined" &&
@@ -62,6 +71,7 @@ const isMac = () =>
 
 /** The keys as printed: `mod+k` is ⌘K on a Mac. */
 export const shortcutKeys = (keys: string): string[] => {
+  if (isNamed(keys)) return [keys[0].toUpperCase() + keys.slice(1)];
   if (!usesModifier(keys)) return keys.split(" ");
   const rest = keys.slice(MOD.length);
   const shift = rest.startsWith(SHIFT);
@@ -116,7 +126,7 @@ function ShortcutList({
                 >
                   <span
                     className={
-                      !singleKeysOn && !usesModifier(shortcut.keys)
+                      !singleKeysOn && takesSingleKeysSwitch(shortcut.keys)
                         ? "text-fg-muted line-through"
                         : undefined
                     }
@@ -184,6 +194,16 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
         `shortcut ${shortcut.keys} ("${shortcut.label}") never fires: only a letter or a named key takes mod+shift+`,
       );
     }
+    if (
+      !usesModifier(shortcut.keys) &&
+      !shortcut.keys.includes(" ") &&
+      shortcut.keys.length > 1 &&
+      !isNamed(shortcut.keys)
+    ) {
+      throw new Error(
+        `shortcut ${shortcut.keys} ("${shortcut.label}") never fires: a named key alone is one of ${[...NAMED_KEYS].join(", ")}`,
+      );
+    }
     setShortcuts((prev) => {
       const taken = [...prev].find(
         ([otherId, other]) =>
@@ -230,6 +250,24 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
         }
         event.preventDefault();
         shortcut.run();
+        return;
+      }
+      const named = all.find(
+        (candidate) =>
+          isNamed(candidate.keys) && candidate.keys === event.key.toLowerCase(),
+      );
+      if (named && !event.altKey && !event.shiftKey) {
+        reset();
+        if (
+          isTyping(event.target) ||
+          (event.target instanceof Element &&
+            event.target.closest(OWNS_ESCAPE)) ||
+          document.querySelector("[role=dialog], [role=alertdialog]")
+        ) {
+          return;
+        }
+        event.preventDefault();
+        named.run();
         return;
       }
       if (

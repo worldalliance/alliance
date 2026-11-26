@@ -343,3 +343,80 @@ it("tells Shift apart, leaves a text field, not a checkbox, its own undo and lis
   setPlatform("MacIntel");
   expect(shortcutKeys("mod+shift+z")).toEqual(["⇧⌘Z"]);
 });
+
+const Up = ({ run }: { run: () => void }) => {
+  useShortcut({ keys: "escape", label: "Select the parent", run });
+  const openList = useOpenShortcutList();
+  return (
+    <>
+      <input aria-label="Name" />
+      <div role="menu" tabIndex={-1} aria-label="Options" />
+      <button type="button" onClick={openList}>
+        Keyboard shortcuts
+      </button>
+    </>
+  );
+};
+
+const renderUp = () => {
+  const run = mock();
+  render(
+    <ShortcutsProvider>
+      <Up run={run} />
+    </ShortcutsProvider>,
+  );
+  return run;
+};
+
+it("runs Escape on the page, not in a field or a popup, and lists it", async () => {
+  const run = renderUp();
+
+  fireEvent.keyDown(screen.getByRole("textbox", { name: "Name" }), {
+    key: "Escape",
+  });
+  fireEvent.keyDown(screen.getByRole("menu", { name: "Options" }), {
+    key: "Escape",
+  });
+  expect(run).not.toHaveBeenCalled();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(run).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+  const dialog = await screen.findByRole("dialog", {
+    name: "Keyboard shortcuts",
+  });
+  const row = dialog.querySelector("li");
+  expect(row?.textContent).toBe("Select the parentEscape");
+  expect(row?.querySelector(".line-through")).toBeNull();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
+it("keeps Escape on with single keys off", async () => {
+  window.localStorage.setItem("alliance.admin.singleKeyShortcuts.v1", "off");
+  const run = renderUp();
+
+  fireEvent.keyDown(window, { key: "Escape" });
+
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
+it("refuses a named key alone that it doesn't take", () => {
+  const Unreachable = () => {
+    useShortcut({ keys: "enter", label: "Open", run: () => {} });
+    return null;
+  };
+  const error = console.error;
+  console.error = () => {};
+  try {
+    expect(() =>
+      render(
+        <ShortcutsProvider>
+          <Unreachable />
+        </ShortcutsProvider>,
+      ),
+    ).toThrow('shortcut enter ("Open") never fires');
+  } finally {
+    console.error = error;
+  }
+});
