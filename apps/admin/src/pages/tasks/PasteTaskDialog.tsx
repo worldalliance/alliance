@@ -108,6 +108,7 @@ export function PasteTaskDialog({ onClose }: { onClose: () => void }) {
   const [pasting, setPasting] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
+  const jsonRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     let current = true;
@@ -182,7 +183,7 @@ export function PasteTaskDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal onClose={onClose} dismissDisabled={pasting}>
+    <Modal onClose={onClose} dismissDisabled={pasting} initialFocus={jsonRef}>
       <form ref={formRef} onSubmit={(event) => void submit(event)} noValidate>
         <ModalHeader>
           <ModalTitle>Paste a task</ModalTitle>
@@ -199,6 +200,7 @@ export function PasteTaskDialog({ onClose }: { onClose: () => void }) {
             {(control) => (
               <Textarea
                 {...control}
+                ref={jsonRef}
                 rows={6}
                 value={text}
                 onChange={(event) => {

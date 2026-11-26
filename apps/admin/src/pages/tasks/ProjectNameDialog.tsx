@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import {
   useCreateProjectAdmin,
@@ -34,6 +34,7 @@ export function ProjectNameDialog({
   const [error, setError] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
+  const nameRef = useRef<HTMLInputElement>(null);
   const refuse = (fallback: string) => (cause: Error) =>
     setRefusal(adminRefusalMessage(cause, fallback));
   const create = useCreateProjectAdmin({
@@ -69,7 +70,7 @@ export function ProjectNameDialog({
   };
 
   return (
-    <Modal onClose={onClose} dismissDisabled={busy}>
+    <Modal onClose={onClose} dismissDisabled={busy} initialFocus={nameRef}>
       <form ref={formRef} noValidate onSubmit={submit}>
         <ModalHeader>
           <ModalTitle>{renaming ? "Rename project" : "New project"}</ModalTitle>
@@ -87,7 +88,7 @@ export function ProjectNameDialog({
             {(control) => (
               <Input
                 {...control}
-                autoFocus
+                ref={nameRef}
                 value={name}
                 onChange={(event) => {
                   setName(event.target.value);

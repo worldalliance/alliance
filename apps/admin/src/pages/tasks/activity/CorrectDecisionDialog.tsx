@@ -1,5 +1,5 @@
 import type { CohortDecisionDto } from "@alliance/shared/client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { useCorrectCohortDecisionAdmin } from "../../../lib/useCohortDecisionsAdmin";
 import Button, { ButtonVariant } from "../../../ui/Button";
@@ -34,6 +34,7 @@ export function CorrectDecisionDialog({
   onClose: () => void;
 }) {
   const [note, setNote] = useState("");
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const included = !decision.included;
   const correct = useCorrectCohortDecisionAdmin({
@@ -61,7 +62,11 @@ export function CorrectDecisionDialog({
   };
 
   return (
-    <Modal onClose={onClose} dismissDisabled={correct.isPending}>
+    <Modal
+      onClose={onClose}
+      dismissDisabled={correct.isPending}
+      initialFocus={reasonRef}
+    >
       <form onSubmit={submit}>
         <ModalHeader>
           <ModalTitle>
@@ -77,6 +82,7 @@ export function CorrectDecisionDialog({
             {(control) => (
               <Textarea
                 {...control}
+                ref={reasonRef}
                 value={note}
                 rows={3}
                 onChange={(event) => {
