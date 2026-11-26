@@ -259,6 +259,7 @@ export function SaveBar({
   stateText,
   onSave,
   onDiscard,
+  disabled = false,
 }: {
   state: SaveState;
   /** Why the save failed: the reason alone, since the bar leads with "Couldn't save: ". */
@@ -278,6 +279,8 @@ export function SaveBar({
   /** Omit when the bar sits in a `<form>` and Save submits it. */
   onSave?: () => void;
   onDiscard?: () => void;
+  /** While another write on the page runs, such as a delete. */
+  disabled?: boolean;
 }) {
   const saving = state === SaveState.Saving;
   const failed = state === SaveState.Failed;
@@ -293,6 +296,7 @@ export function SaveBar({
             variant={ButtonVariant.Primary}
             onClick={onSave}
             busy={saving}
+            disabled={disabled}
             className="shrink-0"
           >
             {saveLabel}
@@ -302,6 +306,7 @@ export function SaveBar({
             variant={ButtonVariant.Primary}
             type="submit"
             busy={saving}
+            disabled={disabled}
             className="shrink-0"
           >
             {saveLabel}
@@ -311,7 +316,7 @@ export function SaveBar({
           <Button
             variant={ButtonVariant.Ghost}
             onClick={onDiscard}
-            disabled={saving || state === SaveState.Clean}
+            disabled={disabled || saving || state === SaveState.Clean}
             className="shrink-0"
           >
             Discard

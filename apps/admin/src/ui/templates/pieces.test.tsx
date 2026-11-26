@@ -290,6 +290,22 @@ describe("SaveBar words", () => {
       "Couldn't upload: Too large",
     );
   });
+
+  it("disables Save and Discard while another write on the page runs", () => {
+    render(
+      <SaveBar
+        state={SaveState.Dirty}
+        disabled
+        onSave={() => {}}
+        onDiscard={() => {}}
+      />,
+    );
+    for (const name of ["Save changes", "Discard"]) {
+      expect(
+        screen.getByRole("button", { name }).hasAttribute("disabled"),
+      ).toBe(true);
+    }
+  });
 });
 
 describe("FieldGroup", () => {
