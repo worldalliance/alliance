@@ -19,6 +19,7 @@ import {
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import { ToastProvider } from "../ui/ToastProvider";
+import { pickUser } from "../ui/UserSelect.testing";
 import ShareLinksPage from "./ShareLinksPage";
 
 const campaign = (id: number, name: string): CampaignDto => ({
@@ -197,9 +198,8 @@ const pickOwner = async (query = queryWrapper()) => {
     </ToastProvider>,
     query,
   );
-  const [userSearch] = await screen.findAllByRole("textbox");
-  fireEvent.change(userSearch, { target: { value: "Test" } });
-  fireEvent.click(await screen.findByRole("button", { name: /Test Member/ }));
+  const userSearch = await screen.findByPlaceholderText("Search by name");
+  await pickUser(userSearch, { query: "Test", name: /Test Member/ });
   return screen.findByPlaceholderText("Search actions…");
 };
 

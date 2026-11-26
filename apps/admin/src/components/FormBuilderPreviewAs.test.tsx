@@ -3,6 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, expect, it } from "bun:test";
 import { renderSavedFormBuilder } from "../lib/testing/renderFormBuilder";
+import { pickUser } from "../ui/UserSelect.testing";
 
 const schema: FormSchema = {
   pages: [
@@ -161,20 +162,20 @@ it("highlights a card only until the member bar picks someone", async () => {
   expect(checked()).toEqual([false, true]);
 
   fireEvent.click(screen.getByRole("button", { name: "Remove Ben" }));
-  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
-    target: { value: "Ana" },
+  await pickUser(screen.getByPlaceholderText("Search by name"), {
+    query: "Ana",
+    name: /Ana/,
   });
-  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
   expect(
     await screen.findByRole("button", { name: "Remove Ana" }),
   ).toBeTruthy();
   expect(checked()).toEqual([false, false]);
 
   fireEvent.click(screen.getByRole("button", { name: "Remove Ana" }));
-  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
-    target: { value: "Ben" },
+  await pickUser(screen.getByPlaceholderText("Search by name"), {
+    query: "Ben",
+    name: /Ben/,
   });
-  fireEvent.click(await screen.findByRole("button", { name: /Ben/ }));
   expect(
     await screen.findByRole("button", { name: "Remove Ben" }),
   ).toBeTruthy();

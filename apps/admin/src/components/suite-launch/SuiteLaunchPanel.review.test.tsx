@@ -1,6 +1,7 @@
 import { onlineManager } from "@tanstack/react-query";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, it, setSystemTime } from "bun:test";
+import { pickUser } from "../../ui/UserSelect.testing";
 import { LaunchSection } from "./launchBlockers";
 import {
   api,
@@ -47,10 +48,10 @@ it("previews the actions assigned to a picked member", async () => {
   renderPanel();
   await screen.findByText("Double space · Call · Action page description");
 
-  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
-    target: { value: "Ana" },
+  await pickUser(screen.getByPlaceholderText("Search by name"), {
+    query: "Ana",
+    name: /Ana/,
   });
-  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
 
   const row = (
     await screen.findByRole("link", { name: "Log in as this member" })
@@ -86,10 +87,10 @@ it("previews each of an action's variant forms as a picked member", async () => 
   renderPanel();
   await screen.findByText("Double space · Call · Action page description");
 
-  fireEvent.change(screen.getByPlaceholderText("Search by name"), {
-    target: { value: "Ana" },
+  await pickUser(screen.getByPlaceholderText("Search by name"), {
+    query: "Ana",
+    name: /Ana/,
   });
-  fireEvent.click(await screen.findByRole("button", { name: /Ana/ }));
 
   expect(
     (

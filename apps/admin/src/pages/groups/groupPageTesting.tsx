@@ -19,6 +19,7 @@ import { Suspense, type ReactNode } from "react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import LeaveGuard from "../../components/LeaveGuard";
 import { ToastProvider } from "../../ui/ToastProvider";
+import { pickUser } from "../../ui/UserSelect.testing";
 import GroupPage from "./GroupPage";
 
 afterEach(cleanup);
@@ -199,8 +200,7 @@ export const addAda = async (params: {
     .getByText(params.pick, { selector: "label" })
     .parentElement!.querySelector("input")!;
 
-  fireEvent.change(picker, { target: { value: "Ada" } });
-  fireEvent.click(await dialog.findByRole("button", { name: /Ada/ }));
+  await pickUser(picker, { query: "Ada", name: /Ada/ });
   fireEvent.click(dialog.getByRole("button", { name: params.add }));
 };
 

@@ -33,11 +33,11 @@ describe("the form builder's preview-as picker", () => {
     expect(userListCalls).toBe(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    fireEvent.change(await screen.findByRole("textbox"), {
-      target: { value: "Ana" },
-    });
+    const search = await screen.findByRole("combobox");
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    fireEvent.change(search, { target: { value: "Ana" } });
 
-    expect(await screen.findByRole("button", { name: "Ana" })).toBeTruthy();
+    expect(await screen.findByRole("option", { name: "Ana" })).toBeTruthy();
     expect(userListCalls).toBe(1);
   });
 

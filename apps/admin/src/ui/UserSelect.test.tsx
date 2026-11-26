@@ -1,5 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
+import { useState } from "react";
+import { Field } from "./templates/Form";
 import UserSelect from "./UserSelect";
 
 afterEach(cleanup);
@@ -98,5 +106,71 @@ describe("UserSelect hint", () => {
       />,
     );
     expect(screen.queryByText("No one yet")).toBeNull();
+  });
+});
+
+function Picker(props: { single?: boolean; error?: string }) {
+  const [ids, setIds] = useState<number[]>([]);
+  return (
+    <Field label="Member" error={props.error}>
+      {(control) => (
+        <UserSelect
+          {...control}
+          label={null}
+          users={USERS}
+          selectedUserIds={ids}
+          onChange={setIds}
+          single={props.single}
+        />
+      )}
+    </Field>
+  );
+}
+
+describe("UserSelect in Field", () => {
+  it("takes its name and error from Field", () => {
+    render(<Picker error="Pick someone." />);
+    const box = screen.getByRole("combobox", { name: "Member" });
+    expect(box.getAttribute("aria-invalid")).toBe("true");
+    expect(box.getAttribute("aria-describedby")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("Pick someone.");
+  });
+
+  it("picks with the arrow keys and Enter", async () => {
+    render(<Picker />);
+    const box = screen.getByRole("combobox", { name: "Member" });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBe(2));
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.keyDown(box, { key: "Enter" });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Remove Grace Hopper" })),
+    );
+  });
+
+  it("moves focus to the picked row's Remove after a single pick", async () => {
+    render(<Picker single />);
+    const box = screen.getByRole("combobox", { name: "Member" });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.input(box, { target: { value: "ada" } });
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBe(1));
+    fireEvent.keyDown(box, { key: "Enter" });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Remove Ada Lovelace" }),
+      ),
+    );
+  });
+
+  it("leaves no gap when nothing is picked and there is no hint", () => {
+    const { container } = render(
+      <UserSelect
+        users={USERS}
+        selectedUserIds={[]}
+        onChange={() => {}}
+        single
+      />,
+    );
+    expect(container.querySelector(".grid")).toBeNull();
   });
 });

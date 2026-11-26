@@ -21,6 +21,7 @@ import { answerLeaveGuard } from "../../lib/testing/leaveGuard";
 import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import { LOAD_FAILED_FALLBACK } from "../../ui/templates/States";
 import { ToastProvider } from "../../ui/ToastProvider";
+import { pickUser } from "../../ui/UserSelect.testing";
 import GeneralUpdatePage from "./GeneralUpdatePage";
 
 const startDate = "2026-03-10T15:00:00.000Z";
@@ -315,10 +316,10 @@ it("saves the picked suite, tags, and manual cohort", async () => {
 
   fireEvent.click(await screen.findByLabelText(/Volunteers/));
   fireEvent.click(screen.getByLabelText("Manual cohort"));
-  fireEvent.change(await screen.findByPlaceholderText("Search by name"), {
-    target: { value: "Ana" },
+  await pickUser(await screen.findByPlaceholderText("Search by name"), {
+    query: "Ana",
+    name: "Ana",
   });
-  fireEvent.click(await screen.findByRole("button", { name: "Ana" }));
   const suites = screen.getByRole("combobox", { name: /^Suites/ });
   fireEvent.keyDown(suites, { key: "ArrowDown" });
   fireEvent.click(await screen.findByRole("option", { name: "Spring" }));

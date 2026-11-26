@@ -10,6 +10,7 @@ import * as config from "@alliance/sharedweb/lib/config";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { ToastProvider } from "../ui/ToastProvider";
+import { pickUser } from "../ui/UserSelect.testing";
 import InvitesPage from "./InvitesPage";
 
 const created: unknown[] = [];
@@ -92,10 +93,10 @@ it("creates one invite per submit, clears the inviting user, and returns to the 
   fireEvent.change(screen.getByPlaceholderText(/preferably a first name/), {
     target: { value: "Alex" },
   });
-  fireEvent.change(screen.getByPlaceholderText(/search/i), {
-    target: { value: "Jor" },
+  await pickUser(screen.getByPlaceholderText(/search/i), {
+    query: "Jor",
+    name: "Jordan",
   });
-  fireEvent.click(await screen.findByRole("button", { name: "Jordan" }));
   const createButton = screen.getByRole("button", { name: "Create Invite" });
   fireEvent.click(createButton);
   await waitFor(() => expect(createButton.hasAttribute("disabled")).toBe(true));
