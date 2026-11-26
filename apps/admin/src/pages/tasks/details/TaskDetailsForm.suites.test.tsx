@@ -1,5 +1,5 @@
 import type { ActionSuiteDto } from "@alliance/shared/client";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { options, renderForm } from "./renderDetailsForm";
 
 const suite = (isPartitioned: boolean): ActionSuiteDto => ({
@@ -96,7 +96,25 @@ describe("TaskDetailsForm suites", () => {
     screen.getByText(/^Clear this task's prerequisites/);
     rerender({ cohortExpression: null });
 
-    expect(rules("Participating members")).toBeTruthy();
+    within(
+      screen.getByRole("group", { name: "Participating members" }),
+    ).getByText("The suite's partition decides who takes part.");
     expect(screen.queryByText(/^Clear this task's prerequisites/)).toBeNull();
+  });
+
+  it("still says nobody sees a Participating groups task with no conditions in a partitioned suite", () => {
+    renderForm({
+      form: {
+        suiteId: 3,
+        visibilityMode: "participating_groups",
+        prerequisiteActionIds: [9],
+      },
+      lookups: { availableSuites: [suite(true)] },
+    });
+    within(
+      screen.getByRole("group", { name: "Participating members" }),
+    ).getByText(
+      "No conditions, so no members match, and nobody sees it once launched.",
+    );
   });
 });

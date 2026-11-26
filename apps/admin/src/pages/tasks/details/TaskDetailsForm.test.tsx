@@ -173,14 +173,16 @@ describe("TaskDetailsForm", () => {
   it("warns that a stored cohort it couldn't read would be erased by a save", () => {
     renderForm();
     expect(
-      screen.queryByText(/^The stored cohort couldn't be read/),
+      screen.queryByText(
+        /^The stored cohort couldn't be read, so the cohort editor/,
+      ),
     ).toBeNull();
 
     cleanup();
     renderForm({ cohortParseFailed: true });
     expect(
       screen
-        .getByText(/^The stored cohort couldn't be read/)
+        .getByText(/^The stored cohort couldn't be read, so the cohort editor/)
         .closest('[role="alert"]'),
     ).toBeTruthy();
   });

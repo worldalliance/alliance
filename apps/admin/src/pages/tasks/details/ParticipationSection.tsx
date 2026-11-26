@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import OpenReferenceWarning from "../../../components/OpenReferenceWarning";
 import {
   inPartitionedSuite,
   suiteKindUnknown,
@@ -14,8 +13,13 @@ import {
   FormSection,
 } from "../../../ui/templates/Form";
 import CohortExpressionBuilder from "../cohort/CohortExpressionBuilder";
+import OpenReferenceWarning from "../cohort/OpenReferenceWarning";
 import PrerequisitePicker from "../cohort/PrerequisitePicker";
-import type { DetailsSectionProps } from "./detailsRules";
+import {
+  PUBLIC_ONLY_EMPTY_COHORT,
+  VISIBILITY_MODES,
+  type DetailsSectionProps,
+} from "./detailsRules";
 
 const dateOrNull = (value: string | null | undefined) =>
   value ? new Date(value) : null;
@@ -24,7 +28,8 @@ export function ParticipationSection({
   editor,
   lookups,
   task,
-}: DetailsSectionProps) {
+  cohortParseFailed,
+}: DetailsSectionProps & { cohortParseFailed: boolean }) {
   const { form, cohortExpression } = editor;
   const prerequisites = form.prerequisiteActionIds ?? [];
   const kindUnknown = suiteKindUnknown(
@@ -87,6 +92,7 @@ export function ParticipationSection({
               availableActions={lookups.allActions ?? []}
               actionId={task?.id}
               loading={lookups.allActionsLoading}
+              loadFailed={lookups.allActionsLoadFailed}
             />
           </FieldGroup>
           <FieldGroup
@@ -96,6 +102,16 @@ export function ParticipationSection({
             <CohortExpressionBuilder
               value={cohortExpression}
               onChange={editor.handleCohortExpressionChange}
+              unreadable={cohortParseFailed}
+              emptyHint={
+                form.publicOnly
+                  ? PUBLIC_ONLY_EMPTY_COHORT
+                  : partitioned &&
+                      form.visibilityMode !== "participating_groups"
+                    ? "The suite's partition decides who takes part."
+                    : VISIBILITY_MODES[form.visibilityMode ?? "public"]
+                        .emptyCohort
+              }
               availableTags={lookups.availableTags ?? []}
               tagsLoading={lookups.tagsLoading}
               tagsError={lookups.tagsError}

@@ -49,15 +49,18 @@ export function TaskDetailsForm({
     >
       {cohortParseFailed && (
         <Banner tone={BannerTone.Danger} inline>
-          The stored cohort couldn't be read, so the cohort editor below is
-          empty and saving is refused, since a save would erase it. Fix the
+          The stored cohort couldn't be read, so the cohort editor below can't
+          show it and saving is refused, since a save would erase it. Fix the
           stored data, then reload the page. The browser console has the
           details.
         </Banner>
       )}
       <ContentSection {...sections} />
       <SetupSection {...sections} />
-      <ParticipationSection {...sections} />
+      <ParticipationSection
+        {...sections}
+        cohortParseFailed={cohortParseFailed}
+      />
       <VisibilitySection
         editor={editor}
         task={task}

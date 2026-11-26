@@ -74,21 +74,31 @@ export const detailsSaveNote = (
   return "";
 };
 
+/** A public-only task's page opens to anyone (`userCanOpenAction`, server/src/actions/action-visibility.service.ts). */
+export const PUBLIC_ONLY_EMPTY_COHORT =
+  "No conditions, so no members are assigned. Its page still opens to anyone with the link.";
+
 export const VISIBILITY_MODES: Record<
   VisibilityMode,
-  { label: string; help: string }
+  { label: string; help: string; emptyCohort: string }
 > = {
   public: {
     label: "Public",
     help: "Once launched, anyone can open and see it, signed in or not. The cohort still decides who is assigned, reminded and counted.",
+    emptyCohort:
+      "No conditions, so no members are assigned. Once launched, anyone can still see it.",
   },
   all_members: {
     label: "All members",
     help: "Once launched, every signed-in member sees it.",
+    emptyCohort:
+      "No conditions, so no members are assigned. Once launched, every member still sees it.",
   },
   participating_groups: {
     label: "Participating groups",
     help: "Once launched, only members in the cohort see it.",
+    emptyCohort:
+      "No conditions, so no members match, and nobody sees it once launched.",
   },
 };
 
