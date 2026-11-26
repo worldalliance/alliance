@@ -52,6 +52,7 @@ describe("OutputBuilder hands a display block the addressed write", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: /block-1/ }));
     fireEvent.change(screen.getByPlaceholderText("Enter header text"), {
       target: { value: "Results" },
     });

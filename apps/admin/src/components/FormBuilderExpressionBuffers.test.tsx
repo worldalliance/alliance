@@ -53,6 +53,10 @@ const revisitTabs = (away: string, back: string) => {
   fireEvent.click(screen.getByRole("tab", { name: away }));
   fireEvent.click(screen.getByRole("tab", { name: back }));
 };
+const openOutputBlockConditions = () => {
+  fireEvent.click(screen.getByRole("button", { name: /block-1/ }));
+  openSection("Conditions");
+};
 const revisit = (away: string, back: string) => {
   fireEvent.click(screen.getByRole("treeitem", { name: away }));
   fireEvent.click(screen.getByRole("treeitem", { name: back }));
@@ -115,11 +119,12 @@ it("keeps an output block's expression text across tabs", async () => {
     }),
   );
   fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
+  openOutputBlockConditions();
   editAsExpression();
   await typeExpression("c1 AND");
 
-  fireEvent.click(screen.getByRole("tab", { name: "Shareable text" }));
-  fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
+  revisitTabs("Shareable text", "Output views");
+  openOutputBlockConditions();
   expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
 });
 
@@ -190,28 +195,6 @@ it("keeps an id-less block's text out of history, for only as long as it is moun
 });
 
 /**
- * Text typed before any rule saves no formula, so only the toggle decides
- * whether it shows: it reopens the toggle, and turning the toggle off drops it.
- */
-const expectToggleKeepsThenDropsText = async ({
-  toggle,
-  revisitEditor,
-}: {
-  toggle: () => void;
-  revisitEditor: () => void;
-}) => {
-  toggle();
-  editAsExpression();
-  await typeExpression("c9");
-
-  revisitEditor();
-  expect(expressions().map((box) => box.value)).toEqual(["c9"]);
-  toggle();
-  toggle();
-  expect(expressions().map((box) => box.value)).toEqual([]);
-};
-
-/**
  * Text typed before any rule saves no formula, so it stays in the sidebar's
  * Conditions on every visit until all conditions are removed.
  */
@@ -273,7 +256,7 @@ it("keeps a display block's rule-less text until its conditions are removed", as
   });
 });
 
-it("keeps an output block's rule-less text behind its toggle until turned off", async () => {
+it("keeps an output block's rule-less text until its conditions are removed", async () => {
   answerLeaveGuard(true);
   renderFormBuilder(
     schemaWith([], {
@@ -287,9 +270,8 @@ it("keeps an output block's rule-less text behind its toggle until turned off", 
     }),
   );
   fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
-  await expectToggleKeepsThenDropsText({
-    toggle: () =>
-      fireEvent.click(screen.getByLabelText("Conditional visibility")),
+  await expectRuleLessTextKeptUntilRemoved({
+    openConditions: openOutputBlockConditions,
     revisitEditor: () => revisitTabs("Shareable text", "Output views"),
   });
 });

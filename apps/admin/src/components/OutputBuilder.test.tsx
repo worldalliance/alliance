@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { dragOverAt } from "../lib/testing/dragOverAt";
 import { SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import { ToastProvider } from "../ui/ToastProvider";
@@ -133,7 +133,9 @@ describe("OutputBuilder", () => {
       fireEvent.dragStart(handles[0], { dataTransfer: {} });
       const zone = target(handles);
       dragOverAt(zone, clientY);
-      fireEvent.drop(zone, { dataTransfer: {} });
+      const drop = createEvent.drop(zone, { dataTransfer: {} });
+      Object.defineProperty(drop, "clientY", { value: clientY });
+      fireEvent(zone, drop);
       return emitted.at(-1)?.outputViews?.[0].blocks.map((block) => block.id);
     };
 
@@ -154,14 +156,11 @@ describe("OutputBuilder", () => {
     });
 
     it("moves a block to the end wherever it's dropped below the last one", () => {
-      expect(
-        dragFirstOnto((handles) => {
-          let lastRow = handles[2];
-          while (!lastRow.parentElement!.contains(handles[0]))
-            lastRow = lastRow.parentElement!;
-          return lastRow.nextElementSibling!;
-        }, -1),
-      ).toEqual(["B", "C", "A"]);
+      expect(dragFirstOnto((handles) => handles[2].closest("ul")!, 1)).toEqual([
+        "B",
+        "C",
+        "A",
+      ]);
     });
   });
 
@@ -188,13 +187,20 @@ describe("OutputBuilder", () => {
       })),
     };
 
-    const addedBlock = (add: () => void) => {
+    const addFromMenu = async (item: string) => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /^Add block to/ })[1],
+      );
+      fireEvent.click(await screen.findByRole("menuitem", { name: item }));
+    };
+
+    const addedBlock = async (add: () => Promise<void>) => {
       const emitted: FormSchema[] = [];
       renderBuilder(schema, {
         onSchemaChange: (next) => emitted.push(next),
         selectedViewId: "view-2",
       });
-      add();
+      await add();
       const [first, selected] = emitted.at(-1)?.outputViews ?? [];
       expect(first).toEqual(schema.outputViews?.[0]);
       expect(selected.blocks[0]).toEqual({
@@ -205,21 +211,13 @@ describe("OutputBuilder", () => {
       return selected.blocks[1];
     };
 
-    it("appends a display block to the selected view", () => {
-      const block = addedBlock(() =>
-        fireEvent.change(screen.getByDisplayValue("Add display block…"), {
-          target: { value: "header" },
-        }),
-      );
+    it("appends a display block to the selected view", async () => {
+      const block = await addedBlock(() => addFromMenu("Header"));
       expect(block).toMatchObject({ type: "display", kind: "header" });
     });
 
-    it("appends an output field block for the first output field", () => {
-      const block = addedBlock(() =>
-        fireEvent.click(
-          screen.getByRole("button", { name: "Add output field block" }),
-        ),
-      );
+    it("appends an output field block for the first output field", async () => {
+      const block = await addedBlock(() => addFromMenu("Output field block"));
       expect(block).toMatchObject({ fieldId: "name", format: "field" });
     });
   });

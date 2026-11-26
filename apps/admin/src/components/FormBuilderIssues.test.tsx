@@ -625,8 +625,12 @@ describe("FormBuilder issues", () => {
     });
     fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
 
-    expect(screen.getAllByRole("textbox", { name: "Expression" })).toHaveLength(
-      2,
-    );
+    for (const block of ["b1", "b2"]) {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(block) }));
+      openSection("Conditions");
+      expect(
+        screen.getAllByRole("textbox", { name: "Expression" }),
+      ).toHaveLength(1);
+    }
   });
 });

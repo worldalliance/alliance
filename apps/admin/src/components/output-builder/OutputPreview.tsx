@@ -8,6 +8,7 @@ import type {
 import { getRankingSlotCount } from "@alliance/common/forms/ranking";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import { useMemo } from "react";
+import { EmptyState } from "../../ui/EmptyState";
 
 const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
   const answers: Record<string, FormValue> = {};
@@ -91,33 +92,27 @@ export function OutputPreview({
     [outputFields],
   );
 
-  return (
-    <div className="border-t border-gray-200 pt-6 mt-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-900">Output preview</h3>
-      </div>
-      {view.blocks.length > 0 ? (
-        <div className="member-surface border-t border-gray-200 pt-2">
-          <OutputRenderer
-            submission={{
-              id: 0,
-              formId: 0,
-              deviceType: null,
-              answers: previewAnswers,
-              visibilityValidatorResults: {},
-              publicAnswers: Object.fromEntries(
-                outputFields.map((field) => [field.id, true]),
-              ),
-              schemaSnapshot: schema as unknown as Record<string, unknown>,
-            }}
-            viewId={view.id}
-          />
-        </div>
-      ) : (
-        <p className="text-xs text-gray-500">
-          Add at least one block to see a preview.
-        </p>
-      )}
+  return view.blocks.length > 0 ? (
+    <div className="member-surface mx-auto w-full max-w-3xl rounded-card border border-line bg-surface p-card">
+      <OutputRenderer
+        submission={{
+          id: 0,
+          formId: 0,
+          deviceType: null,
+          answers: previewAnswers,
+          visibilityValidatorResults: {},
+          publicAnswers: Object.fromEntries(
+            outputFields.map((field) => [field.id, true]),
+          ),
+          schemaSnapshot: schema as unknown as Record<string, unknown>,
+        }}
+        viewId={view.id}
+      />
     </div>
+  ) : (
+    <EmptyState
+      title="Nothing to preview"
+      description="Add a block to this view to see it here with sample answers."
+    />
   );
 }

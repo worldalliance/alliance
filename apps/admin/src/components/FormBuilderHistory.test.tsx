@@ -104,7 +104,7 @@ beforeEach(() => {
 
 /** Lets the edit before it finish its task, as a separate event would. */
 const nextTask = () => act(async () => {});
-const button = (name: string) =>
+const button = (name: string | RegExp) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
 const copyPage = () => fromSelectionMenu("Copy page");
 const save = () =>
@@ -408,6 +408,8 @@ it("reopens the Output View's expression editor when undo restores its text", as
     1,
   );
   fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
+  fireEvent.click(button(/block-1/));
+  openSection("Conditions");
   fireEvent.click(button("Edit as expression"));
   const expression = () =>
     screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });

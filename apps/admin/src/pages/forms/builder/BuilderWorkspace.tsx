@@ -59,6 +59,8 @@ export function BuilderWorkspace() {
     >
       {activeEditor === FormEditor.Form ? (
         <FormPanes />
+      ) : activeEditor === FormEditor.Outputs ? (
+        <OutputViews />
       ) : (
         <Workspace toolbar={<BuilderToolbar />}>
           <MainPaneHeader title={EDITOR_TITLES[activeEditor]} />
@@ -71,7 +73,8 @@ export function BuilderWorkspace() {
   );
 }
 
-function OtherEditor({ editor }: { editor: FormEditor }) {
+/** Output views fill all three panes, so they lay out their own workspace. */
+function OutputViews() {
   const {
     schema,
     updateSchema,
@@ -80,6 +83,22 @@ function OtherEditor({ editor }: { editor: FormEditor }) {
     outputViewId,
     setOutputViewId,
   } = useBuilder();
+  return (
+    <OutputBuilder
+      schema={schema}
+      onSchemaChange={updateSchema}
+      onUpdateBlockById={updateBlockById}
+      editorsKey={schemaLoads}
+      selectedViewId={outputViewId}
+      onSelectView={setOutputViewId}
+      toolbar={<BuilderToolbar />}
+      header={(title) => <MainPaneHeader title={title} />}
+    />
+  );
+}
+
+function OtherEditor({ editor }: { editor: FormEditor }) {
+  const { schema, updateSchema, schemaLoads } = useBuilder();
   switch (editor) {
     case FormEditor.Form:
       return null;
@@ -88,16 +107,7 @@ function OtherEditor({ editor }: { editor: FormEditor }) {
         <ShareableTextBuilder schema={schema} onSchemaChange={updateSchema} />
       );
     case FormEditor.Outputs:
-      return (
-        <OutputBuilder
-          schema={schema}
-          onSchemaChange={updateSchema}
-          onUpdateBlockById={updateBlockById}
-          editorsKey={schemaLoads}
-          selectedViewId={outputViewId}
-          onSelectView={setOutputViewId}
-        />
-      );
+      return null;
     case FormEditor.Aggregates:
       return <AggregateBuilder schema={schema} onSchemaChange={updateSchema} />;
     case FormEditor.Variables:

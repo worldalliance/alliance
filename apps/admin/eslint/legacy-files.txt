@@ -42,15 +42,11 @@ src/components/FormSection.tsx
 src/components/HomePlacementBadges.tsx
 src/components/NewActionTimeline.tsx
 src/components/OpenReferenceWarning.tsx
-src/components/OutputBuilder.tsx
 src/components/PrerequisitePicker.tsx
 src/components/PreviewAsUserBar.tsx
 src/components/PriorityFollowUps.tsx
 src/components/UpdatePreview.tsx
 src/components/VisibilityProfilePicker.tsx
-src/components/output-builder/EditableOutputFieldBlock.tsx
-src/components/output-builder/OutputBlockList.tsx
-src/components/output-builder/OutputPreview.tsx
 src/pages/ActionDashboard.tsx
 src/pages/ActionUpdatePage.tsx
 src/pages/Actions.tsx
