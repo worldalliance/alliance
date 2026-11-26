@@ -1,22 +1,16 @@
-import { conversationNoteLabel } from "@alliance/common/forms/conversation";
-import type {
-  ConversationField,
-  ConversationOption,
-} from "@alliance/common/forms/form-schema";
-import { cn } from "@alliance/shared/styles/util";
+import type { ConversationField } from "@alliance/common/forms/form-schema";
+import { ExpandableEditor } from "../../pages/forms/builder/kit/ExpandableEditor";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { cn } from "../../ui/cn";
+import { controlClass } from "../../ui/styles";
+import { Field } from "../../ui/templates/Form";
 import { UserPicker } from "../UserPicker";
 import { VariableTextField } from "../VariableTextField";
-import {
-  DuplicateOptionsWarning,
-  RequiredToggle,
-  duplicateOptionValues,
-} from "./CommonControls";
+import { RequiredToggle } from "./CommonControls";
+import { ConversationOptions } from "./ConversationOptions";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
-
-const inputClassName =
-  "w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
 
 export function EditableConversationField({
   field,
@@ -24,33 +18,6 @@ export function EditableConversationField({
   previousFields,
   laterFields,
 }: BaseFieldProps<ConversationField>) {
-  const duplicates = duplicateOptionValues(field.options);
-
-  const updateOption = (index: number, updates: Partial<ConversationOption>) =>
-    onUpdate({
-      options: field.options.map((option, i) =>
-        i === index ? { ...option, ...updates } : option,
-      ),
-    });
-
-  const addOption = () => {
-    const next = field.options.length + 1;
-    onUpdate({
-      options: [
-        ...field.options,
-        { label: `Option ${next}`, value: `option${next}` },
-      ],
-    });
-  };
-
-  const removeOption = (index: number) => {
-    const removed = field.options[index];
-    onUpdate({
-      options: field.options.filter((_, i) => i !== index),
-      ...(removed?.value === field.defaultValue ? { defaultValue: null } : {}),
-    });
-  };
-
   return (
     <FieldWrapper
       field={field}
@@ -58,151 +25,52 @@ export function EditableConversationField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <div className="space-y-1">
-        <span className="block text-xs font-medium text-gray-700">Expert</span>
-        <UserPicker
-          placeholder="Search users by name or id"
-          ariaLabel="Expert"
-          selected={field.expert}
-          onChange={(expert) => onUpdate({ expert })}
-        />
-      </div>
-
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(label) => onUpdate({ label })}
-      />
-      <p className="text-xs text-gray-500">
-        Members don&apos;t see the label. It names the answer in responses.
-      </p>
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(required) => onUpdate({ required })}
-        label="Choice required"
-      />
-
-      <label className="block space-y-1">
-        <span className="block text-xs font-medium text-gray-700">
-          Expert&apos;s message (markdown)
-        </span>
-        <VariableTextField
-          multiline
-          rows={4}
-          value={field.message}
-          onChange={(message) => onUpdate({ message })}
-          className={cn(inputClassName, "resize-y")}
-          placeholder="What the expert asks"
-        />
-      </label>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="block text-xs font-medium text-gray-700">
-            Member&apos;s options
-          </span>
-          <button
-            onClick={addOption}
-            className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-            type="button"
-          >
-            Add option
-          </button>
+      <InspectorGroup>
+        <Field label="Expert">
+          {() => (
+            <UserPicker
+              placeholder="Search users by name or id"
+              ariaLabel="Expert"
+              selected={field.expert}
+              onChange={(expert) => onUpdate({ expert })}
+            />
+          )}
+        </Field>
+        <div className="flex flex-col gap-1.5">
+          <FieldLabelEditor
+            label="Question"
+            value={field.label}
+            onChange={(label) => onUpdate({ label })}
+          />
+          <p className="text-caption text-fg-muted">
+            Members don&apos;t see the label. It names the answer in responses.
+          </p>
         </div>
-        {field.options.map((option, index) => (
-          <fieldset
-            key={index}
-            className="space-y-2 rounded border border-gray-200 p-2"
-          >
-            <legend className="px-1 text-xs text-gray-500">
-              Option {index + 1}
-            </legend>
-            <div className="flex items-center gap-2">
-              <VariableTextField
-                multiline
-                rows={1}
-                value={option.label}
-                onChange={(label) => updateOption(index, { label })}
-                containerClassName="flex-1"
-                className={cn(inputClassName, "resize-y")}
-                placeholder="Option label"
-              />
-              <input
-                type="text"
-                aria-label={`Option ${index + 1} value`}
-                value={option.value}
-                onChange={(e) => updateOption(index, { value: e.target.value })}
-                className={cn(
-                  inputClassName,
-                  "w-20",
-                  duplicates.has(option.value) && "border-red-500",
-                )}
-                placeholder="Value"
-              />
-              <button
-                onClick={() => removeOption(index)}
-                className="text-xs text-red-600 hover:text-red-700"
-                type="button"
-              >
-                Remove
-              </button>
-            </div>
-            <VariableTextField
-              multiline
-              rows={2}
-              value={option.reply ?? ""}
-              onChange={(reply) =>
-                updateOption(index, { reply: reply || undefined })
-              }
-              className={cn(inputClassName, "resize-y")}
-              placeholder="Expert's reply to this option (optional, markdown)"
-            />
-            <RequiredToggle
-              checked={option.note !== undefined}
-              onChange={(on) =>
-                updateOption(index, { note: on ? {} : undefined })
-              }
-              label="Show note box"
-            />
-            {option.note && (
-              <div className="space-y-2 pl-5">
-                <RequiredToggle
-                  checked={option.note.required}
-                  onChange={(required) =>
-                    updateOption(index, { note: { ...option.note, required } })
-                  }
-                  label="Note required"
-                />
+        <RequiredToggle
+          checked={field.required}
+          onChange={(required) => onUpdate({ required })}
+          label="Choice required"
+        />
+        <Field label="Expert's message">
+          {() => (
+            <ExpandableEditor
+              title="Edit expert's message"
+              render={(size) => (
                 <VariableTextField
-                  aria-label={`Option ${index + 1} note box label`}
-                  value={option.note.label ?? ""}
-                  onChange={(label) =>
-                    updateOption(index, {
-                      note: { ...option.note, label: label || undefined },
-                    })
-                  }
-                  className={inputClassName}
-                  placeholder={`Note box label (default: ${conversationNoteLabel(option.note)})`}
+                  multiline
+                  rows={size === "sheet" ? 16 : 4}
+                  aria-label="Expert's message"
+                  value={field.message}
+                  onChange={(message) => onUpdate({ message })}
+                  className={cn(controlClass, "py-2")}
+                  placeholder="What the expert asks (markdown)"
                 />
-                <VariableTextField
-                  value={option.note.placeholder ?? ""}
-                  onChange={(placeholder) =>
-                    updateOption(index, {
-                      note: {
-                        ...option.note,
-                        placeholder: placeholder || undefined,
-                      },
-                    })
-                  }
-                  className={inputClassName}
-                  placeholder="Note box placeholder (optional)"
-                />
-              </div>
-            )}
-          </fieldset>
-        ))}
-        <DuplicateOptionsWarning duplicates={duplicates} />
-      </div>
+              )}
+            />
+          )}
+        </Field>
+      </InspectorGroup>
+      <ConversationOptions field={field} onUpdate={onUpdate} />
     </FieldWrapper>
   );
 }

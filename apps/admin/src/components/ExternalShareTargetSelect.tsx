@@ -4,6 +4,8 @@ import {
   externalShareTargetsLoadError,
   useExternalShareTargetsAdmin,
 } from "../lib/useExternalShareTargetsAdmin";
+import { Select } from "../ui/Select";
+import { Field } from "../ui/templates/Form";
 
 interface ExternalShareTargetSelectProps {
   label: string;
@@ -37,62 +39,65 @@ export function ExternalShareTargetSelect({
   const showSelect = hasTargets || isOrphaned;
 
   return (
-    <div className="space-y-1">
-      <label className="block text-xs font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      {isPending ? (
-        <p className="text-xs text-gray-500">Loading targets…</p>
-      ) : !targets ? (
-        <p className="text-xs text-red-600">
-          {externalShareTargetsLoadError(loadError)}
-        </p>
-      ) : showSelect ? (
-        <select
-          value={value ?? ""}
-          onChange={(event) => {
-            const next = targets.find(
-              (t) => t.id === Number(event.target.value),
-            );
-            if (next) {
-              onChange(next);
-            } else {
-              onClear();
-            }
-          }}
-          className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="">Select a target…</option>
-          {targets.map((target) => (
-            <option key={target.id} value={target.id}>
-              {target.name}
-            </option>
-          ))}
+    <Field
+      label={label}
+      error={error}
+      help={
+        <>
           {isOrphaned && (
-            <option value={value!}>Missing target #{value}</option>
+            <span className="block text-warning">
+              Selected target #{value} no longer exists. Pick another.
+            </span>
           )}
-        </select>
-      ) : (
-        <p className="text-xs text-gray-500">
-          No external share targets configured yet.
-        </p>
-      )}
-      <p className="text-xs text-gray-500">
-        {description}
-        {description ? " " : ""}
-        <Link
-          to="/growth/links?tab=share-targets"
-          className="text-blue-600 hover:underline"
-        >
-          Manage targets →
-        </Link>
-      </p>
-      {isOrphaned && (
-        <p className="text-xs text-amber-600">
-          Selected target #{value} no longer exists. Pick another.
-        </p>
-      )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
+          {description}
+          {description ? " " : ""}
+          <Link
+            to="/growth/links?tab=share-targets"
+            className="text-accent hover:underline"
+          >
+            Manage targets →
+          </Link>
+        </>
+      }
+    >
+      {(control) =>
+        isPending ? (
+          <p className="text-caption text-fg-muted">Loading targets…</p>
+        ) : !targets ? (
+          <p className="text-caption text-danger">
+            {externalShareTargetsLoadError(loadError)}
+          </p>
+        ) : showSelect ? (
+          <Select
+            {...control}
+            value={value ?? ""}
+            onChange={(event) => {
+              const next = targets.find(
+                (t) => t.id === Number(event.target.value),
+              );
+              if (next) {
+                onChange(next);
+              } else {
+                onClear();
+              }
+            }}
+          >
+            <option value="">Select a target…</option>
+            {targets.map((target) => (
+              <option key={target.id} value={target.id}>
+                {target.name}
+              </option>
+            ))}
+            {isOrphaned && (
+              <option value={value!}>Missing target #{value}</option>
+            )}
+          </Select>
+        ) : (
+          <p className="text-caption text-fg-muted">
+            No external share targets configured yet.
+          </p>
+        )
+      }
+    </Field>
   );
 }

@@ -2,6 +2,10 @@ import { type AdminUserListItemDto } from "@alliance/shared/client";
 import { useMemo, useState } from "react";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 import { AvatarProfile } from "../ui/Avatar";
+import Button, { ButtonVariant } from "../ui/Button";
+import { cn } from "../ui/cn";
+import { Input } from "../ui/Input";
+import { popupClass } from "../ui/styles";
 
 export type PickedUser = {
   userId: number;
@@ -78,49 +82,54 @@ export function UserPicker({
   return (
     <>
       {selectedUser ? (
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface-2 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
             <AvatarProfile
               pfp={selectedUser.profilePicture ?? null}
               size="medium"
             />
-            <span className="font-medium text-zinc-900 truncate">
+            <span className="truncate font-medium">
               {selectedUser.name ?? `User #${selectedUser.id}`}
             </span>
           </div>
-          <button
-            type="button"
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
             onClick={clearUser}
-            className="text-xs text-red-600 hover:text-red-700 shrink-0"
+            aria-label={ariaLabel ? `Clear ${ariaLabel}` : "Clear"}
           >
             Clear
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="relative">
-          <input
+          <Input
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             aria-label={ariaLabel}
             placeholder={isLoadingUsers ? "Loading users…" : placeholder}
             disabled={isLoadingUsers}
-            className="w-full border border-zinc-300 rounded px-3 py-2 text-sm bg-white disabled:bg-zinc-50 disabled:text-zinc-500"
           />
           {query && filteredUsers.length > 0 && (
-            <div className="border border-zinc-200 rounded bg-white max-h-48 overflow-y-auto absolute left-0 w-full z-10 mt-1 shadow-sm">
+            <div
+              className={cn(
+                popupClass,
+                "absolute left-0 z-10 mt-1 max-h-48 w-full overflow-y-auto p-1",
+              )}
+            >
               {filteredUsers.map((user) => (
                 <button
                   type="button"
                   key={user.id}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 flex flex-row items-center gap-x-2"
+                  className="flex w-full flex-row items-center gap-x-2 rounded-sm px-2 py-1 text-left focus-ring hover:bg-surface-2"
                   onClick={() => selectUser(user)}
                 >
                   <AvatarProfile pfp={user.profilePicture} size="medium" />
-                  <span className="font-medium truncate">
+                  <span className="truncate font-medium">
                     {user.name ?? `User #${user.id}`}
                   </span>
-                  <span className="text-xs text-zinc-400 shrink-0">
+                  <span className="shrink-0 text-caption text-fg-muted">
                     #{user.id}
                   </span>
                 </button>
@@ -128,7 +137,7 @@ export function UserPicker({
             </div>
           )}
           {query && !filteredUsers.length && !isLoadingUsers && (
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-caption text-fg-muted">
               No users match that search.
             </p>
           )}

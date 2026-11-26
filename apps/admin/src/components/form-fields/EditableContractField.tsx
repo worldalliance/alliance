@@ -2,8 +2,13 @@ import type { ContractField } from "@alliance/common/forms/form-schema";
 import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useEffect, useMemo } from "react";
 import { useContractsAdmin } from "../../lib/useContractsAdmin";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Select } from "../../ui/Select";
+import { Field } from "../../ui/templates/Form";
 import { RequiredToggle } from "./CommonControls";
 import { useDerivedWrite } from "./derivedWrite";
+import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
 
@@ -73,67 +78,71 @@ export function EditableContractField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Contract
-        </label>
-        <select
-          value={field.contractId ?? currentContract?.id ?? ""}
-          onChange={(e) => onUpdate({ contractId: Number(e.target.value) })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {contractOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Sign question
-        </label>
-        <input
-          type="text"
-          value={field.signQuestion ?? ""}
-          onChange={(e) => onUpdate({ signQuestion: e.target.value })}
-          placeholder="Sign the contract?"
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+      <InspectorGroup>
+        <FieldLabelEditor
+          label="Question"
+          value={field.label}
+          onChange={(value) => onUpdate({ label: value })}
         />
-      </div>
+        <RequiredToggle
+          checked={field.required}
+          onChange={(checked) => onUpdate({ required: checked })}
+        />
+      </InspectorGroup>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Yes option label
-          </label>
-          <input
-            type="text"
-            value={field.yesLabel ?? ""}
-            onChange={(e) => onUpdate({ yesLabel: e.target.value })}
-            placeholder="Yes"
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+      <InspectorGroup title="Contract">
+        <Field label="Contract">
+          {(control) => (
+            <Select
+              {...control}
+              value={field.contractId ?? currentContract?.id ?? ""}
+              onChange={(event) =>
+                onUpdate({ contractId: Number(event.target.value) })
+              }
+            >
+              {contractOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field label="Sign question">
+          {(control) => (
+            <Input
+              {...control}
+              value={field.signQuestion ?? ""}
+              placeholder="Sign the contract?"
+              onChange={(event) =>
+                onUpdate({ signQuestion: event.target.value })
+              }
+            />
+          )}
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Yes label">
+            {(control) => (
+              <Input
+                {...control}
+                value={field.yesLabel ?? ""}
+                placeholder="Yes"
+                onChange={(event) => onUpdate({ yesLabel: event.target.value })}
+              />
+            )}
+          </Field>
+          <Field label="No label">
+            {(control) => (
+              <Input
+                {...control}
+                value={field.noLabel ?? ""}
+                placeholder="No"
+                onChange={(event) => onUpdate({ noLabel: event.target.value })}
+              />
+            )}
+          </Field>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            No option label
-          </label>
-          <input
-            type="text"
-            value={field.noLabel ?? ""}
-            onChange={(e) => onUpdate({ noLabel: e.target.value })}
-            placeholder="No"
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      <RequiredToggle
-        checked={field.required}
-        onChange={(checked) => onUpdate({ required: checked })}
-      />
+      </InspectorGroup>
     </FieldWrapper>
   );
 }

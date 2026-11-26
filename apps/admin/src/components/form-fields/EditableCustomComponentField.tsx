@@ -9,6 +9,11 @@ import {
   getCustomComponentById,
 } from "@alliance/sharedweb/forms/components";
 import { useEffect, useMemo, useState } from "react";
+import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { Input } from "../../ui/Input";
+import { Select } from "../../ui/Select";
+import { Banner, BannerTone } from "../../ui/templates/Banner";
+import { CheckboxField, Field } from "../../ui/templates/Form";
 import { ExternalShareTargetSelect } from "../ExternalShareTargetSelect";
 import { RequiredToggle } from "./CommonControls";
 import { useDerivedWrite } from "./derivedWrite";
@@ -253,69 +258,43 @@ export function EditableCustomComponentField({
         typeof componentConfig[configField.name] === "boolean"
           ? (componentConfig[configField.name] as boolean)
           : draftValue === "true";
-      const inputId = `custom-config-${configField.name}`;
       return (
-        <div key={configField.name} className="space-y-1">
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              id={inputId}
-              checked={checked}
-              onChange={(event) =>
-                handleBooleanChange(configField.name, event.target.checked)
-              }
-              className="h-4 w-4"
-            />
-            <label htmlFor={inputId}>{label}</label>
-          </div>
-          {description && (
-            <p className="text-xs text-gray-500">{description}</p>
-          )}
-          {error && <p className="text-xs text-red-600">{error}</p>}
+        <div key={configField.name} className="flex flex-col gap-1.5">
+          <CheckboxField
+            label={label}
+            help={description}
+            checked={checked}
+            onChange={(event) =>
+              handleBooleanChange(configField.name, event.target.checked)
+            }
+          />
+          {error && <p className="text-caption text-danger">{error}</p>}
         </div>
       );
     }
 
-    if (configField.type === "number") {
-      return (
-        <div key={configField.name} className="space-y-1">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            {label}
-          </label>
-          <input
-            type="number"
+    const isNumber = configField.type === "number";
+    return (
+      <Field
+        key={configField.name}
+        label={label}
+        help={description}
+        error={error}
+      >
+        {(control) => (
+          <Input
+            {...control}
+            type={isNumber ? "number" : "text"}
             value={draftValue}
             onChange={(event) =>
-              handleNumberChange(configField.name, event.target.value)
+              isNumber
+                ? handleNumberChange(configField.name, event.target.value)
+                : handleStringChange(configField.name, event.target.value)
             }
-            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder={`Enter ${label.toLowerCase()}`}
           />
-          {description && (
-            <p className="text-xs text-gray-500">{description}</p>
-          )}
-          {error && <p className="text-xs text-red-600">{error}</p>}
-        </div>
-      );
-    }
-
-    return (
-      <div key={configField.name} className="space-y-1">
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          {label}
-        </label>
-        <input
-          type="text"
-          value={draftValue}
-          onChange={(event) =>
-            handleStringChange(configField.name, event.target.value)
-          }
-          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder={`Enter ${label.toLowerCase()}`}
-        />
-        {description && <p className="text-xs text-gray-500">{description}</p>}
-        {error && <p className="text-xs text-red-600">{error}</p>}
-      </div>
+        )}
+      </Field>
     );
   };
 
@@ -326,57 +305,50 @@ export function EditableCustomComponentField({
       previousFields={previousFields}
       laterFields={laterFields}
     >
-      <FieldLabelEditor
-        value={field.label}
-        onChange={(value) => onUpdate({ label: value })}
-      />
+      <InspectorGroup>
+        <FieldLabelEditor
+          label="Question"
+          value={field.label}
+          onChange={(value) => onUpdate({ label: value })}
+        />
+        {customComponentRegistry.length === 0 ? (
+          <Banner inline tone={BannerTone.Danger}>
+            No custom components are registered. Please add one to the registry
+            to use this field type.
+          </Banner>
+        ) : (
+          <>
+            <Field label="Component" help={selectedComponent?.description}>
+              {(control) => (
+                <Select
+                  {...control}
+                  value={field.componentId || customComponentRegistry[0].id}
+                  onChange={(event) =>
+                    handleComponentChange(event.target.value)
+                  }
+                >
+                  {customComponentRegistry.map((component) => (
+                    <option key={component.id} value={component.id}>
+                      {component.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <RequiredToggle
+              checked={field.required}
+              onChange={(checked) => onUpdate({ required: checked })}
+            />
+          </>
+        )}
+      </InspectorGroup>
 
-      {customComponentRegistry.length === 0 ? (
-        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          No custom components are registered. Please add one to the registry to
-          use this field type.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Custom Component
-            </label>
-            <select
-              value={field.componentId || customComponentRegistry[0].id}
-              onChange={(event) => handleComponentChange(event.target.value)}
-              className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {customComponentRegistry.map((component) => (
-                <option key={component.id} value={component.id}>
-                  {component.label}
-                </option>
-              ))}
-            </select>
-            {selectedComponent?.description && (
-              <p className="mt-1 text-xs text-gray-500">
-                {selectedComponent.description}
-              </p>
-            )}
-          </div>
-
-          <RequiredToggle
-            checked={field.required}
-            onChange={(checked) => onUpdate({ required: checked })}
-          />
-
-          {selectedComponent?.configFields?.length ? (
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Component Configuration
-              </label>
-              <div className="space-y-3">
-                {selectedComponent.configFields.map(renderConfigField)}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
+      {customComponentRegistry.length > 0 &&
+      selectedComponent?.configFields?.length ? (
+        <InspectorGroup title="Configuration">
+          {selectedComponent.configFields.map(renderConfigField)}
+        </InspectorGroup>
+      ) : null}
     </FieldWrapper>
   );
 }
