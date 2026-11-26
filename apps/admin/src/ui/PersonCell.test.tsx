@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "bun:test";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, jest } from "bun:test";
 import { MemoryRouter } from "react-router";
 import { PersonCell, PersonChip } from "./PersonCell";
 import { linkClass, nameLinkClass } from "./styles";
@@ -92,5 +92,24 @@ describe("PersonChip", () => {
   it("falls back to the member's number", () => {
     render(<PersonChip userId={12} name={undefined} profilePicture={null} />);
     expect(screen.getByText("User #12")).toBeTruthy();
+  });
+});
+
+describe("PersonCell onOpen", () => {
+  it("opens the peek on a plain click and leaves a modified click to the link", () => {
+    const onOpen = jest.fn();
+    inRow(
+      <PersonCell
+        userId={7}
+        name="Sam"
+        profilePicture={null}
+        onOpen={onOpen}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "Sam" });
+    fireEvent.click(link, { metaKey: true });
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(fireEvent.click(link)).toBe(false);
+    expect(onOpen).toHaveBeenCalledWith(7);
   });
 });

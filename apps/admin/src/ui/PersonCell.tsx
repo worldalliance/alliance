@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { memberHref } from "../lib/hrefs";
 import { AvatarProfile } from "./Avatar";
@@ -16,18 +17,39 @@ export const personName = ({ userId, name }: Pick<Person, "userId" | "name">) =>
   name?.trim() || `User #${userId}`;
 
 /**
+ * A link's `onClick` that opens a peek on a plain left click; a modified or
+ * middle click keeps the link's own way of opening the full record.
+ */
+export const peekOnPlainClick =
+  (onOpen: (userId: number) => void, userId: number) => (event: MouseEvent) => {
+    const plain =
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey;
+    if (!plain) return;
+    event.preventDefault();
+    onOpen(userId);
+  };
+
+/**
  * A table cell naming a member: avatar, then the name as a link to their
- * record, on one line. A long name truncates, whole in its tooltip.
+ * record, on one line. A long name truncates, whole in its tooltip. With
+ * `onOpen`, a plain click calls it instead of following the link; middle-click,
+ * ⌘-click and copying the link still give the record.
  */
 export function PersonCell({
   userId,
   name,
   profilePicture,
   firstColumn = false,
+  onOpen,
   className,
 }: Person & {
   /** The member is what the row is: the name reads as the row's name, not as a link among values. */
   firstColumn?: boolean;
+  onOpen?: (userId: number) => void;
   className?: string;
 }) {
   const shown = personName({ userId, name });
@@ -38,6 +60,7 @@ export function PersonCell({
         <Link
           to={memberHref(userId)}
           title={shown}
+          onClick={onOpen && peekOnPlainClick(onOpen, userId)}
           className={cn(firstColumn ? nameLinkClass : linkClass, "truncate")}
         >
           {shown}
