@@ -1,4 +1,6 @@
 import type {
+  ActionEventDto,
+  ActionStatus,
   ActionSuiteDto,
   CreateActionEventDto,
 } from "@alliance/shared/client";
@@ -12,12 +14,13 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest, setSystemTime } from "bun:test";
 import { MemoryRouter } from "react-router";
-import { formatLocalDateTime } from "../ui/DateTimePicker";
-import { ToastProvider } from "../ui/ToastProvider";
-import CreateEventForm, {
-  LAUNCH_CONFIRM_TEXT,
-  type AddActionEvent,
-} from "./CreateEventForm";
+import CreateEventForm from "../../../components/CreateEventForm";
+import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
+import { adminActionListItem } from "../../../lib/testing/adminActionListItem";
+import { formatZonedDateTime } from "../../../ui/DateTimePicker";
+import { ToastProvider } from "../../../ui/ToastProvider";
+import { LAUNCH_CONFIRM_TEXT } from "./eventRules";
+import { EventsTab } from "./EventsTab";
 
 afterEach(() => {
   cleanup();
@@ -25,31 +28,45 @@ afterEach(() => {
 });
 
 const renderActionForm = (params: {
-  addToAction: AddActionEvent;
-  setCreatingEvent?: (creatingEvent: boolean) => void;
-  setEventCreatedSuccess?: (eventCreatedSuccess: boolean) => void;
-}) =>
+  addToAction: jest.Mock;
+  events?: ActionEventDto[];
+}) => {
   render(
     <ToastProvider>
       <MemoryRouter>
-        <CreateEventForm
-          suiteMode={false}
-          addToAction={params.addToAction}
-          creatingEvent={false}
-          setCreatingEvent={params.setCreatingEvent ?? (() => {})}
-          eventCreatedSuccess={false}
-          setEventCreatedSuccess={params.setEventCreatedSuccess ?? (() => {})}
+        <EventsTab
+          task={adminActionListItem(1, "Task", { events: params.events ?? [] })}
+          admin={{ addEvent: params.addToAction }}
         />
       </MemoryRouter>
     </ToastProvider>,
   );
-
-const addEvent = async () => {
   fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+};
+
+const chooseStatus = (status: ActionStatus) =>
+  fireEvent.change(screen.getByLabelText("Status this event sets"), {
+    target: { value: status },
+  });
+
+const launchNow = () => {
+  chooseStatus("member_action");
+  fireEvent.click(screen.getByLabelText("Take effect now"));
+};
+
+const typeLaunchPhrase = async () => {
   fireEvent.change(await screen.findByPlaceholderText(LAUNCH_CONFIRM_TEXT), {
     target: { value: LAUNCH_CONFIRM_TEXT },
   });
   fireEvent.click(screen.getByRole("button", { name: "Launch" }));
+};
+
+const submit = () =>
+  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+
+const addEvent = async () => {
+  submit();
+  await typeLaunchPhrase();
 };
 
 const sent = (status: number, body: object) => ({
@@ -57,22 +74,37 @@ const sent = (status: number, body: object) => ({
   response: Response.json(body, { status }),
 });
 
-it("clears a failed add's error once a later add succeeds", async () => {
+const pacific = (date: Date) =>
+  formatZonedDateTime(date, {
+    timeZone: LAUNCH_TIME_ZONE,
+    precision: "minute",
+  });
+
+const setDate = (label: RegExp, date: Date) =>
+  fireEvent.change(screen.getByLabelText(label), {
+    target: { value: pacific(date) },
+  });
+
+it("keeps a failed add's reason until a later add succeeds", async () => {
   const addToAction = jest
     .fn()
-    .mockResolvedValueOnce(sent(500, { message: "boom" }))
+    .mockResolvedValueOnce(
+      sent(400, { statusCode: 400, message: "Refused for a reason" }),
+    )
     .mockResolvedValueOnce(sent(201, makeEvent({ id: 2 })));
-  const setEventCreatedSuccess = jest.fn();
-  renderActionForm({ addToAction, setEventCreatedSuccess });
+  renderActionForm({ addToAction });
+  launchNow();
 
   await addEvent();
-  expect(await screen.findByText("Failed to add event")).toBeTruthy();
+  expect(
+    await screen.findByText("Couldn't add: Refused for a reason"),
+  ).toBeTruthy();
 
   await addEvent();
+  await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(2));
   await waitFor(() =>
-    expect(setEventCreatedSuccess).toHaveBeenCalledWith(true),
+    expect(screen.queryByText(/Refused for a reason/)).toBeNull(),
   );
-  expect(screen.queryByText("Failed to add event")).toBeNull();
 });
 
 it("resends an action's event acknowledged once staff confirm moving the deadline earlier", async () => {
@@ -81,6 +113,7 @@ it("resends an action's event acknowledged once staff confirm moving the deadlin
     .mockResolvedValueOnce(sent(409, { message: "Moves the deadline" }))
     .mockResolvedValueOnce(sent(201, makeEvent({ id: 2 })));
   renderActionForm({ addToAction });
+  launchNow();
 
   await addEvent();
   fireEvent.click(
@@ -99,8 +132,9 @@ it("adds an action's deadline event after its launch", async () => {
     .fn()
     .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
   renderActionForm({ addToAction });
+  launchNow();
 
-  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+  fireEvent.click(screen.getByLabelText("Add a deadline event"));
   await addEvent();
 
   await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(2));
@@ -111,26 +145,58 @@ it("adds an action's deadline event after its launch", async () => {
 
 it("labels the deadline time picker apart from the launch picker", () => {
   renderActionForm({ addToAction: jest.fn() });
+  chooseStatus("member_action");
+  fireEvent.click(screen.getByLabelText("Add a deadline event"));
 
-  fireEvent.click(screen.getByLabelText("Launch now"));
-  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
-
-  expect(screen.getByLabelText(/Deadline event time/)).not.toBe(
-    screen.getByLabelText(/Launch time/),
+  expect(screen.getByLabelText(/^Deadline \(/)).not.toBe(
+    screen.getByLabelText(/^Date \(/),
   );
 });
 
-const renderSuiteForm = (
-  addToSuite: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>,
-) =>
+it("never dates an event now unless staff choose it", async () => {
+  const addToAction = jest.fn();
+  renderActionForm({ addToAction });
+  chooseStatus("member_action");
+
+  submit();
+
+  expect(
+    await screen.findByText("Choose a date and time, or take effect now"),
+  ).toBeTruthy();
+  expect(screen.queryByText("Launch to members now?")).toBeNull();
+  expect(addToAction).not.toHaveBeenCalled();
+});
+
+it("offers the statuses in use, and the rest only behind More statuses", () => {
+  renderActionForm({ addToAction: jest.fn() });
+  const options = () =>
+    Array.from(
+      screen.getByLabelText<HTMLSelectElement>("Status this event sets")
+        .options,
+    ).map((option) => option.value);
+
+  expect(options()).toEqual([
+    "",
+    "member_action",
+    "office_action",
+    "completed",
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "More statuses" }));
+  expect(options()).toContain("abandoned");
+});
+
+const renderSuiteForm = (params: {
+  addToSuite: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>;
+  setCreatingEvent?: (creatingEvent: boolean) => void;
+}) =>
   render(
     <ToastProvider>
       <MemoryRouter>
         <CreateEventForm
           suiteMode={true}
-          addToSuite={addToSuite}
+          addToSuite={params.addToSuite}
           creatingEvent={false}
-          setCreatingEvent={() => {}}
+          setCreatingEvent={params.setCreatingEvent ?? (() => {})}
           eventCreatedSuccess={false}
           setEventCreatedSuccess={() => {}}
         />
@@ -139,11 +205,14 @@ const renderSuiteForm = (
   );
 
 it("says when a suite add is refused", async () => {
-  renderSuiteForm(() => Promise.reject({ statusCode: 500 }));
+  renderSuiteForm({ addToSuite: () => Promise.reject({ statusCode: 500 }) });
+  launchNow();
 
   await addEvent();
 
-  expect(await screen.findByText("Failed to add event")).toBeTruthy();
+  expect(
+    await screen.findByText("Couldn't add: Couldn't add the event."),
+  ).toBeTruthy();
 });
 
 it("says when a suite's deadline event is refused after its launch", async () => {
@@ -151,14 +220,13 @@ it("says when a suite's deadline event is refused after its launch", async () =>
     .fn()
     .mockResolvedValueOnce({})
     .mockRejectedValueOnce({ statusCode: 500 });
-  renderSuiteForm(addToSuite);
+  renderSuiteForm({ addToSuite });
+  launchNow();
 
-  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+  fireEvent.click(screen.getByLabelText("Add a deadline event"));
   await addEvent();
 
-  expect(
-    await screen.findByText("Failed to add office action event"),
-  ).toBeTruthy();
+  expect(await screen.findByText(/its deadline event wasn't/)).toBeTruthy();
   expect(addToSuite).toHaveBeenCalledTimes(2);
 });
 
@@ -167,23 +235,36 @@ it("says when staff decline to move a suite's deadline after its launch", async 
     .fn()
     .mockResolvedValueOnce({})
     .mockResolvedValueOnce(null);
-  renderSuiteForm(addToSuite);
+  renderSuiteForm({ addToSuite });
+  launchNow();
 
-  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+  fireEvent.click(screen.getByLabelText("Add a deadline event"));
   await addEvent();
 
   expect(
     await screen.findByText(
-      "Added the launch event without its deadline event. Add the deadline separately.",
+      /Added the launch event without its deadline event\. Add the deadline separately\./,
     ),
   ).toBeTruthy();
+});
+
+it("asks a suite's typed phrase for any event that can show a draft", async () => {
+  renderSuiteForm({ addToSuite: jest.fn() });
+  chooseStatus("office_action");
+  fireEvent.click(screen.getByLabelText("Take effect now"));
+
+  submit();
+
+  expect(await screen.findByPlaceholderText(LAUNCH_CONFIRM_TEXT)).toBeTruthy();
+  expect(screen.getByText(/This skips the suite launch checks/)).toBeTruthy();
 });
 
 it("sends nothing when staff cancel the launch confirmation", async () => {
   const addToAction = jest.fn();
   renderActionForm({ addToAction });
+  launchNow();
 
-  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+  submit();
   fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
   await waitFor(() =>
@@ -194,9 +275,10 @@ it("sends nothing when staff cancel the launch confirmation", async () => {
 
 it("holds the add pending while the launch confirmation is open", async () => {
   const setCreatingEvent = jest.fn();
-  renderActionForm({ addToAction: jest.fn(), setCreatingEvent });
+  renderSuiteForm({ addToSuite: jest.fn(), setCreatingEvent });
+  launchNow();
 
-  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+  submit();
   await screen.findByText("Launch to members now?");
   expect(setCreatingEvent).toHaveBeenLastCalledWith(true);
 
@@ -204,18 +286,76 @@ it("holds the add pending while the launch confirmation is open", async () => {
   await waitFor(() => expect(setCreatingEvent).toHaveBeenLastCalledWith(false));
 });
 
-it("adds an event that doesn't open the action to members without asking", async () => {
+const launched = [
+  makeEvent({
+    id: 1,
+    newStatus: "member_action",
+    date: "2026-01-01T00:00:00.000Z",
+  }),
+];
+
+it("adds an event to a launched task that members already see without asking", async () => {
+  const addToAction = jest
+    .fn()
+    .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
+  renderActionForm({ addToAction, events: launched });
+
+  chooseStatus("office_action");
+  fireEvent.click(screen.getByLabelText("Take effect now"));
+  submit();
+
+  await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(1));
+});
+
+it("asks the typed phrase before an event other than a launch shows a draft", async () => {
   const addToAction = jest
     .fn()
     .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
   renderActionForm({ addToAction });
 
-  fireEvent.change(screen.getByLabelText("Status this event sets"), {
-    target: { value: "office_action" },
+  chooseStatus("completed");
+  fireEvent.click(screen.getByLabelText("Take effect now"));
+  submit();
+
+  expect(
+    await screen.findByText("Make this draft visible to members?"),
+  ).toBeTruthy();
+  expect(addToAction).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByPlaceholderText(LAUNCH_CONFIRM_TEXT), {
+    target: { value: LAUNCH_CONFIRM_TEXT },
   });
   fireEvent.click(screen.getByRole("button", { name: "Add event" }));
 
   await waitFor(() => expect(addToAction).toHaveBeenCalledTimes(1));
+  expect(addToAction.mock.calls[0][0]).toMatchObject({
+    body: { newStatus: "completed" },
+  });
+});
+
+it("confirms before a Draft event hides a launched task", async () => {
+  const addToAction = jest.fn();
+  renderActionForm({ addToAction, events: launched });
+
+  fireEvent.click(screen.getByRole("button", { name: "More statuses" }));
+  chooseStatus("draft");
+  fireEvent.click(screen.getByLabelText("Take effect now"));
+  submit();
+
+  expect(await screen.findByText("Make this task a draft again?")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() =>
+    expect(screen.queryByText("Make this task a draft again?")).toBeNull(),
+  );
+  expect(addToAction).not.toHaveBeenCalled();
+});
+
+it("won't offer a second launch on a task that has one", () => {
+  renderActionForm({ addToAction: jest.fn(), events: launched });
+
+  const option = screen.getByRole<HTMLOptionElement>("option", {
+    name: /Members taking action/,
+  });
+  expect(option.disabled).toBe(true);
 });
 
 it("dates a launch-now event from the confirmation, not from opening it", async () => {
@@ -223,8 +363,9 @@ it("dates a launch-now event from the confirmation, not from opening it", async 
     .fn()
     .mockResolvedValue(sent(201, makeEvent({ id: 2 })));
   renderActionForm({ addToAction });
+  launchNow();
 
-  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+  submit();
   const phrase = await screen.findByPlaceholderText(LAUNCH_CONFIRM_TEXT);
   await new Promise((resolve) => setTimeout(resolve, 30));
   const confirmedAt = Date.now();
@@ -237,11 +378,9 @@ it("dates a launch-now event from the confirmation, not from opening it", async 
 });
 
 const scheduleAt = (date: Date) => {
-  fireEvent.click(screen.getByLabelText("Launch now"));
-  fireEvent.change(document.getElementById("eventDate")!, {
-    target: { value: formatLocalDateTime(date, "minute") },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+  chooseStatus("member_action");
+  setDate(/^Date \(/, date);
+  submit();
 };
 
 it("asks to launch now when the scheduled launch time has already passed", async () => {
@@ -264,13 +403,10 @@ it("asks to schedule a launch set for later", async () => {
 it("refuses a deadline already before the launch without asking", async () => {
   const addToAction = jest.fn();
   renderActionForm({ addToAction });
-  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
-  fireEvent.change(document.getElementById("deadlineEventDateInput")!, {
-    target: {
-      value: formatLocalDateTime(new Date(Date.now() - 60_000), "minute"),
-    },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+  launchNow();
+  fireEvent.click(screen.getByLabelText("Add a deadline event"));
+  setDate(/^Deadline \(/, new Date(Date.now() - 60_000));
+  submit();
 
   expect(
     await screen.findByText(
@@ -281,13 +417,6 @@ it("refuses a deadline already before the launch without asking", async () => {
   expect(screen.queryByText("Launch to members now?")).toBeNull();
   expect(addToAction).not.toHaveBeenCalled();
 });
-
-const typeLaunchPhrase = async () => {
-  fireEvent.change(await screen.findByPlaceholderText(LAUNCH_CONFIRM_TEXT), {
-    target: { value: LAUNCH_CONFIRM_TEXT },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Launch" }));
-};
 
 describe("when time passes while the launch confirmation is open", () => {
   const later = (minutes: number) => new Date(Date.now() + minutes * 60_000);
@@ -305,7 +434,7 @@ describe("when time passes while the launch confirmation is open", () => {
 
     expect(
       await screen.findByText(
-        "The launch time passed before you confirmed. Pick a new time.",
+        /The launch time passed before you confirmed\. Pick a new time\./,
       ),
     ).toBeTruthy();
     expect(addToAction).not.toHaveBeenCalled();
@@ -314,13 +443,10 @@ describe("when time passes while the launch confirmation is open", () => {
   it("refuses a launch now that would follow its deadline", async () => {
     const addToAction = jest.fn();
     renderActionForm({ addToAction });
-    fireEvent.click(
-      screen.getByLabelText("Automatically create deadline event"),
-    );
-    fireEvent.change(document.getElementById("deadlineEventDateInput")!, {
-      target: { value: formatLocalDateTime(later(5), "minute") },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add event" }));
+    launchNow();
+    fireEvent.click(screen.getByLabelText("Add a deadline event"));
+    setDate(/^Deadline \(/, later(5));
+    submit();
     expect(await screen.findByText("Launch to members now?")).toBeTruthy();
 
     setSystemTime(later(10));

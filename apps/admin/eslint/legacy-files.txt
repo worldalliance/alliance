@@ -18,8 +18,6 @@ src/components/ActionTimelineBar.tsx
 src/components/ActionTimelineRowMeta.tsx
 src/components/CohortDecisionCorrectionModal.tsx
 src/components/CreateActionMenu.tsx
-src/components/CreateEventForm.tsx
-src/components/EventManagementTab.tsx
 src/components/FormSection.tsx
 src/components/HomePlacementBadges.tsx
 src/components/NewActionTimeline.tsx
