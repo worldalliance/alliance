@@ -239,7 +239,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
               onClick={() => setFilterOpen(true)}
               className="rounded-sm text-caption text-fg-muted focus-ring hover:text-fg"
             >
-              Filter ({selectedUsers.length})
+              {label === null ? "Filter" : `Filter (${selectedUsers.length})`}
             </button>
           )}
         </div>

@@ -219,3 +219,26 @@ describe("UserSelect with nothing left to pick", () => {
     expect(await screen.findByText("No users to pick.")).toBeTruthy();
   });
 });
+
+describe("UserSelect filter caption", () => {
+  const picked = (label: string | null) =>
+    render(
+      <UserSelect
+        users={USERS}
+        selectedUserIds={[1, 2]}
+        onChange={() => {}}
+        label={label}
+      />,
+    );
+
+  it("counts the picks when it labels itself", () => {
+    picked("Recipients");
+    expect(screen.getByRole("button", { name: "Filter (2)" })).toBeTruthy();
+  });
+
+  it("doesn't repeat a Field's count under it", () => {
+    picked(null);
+    expect(screen.getByRole("button", { name: "Filter" })).toBeTruthy();
+    expect(screen.queryByText("Filter (2)")).toBeNull();
+  });
+});
