@@ -1,18 +1,17 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormSchemaValidationContext } from "@alliance/common/forms/form-schema-validate";
-import { AlertTriangle } from "lucide-react";
 import React, { useMemo } from "react";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { SchemaDiffView } from "../lib/schemaDiff";
-import Button, { ButtonColor } from "../ui/Button";
+import Button, { ButtonVariant } from "../ui/Button";
 import Modal, {
   ModalActions,
   ModalBody,
-  ModalDescription,
   ModalFooter,
   ModalHeader,
   ModalTitle,
 } from "../ui/Modal";
+import { Banner, BannerTone } from "../ui/templates/Banner";
 
 interface FormConflictModalProps {
   /** Shared starting snapshot. */
@@ -64,63 +63,44 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
       dismissOnBackdrop={false}
       dismissDisabled={saving}
       showClose={false}
-      panelClassName="flex max-h-[90vh] max-w-4xl flex-col overflow-hidden"
+      panelClassName="flex max-h-dvh max-w-5xl flex-col overflow-hidden"
     >
-      <ModalHeader className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-        <div>
-          <ModalTitle className="text-lg font-semibold">
-            This form was changed by someone else
-          </ModalTitle>
-          <ModalDescription className="text-sm text-zinc-600">
-            Another editor saved changes to this form after you opened it. Your
-            edits are still here — nothing has been lost. Review both sets of
-            changes below and choose how to proceed.
-          </ModalDescription>
-        </div>
+      <ModalHeader>
+        <ModalTitle render={<h2 />}>
+          This form was changed by someone else
+        </ModalTitle>
+        <p className="mt-1 text-fg-muted">
+          Another editor saved changes to this form after you opened it. Your
+          edits are still here.
+        </p>
       </ModalHeader>
 
-      <ModalBody className="grid grid-cols-1 gap-4 overflow-auto md:grid-cols-2">
-        <div className="rounded border border-zinc-200 p-3">
-          <p className="mb-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase">
-            Your changes
-          </p>
-          <SchemaDiffView before={base} after={mine} />
-        </div>
-        <div className="rounded border border-zinc-200 p-3">
-          <p className="mb-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase">
-            Their changes (now saved)
-          </p>
-          <SchemaDiffView before={base} after={theirs} />
+      <ModalBody className="flex min-h-0 flex-col gap-4 overflow-auto">
+        <MergeStatus loading={sourceFormsLoading} merge={merge} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <section aria-labelledby="conflict-mine">
+            <h3 id="conflict-mine" className="mb-2 font-semibold">
+              Your changes
+            </h3>
+            <div className="rounded-card border border-line p-3">
+              <SchemaDiffView before={base} after={mine} />
+            </div>
+          </section>
+          <section aria-labelledby="conflict-theirs">
+            <h3 id="conflict-theirs" className="mb-2 font-semibold">
+              Their changes
+            </h3>
+            <div className="rounded-card border border-line p-3">
+              <SchemaDiffView before={base} after={theirs} />
+            </div>
+          </section>
         </div>
       </ModalBody>
 
-      <ModalFooter className="p-4" error={error}>
-        {sourceFormsLoading ? (
-          <p className="mb-3 text-sm text-zinc-600">
-            Loading the forms your formulas read…
-          </p>
-        ) : merge === undefined ? (
-          <p className="mb-3 text-sm text-amber-700">
-            A form your formulas read couldn&apos;t be loaded, so these edits
-            can&apos;t be merged automatically. Keep your version or take
-            theirs.
-          </p>
-        ) : merge.ok ? (
-          <p className="mb-3 text-sm text-green-700">
-            These edits don&apos;t overlap — they can be merged automatically.
-            Review the merged result before saving.
-          </p>
-        ) : (
-          <p className="mb-3 text-sm text-amber-700">
-            These edits overlap, so they can&apos;t be merged automatically.
-            Keep your version or take theirs.
-          </p>
-        )}
+      <ModalFooter error={error}>
         <ModalActions className="justify-between">
           <Button
-            color={ButtonColor.White}
-            size="small"
+            variant={ButtonVariant.Ghost}
             onClick={onCopyMine}
             disabled={saving}
           >
@@ -128,16 +108,14 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
           </Button>
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              color={ButtonColor.White}
-              size="small"
+              variant={ButtonVariant.Default}
               onClick={onCancel}
               disabled={saving}
             >
               Cancel
             </Button>
             <Button
-              color={ButtonColor.White}
-              size="small"
+              variant={ButtonVariant.Default}
               onClick={onTakeTheirs}
               disabled={saving}
             >
@@ -145,8 +123,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
             </Button>
             {merge?.ok && (
               <Button
-                color={ButtonColor.Black}
-                size="small"
+                variant={ButtonVariant.Default}
                 onClick={onMerge}
                 disabled={saving}
               >
@@ -154,12 +131,11 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
               </Button>
             )}
             <Button
-              color={merge?.ok ? ButtonColor.White : ButtonColor.Black}
-              size="small"
+              variant={ButtonVariant.Primary}
               onClick={onKeepMine}
-              disabled={saving}
+              busy={saving}
             >
-              {saving ? "Saving…" : "Keep mine (overwrite theirs)"}
+              Keep mine (overwrite theirs)
             </Button>
           </div>
         </ModalActions>
@@ -167,5 +143,40 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
     </Modal>
   );
 };
+
+function MergeStatus({
+  loading,
+  merge,
+}: {
+  loading: boolean;
+  merge: ReturnType<typeof mergeFormSchemas> | undefined;
+}) {
+  if (loading) {
+    return (
+      <Banner tone={BannerTone.Info} inline>
+        Loading the forms your formulas read…
+      </Banner>
+    );
+  }
+  if (merge === undefined) {
+    return (
+      <Banner tone={BannerTone.Warning} inline>
+        A form your formulas read couldn&apos;t be loaded, so these edits
+        can&apos;t be merged automatically. Keep your version or take theirs.
+      </Banner>
+    );
+  }
+  return merge.ok ? (
+    <Banner tone={BannerTone.Info} inline>
+      Your changes and theirs don&apos;t overlap. Merge them, then review and
+      save.
+    </Banner>
+  ) : (
+    <Banner tone={BannerTone.Warning} inline>
+      Your changes and theirs overlap, so they can&apos;t be merged
+      automatically. Keep your version or take theirs.
+    </Banner>
+  );
+}
 
 export default FormConflictModal;

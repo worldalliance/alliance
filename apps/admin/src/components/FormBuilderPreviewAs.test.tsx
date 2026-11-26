@@ -143,24 +143,36 @@ it("opens the editor without a member to preview as", async () => {
   expect(await screen.findByRole("button", { name: "Preview" })).toBeTruthy();
 });
 
-it("groups only contracted members, folded under how many variants there are", async () => {
-  renderSavedFormBuilder(1, "/?previewAs=10");
+const openProfiles = async () => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Visibility profiles…" }),
+  );
+  return screen.findAllByRole<HTMLInputElement>("radio");
+};
 
-  const summary = await screen.findByText("Member variants");
-  expect(screen.getByText("2 variants")).toBeTruthy();
-  expect(summary.closest("details")?.open).toBe(false);
+it("groups only contracted members, once the profiles are opened", async () => {
+  renderSavedFormBuilder(1, "/?previewAs=10");
+  await screen.findByRole("button", { name: "Visibility profiles…" });
+  expect(profiledIds).toEqual([]);
+
+  expect(await openProfiles()).toHaveLength(2);
   expect(profiledIds).toEqual([[10, 11]]);
 });
 
 it("highlights a card only until the member bar picks someone", async () => {
   renderSavedFormBuilder(1, "/?previewAs=10");
-  fireEvent.click(await screen.findByText("Member variants"));
   const checked = () =>
     screen.getAllByRole<HTMLInputElement>("radio").map((card) => card.checked);
+  await openProfiles();
   expect(checked()).toEqual([false, false]);
 
   fireEvent.click(screen.getAllByRole("radio")[1]);
+  expect(
+    await screen.findByRole("button", { name: "Remove Ben" }),
+  ).toBeTruthy();
+  await openProfiles();
   expect(checked()).toEqual([false, true]);
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
   fireEvent.click(screen.getByRole("button", { name: "Remove Ben" }));
   await pickUser(screen.getByPlaceholderText("Search by name"), {
@@ -170,16 +182,7 @@ it("highlights a card only until the member bar picks someone", async () => {
   expect(
     await screen.findByRole("button", { name: "Remove Ana" }),
   ).toBeTruthy();
-  expect(checked()).toEqual([false, false]);
-
-  fireEvent.click(screen.getByRole("button", { name: "Remove Ana" }));
-  await pickUser(screen.getByPlaceholderText("Search by name"), {
-    query: "Ben",
-    name: /Ben/,
-  });
-  expect(
-    await screen.findByRole("button", { name: "Remove Ben" }),
-  ).toBeTruthy();
+  await openProfiles();
   expect(checked()).toEqual([false, false]);
 });
 

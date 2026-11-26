@@ -2,7 +2,7 @@ import { formSchemaToDisplayOnly } from "@alliance/common/forms/display-only-sch
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import { DisplayOnlyBlocks } from "@alliance/sharedweb/forms/DisplayOnlyRenderer";
-import Card from "../ui/Card";
+import { Banner, BannerTone } from "../ui/templates/Banner";
 
 export function DisplayOnlyPreview({
   schema,
@@ -13,20 +13,20 @@ export function DisplayOnlyPreview({
 }) {
   return R.match(formSchemaToDisplayOnly(schema), {
     success: (displaySchema) => (
-      <Card className="member-surface p-6 sm:p-8 w-full border-[1.5px] rounded">
-        <p className="text-title-small mb-4">{title}</p>
+      <div className="member-surface w-full rounded-card border border-line bg-surface p-6 sm:p-8">
+        <p className="mb-4 text-title-small">{title}</p>
         <DisplayOnlyBlocks {...displaySchema} />
-      </Card>
+      </div>
     ),
     failure: (errors) => (
-      <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+      <Banner tone={BannerTone.Danger} inline>
         <p className="font-medium">This update can&apos;t be saved as-is</p>
-        <ul className="mt-1 list-disc pl-5 text-sm">
+        <ul className="mt-1 list-disc pl-5">
           {errors.map((error) => (
             <li key={error}>{error}</li>
           ))}
         </ul>
-      </div>
+      </Banner>
     ),
   });
 }

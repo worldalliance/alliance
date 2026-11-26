@@ -1,6 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   JsonScopeKind,
@@ -10,7 +9,7 @@ import {
   type PreparedJsonApply,
 } from "../lib/formJson";
 import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
-import Button, { ButtonColor } from "../ui/Button";
+import Button, { ButtonVariant } from "../ui/Button";
 import Modal, {
   ModalActions,
   ModalBody,
@@ -18,13 +17,20 @@ import Modal, {
   ModalHeader,
   ModalTitle,
 } from "../ui/Modal";
-import { useToast } from "../ui/ToastProvider";
+import { Banner, BannerTone } from "../ui/templates/Banner";
+import { Textarea } from "../ui/Textarea";
 import { useCustomValidatorDrafts } from "./form-fields/customValidatorDrafts";
 
-const TITLES: Record<JsonScopeKind, string> = {
+const NAMES: Record<JsonScopeKind, string> = {
   [JsonScopeKind.Element]: "Element JSON",
   [JsonScopeKind.Page]: "Page JSON",
   [JsonScopeKind.Form]: "Form JSON",
+};
+
+const TITLES: Record<JsonScopeKind, string> = {
+  [JsonScopeKind.Element]: "Edit element JSON",
+  [JsonScopeKind.Page]: "Edit page JSON",
+  [JsonScopeKind.Form]: "Edit form JSON",
 };
 
 export function FormJsonModal({
@@ -42,11 +48,12 @@ export function FormJsonModal({
 }) {
   const { drafts } = useCustomValidatorDrafts();
   const validatorExists = useCustomValidatorAdmin(null).exists;
-  const { success, error: showError } = useToast();
   const [text, setText] = useState(() =>
     JSON.stringify(jsonScopeValue(schema, scope), null, 2),
   );
   const [errors, setErrors] = useState<string[]>([]);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [pending, setPending] = useState<PreparedJsonApply | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const isClosed = useRef(false);
@@ -58,11 +65,11 @@ export function FormJsonModal({
   }, []);
 
   const handleCopy = async () => {
-    if (await copyToClipboard(text)) {
-      success("Copied JSON to the clipboard");
-    } else {
-      showError("Could not copy JSON to the clipboard");
-    }
+    const ok = await copyToClipboard(text);
+    setCopied(ok);
+    setCopyError(
+      ok ? null : "Couldn't copy the JSON. Select it and copy it yourself.",
+    );
   };
 
   const handleApply = async () => {
@@ -94,51 +101,18 @@ export function FormJsonModal({
     <Modal
       onClose={onClose}
       dismissOnBackdrop={false}
-      panelClassName="max-w-3xl w-full max-h-[90vh] flex flex-col"
+      panelClassName="flex max-h-dvh w-full max-w-3xl flex-col"
     >
-      <ModalHeader className="flex items-center gap-3">
-        <ModalTitle render={<h3 />} className="text-lg font-medium">
-          {TITLES[scope.kind]}
+      <ModalHeader>
+        <ModalTitle render={<h3 />}>
+          {pending ? "Apply id and kind changes?" : TITLES[scope.kind]}
         </ModalTitle>
-        <button
-          type="button"
-          onClick={() => void handleCopy()}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-blue-600"
-          title="Copy JSON"
-          aria-label="Copy JSON"
-        >
-          <Copy className="h-4 w-4" aria-hidden="true" />
-        </button>
       </ModalHeader>
 
-      <ModalBody className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
-        <textarea
-          value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            setPending(null);
-          }}
-          readOnly={pending !== null || isChecking}
-          spellCheck={false}
-          aria-label={TITLES[scope.kind]}
-          className="min-h-[50vh] w-full flex-1 resize-y rounded border border-gray-300 p-3 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        {errors.length > 0 && (
-          <ul
-            role="alert"
-            className="space-y-1 rounded border border-red-300 bg-red-50 p-3 font-mono text-xs text-red-700"
-          >
-            {errors.map((message, i) => (
-              <li key={i}>{message}</li>
-            ))}
-          </ul>
-        )}
-        {pending && (
-          <div
-            role="alert"
-            className="rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900"
-          >
-            <p className="font-medium">
+      <ModalBody className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+        {pending ? (
+          <Banner tone={BannerTone.Warning} inline>
+            <p>
               This JSON changes ids or kinds. Anything that refers to the old id
               or relies on the old kind may stop working.
             </p>
@@ -147,44 +121,79 @@ export function FormJsonModal({
                 <li key={change}>{change}</li>
               ))}
             </ul>
-          </div>
+          </Banner>
+        ) : (
+          <>
+            <Textarea
+              value={text}
+              onChange={(event) => {
+                setText(event.target.value);
+                setCopied(false);
+              }}
+              readOnly={isChecking}
+              spellCheck={false}
+              aria-label={NAMES[scope.kind]}
+              className="h-108 min-h-48 resize-y font-mono text-caption"
+            />
+            {errors.length > 0 && (
+              <div role="alert" className="text-body text-danger">
+                <p className="font-medium">
+                  This JSON can&apos;t be applied yet:
+                </p>
+                <ul className="mt-1 list-disc pl-5 font-mono text-caption">
+                  {errors.map((message, i) => (
+                    <li key={i}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </ModalBody>
 
-      <ModalFooter>
-        <ModalActions>
+      <ModalFooter error={copyError}>
+        <ModalActions className="justify-between">
           {pending ? (
-            <>
-              <Button
-                color={ButtonColor.White}
-                size="small"
-                onClick={() => setPending(null)}
-              >
-                Back
-              </Button>
-              <Button
-                color={ButtonColor.Blue}
-                size="small"
-                onClick={() => onApply(pending.schema)}
-              >
-                Apply id and kind changes
-              </Button>
-            </>
+            <span />
           ) : (
-            <>
-              <Button color={ButtonColor.White} size="small" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                color={ButtonColor.Blue}
-                size="small"
-                onClick={() => void handleApply()}
-                disabled={isChecking}
-              >
-                {isChecking ? "Checking..." : "Apply"}
-              </Button>
-            </>
+            <Button
+              variant={ButtonVariant.Ghost}
+              onClick={() => void handleCopy()}
+            >
+              {copied ? "Copied" : "Copy JSON"}
+            </Button>
           )}
+          <div className="flex items-center gap-2">
+            {pending ? (
+              <>
+                <Button
+                  variant={ButtonVariant.Default}
+                  onClick={() => setPending(null)}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant={ButtonVariant.Primary}
+                  onClick={() => onApply(pending.schema)}
+                >
+                  Apply id and kind changes
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant={ButtonVariant.Default} onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  variant={ButtonVariant.Primary}
+                  onClick={() => void handleApply()}
+                  busy={isChecking}
+                >
+                  Apply
+                </Button>
+              </>
+            )}
+          </div>
         </ModalActions>
       </ModalFooter>
     </Modal>

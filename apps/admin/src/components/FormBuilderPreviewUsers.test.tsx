@@ -1,6 +1,6 @@
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 const listsAna = () => Response.json([makeUser({ id: 7, name: "Ana" })]);
@@ -58,7 +58,16 @@ describe("the form builder's preview-as picker", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
 
-    expect(await screen.findByText("Could not load users")).toBeTruthy();
+    expect(await screen.findByText(/Couldn't load users/)).toBeTruthy();
     expect(userListCalls).toBe(1);
+  });
+
+  it("loads the users again on Try again", async () => {
+    userList = () => Response.json({}, { status: 500 });
+    renderBuilder();
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+
+    await waitFor(() => expect(userListCalls).toBe(2));
   });
 });

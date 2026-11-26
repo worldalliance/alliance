@@ -102,7 +102,7 @@ describe("FormJsonModal", () => {
 
     editJson(renamed);
     await clickApply();
-    expect(screen.getByRole("alert").textContent).toContain(
+    expect(screen.getByRole("note").textContent).toContain(
       'Id changes from "a" to "b"',
     );
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -128,7 +128,9 @@ describe("FormJsonModal", () => {
       customValidatorId: 7,
     });
     await clickApply();
-    expect(screen.getByRole("button", { name: "Checking..." })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Apply" }).getAttribute("aria-busy"),
+    ).toBe("true");
     expect(
       screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Element JSON" })
         .readOnly,

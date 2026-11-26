@@ -248,7 +248,11 @@ function FormPanes() {
             ref={canvasRef}
             role="region"
             aria-label={isPreviewMode ? "Preview" : "Form canvas"}
-            className={cn(PANE_SCROLL, "relative p-4 pb-16")}
+            className={cn(
+              PANE_SCROLL,
+              "relative",
+              !isPreviewMode && "p-4 pb-16",
+            )}
           >
             {loadFailure ? (
               <div className="flex flex-col items-center">
