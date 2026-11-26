@@ -49,6 +49,8 @@ interface UserSelectProps {
 const MAX_OPTIONS = 50;
 
 const nameOf = (user: UserSelectUser) => user.name;
+const matches = (user: UserSelectUser, query: string) =>
+  matchesName(user.name, query) || String(user.id).includes(query.trim());
 const displayName = (user: UserSelectUser) => user.name ?? `User #${user.id}`;
 const missingUser = (id: number): UserSelectUser => ({
   id,
@@ -101,7 +103,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
   });
   const displayedSelectedUsers = useMemo(() => {
     if (!filterQuery.trim()) return selectedUsers;
-    return selectedUsers.filter((user) => matchesName(user.name, filterQuery));
+    return selectedUsers.filter((user) => matches(user, filterQuery));
   }, [selectedUsers, filterQuery]);
   const displayedIds = useMemo(
     () => displayedSelectedUsers.map((user) => user.id),
@@ -125,9 +127,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
     if (!canSelectMore) return [];
     const picked = new Set(selectedUserIds);
     return users
-      .filter(
-        (user) => !picked.has(user.id) && matchesName(nameOf(user), query),
-      )
+      .filter((user) => !picked.has(user.id) && matches(user, query))
       .slice(0, MAX_OPTIONS);
   }, [users, selectedUserIds, query, canSelectMore]);
 

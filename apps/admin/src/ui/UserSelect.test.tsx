@@ -149,6 +149,18 @@ describe("UserSelect in Field", () => {
     );
   });
 
+  it("finds a member by id as well as by name", async () => {
+    render(<Picker />);
+    const box = screen.getByRole("combobox", { name: "Member" });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.change(box, { target: { value: "2" } });
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual(["Grace Hopper"]),
+    );
+  });
+
   it("moves focus to the picked row's Remove after a single pick", async () => {
     render(<Picker single />);
     const box = screen.getByRole("combobox", { name: "Member" });
