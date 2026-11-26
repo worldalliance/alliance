@@ -68,6 +68,7 @@ export type VariableTextFieldProps = {
   id?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
+  "aria-invalid"?: true;
 };
 
 export function VariableTextField({
@@ -84,6 +85,7 @@ export function VariableTextField({
   id,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: VariableTextFieldProps) {
   const variables = useFormVariables();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -218,6 +220,7 @@ export function VariableTextField({
     id,
     "aria-label": ariaLabel,
     "aria-describedby": ariaDescribedBy,
+    "aria-invalid": ariaInvalid,
     className: cn(sharedClassName, "relative"),
     onKeyDown: handleKeyDown,
     onSelect: syncCaret,

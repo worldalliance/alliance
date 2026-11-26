@@ -1,6 +1,7 @@
 import type { FormVariable } from "@alliance/common/forms/variables";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
+import { Field } from "../ui/templates/Form";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { VariableTextField } from "./VariableTextField";
 
@@ -102,14 +103,21 @@ it.each([false, true])(
   },
 );
 
-describe("VariableTextField id", () => {
-  it("binds a label to the input", () => {
+describe("VariableTextField in a Field", () => {
+  it("takes the Field's label and marks itself invalid with its error", () => {
     render(
       <FormVariablesProvider variables={[total]}>
-        <label htmlFor="header">Header</label>
-        <VariableTextField id="header" value="" onChange={() => {}} />
+        <Field label="Header" error="Add a header.">
+          {(control) => (
+            <VariableTextField {...control} value="" onChange={() => {}} />
+          )}
+        </Field>
       </FormVariablesProvider>,
     );
-    expect(screen.getByLabelText("Header").id).toBe("header");
+    const input = screen.getByLabelText("Header");
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("textbox", { description: "Add a header." })).toBe(
+      input,
+    );
   });
 });
