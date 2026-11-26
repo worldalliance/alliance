@@ -1,6 +1,6 @@
 import { withCount } from "@alliance/common/plural";
 import type { ReactNode } from "react";
-import { selectionIssues } from "../../../../components/form-canvas/IssueList";
+import { selectionIssues } from "../issues/IssueList";
 import { ButtonVariant, buttonVariants } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
 import {

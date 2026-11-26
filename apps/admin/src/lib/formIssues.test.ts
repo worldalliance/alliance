@@ -6,7 +6,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { describe, expect, test } from "bun:test";
-import type { ExpressionBuffer } from "../components/form-fields/conditions/expressionBuffers";
+import type { ExpressionBuffer } from "../pages/forms/builder/conditions/expressionBuffers";
 import { collectFormIssues, IssueTargetKind } from "./formIssues";
 import {
   deriveVisibilityGroups,

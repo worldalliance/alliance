@@ -1,4 +1,4 @@
-import { issueLocation } from "../../../components/form-canvas/IssueList";
+import { issueLocation } from "./issues/IssueList";
 import { IssueTargetKind } from "../../../lib/formIssues";
 import Badge from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";

@@ -3,15 +3,15 @@ import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { elementTarget } from "../../../components/form-canvas/canvasSelection";
+import { elementTarget } from "./selection/canvasSelection";
 import {
   IssueGate,
   openIssue,
-} from "../../../components/form-canvas/IssueList";
-import { useCanvasEdits } from "../../../components/form-canvas/useCanvasEdits";
-import { useCanvasSelection } from "../../../components/form-canvas/useCanvasSelection";
-import { useOverrideTarget } from "../../../components/form-canvas/useOverrideTarget";
-import { useSaveGate } from "../../../components/useSaveGate";
+} from "./issues/IssueList";
+import { useCanvasEdits } from "./selection/useCanvasEdits";
+import { useCanvasSelection } from "./selection/useCanvasSelection";
+import { useOverrideTarget } from "./selection/useOverrideTarget";
+import { useSaveGate } from "./save/useSaveGate";
 import { ensurePages, ensureSchemaViews } from "../../../lib/ensureFormSchema";
 import { usePreviewAsOnLoad } from "../../../lib/formEditorLink";
 import {

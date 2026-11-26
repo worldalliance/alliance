@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { VariableTextField } from "../../../../components/VariableTextField";
+import { VariableTextField } from "./VariableTextField";
 import { useDragReorder } from "../../../../lib/useDragReorder";
 import { Checkbox } from "../../../../ui/Checkbox";
 import { cn } from "../../../../ui/cn";

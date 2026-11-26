@@ -3,10 +3,10 @@ import { isQuestionField } from "@alliance/common/forms/form-schema";
 import {
   CanvasTargetKind,
   pageTitle,
-} from "../../../../components/form-canvas/canvasSelection";
-import { InsertMode } from "../../../../components/form-canvas/InsertPoint";
-import { InspectorScope } from "../../../../components/form-canvas/useCanvasSelection";
-import { DELETION } from "../../../../components/form-canvas/useGuardedDeletion";
+} from "../selection/canvasSelection";
+import { InsertMode } from "../canvas/InsertPoint";
+import { InspectorScope } from "../selection/useCanvasSelection";
+import { DELETION } from "./useGuardedDeletion";
 import { JsonScopeKind } from "../../../../lib/formJson";
 import { DropPosition } from "../../../../lib/useDragReorder";
 import { NeighborDirection, stepPast } from "../../../../lib/visibilityGroups";

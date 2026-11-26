@@ -5,8 +5,8 @@ import {
   moveElementBuffers,
   type ElementExpressionsMove,
   type ExpressionBuffer,
-} from "../components/form-fields/conditions/expressionBuffers";
-import type { CustomValidatorDraft } from "../components/form-fields/customValidatorDrafts";
+} from "../pages/forms/builder/conditions/expressionBuffers";
+import type { CustomValidatorDraft } from "../pages/forms/builder/questions/customValidatorDrafts";
 import { mapCustomValidatorIds } from "./customValidatorIds";
 import { useDraftHistory } from "./useDraftHistory";
 import {

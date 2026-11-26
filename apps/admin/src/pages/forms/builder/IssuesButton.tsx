@@ -6,8 +6,8 @@ import {
   type IssueRow,
   type LoadFailure,
   type SourceCheck,
-} from "../../../components/form-canvas/IssueList";
-import { useRestoreFocusWithin } from "../../../components/form-canvas/useRestoreFocusWithin";
+} from "./issues/IssueList";
+import { useRestoreFocusWithin } from "./selection/useRestoreFocusWithin";
 import Button, { ButtonVariant, buttonVariants } from "../../../ui/Button";
 import { cn } from "../../../ui/cn";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../ui/Popover";

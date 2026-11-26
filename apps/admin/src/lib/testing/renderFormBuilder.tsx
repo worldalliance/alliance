@@ -4,7 +4,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
-import { FormBuilder } from "../../components/FormBuilder";
+import { FormBuilder } from "../../pages/forms/builder/FormBuilder";
 import LeaveGuard from "../../components/LeaveGuard";
 import { SiteOriginLinkProvider } from "../../ui/SiteAppProvider";
 import { ToastProvider } from "../../ui/ToastProvider";

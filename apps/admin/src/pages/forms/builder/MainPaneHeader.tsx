@@ -1,5 +1,5 @@
-import { pageTitle } from "../../../components/form-canvas/canvasSelection";
-import { HistoryControls } from "../../../components/HistoryControls";
+import { pageTitle } from "./selection/canvasSelection";
+import { HistoryControls } from "./save/HistoryControls";
 import { JsonScopeKind } from "../../../lib/formJson";
 import { MoreMenu, type MoreMenuItem } from "../../../ui/MoreMenu";
 import { ViewSwitch } from "../../../ui/templates/List";

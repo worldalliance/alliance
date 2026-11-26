@@ -19,12 +19,12 @@ import {
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
 import { undefinedConditionNames } from "@alliance/shared/forms/visibilityFormula";
-import { checkExpression } from "../components/form-fields/conditions/conditionFormula";
+import { checkExpression } from "../pages/forms/builder/conditions/conditionFormula";
 import {
   expressionKeys,
   typedText,
   type ExpressionBuffer,
-} from "../components/form-fields/conditions/expressionBuffers";
+} from "../pages/forms/builder/conditions/expressionBuffers";
 import { placesById } from "./formDependencies";
 import type { VisibilityGroups } from "./visibilityGroups";
 

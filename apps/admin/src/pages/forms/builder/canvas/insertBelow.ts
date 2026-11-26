@@ -2,8 +2,8 @@ import type { Page } from "@alliance/common/forms/form-schema";
 import {
   CanvasTargetKind,
   type ResolvedTarget,
-} from "../../../../components/form-canvas/canvasSelection";
-import type { InsertLoc } from "../../../../components/form-canvas/InsertPoint";
+} from "../selection/canvasSelection";
+import type { InsertLoc } from "./InsertPoint";
 import type { VisibilityGroups } from "../../../../lib/visibilityGroups";
 
 /**

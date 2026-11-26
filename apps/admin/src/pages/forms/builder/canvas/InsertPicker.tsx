@@ -1,11 +1,11 @@
 import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import { Copy } from "lucide-react";
 import { useId, useState } from "react";
-import { describeElement } from "../../../../components/form-canvas/canvasSelection";
+import { describeElement } from "../selection/canvasSelection";
 import {
   InsertMode,
   type AvailableElement,
-} from "../../../../components/form-canvas/InsertPoint";
+} from "./InsertPoint";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { CommandList, type CommandGroup } from "../../../../ui/CommandList";
 import { Select } from "../../../../ui/Select";

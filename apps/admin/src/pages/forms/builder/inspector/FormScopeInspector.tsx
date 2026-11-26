@@ -1,4 +1,4 @@
-import FormSlugEditor from "../../../../components/FormSlugEditor";
+import FormSlugEditor from "../save/FormSlugEditor";
 import { JsonScopeKind } from "../../../../lib/formJson";
 import { formatCount } from "../../../../lib/formatNumber";
 import Button, { ButtonVariant } from "../../../../ui/Button";
