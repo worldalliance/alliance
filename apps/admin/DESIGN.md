@@ -368,7 +368,7 @@ A status is always a badge with a word (`ui/Badge.tsx` with a `BadgeTone`). Neve
 
 Phase order everywhere (columns, legends, strips): Draft, Planned, Members taking action, Office taking action, Resolution, Completed, Failed, Abandoned. A status the data holds is shown, though no control sets it. A suite's badge is the phase of its two shared events; its tasks may be further along.
 
-For other statuses pick the tone by meaning: neutral for inactive or not started, success for done or healthy, warning for needs attention soon, danger for failed or blocked, info for in progress or scheduled. Two statuses that share a tone must still differ by their word. A role, kind or type (Leader, Member, a job's kind) is not a status: plain text or a neutral badge, never accent or a status tone. A count that asks for attention (queue counts) is a count badge in the sidebar and palette, not a status; Home (**Home's states**) and a place's tab (`withQueueCounts`) show the exact number.
+For other statuses pick the tone by meaning: neutral for inactive or not started, success for done or healthy, warning for needs attention soon, danger for failed or blocked, info for in progress or scheduled. Two statuses that share a tone must still differ by their word. A role, kind or type (Leader, Member, a job's kind) is not a status: plain text or a neutral badge, never accent or a status tone. The exception is a member's account role (Admin, Staff, Ambassador, Lead), which is `ui/RoleBadge` in the frontend's role hues, as the owner asked. A count that asks for attention (queue counts) is a count badge in the sidebar and palette, not a status; Home (**Home's states**) and a place's tab (`withQueueCounts`) show the exact number.
 
 ## Tables
 

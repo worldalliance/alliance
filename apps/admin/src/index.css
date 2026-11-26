@@ -218,6 +218,13 @@
   --color-on-danger: oklch(0.99 0 0);
   --color-info: oklch(0.51 0.12 235);
   --color-info-soft: oklch(0.96 0.025 230);
+  /* The frontend's role hues, darkened for text on their own tint. */
+  --color-role-staff: oklch(0.521 0.105 243);
+  --color-role-staff-soft: oklch(0.944 0.0235 240);
+  --color-role-ambassador: oklch(0.525 0.112 36);
+  --color-role-ambassador-soft: oklch(0.934 0.0184 34);
+  --color-role-grouplead: oklch(0.535 0.0904 75);
+  --color-role-grouplead-soft: oklch(0.965 0.0242 77);
   --color-cat-1: oklch(0.55 0.19 265);
   --color-cat-2: oklch(0.6 0.13 175);
   --color-cat-3: oklch(0.64 0.16 60);
