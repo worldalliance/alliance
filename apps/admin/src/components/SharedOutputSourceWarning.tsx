@@ -1,7 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { sourceVariablesInSharedOutput } from "@alliance/common/forms/variable-interpolation";
 import { useMemo } from "react";
+import { Banner, BannerTone } from "../ui/templates/Banner";
 
+/** A save is refused while an output view reads another form through a formula. */
 export function SharedOutputSourceWarning({ schema }: { schema: FormSchema }) {
   const references = useMemo(
     () => sourceVariablesInSharedOutput(schema),
@@ -9,24 +11,23 @@ export function SharedOutputSourceWarning({ schema }: { schema: FormSchema }) {
   );
   if (references.length === 0) return null;
   return (
-    <div className="mb-6 rounded border border-red-300 bg-red-50 p-3 space-y-1">
-      <p className="text-sm font-medium text-red-900">
+    <Banner tone={BannerTone.Danger} inline>
+      <p className="font-medium">
         Output views can&apos;t show a formula that reads another form&apos;s
         answers or aggregate counts. Remove these references to save:
       </p>
-      {references.map(({ name, location, viewId }) => (
-        <p
-          key={`${viewId}:${location}:${name}`}
-          className="text-xs text-red-800"
-        >
-          <span className="font-mono">
-            #{"{"}
-            {name}
-            {"}"}
-          </span>{" "}
-          in {viewId} › {location}
-        </p>
-      ))}
-    </div>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {references.map(({ name, location, viewId }) => (
+          <li key={`${viewId}:${location}:${name}`}>
+            <span className="font-mono text-xs">
+              #{"{"}
+              {name}
+              {"}"}
+            </span>{" "}
+            in {viewId} › {location}
+          </li>
+        ))}
+      </ul>
+    </Banner>
   );
 }

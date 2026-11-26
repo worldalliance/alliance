@@ -155,20 +155,18 @@ describe("FormBuilder save conflict with an options formula", () => {
     renderBuilder(withFormula);
     selectElement("Pick");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "What you can write here" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Formula help" }));
     fireEvent.click(
       screen.getByRole("button", {
         name: "[{ label: 'Other', value: 'other' }]",
       }),
     );
-    expect(screen.getByText(/Undo, back to/)).toBeTruthy();
+    expect(screen.getByText(/Undo replace/)).toBeTruthy();
     fireEvent.click(screen.getByText("Save form"));
     fireEvent.click(await screen.findByText("Take theirs"));
     fireEvent.click(await screen.findByText("Discard my changes"));
 
-    await waitFor(() => expect(screen.queryByText(/Undo, back to/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Undo replace/)).toBeNull());
   });
 });
 

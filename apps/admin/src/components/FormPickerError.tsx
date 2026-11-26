@@ -1,5 +1,5 @@
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
-import { cn } from "@alliance/shared/styles/util";
+import { cn } from "../ui/cn";
 
 /** The ways a form picker comes up empty with nothing to show for it. */
 export enum FormPickerErrorReason {
@@ -42,7 +42,7 @@ export function FormPickerError({
   className?: string;
 }) {
   return (
-    <p className={cn("text-xs text-red-600", className)}>
+    <p role="alert" className={cn("text-caption text-danger", className)}>
       {ERROR_TEXT[reason]}
     </p>
   );

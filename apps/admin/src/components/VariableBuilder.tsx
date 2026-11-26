@@ -7,58 +7,65 @@ import {
   VARIABLE_NAME_REGEX,
   type FormVariable,
 } from "@alliance/common/forms/variables";
-import { cn } from "@alliance/shared/styles/util";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { milliseconds } from "date-fns";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { makeTempId } from "../lib/tempId";
-import Button, { ButtonColor } from "../ui/Button";
-import { useToast } from "../ui/ToastProvider";
+import Button, { ButtonVariant } from "../ui/Button";
+import { EmptyState } from "../ui/EmptyState";
+import InlineError from "../ui/InlineError";
+import { Input } from "../ui/Input";
+import { Banner, BannerTone } from "../ui/templates/Banner";
+import { Field, FormSection } from "../ui/templates/Form";
 import { FormPickerError, FormPickerErrorReason } from "./FormPickerError";
-import { FormulaEditor, inputForField } from "./FormulaEditor";
+import { FormulaEditor } from "./FormulaEditor";
 import { FormulaResult } from "./formulaResult";
 import { useFormulaSources } from "./FormulaSourcesContext";
 import { SharedOutputSourceWarning } from "./SharedOutputSourceWarning";
+import { inputForField } from "./useFormulaEditor";
 import { answerHelp } from "./variableInputHelp";
 import { type InputSources } from "./VariableInputPickers";
-import { inputText } from "./VariableSamples";
 
-function CopyableReference({ name }: { name: string }) {
+const COPY_FAILED = "Could not copy the reference to the clipboard";
+
+function CopyReference({ name }: { name: string }) {
   const [copied, setCopied] = useState(false);
-  const { error: pushError } = useToast();
+  const [failed, setFailed] = useState(false);
   const resetTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reference = `#{${name}}`;
 
   useEffect(() => () => clearTimeout(resetTimeout.current), []);
 
   return (
-    <button
-      type="button"
-      title="Copy reference"
-      aria-label={`Copy ${reference}`}
-      onClick={() => {
-        void copyToClipboard(reference).then((ok) => {
-          setCopied(ok);
-          if (ok) {
-            resetTimeout.current = setTimeout(
-              () => setCopied(false),
-              milliseconds({ seconds: 2 }),
-            );
-          } else {
-            pushError("Could not copy the reference to the clipboard");
-          }
-        });
-      }}
-      className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 hover:bg-gray-100"
-    >
-      {reference}
-      {copied ? (
-        <Check size={12} className="text-green-600" />
-      ) : (
-        <Copy size={12} className="text-gray-400" />
-      )}
-    </button>
+    <>
+      <Button
+        variant={ButtonVariant.Default}
+        size="small"
+        aria-label={`Copy ${reference}`}
+        onClick={() => {
+          void copyToClipboard(reference).then((ok) => {
+            setCopied(ok);
+            setFailed(!ok);
+            if (ok) {
+              resetTimeout.current = setTimeout(
+                () => setCopied(false),
+                milliseconds({ seconds: 2 }),
+              );
+            }
+          });
+        }}
+      >
+        <span className="font-mono text-xs">{reference}</span>
+        {copied ? (
+          <Check aria-hidden="true" className="size-4 text-success" />
+        ) : (
+          <Copy aria-hidden="true" className="size-4 text-fg-muted" />
+        )}
+      </Button>
+      {failed && <InlineError message={COPY_FAILED} />}
+    </>
   );
 }
 
@@ -86,7 +93,7 @@ const uniqueVariableName = (existing: FormVariable[]): string => {
   }
 };
 
-type VariableCardProps = {
+type FormulaSectionProps = {
   variable: FormVariable;
   allVariables: FormVariable[];
   sources: InputSources;
@@ -94,13 +101,13 @@ type VariableCardProps = {
   onRemove: () => void;
 };
 
-function VariableCard({
+function FormulaSection({
   variable,
   allVariables,
   sources,
   onChange,
   onRemove,
-}: VariableCardProps) {
+}: FormulaSectionProps) {
   const nameError = useMemo(() => {
     if (!VARIABLE_NAME_REGEX.test(variable.name)) {
       return "Name can't be empty.";
@@ -114,14 +121,22 @@ function VariableCard({
   }, [variable.name, allVariables]);
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 space-y-1">
-          <label className="block text-xs font-medium text-gray-500">
-            Name
-          </label>
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
+    <FormSection title={variable.name || "Unnamed formula"}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <Field
+          label="Name"
+          help={
+            <>
+              Letters, numbers, <span className="font-mono">-</span> and{" "}
+              <span className="font-mono">_</span> only.
+            </>
+          }
+          error={nameError}
+          className="w-full max-w-xs"
+        >
+          {(control) => (
+            <Input
+              {...control}
               value={variable.name}
               onChange={(event) =>
                 onChange({
@@ -129,41 +144,29 @@ function VariableCard({
                   name: sanitizeVariableName(event.target.value),
                 })
               }
-              className={cn(
-                inputText,
-                "max-w-xs",
-                nameError && "border-red-400",
-              )}
             />
-            <CopyableReference name={variable.name} />
-          </div>
-          {nameError ? (
-            <p className="text-xs text-red-600">{nameError}</p>
-          ) : (
-            <p className="text-xs text-gray-500">
-              Letters, numbers, <span className="font-mono">-</span> and{" "}
-              <span className="font-mono">_</span> only.
-            </p>
           )}
+        </Field>
+        <div className="flex items-center gap-2">
+          <CopyReference name={variable.name} />
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
+            aria-label={`Delete formula ${variable.name}`}
+            onClick={onRemove}
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+            Delete
+          </Button>
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          title="Delete formula"
-          aria-label={`Delete formula ${variable.name}`}
-          className="p-1 text-gray-400 hover:text-red-500"
-        >
-          <X size={16} />
-        </button>
       </div>
-
       <FormulaEditor
         formula={variable}
         result={FormulaResult.Text}
         sources={sources}
         onChange={(next) => onChange({ ...variable, ...next })}
       />
-    </div>
+    </FormSection>
   );
 }
 
@@ -177,6 +180,7 @@ export function VariableBuilder({
   onSchemaChange,
 }: VariableBuilderProps) {
   const { sources, formListFailed } = useFormulaSources();
+  const { refetch: refetchForms } = useFormOptions();
   // Shows the names a save would give sub-fields added since the last edit;
   // any edit here stores them.
   const variables = useMemo(
@@ -221,80 +225,86 @@ export function VariableBuilder({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mx-auto w-full max-w-4xl">
-        <div className="mb-6 space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">Formulas</h2>
-            <Button onClick={addVariable} color={ButtonColor.Blue}>
-              Add formula
+    <div className="mx-auto flex w-full max-w-240 flex-col gap-section">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <p className="max-w-prose text-fg-muted">
+          Compute a value from the answers on this form, the member&apos;s
+          answers to other forms, or how many members chose each option of a
+          form&apos;s question, then write it into any text or field label as{" "}
+          <span className="font-mono">#{"{name}"}</span>.
+        </p>
+        <Button variant={ButtonVariant.Primary} onClick={addVariable}>
+          Add formula
+        </Button>
+      </div>
+
+      {formListFailed && (
+        <Banner
+          tone={BannerTone.Warning}
+          inline
+          action={
+            <Button
+              variant={ButtonVariant.Ghost}
+              size="small"
+              onClick={refetchForms}
+            >
+              Try again
             </Button>
-          </div>
-          <p className="text-sm text-gray-600">
-            Compute a value from the answers on this form, the member&apos;s
-            answers to other forms, or how many members chose each option of a
-            form&apos;s question, then write it into any text or field label as{" "}
-            <span className="font-mono">#{"{name}"}</span>.
+          }
+        >
+          <FormPickerError reason={FormPickerErrorReason.FormList} />
+        </Banner>
+      )}
+
+      <SharedOutputSourceWarning schema={schema} />
+
+      {unresolvedReferences.length > 0 && (
+        <Banner tone={BannerTone.Warning} inline>
+          <p className="font-medium">
+            These references don&apos;t match any formula, and will show as
+            written to respondents:
           </p>
-        </div>
-
-        {formListFailed && (
-          <FormPickerError
-            reason={FormPickerErrorReason.FormList}
-            className="mb-6"
-          />
-        )}
-
-        <SharedOutputSourceWarning schema={schema} />
-
-        {unresolvedReferences.length > 0 && (
-          <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 space-y-1">
-            <p className="text-sm font-medium text-amber-900">
-              These references don&apos;t match any formula, and will show as
-              written to respondents:
-            </p>
+          <ul className="mt-1 flex flex-col gap-0.5">
             {unresolvedReferences.map(({ name, locations }) => (
-              <p key={name} className="text-xs text-amber-800">
-                <span className="font-mono">
+              <li key={name}>
+                <span className="font-mono text-xs">
                   #{"{"}
                   {name}
                   {"}"}
                 </span>{" "}
                 in {locations.join(", ")}
-              </p>
+              </li>
             ))}
-          </div>
-        )}
+          </ul>
+        </Banner>
+      )}
 
-        {variables.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No formulas yet. Add one to reference a computed value in your
-            form&apos;s text.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {variables.map((variable, index) => (
-              <VariableCard
-                key={cardKeys[index]}
-                variable={variable}
-                allVariables={variables}
-                sources={sources}
-                onChange={(next) =>
-                  setVariables(
-                    variables.map((current, i) =>
-                      i === index ? next : current,
-                    ),
-                  )
-                }
-                onRemove={() => {
-                  setCardKeys(cardKeys.filter((_, i) => i !== index));
-                  setVariables(variables.filter((_, i) => i !== index));
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {variables.length === 0 ? (
+        <div className="rounded-card border border-line bg-surface">
+          <EmptyState
+            title="No formulas yet"
+            description="Add one to reference a computed value in your form's text."
+          />
+        </div>
+      ) : (
+        variables.map((variable, index) => (
+          <FormulaSection
+            key={cardKeys[index]}
+            variable={variable}
+            allVariables={variables}
+            sources={sources}
+            onChange={(next) =>
+              setVariables(
+                variables.map((current, i) => (i === index ? next : current)),
+              )
+            }
+            onRemove={() => {
+              setCardKeys(cardKeys.filter((_, i) => i !== index));
+              setVariables(variables.filter((_, i) => i !== index));
+            }}
+          />
+        ))
+      )}
     </div>
   );
 }

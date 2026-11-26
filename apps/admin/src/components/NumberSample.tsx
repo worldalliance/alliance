@@ -1,6 +1,5 @@
 import type { FormValue } from "@alliance/common/forms/form-schema";
-import { cn } from "@alliance/shared/styles/util";
-import { inputText } from "./VariableSamples";
+import { Input } from "../ui/Input";
 
 export const readNumberSample = (
   sample: FormValue | undefined,
@@ -8,6 +7,7 @@ export const readNumberSample = (
   value: typeof sample === "number" ? sample : 0,
 });
 
+/** The whole number a count or random input is previewed with. */
 export function NumberSample({
   inputName,
   value,
@@ -18,9 +18,9 @@ export function NumberSample({
   onChange: (next: number) => void;
 }) {
   return (
-    <label className="flex flex-1 items-center gap-2 text-xs text-gray-600">
+    <label className="flex items-center gap-2 text-caption text-fg-muted">
       <span className="shrink-0">Preview with</span>
-      <input
+      <Input
         type="number"
         min={0}
         step={1}
@@ -28,9 +28,8 @@ export function NumberSample({
         onChange={(event) =>
           onChange(Math.max(0, Math.trunc(Number(event.target.value) || 0)))
         }
-        title="Sample number used only for the preview below"
         aria-label={`Preview with, for ${inputName}`}
-        className={cn(inputText, "min-w-0 flex-1")}
+        className="w-28"
       />
     </label>
   );

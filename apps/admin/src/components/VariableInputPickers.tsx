@@ -7,9 +7,8 @@ import {
 import type { VariableFieldScope } from "@alliance/common/forms/variables";
 import type { FormOption } from "@alliance/shared/lib/useFormsAdmin";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
-import { cn } from "@alliance/shared/styles/util";
+import { Select } from "../ui/Select";
 import { FormPickerError, formFieldsErrorReason } from "./FormPickerError";
-import { inputText } from "./VariableSamples";
 
 export type InputSources = {
   /** Readable fields of a source form, or of this form for `undefined`. */
@@ -82,7 +81,7 @@ export function InputModePicker({
   onChange: (mode: InputMode) => void;
 }) {
   return (
-    <select
+    <Select
       value={mode}
       aria-label={`What ${inputName} reads`}
       onChange={(event) =>
@@ -92,7 +91,7 @@ export function InputModePicker({
           ) ?? InputMode.Answers,
         )
       }
-      className={cn(inputText, "bg-white w-36 shrink-0")}
+      className="w-56 shrink-0"
     >
       <option value={InputMode.Answers}>Answers</option>
       <option value={InputMode.Counts} disabled={!countsAvailable}>
@@ -104,7 +103,7 @@ export function InputModePicker({
       <option value={InputMode.Random} disabled={!randomAvailable}>
         Random number (stable per member)
       </option>
-    </select>
+    </Select>
   );
 }
 
@@ -131,7 +130,7 @@ export function SourceFormPicker({
     sourceFormId === undefined || forms.some(({ id }) => id === sourceFormId);
   const missing = !listed && sources.formsLoaded;
   return (
-    <select
+    <Select
       value={sourceFormId ?? ""}
       aria-label={`Form read by ${inputName}`}
       onChange={(event) =>
@@ -139,11 +138,8 @@ export function SourceFormPicker({
           event.target.value === "" ? undefined : Number(event.target.value),
         )
       }
-      className={cn(
-        inputText,
-        "bg-white w-44 shrink-0",
-        missing && "border-red-400",
-      )}
+      aria-invalid={missing ? true : undefined}
+      className="w-64 shrink-0"
     >
       {!counting && <option value="">This form</option>}
       {!listed && (
@@ -159,7 +155,7 @@ export function SourceFormPicker({
           {form.displaySlug})
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -209,7 +205,7 @@ export function SourceFormLoadError({
     sourceFormId === undefined
       ? null
       : formFieldsErrorReason(sources.statusOf(sourceFormId));
-  return reason && <FormPickerError reason={reason} className="pl-16" />;
+  return reason && <FormPickerError reason={reason} />;
 }
 
 type FieldPickerProps = {
@@ -230,7 +226,7 @@ export function FieldPicker({
   onPick,
 }: FieldPickerProps) {
   return (
-    <select
+    <Select
       value={input.fieldId}
       aria-label={`Field read by ${inputName}`}
       onChange={(event) => {
@@ -239,13 +235,12 @@ export function FieldPicker({
         );
         if (picked) onPick(picked);
       }}
-      className={cn(
-        inputText,
-        "bg-white flex-1",
-        !field &&
-          sourceStatus(input, sources) !== FormFieldsStatus.Pending &&
-          "border-red-400",
-      )}
+      aria-invalid={
+        !field && sourceStatus(input, sources) !== FormFieldsStatus.Pending
+          ? true
+          : undefined
+      }
+      className="min-w-48 flex-1"
     >
       {/* Without a matching option, the browser displays the first eligible
           field. */}
@@ -259,6 +254,6 @@ export function FieldPicker({
           {candidate.label || "(no label)"} ({candidate.kind}) — {candidate.id}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

@@ -11,9 +11,15 @@ import {
   type VariableInput,
   type VariableListInput,
 } from "@alliance/common/forms/variable-inputs";
-import { X } from "lucide-react";
+import { ItemRow } from "../pages/forms/builder/kit/ItemList";
 import { CountSamples, type CountSample } from "./CountSamples";
+import {
+  ListInputEditor,
+  ListPropertyNames,
+  SubmissionSamples,
+} from "./ListSamples";
 import { NumberSample } from "./NumberSample";
+import { inputHelp } from "./variableInputHelp";
 import {
   fieldChoices,
   FieldPicker,
@@ -25,14 +31,10 @@ import {
   type InputSources,
 } from "./VariableInputPickers";
 import {
-  ListInputEditor,
-  ListPropertyNames,
   SampleAnswer,
   sampleRows,
-  SubmissionSamples,
   type SubmissionSample,
 } from "./VariableSamples";
-import { inputHelp } from "./variableInputHelp";
 
 type VariableInputRowProps = {
   name: string;
@@ -56,6 +58,10 @@ type VariableInputRowProps = {
   onRemove: () => void;
 };
 
+/**
+ * One input of a formula: what it reads (mode, form, question), the sample
+ * answers the preview uses in its place, and its type as the formula sees it.
+ */
 export function VariableInputRow({
   name,
   input,
@@ -80,11 +86,9 @@ export function VariableInputRow({
   const sourceFormId = inputSourceFormId(input);
   const help = inputHelp(input, field);
   return (
-    <div className="space-y-0.5">
-      <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 font-mono text-xs text-gray-600">
-          {name}
-        </span>
+    <ItemRow name={name} onRemove={onRemove}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="w-14 shrink-0 font-mono text-xs">{name}</span>
         <InputModePicker
           inputName={name}
           mode={inputModeOfInput(input)}
@@ -117,14 +121,20 @@ export function VariableInputRow({
             />
           </>
         )}
-        {input.kind === "answeredCount" && field && (
-          <NumberSample
-            inputName={name}
-            value={sample}
-            onChange={onSampleChange}
-          />
-        )}
-        {input.kind === "field" && (
+      </div>
+      <SourceFormLoadError sourceFormId={sourceFormId} sources={sources} />
+      {input.kind === "answeredCount" && field && (
+        <NumberSample
+          inputName={name}
+          value={sample}
+          onChange={onSampleChange}
+        />
+      )}
+      {input.kind === "field" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="shrink-0 text-caption text-fg-muted">
+            Sample answer
+          </span>
           <SampleAnswer
             inputName={name}
             field={field}
@@ -132,23 +142,10 @@ export function VariableInputRow({
             error={readingError}
             onChange={onSampleChange}
           />
-        )}
-        <button
-          type="button"
-          onClick={onRemove}
-          title="Remove input"
-          aria-label={`Remove ${name}`}
-          className="p-1 text-gray-400 hover:text-red-500"
-        >
-          <X size={14} />
-        </button>
-      </div>
-      <SourceFormLoadError sourceFormId={sourceFormId} sources={sources} />
+        </div>
+      )}
       {(field || input.kind === "random") && (
-        <p
-          className="pl-16 font-mono text-[10px] text-gray-500"
-          title={help.notes}
-        >
+        <p className="font-mono text-xs text-fg-muted" title={help.notes}>
           {name}: {type}
         </p>
       )}
@@ -180,11 +177,11 @@ export function VariableInputRow({
         />
       )}
       {readingError && (
-        <p className="pl-16 text-[10px] text-red-500">
+        <p role="alert" className="text-caption text-danger">
           {readingError} Reads as undefined.
         </p>
       )}
-    </div>
+    </ItemRow>
   );
 }
 
@@ -218,14 +215,12 @@ function ListInputEditors({
       );
     case "sourceList":
       return (
-        <div className="pl-16 space-y-2">
-          <ListPropertyNames
-            inputName={inputName}
-            input={input}
-            field={field}
-            onInputChange={onInputChange}
-          />
-        </div>
+        <ListPropertyNames
+          inputName={inputName}
+          input={input}
+          field={field}
+          onInputChange={onInputChange}
+        />
       );
     default:
       throw new Error(`unknown list input kind: ${kind satisfies never}`);

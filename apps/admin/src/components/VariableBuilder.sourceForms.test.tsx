@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Harness, town } from "./VariableBuilder.testHarness";
 
 const surveySchema: FormSchema = {
@@ -223,7 +223,7 @@ describe("VariableBuilder inputs from another form", () => {
 
     const fieldPicker = screen.getByLabelText("Field read by input1");
     expect(screen.getByText("Loading questions…")).toBeTruthy();
-    expect(fieldPicker.className).not.toContain("border-red-400");
+    expect(fieldPicker.getAttribute("aria-invalid")).toBeNull();
     await screen.findByText("Score (number) — score");
   });
 
@@ -267,6 +267,21 @@ describe("VariableBuilder inputs from another form", () => {
     expect(
       await screen.findByText("Could not load the list of forms."),
     ).toBeTruthy();
+  });
+
+  it("reloads the list of forms from the banner's Try again", async () => {
+    formListFails = true;
+    render(<Harness initial={destination} onSave={() => {}} />);
+    await screen.findByText("Could not load the list of forms.");
+
+    formListFails = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Could not load the list of forms."),
+      ).toBeNull(),
+    );
   });
 
   it("names output-view text that shows a variable reading another form", () => {

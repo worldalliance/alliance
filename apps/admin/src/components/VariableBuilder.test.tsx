@@ -206,7 +206,7 @@ describe("VariableBuilder list inputs", () => {
     fireEvent.change(screen.getByLabelText("input1 property name for Name"), {
       target: { value: "" },
     });
-    fireEvent.click(screen.getByLabelText("What you can write here"));
+    fireEvent.click(screen.getByRole("button", { name: "Formula help" }));
 
     expect(
       screen.getByText("input1.map(row => row.age).join(', ')"),
@@ -214,7 +214,7 @@ describe("VariableBuilder list inputs", () => {
     expect(screen.queryByText("input1.map(row => row.).join(', ')")).toBeNull();
   });
 
-  it("keeps an input's sample rows when an input before it is removed", () => {
+  it("keeps an input's sample rows when an input before it is removed", async () => {
     render(
       <Harness
         initial={{
@@ -247,7 +247,8 @@ describe("VariableBuilder list inputs", () => {
       screen.getByLabelText("Sample answer for input2 row 1, Name"),
       { target: { value: "Ada" } },
     );
-    fireEvent.click(screen.getByLabelText("Remove input1"));
+    fireEvent.click(screen.getByRole("button", { name: "More: input1" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove" }));
 
     expect(
       screen.getByLabelText<HTMLInputElement>(
@@ -337,7 +338,7 @@ describe("VariableBuilder copy reference", () => {
     expect(screen.queryByText(refusal)).toBeNull();
   });
 
-  it("toasts a refused copy without checking it", async () => {
+  it("says a refused copy failed without checking it", async () => {
     const button = clickCopy(() => Promise.reject(new DOMException("denied")));
 
     await screen.findByText(refusal);

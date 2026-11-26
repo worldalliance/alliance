@@ -1,7 +1,6 @@
 import type {
   AnyField,
   FormValue,
-  ListField,
   ListFieldValue,
 } from "@alliance/common/forms/form-schema";
 import { fieldHasOptions } from "@alliance/common/forms/form-schema";
@@ -17,17 +16,18 @@ import type {
 import {
   FIELD_KIND_VARIABLE_INPUT_MODE,
   formValueToExprValue,
-  listInputPropertyErrors,
   readableListSubFields,
   VariableInputMode,
 } from "@alliance/common/forms/variables";
-import { cn } from "@alliance/shared/styles/util";
-import { Plus, Trash2 } from "lucide-react";
+import { cn } from "../ui/cn";
+import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { controlClass } from "../ui/styles";
 
-const inputBase =
-  "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
-export const inputText = cn(inputBase, "px-3 py-1.5");
-export const inputPad = cn(inputBase, "px-3 py-2");
+// BACKCOMPAT(input-classes): the Preview, Aggregate and Row tabs still import
+// these; remove with their last importer.
+export const inputText = cn(controlClass, "h-control");
+export const inputPad = cn(controlClass, "py-2");
 
 const SAMPLE_PLACEHOLDER: Record<VariableInputMode, string> = {
   [VariableInputMode.Number]: "sample",
@@ -62,9 +62,9 @@ const isBlankSample = (value: FormValue | undefined) =>
   value === "" ||
   (Array.isArray(value) && value.length === 0);
 
-type SampleReading = { value: ExprValue; error?: string };
+export type SampleReading = { value: ExprValue; error?: string };
 
-const readSampleAnswer = (
+export const readSampleAnswer = (
   field: AnyField | undefined,
   sample: FormValue | undefined,
 ): SampleReading => {
@@ -152,6 +152,7 @@ type SampleAnswerProps = {
   onChange: (next: FormValue) => void;
 };
 
+/** The control a sample answer is typed or picked in, shaped like the field's own. */
 export function SampleAnswer({
   inputName,
   field,
@@ -160,27 +161,18 @@ export function SampleAnswer({
   onChange,
 }: SampleAnswerProps) {
   const mode = inputModeOf(field);
-  const wide =
-    mode === VariableInputMode.Choice || mode === VariableInputMode.Choices;
-  const className = cn(
-    inputText,
-    "shrink-0",
-    wide ? "w-48" : "w-32",
-    error && "border-red-400",
-  );
   const shared = {
-    className,
-    title: error ?? "Sample answer used only for the preview below",
     "aria-label": `Sample answer for ${inputName}`,
+    "aria-invalid": error ? (true as const) : undefined,
+    className: "max-w-xs",
   };
   const options = fieldOptions(field);
 
   switch (mode) {
     case VariableInputMode.Choice:
       return (
-        <select
+        <Select
           {...shared}
-          className={cn(className, "bg-white")}
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(event.target.value)}
         >
@@ -190,16 +182,16 @@ export function SampleAnswer({
               {optionText(option)}
             </option>
           ))}
-        </select>
+        </Select>
       );
 
     case VariableInputMode.Choices:
       return (
-        <select
+        <Select
           {...shared}
           multiple
           size={Math.min(Math.max(options.length, 2), 3)}
-          className={cn(className, "bg-white py-1")}
+          className="h-auto max-w-xs py-1"
           value={sampleChoices(value)}
           onChange={(event) =>
             onChange(
@@ -215,14 +207,13 @@ export function SampleAnswer({
               {optionText(option)}
             </option>
           ))}
-        </select>
+        </Select>
       );
 
     case VariableInputMode.Boolean:
       return (
-        <select
+        <Select
           {...shared}
-          className={cn(className, "bg-white")}
           value={typeof value === "boolean" ? String(value) : ""}
           onChange={(event) =>
             onChange(event.target.value ? event.target.value === "true" : "")
@@ -231,7 +222,7 @@ export function SampleAnswer({
           <option value="">unanswered</option>
           <option value="true">Ticked</option>
           <option value="false">Not ticked</option>
-        </select>
+        </Select>
       );
 
     case VariableInputMode.Number:
@@ -239,7 +230,7 @@ export function SampleAnswer({
     case VariableInputMode.City:
     case VariableInputMode.None:
       return (
-        <input
+        <Input
           {...shared}
           value={typeof value === "string" ? value : ""}
           disabled={!field}
@@ -251,152 +242,6 @@ export function SampleAnswer({
     default:
       throw new Error(`unknown input mode: ${mode satisfies never}`);
   }
-}
-
-const DISALLOWED_PROPERTY_NAME_CHARS = /[^A-Za-z0-9_]/g;
-
-type ListPropertyNamesProps = {
-  inputName: string;
-  input: VariableListInput;
-  field: ListField;
-  onInputChange: (next: VariableListInput) => void;
-};
-
-export function ListPropertyNames({
-  inputName,
-  input,
-  field,
-  onInputChange,
-}: ListPropertyNamesProps) {
-  const subFields = readableListSubFields(field.fields);
-  const propertyErrors = listInputPropertyErrors({
-    inputName,
-    input,
-    subFields: field.fields,
-  });
-
-  return (
-    <>
-      {subFields.length === 0 ? (
-        <p className="text-[10px] text-gray-500">
-          No sub-field a formula can read.{" "}
-          <span className="font-mono">{inputName}.length</span> still counts the
-          rows.
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {subFields.map((sub) => (
-            <label
-              key={sub.id}
-              className="flex items-center gap-1.5 text-xs text-gray-500"
-            >
-              {sub.label || "(no label)"}
-              <input
-                value={input.properties[sub.id] ?? ""}
-                aria-label={`${inputName} property name for ${sub.label || sub.id}`}
-                title="Property name each row uses for this sub-field"
-                onChange={(event) =>
-                  onInputChange({
-                    ...input,
-                    properties: {
-                      ...input.properties,
-                      [sub.id]: event.target.value.replace(
-                        DISALLOWED_PROPERTY_NAME_CHARS,
-                        "",
-                      ),
-                    },
-                  })
-                }
-                className={cn(inputText, "w-28 py-1 font-mono text-xs")}
-              />
-            </label>
-          ))}
-        </div>
-      )}
-      {propertyErrors.map((message, index) => (
-        <p key={index} className="text-[10px] text-red-500">
-          {message}
-        </p>
-      ))}
-    </>
-  );
-}
-
-type SampleRowsProps = {
-  inputName: string;
-  field: ListField;
-  rows: ListFieldValue;
-  onRowsChange: (next: ListFieldValue) => void;
-};
-
-function SampleRows({ inputName, field, rows, onRowsChange }: SampleRowsProps) {
-  const subFields = readableListSubFields(field.fields);
-  const setRow = (index: number, next: Record<string, FormValue>) =>
-    onRowsChange(rows.map((row, i) => (i === index ? next : row)));
-
-  return (
-    <div className="space-y-1">
-      {rows.map((row, index) => (
-        <div key={index} className="flex flex-wrap items-center gap-2">
-          <span className="w-10 shrink-0 text-[10px] text-gray-500">
-            row {index + 1}
-          </span>
-          {subFields.map((sub) => (
-            <SampleAnswer
-              key={sub.id}
-              inputName={`${inputName} row ${index + 1}, ${sub.label || sub.id}`}
-              field={sub}
-              value={row[sub.id]}
-              error={readSampleAnswer(sub, row[sub.id]).error}
-              onChange={(next) => setRow(index, { ...row, [sub.id]: next })}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={() => onRowsChange(rows.filter((_, i) => i !== index))}
-            title="Remove sample row"
-            aria-label={`Remove sample row ${index + 1} of ${inputName}`}
-            className="p-1 text-gray-400 hover:text-red-500"
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={() => onRowsChange([...rows, {}])}
-        title="Add sample row"
-        aria-label={`Add sample row to ${inputName}`}
-        className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
-      >
-        <Plus size={12} />
-        {rows.length === 0 && "sample row"}
-      </button>
-    </div>
-  );
-}
-
-type ListInputEditorProps = ListPropertyNamesProps & {
-  rows: ListFieldValue;
-  onRowsChange: (next: ListFieldValue) => void;
-};
-
-export function ListInputEditor({
-  rows,
-  onRowsChange,
-  ...names
-}: ListInputEditorProps) {
-  return (
-    <div className="pl-16 space-y-2">
-      <ListPropertyNames {...names} />
-      <SampleRows
-        inputName={names.inputName}
-        field={names.field}
-        rows={rows}
-        onRowsChange={onRowsChange}
-      />
-    </div>
-  );
 }
 
 export type SubmissionSample = FormValue | undefined;
@@ -414,82 +259,3 @@ export const readSubmissionSamples = (
   });
   return { value, error };
 };
-
-type SubmissionSamplesProps = {
-  inputName: string;
-  input: VariableSourceInput;
-  field: AnyField | undefined;
-  submissions: readonly SubmissionSample[];
-  onChange: (next: SubmissionSample[]) => void;
-};
-
-/** Sample answers for an input reading another form, one per submission. */
-export function SubmissionSamples({
-  inputName,
-  input,
-  field,
-  submissions,
-  onChange,
-}: SubmissionSamplesProps) {
-  const setSubmission = (index: number, next: SubmissionSample) =>
-    onChange(submissions.map((sample, i) => (i === index ? next : sample)));
-
-  const editor = (index: number, sample: SubmissionSample) => {
-    const label = `${inputName} submission ${index + 1}`;
-    switch (input.kind) {
-      case "sourceField":
-        return (
-          <SampleAnswer
-            inputName={label}
-            field={field}
-            value={sample}
-            error={readSampleAnswer(field, sample).error}
-            onChange={(next) => setSubmission(index, next)}
-          />
-        );
-      case "sourceList":
-        return field?.kind === "list" ? (
-          <SampleRows
-            inputName={label}
-            field={field}
-            rows={sampleRows(sample)}
-            onRowsChange={(rows) => setSubmission(index, rows)}
-          />
-        ) : null;
-      default:
-        throw new Error(`unknown input kind: ${input satisfies never}`);
-    }
-  };
-
-  return (
-    <div className="pl-16 space-y-1">
-      {submissions.map((sample, index) => (
-        <div key={index} className="flex flex-wrap items-start gap-2">
-          <span className="w-20 shrink-0 pt-1.5 text-[10px] text-gray-500">
-            submission {index + 1}
-          </span>
-          {editor(index, sample)}
-          <button
-            type="button"
-            onClick={() => onChange(submissions.filter((_, i) => i !== index))}
-            title="Remove sample submission"
-            aria-label={`Remove sample submission ${index + 1} of ${inputName}`}
-            className="p-1 text-gray-400 hover:text-red-500"
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange([...submissions, undefined])}
-        title="Add sample submission"
-        aria-label={`Add sample submission to ${inputName}`}
-        className="flex items-center gap-1 p-1 text-[10px] text-gray-400 hover:text-blue-600"
-      >
-        <Plus size={12} />
-        {submissions.length === 0 && "sample submission"}
-      </button>
-    </div>
-  );
-}

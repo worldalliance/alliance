@@ -31,7 +31,6 @@ src/components/CohortLeafEditors.tsx
 src/components/CohortVisualization.test.tsx
 src/components/CohortVisualization.tsx
 src/components/CollectiveResultFields.tsx
-src/components/CountSamples.tsx
 src/components/CreateActionMenu.tsx
 src/components/CreateEventForm.tsx
 src/components/DisplayOnlyPreview.tsx
@@ -40,14 +39,10 @@ src/components/ExpressionNodeEditor.tsx
 src/components/FormBuilderPreview.tsx
 src/components/FormConflictModal.tsx
 src/components/FormJsonModal.tsx
-src/components/FormPickerError.tsx
 src/components/FormSection.tsx
-src/components/FormulaEditor.tsx
-src/components/FormulaResultPreview.tsx
 src/components/HomePlacementBadges.tsx
 src/components/InsertableTokenButton.tsx
 src/components/NewActionTimeline.tsx
-src/components/NumberSample.tsx
 src/components/OpenReferenceWarning.tsx
 src/components/OutputBuilder.tsx
 src/components/PrerequisitePicker.tsx
@@ -55,14 +50,7 @@ src/components/PreviewAsUserBar.tsx
 src/components/PriorityFollowUps.tsx
 src/components/ReferralUrlNotice.tsx
 src/components/ShareableTextBuilder.tsx
-src/components/SharedOutputSourceWarning.tsx
 src/components/UpdatePreview.tsx
-src/components/VariableBuilder.sourceForms.test.tsx
-src/components/VariableBuilder.tsx
-src/components/VariableHelpModal.tsx
-src/components/VariableInputPickers.tsx
-src/components/VariableInputRow.tsx
-src/components/VariableSamples.tsx
 src/components/VisibilityProfilePicker.tsx
 src/components/output-builder/EditableOutputFieldBlock.tsx
 src/components/output-builder/OutputBlockList.tsx

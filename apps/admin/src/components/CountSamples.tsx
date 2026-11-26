@@ -3,8 +3,9 @@ import {
   type AnyField,
 } from "@alliance/common/forms/form-schema";
 import type { ExprValue } from "@alliance/common/forms/variable-expression";
-import { cn } from "@alliance/shared/styles/util";
-import { inputText } from "./VariableSamples";
+import Button, { ButtonVariant } from "../ui/Button";
+import { Disclosure } from "../ui/Disclosure";
+import { Input } from "../ui/Input";
 
 /** Typed sample counts by option value; a blank one reads as 0. */
 export type CountSample = Readonly<Record<string, string>>;
@@ -50,6 +51,7 @@ type CountSamplesProps = {
   onChange: (next: CountSample) => void;
 };
 
+/** What the formula reads as each option's count while previewing. */
 export function CountSamples({
   inputName,
   field,
@@ -58,57 +60,55 @@ export function CountSamples({
 }: CountSamplesProps) {
   const options = countOptions(field);
   return (
-    <details className="pl-16 text-[10px] text-gray-500">
-      <summary className="cursor-pointer">Sample counts</summary>
-      <div className="mt-1 flex items-center gap-1">
-        <span>Set all to</span>
-        {PRESETS.map(({ label, count }) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() =>
-              onChange(
-                Object.fromEntries(
-                  options.map((option) => [option.value, count]),
-                ),
-              )
-            }
-            title={`Set every sample count for ${inputName} to ${count}`}
-            className="rounded border border-gray-200 px-1.5 hover:bg-gray-50"
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-1 grid max-h-60 grid-cols-3 gap-x-4 gap-y-1 overflow-y-auto pr-1">
-        {options.map((option) => {
-          const text = sample[option.value] ?? "";
-          return (
-            <label
-              key={option.value}
-              className="flex items-center justify-between gap-2"
+    <Disclosure summary="Sample counts">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-caption text-fg-muted">
+          <span>Set all to</span>
+          {PRESETS.map(({ label, count }) => (
+            <Button
+              key={label}
+              variant={ButtonVariant.Default}
+              size="small"
+              title={`Set every sample count for ${inputName} to ${count}`}
+              onClick={() =>
+                onChange(
+                  Object.fromEntries(
+                    options.map((option) => [option.value, count]),
+                  ),
+                )
+              }
             >
-              <span className="truncate font-mono" title={option.label}>
-                {option.value}
-              </span>
-              <input
-                inputMode="numeric"
-                value={text}
-                placeholder="0"
-                aria-label={`Sample count for ${option.value} in ${inputName}`}
-                onChange={(event) =>
-                  onChange({ ...sample, [option.value]: event.target.value })
-                }
-                className={cn(
-                  inputText,
-                  "w-16 py-0.5",
-                  countError(text) && "border-red-400",
-                )}
-              />
-            </label>
-          );
-        })}
+              {label}
+            </Button>
+          ))}
+        </div>
+        <div className="flex max-h-60 flex-wrap gap-x-6 gap-y-2 overflow-y-auto">
+          {options.map((option) => {
+            const text = sample[option.value] ?? "";
+            return (
+              <label
+                key={option.value}
+                className="flex w-56 items-center justify-between gap-2 text-caption"
+              >
+                <span className="truncate font-mono" title={option.label}>
+                  {option.value}
+                </span>
+                <Input
+                  inputMode="numeric"
+                  value={text}
+                  placeholder="0"
+                  aria-label={`Sample count for ${option.value} in ${inputName}`}
+                  aria-invalid={countError(text) ? true : undefined}
+                  onChange={(event) =>
+                    onChange({ ...sample, [option.value]: event.target.value })
+                  }
+                  className="w-20"
+                />
+              </label>
+            );
+          })}
+        </div>
       </div>
-    </details>
+    </Disclosure>
   );
 }

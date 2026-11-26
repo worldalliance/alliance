@@ -7,7 +7,7 @@ import type { ChoiceField } from "@alliance/common/forms/formula-options";
 import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { EditorSidebar } from "../../lib/testing/EditorSidebar";
@@ -235,7 +235,9 @@ it("previews the options with repeated values merged", () => {
     />,
   );
 
-  const chips = screen.getAllByRole("listitem");
+  const chips = within(
+    screen.getByRole("list", { name: "Previewed options" }),
+  ).getAllByRole("listitem");
   expect(chips.map((chip) => chip.textContent)).toEqual(["First a", "Other b"]);
 });
 
@@ -246,7 +248,11 @@ it("previews each option's category", () => {
     />,
   );
 
-  expect(screen.getByRole("listitem").textContent).toBe("Warm: Red r");
+  expect(
+    within(screen.getByRole("list", { name: "Previewed options" })).getByRole(
+      "listitem",
+    ).textContent,
+  ).toBe("Warm: Red r");
 });
 
 it("says when the formula doesn't give a list of choices", () => {
@@ -260,15 +266,11 @@ it("says when the formula doesn't give a list of choices", () => {
 it("offers the latest and all-submission recipes for a multiselect read from another form", () => {
   render(<Editor start={withFormula("[]")} />);
 
-  fireEvent.click(
-    screen.getByRole("button", { name: "What you can write here" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Formula help" }));
   fireEvent.click(screen.getByRole("button", { name: "input1.at(-1) ?? []" }));
 
   expect(latest.optionsFormula?.formula).toBe("input1.at(-1) ?? []");
-  fireEvent.click(
-    screen.getByRole("button", { name: "What you can write here" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Formula help" }));
   expect(
     screen.getByRole("button", {
       name: "input1.flatMap(answer => answer ?? [])",
@@ -279,9 +281,7 @@ it("offers the latest and all-submission recipes for a multiselect read from ano
 it("tells an unanswered input to give no choices, not text", () => {
   render(<Editor start={withFormula("[]")} />);
 
-  fireEvent.click(
-    screen.getByRole("button", { name: "What you can write here" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Formula help" }));
 
   expect(screen.getByText("input1 ?? []")).toBeTruthy();
   expect(screen.queryByText("input1 ?? 'n/a'")).toBeNull();
@@ -340,9 +340,7 @@ it("leaves text examples out of an options formula's help", () => {
   ).example("input1");
   render(<Editor start={start} />);
 
-  fireEvent.click(
-    screen.getByRole("button", { name: "What you can write here" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Formula help" }));
 
   expect(textExample).not.toBe("");
   expect(screen.queryByRole("button", { name: textExample })).toBeNull();
