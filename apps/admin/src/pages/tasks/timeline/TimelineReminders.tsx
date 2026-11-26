@@ -2,7 +2,7 @@ import type { NormalizedReminder } from "../../../lib/actionTimelineData";
 import { formatDateTime } from "../../../lib/formatDate";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import { cn } from "../../../ui/cn";
-import { NAME_COLUMN_PX, type XForTime } from "./timelineRules";
+import type { XForTime } from "./timelineRules";
 
 const at = (date: Date) => formatDateTime(date, { timeZone: LAUNCH_TIME_ZONE });
 
@@ -36,12 +36,12 @@ export function TimelineReminders({
         aria-label={`${title}, ${when}`}
         onClick={() => onReminderClick?.(reminder.original.id)}
         className={cn(
-          "absolute inset-y-0 focus-ring",
+          "pointer-events-auto absolute inset-y-0 focus-ring",
           reminder.isRange
             ? "border-x-2 border-accent bg-accent-soft/60"
             : "bg-accent",
         )}
-        style={{ left: `${NAME_COLUMN_PX + left}px`, width: `${width}px` }}
+        style={{ left: `${left}px`, width: `${width}px` }}
       />
     );
   });

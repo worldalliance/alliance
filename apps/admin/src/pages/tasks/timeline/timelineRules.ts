@@ -18,9 +18,6 @@ export const readGroupBy = (param: string | null): GroupBy =>
   param === GroupBy.Project ? GroupBy.Project : GroupBy.Suite;
 
 export const PIXELS_PER_DAY = 16;
-export const NAME_COLUMN_PX = 320;
-export const GROUP_PX = 56;
-export const ROW_PX = 56;
 
 export type XForTime = (time: Date | number) => number;
 
@@ -177,26 +174,6 @@ export const groupRows = ({
     ...ordered.filter((group) => group.id !== null),
     ...ordered.filter((group) => group.id === null),
   ];
-};
-
-/** Each row's top in the body, below the sticky header, by task id. */
-export const rowTops = ({
-  groups,
-  withHeaders,
-}: {
-  groups: readonly Pick<TimelineGroup, "rows">[];
-  withHeaders: boolean;
-}): Map<number, number> => {
-  const tops = new Map<number, number>();
-  let top = 0;
-  for (const group of groups) {
-    if (withHeaders) top += GROUP_PX;
-    for (const row of group.rows) {
-      tops.set(row.action.id, top);
-      top += ROW_PX;
-    }
-  }
-  return tops;
 };
 
 /** A phase's word fits in its bar; under that the bar keeps only its tooltip. */

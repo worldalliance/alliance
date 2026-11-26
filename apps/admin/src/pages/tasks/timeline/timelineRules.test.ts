@@ -1,13 +1,10 @@
 import type { ActionEventDto, ActionStatus } from "@alliance/shared/client";
 import type { TimelineRow } from "../../../lib/actionTimelineData";
 import {
-  GROUP_PX,
   GroupBy,
   groupRows,
   projectCat,
   readGroupBy,
-  ROW_PX,
-  rowTops,
   suitePhase,
   suiteWindow,
 } from "./timelineRules";
@@ -162,18 +159,6 @@ describe("groupRows", () => {
       ["No project", 2],
     ]);
     expect(groups[0].phase).toBeNull();
-  });
-});
-
-describe("rowTops", () => {
-  it("counts a header above each group when there are headers", () => {
-    const groups = [{ rows: [row(1), row(2)] }, { rows: [row(3)] }];
-    expect([...rowTops({ groups, withHeaders: true })]).toEqual([
-      [1, GROUP_PX],
-      [2, GROUP_PX + ROW_PX],
-      [3, 2 * GROUP_PX + 2 * ROW_PX],
-    ]);
-    expect(rowTops({ groups, withHeaders: false }).get(3)).toBe(2 * ROW_PX);
   });
 });
 

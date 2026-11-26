@@ -131,6 +131,13 @@ describe("ActionTimeline", () => {
 
   it("scrolls a week's header to the first action with a bar that week", () => {
     const { container } = renderTimeline();
+    Object.defineProperty(
+      screen
+        .getByRole("link", { name: "Running action" })
+        .closest("[data-task-row]"),
+      "offsetTop",
+      { value: 56 },
+    );
     const today = startOfDay(new Date());
     const weekStart = isTuesday(today) ? today : previousTuesday(today);
     const weekNumber = Math.ceil(getDayOfYear(weekStart) / 7) + 1;
@@ -144,6 +151,7 @@ describe("ActionTimeline", () => {
     );
 
     expect(container.querySelector(".overflow-auto")?.scrollTop).toBe(56);
+    expect(document.activeElement?.textContent).toBe("Running action");
   });
 
   it("reports which reminder was clicked", () => {

@@ -23,14 +23,7 @@ import { TimelineBars } from "./TimelineBars";
 import { TimelineGroupHeader } from "./TimelineGroupHeader";
 import { TimelineReminders } from "./TimelineReminders";
 import { TimelineWeeks } from "./TimelineWeeks";
-import {
-  GROUP_PX,
-  NAME_COLUMN_PX,
-  PIXELS_PER_DAY,
-  ROW_PX,
-  rowTops,
-  type TimelineGroup,
-} from "./timelineRules";
+import { PIXELS_PER_DAY, type TimelineGroup } from "./timelineRules";
 
 export type TaskTimelineProps = {
   /** The chart's accessible name. */
@@ -66,6 +59,7 @@ export function TaskTimeline({
   empty,
 }: TaskTimelineProps) {
   const scroller = useRef<HTMLDivElement>(null);
+  const nameColumn = useRef<HTMLDivElement>(null);
   const centred = useRef(false);
   const [now] = useState(() => new Date());
   const [highlighted, setHighlighted] = useState<number | null>(null);
@@ -88,16 +82,13 @@ export function TaskTimeline({
   const chartPx = Math.ceil(x(lastTick ? addWeeks(lastTick.date, 1) : endTime));
   const rows = groups.flatMap((group) => group.rows);
   const isEmpty = rows.length === 0 && reminders.length === 0;
-  const tops = rowTops({ groups, withHeaders: groupHeaders });
-  const bodyPx =
-    rows.length * ROW_PX + (groupHeaders ? groups.length * GROUP_PX : 0);
 
   const centreOnNow = () => {
     const box = scroller.current;
     if (!box) return;
     box.scrollLeft = Math.max(
       0,
-      nowPx - (box.clientWidth - NAME_COLUMN_PX) / 2,
+      nowPx - (box.clientWidth - (nameColumn.current?.offsetWidth ?? 0)) / 2,
     );
   };
 
@@ -111,11 +102,13 @@ export function TaskTimeline({
   const jumpToWeek = (weekStart: Date) => {
     const index = firstRowActiveInWeek(rows, weekStart);
     if (index === -1 || !scroller.current) return;
-    const id = rows[index].action.id;
-    scroller.current.scrollTop = tops.get(id) ?? 0;
-    scroller.current
-      .querySelector<HTMLElement>(`[data-task-link="${id}"]`)
-      ?.focus({ preventScroll: true });
+    const link = scroller.current.querySelector<HTMLElement>(
+      `[data-task-link="${rows[index].action.id}"]`,
+    );
+    const row = link?.closest<HTMLElement>("[data-task-row]");
+    if (!link || !row) return;
+    scroller.current.scrollTop = row.offsetTop;
+    link.focus({ preventScroll: true });
   };
 
   const highlight = (project: { id: number } | null | undefined) =>
@@ -128,10 +121,7 @@ export function TaskTimeline({
       aria-label={label}
       className={cn("relative min-h-0 overflow-auto bg-surface", className)}
     >
-      <div
-        className="relative"
-        style={{ width: `max(100%, ${NAME_COLUMN_PX + chartPx}px)` }}
-      >
+      <div className="relative w-max min-w-full">
         <div
           className={cn(
             "sticky top-0 flex h-16 border-b border-line bg-surface-2",
@@ -139,6 +129,7 @@ export function TaskTimeline({
           )}
         >
           <div
+            ref={nameColumn}
             className={cn(
               "sticky left-0 flex w-80 shrink-0 items-center gap-2 border-r border-line bg-surface-2 pr-4",
               zIndex.raised,
@@ -158,16 +149,16 @@ export function TaskTimeline({
         </div>
 
         {!isEmpty && (
-          <div className="relative" style={{ height: `${bodyPx}px` }}>
+          <div className="relative">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
+              className="pointer-events-none absolute inset-y-0 right-0 left-80"
             >
               {ticks.map(({ date, left }) => (
                 <span
                   key={date.getTime()}
                   className="absolute inset-y-0 border-l border-line"
-                  style={{ left: `${NAME_COLUMN_PX + left}px` }}
+                  style={{ left: `${left}px` }}
                 />
               ))}
             </div>
@@ -220,16 +211,18 @@ export function TaskTimeline({
                 ))}
               </div>
             ))}
-            <TimelineReminders
-              reminders={reminders}
-              x={x}
-              onReminderClick={onReminderClick}
-            />
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 w-0.5 bg-fg"
-              style={{ left: `${NAME_COLUMN_PX + nowPx}px` }}
-            />
+            <div className="pointer-events-none absolute inset-y-0 right-0 left-80">
+              <TimelineReminders
+                reminders={reminders}
+                x={x}
+                onReminderClick={onReminderClick}
+              />
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 w-0.5 bg-fg"
+                style={{ left: `${nowPx}px` }}
+              />
+            </div>
           </div>
         )}
       </div>
