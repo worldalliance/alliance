@@ -1,5 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { rowFieldNames } from "@alliance/common/forms/row-list";
+import { withCount } from "@alliance/common/plural";
 import { useState } from "react";
 import {
   conditionableItems,
@@ -56,7 +57,7 @@ export function RowListBuilder({
         title="Row list"
         description={
           list
-            ? `${list.rows.length} rows`
+            ? withCount(list.rows.length, "row")
             : "Give each member one row of values to use in this form."
         }
       >

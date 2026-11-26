@@ -284,11 +284,7 @@ export function ShareableTextBuilder({
             textareaClassName={TEXTAREA_CLASS}
           />
           {activeToken && suggestions.length > 0 && (
-            <div
-              role="listbox"
-              aria-label="Fields to insert"
-              className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-md bg-surface shadow-pop"
-            >
+            <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-md bg-surface shadow-pop">
               {suggestions.map((field, index) => (
                 <button
                   key={field.id}
