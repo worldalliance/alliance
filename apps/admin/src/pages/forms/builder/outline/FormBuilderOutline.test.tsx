@@ -207,6 +207,19 @@ describe("the outline by keyboard", () => {
     key("Text Block: Welcome", "Delete");
     expect(entries().slice(0, 3)).toEqual(["One", "Text Field: Town", "Two"]);
   });
+
+  it("changes nothing in Preview", async () => {
+    renderFormBuilder(schema);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    });
+    fireEvent.click(entry("Two"));
+    key("Two", "ArrowUp", { altKey: true });
+    key("Two", "Delete");
+    fireEvent.contextMenu(entry("One"));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(entries()).toEqual(["One", "Two"]);
+  });
 });
 
 describe("the form outline in a narrow window", () => {

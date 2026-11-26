@@ -172,7 +172,7 @@ export function FormBuilderCanvas({
         issues={issueIndex}
         onMovePage={movePage}
         onMoveElements={moveElementsTo}
-        actions={actions}
+        actions={isPreviewMode ? null : actions}
         pagesOnly={isPreviewMode}
       />
     ),
