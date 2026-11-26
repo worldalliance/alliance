@@ -2,7 +2,6 @@
 # raw colour classes, arbitrary values, sharedweb/ui imports, the shared cn,
 # ButtonColor and window.confirm. See "Lint" in apps/admin/DESIGN.md.
 # Delete a file's line when you redesign it. Never add one.
-src/components/ActionFollowUpFormsTab.tsx
 src/components/ActionForm.tsx
 src/components/ActionFormFields.tsx
 src/components/ActionFormVariantCoverage.tsx
