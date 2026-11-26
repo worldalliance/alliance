@@ -19,7 +19,7 @@ import { formResponsesAdminQuery } from "../../lib/useFormResponsesAdmin";
 export type ActionReporting = ReturnType<typeof useActionReporting>;
 
 export const taskFormWithSchema = (
-  taskForm: ReturnType<typeof useAdminTaskForm>,
+  taskForm: Pick<ReturnType<typeof useAdminTaskForm>, "data">,
 ) =>
   // Unparsed: the server validates a form's schema before storing it.
   (taskForm.data ?? null) as unknown as FormWithSchema | null;

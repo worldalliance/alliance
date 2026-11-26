@@ -24,10 +24,10 @@ it("flags overloaded members and text findings, and blocks launch until each is 
   expect(screen.getByText("10").className).not.toContain("text-danger");
   expect(screen.getAllByText("over 15 minutes")).toHaveLength(1);
   expect(
-    screen.getByText("Double space · Call · Action page description"),
+    screen.getByText("Double space · Call · Task page description"),
   ).toBeTruthy();
   expect(
-    screen.getByText("Possible misspelling · Write · Action page description"),
+    screen.getByText("Possible misspelling · Write · Task page description"),
   ).toBeTruthy();
   expect(
     screen.getByText(
@@ -239,7 +239,7 @@ it("restores a dismissed finding, which blocks launch again", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Show dismissed" }));
   const misspelling = screen
-    .getByText("Possible misspelling · Write · Action page description")
+    .getByText("Possible misspelling · Write · Task page description")
     .closest("li");
   if (!misspelling) throw new Error("no dismissed finding");
   fireEvent.click(within(misspelling).getByRole("button", { name: "Restore" }));
@@ -277,8 +277,8 @@ it("lists every instance of one misspelling as one finding, dismissed at once", 
   const row = (
     await screen.findByText("Possible misspelling · 2 places")
   ).closest("li");
-  expect(row?.textContent).toContain("Call · Action page description");
-  expect(row?.textContent).toContain("Write · Action page description");
+  expect(row?.textContent).toContain("Call · Task page description");
+  expect(row?.textContent).toContain("Write · Task page description");
   expect(screen.getByText("1 text finding to fix or dismiss.")).toBeTruthy();
 
   if (!row) throw new Error("no grouped finding");
@@ -301,10 +301,10 @@ it("marks an excerpt with … only on the side it cuts", async () => {
   const excerpt = (text: string) =>
     screen.getByText((_, el) => el?.tagName === "P" && el.textContent === text);
   expect(
-    excerpt("Call · Action page descriptionCall teh office before the d…"),
+    excerpt("Call · Task page descriptionCall teh office before the d…"),
   ).toBeTruthy();
   expect(
-    excerpt("Write · Action page description…epresentative about teh"),
+    excerpt("Write · Task page description…epresentative about teh"),
   ).toBeTruthy();
 });
 

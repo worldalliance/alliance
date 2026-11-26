@@ -10,6 +10,7 @@ import {
 import type React from "react";
 import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
 import { makeParsedAction } from "../../lib/testing/parsedAction";
+import { SAVE_FAILED_FALLBACK } from "../../ui/templates/Form";
 import { ToastProvider } from "../../ui/ToastProvider";
 import { type ActionEditorState, useActionEditor } from "./useActionEditor";
 
@@ -153,7 +154,7 @@ describe("useActionEditor", () => {
 
     await act(() => result.current.handleSubmit(submitEvent));
 
-    expect(setError).toHaveBeenLastCalledWith("Give the action a name.");
+    expect(result.current.nameMissing).toBe(true);
     expect(updateAction).not.toHaveBeenCalled();
 
     act(() =>
@@ -161,9 +162,55 @@ describe("useActionEditor", () => {
         target: { name: "name", value: "Call your rep", type: "text" },
       } as React.ChangeEvent<HTMLInputElement>),
     );
-    const clear = setError.mock.lastCall?.[0];
-    expect(clear("Give the action a name.")).toBeNull();
-    expect(clear("Failed to archive action")).toBe("Failed to archive action");
+    expect(result.current.nameMissing).toBe(false);
+  });
+
+  it("keeps a refused save's reason for the save bar and marks a good one saved", async () => {
+    const { result, updateAction } = renderEditor();
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+    moveTo(result.current, "");
+    act(() => result.current.patchForm({ timeEstimate: 12 }));
+    updateAction.mockRejectedValueOnce(new Error("offline"));
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    await act(() => result.current.handleSubmit(submitEvent));
+    logged.mockRestore();
+
+    expect(result.current.saveError).toBe(SAVE_FAILED_FALLBACK);
+    expect(result.current.dirty).toBe(true);
+    expect(setError).not.toHaveBeenCalledWith(SAVE_FAILED_FALLBACK);
+
+    await act(() => result.current.handleSubmit(submitEvent));
+    expect(result.current.saveError).toBeNull();
+    expect(result.current.justSaved).toBe(true);
+
+    act(() => result.current.patchForm({ timeEstimate: 13 }));
+    expect(result.current.justSaved).toBe(false);
+  });
+
+  it("discards edits back to the saved task", async () => {
+    const { result } = renderEditor({ timeEstimate: 5 });
+    await waitFor(() => expect(result.current.draftSeeded).toBe(true));
+
+    act(() => result.current.patchForm({ timeEstimate: 12, publicOnly: true }));
+    expect(result.current.dirty).toBe(true);
+
+    act(() => result.current.discard());
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.form.timeEstimate).toBe(5);
+    expect(result.current.form.publicOnly).toBe(false);
+  });
+
+  it("discards a new task's edits back to the empty draft", async () => {
+    const { result } = renderEditor({}, { isNew: true });
+
+    act(() => result.current.patchForm({ name: "Draft", staffPreview: true }));
+    expect(result.current.dirty).toBe(true);
+
+    act(() => result.current.discard());
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.form.name).toBe("");
+    expect(result.current.form.staffPreview).toBe(false);
   });
 
   it("is dirty once a new action has an edit", async () => {

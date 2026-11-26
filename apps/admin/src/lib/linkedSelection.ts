@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ACTION_TEXT_FIELD_LABELS } from "./actionFieldDefs";
 import { dropSearchParams } from "./dropSearchParams";
 
-/** Action text fields a link can select in, each the id of its input. */
+/** Task text fields a link can select in, each the `name` of its textarea. */
 export enum LinkedField {
   Name = "name",
   ShortDescription = "shortDescription",
@@ -79,7 +79,7 @@ function selectIn({
   to,
   text,
 }: LinkedSelection): Result<void, string> {
-  const field = document.getElementById(id);
+  const field = document.querySelector(`textarea[name="${id}"]`);
   const label = LINKED_FIELD_LABELS[id];
   if (!(field instanceof HTMLTextAreaElement)) {
     return R.failure(

@@ -1,17 +1,17 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { CollapsibleFormSection } from "./FormSection";
+import { SettingGroup } from "./MoreSettingsSection";
 
 const section = (inUse: boolean) => (
-  <CollapsibleFormSection title="Completion" inUse={inUse}>
+  <SettingGroup title="Completion" inUse={inUse}>
     <p>fields</p>
-  </CollapsibleFormSection>
+  </SettingGroup>
 );
 
 const toggle = () => screen.getByRole("button", { name: "Completion" });
 
 const isOpen = () => toggle().getAttribute("aria-expanded") === "true";
 
-describe("CollapsibleFormSection", () => {
+describe("SettingGroup", () => {
   it("is a heading that names the section", () => {
     render(section(false));
     expect(screen.getByRole("heading", { name: "Completion" })).toBeTruthy();

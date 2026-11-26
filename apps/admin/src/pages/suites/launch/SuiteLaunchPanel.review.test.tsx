@@ -30,7 +30,7 @@ it("links a task form finding to the form and a body finding to its text in the 
     await screen.findAllByText("Double space · Call · Task form")
   )[0].closest("li");
   const bodyFinding = screen
-    .getByText("Double space · Call · Action page description")
+    .getByText("Double space · Call · Task page description")
     .closest("li");
   expect(
     formFinding
@@ -46,7 +46,7 @@ it("links a task form finding to the form and a body finding to its text in the 
 
 it("previews the actions assigned to a picked member", async () => {
   renderPanel();
-  await screen.findByText("Double space · Call · Action page description");
+  await screen.findByText("Double space · Call · Task page description");
 
   await pickUser(screen.getByPlaceholderText("Search by name"), {
     query: "Ana",
@@ -85,7 +85,7 @@ it("previews each of an action's variant forms as a picked member", async () => 
     memberActionDeadline: null,
   }));
   renderPanel();
-  await screen.findByText("Double space · Call · Action page description");
+  await screen.findByText("Double space · Call · Task page description");
 
   await pickUser(screen.getByPlaceholderText("Search by name"), {
     query: "Ana",
@@ -103,7 +103,7 @@ it("previews each of an action's variant forms as a picked member", async () => 
 
 it("groups members by the actions they get and previews one from a group", async () => {
   renderPanel();
-  await screen.findByText("Double space · Call · Action page description");
+  await screen.findByText("Double space · Call · Task page description");
 
   const mixes = screen.getAllByRole("button", {
     name: "Preview a member who gets these tasks",
@@ -488,7 +488,7 @@ it("lists each variant form whose conditions tell members apart as its own entry
 
 it("leaves out task forms that show every member the same thing", async () => {
   renderPanel();
-  await screen.findByText("Double space · Call · Action page description");
+  await screen.findByText("Double space · Call · Task page description");
 
   expect(screen.queryByText("Task forms by member")).toBeNull();
   expect(api.visibilityProfileRequests).toEqual([]);

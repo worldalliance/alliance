@@ -1,20 +1,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import ActionReviewersEditor, {
-  type ReviewerRow,
-} from "./ActionReviewersEditor";
+import { useState } from "react";
+import { type ReviewerRow } from "./reviewerRows";
+import { ReviewersField } from "./ReviewersField";
 
 const renderEditor = (reviewers: ReviewerRow[]) => {
   const onReviewersChange = jest.fn();
-  render(
-    <ActionReviewersEditor
-      reviewers={reviewers}
-      onReviewersChange={onReviewersChange}
-    />,
-  );
+  render(<ReviewersField reviewers={reviewers} onChange={onReviewersChange} />);
   return onReviewersChange;
 };
 
-describe("ActionReviewersEditor", () => {
+describe("ReviewersField", () => {
   it("shows Auto with the icon its link implies", () => {
     renderEditor([
       {
@@ -125,16 +120,37 @@ describe("ActionReviewersEditor", () => {
       { key: "b", name: "Grace" },
     ]);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Remove/ })[0]);
     expect(onReviewersChange).toHaveBeenLastCalledWith([
       { key: "b", name: "Grace" },
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "+ Add reviewer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add reviewer" }));
     expect(onReviewersChange).toHaveBeenLastCalledWith([
       { key: "a", name: "Ada" },
       { key: "b", name: "Grace" },
       { key: expect.any(String), name: "" },
     ]);
+  });
+
+  it("moves focus to the next row's Remove, else to Add reviewer", () => {
+    function Stateful() {
+      const [reviewers, setReviewers] = useState<ReviewerRow[]>([
+        { key: "a", name: "Ada" },
+        { key: "b", name: "Grace" },
+      ]);
+      return <ReviewersField reviewers={reviewers} onChange={setReviewers} />;
+    }
+    render(<Stateful />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove: Ada" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Remove: Grace" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove: Grace" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Add reviewer" }),
+    );
   });
 });

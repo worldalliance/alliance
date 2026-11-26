@@ -1,39 +1,25 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
-import { LeaveGuardRouter } from "../../lib/testing/LeaveGuardRouter";
-import { makeParsedAction } from "../../lib/testing/parsedAction";
-import { ToastProvider } from "../../ui/ToastProvider";
-import ActionEditor from "./ActionEditor";
-import { useActionEditor } from "./useActionEditor";
+import { LeaveGuardRouter } from "../../../lib/testing/LeaveGuardRouter";
+import { makeParsedAction } from "../../../lib/testing/parsedAction";
+import { ToastProvider } from "../../../ui/ToastProvider";
+import { useActionEditor } from "../../action-dashboard/useActionEditor";
+import { testLookups } from "./renderDetailsForm";
+import { TaskDetailsForm } from "./TaskDetailsForm";
 
 const action = makeParsedAction({
   shortDescription: "Short",
   body: "[Settings](https://worldalliance.org/settings)",
 });
 
-const lookups = {
-  tagsLoading: false,
-  tagsError: false,
-  suitesLoading: false,
-  suitesError: false,
-  usersLoading: false,
-  usersError: false,
-  allActionsLoadFailed: false,
-};
+const lookups = testLookups();
 
-const renderActionEditor = (isNew: boolean) => {
+const renderDetailsForm = (isNew: boolean) => {
   const createAction = jest.fn(async () => action);
   const updateAction = jest.fn(async () => action);
   const searchParams = new URLSearchParams();
   const setError = jest.fn();
-  const mode = isNew
-    ? { isNew: true as const, onCancel: jest.fn() }
-    : {
-        isNew: false as const,
-        cohortParseFailed: false,
-        checklist: null,
-      };
   const Harness = () => {
     const editor = useActionEditor({
       admin: {
@@ -50,12 +36,11 @@ const renderActionEditor = (isNew: boolean) => {
       setError,
     });
     return (
-      <ActionEditor
+      <TaskDetailsForm
         editor={editor}
         lookups={lookups}
-        action={isNew ? null : action}
+        task={isNew ? null : action}
         saving={false}
-        mode={mode}
       />
     );
   };
@@ -71,10 +56,10 @@ const renderActionEditor = (isNew: boolean) => {
 };
 
 it.each([
-  ["a new action", true],
-  ["an existing action", false],
+  ["a new task", true],
+  ["an existing task", false],
 ])("shows the worldalliance dialog when saving %s", async (_, isNew) => {
-  const save = renderActionEditor(isNew);
+  const save = renderDetailsForm(isNew);
   if (isNew) {
     fireEvent.change(screen.getByLabelText(/^Name/), {
       target: { name: "name", value: "worldalliance action" },
@@ -85,7 +70,7 @@ it.each([
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: isNew ? "Create action" : "Save changes",
+      name: isNew ? "Create task" : "Save changes",
     }),
   );
   fireEvent.click(await screen.findByRole("button", { name: "Save anyway" }));
