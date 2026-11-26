@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { isTextEntry } from "../lib/useDraftHistory";
 import { Kbd } from "../ui/Kbd";
 import Modal, { ModalBody, ModalHeader, ModalTitle } from "../ui/Modal";
 import { Switch } from "../ui/Switch";
@@ -214,7 +215,10 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
         const combo = `${MOD}${event.shiftKey ? SHIFT : ""}${event.key.toLowerCase()}`;
         const shortcut = all.find((candidate) => candidate.keys === combo);
         if (!mod || !shortcut || event.altKey) return;
-        if (shortcut.allowInTextField === false && isTyping(event.target)) {
+        if (
+          shortcut.allowInTextField === false &&
+          isTextEntry(event.target)
+        ) {
           return;
         }
         event.preventDefault();

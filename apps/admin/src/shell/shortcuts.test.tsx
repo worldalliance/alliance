@@ -272,6 +272,7 @@ const UndoRedo = ({
   return (
     <>
       <input aria-label="Label" />
+      <input type="checkbox" aria-label="Required" />
       <button type="button" onClick={openList}>
         Keyboard shortcuts
       </button>
@@ -279,7 +280,7 @@ const UndoRedo = ({
   );
 };
 
-it("tells Shift apart, leaves a text field its own undo and lists both", () => {
+it("tells Shift apart, leaves a text field, not a checkbox, its own undo and lists both", () => {
   const onUndo = mock();
   const onRedo = mock();
   render(
@@ -297,6 +298,9 @@ it("tells Shift apart, leaves a text field its own undo and lists both", () => {
   const field = screen.getByRole("textbox", { name: "Label" });
   expect(fireEvent.keyDown(field, { key: "z", ctrlKey: true })).toBe(true);
   expect(onUndo).toHaveBeenCalledTimes(1);
+  const checkbox = screen.getByRole("checkbox", { name: "Required" });
+  fireEvent.keyDown(checkbox, { key: "z", ctrlKey: true });
+  expect(onUndo).toHaveBeenCalledTimes(2);
 
   fireEvent.click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
   expect(screen.getByText("Ctrl+Z")).toBeTruthy();
