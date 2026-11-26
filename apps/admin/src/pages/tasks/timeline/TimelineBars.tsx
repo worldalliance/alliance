@@ -10,12 +10,8 @@ import { taskHref } from "../../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import { cn } from "../../../ui/cn";
 import { phaseLabel } from "../../../ui/PhaseBadge";
-import {
-  labelFits,
-  PROJECT_CAT_CLASS,
-  projectCat,
-  type XForTime,
-} from "./timelineRules";
+import { projectColor } from "../../../ui/projectColor";
+import { labelFits, type XForTime } from "./timelineRules";
 
 const at = (date: Date) => formatDateTime(date, { timeZone: LAUNCH_TIME_ZONE });
 
@@ -34,7 +30,7 @@ const PHASE_CLASS: Record<ActionStatus, string> = {
 
 const memberActionClass = (project: TimelineRow["action"]["project"]) => {
   if (!project) return "border-fg-muted bg-surface-2 text-fg";
-  const cat = PROJECT_CAT_CLASS[projectCat(project.id)];
+  const cat = projectColor(project.id);
   return cn(cat.border, cat.soft, "text-fg");
 };
 

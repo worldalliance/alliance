@@ -5,15 +5,11 @@ import { projectHref, suiteHref } from "../../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
 import { cn } from "../../../ui/cn";
 import PhaseBadge, { phaseLabel } from "../../../ui/PhaseBadge";
+import { projectColor } from "../../../ui/projectColor";
+import { ProjectSwatch } from "../../../ui/ProjectSwatch";
 import { nameLinkClass } from "../../../ui/styles";
 import { zIndex } from "../../../ui/zIndex";
-import {
-  GroupBy,
-  PROJECT_CAT_CLASS,
-  projectCat,
-  type TimelineGroup,
-  type XForTime,
-} from "./timelineRules";
+import { GroupBy, type TimelineGroup, type XForTime } from "./timelineRules";
 
 const HREF: Record<GroupBy, (id: number) => string> = {
   [GroupBy.Suite]: suiteHref,
@@ -30,7 +26,7 @@ export function TimelineGroupHeader({
 }) {
   const cat =
     group.kind === GroupBy.Project && group.id !== null
-      ? PROJECT_CAT_CLASS[projectCat(group.id)]
+      ? projectColor(group.id)
       : null;
   const span = group.span;
   const left = span ? x(span.start) : 0;
@@ -44,12 +40,7 @@ export function TimelineGroupHeader({
         )}
       >
         <div className="flex min-w-0 items-center gap-2">
-          {cat && (
-            <span
-              aria-hidden="true"
-              className={cn("size-3 shrink-0 rounded-sm", cat.solid)}
-            />
-          )}
+          {cat && group.id !== null && <ProjectSwatch projectId={group.id} />}
           {group.id === null ? (
             <span className="truncate font-semibold text-fg-muted">
               {group.name}

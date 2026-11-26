@@ -4,7 +4,6 @@ import {
 } from "@alliance/common/actionEvent";
 import type { ActionEventDto, ActionStatus } from "@alliance/shared/client";
 import type { TimelineRow } from "../../../lib/actionTimelineData";
-import { hashString } from "../../../lib/identitySwatch";
 
 export enum GroupBy {
   Suite = "suite",
@@ -20,26 +19,6 @@ export const readGroupBy = (param: string | null): GroupBy =>
 export const PIXELS_PER_DAY = 16;
 
 export type XForTime = (time: Date | number) => number;
-
-export type ProjectCat = 1 | 2 | 3 | 4 | 5 | 6;
-const CATS = [1, 2, 3, 4, 5, 6] as const satisfies readonly ProjectCat[];
-
-/** The server stores no colour, so a project's comes from its id and never changes. */
-export const projectCat = (projectId: number): ProjectCat =>
-  CATS[hashString(String(projectId)) % CATS.length];
-
-// Literal class names, so Tailwind sees each one.
-export const PROJECT_CAT_CLASS: Record<
-  ProjectCat,
-  { solid: string; soft: string; border: string }
-> = {
-  1: { solid: "bg-cat-1", soft: "bg-cat-1-soft", border: "border-cat-1" },
-  2: { solid: "bg-cat-2", soft: "bg-cat-2-soft", border: "border-cat-2" },
-  3: { solid: "bg-cat-3", soft: "bg-cat-3-soft", border: "border-cat-3" },
-  4: { solid: "bg-cat-4", soft: "bg-cat-4-soft", border: "border-cat-4" },
-  5: { solid: "bg-cat-5", soft: "bg-cat-5-soft", border: "border-cat-5" },
-  6: { solid: "bg-cat-6", soft: "bg-cat-6-soft", border: "border-cat-6" },
-};
 
 type SuiteEvent = Pick<ActionEventDto, "date" | "newStatus" | "suiteManaged">;
 

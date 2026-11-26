@@ -3,7 +3,6 @@ import type { TimelineRow } from "../../../lib/actionTimelineData";
 import {
   GroupBy,
   groupRows,
-  projectCat,
   readGroupBy,
   suitePhase,
   suiteWindow,
@@ -159,14 +158,5 @@ describe("groupRows", () => {
       ["No project", 2],
     ]);
     expect(groups[0].phase).toBeNull();
-  });
-});
-
-describe("projectCat", () => {
-  it("gives a project the same colour every time", () => {
-    expect(projectCat(42)).toBe(projectCat(42));
-    expect(
-      new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(projectCat)).size,
-    ).toBeGreaterThan(1);
   });
 });
