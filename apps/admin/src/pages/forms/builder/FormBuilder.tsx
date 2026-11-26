@@ -1,16 +1,17 @@
 import { BuilderContext } from "./BuilderContext";
 import { useBuilderShortcuts } from "./builderShortcuts";
 import { BuilderWorkspace } from "./BuilderWorkspace";
+import { FormConflictModal } from "./conflict/FormConflictModal";
+import { FormulaSourcesProvider } from "./formulas/FormulaSourcesContext";
+import { FormVariablesProvider } from "./formulas/FormVariablesContext";
+import { FormJsonModal } from "./json/FormJsonModal";
+import { FormDraftContexts } from "./selection/FormDraftContexts";
+import { useEscapeUp } from "./selection/useEscapeUp";
 import {
   FormEditor,
   useFormBuilder,
   type FormBuilderProps,
 } from "./useFormBuilder";
-import { FormConflictModal } from "./conflict/FormConflictModal";
-import { FormDraftContexts } from "./selection/FormDraftContexts";
-import { FormJsonModal } from "./json/FormJsonModal";
-import { FormulaSourcesProvider } from "./formulas/FormulaSourcesContext";
-import { FormVariablesProvider } from "./formulas/FormVariablesContext";
 
 export function FormBuilder(props: FormBuilderProps) {
   const builder = useFormBuilder(props);
@@ -34,8 +35,14 @@ export function FormBuilder(props: FormBuilderProps) {
     isPreviewMode,
     requestPreview,
     showEdit,
+    canvas,
     props: { displayOnly },
   } = builder;
+  useEscapeUp({
+    root: builderRef,
+    canvas,
+    active: activeEditor === FormEditor.Form && !isPreviewMode,
+  });
   useBuilderShortcuts({
     save: requestSave,
     togglePreview:
