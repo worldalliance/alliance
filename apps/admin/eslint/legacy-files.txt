@@ -85,7 +85,6 @@ src/components/ShareableTextBuilder.tsx
 src/components/SharedOutputSourceWarning.tsx
 src/components/SlugField.tsx
 src/components/SnapshotTargetPicker.tsx
-src/components/SortHeader.tsx
 src/components/SuiteEventCard.tsx
 src/components/SuiteEventList.tsx
 src/components/TextareaWithHighlights.tsx
