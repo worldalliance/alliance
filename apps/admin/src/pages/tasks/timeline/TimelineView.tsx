@@ -3,15 +3,11 @@ import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ActionStatusBucket } from "../../../lib/actionStatusBucket";
 import { buildTimelineData } from "../../../lib/actionTimelineData";
-import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { useActionParticipants } from "../../../lib/useActionParticipants";
 import Button, { ButtonVariant } from "../../../ui/Button";
 import { EmptyState } from "../../../ui/EmptyState";
 import { ViewSwitch } from "../../../ui/templates/List";
-import {
-  ContentState,
-  LOAD_FAILED_FALLBACK,
-} from "../../../ui/templates/States";
+import { ContentState } from "../../../ui/templates/States";
 import {
   filteredOutReason,
   filterTasks,
@@ -118,16 +114,10 @@ export function TimelineView() {
       className="flex min-h-0 grow basis-0 flex-col outline-none"
     >
       <ContentState
-        loading={list.isPending}
+        things="tasks"
+        query={list}
+        refreshBanner={false}
         skeleton={<TimelineSkeleton />}
-        error={
-          list.isLoadingError
-            ? adminRefusalMessage(list.error, LOAD_FAILED_FALLBACK)
-            : null
-        }
-        errorTitle="Couldn't load tasks"
-        onRetry={() => void list.refetch()}
-        retrying={list.isFetching}
         empty={list.data?.length === 0}
         emptyTitle="No tasks yet"
         emptyDescription="Create one from the List view."

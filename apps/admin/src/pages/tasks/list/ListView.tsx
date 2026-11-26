@@ -1,7 +1,6 @@
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { Fragment } from "react";
 import { Link } from "react-router";
-import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { formatDateTime } from "../../../lib/formatDate";
 import { suiteHref, taskHref } from "../../../lib/hrefs";
 import { LAUNCH_TIME_ZONE } from "../../../lib/launchTimeZone";
@@ -20,11 +19,7 @@ import {
   TableRow,
 } from "../../../ui/Table";
 import { ListContent } from "../../../ui/templates/List";
-import {
-  ContentState,
-  LOAD_FAILED_FALLBACK,
-  TableSkeleton,
-} from "../../../ui/templates/States";
+import { ContentState, TableSkeleton } from "../../../ui/templates/States";
 import { filterTasks, SHOW_ARCHIVED_ID, useTaskFilters } from "../taskFilters";
 import { getLastPastEventDate, groupBySuite } from "./listRules";
 import { completedOfJoined } from "./TaskProgress";
@@ -41,16 +36,10 @@ export function ListView() {
   return (
     <ListContent>
       <ContentState
-        loading={list.isPending}
+        things="tasks"
+        query={list}
+        refreshBanner={false}
         skeleton={<TableSkeleton bleed columns={COLUMNS} />}
-        error={
-          list.isLoadingError
-            ? adminRefusalMessage(list.error, LOAD_FAILED_FALLBACK)
-            : null
-        }
-        errorTitle="Couldn't load tasks"
-        onRetry={() => void list.refetch()}
-        retrying={list.isFetching}
         empty={unarchived.length === 0}
         emptyTitle={allArchived ? "Every task is archived" : "No tasks yet"}
         emptyDescription={
