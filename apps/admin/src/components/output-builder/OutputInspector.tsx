@@ -5,15 +5,17 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { taskFlow } from "@alliance/shared/lib/copy";
 import { InspectorGroup } from "../../pages/forms/builder/kit/InspectorGroup";
+import { HEADER_TRUNCATES } from "../../pages/forms/builder/paneHeader";
 import Badge from "../../ui/Badge";
 import Button, { ButtonVariant } from "../../ui/Button";
+import { cn } from "../../ui/cn";
 import { Input } from "../../ui/Input";
 import { Select } from "../../ui/Select";
 import { Field } from "../../ui/templates/Form";
 import { PaneHeader } from "../../ui/templates/Workspace";
 import { VIEW_LAYOUTS } from "./outputSelection";
 
-const HEADER = "z-20 bg-canvas";
+const HEADER = cn(HEADER_TRUNCATES, "z-20 bg-canvas");
 
 /** What the inspector says when "All output views" is selected. */
 export function AllViewsInspector({

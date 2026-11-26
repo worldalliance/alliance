@@ -170,11 +170,7 @@ function ViewTree({
             selection.target === OutputTarget.Block &&
             selection.viewId === view.id &&
             selection.blockKey === key;
-          const label = outputBlockInternalDescriptor({
-            block,
-            fieldLookup,
-            maxTextLength: 30,
-          });
+          const label = outputBlockInternalDescriptor({ block, fieldLookup });
           const showBar =
             drag.dragOverIndex === index &&
             drag.dropPosition !== null &&

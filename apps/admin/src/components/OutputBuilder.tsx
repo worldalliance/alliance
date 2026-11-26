@@ -9,6 +9,7 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
+import { HEADER_TRUNCATES } from "../pages/forms/builder/paneHeader";
 import Button, { ButtonVariant } from "../ui/Button";
 import { cn } from "../ui/cn";
 import { EmptyState } from "../ui/EmptyState";
@@ -341,16 +342,12 @@ function InspectorPane({
             position === index ? mergeBlock(candidate, updates) : candidate,
           ),
         });
-      const title = outputBlockInternalDescriptor({
-        block,
-        fieldLookup,
-        maxTextLength: 30,
-      });
+      const title = outputBlockInternalDescriptor({ block, fieldLookup });
       body = (
         <>
           <PaneHeader
             title={title}
-            className="z-20 bg-canvas"
+            className={cn(HEADER_TRUNCATES, "z-20 bg-canvas")}
             action={
               <MoreMenu
                 size="small"
