@@ -121,7 +121,7 @@ export function Page<T extends string>(props: PageProps<T>) {
 
   const banners = (
     // Without tabs the banner would touch the header's last line.
-    <div className={cn("shrink-0 empty:hidden", !tabs && "pt-3")}>
+    <div className={cn("page-banner shrink-0 empty:hidden", !tabs && "pt-3")}>
       {bannerPending ? (
         <div aria-hidden="true" className="invisible">
           <Banner>&nbsp;</Banner>

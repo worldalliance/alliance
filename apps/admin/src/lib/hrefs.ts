@@ -28,7 +28,9 @@ export const groupHref = (groupId: number, tab?: RecordTabId<RecordId.Group>) =>
     tab,
   );
 
-export const memberListHref = (listId: number | "new") =>
+export const MEMBER_LISTS_HREF = href("/members/lists");
+
+export const memberListHref = (listId: number | string) =>
   href("/members/lists/:listId", { listId: listId.toString() });
 
 export const taskHref = (actionId: number, tab?: RecordTabId<RecordId.Task>) =>

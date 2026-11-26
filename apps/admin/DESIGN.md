@@ -231,6 +231,7 @@ A page header, then sections in one column (`Section`), each a heading and a car
 - A navigator's rows take `navRowClass` (`ui/styles.ts`): the table's hover and selected tones, selected by `aria-current="page"` on a link row, `aria-current="true"` on an outline row or `aria-selected` on an option.
 - A list and its record on one page (Inbox: the threads beside a thread) is a pathless `layout` in `routes.ts` that renders the `Workspace` with the list, whose children are the list's full path (`/inbox`) and the record's (`/inbox/:threadId`); the record renders in the canvas through `<Outlet />`. Don't nest an absolute path inside a route that has a path of its own: React Router's typegen breaks.
 - A pane's title row is a `PaneHeader`: one line whatever the title's length, `leading` before the title (a "Back to {parent}" icon button), `action` after it (it takes several controls and lays them in a row at the right).
+- Under a `Page` `banner` the workspace sits flush: the banner's bottom border is the seam, so the template drops its own top margin and border there (the banner slot has the `page-banner` class the template keys on).
 - Reordering by drag also works without dragging (move up, move down, or a menu), per WCAG 2.5.7.
 - The canvas of the form builder renders the member-facing form renderer and must look as it does in the member app; admin chrome sits around it.
 - Adding an element opens a searchable picker listing only field and block types that exist today (`DATACHECK.md` names eight the prototype invented).

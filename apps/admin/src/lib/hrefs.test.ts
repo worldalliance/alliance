@@ -9,6 +9,7 @@ import {
   koraAssignmentHref,
   koraTranscriptPreviewHref,
   memberHref,
+  MEMBER_LISTS_HREF,
   memberListHref,
   projectHref,
   projectTaskHref,
@@ -25,6 +26,8 @@ describe("hrefs", () => {
     expect(memberHref(7)).toBe("/members/7");
     expect(groupHref(7)).toBe("/members/groups/7");
     expect(memberListHref("new")).toBe("/members/lists/new");
+    expect(memberListHref("abc")).toBe("/members/lists/abc");
+    expect(MEMBER_LISTS_HREF).toBe("/members/lists");
     expect(taskHref(7)).toBe("/tasks/7");
     expect(taskUpdateHref({ actionId: 7, updateId: 8 })).toBe(
       "/tasks/7/updates/8",

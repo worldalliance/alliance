@@ -31,7 +31,13 @@ export function Workspace({
   inspectorRef?: Ref<HTMLDivElement>;
 }) {
   return (
-    <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-line">
+    <div
+      className={cn(
+        "mt-3 flex min-h-0 flex-1 flex-col border-t border-line",
+        // A banner's own bottom border is the seam, so a gap and a second line under it would sit 12 px apart.
+        "[.page-banner:not(:empty)~*>&]:mt-0 [.page-banner:not(:empty)~*>&]:border-t-0",
+      )}
+    >
       {toolbar}
       <div className="flex min-h-0 flex-1">
         {navigator !== undefined && (
