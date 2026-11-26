@@ -207,3 +207,15 @@ describe("UserSelect focus after a filtered remove", () => {
     expect(document.activeElement).toBe(search);
   });
 });
+
+describe("UserSelect with nothing left to pick", () => {
+  it("says so rather than blaming a search nobody typed", async () => {
+    render(
+      <UserSelect users={USERS} selectedUserIds={[1, 2]} onChange={() => {}} />,
+    );
+    fireEvent.keyDown(screen.getByLabelText("Recipients"), {
+      key: "ArrowDown",
+    });
+    expect(await screen.findByText("No users to pick.")).toBeTruthy();
+  });
+});

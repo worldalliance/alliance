@@ -182,7 +182,11 @@ const UserSelect: React.FC<UserSelectProps> = ({
                 )}
               >
                 <Primitive.Empty className="px-2.5 py-2 text-fg-muted empty:hidden">
-                  {loading || loadFailed ? null : "No users match that search."}
+                  {loading || loadFailed
+                    ? null
+                    : query.trim()
+                      ? "No users match that search."
+                      : "No users to pick."}
                 </Primitive.Empty>
                 <Primitive.List className="outline-none">
                   {(user: UserSelectUser) => (
