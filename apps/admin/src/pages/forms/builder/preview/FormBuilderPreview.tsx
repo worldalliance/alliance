@@ -2,12 +2,13 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { schemaForRow } from "@alliance/common/forms/row-list";
 import type { UserDto } from "@alliance/shared/client";
 import { useMemo, useRef, useState, type RefObject } from "react";
+import { VisibilityProfilePicker } from "../../../../components/VisibilityProfilePicker";
 import { FORM_BUILDER_PREVIEW_USER } from "../../../../lib/testData";
 import { useUsersAdmin } from "../../../../lib/useUsersAdmin";
 import Sheet from "../../../../ui/Sheet";
+import { Settling } from "../BuilderSkeletons";
 import { MemberFormRenderer } from "./MemberFormRenderer";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
-import { VisibilityProfilePicker } from "../../../../components/VisibilityProfilePicker";
 
 export type PreviewBodyProps = {
   schema: FormSchema;
@@ -45,11 +46,14 @@ export function PreviewBody({
  * sends no member analytics, so nothing entered here is written.
  */
 export function FormBuilderPreview({
+  settled,
   schema,
   pageIndex,
   previewUserId,
   setPreviewUserId,
 }: {
+  /** Whether the previewed form has laid out; until then a skeleton stands in for it. */
+  settled: boolean;
   schema: FormSchema;
   pageIndex: number;
   previewUserId: string;
@@ -105,27 +109,29 @@ export function FormBuilderPreview({
         setRowIndex={setRowIndex}
         onOpenProfiles={() => setProfilesOpen(true)}
       />
-      <div className="p-4 pb-16">
-        <div className="mx-auto max-w-3xl rounded-card border border-line bg-surface p-6">
-          {!memberUnavailable ? (
-            <PreviewBody
-              key={`${memberId ?? "none"}:${rowId ?? "none"}`}
-              schema={previewSchema}
-              pageIndex={pageIndex}
-              userId={previewMember?.id ?? "preview"}
-              user={previewMember ?? FORM_BUILDER_PREVIEW_USER}
-              container={container}
-            />
-          ) : usersQuery.isLoading ? (
-            <p className="text-fg-muted">Loading the member…</p>
-          ) : (
-            usersQuery.data && (
-              <p className="text-danger">
-                Member #{previewUserId} isn&apos;t in the user list.
-              </p>
-            )
-          )}
-        </div>
+      <div className="relative p-4 pb-16">
+        <Settling settled={settled}>
+          <div className="mx-auto max-w-3xl rounded-card border border-line bg-surface p-6">
+            {!memberUnavailable ? (
+              <PreviewBody
+                key={`${memberId ?? "none"}:${rowId ?? "none"}`}
+                schema={previewSchema}
+                pageIndex={pageIndex}
+                userId={previewMember?.id ?? "preview"}
+                user={previewMember ?? FORM_BUILDER_PREVIEW_USER}
+                container={container}
+              />
+            ) : usersQuery.isLoading ? (
+              <p className="text-fg-muted">Loading the member…</p>
+            ) : (
+              usersQuery.data && (
+                <p className="text-danger">
+                  Member #{previewUserId} isn&apos;t in the user list.
+                </p>
+              )
+            )}
+          </div>
+        </Settling>
       </div>
       <Sheet
         open={profilesOpen}

@@ -12,9 +12,9 @@ import { PaneHeader, Workspace } from "../../../ui/templates/Workspace";
 import { AggregateBuilder } from "./aggregates/AggregateBuilder";
 import { useBuilder } from "./BuilderContext";
 import {
-  CanvasSkeleton,
   InspectorSkeleton,
   OutlineSkeleton,
+  Settling,
 } from "./BuilderSkeletons";
 import { BuilderToolbar } from "./BuilderToolbar";
 import { selectedOnCanvas } from "./canvas/CanvasWorkspace";
@@ -315,35 +315,18 @@ function FormCanvasPane({
               {loadFailure.retryLabel}
             </Button>
           </div>
+        ) : isPreviewMode ? (
+          <PreviewBody settled={settled} />
         ) : (
-          <Settling settled={settled}>
-            {isPreviewMode ? <PreviewBody /> : canvasPart}
-          </Settling>
+          <Settling settled={settled}>{canvasPart}</Settling>
         )}
       </div>
     </>
   );
 }
 
-/** The page rendered in place but hidden until it has laid out for good. */
-function Settling({
-  settled,
-  children,
-}: {
-  settled: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <>
-      <div aria-busy={!settled} className={cn(!settled && "invisible")}>
-        {children}
-      </div>
-      {!settled && <CanvasSkeleton />}
-    </>
-  );
-}
-
-function PreviewBody() {
+/** The control row shows at once; only the previewed form waits to settle. */
+function PreviewBody({ settled }: { settled: boolean }) {
   const {
     schema,
     selectedPageIndex,
@@ -352,13 +335,16 @@ function PreviewBody() {
     props: { displayOnly, displayOnlyTitle },
   } = useBuilder();
   return displayOnly ? (
-    <div className="mx-auto max-w-3xl">
-      <PreviewBoundary resetKeys={[schema]}>
-        <DisplayOnlyPreview schema={schema} title={displayOnlyTitle} />
-      </PreviewBoundary>
-    </div>
+    <Settling settled={settled}>
+      <div className="mx-auto max-w-3xl">
+        <PreviewBoundary resetKeys={[schema]}>
+          <DisplayOnlyPreview schema={schema} title={displayOnlyTitle} />
+        </PreviewBoundary>
+      </div>
+    </Settling>
   ) : (
     <FormBuilderPreview
+      settled={settled}
       schema={schema}
       pageIndex={selectedPageIndex}
       previewUserId={previewUserId}

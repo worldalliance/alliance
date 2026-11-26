@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "../../../ui/cn";
 import { Skeleton } from "../../../ui/Skeleton";
 import { FormSkeleton } from "../../../ui/templates/States";
@@ -50,5 +51,23 @@ export function InspectorSkeleton() {
       <Skeleton className="h-5 w-40" />
       <FormSkeleton />
     </div>
+  );
+}
+
+/** The page rendered in place but hidden until it has laid out for good. */
+export function Settling({
+  settled,
+  children,
+}: {
+  settled: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <div aria-busy={!settled} className={cn(!settled && "invisible")}>
+        {children}
+      </div>
+      {!settled && <CanvasSkeleton />}
+    </>
   );
 }
