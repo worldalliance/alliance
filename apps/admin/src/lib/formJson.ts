@@ -125,6 +125,11 @@ function mapPageFields(params: {
   };
 }
 
+// zod can't name a branch for an element whose type and kind match no
+// element, so it says only "Invalid input".
+const UNKNOWN_ELEMENT =
+  'This isn\'t an element the builder knows. A question has "type": "input", a block "type": "display", and each a "kind" of its type, such as "radio" or "header".';
+
 function applyElement(params: {
   schema: FormSchema;
   scope: ElementScope;
@@ -132,7 +137,12 @@ function applyElement(params: {
 }): Result<FormSchema, string[]> {
   const { schema, scope, value } = params;
   const { pageIndex, index } = scope;
-  return R.map(parseInto(pageItemSchema, value), (element) =>
+  const parsed = R.mapError(parseInto(pageItemSchema, value), (errors) =>
+    errors.length === 1 && errors[0] === "<root>: Invalid input"
+      ? [UNKNOWN_ELEMENT]
+      : errors,
+  );
+  return R.map(parsed, (element) =>
     mapPageFields({
       schema,
       pageIndex,
