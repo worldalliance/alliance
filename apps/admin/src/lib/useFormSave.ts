@@ -42,6 +42,7 @@ export type DisplayOnlySave = (params: {
 }) => Promise<DisplayOnlySaveResult>;
 
 const SAVED_AGAIN = "Someone saved again. Review their latest changes.";
+const COPY_FAILED = "Couldn't copy your version.";
 
 export function useFormSave({
   displayOnlySave,
@@ -401,9 +402,10 @@ export function useFormSave({
   const handleCopyMine = useCallback(async () => {
     if (!conflict) return;
     if (await copyToClipboard(JSON.stringify(conflict.mine, null, 2))) {
+      setSaveError((error) => (error === COPY_FAILED ? null : error));
       showSuccessToast("Copied your version to the clipboard");
     } else {
-      setSaveError("Couldn't copy your version.");
+      setSaveError(COPY_FAILED);
     }
   }, [conflict, showSuccessToast]);
 
