@@ -40,7 +40,8 @@ serveApi(
 );
 
 function Where() {
-  return <p data-testid="where">{useLocation().pathname}</p>;
+  const { pathname, search } = useLocation();
+  return <p data-testid="where">{`${pathname}${search}`}</p>;
 }
 
 const renderAt = (url: string) => {
@@ -107,6 +108,17 @@ describe("ProjectTaskPage", () => {
     ).toBeGreaterThan(0);
     expect(screen.getByText("Staff testing")).toBeTruthy();
     expect(screen.getByText("Release")).toBeTruthy();
+  });
+
+  it("sends an old tab id to the tab that replaced it", async () => {
+    task = makeParsedAction({ id: 7, project: inProject(2) });
+    renderAt("/tasks/projects/2/tasks/7?tab=updates");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("where").textContent).toBe(
+        "/tasks/projects/2/tasks/7?tab=messages",
+      ),
+    );
   });
 
   it("redirects a task that is not in this project to its own page", async () => {

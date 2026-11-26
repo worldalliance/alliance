@@ -1,16 +1,11 @@
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import {
-  Navigate,
-  useLocation,
-  useParams,
-  useSearchParams,
-} from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 import { actionPhase } from "../../../lib/actionPhase";
 import { projectHref, taskHref } from "../../../lib/hrefs";
-import { RecordId, TabParam } from "../../../places";
+import { RecordId } from "../../../places";
 import { parseTaskId } from "../TaskPage";
 import { TaskRecord } from "../TaskRecord";
-import { RENAMED_TASK_TABS } from "../taskTabs";
+import { useRenamedTabRedirect } from "../useRenamedTabRedirect";
 import { ReleaseSection } from "./ReleaseSection";
 import { StaffTestingSection } from "./StaffTestingSection";
 
@@ -22,26 +17,12 @@ export default function ProjectTaskPage() {
   const params = useParams();
   const projectId = parseTaskId(params.projectId);
   const actionId = parseTaskId(params.actionId);
-  const [searchParams] = useSearchParams();
   const location = useLocation();
   const admin = useActionAdmin(actionId);
   const task = admin.action;
 
-  const renamed = RENAMED_TASK_TABS.get(searchParams.get(TabParam.Tab) ?? "");
-  if (renamed) {
-    const next = new URLSearchParams(searchParams);
-    next.set(TabParam.Tab, renamed);
-    return (
-      <Navigate
-        replace
-        to={{
-          pathname: location.pathname,
-          search: `?${next}`,
-          hash: location.hash,
-        }}
-      />
-    );
-  }
+  const redirect = useRenamedTabRedirect();
+  if (redirect) return redirect;
   if (task && task.project?.id !== projectId) {
     const suffix = `${location.search}${location.hash}`;
     return (

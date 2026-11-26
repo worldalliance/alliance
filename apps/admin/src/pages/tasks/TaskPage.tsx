@@ -1,35 +1,15 @@
-import {
-  Navigate,
-  useLocation,
-  useParams,
-  useSearchParams,
-} from "react-router";
-import { RecordId, TabParam } from "../../places";
+import { useParams } from "react-router";
+import { RecordId } from "../../places";
 import { TaskRecord } from "./TaskRecord";
-import { RENAMED_TASK_TABS } from "./taskTabs";
+import { useRenamedTabRedirect } from "./useRenamedTabRedirect";
 
 const NEW = "new";
 
 /** `/tasks/:actionId` and `/tasks/new`. */
 export default function TaskPage() {
   const { actionId } = useParams();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
-  const renamed = RENAMED_TASK_TABS.get(searchParams.get(TabParam.Tab) ?? "");
-  if (renamed) {
-    const next = new URLSearchParams(searchParams);
-    next.set(TabParam.Tab, renamed);
-    return (
-      <Navigate
-        replace
-        to={{
-          pathname: location.pathname,
-          search: `?${next}`,
-          hash: location.hash,
-        }}
-      />
-    );
-  }
+  const redirect = useRenamedTabRedirect();
+  if (redirect) return redirect;
   return (
     <TaskRecord
       route={
