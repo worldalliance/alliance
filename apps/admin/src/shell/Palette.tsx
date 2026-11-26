@@ -120,7 +120,7 @@ function PaletteContent({
       onValueChange={setQuery}
       itemToStringValue={(entry: Entry) => entry.label}
     >
-      <div className="flex h-12 items-center gap-2.5 border-b border-line px-4">
+      <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-line px-4">
         <Search className="size-4.5 shrink-0 text-fg-muted" aria-hidden />
         <Autocomplete.Input
           autoFocus
@@ -176,7 +176,7 @@ function PaletteContent({
           )}
         </Autocomplete.List>
       </div>
-      <div className="flex h-9 items-center gap-4 border-t border-line bg-surface-2 px-4 text-caption text-fg-muted">
+      <div className="flex h-9 shrink-0 items-center gap-4 border-t border-line bg-surface-2 px-4 text-caption text-fg-muted">
         <span className="flex items-center gap-1">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd> move
