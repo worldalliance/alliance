@@ -2,6 +2,7 @@ import type { QuoteBlock } from "@alliance/common/forms/display-blocks";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { EditableQuoteBlock } from "./EditableQuoteBlock";
 
@@ -32,11 +33,13 @@ it("picks a member by keyboard, storing their picture as its upload key", async 
   const onUpdate = jest.fn();
   render(
     <ToastProvider>
-      <EditableQuoteBlock
-        block={block}
-        onUpdate={onUpdate}
-        onRemove={() => {}}
-      />
+      <EditorSidebar>
+        <EditableQuoteBlock
+          block={block}
+          onUpdate={onUpdate}
+          onRemove={() => {}}
+        />
+      </EditorSidebar>
     </ToastProvider>,
     queryWrapper(),
   );

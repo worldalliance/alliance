@@ -28,9 +28,3 @@ it("tells the author in the sidebar to write the header in the active voice", ()
   );
   expect(screen.getByRole("textbox", { description: HINT })).toBeTruthy();
 });
-
-it("shows no hint outside the sidebar, as on an output view's header", () => {
-  render(<ToastProvider>{editor}</ToastProvider>, queryWrapper());
-  expect(screen.getByRole("textbox", { description: "" })).toBeTruthy();
-  expect(screen.queryByText(HINT)).toBeNull();
-});

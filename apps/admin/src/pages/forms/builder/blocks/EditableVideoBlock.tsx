@@ -19,10 +19,6 @@ export function EditableVideoBlock({
   block,
   onUpdate,
   updateCurrent,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
   laterFields,
 }: BaseDisplayBlockProps<VideoBlock>) {
@@ -73,10 +69,6 @@ export function EditableVideoBlock({
 
   return (
     <DisplayBlockWrapper
-      onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
       block={block}
       onUpdate={onUpdate}
       updateCurrent={updateCurrent}

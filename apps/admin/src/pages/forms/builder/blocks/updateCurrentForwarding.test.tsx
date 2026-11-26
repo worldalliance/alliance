@@ -2,6 +2,7 @@ import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
+import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { createDisplayBlock } from "./createDisplayBlock";
 import { EditableBigLinkBlock } from "./EditableBigLinkBlock";
@@ -17,7 +18,9 @@ type Wiring = Omit<BaseDisplayBlockProps<DisplayBlock>, "block">;
 const renderIn = (editor: ReactElement) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ToastProvider>{editor}</ToastProvider>
+      <ToastProvider>
+        <EditorSidebar>{editor}</EditorSidebar>
+      </ToastProvider>
     </QueryClientProvider>,
   );
 

@@ -1,3 +1,4 @@
+import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 /* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { ImagesBlock } from "@alliance/common/forms/display-blocks";
 import { R, type Result } from "@alliance/common/result";
@@ -63,23 +64,31 @@ function Form() {
       >
         page
       </button>
+      <button
+        aria-label="Delete block"
+        onClick={() => setForm({ ...form, block: null })}
+      >
+        delete
+      </button>
       {block && form.onScreen && (
-        <EditableImagesBlock
-          block={block}
-          onUpdate={(updates) =>
-            setForm({ ...form, block: { ...block, ...updates } })
-          }
-          updateCurrent={(update) => {
-            const current = latest.current.block;
-            if (!current) return null;
-            setForm({
-              ...latest.current,
-              block: { ...current, ...update(current) } as ImagesBlock,
-            });
-            return current;
-          }}
-          onRemove={() => setForm({ ...form, block: null })}
-        />
+        <EditorSidebar>
+          <EditableImagesBlock
+            block={block}
+            onUpdate={(updates) =>
+              setForm({ ...form, block: { ...block, ...updates } })
+            }
+            updateCurrent={(update) => {
+              const current = latest.current.block;
+              if (!current) return null;
+              setForm({
+                ...latest.current,
+                block: { ...current, ...update(current) } as ImagesBlock,
+              });
+              return current;
+            }}
+            onRemove={() => setForm({ ...form, block: null })}
+          />
+        </EditorSidebar>
       )}
       <span>images: {form.block?.images.length ?? 0}</span>
     </ToastProvider>
@@ -170,23 +179,25 @@ function PerUserForm({
         bob
       </button>
       {onScreen && (
-        <EditableImagesBlock
-          block={block}
-          onUpdate={(updates) => setBlock({ ...block, ...updates })}
-          updateCurrent={
-            addressed
-              ? (update) => {
-                  const current = latest.current;
-                  setBlock({
-                    ...current,
-                    ...update(current),
-                  } as ImagesBlock);
-                  return current;
-                }
-              : undefined
-          }
-          onRemove={() => {}}
-        />
+        <EditorSidebar>
+          <EditableImagesBlock
+            block={block}
+            onUpdate={(updates) => setBlock({ ...block, ...updates })}
+            updateCurrent={
+              addressed
+                ? (update) => {
+                    const current = latest.current;
+                    setBlock({
+                      ...current,
+                      ...update(current),
+                    } as ImagesBlock);
+                    return current;
+                  }
+                : undefined
+            }
+            onRemove={() => {}}
+          />
+        </EditorSidebar>
       )}
     </ToastProvider>
   );
@@ -207,23 +218,13 @@ const nextUser = async () => {
   });
 };
 
-const openBlockMenu = async () => {
-  await act(async () => {
-    fireEvent.click(
-      screen.getByRole("button", { name: "Display block options" }),
-    );
-  });
-};
-
 const editDefault = async () => {
-  await openBlockMenu();
   await act(async () => {
     fireEvent.click(screen.getByText("Edit default"));
   });
 };
 
 const turnOffPerUser = async () => {
-  await openBlockMenu();
   await act(async () => {
     fireEvent.click(screen.getByLabelText("Manual content per user"));
   });
@@ -231,7 +232,7 @@ const turnOffPerUser = async () => {
 
 const removeBlock = async () => {
   await act(async () => {
-    fireEvent.click(screen.getByTitle("Remove field"));
+    fireEvent.click(screen.getByLabelText("Delete block"));
   });
 };
 
@@ -628,7 +629,7 @@ describe("EditableImagesBlock", () => {
       "Signup",
     );
     expect(screen.getByText("images: 0")).toBeTruthy();
-    expect(screen.queryByTitle("Remove field")).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 
   it("says the pictures were dropped when the block is gone", async () => {

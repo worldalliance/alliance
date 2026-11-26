@@ -12,6 +12,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 import { SiteOriginLinkProvider } from "../../../../ui/SiteAppProvider";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { EditableCopyTextBlock } from "./EditableCopyTextBlock";
@@ -29,11 +30,13 @@ const renderEditor = (block: CopyTextBlock, onUpdate = jest.fn()) => {
   const editor = (current: CopyTextBlock) => (
     <ToastProvider>
       <SiteOriginLinkProvider origin="https://thealliance.org">
-        <EditableCopyTextBlock
-          block={current}
-          onUpdate={onUpdate}
-          onRemove={() => {}}
-        />
+        <EditorSidebar>
+          <EditableCopyTextBlock
+            block={current}
+            onUpdate={onUpdate}
+            onRemove={() => {}}
+          />
+        </EditorSidebar>
       </SiteOriginLinkProvider>
     </ToastProvider>
   );
@@ -92,22 +95,18 @@ describe("the copy text rich text toggle", () => {
 });
 
 describe("the copy text preview", () => {
-  it("renders a rich block's markdown", () => {
+  it("renders a rich block's markdown in the larger editor", async () => {
     renderEditor({
       ...plain,
       text: "Dear **council**",
       format: CopyTextFormat.Markdown,
     });
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Show preview" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Open larger editor/ }),
+    );
 
-    expect(screen.getByText("council").tagName).toBe("STRONG");
-  });
-
-  it("isn't offered for a plain block", () => {
-    renderEditor(plain);
-
-    expect(screen.queryByRole("checkbox", { name: "Show preview" })).toBeNull();
+    expect((await screen.findByText("council")).tagName).toBe("STRONG");
   });
 });
 
@@ -122,15 +121,10 @@ describe("a per-user copy text block's user list", () => {
       { id: 7, name: "Ana", hasActiveContract: true },
       { id: 8, name: "Ben", hasActiveContract: true },
     ]);
-  const openOptions = () =>
-    fireEvent.click(
-      screen.getByRole("button", { name: "Display block options" }),
-    );
 
   it("says when the users fail to load and loads them on retry", async () => {
     userList = () => Response.json({}, { status: 500 });
     renderEditor(perUser);
-    openOptions();
 
     await screen.findByText("Unable to load users");
     const retries: Pending<Response>[] = [];
@@ -149,7 +143,6 @@ describe("a per-user copy text block's user list", () => {
   it("keeps loaded users while a later refetch runs and when it fails", async () => {
     userList = listsAnaAndBen;
     const { client } = renderEditor(perUser);
-    openOptions();
     await screen.findByText("1 set / 2 total");
 
     const refetches: Pending<Response>[] = [];
@@ -245,7 +238,6 @@ describe("a per-user copy text block's user list", () => {
         "9": { text: "Dear Cy" },
       },
     });
-    openOptions();
     await screen.findByText("Users with content (1)");
     expect(screen.getByText("Missing (1)")).toBeTruthy();
 
@@ -264,8 +256,8 @@ describe("a per-user copy text block's user list", () => {
   });
 });
 
-describe("importing per-user content from the options menu", () => {
-  it("asks before replacing text typed once the menu closes mid-import", async () => {
+describe("importing per-user content from the clipboard", () => {
+  it("asks before replacing text typed while the clipboard is read", async () => {
     let paste: (text: string) => void = () => {};
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -283,12 +275,8 @@ describe("importing per-user content from the options menu", () => {
     };
     const { rerender } = renderEditor(perUser);
     fireEvent.click(
-      screen.getByRole("button", { name: "Display block options" }),
-    );
-    fireEvent.click(
       screen.getByRole("button", { name: "Import from clipboard…" }),
     );
-    fireEvent.mouseDown(document.body);
     rerender({ ...perUser, manualUserContent: { "7": { text: "Dear Ana" } } });
     await act(async () => paste('{"7": "Hi Ana"}'));
 

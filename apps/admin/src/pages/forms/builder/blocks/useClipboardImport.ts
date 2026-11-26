@@ -13,19 +13,17 @@ import { importManualContent, writeBlockFor } from "./perUserContent";
  * Resolves to why nothing was imported, for the control that started it to say
  * under itself, or null once the import landed or the admin declined it.
  *
- * Call it from a component that outlives the options menu: the menu can close,
- * unmounting what it renders, before the clipboard read resolves.
+ * Call it from a component that outlives the control that starts it, which
+ * can unmount before the clipboard read resolves.
  */
 export function useClipboardImport<T extends DisplayBlock>({
   block,
   onUpdate,
   updateCurrent,
-  closeMenu,
 }: {
   block: T | undefined;
   onUpdate: ((updates: Partial<T>) => void) | undefined;
   updateCurrent: AddressedWrite | undefined;
-  closeMenu: () => void;
 }): () => Promise<string | null> {
   const manualImportField = block
     ? MANUAL_IMPORT_FIELD_BY_KIND[block.kind]
@@ -102,7 +100,6 @@ export function useClipboardImport<T extends DisplayBlock>({
       onUpdate,
     });
 
-    closeMenu();
     if (!landing) {
       // The block's controls are gone with it, so no inline line is left to say so.
       toastError("The block was deleted before its content was imported.");

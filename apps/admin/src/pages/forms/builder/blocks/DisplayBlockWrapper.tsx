@@ -5,7 +5,7 @@ import {
 import { type AnyField } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { withBlockVisibility } from "../../../../lib/blockVisibility";
 import type { AddressedWrite } from "../../../../lib/displayBlockById";
 import Button, { ButtonVariant } from "../../../../ui/Button";
@@ -26,7 +26,6 @@ import {
 } from "./perUserContent";
 import { PerUserOptions } from "./PerUserOptions";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
-import { StackedBlockCard } from "./StackedBlockCard";
 import { useClipboardImport } from "./useClipboardImport";
 import {
   useManualTargets,
@@ -59,10 +58,6 @@ type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
 interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
   /** Inspector groups (`InspectorGroup`), which the wrapper stacks. */
   children: ReactNode | ((props: DisplayBlockChildRenderProps<T>) => ReactNode);
-  onRemove: () => void;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
-  isDragging?: boolean;
   block?: T;
   onUpdate?: (updates: Partial<T>) => void;
   updateCurrent?: AddressedWrite;
@@ -75,14 +70,10 @@ interface DisplayBlockWrapperProps<T extends DisplayBlock = DisplayBlock> {
 
 /**
  * A display block's editor: its Content and Conditions panels in the
- * inspector, or both stacked in a card where no inspector holds it.
+ * inspector.
  */
 export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   children,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   block,
   onUpdate,
   updateCurrent,
@@ -94,7 +85,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const perViewerOptionsAllowed = usePerViewerOptionsAllowed();
   const sidebar = useSidebarSections();
   const showConditional = Boolean(block && onUpdate && perViewerOptionsAllowed);
-  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const targets = useManualTargets(block);
   const { manualPerUserEnabled, activeManualUserId, hasContentForActiveUser } =
@@ -168,7 +158,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     block,
     onUpdate,
     updateCurrent,
-    closeMenu: () => setOptionsOpen(false),
   });
 
   const shownBlock = effectiveBlock ?? block;
@@ -198,7 +187,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   );
   const status = manualPerUserEnabled && <PerUserStatus targets={targets} />;
   const fields = (
-    <BlockPreviewAllowed.Provider value={!sidebar}>
+    <BlockPreviewAllowed.Provider value={false}>
       {editorContent}
     </BlockPreviewAllowed.Provider>
   );
@@ -213,50 +202,28 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     onChange: handleConditionalChange,
   };
 
-  if (sidebar) {
-    return (
-      <SectionPanels
-        content={
-          <>
-            {fields}
-            {showConditional && perUserOptions && (
-              <InspectorGroup title="Per-user content">
-                {perUserOptions}
-                {status}
-                {userList}
-              </InspectorGroup>
-            )}
-          </>
-        }
-        conditions={
-          showConditional &&
-          conditionsProps && <ElementConditions {...conditionsProps} />
-        }
-      />
-    );
+  if (!sidebar) {
+    throw new Error("DisplayBlockWrapper renders inside SidebarSections");
   }
-
   return (
-    <StackedBlockCard
-      blockId={block?.id}
-      onRemove={onRemove}
-      drag={onDragStart ? { onDragStart, onDragEnd } : undefined}
-      isDragging={isDragging}
-      options={
-        showConditional && conditionsProps
-          ? {
-              open: optionsOpen,
-              onOpenChange: setOptionsOpen,
-              perUserOptions,
-              conditions: conditionsProps,
-            }
-          : null
+    <SectionPanels
+      content={
+        <>
+          {fields}
+          {showConditional && perUserOptions && (
+            <InspectorGroup title="Per-user content">
+              {perUserOptions}
+              {status}
+              {userList}
+            </InspectorGroup>
+          )}
+        </>
       }
-    >
-      {status}
-      {fields}
-      {userList}
-    </StackedBlockCard>
+      conditions={
+        showConditional &&
+        conditionsProps && <ElementConditions {...conditionsProps} />
+      }
+    />
   );
 }
 

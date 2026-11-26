@@ -17,9 +17,6 @@ export interface BaseDisplayBlockProps<T extends DisplayBlock> {
    */
   updateCurrent?: AddressedWrite;
   onRemove: () => void;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
-  isDragging?: boolean;
   previousFields?: AnyField[];
   laterFields?: AnyField[];
   outputBlocks?: OutputBlockOption[];

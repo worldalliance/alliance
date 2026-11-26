@@ -8,6 +8,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 import { SiteOriginLinkProvider } from "../../../../ui/SiteAppProvider";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { EditableBigLinkBlock } from "./EditableBigLinkBlock";
@@ -49,11 +50,13 @@ const renderEditor = (block: BigLinkBlock) => {
     <MemoryRouter>
       <ToastProvider>
         <SiteOriginLinkProvider origin="https://thealliance.org">
-          <EditableBigLinkBlock
-            block={block}
-            onUpdate={onUpdate}
-            onRemove={() => {}}
-          />
+          <EditorSidebar>
+            <EditableBigLinkBlock
+              block={block}
+              onUpdate={onUpdate}
+              onRemove={() => {}}
+            />
+          </EditorSidebar>
         </SiteOriginLinkProvider>
       </ToastProvider>
     </MemoryRouter>,

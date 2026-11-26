@@ -4,6 +4,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { uploadSessionExpiredMessage } from "../../../../lib/sessionExpired";
+import { EditorSidebar } from "../../../../lib/testing/EditorSidebar";
 import { ToastProvider } from "../../../../ui/ToastProvider";
 import { EditableVideoBlock } from "./EditableVideoBlock";
 
@@ -24,11 +25,13 @@ const upload = async (
   render(
     <MemoryRouter>
       <ToastProvider>
-        <EditableVideoBlock
-          block={block}
-          onUpdate={onUpdate}
-          onRemove={() => {}}
-        />
+        <EditorSidebar>
+          <EditableVideoBlock
+            block={block}
+            onUpdate={onUpdate}
+            onRemove={() => {}}
+          />
+        </EditorSidebar>
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
