@@ -99,8 +99,16 @@ const UserSelect: React.FC<UserSelectProps> = ({
     loading,
     single,
   });
+  const displayedSelectedUsers = useMemo(() => {
+    if (!filterQuery.trim()) return selectedUsers;
+    return selectedUsers.filter((user) => matchesName(user.name, filterQuery));
+  }, [selectedUsers, filterQuery]);
+  const displayedIds = useMemo(
+    () => displayedSelectedUsers.map((user) => user.id),
+    [displayedSelectedUsers],
+  );
   const { row, removing } = useFocusAfterRemoval({
-    ids: selectedUserIds,
+    ids: displayedIds,
     fallback: inputRef,
   });
 
@@ -122,11 +130,6 @@ const UserSelect: React.FC<UserSelectProps> = ({
       )
       .slice(0, MAX_OPTIONS);
   }, [users, selectedUserIds, query, canSelectMore]);
-
-  const displayedSelectedUsers = useMemo(() => {
-    if (!filterQuery.trim()) return selectedUsers;
-    return selectedUsers.filter((user) => matchesName(user.name, filterQuery));
-  }, [selectedUsers, filterQuery]);
 
   return (
     <div>

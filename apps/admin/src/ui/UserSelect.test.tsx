@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, jest } from "bun:test";
 import { useState } from "react";
 import { Field } from "./templates/Form";
 import UserSelect from "./UserSelect";
+import { pickUser } from "./UserSelect.testing";
 
 afterEach(cleanup);
 
@@ -172,5 +173,37 @@ describe("UserSelect in Field", () => {
       />,
     );
     expect(container.querySelector(".grid")).toBeNull();
+  });
+});
+
+describe("UserSelect focus after a filtered remove", () => {
+  function Picks() {
+    const [ids, setIds] = useState<number[]>([1, 2]);
+    return (
+      <UserSelect
+        users={[...USERS, { id: 3, name: "Alan Turing", profilePicture: null }]}
+        selectedUserIds={ids}
+        onChange={setIds}
+      />
+    );
+  }
+
+  it("takes the neighbour from the picks shown, not the ones filtered out", async () => {
+    render(<Picks />);
+    const search = screen.getByLabelText("Recipients");
+    fireEvent.click(screen.getByRole("button", { name: "Filter (2)" }));
+    fireEvent.change(screen.getByPlaceholderText("Filter selected users..."), {
+      target: { value: "ada" },
+    });
+    const remove = screen.getByRole("button", { name: "Remove Ada Lovelace" });
+    remove.focus();
+    fireEvent.click(remove);
+    await waitFor(() => expect(document.activeElement).toBe(search));
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    search.focus();
+    await pickUser(search, { query: "alan", name: "Alan Turing" });
+    await screen.findByRole("button", { name: "Remove Alan Turing" });
+    expect(document.activeElement).toBe(search);
   });
 });
