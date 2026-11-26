@@ -354,7 +354,7 @@ function PreviewBody({ settled }: { settled: boolean }) {
   } = useBuilder();
   return displayOnly ? (
     <Settling settled={settled}>
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-3xl p-4 pb-16">
         <PreviewBoundary resetKeys={[schema]}>
           <DisplayOnlyPreview schema={schema} title={displayOnlyTitle} />
         </PreviewBoundary>

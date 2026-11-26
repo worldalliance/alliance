@@ -55,7 +55,7 @@ const ConditionText = ({
     describeCondition(condition, fieldOf)
   );
 
-const cardGrid = "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3";
+const cardGrid = "grid grid-cols-1 gap-3 sm:grid-cols-2";
 const cardClass =
   "flex flex-col gap-1 rounded-card border bg-surface p-3 text-left text-caption";
 const CARD_TITLE = "mb-1 block text-body font-medium";
