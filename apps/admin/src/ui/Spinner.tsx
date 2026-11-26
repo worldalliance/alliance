@@ -10,8 +10,20 @@ const SIZE: Record<SpinnerSize, string> = {
   large: "size-9",
 };
 
-const Spinner: React.FC<{ size?: SpinnerSize }> = ({ size = "medium" }) => {
+const Spinner: React.FC<{
+  size?: SpinnerSize;
+  /** Inside a button or a row that already says what is loading: no `role=status` of its own. */
+  decorative?: boolean;
+}> = ({ size = "medium", decorative = false }) => {
   const labelId = useId();
+  if (decorative) {
+    return (
+      <LoaderCircle
+        aria-hidden="true"
+        className={cn("shrink-0 animate-spin text-accent", SIZE[size])}
+      />
+    );
+  }
   return (
     <div role="status" aria-labelledby={labelId}>
       <LoaderCircle

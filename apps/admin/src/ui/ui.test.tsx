@@ -258,6 +258,16 @@ describe("status and form controls", () => {
     expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
   });
 
+  it("draws a decorative spinner with no status of its own", () => {
+    render(<Spinner decorative />);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("accepts a node as an inline error", () => {
+    render(<InlineError message={<a href="/x">Open the form</a>} />);
+    expect(screen.getByRole("link", { name: "Open the form" })).toBeTruthy();
+  });
+
   it("shows an inline error as an alert, and nothing without a message", () => {
     const { rerender } = render(<InlineError message="Could not save" />);
     expect(screen.getByRole("alert").textContent).toBe("Could not save");
