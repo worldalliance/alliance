@@ -252,6 +252,8 @@ A page header, then one column (`PageBody width="form"`) of `FormSection`s, each
 
 A dialog's form follows **Forms**. While its write runs, the submit button is `busy` and the dialog can't be dismissed (`dismissDisabled`); a refusal shows in `ModalFooter`'s `error`, and the dialog stays open with what was typed. Mount the dialog only while it is open (`{creating && <NewGroupDialog … />}`), so each opening starts clean. Keep the title short.
 
+A sheet that sits beside its list (People's peek) is `modal={false}`: no scrim, so the list stays usable and clicking another row changes the item instead of closing the sheet; Escape and Close still close it, focus moves into it on open and back to its opener on close. Leave the default (modal) for a sheet that edits.
+
 The sheet's open item is in the URL (see **URL state**), so a copied link opens the same item and Back closes it. Up and down controls in the sheet header (`headerActions`) step through the list's rows.
 
 ## Template map

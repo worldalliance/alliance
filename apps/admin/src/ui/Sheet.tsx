@@ -14,6 +14,12 @@ export type SheetProps = {
   panelClassName?: string;
   /** `peek` for a look at one row of a list; `wide` for a form or a table. */
   size?: SheetSize;
+  /**
+   * `false` leaves the page behind it usable, with no scrim: clicking the list
+   * doesn't close it. Escape and Close still do, focus moves into it on open
+   * and back on close.
+   */
+  modal?: boolean;
 };
 
 export type SheetSize = "peek" | "wide";
@@ -32,17 +38,22 @@ const Sheet: React.FC<SheetProps> = ({
   headerActions,
   panelClassName,
   size = "wide",
+  modal = true,
 }) => (
   <Dialog.Root
     open={open}
+    modal={modal}
+    disablePointerDismissal={!modal}
     onOpenChange={(nextOpen) => {
       if (!nextOpen) onClose();
     }}
   >
     <Dialog.Portal>
-      <Dialog.Backdrop
-        className={cn(zIndex.drawer, "fixed inset-0 bg-scrim")}
-      />
+      {modal && (
+        <Dialog.Backdrop
+          className={cn(zIndex.drawer, "fixed inset-0 bg-scrim")}
+        />
+      )}
       <Dialog.Viewport
         onClick={(event) => event.stopPropagation()}
         className={cn(zIndex.drawer, "fixed inset-y-0 right-0 flex")}
