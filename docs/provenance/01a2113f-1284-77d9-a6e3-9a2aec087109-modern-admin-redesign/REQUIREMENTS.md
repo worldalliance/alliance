@@ -21,6 +21,7 @@ task: Greenfield redesign of the admin panel (apps/admin) so it is modern-lookin
 - The admin avoids bad UI/UX in general, judged on its merits; the builder's page jumping after a click is one example, not a special rule. (user-originated, Nov 25)
 - "Action updates" are called "project updates" everywhere in the admin UI, replacing the spec's "Task updates"; "General updates" is unchanged, and the server and API keep their names. (user-originated, Nov 25)
 - The redesign merges before PR #1093 (the shared task panel), which then rebases its admin part onto the new builder. (user-originated, Nov 25)
+- The redesign is finished this weekend (Nov 28–29), not on Monday. (user-originated, Nov 26)
 - The sidebar is clean and short, with an entry at the bottom that opens the search. (user-originated)
 - The sidebar's header and footer stay in place while its middle scrolls, so the button that collapses it is always visible without scrolling. (user-originated)
 - The bottom search icon lines up with the other icons when the sidebar is collapsed. (user-originated)
