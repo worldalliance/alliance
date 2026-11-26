@@ -97,12 +97,15 @@ export function VisibilityProfilePicker({
   schema,
   userIds,
   empty = null,
+  noMembers = empty,
   ...choice
 }: {
   schema: FormSchema;
   userIds: readonly number[];
-  /** Shown when nothing in the form depends on the member, or no member is listed. */
+  /** Shown when nothing in the form depends on the member. */
   empty?: ReactNode;
+  /** Shown when the form depends on the member but no member is listed. */
+  noMembers?: ReactNode;
 } & ProfileChoice) {
   const groupName = useId();
   const {
@@ -113,8 +116,9 @@ export function VisibilityProfilePicker({
     error,
   } = useVisibilityProfilesAdmin({ schema, userIds });
   const fieldOf = useConditionFieldLookup(schema);
-  if (conditions.length === 0 || askedIds.length === 0) return empty;
-  if (isLoading) {
+  if (conditions.length === 0) return empty;
+  if (userIds.length === 0) return noMembers;
+  if (isLoading || askedIds.length === 0) {
     return <p className="text-fg-muted">Grouping members by what they see…</p>;
   }
   if (error) return <p className="text-danger">{error.message}</p>;

@@ -248,3 +248,21 @@ it("names a saved validator and the tag it checks", async () => {
     (await screen.findAllByText("Member has tag (non-US) fails")).length,
   ).toBe(2);
 });
+
+it("tells a form with no member conditions from one with no members listed", () => {
+  const { wrapper } = queryWrapper();
+  const picker = (schema: FormSchema) => (
+    <VisibilityProfilePicker
+      schema={schema}
+      userIds={[]}
+      selectedUserId={null}
+      onSelect={() => {}}
+      empty="Nothing depends"
+      noMembers="No members"
+    />
+  );
+  render(picker(gatedBy([])), { wrapper }).unmount();
+  render(picker(gatedBy([city])), { wrapper });
+  expect(screen.queryByText("Nothing depends")).toBeNull();
+  expect(screen.getByText("No members")).toBeTruthy();
+});

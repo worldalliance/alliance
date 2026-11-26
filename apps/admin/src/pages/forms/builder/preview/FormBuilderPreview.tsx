@@ -154,6 +154,15 @@ export function FormBuilderPreview({
                 Nothing in this form depends on who the member is.
               </p>
             }
+            noMembers={
+              <p className="text-fg-muted">
+                {usersQuery.isLoading
+                  ? "Loading members…"
+                  : usersQuery.isLoadingError
+                    ? "Couldn't load members, so profiles can't be grouped."
+                    : "No member has an active contract to group."}
+              </p>
+            }
           />
         </div>
       </Sheet>
