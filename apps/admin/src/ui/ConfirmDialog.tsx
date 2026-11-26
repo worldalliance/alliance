@@ -1,5 +1,5 @@
 import type React from "react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import Button, { ButtonVariant } from "./Button";
 import { Input } from "./Input";
 import Modal, {
@@ -56,6 +56,7 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [typed, setTyped] = useState("");
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
@@ -83,6 +84,7 @@ export default function ConfirmDialog({
       open={open}
       onClose={onCancel}
       onKeyDown={handlePanelKeyDown}
+      initialFocus={requiredText === undefined ? undefined : inputRef}
       dismissOnBackdrop={false}
       dismissDisabled={busy}
       showClose={false}
@@ -103,7 +105,7 @@ export default function ConfirmDialog({
             </label>
             <Input
               id={inputId}
-              autoFocus
+              ref={inputRef}
               autoComplete="off"
               spellCheck={false}
               value={typed}

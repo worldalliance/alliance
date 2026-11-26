@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, jest } from "bun:test";
 import { notifyRealMembersText } from "../lib/notifyRealMembers";
@@ -150,6 +151,33 @@ describe("useToast().confirm", () => {
     expect(
       screen.getByRole<HTMLButtonElement>("button", { name: "Send" }).disabled,
     ).toBe(true);
+  });
+
+  it("focuses the phrase field on open and returns focus to the opener on cancel", async () => {
+    results.length = 0;
+    render(
+      <ToastProvider>
+        <Asker
+          options={{
+            title: "Send?",
+            requiredText: PHRASE,
+            confirmLabel: "Send",
+          }}
+        />
+      </ToastProvider>,
+    );
+    screen.getByRole("button", { name: "Ask" }).focus();
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await screen.findByRole("dialog");
+    expect(document.activeElement).toBe(screen.getByRole("textbox"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Ask" }),
+      ),
+    );
   });
 });
 
