@@ -7,6 +7,7 @@ import {
   ReminderGroupDto,
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
+import { TZDate } from "@date-fns/tz";
 import {
   addWeeks,
   isTuesday,
@@ -15,6 +16,7 @@ import {
   startOfDay,
 } from "date-fns";
 import { millisecondsInDay, millisecondsInSecond } from "date-fns/constants";
+import { LAUNCH_TIME_ZONE } from "./launchTimeZone";
 
 export type TimelineAction = Pick<
   ActionDto,
@@ -342,8 +344,26 @@ export const buildTimelineData = ({
   };
 };
 
-// globalStartDate falls at an arbitrary time of day, so ticks anchor to
-// midnight rather than to it.
+export const MIN_PHASE_BAR_WIDTH_PX = 20;
+
+export const timelineScale =
+  (globalStartDate: Date, pixelsPerDay: number) => (time: Date | number) =>
+    ((new Date(time).getTime() - globalStartDate.getTime()) * pixelsPerDay) /
+    millisecondsInDay;
+
+export const phaseBarBounds = (
+  phase: Pick<PhaseSegment, "startDate" | "endDate">,
+  xForTime: (time: Date) => number,
+) => {
+  const left = xForTime(phase.startDate);
+  return {
+    left,
+    width: Math.max(MIN_PHASE_BAR_WIDTH_PX, xForTime(phase.endDate) - left),
+  };
+};
+
+// globalStartDate falls at an arbitrary time of day, so ticks start from the
+// Pacific midnight on or before it.
 export const weekTicks = ({
   globalStartDate,
   globalEndDate,
@@ -353,18 +373,14 @@ export const weekTicks = ({
   globalEndDate: Date;
   pixelsPerDay: number;
 }) => {
-  const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-  const firstDay = startOfDay(globalStartDate);
-  const ticks: { date: Date; left: number }[] = [];
+  const xForTime = timelineScale(globalStartDate, pixelsPerDay);
+  const firstDay = startOfDay(new TZDate(globalStartDate, LAUNCH_TIME_ZONE));
+  const ticks: { date: TZDate; left: number }[] = [];
 
   let current = isTuesday(firstDay) ? firstDay : nextTuesday(firstDay);
 
   while (current <= globalEndDate) {
-    ticks.push({
-      date: current,
-      left:
-        (current.getTime() - globalStartDate.getTime()) * pixelsPerMillisecond,
-    });
+    ticks.push({ date: current, left: xForTime(current) });
     current = addWeeks(current, 1);
   }
 
@@ -380,8 +396,8 @@ export const firstRowActiveInWeek = (
     phases.some(
       (phase) =>
         SHOWS_BAR[phase.status] &&
-        startOfDay(phase.startDate) < weekEnd &&
-        startOfDay(phase.endDate) > weekStart,
+        phase.startDate < weekEnd &&
+        phase.endDate > weekStart,
     ),
   );
 };

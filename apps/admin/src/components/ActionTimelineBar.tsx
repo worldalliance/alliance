@@ -1,16 +1,19 @@
 import { cn } from "@alliance/shared/styles/util";
-import { startOfDay } from "date-fns";
-import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 import { useNavigate } from "react-router";
 import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
-import type { PhaseSegment, TimelineRow } from "../lib/actionTimelineData";
+import {
+  phaseBarBounds,
+  type PhaseSegment,
+  type TimelineRow,
+} from "../lib/actionTimelineData";
 import { swatchColors } from "../lib/identitySwatch";
+import { inLaunchZone } from "../lib/launchTimeZone";
 
 interface ActionTimelineBarProps {
   action: TimelineRow["action"];
   phases: PhaseSegment[];
-  globalStartDate: Date;
+  xForTime: (time: Date) => number;
   pixelsPerDay: number;
   chartWidth: number;
   rowIndex: number;
@@ -23,7 +26,7 @@ interface ActionTimelineBarProps {
 const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   action,
   phases,
-  globalStartDate,
+  xForTime,
   pixelsPerDay,
   chartWidth,
   rowIndex,
@@ -106,22 +109,10 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
       }}
     >
       {phases.map((phase, phaseIndex) => {
-        const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-
-        // A week-wide column can't show the time of day an event fires, so
-        // bars span whole days and start on the gridline for their first one.
-        const barStart = startOfDay(phase.startDate);
-        const barEnd = startOfDay(phase.endDate);
-
-        const millisecondsSinceStart =
-          barStart.getTime() - globalStartDate.getTime();
-        const phaseDurationMs = barEnd.getTime() - barStart.getTime();
-
-        const barLeft = millisecondsSinceStart * pixelsPerMillisecond;
-        const barWidth = Math.max(
-          2,
-          phaseDurationMs * pixelsPerMillisecond - 2,
-        ); // Min 2px width, reduced spacing
+        const { left: barLeft, width: barWidth } = phaseBarBounds(
+          phase,
+          xForTime,
+        );
         const labelText = ACTION_STATUS_LABELS[phase.status];
         const stickyLabel = calculateStickyLabelPosition(
           barLeft,
@@ -143,13 +134,8 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
 
         let backgroundStyle = {};
         if (shouldFade) {
-          // Calculate fade-out gradient starting from current time
-          const pixelsPerMillisecond = pixelsPerDay / millisecondsInDay;
-          const currentTimeOffsetFromStart =
-            currentTime.getTime() - barStart.getTime();
-          const currentTimePositionInBar =
-            currentTimeOffsetFromStart * pixelsPerMillisecond;
-          const fadeDistancePx = 2 * pixelsPerDay; // 1 day of fade
+          const currentTimePositionInBar = xForTime(currentTime) - barLeft;
+          const fadeDistancePx = 2 * pixelsPerDay;
 
           // Calculate fade percentage within the bar
           const fadeStartPercent = Math.max(
@@ -180,12 +166,17 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
               width: `${barWidth}px`,
               top: "12px",
               height: "40px",
-              minWidth: "20px",
+              boxShadow:
+                phaseIndex > 0
+                  ? "inset 1px 0 0 rgba(255, 255, 255, 0.9)"
+                  : undefined,
               ...backgroundStyle,
             }}
-            title={`${action.name}: ${
-              ACTION_STATUS_LABELS[phase.status]
-            } (${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()})`}
+            title={`${action.name}: ${ACTION_STATUS_LABELS[phase.status]} (${
+              isLastPhase
+                ? `from ${inLaunchZone(phase.startDate)}`
+                : `${inLaunchZone(phase.startDate)} - ${inLaunchZone(phase.endDate)}`
+            })`}
           >
             {stickyLabel && (
               <div

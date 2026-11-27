@@ -1,4 +1,5 @@
 import type { ActionEventDto, ActionStatus } from "@alliance/shared/client";
+import { TZDate } from "@date-fns/tz";
 import { fireEvent, render, screen } from "@testing-library/react";
 import {
   getDayOfYear,
@@ -9,6 +10,7 @@ import {
 } from "date-fns";
 import { MemoryRouter } from "react-router";
 import type { TimelineReminder } from "../lib/actionTimelineData";
+import { inLaunchZone, LAUNCH_TIME_ZONE } from "../lib/launchTimeZone";
 import ActionTimeline from "./ActionTimeline";
 
 const daysFromNow = (days: number) =>
@@ -104,6 +106,20 @@ describe("ActionTimeline", () => {
     expect(barColor("Third")).not.toBe(barColor("First"));
   });
 
+  it("gives a closed phase its end and an open last phase none", () => {
+    renderTimeline();
+    const [planned, completed] = finished.events.map((event) =>
+      inLaunchZone(new Date(event.date)),
+    );
+
+    expect(
+      screen.getByTitle(`Finished action: Planned (${planned} - ${completed})`),
+    ).toBeDefined();
+    expect(
+      screen.getByTitle(`Finished action: Completed (from ${completed})`),
+    ).toBeDefined();
+  });
+
   it("highlights every row of the hovered action's project", () => {
     const project = { id: 1, name: "Shared project", category: [] };
     renderTimeline({
@@ -130,7 +146,7 @@ describe("ActionTimeline", () => {
 
   it("scrolls a week's header to the first action with a bar that week", () => {
     const { container } = renderTimeline();
-    const today = startOfDay(new Date());
+    const today = startOfDay(TZDate.tz(LAUNCH_TIME_ZONE));
     const weekStart = isTuesday(today) ? today : previousTuesday(today);
     const weekNumber = Math.ceil(getDayOfYear(weekStart) / 7) + 1;
 
