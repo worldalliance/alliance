@@ -173,75 +173,78 @@ export function PriorityView() {
         />
       </FilterBar>
       <ListContent>
-        <ContentState
-          loading={!starting}
-          skeleton={<TableSkeleton bleed columns={PRIORITY_COLUMNS} />}
-          error={
-            loadFailure &&
-            adminRefusalMessage(loadFailure, LOAD_FAILED_FALLBACK)
-          }
-          errorTitle="Couldn't load tasks and general updates"
-          onRetry={() => {
-            void actions.refetch();
-            void generalUpdates.refetch();
-          }}
-          retrying={actions.isFetching || generalUpdates.isFetching}
-        >
-          <Table bleed>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <span className="sr-only">Drag</span>
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Home pages</TableHead>
-                <TableHead>Suite</TableHead>
-                <TableHead>Moved</TableHead>
-                <TableHead actions>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item, index) => {
-                const key = itemKey(item);
-                return (
-                  <PriorityRow
-                    key={key}
-                    item={item}
-                    index={index}
-                    count={items.length}
-                    moved={moved.get(key)}
-                    onMove={(direction) => move(index, direction)}
-                    focusRequest={
-                      focusRequest?.key === key ? focusRequest : null
-                    }
-                    onFocused={clearFocusRequest}
-                    locked={save.isPending}
-                    drag={{
-                      dragging: drag.draggedIndex === index,
-                      dropLine:
-                        drag.dragOverIndex === index &&
-                        drag.draggedIndex !== null &&
-                        drag.draggedIndex !== index
-                          ? drag.dropPosition
-                          : null,
-                      onDragStart: drag.handleDragStart(index),
-                      onDragEnd: drag.handleDragEnd,
-                      onDragOver: drag.handleDragOver(index),
-                      onDrop: drag.handleDrop(index),
-                    }}
-                  />
-                );
-              })}
-            </TableBody>
-          </Table>
-          {actions.data && (
-            <PriorityFollowUps actions={actions.data} showAll={showAll} />
-          )}
-        </ContentState>
-        <p aria-live="polite" className="sr-only">
-          {announcement}
-        </p>
+        {/* Contains the absolute sr-only text, which otherwise escapes the scroller and lengthens the page. */}
+        <div className="relative">
+          <ContentState
+            loading={!starting}
+            skeleton={<TableSkeleton bleed columns={PRIORITY_COLUMNS} />}
+            error={
+              loadFailure &&
+              adminRefusalMessage(loadFailure, LOAD_FAILED_FALLBACK)
+            }
+            errorTitle="Couldn't load tasks and general updates"
+            onRetry={() => {
+              void actions.refetch();
+              void generalUpdates.refetch();
+            }}
+            retrying={actions.isFetching || generalUpdates.isFetching}
+          >
+            <Table bleed>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <span className="sr-only">Drag</span>
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Home pages</TableHead>
+                  <TableHead>Suite</TableHead>
+                  <TableHead>Moved</TableHead>
+                  <TableHead actions>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item, index) => {
+                  const key = itemKey(item);
+                  return (
+                    <PriorityRow
+                      key={key}
+                      item={item}
+                      index={index}
+                      count={items.length}
+                      moved={moved.get(key)}
+                      onMove={(direction) => move(index, direction)}
+                      focusRequest={
+                        focusRequest?.key === key ? focusRequest : null
+                      }
+                      onFocused={clearFocusRequest}
+                      locked={save.isPending}
+                      drag={{
+                        dragging: drag.draggedIndex === index,
+                        dropLine:
+                          drag.dragOverIndex === index &&
+                          drag.draggedIndex !== null &&
+                          drag.draggedIndex !== index
+                            ? drag.dropPosition
+                            : null,
+                        onDragStart: drag.handleDragStart(index),
+                        onDragEnd: drag.handleDragEnd,
+                        onDragOver: drag.handleDragOver(index),
+                        onDrop: drag.handleDrop(index),
+                      }}
+                    />
+                  );
+                })}
+              </TableBody>
+            </Table>
+            {actions.data && (
+              <PriorityFollowUps actions={actions.data} showAll={showAll} />
+            )}
+          </ContentState>
+          <p aria-live="polite" className="sr-only">
+            {announcement}
+          </p>
+        </div>
       </ListContent>
       {starting && (
         <div className="sticky bottom-0">
