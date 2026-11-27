@@ -47,11 +47,11 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const renderForm = () =>
+const renderForm = ({ disabled = false } = {}) =>
   render(
     <MemoryRouter>
       <ToastProvider>
-        <ScheduleReleaseForm action={action} disabled={false} />
+        <ScheduleReleaseForm action={action} disabled={disabled} />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -90,5 +90,18 @@ describe("ScheduleReleaseForm", () => {
     fireEvent.change(input, { target: { value: phrase } });
     fireEvent.click(confirm);
     await waitFor(() => expect(scheduled).toHaveLength(1));
+  });
+
+  it("refuses to schedule while the task has unsaved changes, and says why", async () => {
+    evaluationFails = false;
+    renderForm({ disabled: true });
+
+    expect(await screen.findByText(/Notifies 3 members/)).toBeTruthy();
+    expect(screen.getByText("Save your changes first")).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Schedule release…",
+      }).disabled,
+    ).toBe(true);
   });
 });

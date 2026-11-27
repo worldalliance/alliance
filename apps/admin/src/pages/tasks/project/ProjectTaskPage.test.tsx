@@ -1,7 +1,14 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Suspense } from "react";
 import {
   createMemoryRouter,
@@ -33,9 +40,11 @@ serveApi(
         }),
     },
     (request) =>
-      request.method === "GET"
-        ? Response.json([])
-        : Response.json({ message: "not served" }, { status: 500 }),
+      request.url.endsWith("/actions/evaluate-cohort")
+        ? Response.json({ userIds: [1] })
+        : request.method === "GET"
+          ? Response.json([])
+          : Response.json({ message: "not served" }, { status: 500 }),
   ),
 );
 
@@ -108,6 +117,45 @@ describe("ProjectTaskPage", () => {
     ).toBeGreaterThan(0);
     expect(screen.getByText("Staff testing")).toBeTruthy();
     expect(screen.getByText("Release")).toBeTruthy();
+  });
+
+  it("holds staff testing and the release while Details has unsaved changes", async () => {
+    task = makeParsedAction({
+      id: 7,
+      name: "Winter heat survey",
+      project: inProject(2),
+      staffPreview: true,
+      suite: {
+        id: 4,
+        name: "Solo",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+        events: [],
+      },
+    });
+    renderAt("/tasks/projects/2/tasks/7?tab=details");
+    const stop = await screen.findByRole<HTMLButtonElement>("button", {
+      name: "Stop staff testing",
+    });
+    const schedule = await screen.findByRole<HTMLButtonElement>("button", {
+      name: "Schedule release…",
+    });
+    await waitFor(() => expect(schedule.disabled).toBe(false));
+    expect(stop.disabled).toBe(false);
+
+    fireEvent.change(screen.getByLabelText(/^Name/), {
+      target: { value: "Spring heat survey" },
+    });
+
+    await waitFor(() => expect(schedule.disabled).toBe(true));
+    expect(stop.disabled).toBe(true);
+    for (const section of ["Staff testing", "Release"]) {
+      const panel = screen
+        .getByRole("heading", { level: 2, name: section })
+        .closest("section");
+      if (!panel) throw new Error(`no ${section} section`);
+      expect(within(panel).getByText("Save your changes first")).toBeTruthy();
+    }
   });
 
   it("sends an old tab id to the tab that replaced it", async () => {

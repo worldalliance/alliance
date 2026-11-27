@@ -182,6 +182,9 @@ export function ScheduleReleaseForm({
           {error}
         </p>
       )}
+      {disabled && (
+        <p className="text-caption text-warning">Save your changes first</p>
+      )}
       <Button
         variant={ButtonVariant.Default}
         onClick={() => void submit()}

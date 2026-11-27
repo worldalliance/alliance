@@ -38,6 +38,8 @@ export enum TaskTabLayout {
 export const TASK_TAB_LAYOUT: Record<TaskTab, TaskTabLayout> = {
   overview: TaskTabLayout.Side,
   details: TaskTabLayout.Side,
+  // No side panel: a project task's staff testing and release would sit beside
+  // unsaved builder edits, which a tab switch otherwise asks to discard.
   form: TaskTabLayout.Fill,
   variants: TaskTabLayout.Side,
   "follow-up-forms": TaskTabLayout.Full,
