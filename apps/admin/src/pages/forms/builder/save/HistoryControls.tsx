@@ -69,8 +69,7 @@ export function HistoryControls({
         render={
           <Button
             variant={ButtonVariant.Ghost}
-            size="small"
-            className="px-1.5"
+            size="icon"
             aria-label={label}
             onClick={redo ? onRedo : onUndo}
             disabled={redo ? !canRedo : !canUndo}

@@ -77,7 +77,7 @@ export function IssuesButton({
         <PopoverTrigger
           ref={triggerRef}
           className={cn(
-            "inline-flex whitespace-nowrap",
+            "whitespace-nowrap",
             buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
             count > 0 ? "text-danger" : "text-fg-muted",
           )}

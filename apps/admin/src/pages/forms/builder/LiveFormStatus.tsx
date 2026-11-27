@@ -34,7 +34,7 @@ export function LiveFormStatus({ reach }: { reach: FormReach }) {
             aria-label="Live check failed"
             className={cn(
               buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
-              "inline-flex text-warning",
+              "text-warning",
             )}
           >
             <TriangleAlert aria-hidden="true" className="size-3.5" />

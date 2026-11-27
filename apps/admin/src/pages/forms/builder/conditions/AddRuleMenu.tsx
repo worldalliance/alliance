@@ -147,10 +147,10 @@ export function AddRuleMenu({
     <>
       <DropdownMenu>
         <Menu.Trigger
-          className={cn(
-            "inline-flex",
-            buttonVariants({ variant: ButtonVariant.Default, size: "small" }),
-          )}
+          className={buttonVariants({
+            variant: ButtonVariant.Default,
+            size: "small",
+          })}
         >
           <Plus aria-hidden="true" className="size-4" />
           Add rule

@@ -1,10 +1,10 @@
 import { useState, type ComponentProps } from "react";
-import { ExpandableEditor } from "../kit/ExpandableEditor";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import {
   SharedVisibilityNotice,
   useVisibilityGroupMember,
 } from "../inspector/VisibilityGroupContext";
+import { ExpandableEditor } from "../kit/ExpandableEditor";
 import { ConditionalVisibility } from "./ConditionalVisibility";
 import { useTypedExpression } from "./expressionBuffers";
 
@@ -35,9 +35,8 @@ export function VisibilityConditions(
           <ConditionalVisibility key={clears} {...props} />
           {conditional && (
             <Button
-              variant={ButtonVariant.Ghost}
+              variant={ButtonVariant.GhostDanger}
               size="small"
-              className="text-danger"
               onClick={removeAll}
             >
               Remove all conditions

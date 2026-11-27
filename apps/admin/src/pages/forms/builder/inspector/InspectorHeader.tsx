@@ -30,7 +30,7 @@ function IssuesHere() {
         aria-label={`${count} here`}
         className={cn(
           buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
-          "inline-flex text-danger",
+          "text-danger",
         )}
       >
         {count}

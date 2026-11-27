@@ -245,10 +245,10 @@ function ViewTree({
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={`Add block to ${view.title || "Untitled view"}`}
-            className={cn(
-              "inline-flex",
-              buttonVariants({ variant: ButtonVariant.Ghost, size: "small" }),
-            )}
+            className={buttonVariants({
+              variant: ButtonVariant.Ghost,
+              size: "small",
+            })}
           >
             <Plus aria-hidden="true" className="size-4" />
             Add block
