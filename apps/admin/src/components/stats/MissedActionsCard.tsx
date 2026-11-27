@@ -1,24 +1,16 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useMissedActionsAdmin } from "../../lib/useMissedActionsAdmin";
+import { secondaryButtonClass } from "../ui/controlStyles";
+import Section from "../ui/Section";
 
 const MissedActionsCard: React.FC = () => {
-  const [missedActionsRequested, setMissedActionsRequested] =
-    useState<boolean>(false);
   const {
     data: missedActions,
     isFetching: missedActionsLoading,
     error: missedActionsError,
     refetch: refetchMissedActions,
-  } = useMissedActionsAdmin({ enabled: missedActionsRequested });
-
-  const handleLoadMissedActions = useCallback(() => {
-    if (missedActionsRequested) {
-      void refetchMissedActions();
-    } else {
-      setMissedActionsRequested(true);
-    }
-  }, [missedActionsRequested, refetchMissedActions]);
+  } = useMissedActionsAdmin();
 
   const missedActionGroups = useMemo(() => {
     if (!missedActions) {
@@ -37,34 +29,29 @@ const MissedActionsCard: React.FC = () => {
   }, [missedActions]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-900">Recent missed actions</h3>
-          <p className="text-xs text-gray-500">
-            Active members whose most recent completed non-optional action was
-            missed.
-          </p>
-        </div>
+    <Section
+      title="Recent missed actions"
+      description="Active members whose most recent completed non-optional action was missed."
+      actions={
         <button
           type="button"
-          onClick={handleLoadMissedActions}
+          onClick={() => void refetchMissedActions()}
           disabled={missedActionsLoading}
-          className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
+          className={secondaryButtonClass}
         >
-          {missedActionsLoading ? "Loading..." : "View actions"}
+          {missedActionsLoading ? "Loading…" : "Refresh"}
         </button>
-      </div>
-      <div className="grid gap-4 p-4 md:grid-cols-2">
-        {!missedActionsRequested ? null : missedActionsLoading &&
-          !missedActions ? (
-          <p className="text-sm text-gray-600">Loading missed actions...</p>
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        {missedActionsLoading && !missedActions ? (
+          <p className="text-sm text-zinc-600">Loading missed actions…</p>
         ) : missedActionGroups && !missedActionsError ? (
           missedActionGroups.map(({ title, members }) => (
             <div key={title} className="rounded-md border border-gray-200 p-4">
               <div className="flex items-baseline justify-between gap-3">
-                <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
-                <span className="text-3xl font-bold text-gray-900">
+                <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
+                <span className="text-2xl font-semibold tabular-nums text-zinc-900">
                   {members.length}
                 </span>
               </div>
@@ -77,7 +64,7 @@ const MissedActionsCard: React.FC = () => {
                     >
                       <a
                         href={`/member/${member.userId}`}
-                        className="min-w-0 truncate text-link hover:underline"
+                        className="min-w-0 truncate text-blue-600 hover:underline"
                       >
                         {member.name}
                       </a>
@@ -93,7 +80,7 @@ const MissedActionsCard: React.FC = () => {
             </div>
           ))
         ) : (
-          <p className="text-sm text-gray-600">
+          <p role="alert" className="text-sm text-red-600">
             {adminRefusalMessage(
               missedActionsError,
               "Unable to load missed actions.",
@@ -101,7 +88,7 @@ const MissedActionsCard: React.FC = () => {
           </p>
         )}
       </div>
-    </div>
+    </Section>
   );
 };
 

@@ -317,7 +317,7 @@ export const queryKeys = {
     ["communityGetAllMemberContactInfoAdmin"] as const,
   memberCompletionRetentionAdmin: () =>
     ["analyticsGetMemberCompletionRetentionAdmin"] as const,
-  memberReliabilityWindowAdmin: (weeks: number | null) =>
+  memberReliabilityWindowAdmin: (weeks: number) =>
     ["analyticsGetMemberReliabilityWindowAdmin", weeks] as const,
   memberTextThreadsAdminAll,
   memberTextThreadAdmin: (userId: number) =>
@@ -334,7 +334,7 @@ export const queryKeys = {
     ["userOnetimeInviteGetOnetimeInviteMemberStatsAdmin"] as const,
   onetimeInviteGraphEdgesAdmin: () =>
     ["userOnetimeInviteGetOnetimeInviteGraphEdgesAdmin"] as const,
-  platformTenureCohortAdmin: (weeksOnPlatform: number | null) =>
+  platformTenureCohortAdmin: (weeksOnPlatform: number) =>
     ["analyticsGetPlatformTenureCohortAdmin", weeksOnPlatform] as const,
   postsAdmin: () => ["forumGetPostsForAdmin"] as const,
   projectsAdminAll,

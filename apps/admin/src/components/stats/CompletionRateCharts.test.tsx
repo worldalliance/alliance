@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { millisecondsInDay } from "date-fns/constants";
+import { openChartData } from "../../lib/testing/chartData";
 import { actionStat } from "./actionStatFixture";
 import CompletionRateCharts from "./CompletionRateCharts";
 
@@ -50,15 +51,15 @@ describe("CompletionRateCharts", () => {
       <CompletionRateCharts actionStats={stats} actionStatsLoading={false} />,
     );
     const weekly = screen
-      .getByText("Non-Cumulative Completion Rate (Weekly)")
-      .closest(".relative")
+      .getByText("Non-cumulative completion rate (weekly)")
+      .closest("section")
       ?.querySelector("svg[viewBox]");
     if (!weekly) throw new Error("no weekly chart");
     weekly.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 350);
 
     fireEvent.mouseMove(weekly, { clientX: 999 });
 
-    expect(screen.getByText("Completed / Joined")).toBeTruthy();
+    expect(screen.getByText("Completed / joined")).toBeTruthy();
     expect(screen.getByText("6/10")).toBeTruthy();
     expect(screen.getByText("Action 1")).toBeTruthy();
     expect(
@@ -71,19 +72,56 @@ describe("CompletionRateCharts", () => {
       <CompletionRateCharts actionStats={stats} actionStatsLoading={false} />,
     );
     const cumulative = screen
-      .getByText("Cumulative Completion Rate")
-      .closest(".relative")
+      .getByText("Cumulative completion rate")
+      .closest("section")
       ?.querySelector("svg[viewBox]");
     if (!cumulative) throw new Error("no cumulative chart");
     cumulative.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 350);
 
     fireEvent.mouseMove(cumulative, { clientX: 999 });
 
-    expect(screen.getByText("Avg Rate").nextSibling?.textContent).toBe(
+    expect(screen.getByText("Average rate").nextSibling?.textContent).toBe(
       "55.00%",
     );
-    expect(screen.getByText("Total Actions").nextSibling?.textContent).toBe(
+    expect(screen.getByText("Total actions").nextSibling?.textContent).toBe(
       "2",
     );
+  });
+
+  it("gives rates to hundredths in the data table", async () => {
+    render(
+      <CompletionRateCharts
+        actionStats={[
+          actionStat({
+            actionId: 1,
+            memberActionEndDate: daysAgo(10),
+            usersCompleted: 1,
+            usersJoined: 8,
+            completionRate: 0.12345,
+          }),
+        ]}
+        actionStatsLoading={false}
+      />,
+    );
+    const rows = await openChartData("Cumulative completion rate");
+    expect(rows.map((row) => row[1])).toEqual(["12.35%"]);
+  });
+
+  it("heads the weekly table's dates as the weeks they start", async () => {
+    render(
+      <CompletionRateCharts
+        actionStats={[
+          actionStat({ actionId: 1, memberActionEndDate: daysAgo(10) }),
+        ]}
+        actionStatsLoading={false}
+      />,
+    );
+    const title = "Non-cumulative completion rate (weekly)";
+    await openChartData(title);
+    expect(
+      within(screen.getByRole("table", { name: title }))
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Week of", "Weekly rate"]);
   });
 });

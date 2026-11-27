@@ -172,7 +172,10 @@ const ActionSuitePage = () => {
         )}
       </Card>
       <div className="space-y-5 flex-1 overflow-y-auto pt-0">
-        <p className="text-sm text-gray-500">Actions ordered by priority</p>
+        <div>
+          <h2 className="text-sm font-semibold">Actions</h2>
+          <p className="text-sm text-zinc-500">Ordered by priority</p>
+        </div>
         {suite?.actions
           .slice()
           .sort((a, b) => b.priority - a.priority)

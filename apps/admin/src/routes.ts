@@ -20,7 +20,7 @@ export default [
         "pages/ProjectActionRedirect.tsx",
       ),
       route("/actions", "pages/Actions.tsx"),
-      route("/timeline", "pages/NewTimelinePage.tsx"),
+      route("/timeline", "pages/TimelineRedirect.tsx"),
       route("/invite-links", "pages/InviteLinksPage.tsx"),
       route("/invites", "pages/InvitesPage.tsx"),
       route("/invites/graph", "pages/InviteGraphPage.tsx"),

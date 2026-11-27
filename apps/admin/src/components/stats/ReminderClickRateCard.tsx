@@ -2,6 +2,8 @@ import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { cn } from "@alliance/shared/styles/util";
 import React, { useMemo, useState } from "react";
 import { useReminderGroupClickRatesAdmin } from "../../lib/useReminderGroupClickRatesAdmin";
+import DateRangeInputs from "../ui/DateRangeInputs";
+import Section from "../ui/Section";
 import ReminderClickRateBarChart, {
   reminderChannelStyles,
 } from "./ReminderClickRateBarChart";
@@ -59,46 +61,19 @@ const ReminderClickRateCard: React.FC = () => {
   );
 
   return (
-    <div className="relative overflow-hidden rounded border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">
-          Reminder Link Click Rate by Action
-        </h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">From</label>
-            <input
-              type="date"
-              value={reminderClickRateRange.start}
-              onChange={(event) =>
-                setReminderClickRateRange((prev) => ({
-                  ...prev,
-                  start: event.target.value,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">To</label>
-            <input
-              type="date"
-              value={reminderClickRateRange.end}
-              onChange={(event) =>
-                setReminderClickRateRange((prev) => ({
-                  ...prev,
-                  end: event.target.value,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="relative p-4">
+    <Section
+      title="Reminder link click rate by action"
+      actions={
+        <DateRangeInputs
+          value={reminderClickRateRange}
+          onChange={setReminderClickRateRange}
+        />
+      }
+    >
+      <div className="relative">
         {reminderGroupClickRatesLoading &&
           filteredReminderGroupClickRatePoints.length === 0 && (
-            <p className="text-sm text-gray-600">Loading...</p>
+            <p className="text-sm text-zinc-600">Loading…</p>
           )}
         {reminderGroupClickRatesLoadFailed && (
           <p className="text-sm text-red-600">
@@ -175,7 +150,7 @@ const ReminderClickRateCard: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </Section>
   );
 };
 

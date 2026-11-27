@@ -8,9 +8,9 @@ import {
   render,
   renderHook,
   screen,
-  waitFor,
+  within,
 } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import ActionsList from "./Actions";
@@ -39,26 +39,37 @@ beforeEach(() => {
   served = loaded;
 });
 
-const renderPage = (query = queryWrapper(), url = "/") => {
-  const router = createMemoryRouter(
-    [
-      {
-        path: "*",
-        element: (
-          <ToastProvider>
-            <ActionsList />
-          </ToastProvider>
-        ),
-      },
-    ],
-    { initialEntries: [url] },
+const Search = () => (
+  <output data-testid="search">{useLocation().search}</output>
+);
+
+const renderPage = (query = queryWrapper(), url = "/") =>
+  render(
+    <MemoryRouter initialEntries={[url]}>
+      <ToastProvider>
+        <ActionsList />
+        <Search />
+      </ToastProvider>
+    </MemoryRouter>,
+    query,
   );
-  render(<RouterProvider router={router} />, query);
-  return router;
+
+const archivedCheckbox = async () => {
+  fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
+  return screen.findByRole<HTMLInputElement>("checkbox", {
+    name: "Include archived",
+  });
 };
 
-const archivedToggle = () =>
-  screen.getByRole<HTMLInputElement>("checkbox", { name: "Show archived" });
+const VISIBLE = { selector: ":not([role=status])" };
+const announced = () =>
+  document.querySelector("p.sr-only[role=status]")?.textContent;
+
+const suiteFields = {
+  createdAt: "2026-01-02T00:00:00.000Z",
+  updatedAt: "2026-01-02T00:00:00.000Z",
+  events: [],
+};
 
 it("lists the loaded actions that are not archived", async () => {
   renderPage();
@@ -75,6 +86,7 @@ it("says the actions failed to load instead of listing none", async () => {
   expect(
     screen.queryByText("No actions yet. Create one to get started."),
   ).toBeNull();
+  expect(screen.queryByRole("searchbox")).toBeNull();
 });
 
 it("says the session expired when the load is refused with a 401", async () => {
@@ -131,215 +143,197 @@ it("offers the create menu when there are no actions", async () => {
   expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
 });
 
-it("lists an archived action, marked in the timeline, once archived ones are shown", async () => {
+it("lists an archived action, marked archived, once archived ones are shown", async () => {
   served = [adminActionListItem(2, "Old petition", { archived: true })];
   renderPage();
   expect(
-    await screen.findByText(/^Every action is archived\./, { selector: "div" }),
+    await screen.findByText(/^Every action is archived\./, VISIBLE),
   ).toBeTruthy();
-  expect(
-    screen.queryByText("No actions with timeline events found."),
-  ).toBeNull();
+  expect(announced()).toBe("Every action is archived.");
   expect(screen.queryByText("Old petition")).toBeNull();
 
   fireEvent.click(
     screen.getByRole("button", { name: "Show archived actions" }),
   );
 
-  expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
-    0,
+  expect(await screen.findByText("Old petition")).toBeTruthy();
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Remove filter: Include archived" }),
   );
-  expect(archivedToggle().checked).toBe(true);
-  expect(document.activeElement).toBe(archivedToggle());
-  expect(screen.getByText("archived")).toBeTruthy();
+  expect(screen.getByText("Archived")).toBeTruthy();
+  expect((await archivedCheckbox()).checked).toBe(true);
+  expect(screen.getByTestId("search").textContent).toBe("?archived=1");
 });
 
 it("keeps archived actions shown when the page opens from a link that shows them", async () => {
   served = [adminActionListItem(2, "Old petition", { archived: true })];
   renderPage(queryWrapper(), "/actions?archived=1");
 
-  expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
-    0,
-  );
-  expect(archivedToggle().checked).toBe(true);
+  expect(await screen.findByText("Old petition")).toBeTruthy();
+  const checkbox = await archivedCheckbox();
+  expect(checkbox.checked).toBe(true);
 
-  const toggle = archivedToggle();
-  act(() => toggle.focus());
-  fireEvent.click(toggle);
+  fireEvent.click(checkbox);
 
   expect(
-    await screen.findByText("Every action is archived.", {
-      selector: "[role=status]",
-    }),
+    await screen.findByText(/^Every action is archived\./, VISIBLE),
   ).toBeTruthy();
-  expect(screen.queryByText("Old petition")).toBeNull();
-  expect(document.activeElement).toBe(toggle);
-});
-
-it("steps back through archived toggles with Back", async () => {
-  const router = renderPage(queryWrapper(), "/actions");
-  fireEvent.click(
-    await screen.findByRole("checkbox", { name: "Show archived" }),
-  );
-  expect((await screen.findAllByText("Old petition")).length).toBeGreaterThan(
-    0,
-  );
-
-  await act(() => router.navigate(-1));
-
-  expect(archivedToggle().checked).toBe(false);
+  expect(announced()).toBe("Every action is archived.");
   expect(screen.queryByText("Old petition")).toBeNull();
 });
 
-it("keeps the status menu open, and focus on its item, as its last match is filtered out and back in", async () => {
-  renderPage();
-  fireEvent.click(await screen.findByRole("button", { name: /^Actions/ }));
-  const draft = () => screen.getByRole("menuitemcheckbox", { name: "Draft" });
-  await screen.findByRole("menuitemcheckbox", { name: "Draft" });
-
-  act(() => draft().focus());
-  fireEvent.click(draft());
-  expect(
-    await screen.findByText("No actions match the selected statuses.", {
-      selector: "[role=status]",
-    }),
-  ).toBeTruthy();
-  expect(
-    screen.getByText("No actions match the selected statuses.", {
-      selector: "div",
-    }),
-  ).toBeTruthy();
-  expect(document.activeElement).toBe(draft());
-  expect(screen.getByRole("menuitemcheckbox", { name: "Active" })).toBeTruthy();
-
-  fireEvent.click(draft());
-  await waitFor(() =>
-    expect(
-      screen.queryAllByText("No actions match the selected statuses."),
-    ).toHaveLength(0),
-  );
-  expect(document.activeElement).toBe(draft());
-});
-
-it("says the status filter hides every action, rather than that none has events, in a status region mounted before the list loads", async () => {
+it("says the filters hide every action, rather than that there are none, in a status region mounted before the list loads", async () => {
   served = [adminActionListItem(4, "Rally", { status: "completed" })];
   renderPage();
-  const region = screen.getByText("", { selector: "p[role=status]" });
-  expect(region.textContent).toBe("");
+  const region = document.querySelector("p.sr-only[role=status]");
+  expect(region?.textContent).toBe("");
 
-  await waitFor(() =>
-    expect(region.textContent).toBe("No actions match the selected statuses."),
-  );
   expect(
-    screen.getByText("No actions match the selected statuses.", {
-      selector: "div",
-    }),
+    await screen.findByText("No actions match these filters.", VISIBLE),
   ).toBeTruthy();
+  expect(region?.textContent).toBe("No actions match these filters.");
   expect(
-    screen.queryByText("No actions with timeline events found."),
+    screen.queryByText("No actions yet. Create one to get started."),
   ).toBeNull();
 });
 
-it("lists a suite with only archived actions after the others", async () => {
-  const suiteFields = {
-    createdAt: "2026-01-02T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    events: [],
-  };
+it("shows the default status filter as a chip that removes it", async () => {
+  served = [adminActionListItem(4, "Rally", { status: "completed" })];
+  renderPage();
+  const chips = await screen.findByRole("list", { name: "Active filters" });
+  expect(chips.textContent).toBe("Status: Active, Pending, Draft");
+
+  fireEvent.click(
+    within(chips).getByRole("button", { name: /^Remove filter: Status/ }),
+  );
+
+  expect(await screen.findByText("Rally")).toBeTruthy();
+  expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull();
+  expect(decodeURIComponent(screen.getByTestId("search").textContent!)).toBe(
+    "?status=active,pending,draft,onboarding,completed",
+  );
+});
+
+it("clears the search and returns the filters to their defaults, keeping the layout", async () => {
+  served = [
+    adminActionListItem(1, "Call your rep"),
+    adminActionListItem(4, "Rally", { status: "completed" }),
+  ];
+  renderPage(
+    queryWrapper(),
+    "/actions?q=Rally&status=completed&archived=1&group=suite",
+  );
+  expect(await screen.findByText("Rally")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+
+  expect(await screen.findByText("Call your rep")).toBeTruthy();
+  expect(screen.queryByText("Rally")).toBeNull();
+  expect(screen.getByTestId("search").textContent).toBe("?group=suite");
+  expect(screen.getByRole("list", { name: "Active filters" }).textContent).toBe(
+    "Status: Active, Pending, Draft",
+  );
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
+it("offers no Clear all when the default filters alone hide every action", async () => {
+  served = [adminActionListItem(4, "Rally", { status: "completed" })];
+  renderPage(queryWrapper(), "/actions");
+
+  expect(
+    await screen.findByText("No actions match these filters.", VISIBLE),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+});
+
+it("searches action names and keeps the search in the URL", async () => {
+  served = [
+    adminActionListItem(1, "Call your rep"),
+    adminActionListItem(3, "Write a letter"),
+  ];
+  renderPage(queryWrapper(), "/actions?q=LETTER");
+
+  expect(await screen.findByText("Write a letter")).toBeTruthy();
+  expect(screen.queryByText("Call your rep")).toBeNull();
+  expect(
+    screen.getByRole<HTMLInputElement>("searchbox", { name: "Search actions" })
+      .value,
+  ).toBe("LETTER");
+});
+
+it("groups by suite on request, with suites holding only archived actions last", async () => {
   served = [
     adminActionListItem(2, "Old petition", {
       archived: true,
       suite: { ...suiteFields, id: 8, name: "Retired suite" },
     }),
     adminActionListItem(3, "Call your rep", {
+      status: "office_action",
       suite: { ...suiteFields, id: 9, name: "Live suite" },
     }),
   ];
-  renderPage();
+  renderPage(queryWrapper(), "/actions?archived=1");
+  await screen.findByText("Call your rep");
+  expect(screen.queryByRole("heading", { name: /Live suite/ })).toBeNull();
 
-  fireEvent.click(
-    await screen.findByRole("checkbox", { name: "Show archived" }),
+  fireEvent.click(screen.getByRole("checkbox", { name: "Group by suite" }));
+
+  const headings = (await screen.findAllByRole("heading", { level: 2 })).map(
+    (heading) => heading.textContent,
   );
-
-  const retired = await screen.findByRole("link", { name: "Retired suite" });
-  const live = screen.getAllByRole("link", { name: "Live suite" }).at(-1)!;
+  expect(headings).toEqual(["Live suite 1", "Retired suite 1"]);
   expect(
-    live.compareDocumentPosition(retired) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
+    screen
+      .getByRole("link", { name: "Open suite Retired suite" })
+      .getAttribute("href"),
+  ).toBe("/suites/8");
+  expect(screen.getByTestId("search").textContent).toBe(
+    "?archived=1&group=suite",
+  );
 });
 
-it("links an in-progress suite card to its suite and each action to itself, nesting no link", async () => {
-  const suite = {
-    id: 5,
-    name: "Fall push",
-    createdAt: "2026-01-02T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    events: [],
-  };
+it("lists in-progress suites above the filters, whatever the filters hide", async () => {
+  const suite = { id: 5, name: "Fall push", ...suiteFields };
   served = [
     adminActionListItem(1, "Call your rep", { suite }),
     adminActionListItem(3, "Write a letter", { suite }),
     adminActionListItem(4, "Rally", { suite, status: "member_action" }),
   ];
-  renderPage();
-  const section = (
-    await screen.findByText("Suites with draft or active actions")
-  ).closest("section");
-  if (!section) throw new Error("no in-progress suites section");
-  const hrefs = [...section.querySelectorAll("a")].map((link) =>
-    link.getAttribute("href"),
-  );
-  expect(hrefs).toEqual([
-    "/suites/5",
-    "/actions/1",
-    "/actions/3",
-    "/actions/4",
-  ]);
-  expect(section.querySelector("a a")).toBeNull();
+  renderPage(queryWrapper(), "/actions?q=nothing");
+  const section = await screen.findByRole("region", {
+    name: /^In-progress suites/,
+  });
+  expect(
+    [...section.querySelectorAll("a")].map((link) => link.getAttribute("href")),
+  ).toEqual(["/suites/5", "/actions/1", "/actions/3", "/actions/4"]);
   expect(section.textContent).toContain("1 active · 2 draft");
+  expect(
+    section.compareDocumentPosition(screen.getByRole("searchbox")) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("shows the timeline instead of the list when the URL asks for it", async () => {
+  renderPage(queryWrapper(), "/actions?view=timeline");
+
+  expect(await screen.findByText("Call your rep")).toBeTruthy();
+  expect(
+    screen.getByRole<HTMLInputElement>("radio", { name: "Timeline" }).checked,
+  ).toBe(true);
+  expect(screen.queryByRole("checkbox", { name: "Group by suite" })).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Actions/ })).toBeNull();
+
+  fireEvent.click(screen.getByRole("radio", { name: "List" }));
+
+  expect(screen.getByTestId("search").textContent).toBe("");
+  expect(screen.getByRole("checkbox", { name: "Group by suite" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: /^Actions/ })).toBeTruthy();
 });
 
 it("keeps the selected statuses when the page opens from a link", async () => {
   served = [adminActionListItem(4, "Rally", { status: "completed" })];
   renderPage(queryWrapper(), "/actions?status=completed");
 
-  expect(await screen.findAllByText("Rally")).toHaveLength(2);
-  expect(
-    screen.queryByText("No actions match the selected statuses."),
-  ).toBeNull();
-});
-
-it("writes the status filter to the URL, leaving it out at the defaults and keeping other params", async () => {
-  served = [
-    adminActionListItem(1, "Call your rep"),
-    adminActionListItem(4, "Rally", { status: "completed" }),
-  ];
-  const router = renderPage(queryWrapper(), "/actions?other=1");
-  // The list below the timeline always names Rally; the timeline only when shown.
-  const rallyShownInTimeline = () => screen.getAllByText("Rally").length === 2;
-  const toggleCompleted = async () => {
-    const trigger = await screen.findByRole("button", { name: /^Actions/ });
-    if (trigger.getAttribute("aria-expanded") !== "true") {
-      fireEvent.click(trigger);
-    }
-    fireEvent.click(
-      await screen.findByRole("menuitemcheckbox", { name: "Completed" }),
-    );
-  };
-
-  await toggleCompleted();
-  expect(router.state.location.search).toBe(
-    "?other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
-  );
-  expect(rallyShownInTimeline()).toBe(true);
-
-  await toggleCompleted();
-  expect(router.state.location.search).toBe("?other=1");
-  expect(rallyShownInTimeline()).toBe(false);
-
-  await act(() => router.navigate(-1));
-  expect(router.state.location.search).toBe(
-    "?other=1&status=active%2Cpending%2Cdraft%2Ccompleted",
-  );
-  expect(rallyShownInTimeline()).toBe(true);
+  expect(await screen.findByText("Rally")).toBeTruthy();
+  expect(screen.queryByText("No actions match these filters.")).toBeNull();
 });

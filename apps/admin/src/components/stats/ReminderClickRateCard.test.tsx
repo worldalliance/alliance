@@ -3,6 +3,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { millisecondsInDay } from "date-fns/constants";
+import { openChartData } from "../../lib/testing/chartData";
 import ReminderClickRateCard from "./ReminderClickRateCard";
 
 serveApi(
@@ -31,7 +32,7 @@ describe("ReminderClickRateCard", () => {
     const { wrapper } = queryWrapper();
     const { container } = render(<ReminderClickRateCard />, { wrapper });
 
-    await screen.findByText("Email Click Rate (Avg by Action)");
+    await screen.findByText("Email click rate (average by action)");
     expect(
       screen.getByText("No texted reminder data in this range."),
     ).toBeTruthy();
@@ -50,7 +51,7 @@ describe("ReminderClickRateCard", () => {
   it("leaves out reminder groups sent before the chosen start date", async () => {
     const { wrapper } = queryWrapper();
     render(<ReminderClickRateCard />, { wrapper });
-    await screen.findByText("Email Click Rate (Avg by Action)");
+    await screen.findByText("Email click rate (average by action)");
 
     const from = screen
       .getByText("From")
@@ -64,5 +65,15 @@ describe("ReminderClickRateCard", () => {
     });
 
     await screen.findByText(/No sent reminder groups with email\/text link/);
+  });
+
+  it("lists each action's click rate in its data table", async () => {
+    const { wrapper } = queryWrapper();
+    render(<ReminderClickRateCard />, { wrapper });
+    await screen.findByText("Email click rate (average by action)");
+
+    expect(await openChartData("Email click rate (average by action)")).toEqual(
+      [["Call a rep", "25%", "2", "8", "1"]],
+    );
   });
 });

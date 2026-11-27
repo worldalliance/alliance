@@ -99,7 +99,7 @@ const CohortRetentionCharts: React.FC = () => {
   return (
     <>
       <TimeSeriesChart
-        title="Cohort Completion Reliability"
+        title="Cohort completion reliability"
         xType="number"
         loading={retentionLoading}
         emptyMessage="No cohorts have completions yet."

@@ -1,9 +1,16 @@
 import type { ContractStatusPointDto } from "@alliance/shared/client/types.gen";
+import { parseISO } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 
 export type ParsedContractStatusPoint = ContractStatusPointDto & {
   parsedDate: Date;
 };
+
+/** `date` is a day key, so each point falls on that day in the viewer's time zone. */
+export const parseContractStatusHistory = (
+  history: ContractStatusPointDto[],
+): ParsedContractStatusPoint[] =>
+  history.map((point) => ({ ...point, parsedDate: parseISO(point.date) }));
 
 const findContractStatusPointDaysAgo = (
   history: ParsedContractStatusPoint[],

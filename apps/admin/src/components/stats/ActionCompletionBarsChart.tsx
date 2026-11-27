@@ -3,12 +3,17 @@ import { cn } from "@alliance/shared/styles/util";
 import { max, scaleLinear } from "d3";
 import React, { useMemo, useState } from "react";
 import type { useActionStats } from "../../lib/useActionStats";
+import ChartData from "../ui/ChartData";
+import { secondaryButtonClass } from "../ui/controlStyles";
+import Section from "../ui/Section";
+import { completionPercent } from "./completionPercent";
 
-type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
-  usersWithdrawn?: number;
-};
+const isInProgress = (action: ActionStatsWithOnboardingDto) =>
+  action.memberActionEndDate !== null &&
+  new Date(action.memberActionEndDate) > new Date();
+
 type HoveredActionBar = {
-  action: ActionStatsWithWithdrawals;
+  action: ActionStatsWithOnboardingDto;
   index: number;
 };
 
@@ -85,8 +90,8 @@ const ActionCompletionBarsChart: React.FC<{
       margin.top + margin.bottom + chartActionStats.length * (barHeight + gap);
 
     const maxCompleted = max(chartActionStats, (d) => d.usersCompleted) ?? 0;
-    const maxTotalExpected = max(chartActionStats, (d) => d.usersJoined) ?? 0;
-    const maxValue = Math.max(maxCompleted, maxTotalExpected, 10);
+    const maxJoined = max(chartActionStats, (d) => d.usersJoined) ?? 0;
+    const maxValue = Math.max(maxCompleted, maxJoined, 10);
 
     const xScale = scaleLinear()
       .domain([0, maxValue * 1.1])
@@ -118,24 +123,26 @@ const ActionCompletionBarsChart: React.FC<{
     const centerY = y + actionBarsGeometry.barHeight / 2;
     return (centerY / actionBarsGeometry.height) * 100;
   }, [hoveredActionBar, actionBarsGeometry]);
+  const hoveredRate =
+    hoveredActionBar && completionPercent(hoveredActionBar.action);
 
   return (
-    <div className="relative overflow-visible rounded-xl border border-gray-200 bg-white">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Action Completion Stats
-        </h3>
+    <Section
+      title="Action completion stats"
+      actions={
         <button
+          type="button"
           onClick={() => recalculateActionStats.mutate()}
           disabled={actionStatsLoading}
-          className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-2 disabled:opacity-50"
+          className={secondaryButtonClass}
         >
-          {actionStatsLoading ? "Calculating..." : "Recalculate"}
+          {actionStatsLoading ? "Calculating…" : "Recalculate"}
         </button>
-      </div>
-      <div className="relative p-4">
+      }
+    >
+      <div className="relative">
         {actionStatsLoading && actionStats.length === 0 && (
-          <p className="text-sm text-gray-600">Loading action stats...</p>
+          <p className="text-sm text-zinc-600">Loading action stats…</p>
         )}
         {actionStatsLoadFailed && (
           <p className="text-sm text-red-600">Unable to load action stats.</p>
@@ -212,23 +219,23 @@ const ActionCompletionBarsChart: React.FC<{
               const y =
                 actionBarsGeometry.margin.top +
                 idx * (actionBarsGeometry.barHeight + actionBarsGeometry.gap);
-              const usersWithdrawn = action.usersWithdrawn ?? 0;
-              const totalExpected = action.usersJoined + usersWithdrawn;
-              const expectedWidth =
-                actionBarsGeometry.xScale(totalExpected) -
+              const usersWithdrawn = action.usersWithdrawn;
+              const trackTotal = action.usersJoined + usersWithdrawn;
+              const displayRate = completionPercent(action);
+              const trackWidth =
+                actionBarsGeometry.xScale(trackTotal) -
                 actionBarsGeometry.margin.left;
               const completedWidth =
                 actionBarsGeometry.xScale(action.usersCompleted) -
+                actionBarsGeometry.margin.left;
+              const joinedWidth =
+                actionBarsGeometry.xScale(action.usersJoined) -
                 actionBarsGeometry.margin.left;
               const withdrawnWidth =
                 actionBarsGeometry.xScale(usersWithdrawn) -
                 actionBarsGeometry.margin.left;
               const isHovered =
                 hoveredActionBar?.action.actionId === action.actionId;
-              const displayRate =
-                totalExpected > 0
-                  ? Math.round((action.usersCompleted / totalExpected) * 100)
-                  : 0;
 
               return (
                 <g
@@ -270,12 +277,11 @@ const ActionCompletionBarsChart: React.FC<{
                   <rect
                     x={actionBarsGeometry.margin.left}
                     y={y}
-                    width={Math.max(expectedWidth, 0)}
+                    width={Math.max(trackWidth, 0)}
                     height={actionBarsGeometry.barHeight}
                     rx={4}
                     fill={
-                      action.memberActionEndDate &&
-                      new Date(action.memberActionEndDate) > new Date()
+                      isInProgress(action)
                         ? isHovered
                           ? "url(#in-progress-stripes-hover)"
                           : "url(#in-progress-stripes)"
@@ -312,7 +318,7 @@ const ActionCompletionBarsChart: React.FC<{
                   {usersWithdrawn > 0 && withdrawnWidth > 0 && (
                     <path
                       d={buildRoundedRightPath(
-                        actionBarsGeometry.margin.left + completedWidth,
+                        actionBarsGeometry.margin.left + joinedWidth,
                         y,
                         Math.max(withdrawnWidth, 0),
                         actionBarsGeometry.barHeight,
@@ -325,15 +331,15 @@ const ActionCompletionBarsChart: React.FC<{
                   <text
                     x={
                       actionBarsGeometry.margin.left +
-                      Math.max(expectedWidth, completedWidth + withdrawnWidth) +
+                      Math.max(trackWidth, 0) +
                       8
                     }
                     y={y + actionBarsGeometry.barHeight / 2}
                     dominantBaseline="middle"
                     className="fill-gray-600 text-xs"
                   >
-                    {action.usersCompleted}/{totalExpected}{" "}
-                    {totalExpected > 0 ? `(${displayRate}%)` : ""}
+                    {action.usersCompleted}/{action.usersJoined}{" "}
+                    {displayRate !== null ? `(${displayRate}%)` : ""}
                   </text>
                 </g>
               );
@@ -362,7 +368,7 @@ const ActionCompletionBarsChart: React.FC<{
               <div className="flex justify-between">
                 <span className="text-gray-600">Withdrawn:</span>
                 <span className="font-medium text-orange-600">
-                  {hoveredActionBar.action.usersWithdrawn ?? 0}
+                  {hoveredActionBar.action.usersWithdrawn}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -374,13 +380,7 @@ const ActionCompletionBarsChart: React.FC<{
               <div className="flex justify-between border-t pt-1 mt-1">
                 <span className="text-gray-600">Rate:</span>
                 <span className="font-semibold text-gray-900">
-                  {hoveredActionBar.action.usersJoined > 0
-                    ? `${Math.round(
-                        (hoveredActionBar.action.usersCompleted /
-                          hoveredActionBar.action.usersJoined) *
-                          100,
-                      )}%`
-                    : "N/A"}
+                  {hoveredRate === null ? "N/A" : `${hoveredRate}%`}
                 </span>
               </div>
             </div>
@@ -399,7 +399,7 @@ const ActionCompletionBarsChart: React.FC<{
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-gray-300" />
-          <span className="text-sm text-gray-600">Expected total</span>
+          <span className="text-sm text-gray-600">Joined, not completed</span>
         </div>
         <div className="flex items-center gap-2">
           <svg className="w-4 h-4 rounded" viewBox="0 0 16 16">
@@ -420,7 +420,31 @@ const ActionCompletionBarsChart: React.FC<{
           <span className="text-sm text-gray-600">In progress</span>
         </div>
       </div>
-    </div>
+      {chartActionStats.length > 0 && (
+        <ChartData
+          caption="Action completion stats"
+          columns={[
+            "Action",
+            "Completed",
+            "Joined",
+            "Withdrawn",
+            "Completion rate",
+            "In progress",
+          ]}
+          rows={chartActionStats.map((action) => {
+            const rate = completionPercent(action);
+            return [
+              action.actionName,
+              String(action.usersCompleted),
+              String(action.usersJoined),
+              String(action.usersWithdrawn),
+              rate !== null ? `${rate}%` : "—",
+              isInProgress(action) ? "Yes" : "No",
+            ];
+          })}
+        />
+      )}
+    </Section>
   );
 };
 

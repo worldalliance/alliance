@@ -5,10 +5,16 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { CohortSegment } from "../lib/describeCohortExpression";
 import { ProjectCardKind, type ProjectCard } from "../lib/projectCards";
+import { StatusTone } from "../lib/statusTone";
 import { useCreateProjectAdmin } from "../lib/useProjectsAdmin";
 import { ActionCategoryIcons } from "./ActionCategoryIcons";
-import ProjectCardBody, { ProjectCounts, startedText } from "./ProjectCardBody";
+import ProjectCardBody, {
+  ProjectCounts,
+  projectSummary,
+} from "./ProjectCardBody";
 import { ProjectNameInput } from "./ProjectNameInput";
+import ProjectWarnings from "./ProjectWarnings";
+import StatusPill from "./ui/StatusPill";
 
 const MakeProject = ({
   actionId,
@@ -43,12 +49,11 @@ const MakeProject = ({
   return (
     <button
       type="button"
-      aria-label="Make a project from this action"
-      title="Make a project from this action"
-      className="relative z-10 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+      className="relative z-10 flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
       onClick={() => setNaming(true)}
     >
-      <FolderPlus size={16} />
+      <FolderPlus size={14} aria-hidden />
+      Make project
     </button>
   );
 };
@@ -65,13 +70,13 @@ const ProjectCardTile = ({
       ? `/projects/${card.project.id}`
       : `/actions/${card.action.id}`;
   return (
-    <article className="relative flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 hover:border-zinc-300 hover:shadow-sm">
+    <article className="relative flex flex-col gap-3 rounded-md border border-zinc-200 bg-white p-4 hover:border-zinc-400">
       <header className="flex flex-col gap-1.5">
         <div className="flex items-start justify-between gap-x-2">
           <div className="flex min-w-0 items-center gap-x-2">
             <Link
               to={href}
-              className="truncate font-semibold text-black after:absolute after:inset-0 after:content-['']"
+              className="truncate font-semibold text-zinc-900 after:absolute after:inset-0 after:content-['']"
             >
               {card.name}
             </Link>
@@ -83,16 +88,15 @@ const ProjectCardTile = ({
             <MakeProject actionId={card.action.id} actionName={card.name} />
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-          <span>{startedText(card.startedAt)}</span>
+        <div className="flex flex-wrap items-center gap-1">
           {card.kind === ProjectCardKind.Standalone && (
-            <span className="rounded border border-zinc-200 px-1">
-              Standalone action
-            </span>
+            <StatusPill tone={StatusTone.Neutral} label="Standalone action" />
           )}
           <ProjectCounts card={card} />
         </div>
+        <p className="text-xs text-zinc-600">{projectSummary(card)}</p>
       </header>
+      <ProjectWarnings flags={card.flags} />
       <ProjectCardBody
         card={card}
         participantsById={participantsById}

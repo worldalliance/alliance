@@ -113,6 +113,7 @@ const ProjectStepRows = ({
       {steps.map((step, index) => {
         const entry = funnelById.get(step.id);
         const completions = entry?.completions ?? 0;
+        const phase = actionPhase(step, now);
         return (
           <li
             key={step.id}
@@ -134,19 +135,20 @@ const ProjectStepRows = ({
                 </div>
               )}
               <ActionTimelineRowMeta
-                status={step.status}
+                status={
+                  detailed && phase === ActionPhase.Closed
+                    ? undefined
+                    : step.status
+                }
                 participants={participantsById.get(step.id)}
               />
             </Link>
             {detailed && (
               <div className="flex w-56 shrink-0 items-center justify-end gap-x-2">
-                <ActionPhasePill
-                  phase={actionPhase(step, now)}
-                  status={step.status}
-                />
+                <ActionPhasePill phase={phase} status={step.status} />
                 <NextStep
                   step={step}
-                  phase={actionPhase(step, now)}
+                  phase={phase}
                   onStartStaffTesting={onStartStaffTesting}
                 />
               </div>

@@ -41,13 +41,11 @@ afterEach(() => {
 
 const weeksInput = () => screen.getByRole("spinbutton");
 const submit = () =>
-  fireEvent.click(screen.getByRole("button", { name: "View reliability" }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
 describe("MemberReliabilityCard", () => {
-  it("shows each rate for the requested weeks", async () => {
+  it("shows each rate for the default weeks on load", async () => {
     render(<MemberReliabilityCard />, queryWrapper());
-
-    submit();
 
     await screen.findByText("75.0%");
     expect(screen.getByText("90.0%")).toBeTruthy();
@@ -59,6 +57,7 @@ describe("MemberReliabilityCard", () => {
 
   it("refuses a week count below 1 without requesting it", async () => {
     render(<MemberReliabilityCard />, queryWrapper());
+    await screen.findByText("75.0%");
 
     fireEvent.change(weeksInput(), { target: { value: "0" } });
     const form = weeksInput().closest("form");
@@ -66,14 +65,14 @@ describe("MemberReliabilityCard", () => {
     fireEvent.submit(form);
 
     await screen.findByText("Weeks must be a whole number of at least 1.");
-    expect(reliabilityRequests).toEqual([]);
+    expect(
+      reliabilityRequests.map((url) => url.searchParams.get("weeks")),
+    ).toEqual(["5"]);
   });
 
   it("says the load failed", async () => {
     reliabilityStatus = 500;
     render(<MemberReliabilityCard />, queryWrapper());
-
-    submit();
 
     await screen.findByText(
       "Unable to load reliability data right now. Please try again soon.",
@@ -83,7 +82,6 @@ describe("MemberReliabilityCard", () => {
   it("loads the same week count again when reapplied after a failure", async () => {
     reliabilityStatus = 500;
     render(<MemberReliabilityCard />, queryWrapper());
-    submit();
     await screen.findByText(
       "Unable to load reliability data right now. Please try again soon.",
     );
@@ -107,15 +105,12 @@ describe("MemberReliabilityCard", () => {
     reliabilityMessage = "Admins only";
     render(<MemberReliabilityCard />, queryWrapper());
 
-    submit();
-
     await screen.findByText("Admins only");
     expect(screen.queryByText("75.0%")).toBeNull();
   });
 
   it("hides the shown rates when a later load fails", async () => {
     render(<MemberReliabilityCard />, queryWrapper());
-    submit();
     await screen.findByText("75.0%");
 
     reliabilityStatus = 500;

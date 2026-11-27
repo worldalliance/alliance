@@ -1,14 +1,17 @@
 import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
-import { cn } from "@alliance/shared/styles/util";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import React, { useMemo, useRef } from "react";
-import { Link, useSearchParams } from "react-router";
-import ActionListCard from "../components/ActionListCard";
-import ActionStatusBucketFilter from "../components/ActionStatusBucketFilter";
+import React, { useEffect, useMemo, useRef } from "react";
+import ActionsListView from "../components/ActionsListView";
 import ActionTimeline from "../components/ActionTimeline";
 import CreateActionMenu from "../components/CreateActionMenu";
+import InProgressSuites from "../components/InProgressSuites";
+import FilterBar, {
+  type FilterBarHandle,
+  FilterKind,
+} from "../components/ui/FilterBar";
+import PageShell, { PageWidth } from "../components/ui/PageShell";
+import SegmentedControl from "../components/ui/SegmentedControl";
 import { readBuckets, writeBuckets } from "../lib/actionListBuckets";
 import { actionsLoadError } from "../lib/actionsLoadError";
 import {
@@ -16,8 +19,8 @@ import {
   ActionStatusBucket,
   actionStatusBucket,
 } from "../lib/actionStatusBucket";
-import { inProgressSuites } from "../lib/inProgressSuites";
 import { useActionParticipants } from "../lib/useActionParticipants";
+import { useSearchParam } from "../lib/useSearchParam";
 
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
@@ -26,315 +29,207 @@ export const getLastPastEventDate = (
   return event ? new Date(event.date) : null;
 };
 
-type ActionSuiteGroup = {
-  id: number | null;
-  name: string;
-  actions: AdminActionListItemDto[];
-  sortVal: number;
-  isArchivedOnly: boolean;
+export enum ActionsView {
+  List = "list",
+  Timeline = "timeline",
+}
+
+const VIEW_OPTIONS = [
+  { value: ActionsView.List, label: "List" },
+  { value: ActionsView.Timeline, label: "Timeline" },
+] as const;
+
+const BUCKET_OPTIONS = Object.values(ActionStatusBucket).map((bucket) => ({
+  value: bucket,
+  label: ACTION_STATUS_BUCKET_LABELS[bucket],
+}));
+
+const ALL_ARCHIVED = "Every action is archived.";
+const NO_MATCH = "No actions match these filters.";
+
+const TimelineView = ({
+  shown,
+  unarchived,
+}: {
+  shown: AdminActionListItemDto[];
+  unarchived: AdminActionListItemDto[];
+}) => {
+  const participantsById = useActionParticipants(unarchived);
+  return (
+    <ActionTimeline
+      actions={shown}
+      latestLaunchFirst
+      participantsById={participantsById}
+      className="max-h-[75vh] rounded-md border border-zinc-200"
+    />
+  );
 };
 
-const NO_STATUS_MATCH = "No actions match the selected statuses.";
-const ALL_ARCHIVED = "Every action is archived.";
+const DEFAULT_BUCKETS = readBuckets(null);
 
 const ActionsList: React.FC = () => {
   const list = useActionsAdmin();
   const error = list.isError ? actionsLoadError(list.error) : null;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const setParam = (key: string, value: string | null) =>
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (value === null) next.delete(key);
-      else next.set(key, value);
-      return next;
-    });
-  const shownBuckets = readBuckets(searchParams.get("status"));
-  const setShownBuckets = (buckets: ReadonlySet<ActionStatusBucket>) =>
-    setParam("status", writeBuckets(buckets));
-  const showArchived = searchParams.get("archived") === "1";
-  const archivedToggle = useRef<HTMLInputElement>(null);
-  const setShowArchived = (show: boolean) =>
-    setParam("archived", show ? "1" : null);
-  const actions = useMemo(
+  const [viewParam, setView] = useSearchParam("view");
+  const view =
+    viewParam === ActionsView.Timeline
+      ? ActionsView.Timeline
+      : ActionsView.List;
+  const [statusParam, setStatus] = useSearchParam("status");
+  const shownBuckets = readBuckets(statusParam);
+  const [archivedParam, setArchived] = useSearchParam("archived");
+  const showArchived = archivedParam === "1";
+  const setShowArchived = (show: boolean) => setArchived(show ? "1" : null);
+  const filterBarRef = useRef<FilterBarHandle>(null);
+  const focusArchivedChip = useRef(false);
+  useEffect(() => {
+    if (!showArchived || !focusArchivedChip.current) return;
+    focusArchivedChip.current = false;
+    filterBarRef.current?.focusChip("archived");
+  }, [showArchived]);
+  const [groupParam, setGroup] = useSearchParam("group");
+  const groupedBySuite = groupParam === "suite";
+  const [query, setQuery] = useSearchParam("q");
+
+  const unarchived = useMemo(
     () =>
       (list.data ?? []).filter((action) => showArchived || !action.archived),
     [list.data, showArchived],
   );
-
-  const timelineActions = actions.filter((action) =>
-    shownBuckets.has(actionStatusBucket(action)),
+  const needle = (query ?? "").trim().toLowerCase();
+  const shown = unarchived.filter(
+    (action) =>
+      shownBuckets.has(actionStatusBucket(action)) &&
+      action.name.toLowerCase().includes(needle),
   );
-  const participantsById = useActionParticipants(actions);
 
-  const suitesInProgress = useMemo(() => inProgressSuites(actions), [actions]);
-
-  const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
-    if (actions.length === 0) {
-      return [];
-    }
-
-    const suites = new Map<
-      string,
-      {
-        id: number | null;
-        name: string;
-        actions: AdminActionListItemDto[];
-      }
-    >();
-
-    actions.forEach((action) => {
-      const suiteId = action.suite?.id ?? null;
-      const suiteKey =
-        suiteId === null ? "suite-unspecified" : `suite-${suiteId}`;
-      const suiteName = action.suite?.name ?? "No suite";
-      const existing = suites.get(suiteKey);
-
-      if (existing) {
-        existing.actions.push(action);
-        return;
-      }
-
-      suites.set(suiteKey, {
-        id: suiteId,
-        name: suiteName,
-        actions: [action],
-      });
-    });
-
-    return Array.from(suites.values())
-      .map((suite) => {
-        const suiteActions = suite.actions.slice();
-        const nonArchivedActions = suiteActions.filter(
-          (action) => !action.archived,
-        );
-        const relevantActions =
-          nonArchivedActions.length > 0 ? nonArchivedActions : suiteActions;
-
-        const sortVal = Math.min(
-          ...relevantActions.map((action) => actions.indexOf(action)),
-        );
-
-        return {
-          ...suite,
-          actions: suiteActions,
-          sortVal: sortVal,
-          isArchivedOnly: suiteActions.every((action) => action.archived),
-        };
-      })
-      .sort((a, b) => {
-        if (a.isArchivedOnly && !b.isArchivedOnly) {
-          return 1;
-        }
-
-        if (!a.isArchivedOnly && b.isArchivedOnly) {
-          return -1;
-        }
-
-        const aVal = a.sortVal;
-        const bVal = b.sortVal;
-
-        return aVal - bVal;
-      });
-  }, [actions]);
-
-  const title = <title>Actions - Admin</title>;
   const errorNote = error && (
-    <p role="alert" className="flex-shrink-0 text-red-600">
+    <p role="alert" className="text-sm text-red-600">
       {error}
     </p>
   );
 
-  // Mounted from the first render, before any message, so screen readers
-  // announce the message when it arrives.
-  const withStatus = (page: React.ReactNode) => (
-    <>
-      <p role="status" className="sr-only">
-        {!list.data?.length
-          ? ""
-          : groupedActions.length === 0
-            ? ALL_ARCHIVED
-            : timelineActions.length === 0
-              ? NO_STATUS_MATCH
-              : ""}
-      </p>
-      {page}
-    </>
-  );
+  const body = () => {
+    if (list.isPending) {
+      return <p className="text-sm text-zinc-600">Loading actions…</p>;
+    }
+    if (!list.data) return null;
+    if (list.data.length === 0) {
+      return (
+        <p className="text-sm text-zinc-600">
+          No actions yet. Create one to get started.
+        </p>
+      );
+    }
+    if (unarchived.length === 0) {
+      return (
+        <p className="text-sm text-zinc-600">
+          {ALL_ARCHIVED}{" "}
+          <button
+            type="button"
+            className="text-blue-600 underline"
+            onClick={() => {
+              focusArchivedChip.current = true;
+              setShowArchived(true);
+            }}
+          >
+            Show archived actions
+          </button>
+        </p>
+      );
+    }
+    if (shown.length === 0) {
+      return <p className="text-sm text-zinc-600">{NO_MATCH}</p>;
+    }
+    switch (view) {
+      case ActionsView.List:
+        return (
+          <ActionsListView actions={shown} groupedBySuite={groupedBySuite} />
+        );
+      case ActionsView.Timeline:
+        return <TimelineView shown={shown} unarchived={unarchived} />;
+      default:
+        throw new Error(`unknown view: ${view satisfies never}`);
+    }
+  };
 
-  if (list.isPending) {
-    return withStatus(
-      <p className="p-5">
-        {title}
-        Loading actions...
-      </p>,
-    );
-  }
-
-  if (error && !list.data) {
-    return withStatus(
-      <div className="p-5">
-        {title}
-        {errorNote}
-      </div>,
-    );
-  }
-
-  if (!list.data?.length) {
-    return withStatus(
-      <div className="space-y-4 p-5">
-        {title}
-        <div className="flex justify-between items-center">
-          <h1 className="font-bold">Actions</h1>
-          <CreateActionMenu />
+  return (
+    <PageShell
+      title="Actions"
+      width={PageWidth.Full}
+      actions={<CreateActionMenu />}
+    >
+      <div className="flex flex-col gap-4">
+        {/* Mounted from the first render, so screen readers announce what
+            arrives in it while focus stays in the filters. */}
+        <p role="status" className="sr-only">
+          {!list.data?.length
+            ? ""
+            : unarchived.length === 0
+              ? ALL_ARCHIVED
+              : shown.length === 0
+                ? NO_MATCH
+                : ""}
+        </p>
+        {list.data && <InProgressSuites actions={list.data} />}
+        <div
+          hidden={list.isLoadingError}
+          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+        >
+          <FilterBar
+            ref={filterBarRef}
+            search={{
+              label: "Search actions",
+              value: query ?? "",
+              onChange: (value) => setQuery(value === "" ? null : value),
+            }}
+            filters={[
+              {
+                kind: FilterKind.Options,
+                key: "status",
+                label: "Status",
+                options: BUCKET_OPTIONS,
+                selected: shownBuckets,
+                defaultSelected: DEFAULT_BUCKETS,
+                onChange: (selected) => setStatus(writeBuckets(selected)),
+              },
+              {
+                kind: FilterKind.Toggle,
+                key: "archived",
+                label: "Include archived",
+                checked: showArchived,
+                defaultChecked: false,
+                onChange: setShowArchived,
+              },
+            ]}
+          />
+          <div className="flex items-center gap-4">
+            {view === ActionsView.List && (
+              <label className="flex items-center gap-2 text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={groupedBySuite}
+                  onChange={(event) =>
+                    setGroup(event.target.checked ? "suite" : null)
+                  }
+                />
+                Group by suite
+              </label>
+            )}
+            <SegmentedControl
+              label="View"
+              options={VIEW_OPTIONS}
+              value={view}
+              onChange={(next) =>
+                setView(next === ActionsView.List ? null : next)
+              }
+            />
+          </div>
         </div>
         {errorNote}
-        <p>No actions yet. Create one to get started.</p>
-      </div>,
-    );
-  }
-
-  return withStatus(
-    <div className="flex flex-col p-5 gap-y-3">
-      {title}
-      {errorNote}
-      <ActionTimeline
-        actions={timelineActions}
-        header={
-          <div className="flex h-full items-center gap-x-2">
-            <ActionStatusBucketFilter
-              selected={shownBuckets}
-              onChange={setShownBuckets}
-            />
-            <label className="flex shrink-0 items-center gap-x-1 text-xs text-zinc-700">
-              <input
-                ref={archivedToggle}
-                type="checkbox"
-                checked={showArchived}
-                onChange={(event) => setShowArchived(event.target.checked)}
-              />
-              Show archived
-            </label>
-            <CreateActionMenu />
-          </div>
-        }
-        latestLaunchFirst
-        participantsById={participantsById}
-        emptyMessage={
-          groupedActions.length === 0 ? (
-            <>
-              {ALL_ARCHIVED}{" "}
-              <button
-                type="button"
-                className="text-blue-600 underline"
-                onClick={() => {
-                  setShowArchived(true);
-                  archivedToggle.current?.focus();
-                }}
-              >
-                Show archived actions
-              </button>
-            </>
-          ) : timelineActions.length === 0 ? (
-            NO_STATUS_MATCH
-          ) : undefined
-        }
-        className="flex-shrink-0 max-h-[50vh] border border-zinc-200"
-      />
-      {suitesInProgress.length > 0 && (
-        <section className="flex-shrink-0 space-y-3 py-2">
-          <h2 className="text-sm font-semibold ml-2">
-            Suites with draft or active actions
-          </h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-4">
-            {suitesInProgress.map((suite) => (
-              <div
-                key={suite.id}
-                className="relative flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm hover:border-green has-[li_a:hover]:border-zinc-200"
-              >
-                <div>
-                  <Link
-                    to={`/suites/${suite.id}`}
-                    className="font-semibold after:absolute after:inset-0"
-                  >
-                    {suite.name}
-                  </Link>
-                  <span className="ml-2 text-xs text-zinc-500">
-                    {Object.values(ActionStatusBucket)
-                      .map((bucket) => {
-                        const count = suite.actions.filter(
-                          (action) => action.bucket === bucket,
-                        ).length;
-                        return (
-                          count > 0 &&
-                          `${count} ${ACTION_STATUS_BUCKET_LABELS[bucket].toLowerCase()}`
-                        );
-                      })
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </div>
-                <ul className="space-y-2">
-                  {suite.actions.map((action) => (
-                    <li key={action.id}>
-                      <Link
-                        to={`/actions/${action.id}`}
-                        className={cn(
-                          "relative flex items-start gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 hover:border-green hover:bg-white",
-                          zIndex.raised,
-                        )}
-                      >
-                        <span className="mt-0.5 rounded bg-zinc-200 px-1 text-[10px] uppercase text-zinc-600">
-                          {ACTION_STATUS_BUCKET_LABELS[action.bucket]}
-                        </span>
-                        {action.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-      {groupedActions.length > 0 && (
-        <>
-          <p className="text-sm text-zinc-500 flex-shrink-0">
-            Grouped by suite and ordered by latest event (most recent first)
-            {showArchived &&
-              ", with suites whose actions are all archived last"}
-          </p>
-
-          <div className="space-y-5 rounded-lg border border-zinc-200 bg-white p-5">
-            {groupedActions.map((suite) => (
-              <div
-                key={suite.id ?? "suite-unspecified"}
-                className="border border-zinc-200 rounded-lg overflow-hidden"
-              >
-                <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-100">
-                  {suite.id ? (
-                    <Link
-                      to={`/suites/${suite.id}`}
-                      className="text-sm font-semibold text-black hover:text-green"
-                    >
-                      {suite.name}
-                    </Link>
-                  ) : (
-                    <p className="text-sm font-semibold text-black ">
-                      {suite.name}
-                    </p>
-                  )}
-                </div>
-                <div className="divide-y divide-zinc-200">
-                  {suite.actions.map((action) => (
-                    <ActionListCard key={action.id} action={action} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>,
+        {body()}
+      </div>
+    </PageShell>
   );
 };
 

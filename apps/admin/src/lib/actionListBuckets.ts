@@ -16,9 +16,7 @@ export function readBuckets(param: string | null): Set<ActionStatusBucket> {
 }
 
 /** The `status` search param for `buckets`, or null for the defaults. */
-export function writeBuckets(
-  buckets: ReadonlySet<ActionStatusBucket>,
-): string | null {
+export function writeBuckets(buckets: ReadonlySet<string>): string | null {
   const ordered = Object.values(ActionStatusBucket).filter((bucket) =>
     buckets.has(bucket),
   );

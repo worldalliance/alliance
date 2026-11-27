@@ -1,5 +1,6 @@
 import { scaleBand, scaleLinear } from "d3";
 import React, { useMemo } from "react";
+import ChartData from "../ui/ChartData";
 import {
   ReminderChannel,
   type ReminderActionChannelBar,
@@ -10,13 +11,13 @@ export const reminderChannelStyles: Record<
   { title: string; emptyMessage: string; fill: string; rateClassName: string }
 > = {
   [ReminderChannel.Email]: {
-    title: "Email Click Rate (Avg by Action)",
+    title: "Email click rate (average by action)",
     emptyMessage: "No emailed reminder data in this range.",
     fill: "#2563eb",
     rateClassName: "text-blue-600",
   },
   [ReminderChannel.Text]: {
-    title: "Text Click Rate (Avg by Action)",
+    title: "Text click rate (average by action)",
     emptyMessage: "No texted reminder data in this range.",
     fill: "#ea580c",
     rateClassName: "text-orange-600",
@@ -149,6 +150,25 @@ const ReminderClickRateBarChart: React.FC<{
               })}
             </svg>
           </div>
+        )}
+        {geometry && (
+          <ChartData
+            caption={title}
+            columns={[
+              "Action",
+              "Click rate",
+              "Clicked",
+              "Sent",
+              "Reminder groups",
+            ]}
+            rows={bars.map((bar) => [
+              bar.actionName,
+              `${Math.round(bar.averageRate * 100)}%`,
+              String(bar.clickedCount),
+              String(bar.sentCount),
+              String(bar.reminderGroupCount),
+            ])}
+          />
         )}
       </div>
     </div>

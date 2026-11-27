@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { openChartData } from "../../lib/testing/chartData";
 import MembersOverTimeChart from "./MembersOverTimeChart";
 
 const point = (date: string, activeCount: number, churnedCount: number) => ({
@@ -27,7 +28,9 @@ describe("MembersOverTimeChart", () => {
   it("draws the churned area, then the active one", () => {
     const { container } = renderChart();
 
-    const paths = Array.from(container.querySelectorAll("path"));
+    const paths = Array.from(
+      container.querySelector("svg")!.querySelectorAll("path"),
+    );
     expect(paths.map((path) => path.getAttribute("fill"))).toEqual([
       "rgba(239, 68, 68, 0.9)",
       "rgba(22, 163, 74, 0.8)",
@@ -51,5 +54,13 @@ describe("MembersOverTimeChart", () => {
 
     fireEvent.mouseLeave(svg);
     expect(screen.queryByText(/% churn$/)).toBeNull();
+  });
+
+  it("lists the plotted members by date under Show data", async () => {
+    renderChart();
+    expect(await openChartData("Members over time")).toEqual([
+      ["January 1, 2026", "10", "0"],
+      ["February 1, 2026", "12", "3"],
+    ]);
   });
 });

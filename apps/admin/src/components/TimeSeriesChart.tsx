@@ -1,3 +1,4 @@
+import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import { DateAxisChart } from "./time-series-chart/DateAxisChart";
 import { NumericAxisChart } from "./time-series-chart/NumericAxisChart";
@@ -5,6 +6,10 @@ import type {
   NumericAxisProps,
   TimeSeriesChartProps,
 } from "./time-series-chart/types";
+import ChartData from "./ui/ChartData";
+import { inputClass } from "./ui/controlStyles";
+import DateRangeInputs from "./ui/DateRangeInputs";
+import Section from "./ui/Section";
 
 export type {
   ChartSeries,
@@ -22,6 +27,46 @@ function isNumericAxis(props: TimeSeriesChartProps): props is NumericAxisProps {
   return props.xType === "number";
 }
 
+export const chartTable = (
+  props: TimeSeriesChartProps,
+): { columns: string[]; rows: string[][] } => {
+  const formatY = props.valueFormat ?? props.yAxisFormat ?? String;
+  if (!isNumericAxis(props)) {
+    return {
+      columns: [
+        props.xAxisLabel ?? "Date",
+        ...props.series.map((series) => series.label),
+      ],
+      rows: props.data.map((point) => [
+        point.date ? fullDateFormatter.format(point.date) : "—",
+        ...props.series.map((series) => formatY(series.getValue(point))),
+      ]),
+    };
+  }
+  const { xRange, getXValue, getYValue } = props;
+  const formatX = props.xAxisFormat ?? String;
+  const valuesByX = props.multiLineData.map(
+    (series) =>
+      new Map(series.data.map((point) => [getXValue(point), getYValue(point)])),
+  );
+  const xs = [...new Set(valuesByX.flatMap((values) => [...values.keys()]))]
+    .filter((x) => !xRange || (x >= xRange.min && x <= xRange.max))
+    .sort((a, b) => a - b);
+  return {
+    columns: [
+      props.xAxisLabel,
+      ...props.multiLineData.map((series) => series.label),
+    ],
+    rows: xs.map((x) => [
+      formatX(x),
+      ...valuesByX.map((values) => {
+        const y = values.get(x);
+        return y === undefined ? "—" : formatY(y);
+      }),
+    ]),
+  };
+};
+
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
   const {
     title,
@@ -36,87 +81,62 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
       props.multiLineData.some((s) => s.data.length > 0)
     : props.data.length > 0;
 
+  const xRangeInputs = isNumericAxis(props) &&
+    props.xRange &&
+    props.onXRangeChange && (
+      <>
+        <label className="flex items-center gap-2 text-sm text-zinc-600">
+          {props.xAxisLabel}
+          <input
+            type="number"
+            value={props.xRange.min}
+            onChange={(e) =>
+              props.onXRangeChange!({
+                ...props.xRange!,
+                min: Number(e.target.value),
+              })
+            }
+            className={cn(inputClass, "w-20")}
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-600">
+          Max
+          <input
+            type="number"
+            value={props.xRange.max}
+            onChange={(e) =>
+              props.onXRangeChange!({
+                ...props.xRange!,
+                max: Number(e.target.value),
+              })
+            }
+            className={cn(inputClass, "w-20")}
+          />
+        </label>
+      </>
+    );
+
   return (
-    <div className="relative overflow-hidden rounded border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
-        {!isNumericAxis(props) &&
-          props.dateRange &&
-          props.onDateRangeChange && (
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-gray-600">
-                  From
-                </label>
-                <input
-                  type="date"
-                  value={props.dateRange.start}
-                  onChange={(e) =>
-                    props.onDateRangeChange!({
-                      ...props.dateRange!,
-                      start: e.target.value,
-                    })
-                  }
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-gray-600">
-                  To
-                </label>
-                <input
-                  type="date"
-                  value={props.dateRange.end}
-                  onChange={(e) =>
-                    props.onDateRangeChange!({
-                      ...props.dateRange!,
-                      end: e.target.value,
-                    })
-                  }
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-                />
-              </div>
-            </div>
-          )}
-        {isNumericAxis(props) && props.xRange && props.onXRangeChange && (
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-600">
-                {props.xAxisLabel ?? "Min"}
-              </label>
-              <input
-                type="number"
-                value={props.xRange.min}
-                onChange={(e) =>
-                  props.onXRangeChange!({
-                    ...props.xRange!,
-                    min: Number(e.target.value),
-                  })
-                }
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white w-20"
+    <Section
+      title={title}
+      actions={
+        <>
+          {!isNumericAxis(props) &&
+            props.dateRange &&
+            props.onDateRangeChange && (
+              <DateRangeInputs
+                value={props.dateRange}
+                onChange={props.onDateRangeChange}
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-gray-600">Max</label>
-              <input
-                type="number"
-                value={props.xRange.max}
-                onChange={(e) =>
-                  props.onXRangeChange!({
-                    ...props.xRange!,
-                    max: Number(e.target.value),
-                  })
-                }
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white w-20"
-              />
-            </div>
-          </div>
-        )}
-        {headerContent}
-      </div>
-      <div className="relative p-4">
+            )}
+          {xRangeInputs}
+          {headerContent}
+        </>
+      }
+    >
+      <div className="relative">
         {loading && !hasData && (
-          <p className="text-sm text-gray-600">Loading...</p>
+          <p className="text-sm text-zinc-600">Loading…</p>
         )}
         {!loading && !hasData && (
           <p className="text-sm text-gray-600">{emptyMessage}</p>
@@ -130,9 +150,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           ))}
       </div>
 
-      {/* Legend for numeric charts with gradient */}
       {isNumericAxis(props) && props.legendGradient && props.legendLabels && (
-        <div className="flex items-center gap-2 px-4 pb-4 text-[11px] text-gray-500">
+        <div className="flex items-center gap-2 pt-2 text-xs text-zinc-500">
           <span>{props.legendLabels.left}</span>
           <div
             className="h-2 w-40 rounded-full border border-gray-200"
@@ -141,7 +160,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           <span>{props.legendLabels.right}</span>
         </div>
       )}
-    </div>
+
+      {hasData && <ChartData caption={title} {...chartTable(props)} />}
+    </Section>
   );
 };
 

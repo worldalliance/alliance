@@ -3,6 +3,13 @@ import chroma from "chroma-js";
 import { max, range } from "d3";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { fullDateFormatter } from "../TimeSeriesChart";
+import ChartData from "../ui/ChartData";
+import Section from "../ui/Section";
+
+const cohortLabel = (cohortStart: string) =>
+  `Week of ${fullDateFormatter.format(new Date(`${cohortStart}T00:00:00Z`))}`;
+
+const cellRate = (rate: number) => `${Math.round(rate * 100)}%`;
 
 type RetentionGridRow = {
   cohort: MemberCompletionRetentionCohortDto;
@@ -115,194 +122,190 @@ const CohortCompletionGrid: React.FC<{
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-3 border-b border-gray-200">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Cohort Completion Grid
-          </h3>
-        </div>
-      </div>
-      <div className="p-4">
-        {retentionLoading && retentionGridData.rows.length === 0 && (
-          <p className="text-sm text-gray-600">Loading cohorts...</p>
-        )}
-        {!retentionLoading && retentionGridData.rows.length === 0 && (
-          <p className="text-sm text-gray-600">
-            No cohorts have completions yet.
+    <Section title="Cohort completion grid">
+      {retentionLoading && retentionGridData.rows.length === 0 && (
+        <p className="text-sm text-zinc-600">Loading cohorts…</p>
+      )}
+      {!retentionLoading && retentionGridData.rows.length === 0 && (
+        <p className="text-sm text-zinc-600">
+          No cohorts have completions yet.
+        </p>
+      )}
+      {!retentionLoading &&
+        retentionGridData.rows.length > 0 &&
+        retentionGridData.weeks.length === 0 && (
+          <p className="text-sm text-zinc-600">
+            No weeks in the selected range.
           </p>
         )}
-        {!retentionLoading &&
-          retentionGridData.rows.length > 0 &&
-          retentionGridData.weeks.length === 0 && (
-            <p className="text-sm text-gray-600">
-              No weeks in the selected range.
-            </p>
-          )}
-        {!retentionLoading &&
-          retentionGridData.rows.length > 0 &&
-          retentionGridData.weeks.length > 0 && (
-            <div className="overflow-x-auto">
-              <div className="min-w-max relative" ref={retentionGridRef}>
+      {!retentionLoading &&
+        retentionGridData.rows.length > 0 &&
+        retentionGridData.weeks.length > 0 && (
+          <div className="overflow-x-auto">
+            <div className="min-w-max relative" ref={retentionGridRef}>
+              <div
+                className="grid items-center gap-0"
+                style={{
+                  gridTemplateColumns: `200px repeat(${retentionGridData.weeks.length}, 40px)`,
+                }}
+              >
                 <div
-                  className="grid items-center gap-0"
-                  style={{
-                    gridTemplateColumns: `200px repeat(${retentionGridData.weeks.length}, 40px)`,
-                  }}
+                  className="h-10 px-2 flex items-center text-xs font-semibold text-zinc-500 uppercase tracking-wide"
+                  style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                 >
+                  Cohort
+                </div>
+                {retentionGridData.weeks.map((week) => (
                   <div
-                    className="h-10 px-2 flex items-center text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
+                    key={`retention-grid-header-${week}`}
+                    className="h-10 w-10 flex items-center justify-center text-xs text-zinc-500"
                     style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                   >
-                    Cohort
+                    W{week}
                   </div>
-                  {retentionGridData.weeks.map((week) => (
-                    <div
-                      key={`retention-grid-header-${week}`}
-                      className="h-10 w-10 flex items-center justify-center text-[11px] text-gray-500"
-                      style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
+                ))}
+                {retentionGridData.rows.map((row) => {
+                  return (
+                    <React.Fragment
+                      key={`retention-grid-row-${row.cohort.cohortStart}`}
                     >
-                      W{week}
-                    </div>
-                  ))}
-                  {retentionGridData.rows.map((row) => {
-                    const cohortDate = new Date(
-                      `${row.cohort.cohortStart}T00:00:00Z`,
-                    );
-                    return (
-                      <React.Fragment
-                        key={`retention-grid-row-${row.cohort.cohortStart}`}
+                      <div
+                        className="h-10 px-2 flex flex-col justify-center gap-0.5"
+                        style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
                       >
-                        <div
-                          className="h-10 px-2 flex flex-col justify-center gap-0.5"
-                          style={{ boxShadow: "inset 0 0 0 0.5px #e5e7eb" }}
-                        >
-                          <div className="text-[11px] font-semibold text-gray-700 leading-tight">
-                            Week of {fullDateFormatter.format(cohortDate)}
-                          </div>
-                          <div className="text-[10px] text-gray-500 leading-tight">
-                            {row.cohort.cohortSize} members
-                          </div>
+                        <div className="text-xs font-semibold text-zinc-700 leading-tight">
+                          {cohortLabel(row.cohort.cohortStart)}
                         </div>
-                        {retentionGridData.weeks.map((week) => {
-                          const point = row.pointsByWeek.get(week);
-                          const value = point?.weekCompletionRate;
-                          const hasValue =
-                            typeof value === "number" && Number.isFinite(value);
-                          const displayValue = hasValue
-                            ? `${Math.round(value * 100)}%`
-                            : "";
-                          const fill = hasValue
-                            ? retentionHeatmapScale(value).hex()
-                            : "#f8fafc";
-                          const textColor =
-                            hasValue &&
-                            retentionHeatmapScale(value).luminance() < 0.45
-                              ? "#f8fafc"
-                              : "#0f172a";
-
-                          return (
-                            <div
-                              key={`retention-grid-${row.cohort.cohortStart}-${week}`}
-                              className="h-10 w-10 flex items-center justify-center text-[11px] font-semibold"
-                              style={{
-                                backgroundColor: fill,
-                                color: textColor,
-                                boxShadow: "inset 0 0 0 0.5px #e5e7eb",
-                              }}
-                              onMouseEnter={(event) =>
-                                handleRetentionCellHover(
-                                  event,
-                                  row,
-                                  week,
-                                  point,
-                                )
-                              }
-                              onMouseMove={(event) =>
-                                handleRetentionCellHover(
-                                  event,
-                                  row,
-                                  week,
-                                  point,
-                                )
-                              }
-                              onMouseLeave={handleRetentionCellLeave}
-                            >
-                              {displayValue}
-                            </div>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-                {hoveredRetentionCell && (
-                  <div
-                    className="absolute z-20 w-64 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
-                    style={{
-                      left: hoveredRetentionCell.x,
-                      top: hoveredRetentionCell.y,
-                      transform: "translate(-50%, -115%)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <div className="flex items-center gap-2 justify-between mb-2">
-                      <div className="text-xs font-semibold text-gray-900">
-                        Week {hoveredRetentionCell.week}
+                        <div className="text-xs text-zinc-500 leading-tight">
+                          {row.cohort.cohortSize} members
+                        </div>
                       </div>
-                      <p>
-                        {fullDateFormatter.format(
-                          new Date(
-                            `${hoveredRetentionCell.actionStartDate}T00:00:00Z`,
-                          ),
-                        )}
-                      </p>
+                      {retentionGridData.weeks.map((week) => {
+                        const point = row.pointsByWeek.get(week);
+                        const value = point?.weekCompletionRate;
+                        const hasValue =
+                          typeof value === "number" && Number.isFinite(value);
+                        const displayValue = hasValue ? cellRate(value) : "";
+                        const fill = hasValue
+                          ? retentionHeatmapScale(value).hex()
+                          : "#f8fafc";
+                        const textColor =
+                          hasValue &&
+                          retentionHeatmapScale(value).luminance() < 0.45
+                            ? "#f8fafc"
+                            : "#0f172a";
+
+                        return (
+                          <div
+                            key={`retention-grid-${row.cohort.cohortStart}-${week}`}
+                            className="h-10 w-10 flex items-center justify-center text-xs font-semibold"
+                            style={{
+                              backgroundColor: fill,
+                              color: textColor,
+                              boxShadow: "inset 0 0 0 0.5px #e5e7eb",
+                            }}
+                            onMouseEnter={(event) =>
+                              handleRetentionCellHover(event, row, week, point)
+                            }
+                            onMouseMove={(event) =>
+                              handleRetentionCellHover(event, row, week, point)
+                            }
+                            onMouseLeave={handleRetentionCellLeave}
+                          >
+                            {displayValue}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+              {hoveredRetentionCell && (
+                <div
+                  className="absolute z-20 w-64 rounded-md border border-zinc-200 bg-white p-3 text-xs text-zinc-700 shadow-lg"
+                  style={{
+                    left: hoveredRetentionCell.x,
+                    top: hoveredRetentionCell.y,
+                    transform: "translate(-50%, -115%)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <div className="flex items-center gap-2 justify-between mb-2">
+                    <div className="text-xs font-semibold text-zinc-900">
+                      Week {hoveredRetentionCell.week}
                     </div>
-                    <div className="text-[11px] text-gray-500">
-                      Cohort: Week of{" "}
+                    <p>
                       {fullDateFormatter.format(
                         new Date(
-                          `${hoveredRetentionCell.cohortStart}T00:00:00Z`,
+                          `${hoveredRetentionCell.actionStartDate}T00:00:00Z`,
                         ),
                       )}
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span>Completed</span>
-                      <span>{hoveredRetentionCell.weekCompletedCount}</span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span>Joined</span>
-                      <span>{hoveredRetentionCell.weekJoinedCount}</span>
-                    </div>
-                    {hoveredRetentionCell.actions.length > 0 && (
-                      <>
-                        <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
-                          Actions
-                        </div>
-                        <div className="mt-1 space-y-1">
-                          {hoveredRetentionCell.actions.map((action) => (
-                            <div
-                              key={`retention-action-${hoveredRetentionCell.cohortStart}-${hoveredRetentionCell.week}-${action.actionId}`}
-                              className="flex items-center justify-between gap-2"
-                            >
-                              <span className="truncate">
-                                {action.actionName}
-                              </span>
-                              <span className="text-gray-500">
-                                {action.memberCount}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
+                    </p>
+                  </div>
+                  <div className="text-xs text-zinc-500">
+                    Cohort: Week of{" "}
+                    {fullDateFormatter.format(
+                      new Date(`${hoveredRetentionCell.cohortStart}T00:00:00Z`),
                     )}
                   </div>
-                )}
-              </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span>Completed</span>
+                    <span>{hoveredRetentionCell.weekCompletedCount}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span>Joined</span>
+                    <span>{hoveredRetentionCell.weekJoinedCount}</span>
+                  </div>
+                  {hoveredRetentionCell.actions.length > 0 && (
+                    <>
+                      <div className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-600">
+                        Actions
+                      </div>
+                      <div className="mt-1 space-y-1">
+                        {hoveredRetentionCell.actions.map((action) => (
+                          <div
+                            key={`retention-action-${hoveredRetentionCell.cohortStart}-${hoveredRetentionCell.week}-${action.actionId}`}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <span className="truncate">
+                              {action.actionName}
+                            </span>
+                            <span className="text-zinc-500">
+                              {action.memberCount}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
+        )}
+      {!retentionLoading && retentionGridData.weeks.length > 0 && (
+        <ChartData
+          caption="Cohort completion grid"
+          columns={["Cohort", "Week", "Completion rate", "Completed", "Joined"]}
+          rows={retentionGridData.rows.flatMap((row) =>
+            retentionGridData.weeks.flatMap((week) => {
+              const point = row.pointsByWeek.get(week);
+              return point && Number.isFinite(point.weekCompletionRate)
+                ? [
+                    [
+                      cohortLabel(row.cohort.cohortStart),
+                      `W${week}`,
+                      cellRate(point.weekCompletionRate),
+                      String(point.weekCompletedCount),
+                      String(point.weekJoinedCount),
+                    ],
+                  ]
+                : [];
+            }),
           )}
-      </div>
-    </div>
+        />
+      )}
+    </Section>
   );
 };
 

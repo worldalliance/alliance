@@ -3,6 +3,10 @@ import React, { useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { recentInviteFunnelRange } from "../../lib/recentInviteFunnelRange";
 import { useInviteFunnelAdmin } from "../../lib/useInviteFunnelAdmin";
+import ChartData from "../ui/ChartData";
+import { secondaryButtonClass } from "../ui/controlStyles";
+import DateRangeInputs from "../ui/DateRangeInputs";
+import Section from "../ui/Section";
 
 const InviteFunnelCard: React.FC = () => {
   const [inviteFunnelRange, setInviteFunnelRange] = useState(() =>
@@ -18,28 +22,37 @@ const InviteFunnelCard: React.FC = () => {
   const inviteFunnelGeometry = useMemo(() => {
     if (!inviteFunnel) return null;
 
-    const bars = [
+    const steps = [
       {
-        label: "Invites Created",
+        label: "Invites created",
         value: inviteFunnel.invitesCreated,
         color: "#6366f1",
       },
       {
-        label: "Invites Used",
+        label: "Invites used",
         value: inviteFunnel.invitesUsed,
         color: "#8b5cf6",
       },
       {
-        label: "Signed Contract",
+        label: "Signed contract",
         value: inviteFunnel.contractSigned,
         color: "#a855f7",
       },
       {
-        label: "Finished Onboarding",
+        label: "Finished onboarding",
         value: inviteFunnel.onboardingCompleted,
         color: "#c084fc",
       },
     ];
+    const bars = steps.map((step, index) => {
+      const previous = steps[index - 1]?.value;
+      return {
+        ...step,
+        ofPrevious: previous
+          ? `${Math.round((step.value / previous) * 100)}%`
+          : null,
+      };
+    });
 
     const width = 600;
     const height = 300;
@@ -72,56 +85,32 @@ const InviteFunnelCard: React.FC = () => {
   }, [inviteFunnel]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
-        <h3 className="font-semibold text-gray-900">
-          Invite Conversion Funnel
-        </h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">From</label>
-            <input
-              type="date"
-              value={inviteFunnelRange.start}
-              onChange={(e) =>
-                setInviteFunnelRange((prev) => ({
-                  ...prev,
-                  start: e.target.value,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-gray-600">To</label>
-            <input
-              type="date"
-              value={inviteFunnelRange.end}
-              onChange={(e) =>
-                setInviteFunnelRange((prev) => ({
-                  ...prev,
-                  end: e.target.value,
-                }))
-              }
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-            />
-          </div>
+    <Section
+      title="Invite conversion funnel"
+      actions={
+        <>
+          <DateRangeInputs
+            value={inviteFunnelRange}
+            onChange={setInviteFunnelRange}
+          />
           <button
+            type="button"
             onClick={() =>
               setInviteFunnelRange(recentInviteFunnelRange(new Date(), 7))
             }
-            className="px-3 py-1 rounded-md text-xs border border-gray-300 bg-white hover:border-gray-400"
+            className={secondaryButtonClass}
           >
             Last 7 days
           </button>
-        </div>
-      </div>
-      <div className="relative p-4">
+        </>
+      }
+    >
+      <div className="relative">
         {inviteFunnelLoading && (
-          <p className="text-sm text-gray-600">Loading invite funnel...</p>
+          <p className="text-sm text-zinc-600">Loading invite funnel…</p>
         )}
         {inviteFunnelError && (
-          <p className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-red-600">
             {adminRefusalMessage(
               inviteFunnelError,
               "Unable to load the invite funnel.",
@@ -131,7 +120,7 @@ const InviteFunnelCard: React.FC = () => {
         {inviteFunnelGeometry && inviteFunnel && (
           <svg
             viewBox={`0 0 ${inviteFunnelGeometry.width} ${inviteFunnelGeometry.height}`}
-            className="w-full max-w-[600px] mx-auto"
+            className="mx-auto w-full max-w-[600px]"
           >
             {inviteFunnelGeometry.yTicks.map((tick) => (
               <g key={`funnel-y-${tick}`}>
@@ -185,18 +174,14 @@ const InviteFunnelCard: React.FC = () => {
                   >
                     {bar.value}
                   </text>
-                  {idx > 0 && inviteFunnelGeometry.bars[idx - 1].value > 0 && (
+                  {bar.ofPrevious && (
                     <text
                       x={x + inviteFunnelGeometry.barWidth / 2}
                       y={y - 18}
                       textAnchor="middle"
                       className="fill-gray-400 text-[10px]"
                     >
-                      {Math.round(
-                        (bar.value / inviteFunnelGeometry.bars[idx - 1].value) *
-                          100,
-                      )}
-                      %
+                      {bar.ofPrevious}
                     </text>
                   )}
                   <text
@@ -217,7 +202,18 @@ const InviteFunnelCard: React.FC = () => {
           </svg>
         )}
       </div>
-    </div>
+      {inviteFunnelGeometry && (
+        <ChartData
+          caption="Invite conversion funnel"
+          columns={["Step", "Count", "Of previous step"]}
+          rows={inviteFunnelGeometry.bars.map((bar) => [
+            bar.label,
+            String(bar.value),
+            bar.ofPrevious ?? "—",
+          ])}
+        />
+      )}
+    </Section>
   );
 };
 

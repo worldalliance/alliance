@@ -1,9 +1,12 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import React, { useState } from "react";
 import ProjectCardTile from "../components/ProjectCardTile";
 import { ProjectNameInput } from "../components/ProjectNameInput";
+import { primaryButtonClass } from "../components/ui/controlStyles";
+import PageShell, { PageWidth } from "../components/ui/PageShell";
+import Section from "../components/ui/Section";
 import {
   buildProjectCards,
   cardsByLifecycle,
@@ -50,104 +53,75 @@ const NewProject = () => {
   ) : (
     <button
       type="button"
-      aria-label="New project"
-      title="New project"
-      className="rounded border border-gray-2 bg-white p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+      className={primaryButtonClass}
       onClick={() => setNaming(true)}
     >
-      <Plus size={16} />
+      <Plus size={14} aria-hidden />
+      New project
     </button>
   );
 };
 
 const ProjectsPage: React.FC = () => {
   const data = useProjectsPageData();
-  const [expanded, setExpanded] = useState<ReadonlySet<ProjectLifecycle>>(
-    () => new Set(),
-  );
-  switch (data.load) {
-    case ProjectsLoad.Failed:
-      return <p className="p-5 text-red-500">{data.error}</p>;
-    case ProjectsLoad.Pending:
-      return <p className="p-5">Loading projects...</p>;
-    case ProjectsLoad.Ready:
-      break;
-    default:
-      throw new Error(`unknown load: ${data satisfies never}`);
-  }
-  const { participantsById } = data;
-  const sections = cardsByLifecycle(
-    buildProjectCards({
-      projects: data.projects,
-      actions: data.actions,
-      now: new Date(),
-    }),
-  );
-
-  const toggle = (lifecycle: ProjectLifecycle) =>
-    setExpanded((open) => {
-      const next = new Set(open);
-      if (!next.delete(lifecycle)) next.add(lifecycle);
-      return next;
-    });
+  const body = () => {
+    switch (data.load) {
+      case ProjectsLoad.Failed:
+        return (
+          <p role="alert" className="text-sm text-red-600">
+            {data.error}
+          </p>
+        );
+      case ProjectsLoad.Pending:
+        return <p className="text-sm text-zinc-600">Loading projects…</p>;
+      case ProjectsLoad.Ready:
+        break;
+      default:
+        throw new Error(`unknown load: ${data satisfies never}`);
+    }
+    const sections = cardsByLifecycle(
+      buildProjectCards({
+        projects: data.projects,
+        actions: data.actions,
+        now: new Date(),
+      }),
+    );
+    const shown = PROJECT_LIFECYCLE_ORDER.filter(
+      (lifecycle) => sections[lifecycle].length > 0,
+    );
+    if (shown.length === 0) {
+      return (
+        <p className="text-sm text-zinc-600">
+          No projects or actions yet. Create a project to group actions.
+        </p>
+      );
+    }
+    return shown.map((lifecycle) => (
+      <Section
+        key={lifecycle}
+        title={SECTION_TITLES[lifecycle]}
+        meta={sections[lifecycle].length}
+        collapsible={
+          COLLAPSIBLE[lifecycle] ? { defaultOpen: false } : undefined
+        }
+      >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(420px,1fr))] gap-4">
+          {sections[lifecycle].map((card) => (
+            <ProjectCardTile
+              key={card.key}
+              card={card}
+              participantsById={data.participantsById}
+            />
+          ))}
+        </div>
+      </Section>
+    ));
+  };
 
   return (
-    <div className="flex flex-col gap-y-6 p-5">
-      <title>Projects - Admin</title>
-      <div className="flex items-center gap-x-3">
-        <h1 className="text-lg font-bold">Projects</h1>
-        <NewProject />
-      </div>
-      {PROJECT_LIFECYCLE_ORDER.filter(
-        (lifecycle) => sections[lifecycle].length > 0,
-      ).map((lifecycle) => {
-        const cards = sections[lifecycle];
-        const collapsible = COLLAPSIBLE[lifecycle];
-        const open = !collapsible || expanded.has(lifecycle);
-        const title = (
-          <>
-            {SECTION_TITLES[lifecycle]}
-            <span className="ml-2 font-normal text-zinc-400">
-              {cards.length}
-            </span>
-          </>
-        );
-        return (
-          <section key={lifecycle} className="flex flex-col gap-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-600">
-              {collapsible ? (
-                <button
-                  type="button"
-                  aria-expanded={open}
-                  className="flex items-center gap-x-1 uppercase"
-                  onClick={() => toggle(lifecycle)}
-                >
-                  {open ? (
-                    <ChevronDown size={14} />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                  {title}
-                </button>
-              ) : (
-                title
-              )}
-            </h2>
-            {open && (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(420px,1fr))] gap-4">
-                {cards.map((card) => (
-                  <ProjectCardTile
-                    key={card.key}
-                    card={card}
-                    participantsById={participantsById}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        );
-      })}
-    </div>
+    <PageShell title="Projects" actions={<NewProject />} width={PageWidth.Full}>
+      <div className="flex flex-col gap-6">{body()}</div>
+    </PageShell>
   );
 };
 

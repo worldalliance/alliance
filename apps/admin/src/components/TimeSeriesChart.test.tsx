@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { TimeSeriesChart, type DataPoint } from "./TimeSeriesChart";
+import { chartTable, TimeSeriesChart, type DataPoint } from "./TimeSeriesChart";
 
 beforeEach(() => {
   jest
@@ -80,6 +80,7 @@ const renderNumericChart = (
     <TimeSeriesChart
       title="Curves"
       xType="number"
+      xAxisLabel="Step"
       showDataPoints={options.showDataPoints}
       getHoverXLabel={options.getHoverXLabel}
       xAxisFormat={options.xAxisFormat}
@@ -265,5 +266,86 @@ describe("TimeSeriesChart", () => {
   it("draws one y grid label per formatted value on a numeric chart", () => {
     const { container } = renderNumericChart({ yTickLabelDedup: true });
     expectDedupedPercentGrid(container);
+  });
+});
+
+describe("chartTable", () => {
+  it("lists a date chart's points by date, one column per series", () => {
+    expect(
+      chartTable({
+        title: "Signups",
+        data: datePoints,
+        series: [
+          {
+            key: "count",
+            label: "Count",
+            color: "#000",
+            getValue: (d) => Number(d.count),
+          },
+        ],
+        yAxisFormat: (value) => `${value} people`,
+      }),
+    ).toEqual({
+      columns: ["Date", "Count"],
+      rows: [
+        ["January 1, 2026", "1 people"],
+        ["January 2, 2026", "3 people"],
+      ],
+    });
+  });
+
+  it("formats values with valueFormat over yAxisFormat", () => {
+    expect(
+      chartTable({
+        title: "Rate",
+        data: datePoints,
+        series: [
+          {
+            key: "count",
+            label: "Count",
+            color: "#000",
+            getValue: (d) => Number(d.count),
+          },
+        ],
+        yAxisFormat: (value) => `${Math.round(value)}`,
+        valueFormat: (value) => value.toFixed(1),
+      }).rows,
+    ).toEqual([
+      ["January 1, 2026", "1.0"],
+      ["January 2, 2026", "3.0"],
+    ]);
+  });
+
+  it("lists a numeric chart's x values within its range, marking points a series lacks", () => {
+    expect(
+      chartTable({
+        title: "Curves",
+        xType: "number",
+        xAxisLabel: "Week",
+        xAxisFormat: (value) => `${value}w`,
+        xRange: { min: 0, max: 1 },
+        getXValue: (d) => Number(d.x),
+        getYValue: (d) => Number(d.y),
+        multiLineData: [
+          {
+            key: "a",
+            label: "A",
+            color: "#000",
+            data: [
+              { x: 1, y: 2 },
+              { x: 0, y: 1 },
+              { x: 2, y: 9 },
+            ],
+          },
+          { key: "b", label: "B", color: "#111", data: [{ x: 1, y: 5 }] },
+        ],
+      }),
+    ).toEqual({
+      columns: ["Week", "A", "B"],
+      rows: [
+        ["0w", "1", "—"],
+        ["1w", "2", "5"],
+      ],
+    });
   });
 });

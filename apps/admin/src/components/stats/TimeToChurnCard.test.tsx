@@ -2,6 +2,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, render, screen } from "@testing-library/react";
+import { openChartData } from "../../lib/testing/chartData";
 import TimeToChurnCard from "./TimeToChurnCard";
 
 let samples: { daysToChurn: number }[] = [];
@@ -29,8 +30,8 @@ describe("TimeToChurnCard", () => {
     render(<TimeToChurnCard />, queryWrapper());
 
     await screen.findByText("3 churned members");
-    expect(screen.getByText("0-1w: 2 members")).toBeTruthy();
-    expect(screen.getByText("1-2w: 1 members")).toBeTruthy();
+    expect(screen.getByText("0–1w: 2 members")).toBeTruthy();
+    expect(screen.getByText("1–2w: 1 members")).toBeTruthy();
   });
 
   it("says when no one has churned", async () => {
@@ -52,7 +53,7 @@ describe("TimeToChurnCard", () => {
     samples = [{ daysToChurn: 2 }];
     const query = queryWrapper();
     render(<TimeToChurnCard />, query);
-    await screen.findByText("0-1w: 1 members");
+    await screen.findByText("0–1w: 1 members");
 
     status = 500;
     await act(() =>
@@ -62,7 +63,7 @@ describe("TimeToChurnCard", () => {
     );
 
     await screen.findByText("Unable to load time to churn.");
-    expect(screen.queryByText("0-1w: 1 members")).toBeNull();
+    expect(screen.queryByText("0–1w: 1 members")).toBeNull();
   });
 
   it("says why a refused load failed", async () => {
@@ -71,5 +72,16 @@ describe("TimeToChurnCard", () => {
     render(<TimeToChurnCard />, queryWrapper());
 
     await screen.findByText("Admins only");
+  });
+
+  it("lists each week's churned members in its data table", async () => {
+    samples = [{ daysToChurn: 2 }, { daysToChurn: 6 }, { daysToChurn: 13 }];
+    render(<TimeToChurnCard />, queryWrapper());
+    await screen.findByText("3 churned members");
+
+    expect(await openChartData("Time to churn")).toEqual([
+      ["0–1", "2"],
+      ["1–2", "1"],
+    ]);
   });
 });

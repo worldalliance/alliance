@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { Link } from "react-router";
+import { segmentedItemClass, segmentedTrackClass } from "./controlStyles";
 
 export enum TabsStyle {
   /** A page's main tabs, underlined. */
@@ -11,8 +12,7 @@ export enum TabsStyle {
 const NAV_CLASS: Record<TabsStyle, string> = {
   [TabsStyle.Underline]:
     "flex gap-x-6 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-zinc-200)]",
-  [TabsStyle.Segmented]:
-    "flex w-fit gap-x-1 rounded-md border border-zinc-200 bg-zinc-100 p-0.5",
+  [TabsStyle.Segmented]: segmentedTrackClass,
 };
 
 const LINK_CLASS: Record<TabsStyle, { base: string; current: string }> = {
@@ -20,10 +20,7 @@ const LINK_CLASS: Record<TabsStyle, { base: string; current: string }> = {
     base: "border-b-2 border-transparent px-1 py-2 text-sm whitespace-nowrap text-zinc-600 hover:text-zinc-900",
     current: "border-zinc-900 font-medium text-zinc-900",
   },
-  [TabsStyle.Segmented]: {
-    base: "rounded-md px-3 py-1 text-sm whitespace-nowrap text-zinc-600 hover:text-zinc-900",
-    current: "bg-white font-medium text-zinc-900 shadow-sm",
-  },
+  [TabsStyle.Segmented]: segmentedItemClass,
 };
 
 export type TabItem<T extends string> = { key: T; label: string };

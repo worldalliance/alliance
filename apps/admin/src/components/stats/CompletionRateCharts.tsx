@@ -1,6 +1,7 @@
 import type { ActionStatsWithOnboardingDto } from "@alliance/shared/client/types.gen";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import React, { useMemo, useState } from "react";
+import { formatRatioAsPct } from "../../lib/formatPct";
 import {
   TimeSeriesChart,
   fullDateFormatter,
@@ -55,7 +56,7 @@ const CompletionRateCharts: React.FC<{
     () => [
       {
         key: "avgRate",
-        label: "Avg Rate",
+        label: "Average rate",
         color: "#15803d",
         getValue: (d) => (d.avgRate as number) ?? 0,
       },
@@ -80,7 +81,7 @@ const CompletionRateCharts: React.FC<{
     () => [
       {
         key: "weekRate",
-        label: "Weekly Rate",
+        label: "Weekly rate",
         color: "#16a34a",
         getValue: (d) => (d.weekRate as number) ?? 0,
       },
@@ -103,7 +104,7 @@ const CompletionRateCharts: React.FC<{
   return (
     <>
       <TimeSeriesChart
-        title="Cumulative Completion Rate"
+        title="Cumulative completion rate"
         data={cumulativeCompletionData}
         series={cumulativeCompletionSeries}
         loading={actionStatsLoading}
@@ -113,6 +114,7 @@ const CompletionRateCharts: React.FC<{
         areaColor="rgba(21, 128, 61, 0.14)"
         yDomain={cumulativeCompletionYDomain}
         yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        valueFormat={formatRatioAsPct}
         showHoverOnlyOnHover
         yTickLabelDedup
         dateRange={completionRateRange}
@@ -122,12 +124,12 @@ const CompletionRateCharts: React.FC<{
           title: fullDateFormatter.format(point.date),
           items: [
             {
-              label: "Avg Rate",
-              value: `${((point.avgRate as number) * 100).toFixed(2)}%`,
+              label: "Average rate",
+              value: formatRatioAsPct(point.avgRate as number),
               color: "#15803d",
             },
             {
-              label: "Total Actions",
+              label: "Total actions",
               value: point.actionCount as number,
             },
             ...actionNameItems(point),
@@ -136,13 +138,15 @@ const CompletionRateCharts: React.FC<{
       />
 
       <TimeSeriesChart
-        title="Non-Cumulative Completion Rate (Weekly)"
+        title="Non-cumulative completion rate (weekly)"
+        xAxisLabel="Week of"
         data={weeklyCompletionData}
         series={completionRateSeries}
         loading={actionStatsLoading}
         emptyMessage="No completed actions in this date range."
         yDomain={completionRateYDomain}
         yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        valueFormat={formatRatioAsPct}
         showHoverOnlyOnHover
         yTickLabelDedup
         dateRange={completionRateRange}
@@ -152,8 +156,8 @@ const CompletionRateCharts: React.FC<{
           title: `Week of ${fullDateFormatter.format(point.date)}`,
           items: [
             {
-              label: "Weekly Rate",
-              value: `${((point.weekRate as number) * 100).toFixed(2)}%`,
+              label: "Weekly rate",
+              value: formatRatioAsPct(point.weekRate as number),
               color: "#16a34a",
             },
             {
@@ -161,7 +165,7 @@ const CompletionRateCharts: React.FC<{
               value: point.actionCount as number,
             },
             {
-              label: "Completed / Joined",
+              label: "Completed / joined",
               value: `${point.completedCount as number}/${
                 point.joinedCount as number
               }`,

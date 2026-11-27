@@ -5,11 +5,13 @@ import {
   buildActionCompletionCurveChartData,
   curveDurationDays,
 } from "../lib/actionCompletionCurveChartData";
+import { formatRatioAsPct } from "../lib/formatPct";
 import {
   type GranularityMode,
   useActionCompletionCurvesAdmin,
 } from "../lib/useActionCompletionCurvesAdmin";
 import { TimeSeriesChart } from "./TimeSeriesChart";
+import SegmentedControl from "./ui/SegmentedControl";
 
 type ActionCompletionCurveChartProps = {
   title?: string;
@@ -18,6 +20,11 @@ type ActionCompletionCurveChartProps = {
 };
 
 const noCurves: ActionCompletionCurveDto[] = [];
+
+const GRANULARITY_OPTIONS: { value: GranularityMode; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "hourly", label: "Hourly CDF" },
+];
 
 const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
   title = "Completions throughout week",
@@ -158,6 +165,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       xAxisFormat={(v) =>
         isHourly ? formatHourLabel(Math.round(v)) : `${Math.round(v)}d`
       }
+      xAxisLabel="Since launch"
       xRange={{ min: 0, max: actionCompletionCurveChartData.maxX }}
       showDataPoints={!isHourly}
       getHoverXLabel={
@@ -165,31 +173,16 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       }
       yDomain={actionCompletionCurveChartData.yDomain}
       yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+      valueFormat={formatRatioAsPct}
       height={360}
       headerContent={
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 md:ml-auto">
-          <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden">
-            <button
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                granularity === "daily"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setGranularity("daily")}
-            >
-              Daily
-            </button>
-            <button
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                granularity === "hourly"
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setGranularity("hourly")}
-            >
-              Hourly CDF
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600">
+          <SegmentedControl
+            label="Granularity"
+            options={GRANULARITY_OPTIONS}
+            value={granularity}
+            onChange={setGranularity}
+          />
           {showDropdown && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-gray-600">
@@ -274,7 +267,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
           ? [
               {
                 label: "Cumulative completed",
-                value: `${(cumulativeRate * 100).toFixed(2)}%`,
+                value: formatRatioAsPct(cumulativeRate),
                 color: series.color,
               },
             ]
@@ -282,12 +275,12 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
               { label: "Day", value: xValue },
               {
                 label: "Completions today",
-                value: `${(completionRate * 100).toFixed(2)}%`,
+                value: formatRatioAsPct(completionRate),
                 color: series.color,
               },
               {
                 label: "Total completed",
-                value: `${(cumulativeRate * 100).toFixed(2)}%`,
+                value: formatRatioAsPct(cumulativeRate),
               },
             ];
 
