@@ -101,7 +101,7 @@ export function FormJsonModal({
     <Modal
       onClose={onClose}
       dismissOnBackdrop={false}
-      panelClassName="flex max-h-dvh w-full max-w-3xl flex-col"
+      panelClassName="flex w-full max-w-3xl flex-col"
     >
       <ModalHeader>
         <ModalTitle render={<h3 />}>

@@ -63,7 +63,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
       dismissOnBackdrop={false}
       dismissDisabled={saving}
       showClose={false}
-      panelClassName="flex max-h-dvh max-w-5xl flex-col overflow-hidden"
+      panelClassName="flex max-w-5xl flex-col overflow-hidden"
     >
       <ModalHeader>
         <ModalTitle render={<h2 />}>
