@@ -69,6 +69,8 @@ describe("useGuardedDeletion", () => {
     expect(
       screen.getByText(/The form changed while this was open/),
     ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(screen.getByRole("button", { name: "OK" })).toBeTruthy();
   });
 
   it("deletes once confirmed against the same form", () => {

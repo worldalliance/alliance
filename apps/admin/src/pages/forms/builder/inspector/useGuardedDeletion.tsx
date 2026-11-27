@@ -11,14 +11,8 @@ import {
   groupDependents,
 } from "../../../../lib/formDependencies";
 import type { VisibilityGroups } from "../../../../lib/visibilityGroups";
-import Button, { ButtonVariant } from "../../../../ui/Button";
 import ConfirmDialog from "../../../../ui/ConfirmDialog";
-import Modal, {
-  ModalActions,
-  ModalBody,
-  ModalDescription,
-  ModalTitle,
-} from "../../../../ui/Modal";
+import { useToast } from "../../../../ui/ToastProvider";
 import { describePlace } from "./DependencyLinks";
 
 export const DELETION: Record<PlaceKind, { action: string; subject: string }> =
@@ -43,8 +37,6 @@ type PendingDeletion = {
   pages: readonly Page[];
   affected: string[];
   run: () => void;
-  /** Confirmed after the form changed, so `run` would delete the wrong thing. */
-  stale: boolean;
 };
 
 /**
@@ -59,6 +51,7 @@ export function useGuardedDeletion({
   pages: readonly Page[];
   groups: VisibilityGroups;
 }) {
+  const toast = useToast();
   const [pending, setPending] = useState<PendingDeletion | null>(null);
 
   const guard = (container: FormPlace, run: () => void) => {
@@ -75,39 +68,28 @@ export function useGuardedDeletion({
               .map(({ place }) => describePlace(pages, place))
               .join(", ")}`,
     );
-    setPending({ container, pages, affected, run, stale: false });
+    setPending({ container, pages, affected, run });
   };
 
   const close = () => setPending(null);
   const confirm = () => {
     if (!pending) return;
+    setPending(null);
     if (pending.pages !== pages) {
-      setPending({ ...pending, stale: true });
+      void toast.confirm({
+        title: "Nothing was deleted",
+        message:
+          "The form changed while this was open. Delete again to see what reads it now.",
+        confirmLabel: "OK",
+        cancelLabel: null,
+      });
       return;
     }
-    setPending(null);
     pending.run();
   };
 
   const deletion = pending && DELETION[pending.container.kind];
-  const dialog = pending?.stale ? (
-    <Modal open onClose={close} panelClassName="max-w-lg">
-      <ModalBody className="flex flex-col gap-2 p-6">
-        <ModalTitle className="text-heading font-semibold">
-          Nothing was deleted
-        </ModalTitle>
-        <ModalDescription className="text-fg-muted">
-          The form changed while this was open. Delete again to see what reads
-          it now.
-        </ModalDescription>
-        <ModalActions className="mt-4">
-          <Button variant={ButtonVariant.Default} onClick={close}>
-            Close
-          </Button>
-        </ModalActions>
-      </ModalBody>
-    </Modal>
-  ) : (
+  const dialog = (
     <ConfirmDialog
       open={pending !== null}
       title={deletion ? `${deletion.action}?` : ""}
