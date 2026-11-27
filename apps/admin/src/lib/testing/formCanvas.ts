@@ -14,8 +14,23 @@ export const canvasOrder = (name = /^Select /) =>
     .getAllByRole("button", { name })
     .map((button) => button.getAttribute("aria-label"));
 
+/** Runs `item` from the More menu in the header of the pane the builder works in. */
+export const fromMainMenu = (item: string) => {
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: item }));
+};
+
+/** Whether the builder shows its Preview rather than Edit. */
+export const previewing = () =>
+  screen
+    .getByRole("button", { name: "Preview" })
+    .getAttribute("aria-pressed") === "true";
+
+/** What the toolbar says about saving: "Unsaved changes", "Saved", "" and the like. */
+export const saveState = () => screen.getByLabelText("Save state").textContent;
+
 export const formJson = () => {
-  fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+  fromMainMenu("Edit form JSON…");
   const json = screen.getByRole<HTMLTextAreaElement>("textbox", {
     name: "Form JSON",
   }).value;

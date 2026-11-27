@@ -181,10 +181,11 @@ describe("dragging in the form outline", () => {
       "Text Field: Pet",
       "Text Field: Vet",
     ]);
-    const root = screen.getByLabelText("Outline").firstElementChild!;
+    const root = screen
+      .getByLabelText("Outline")
+      .querySelector<HTMLElement>('[tabindex="-1"]');
+    expect(root).not.toBeNull();
     expect(document.activeElement).toBe(root);
-    // The test DOM focuses any element; a browser only a focusable one.
-    expect(root.getAttribute("tabindex")).toBe("-1");
   });
 
   it("drops nothing once an element passes off the rows onto a page's contents", () => {

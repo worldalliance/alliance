@@ -7,9 +7,11 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
 import {
+  fromMainMenu,
   insertElement,
   openSection,
   pageTitle,
+  saveState,
   selectElement,
 } from "../lib/testing/formCanvas";
 import { answerLeaveGuard } from "../lib/testing/leaveGuard";
@@ -110,7 +112,7 @@ const copyPage = () => {
 };
 const save = () =>
   act(async () => {
-    fireEvent.click(button("Save Form"));
+    fireEvent.click(button("Save form"));
   });
 
 it("starts with nothing to undo, then steps back through edits on every tab", async () => {
@@ -121,7 +123,7 @@ it("starts with nothing to undo, then steps back through edits on every tab", as
 
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await nextTask();
-  fireEvent.click(screen.getByText("Shareable Text"));
+  fireEvent.click(screen.getByRole("tab", { name: "Shareable text" }));
   const placeholder = "Example: Join me in taking this action.";
   const template = () =>
     screen.getByPlaceholderText<HTMLTextAreaElement>(placeholder);
@@ -132,7 +134,7 @@ it("starts with nothing to undo, then steps back through edits on every tab", as
 
   fireEvent.click(button("Undo"));
   expect(template().value).toBe("");
-  fireEvent.click(screen.getByText("Form Builder"));
+  fireEvent.click(screen.getByRole("tab", { name: "Form" }));
   expect(
     (await screen.findByPlaceholderText<HTMLInputElement>("Page title")).value,
   ).toBe("First");
@@ -155,7 +157,7 @@ it("folds typing into one step until the field loses focus", async () => {
   act(() => pageTitle().focus());
   await type("On");
   await type("O");
-  act(() => button("Save Form").focus());
+  act(() => button("Save form").focus());
   act(() => pageTitle().focus());
   await type("Ox");
 
@@ -188,7 +190,7 @@ it("keeps redo through a write that changes nothing", async () => {
   await nextTask();
   fireEvent.click(button("Undo"));
 
-  fireEvent.click(button("Aggregate Views"));
+  fireEvent.click(screen.getByRole("tab", { name: "Aggregate views" }));
   fireEvent.blur(screen.getAllByRole("spinbutton")[0]!);
   await nextTask();
   expect(button("Redo").disabled).toBe(false);
@@ -230,7 +232,7 @@ it("leaves ⌘Z inside a dialog to the dialog", async () => {
   renderFormBuilder(twoPages, 1);
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await nextTask();
-  fireEvent.click(button("Edit form JSON"));
+  fromMainMenu("Edit form JSON…");
 
   fireEvent.keyDown(button("Apply"), { key: "z", metaKey: true });
   fireEvent.click(button("Cancel"));
@@ -239,7 +241,7 @@ it("leaves ⌘Z inside a dialog to the dialog", async () => {
 
 it("undoes an Apply JSON like any other edit", async () => {
   renderFormBuilder(twoPages, 1);
-  fireEvent.click(button("Edit form JSON"));
+  fromMainMenu("Edit form JSON…");
   const renamed = structuredClone(twoPages);
   renamed.pages[0]!.title = "Pasted";
   fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
@@ -258,13 +260,13 @@ it("keeps history through a save, and undoing past it leaves changes to save", a
   renderFormBuilder(twoPages, 1);
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await save();
-  await screen.findByRole("button", { name: "No changes" });
+  await waitFor(() => expect(saveState()).toBe("Saved"));
 
   fireEvent.click(button("Undo"));
   expect(pageTitle().value).toBe("One");
-  expect(button("Save Form").disabled).toBe(false);
+  expect(saveState()).toBe("Unsaved changes");
   fireEvent.click(button("Redo"));
-  expect(button("No changes").disabled).toBe(true);
+  expect(saveState()).not.toBe("Unsaved changes");
 });
 
 it("ends the step on save, so undo stops at the saved text", async () => {
@@ -272,7 +274,7 @@ it("ends the step on save, so undo stops at the saved text", async () => {
   act(() => pageTitle().focus());
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await save();
-  await screen.findByRole("button", { name: "No changes" });
+  await waitFor(() => expect(saveState()).toBe("Saved"));
   fireEvent.change(pageTitle(), { target: { value: "Firstx" } });
   await nextTask();
 
@@ -408,7 +410,7 @@ it("reopens the Output View's expression editor when undo restores its text", as
     },
     1,
   );
-  fireEvent.click(button("Output View"));
+  fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
   fireEvent.click(button("Edit as expression"));
   const expression = () =>
     screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });
@@ -435,7 +437,7 @@ it("stays on the selected aggregate view through undo", async () => {
     ...twoPages,
     aggregateViews: [view("v1", "First"), view("v2", "Second")],
   });
-  fireEvent.click(button("Aggregate Views"));
+  fireEvent.click(screen.getByRole("tab", { name: "Aggregate views" }));
   fireEvent.click(button("View 2"));
   const title = () =>
     screen.getByPlaceholderText<HTMLInputElement>("Progress title");

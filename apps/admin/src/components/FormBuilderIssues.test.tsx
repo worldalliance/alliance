@@ -11,9 +11,11 @@ import {
 } from "@testing-library/react";
 import {
   canvas,
+  fromMainMenu,
   heading,
   openSection,
   outline,
+  previewing,
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
@@ -119,8 +121,21 @@ const issueButton = () =>
 const issueList = () => within(screen.getByRole("region", { name: "Issues" }));
 const save = () =>
   act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Save Form" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save form" }));
   });
+/** An edit to a form that didn't load, whose panes show the failure: through its JSON. */
+const editUnloaded = async () => {
+  fromMainMenu("Edit form JSON…");
+  const json = screen.getByRole<HTMLTextAreaElement>("textbox", {
+    name: "Form JSON",
+  });
+  const schema = JSON.parse(json.value);
+  schema.pages[0].title = "First";
+  fireEvent.change(json, { target: { value: JSON.stringify(schema) } });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+  });
+};
 const edit = () =>
   fireEvent.change(screen.getByPlaceholderText("Page title"), {
     target: { value: "First" },
@@ -330,10 +345,10 @@ describe("FormBuilder issues", () => {
   it("closes the list on a click outside it", () => {
     renderFormBuilder(readsMissing);
     fireEvent.click(issueButton()!);
-    fireEvent.mouseDown(screen.getByRole("region", { name: "Issues" }));
+    fireEvent.click(screen.getByRole("region", { name: "Issues" }));
     expect(screen.getByRole("region", { name: "Issues" })).toBeTruthy();
 
-    fireEvent.mouseDown(canvas().getByText("Label a"));
+    fireEvent.click(canvas().getByText("Label a"));
     expect(screen.queryByRole("region", { name: "Issues" })).toBeNull();
   });
 
@@ -341,7 +356,7 @@ describe("FormBuilder issues", () => {
     failing.add("5");
     renderSavedFormBuilder(5, "/");
     await screen.findByRole("button", { name: "1 issue" });
-    edit();
+    await editUnloaded();
     await save();
     expect(issueList().getByText("Fix 1 issue before saving")).toBeTruthy();
     expect(issueList().getByText("The form didn't load")).toBeTruthy();
@@ -349,7 +364,7 @@ describe("FormBuilder issues", () => {
 
     failing.clear();
     const retry = issueList().getByRole("button", {
-      name: "Discard edits and retry",
+      name: "Discard edits and try again",
     });
     retry.focus();
     await act(async () => {
@@ -365,14 +380,14 @@ describe("FormBuilder issues", () => {
   it("retries a form that didn't load from its error", async () => {
     failing.add("5");
     renderSavedFormBuilder(5, "/");
-    await screen.findByText(/^Error loading form/);
+    await screen.findByText("Couldn't load this form");
 
     failing.clear();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     });
     await waitFor(() => expect(issueButton()).toBeNull());
-    expect(screen.queryByText(/^Error loading form/)).toBeNull();
+    expect(screen.queryByText("Couldn't load this form")).toBeNull();
   });
 
   it("clears what the editors held for the blank form once a retry loads it", async () => {
@@ -380,7 +395,7 @@ describe("FormBuilder issues", () => {
     failing.add("7");
     renderSavedFormBuilder(7, "/");
     await screen.findByRole("button", { name: "1 issue" });
-    fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+    fromMainMenu("Edit form JSON…");
     fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
       target: { value: JSON.stringify(withVariable("mine")) },
     });
@@ -391,15 +406,18 @@ describe("FormBuilder issues", () => {
     await act(async () => {
       fireEvent.click(confirm);
     });
-    fireEvent.click(screen.getByRole("button", { name: /^Formulas/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Formulas/ }));
     fireEvent.change(await screen.findByLabelText("Sample answer for input1"), {
       target: { value: "Oslo" },
     });
 
     failing.clear();
+    fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Discard edits and retry" }),
+        issueList().getByRole("button", {
+          name: "Discard edits and try again",
+        }),
       );
     });
     await waitFor(() => expect(issueButton()).toBeNull());
@@ -416,7 +434,7 @@ describe("FormBuilder issues", () => {
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
 
     expect(issueList().getByText("Fix 1 issue before previewing")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(previewing()).toBe(false);
   });
 
   it("blocks Save on a form that didn't load while a formula's source form loads", async () => {
@@ -429,7 +447,7 @@ describe("FormBuilder issues", () => {
     });
     renderSavedFormBuilder(5, "/");
     await screen.findByRole("button", { name: "1 issue" });
-    fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+    fromMainMenu("Edit form JSON…");
     fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
       target: {
         value: JSON.stringify({
@@ -455,7 +473,6 @@ describe("FormBuilder issues", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     });
-    edit();
     await save();
 
     expect(issueList().getByText("The form didn't load")).toBeTruthy();
@@ -470,7 +487,7 @@ describe("FormBuilder issues", () => {
     expect(screen.getByRole("button", { name: "Checking" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+    expect(previewing()).toBe(true);
   });
 
   it("leaves Preview for an issue that appears there", async () => {
@@ -524,7 +541,7 @@ describe("FormBuilder issues", () => {
     renderFormBuilder(readsForm9);
     fireEvent.click(await screen.findByRole("button", { name: "1 issue" }));
 
-    const retry = issueList().getByRole("button", { name: "Retry" });
+    const retry = issueList().getByRole("button", { name: "Try again" });
     retry.focus();
     await act(async () => {
       fireEvent.click(retry);
@@ -539,7 +556,7 @@ describe("FormBuilder issues", () => {
     renderFormBuilder(readsMissing);
     fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
     within(issueList().getByRole("listitem")).getByRole("button").focus();
-    fireEvent.mouseDown(document.body);
+    fireEvent.click(document.body);
     expect(screen.queryByRole("region", { name: "Issues" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
@@ -573,7 +590,7 @@ describe("FormBuilder issues", () => {
     ).toBeTruthy();
 
     failing.clear();
-    const retry = issueList().getByRole("button", { name: "Retry" });
+    const retry = issueList().getByRole("button", { name: "Try again" });
     retry.focus();
     await act(async () => {
       fireEvent.click(retry);
@@ -607,7 +624,7 @@ describe("FormBuilder issues", () => {
         },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "Output View" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
 
     expect(screen.getAllByRole("textbox", { name: "Expression" })).toHaveLength(
       2,

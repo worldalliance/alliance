@@ -15,9 +15,11 @@ import { useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import {
   canvasGroups,
+  fromMainMenu,
   heading,
   insertElement,
   openSection,
+  saveState,
   selectElement,
   selectGroup,
   settings,
@@ -52,8 +54,6 @@ const memberCounts = () =>
   canvasGroups().map(
     (group) => within(group).getByText(/^Shared visibility/).textContent,
   );
-const saveButton = () =>
-  screen.getByRole("button", { name: /No changes|Save Form/ });
 const openGroup = (
   index: number,
   section: "Content" | "Conditions" = "Conditions",
@@ -103,7 +103,7 @@ describe("FormBuilder visibility groups", () => {
     openGroup(0, "Content");
     fireEvent.click(splitButtons()[1]!);
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
-    expect(saveButton().textContent).toBe("No changes");
+    expect(saveState()).not.toBe("Unsaved changes");
   });
 
   it("writes an edit in the shared editor to every member", () => {
@@ -127,7 +127,7 @@ describe("FormBuilder visibility groups", () => {
         "Shown when NOT Label q is answered",
       ),
     ).toBeTruthy();
-    expect(saveButton().textContent).toBe("Save Form");
+    expect(saveState()).toBe("Unsaved changes");
   });
 
   it("clearing shared visibility dissolves the group and dirties the form", () => {
@@ -135,7 +135,7 @@ describe("FormBuilder visibility groups", () => {
     openGroup(0);
     fireEvent.click(screen.getByRole("button", { name: "Clear visibility" }));
     expect(canvasGroups()).toHaveLength(0);
-    expect(saveButton().textContent).toBe("Save Form");
+    expect(saveState()).toBe("Unsaved changes");
   });
 
   it("gives an element added inside a group the group's condition", () => {
@@ -204,7 +204,7 @@ describe("FormBuilder visibility groups", () => {
     openSection("Conditions");
     fireEvent.click(screen.getByRole("button", { name: "Ungroup all" }));
     expect(canvasGroups()).toHaveLength(0);
-    expect(saveButton().textContent).toBe("No changes");
+    expect(saveState()).not.toBe("Unsaved changes");
   });
 
   it("undoes splitting, detaching, and ungrouping", () => {
@@ -230,7 +230,7 @@ describe("FormBuilder visibility groups", () => {
     expect(canvasGroups()).toHaveLength(0);
     undo();
     expect(memberCounts()).toEqual(whole);
-    expect(saveButton().textContent).toBe("No changes");
+    expect(saveState()).not.toBe("Unsaved changes");
   });
 
   it("flags a shared rule's error on the group header, and lists it once in the group's settings", () => {
@@ -298,7 +298,7 @@ const renderStatefulFormBuilder = (initialFormId?: number) =>
   );
 
 const applyFormJson = async (schema: FormSchema) => {
-  fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+  fromMainMenu("Edit form JSON…");
   fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
     target: { value: JSON.stringify(schema) },
   });
@@ -406,8 +406,8 @@ describe("FormBuilder visibility groups across loads", () => {
     );
     openGroup(0, "Content");
     fireEvent.click(splitButtons()[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Save Form" }));
-    await waitFor(() => expect(saveButton().textContent).toBe("No changes"));
+    fireEvent.click(screen.getByRole("button", { name: "Save form" }));
+    await waitFor(() => expect(saveState()).not.toBe("Unsaved changes"));
     await act(async () => {});
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
   });

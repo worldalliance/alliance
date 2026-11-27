@@ -37,7 +37,7 @@ describe("FormBuilder creating a form", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     expect(
       (await screen.findAllByText(/The server didn't answer\./)).length,
     ).toBeGreaterThan(0);
@@ -82,7 +82,7 @@ describe("FormBuilder saving a new form", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/tasks/forms/5"),

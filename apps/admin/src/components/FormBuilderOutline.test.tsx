@@ -2,6 +2,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen } from "@testing-library/react";
 import {
   canvas,
+  fromMainMenu,
   heading,
   inNarrowWindow,
   openSection,
@@ -134,37 +135,20 @@ describe("the form outline", () => {
 
 describe("the form outline in a narrow window", () => {
   inNarrowWindow();
+  afterEach(() => localStorage.removeItem("builder.outlineHidden"));
 
-  it("opens as a drawer that closes on a choice, opening its settings", () => {
+  it("starts hidden, shows from the More menu, and leaves settings beside the canvas", () => {
     renderFormBuilder(schema);
     expect(screen.queryByLabelText("Outline")).toBe(null);
-    fireEvent.click(screen.getByRole("button", { name: "Open outline" }));
-    const drawer = screen.getByRole("complementary", { name: "Outline" });
-    expect(drawer.contains(document.activeElement)).toBe(true);
+    expect(heading()).toBe("Page settings");
 
+    fromMainMenu("Show outline");
     fireEvent.click(entry("Text Block: Welcome"));
-    expect(screen.queryByLabelText("Outline")).toBe(null);
+    expect(screen.getByLabelText("Outline")).toBeTruthy();
     expect(heading()).toBe("Text Block: Welcome");
-  });
 
-  it("closes on Escape, returning focus", () => {
-    renderFormBuilder(schema);
-    const open = screen.getByRole("button", { name: "Open outline" });
-    open.focus();
-    fireEvent.click(open);
-    fireEvent.keyDown(screen.getByRole("complementary", { name: "Outline" }), {
-      key: "Escape",
-    });
+    fromMainMenu("Hide outline");
     expect(screen.queryByLabelText("Outline")).toBe(null);
-    expect(document.activeElement).toBe(open);
-  });
-
-  it("closes when settings open", () => {
-    renderFormBuilder(schema);
-    fireEvent.click(screen.getByRole("button", { name: "Open outline" }));
-    selectElement("Town");
-    expect(screen.queryByLabelText("Outline")).toBe(null);
-    expect(heading()).toBe("Text Field: Town");
   });
 });
 

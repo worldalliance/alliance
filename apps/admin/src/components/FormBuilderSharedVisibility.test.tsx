@@ -7,6 +7,7 @@ import {
   heading,
   openSection,
   outline,
+  saveState,
   selectElement,
   selectGroup,
   settings,
@@ -249,11 +250,11 @@ describe("FormBuilder sharing visibility across a selection", () => {
       "Shared visibility · 3 elementsShown when Label q is answered",
     ]);
     expect(heading()).toBe("Shared visibility");
-    expect(button(/No changes|Save Form/).textContent).toBe("Save Form");
+    expect(saveState()).toBe("Unsaved changes");
 
     fireEvent.click(button("Undo"));
     expect(canvasGroups()).toHaveLength(0);
-    expect(button(/No changes|Save Form/).textContent).toBe("No changes");
+    expect(saveState()).not.toBe("Unsaved changes");
     fireEvent.click(button("Redo"));
     expect(groupSummaries()).toHaveLength(1);
   });
@@ -442,6 +443,6 @@ describe("FormBuilder sharing visibility across a selection", () => {
     expect(groupSummaries()).toEqual([
       "Shared visibility · 4 elementsShown when Label q is answered",
     ]);
-    expect(button(/No changes|Save Form/).textContent).toBe("No changes");
+    expect(saveState()).not.toBe("Unsaved changes");
   });
 });

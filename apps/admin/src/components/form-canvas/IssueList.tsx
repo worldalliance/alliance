@@ -9,16 +9,14 @@ import type {
   PageItem,
 } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
-import { cn } from "@alliance/shared/styles/util";
-import { LoaderCircle, TriangleAlert, X } from "lucide-react";
-import { useEffect, useId, useRef } from "react";
+import { CircleAlert } from "lucide-react";
 import {
   IssueTargetKind,
   type FormIssue,
   type IssueIndex,
   type IssueTarget,
 } from "../../lib/formIssues";
-import { focusInPlace } from "../../pages/forms/builder/kit/revealInPane";
+import { cn } from "../../ui/cn";
 import {
   CanvasTargetKind,
   ChildKind,
@@ -29,17 +27,11 @@ import {
   type ResolvedTarget,
 } from "./canvasSelection";
 import { SidebarSection } from "./sidebarSections";
-import { useRestoreFocusWithin } from "./useRestoreFocusWithin";
 
 export enum IssueGate {
   Save = "save",
   Preview = "preview",
 }
-
-const GATED_ACTION: Record<IssueGate, string> = {
-  [IssueGate.Save]: "saving",
-  [IssueGate.Preview]: "previewing",
-};
 
 /** Where an issue sits, as the issue list names it. */
 export function issueLocation(schema: FormSchema, target: IssueTarget): string {
@@ -144,213 +136,19 @@ export type LoadFailure = {
   onRetry: () => void;
 };
 
-/**
- * The header's count of what blocks Save and Preview, opening a list that
- * links each issue to where it's repaired. `gate` names the action that
- * opened it, which moves focus into the list.
- */
-export function IssueList({
-  rows,
-  sources,
-  loadFailure,
-  open,
-  gate,
-  onOpenChange,
-}: {
-  rows: readonly IssueRow[];
-  sources: SourceCheck;
-  loadFailure: LoadFailure | null;
-  open: boolean;
-  gate: IssueGate | null;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const panelId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const count = rows.length + (loadFailure ? 1 : 0);
-
-  useEffect(() => {
-    if (open && gate) focusInPlace(panelRef.current);
-  }, [open, gate]);
-
-  const restorePanelFocus = useRestoreFocusWithin(panelRef);
-  // A row that goes away while focused, as a successful Retry's does, leaves
-  // focus on the page, out of reach of the list's Escape.
-  useEffect(() => {
-    restorePanelFocus();
-  });
-
-  useEffect(() => {
-    if (!open) return;
-    const handleMouseDown = (event: MouseEvent) => {
-      if (
-        event.target instanceof Node &&
-        rootRef.current?.contains(event.target)
-      ) {
-        return;
-      }
-      onOpenChange(false);
-    };
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [open, onOpenChange]);
-
-  const closeAndReturn = () => {
-    onOpenChange(false);
-    focusInPlace(toggleRef.current);
-  };
-
-  if (count === 0 && sources.pending === 0 && sources.failed === 0 && !open) {
-    return null;
-  }
-
-  return (
-    <div
-      ref={rootRef}
-      className="relative"
-      onKeyDown={(event) => {
-        if (event.key === "Escape") closeAndReturn();
-      }}
-    >
-      <button
-        ref={toggleRef}
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className={cn(
-          "flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium",
-          count > 0
-            ? "text-red-700 hover:bg-red-50"
-            : "text-gray-600 hover:bg-gray-100",
-        )}
-      >
-        {count > 0 ? (
-          <>
-            <TriangleAlert className="h-4 w-4" aria-hidden="true" />
-            {withCount(count, "issue")}
-          </>
-        ) : sources.pending > 0 ? (
-          <>
-            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-            Checking
-          </>
-        ) : (
-          "No issues"
-        )}
-      </button>
-      {open && (
-        <div
-          ref={panelRef}
-          id={panelId}
-          tabIndex={-1}
-          aria-label="Issues"
-          role="region"
-          className="absolute right-0 top-full z-30 mt-1 max-h-[60vh] w-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-left shadow-lg focus:outline-none"
-        >
-          <div className="mb-2 flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-gray-900">
-              {count === 0
-                ? "No issues"
-                : gate
-                  ? `Fix ${withCount(count, "issue")} before ${GATED_ACTION[gate]}`
-                  : withCount(count, "issue")}
-            </p>
-            <button
-              type="button"
-              onClick={closeAndReturn}
-              aria-label="Close issues"
-              title="Close issues"
-              className="rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-          {sources.pending > 0 && (
-            <p role="status" className="mb-2 text-xs text-gray-600">
-              Loading the questions of {withCount(sources.pending, "form")} that
-              formulas read. Some issues may clear once they load.
-            </p>
-          )}
-          {sources.failed > 0 && (
-            <p className="mb-2 flex items-center gap-2 text-xs text-red-700">
-              {`Couldn't load the questions of ${withCount(sources.failed, "form")} that formulas read.`}
-              <button
-                type="button"
-                onClick={sources.onRetry}
-                className="rounded border border-red-300 px-1.5 py-0.5 font-medium hover:bg-red-50"
-              >
-                Retry
-              </button>
-            </p>
-          )}
-          <ul className="space-y-1">
-            {loadFailure && (
-              <li className="rounded-md px-2 py-1 text-sm">
-                <span className="block font-medium text-gray-900">
-                  The form didn&apos;t load
-                </span>
-                <span className="block text-red-700">
-                  {loadFailure.message}
-                </span>
-                <button
-                  type="button"
-                  onClick={loadFailure.onRetry}
-                  className="mt-1 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                >
-                  {loadFailure.retryLabel}
-                </button>
-              </li>
-            )}
-            {rows.map(({ location, message, onGo }, index) => {
-              const body = (
-                <>
-                  <span className="block truncate font-medium text-gray-900">
-                    {location}
-                  </span>
-                  <span className="block text-red-700">{message}</span>
-                </>
-              );
-              return (
-                <li key={index}>
-                  {onGo ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onGo();
-                        onOpenChange(false);
-                      }}
-                      className="block w-full rounded-md px-2 py-1 text-left text-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    >
-                      {body}
-                    </button>
-                  ) : (
-                    <div className="px-2 py-1 text-sm">{body}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** The selected item's issues, above its settings. */
 export function SidebarIssues({ messages }: { messages: readonly string[] }) {
   if (messages.length === 0) return null;
   return (
     <ul
       aria-label="Issues here"
-      className="space-y-1 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-800"
+      className="flex flex-col gap-1 border-b border-line bg-danger-soft px-card py-2 text-caption text-danger"
     >
       {messages.map((message, index) => (
         <li key={index} className="flex gap-1.5">
-          <TriangleAlert
-            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+          <CircleAlert
             aria-hidden="true"
+            className="mt-0.5 size-3.5 shrink-0"
           />
           {message}
         </li>
@@ -374,9 +172,9 @@ export function IssueMarker({
       role="img"
       aria-label={label}
       title={label}
-      className={cn("shrink-0 text-red-600", className)}
+      className={cn("shrink-0 text-danger", className)}
     >
-      <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />
+      <CircleAlert aria-hidden="true" className="size-3.5" />
     </span>
   );
 }

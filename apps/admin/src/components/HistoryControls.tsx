@@ -1,6 +1,9 @@
 import { Redo2, Undo2 } from "lucide-react";
 import { useEffect, type RefObject } from "react";
 import { isTextEntry } from "../lib/useDraftHistory";
+import Button, { ButtonVariant } from "../ui/Button";
+import { Kbd } from "../ui/Kbd";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/Tooltip";
 
 type HistoryControlsProps = {
   /** Where the shortcuts apply, besides an unfocused page. */
@@ -12,8 +15,8 @@ type HistoryControlsProps = {
 };
 
 const BUTTONS = [
-  { label: "Undo", shortcut: "⌘/Ctrl+Z", Icon: Undo2, redo: false },
-  { label: "Redo", shortcut: "⇧⌘/Ctrl+Z", Icon: Redo2, redo: true },
+  { label: "Undo", keys: "⌘Z", Icon: Undo2, redo: false },
+  { label: "Redo", keys: "⇧⌘Z", Icon: Redo2, redo: true },
 ] as const;
 
 /**
@@ -56,17 +59,24 @@ export function HistoryControls({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canRedo, canUndo, onRedo, onUndo, scope]);
 
-  return BUTTONS.map(({ label, shortcut, Icon, redo }) => (
-    <button
-      key={label}
-      type="button"
-      onClick={redo ? onRedo : onUndo}
-      disabled={redo ? !canRedo : !canUndo}
-      aria-label={label}
-      title={`${label} (${shortcut})`}
-      className="flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
-    >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </button>
+  return BUTTONS.map(({ label, keys, Icon, redo }) => (
+    <Tooltip key={label}>
+      <TooltipTrigger
+        render={
+          <Button
+            variant={ButtonVariant.Ghost}
+            size="small"
+            onClick={redo ? onRedo : onUndo}
+            disabled={redo ? !canRedo : !canUndo}
+          >
+            <Icon aria-hidden="true" className="size-4" />
+            {label}
+          </Button>
+        }
+      />
+      <TooltipContent>
+        <Kbd>{keys}</Kbd>
+      </TooltipContent>
+    </Tooltip>
   ));
 }

@@ -8,6 +8,7 @@ import {
   renderFormBuilder,
   renderSavedFormBuilder,
 } from "../lib/testing/renderFormBuilder";
+import { isResponseCountsRead } from "../lib/testing/responseCounts";
 
 const readsTown = {
   inputs: { input1: { kind: "field", fieldId: "town" } },
@@ -42,6 +43,7 @@ describe("FormBuilder save conflict", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         if (request.method !== "GET")
           return new Response(null, { status: 409 });
         return new URL(request.url).pathname === "/tasks/listForms"
@@ -59,13 +61,13 @@ describe("FormBuilder save conflict", () => {
       fireEvent.change(screen.getByPlaceholderText("Page title"), {
         target: { value: "Where" },
       });
-      fireEvent.click(screen.getByText("Formulas"));
+      fireEvent.click(screen.getByRole("tab", { name: /^Formulas/ }));
       const [first, second] = await screen.findAllByLabelText<HTMLInputElement>(
         "Sample answer for input1",
       );
       fireEvent.change(first!, { target: { value: "Oslo" } });
       fireEvent.change(second!, { target: { value: "Lima" } });
-      fireEvent.click(screen.getByText("Save Form"));
+      fireEvent.click(screen.getByText("Save form"));
       fireEvent.click(await screen.findByText(resolve));
       if (resolve === "Take theirs") {
         fireEvent.click(await screen.findByText("Discard my changes"));
@@ -90,7 +92,7 @@ describe("FormBuilder save conflict", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     fireEvent.click(await screen.findByText("Take theirs"));
     const ask = await screen.findByRole("dialog", {
       name: "Discard your changes?",
@@ -141,6 +143,7 @@ describe("FormBuilder save conflict with an options formula", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         if (request.method !== "GET")
           return new Response(null, { status: 409 });
         return new URL(request.url).pathname === "/tasks/listForms"
@@ -161,7 +164,7 @@ describe("FormBuilder save conflict with an options formula", () => {
       }),
     );
     expect(screen.getByText(/Undo, back to/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     fireEvent.click(await screen.findByText("Take theirs"));
     fireEvent.click(await screen.findByText("Discard my changes"));
 
@@ -178,6 +181,7 @@ describe("FormBuilder save while a source form loads", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         const { pathname } = new URL(request.url);
         if (request.method !== "GET") {
           writes.push(pathname);
@@ -207,7 +211,7 @@ describe("FormBuilder save while a source form loads", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
 
     expect(
       await screen.findByText(
@@ -251,7 +255,7 @@ describe("FormBuilder save while a source form loads", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
 
     expect(
       await screen.findByText(
@@ -308,6 +312,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
       client.setConfig({
         baseUrl: "http://localhost",
         fetch: async (request: Request) => {
+          if (isResponseCountsRead(request)) return Response.json([]);
           const { pathname } = new URL(request.url);
           if (request.method !== "GET")
             return new Response(null, { status: 409 });
@@ -321,7 +326,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
       fireEvent.change(screen.getByPlaceholderText("Page title"), {
         target: { value: "Where" },
       });
-      fireEvent.click(screen.getByText("Save Form"));
+      fireEvent.click(screen.getByText("Save form"));
 
       expect(
         await screen.findByText("Loading the forms your formulas read…"),
@@ -347,6 +352,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         const { pathname } = new URL(request.url);
         if (request.method !== "GET")
           return new Response(null, { status: 409 });
@@ -360,7 +366,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
 
     expect(
       await screen.findByText(
@@ -401,6 +407,7 @@ describe("FormBuilder save once a source form loads", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         const { pathname } = new URL(request.url);
         if (request.method !== "GET") {
           saved.push(await request.json());
@@ -432,9 +439,9 @@ describe("FormBuilder save once a source form loads", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Formulas"));
+    fireEvent.click(screen.getByRole("tab", { name: /^Formulas/ }));
     await screen.findByRole("option", { name: /^Pets \(list\)/ });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
 
     await waitFor(() => expect(saved).toHaveLength(1));
     expect(saved[0]).toMatchObject({
@@ -503,9 +510,8 @@ describe("FormBuilder load", () => {
     });
     renderSavedFormBuilder(5, "/");
 
-    expect(
-      await screen.findByText("Error loading form: Failed to load form"),
-    ).toBeTruthy();
+    expect(await screen.findByText("Couldn't load this form")).toBeTruthy();
+    expect(screen.getByText("Failed to load form")).toBeTruthy();
   });
 
   it("names why the server refused the form", async () => {
@@ -518,8 +524,7 @@ describe("FormBuilder load", () => {
     });
     renderSavedFormBuilder(5, "/");
 
-    expect(
-      await screen.findByText("Error loading form: Form not found"),
-    ).toBeTruthy();
+    expect(await screen.findByText("Couldn't load this form")).toBeTruthy();
+    expect(screen.getByText("Form not found")).toBeTruthy();
   });
 });

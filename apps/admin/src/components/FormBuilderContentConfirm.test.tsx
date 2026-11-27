@@ -3,6 +3,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
+import { isResponseCountsRead } from "../lib/testing/responseCounts";
 
 const linkingOldDomain: FormSchema = {
   pages: [
@@ -31,6 +32,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         const { pathname } = new URL(request.url);
         if (request.method !== "GET") {
           writes.push(pathname);
@@ -59,7 +61,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     expect((await screen.findByRole("dialog")).textContent).toContain(
       "https://worldalliance.org/settings",
     );
@@ -92,7 +94,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     const dialog = await screen.findByRole("dialog");
     expect(dialog.textContent).toContain("Links to the site should be paths");
     expect(dialog.textContent).toContain("https://thealliance.org/actions/53");
@@ -185,7 +187,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -271,7 +273,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     const dialog = await screen.findByRole("dialog");
     expect(dialog.textContent).toContain("https://thealliance.org/quote");
     expect(dialog.textContent).toContain("https://thealliance.org/chat");
@@ -344,7 +346,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     const dialog = await screen.findByRole("dialog");
     const text = dialog.textContent ?? "";
     expect(text.split("https://thealliance.org/join")).toHaveLength(2);
@@ -364,7 +366,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -395,7 +397,7 @@ describe("FormBuilder save with worldalliance text or site links", () => {
       target: { value: "Where" },
     });
 
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     expect((await screen.findByRole("dialog")).textContent).toContain(
       "#{nobody}",
     );

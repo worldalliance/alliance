@@ -5,6 +5,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
 import { selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
+import { isResponseCountsRead } from "../lib/testing/responseCounts";
 
 const equalsAlpha: VisibleIfFormula = {
   conditions: { c1: { kind: "equals", when: "ctrl", equals: "alpha" } },
@@ -74,6 +75,7 @@ describe("FormBuilder option value rename", () => {
     client.setConfig({
       baseUrl: "http://localhost",
       fetch: async (request: Request) => {
+        if (isResponseCountsRead(request)) return Response.json([]);
         if (request.method !== "GET") {
           bodies.push(await request.json());
           return Response.json({ id: 1, schema, formSnapshotId: 2 });
@@ -91,7 +93,7 @@ describe("FormBuilder option value rename", () => {
       .getAllByPlaceholderText<HTMLInputElement>("Value")
       .find((input) => input.value === "alpha");
     fireEvent.change(valueInput!, { target: { value: "zeta" } });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     await waitFor(() => expect(bodies).toHaveLength(1));
 
     const saved = savedPage.parse(bodies[0]).schema.pages[0]!.fields;

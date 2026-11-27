@@ -2,6 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { taskFlowFallbackTitle } from "@alliance/shared/lib/copy";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, screen } from "@testing-library/react";
+import { fromMainMenu } from "../lib/testing/formCanvas";
 import {
   renderFormBuilder,
   renderTaskFormBuilder,
@@ -44,6 +45,7 @@ const outlineToggle = /Show the step outline on the task card/;
 
 it("lets a task form turn its card's step outline off and back on", () => {
   renderTaskFormBuilder(schema);
+  fromMainMenu("Form settings");
   const toggle = screen.getByRole<HTMLInputElement>("checkbox", {
     name: outlineToggle,
   });
@@ -56,5 +58,6 @@ it("lets a task form turn its card's step outline off and back on", () => {
 
 it("offers no outline setting on forms that aren't task forms", () => {
   renderFormBuilder(schema);
+  fromMainMenu("Form settings");
   expect(screen.queryByRole("checkbox", { name: outlineToggle })).toBeNull();
 });

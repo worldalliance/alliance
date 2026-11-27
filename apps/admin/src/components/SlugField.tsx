@@ -3,8 +3,15 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 import { logActionError } from "../pages/action-dashboard/actionSaveErrors";
+import Button, { ButtonVariant } from "../ui/Button";
+import InlineError from "../ui/InlineError";
+import { Input } from "../ui/Input";
 import { useToast } from "../ui/ToastProvider";
 
+/**
+ * A slug shown as text that turns into a field on Edit slug: Enter saves,
+ * Escape or leaving the field cancels, and a refusal stays under the field.
+ */
 export function SlugField({
   slug,
   saving,
@@ -14,10 +21,11 @@ export function SlugField({
   saving: boolean;
   onSave: (slug: string) => Promise<unknown>;
 }) {
-  const toast = useToast();
+  const { success } = useToast();
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const cancel = () => {
     setDraft(null);
@@ -37,17 +45,17 @@ export function SlugField({
   };
 
   const copy = async () => {
-    if (await copyToClipboard(slug)) toast.success("Slug copied");
-    else toast.error("Could not copy the slug.");
+    const copied = await copyToClipboard(slug);
+    setCopyFailed(!copied);
+    if (copied) success("Slug copied");
   };
 
   if (draft !== null) {
     return (
-      <div className="flex flex-col gap-1">
-        <input
-          type="text"
+      <div className="flex min-w-0 flex-col gap-1">
+        <Input
           aria-label="Slug"
-          className="w-96 border border-gray-2 rounded px-2 py-0.5 font-mono text-sm"
+          className="font-mono text-xs"
           value={draft}
           onChange={(event) => {
             setDraft(event.target.value);
@@ -69,7 +77,7 @@ export function SlugField({
           }}
         />
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-caption text-danger">
             {error}
           </p>
         )}
@@ -78,25 +86,34 @@ export function SlugField({
   }
 
   return (
-    <div className="flex flex-row items-center gap-1 text-sm text-zinc-500">
-      <button
-        type="button"
-        aria-label="Edit slug"
-        title="Edit slug"
-        className="font-mono hover:text-zinc-900 hover:underline"
-        onClick={() => setDraft(slug)}
-      >
-        {slug}
-      </button>
-      <button
-        type="button"
-        aria-label="Copy slug"
-        title="Copy slug"
-        className="p-1 hover:text-zinc-900"
-        onClick={() => void copy()}
-      >
-        <Copy size={14} />
-      </button>
+    <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-w-0 items-center gap-1">
+        <button
+          type="button"
+          aria-label="Edit slug"
+          title="Edit slug"
+          className="min-w-0 truncate rounded-sm font-mono text-xs text-fg-muted focus-ring hover:text-fg hover:underline"
+          onClick={() => setDraft(slug)}
+        >
+          {slug}
+        </button>
+        <Button
+          variant={ButtonVariant.Ghost}
+          size="small"
+          aria-label="Copy slug"
+          onClick={() => void copy()}
+        >
+          <Copy aria-hidden="true" className="size-3.5" />
+          Copy
+        </Button>
+      </div>
+      <InlineError
+        message={
+          copyFailed
+            ? "Couldn't copy the slug. Select it and copy it yourself."
+            : null
+        }
+      />
     </div>
   );
 }

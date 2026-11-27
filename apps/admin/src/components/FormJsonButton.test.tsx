@@ -2,6 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen } from "@testing-library/react";
 import {
+  fromMainMenu,
   openSection,
   selectElement,
   settings,
@@ -134,7 +135,7 @@ describe("FormBuilder form JSON Apply", () => {
       outputViews: [],
     });
     fireEvent.click(screen.getByRole("button", { name: "Two" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+    fromMainMenu("Edit form JSON…");
     fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
       target: {
         value: JSON.stringify({

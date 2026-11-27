@@ -47,6 +47,7 @@ describe("FormBuilder save with a draft validator", () => {
           },
         ]),
       "POST /tasks/createCustomValidator": () => Response.json({ id: 42 }),
+      "POST /tasks/responses/counts": () => Response.json([]),
       "GET /tasks/findOneCustomValidator/:id": () => {
         validatorLoads += 1;
         return Response.json({
@@ -77,7 +78,7 @@ describe("FormBuilder save with a draft validator", () => {
     if (!select) throw new Error("validator option outside a select");
     fireEvent.change(select, { target: { value: "HasPhoneNumber" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save Form" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save form" }));
     });
     await waitFor(() => expect(saved).toHaveLength(1));
   };

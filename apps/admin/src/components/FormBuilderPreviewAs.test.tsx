@@ -1,7 +1,8 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it } from "bun:test";
+import { previewing } from "../lib/testing/formCanvas";
 import { renderSavedFormBuilder } from "../lib/testing/renderFormBuilder";
 import { pickUser } from "../ui/UserSelect.testing";
 
@@ -128,7 +129,7 @@ serveApi(
 it("opens a link to preview as a member on the preview, as that member", async () => {
   const router = renderSavedFormBuilder(1, "/?previewAs=10");
 
-  expect(await screen.findByRole("button", { name: "Edit" })).toBeTruthy();
+  await waitFor(() => expect(previewing()).toBe(true));
   expect(await screen.findByText("Ana")).toBeTruthy();
   expect(
     await screen.findByRole("button", { name: /\(Preview Mode\)/ }),
@@ -203,7 +204,7 @@ it.each([
       await screen.findByText("Fix 1 issue before previewing"),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Preview" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(previewing()).toBe(false);
   },
 );
 
@@ -212,9 +213,9 @@ it("waits for the forms a variable reads before opening the preview", async () =
 
   expect(await screen.findByText("Your name")).toBeTruthy();
   await act(async () => {});
-  expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  expect(previewing()).toBe(false);
   await act(async () => releaseSourceForm());
 
   expect(await screen.findByText("Fix 1 issue before previewing")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  expect(previewing()).toBe(false);
 });

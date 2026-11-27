@@ -17,6 +17,7 @@ import {
   type VisibilityGroups,
 } from "../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../lib/visibilitySummary";
+import { FormScopeInspector } from "../pages/forms/builder/inspector/FormScopeInspector";
 import { PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import {
@@ -45,7 +46,10 @@ import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
 import type { CanvasEdits } from "./form-canvas/useCanvasEdits";
-import type { CanvasSelectionState } from "./form-canvas/useCanvasSelection";
+import {
+  InspectorScope,
+  type CanvasSelectionState,
+} from "./form-canvas/useCanvasSelection";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
 import {
   ElementExpressionScope,
@@ -238,6 +242,10 @@ export function FormBuilderSettings({
         }
       />
     );
+
+  if (canvas.inspectorScope === InspectorScope.Form) {
+    return <FormScopeInspector />;
+  }
 
   switch (resolvedTarget.kind) {
     case CanvasTargetKind.Page:

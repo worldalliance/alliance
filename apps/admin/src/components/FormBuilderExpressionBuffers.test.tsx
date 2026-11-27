@@ -1,7 +1,11 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { act, fireEvent, screen } from "@testing-library/react";
-import { openSection, selectElement } from "../lib/testing/formCanvas";
+import {
+  fromMainMenu,
+  openSection,
+  selectElement,
+} from "../lib/testing/formCanvas";
 import { answerLeaveGuard } from "../lib/testing/leaveGuard";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
@@ -44,6 +48,10 @@ const twoPagesWith = (fields: PageItem[]): FormSchema => ({
     { id: "p2", title: "Two", fields: [] },
   ],
 });
+const revisitTabs = (away: string, back: string) => {
+  fireEvent.click(screen.getByRole("tab", { name: away }));
+  fireEvent.click(screen.getByRole("tab", { name: back }));
+};
 const revisit = (away: string, back: string) => {
   fireEvent.click(screen.getByRole("button", { name: away }));
   fireEvent.click(screen.getByRole("button", { name: back }));
@@ -105,12 +113,12 @@ it("keeps an output block's expression text across tabs", async () => {
       ],
     }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Output View" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
   editAsExpression();
   await typeExpression("c1 AND");
 
-  fireEvent.click(screen.getByRole("button", { name: "Shareable Text" }));
-  fireEvent.click(screen.getByRole("button", { name: "Output View" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Shareable text" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
   expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
 });
 
@@ -142,7 +150,7 @@ it("shows the pasted formula as rules after Apply JSON, not stale typed text", a
       right: { op: "NOT", operand: "c2" },
     },
   };
-  fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+  fromMainMenu("Edit form JSON…");
   fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
     target: { value: JSON.stringify(pasted) },
   });
@@ -277,11 +285,11 @@ it("keeps an output block's rule-less text behind its toggle until turned off", 
       ],
     }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Output View" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Output views" }));
   await expectToggleKeepsThenDropsText({
     toggle: () =>
       fireEvent.click(screen.getByLabelText("Conditional visibility")),
-    revisitEditor: () => revisit("Shareable Text", "Output View"),
+    revisitEditor: () => revisitTabs("Shareable text", "Output views"),
   });
 });
 

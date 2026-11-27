@@ -38,19 +38,14 @@ src/components/DisplayOnlyPreview.tsx
 src/components/EventManagementTab.tsx
 src/components/ExpressionNodeEditor.tsx
 src/components/ExternalShareTargetSelect.tsx
-src/components/FormBuilder.tsx
-src/components/FormBuilderHeader.tsx
 src/components/FormBuilderPreview.tsx
 src/components/FormBuilderSettings.tsx
 src/components/FormConflictModal.tsx
-src/components/FormJsonButton.tsx
 src/components/FormJsonModal.tsx
 src/components/FormPickerError.tsx
 src/components/FormSection.tsx
-src/components/FormSlugEditor.tsx
 src/components/FormulaEditor.tsx
 src/components/FormulaResultPreview.tsx
-src/components/HistoryControls.tsx
 src/components/HomePlacementBadges.tsx
 src/components/InsertableTokenButton.tsx
 src/components/NewActionTimeline.tsx
@@ -63,7 +58,6 @@ src/components/PriorityFollowUps.tsx
 src/components/ReferralUrlNotice.tsx
 src/components/ShareableTextBuilder.tsx
 src/components/SharedOutputSourceWarning.tsx
-src/components/SlugField.tsx
 src/components/UpdatePreview.tsx
 src/components/UserPicker.tsx
 src/components/VariableBuilder.sourceForms.test.tsx
@@ -98,7 +92,6 @@ src/components/display-blocks/PerUserOptions.tsx
 src/components/form-canvas/CanvasContainers.tsx
 src/components/form-canvas/CanvasContent.tsx
 src/components/form-canvas/CanvasElement.tsx
-src/components/form-canvas/CanvasWorkspace.tsx
 src/components/form-canvas/ChildRows.tsx
 src/components/form-canvas/ChildSettings.tsx
 src/components/form-canvas/ConditionsIndicator.tsx
@@ -110,7 +103,6 @@ src/components/form-canvas/FormOutline.tsx
 src/components/form-canvas/GreyBoxPanel.tsx
 src/components/form-canvas/InlineText.tsx
 src/components/form-canvas/InsertPoint.tsx
-src/components/form-canvas/IssueList.tsx
 src/components/form-canvas/MoveToPageMenu.tsx
 src/components/form-canvas/OutlineContents.tsx
 src/components/form-canvas/OutlineRow.tsx

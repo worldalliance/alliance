@@ -39,7 +39,7 @@ describe("FormBuilder save conflict errors", () => {
     fireEvent.change(screen.getByPlaceholderText("Page title"), {
       target: { value: "Where" },
     });
-    fireEvent.click(screen.getByText("Save Form"));
+    fireEvent.click(screen.getByText("Save form"));
     const dialog = await screen.findByRole("dialog", {
       name: "This form was changed by someone else",
     });

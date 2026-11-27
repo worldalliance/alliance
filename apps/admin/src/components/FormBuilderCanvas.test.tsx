@@ -1,4 +1,4 @@
-/* alliance/max-lines 650 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
+/* alliance/max-lines 600 -- baseline: past the limit when the ratchet was adopted, not judged one unit */
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, fireEvent, screen, within } from "@testing-library/react";
@@ -551,28 +551,18 @@ describe("the form canvas", () => {
 describe("the form canvas in a narrow window", () => {
   inNarrowWindow();
 
-  it("opens settings as a drawer that Escape closes, returning focus", () => {
+  it("keeps settings beside the canvas, focus staying on the selection", () => {
     renderFormBuilder(schema);
-    expect(screen.queryByRole("complementary", { name: "Settings" })).toBe(
-      null,
-    );
+    expect(heading()).toBe("Page settings");
     const select = button("Select Text Field: Town");
     select.focus();
     fireEvent.click(select);
-
-    const drawer = screen.getByRole("complementary", { name: "Settings" });
-    expect(drawer.contains(document.activeElement)).toBe(true);
     expect(heading()).toBe("Text Field: Town");
-
-    fireEvent.keyDown(drawer, { key: "Escape" });
-    expect(screen.queryByRole("complementary", { name: "Settings" })).toBe(
-      null,
-    );
     expect(document.activeElement).toBe(select);
     expect(select.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("leaves the drawer open when Escape closes a menu inside it", () => {
+  it("keeps the settings open when Escape closes a menu inside them", () => {
     renderFormBuilder({
       ...schema,
       variables: [
@@ -594,8 +584,7 @@ describe("the form canvas in a narrow window", () => {
     expect(settings().queryByRole("listbox")).toBeNull();
     expect(heading()).toBe("Text Field: Town");
   });
-
-  it("focuses an inserted element's first control in the drawer it opens", async () => {
+  it("focuses an inserted element's first control in its settings", async () => {
     renderFormBuilder(schema);
     insertElement(button("Add element"), "Email Field");
     await act(async () => {});
@@ -603,44 +592,6 @@ describe("the form canvas in a narrow window", () => {
     expect(
       settings().getByRole("tabpanel").contains(document.activeElement),
     ).toBe(true);
-  });
-
-  it("keeps Escape working after deleting from the drawer", () => {
-    renderFormBuilder(schema);
-    selectElement("Town");
-    openSection("Advanced");
-    const remove = button("Delete question");
-    remove.focus();
-    fireEvent.click(remove);
-    confirmDeletion();
-    expect(heading()).toBe("Page settings");
-    const drawer = screen.getByRole("complementary", { name: "Settings" });
-    expect(drawer.contains(document.activeElement)).toBe(true);
-    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
-    expect(screen.queryByRole("complementary", { name: "Settings" })).toBe(
-      null,
-    );
-  });
-
-  it("hands focus to the inserted element when its drawer closes", async () => {
-    renderFormBuilder(schema);
-    insertElement(button("Add element"), "Email Field");
-    await act(async () => {});
-    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
-    expect(screen.queryByRole("complementary", { name: "Settings" })).toBe(
-      null,
-    );
-    expect(document.activeElement).toBe(
-      button("Select Email Field: Email Field"),
-    );
-  });
-
-  it("reopens on the current selection", () => {
-    renderFormBuilder(schema);
-    selectElement("Pet");
-    fireEvent.click(button("Close settings"));
-    fireEvent.click(button("Open settings"));
-    expect(heading()).toBe("Radio Field: Pet");
   });
 });
 

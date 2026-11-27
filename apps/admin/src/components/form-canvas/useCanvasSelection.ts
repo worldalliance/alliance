@@ -13,7 +13,6 @@ import {
   type CanvasTarget,
   type ResolvedTarget,
 } from "./canvasSelection";
-import { DrawerKind, useWideCanvasLayout } from "./CanvasWorkspace";
 import { extendSelection, type Span } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 
@@ -53,6 +52,12 @@ function followHeld(target: CanvasTarget, index: number): CanvasTarget | null {
   }
 }
 
+/** What the inspector shows: the form's own settings, or the canvas selection's. */
+export enum InspectorScope {
+  Form = "form",
+  Selection = "selection",
+}
+
 export const SECTION_ON_SELECT: Record<CanvasTargetKind, SidebarSection> = {
   [CanvasTargetKind.Page]: SidebarSection.Content,
   [CanvasTargetKind.Element]: SidebarSection.Content,
@@ -71,13 +76,13 @@ export function useCanvasSelection({
   // through their own edits, so a schema loaded from the server, a conflict,
   // or pasted JSON, or restored by undo or redo, remounts them.
   const [schemaLoads, setSchemaLoads] = useState(0);
-  const [selection, setSelection] = useState<CanvasSelection>(() => ({
+  const [selection, setSelectionState] = useState<CanvasSelection>(() => ({
     pageId: pages[0]?.id ?? "",
     target: { kind: CanvasTargetKind.Page },
   }));
   const reloadEditors = useCallback(() => {
     setSchemaLoads((count) => count + 1);
-    setSelection((current) => {
+    setSelectionState((current) => {
       const target = forgetPositions(current.target);
       return target === current.target ? current : { ...current, target };
     });
@@ -86,8 +91,18 @@ export function useCanvasSelection({
   const { selectedPageIndex, setSelectedPageIndex, keepPage } =
     useSelectedPage(pages);
   const [section, setSection] = useState(SidebarSection.Content);
-  const wideCanvas = useWideCanvasLayout();
-  const [drawer, setDrawer] = useState<DrawerKind | null>(null);
+  const [inspectorScope, setInspectorScope] = useState(
+    InspectorScope.Selection,
+  );
+  /** A new selection takes the inspector back from the form's settings; a structural edit's update doesn't. */
+  const setSelection = (
+    next: CanvasSelection | ((current: CanvasSelection) => CanvasSelection),
+  ) => {
+    if (typeof next !== "function") {
+      setInspectorScope(InspectorScope.Selection);
+    }
+    setSelectionState(next);
+  };
   const [focusPending, setFocusPending] = useState(false);
   const focused = useCallback(() => setFocusPending(false), []);
   const [revealPending, setRevealPending] = useState(false);
@@ -106,7 +121,6 @@ export function useCanvasSelection({
   const select = (target: CanvasTarget, nextSection: SidebarSection) => {
     setSelection({ pageId: currentPage.id, target });
     setSection(nextSection);
-    if (!wideCanvas) setDrawer(DrawerKind.Settings);
   };
 
   const showPage = (page: Page, pageIndex: number) => {
@@ -119,20 +133,16 @@ export function useCanvasSelection({
     pageIndex,
     target,
     section: nextSection = SECTION_ON_SELECT[target.kind],
-    keepOutline = false,
   }: {
     page: Page;
     pageIndex: number;
     target: CanvasTarget;
     section?: SidebarSection;
-    /** For adding to a selection, which takes more than one entry. */
-    keepOutline?: boolean;
   }) => {
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
     setSection(nextSection);
     reveal();
-    if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
 
   if (placeOnLoad) {
@@ -185,9 +195,8 @@ export function useCanvasSelection({
     selectionKey,
     section,
     setSection,
-    wideCanvas,
-    drawer,
-    setDrawer,
+    inspectorScope,
+    selectForm: () => setInspectorScope(InspectorScope.Form),
     focusPending,
     setFocusPending,
     focused,
