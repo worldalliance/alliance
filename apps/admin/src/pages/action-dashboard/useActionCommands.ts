@@ -8,6 +8,7 @@ import { useNavigate } from "react-router";
 import { LAUNCH_CONFIRM_TEXT } from "../../components/CreateEventForm";
 import { duplicatedActionImages } from "../../lib/actionImages";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { fromApi } from "../../lib/fromApi";
 import { useConfirmOnPage } from "../../lib/useConfirmOnPage";
 import { useToast } from "../../ui/ToastProvider";
 import { unarchiveConsequence } from "../tasks/taskFacts";
@@ -126,7 +127,7 @@ export function useActionCommands(params: {
           },
     );
     if (!confirmed) return;
-    const result = await R.fromPromise(
+    const result = await fromApi(
       archived ? unarchiveAction() : archiveAction(),
     );
     if (!result.ok) {
