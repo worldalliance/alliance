@@ -1,15 +1,12 @@
 import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import { Copy } from "lucide-react";
 import { useId, useState } from "react";
-import { describeElement } from "../selection/canvasSelection";
-import {
-  InsertMode,
-  type AvailableElement,
-} from "./InsertPoint";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { CommandList, type CommandGroup } from "../../../../ui/CommandList";
 import { Select } from "../../../../ui/Select";
 import { kindIcon } from "../outline/elementIcons";
+import { describeElement } from "../selection/canvasSelection";
+import { InsertMode, type AvailableElement } from "./InsertPoint";
 
 /** "Text Area Field" → "Text area": the group says whether it is a question or content. */
 export const pickerLabel = (name: string) =>

@@ -11,11 +11,11 @@ import {
   type GroupedPages,
   type VisibilityGroups,
 } from "../../../../lib/visibilityGroups";
+import Button, { ButtonVariant } from "../../../../ui/Button";
+import { Banner, BannerTone } from "../../../../ui/templates/Banner";
 import { ConditionalVisibility } from "../conditions/ConditionalVisibility";
 import { LocalExpressionBuffers } from "../conditions/expressionBuffers";
 import { InspectorGroup } from "../kit/InspectorGroup";
-import Button, { ButtonVariant } from "../../../../ui/Button";
-import { Banner, BannerTone } from "../../../../ui/templates/Banner";
 import { describeElement } from "../selection/canvasSelection";
 import { SectionPanels } from "./sidebarSections";
 

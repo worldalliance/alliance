@@ -1,9 +1,9 @@
 import type { MultiSelectField } from "@alliance/common/forms/form-schema";
 import type { ChoiceField } from "@alliance/common/forms/formula-options";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
 import { CheckboxField, Field } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";

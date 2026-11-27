@@ -1,6 +1,6 @@
 import type { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
-import { makeCommunity, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { makeCommunity, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {

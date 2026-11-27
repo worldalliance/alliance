@@ -30,7 +30,14 @@ import {
 } from "../../../../lib/visibilityGroups";
 import { ToastVariant, useToast } from "../../../../ui/ToastProvider";
 import { createDisplayBlock } from "../blocks";
+import {
+  InsertMode,
+  type AvailableElement,
+  type InsertLoc,
+} from "../canvas/InsertPoint";
 import type { ElementExpressionsMove } from "../conditions/expressionBuffers";
+import { SidebarSection } from "../inspector/sidebarSections";
+import { useGuardedDeletion } from "../inspector/useGuardedDeletion";
 import { createField } from "../questions/createField";
 import {
   CanvasTargetKind,
@@ -38,15 +45,8 @@ import {
   followElement,
   type ChildTarget,
 } from "./canvasSelection";
-import {
-  InsertMode,
-  type AvailableElement,
-  type InsertLoc,
-} from "../canvas/InsertPoint";
 import { selectedSpan } from "./rangeSelection";
-import { SidebarSection } from "../inspector/sidebarSections";
 import type { CanvasSelectionState } from "./useCanvasSelection";
-import { useGuardedDeletion } from "../inspector/useGuardedDeletion";
 
 export function useCanvasEdits({
   schema,

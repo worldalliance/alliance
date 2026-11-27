@@ -5,13 +5,13 @@ import type {
 import { isDraftValidatorId } from "@alliance/common/forms/visible-if-formula";
 import { CustomValidatorType } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
+import { ElementConditions } from "../conditions/VisibilityConditions";
 import { SectionPanels } from "../inspector/sidebarSections";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import {
   OutputFieldToggle,
   OutputPrivateByDefaultToggle,
 } from "./CommonControls";
-import { ElementConditions } from "../conditions/VisibilityConditions";
 import { useCustomValidatorDrafts } from "./customValidatorDrafts";
 import { CustomValidatorSelect } from "./CustomValidatorSelect";
 import { extractsIntoTarget, supportsExtraction } from "./fieldExtraction";

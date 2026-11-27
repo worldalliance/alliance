@@ -3,8 +3,8 @@ import {
   type CopyTextBlock,
 } from "@alliance/common/forms/display-blocks";
 import { copyTextFormat } from "@alliance/shared/forms/copyText";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { CheckboxField } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { BlockPreview } from "./BlockPreview";
 import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";

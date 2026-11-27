@@ -59,9 +59,12 @@ export function MemberDeleteDialog({
   const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
 
   const emailMatches =
-    confirmationEmail.trim().toLowerCase() === member.email.trim().toLowerCase();
+    confirmationEmail.trim().toLowerCase() ===
+    member.email.trim().toLowerCase();
   const reasonError =
-    submitted && !reason.trim() ? "Enter why the account is being deleted" : null;
+    submitted && !reason.trim()
+      ? "Enter why the account is being deleted"
+      : null;
   const emailError =
     confirmationEmail.length > 0 && !emailMatches
       ? `Does not match ${member.email}`
@@ -134,8 +137,8 @@ export function MemberDeleteDialog({
             every session it has. Task completion counts drop with it. An
             operator can restore the records from the database, but not their
             links to other records: groups, likes, tags, reminders, the members
-            it referred or invited, and its name on staff actions such as
-            cohort corrections and waitlist emails.
+            it referred or invited, and its name on staff actions such as cohort
+            corrections and waitlist emails.
           </ModalDescription>
         </ModalHeader>
         <ModalBody className="flex flex-col gap-4">
@@ -211,7 +214,11 @@ export function MemberDeleteDialog({
             >
               Cancel
             </Button>
-            <Button variant={ButtonVariant.Danger} type="submit" busy={deleting}>
+            <Button
+              variant={ButtonVariant.Danger}
+              type="submit"
+              busy={deleting}
+            >
               Delete account
             </Button>
           </ModalActions>

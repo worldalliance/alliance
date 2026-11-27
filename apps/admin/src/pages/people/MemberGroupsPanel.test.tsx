@@ -79,10 +79,7 @@ const submitTo = async (params: {
   render(
     <MemoryRouter>
       <ToastProvider>
-        <MemberGroupsPanel
-          user={params.member}
-          refreshUser={refreshUser}
-        />
+        <MemberGroupsPanel user={params.member} refreshUser={refreshUser} />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -163,9 +160,7 @@ const renderSection = () =>
 it("says it is loading the groups rather than that none has room", async () => {
   renderSection();
 
-  expect(
-    screen.getByRole("option", { name: "Loading groups…" }),
-  ).toBeTruthy();
+  expect(screen.getByRole("option", { name: "Loading groups…" })).toBeTruthy();
   expect(
     screen.queryByText(
       "No groups with staff assignments and available capacity.",

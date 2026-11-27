@@ -10,7 +10,11 @@ import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import DateTimePicker, { timeZoneLabel } from "../../../../ui/DateTimePicker";
 import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
-import { CheckboxField, Field, FieldGroup } from "../../../../ui/templates/Form";
+import {
+  CheckboxField,
+  Field,
+  FieldGroup,
+} from "../../../../ui/templates/Form";
 
 type ConditionOf<K extends Condition["kind"]> = Extract<Condition, { kind: K }>;
 

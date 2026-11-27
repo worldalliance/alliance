@@ -3,23 +3,19 @@ import type {
   ConversationField,
   ConversationOption,
 } from "@alliance/common/forms/form-schema";
-import { ExpandableEditor } from "../kit/ExpandableEditor";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import {
-  AddItemButton,
-  ItemList,
-  ItemRow,
-} from "../kit/ItemList";
 import { cn } from "../../../../ui/cn";
 import { Input } from "../../../../ui/Input";
 import { controlClass } from "../../../../ui/styles";
 import { CheckboxField, Field } from "../../../../ui/templates/Form";
 import { neighborMoves } from "../inspector/ChildRows";
-import { VariableTextField } from "./VariableTextField";
+import { ExpandableEditor } from "../kit/ExpandableEditor";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { AddItemButton, ItemList, ItemRow } from "../kit/ItemList";
 import {
   DuplicateOptionsWarning,
   duplicateOptionValues,
 } from "./CommonControls";
+import { VariableTextField } from "./VariableTextField";
 
 const textClass = cn(controlClass, "py-2");
 

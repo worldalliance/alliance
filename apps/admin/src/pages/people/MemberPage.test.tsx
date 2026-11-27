@@ -1,3 +1,4 @@
+/* alliance/max-lines 550 -- the member page's tests share one mocked API and fixture set */
 import type {
   CreateActionActivityDto,
   FormResponseDto,
@@ -149,7 +150,10 @@ const renderPage = (tab?: string, path = "/members/7") => {
         path: "/members/:userId",
         Component: MemberPage,
         loader: (args) =>
-          clientLoader({ ...args, params: { userId: args.params.userId ?? "" } }),
+          clientLoader({
+            ...args,
+            params: { userId: args.params.userId ?? "" },
+          }),
       },
     ],
     { initialEntries: [tab ? `${path}?tab=${tab}` : path] },
@@ -188,12 +192,13 @@ const cacheSam = (overrides: Partial<UserAdminDetailDto> = {}) =>
     ...overrides,
   });
 
-
 it("loads the member alongside the rest of the page", async () => {
   detailStatus = 200;
   renderPage();
 
-  expect(await screen.findByRole("heading", { name: "Sam", level: 1 })).toBeTruthy();
+  expect(
+    await screen.findByRole("heading", { name: "Sam", level: 1 }),
+  ).toBeTruthy();
 });
 
 it("says an id that can't exist was not found without asking for it", async () => {
@@ -259,7 +264,9 @@ it("says when every notification follows the defaults", async () => {
 
   const section = await settingsPanel();
   expect(await section.findByText("0 overrides")).toBeTruthy();
-  expect(section.getByText("Every notification follows the defaults.")).toBeTruthy();
+  expect(
+    section.getByText("Every notification follows the defaults."),
+  ).toBeTruthy();
 });
 
 it("keeps cached notification settings it could not refresh and says so", async () => {
@@ -290,7 +297,9 @@ it("loads the member afresh over one cached moments ago", async () => {
   cacheSam({ name: "Sam Before" });
   renderPage();
 
-  expect(await screen.findByRole("heading", { name: "Sam", level: 1 })).toBeTruthy();
+  expect(
+    await screen.findByRole("heading", { name: "Sam", level: 1 }),
+  ).toBeTruthy();
 });
 
 it("says a member that does not exist was not found", async () => {
@@ -318,7 +327,9 @@ it("keeps a cached member it could not refresh and says so", async () => {
   cacheSam();
   renderPage();
 
-  expect(await screen.findByText(/Couldn't refresh this member\./)).toBeTruthy();
+  expect(
+    await screen.findByText(/Couldn't refresh this member\./),
+  ).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Sam", level: 1 })).toBeTruthy();
 });
 
@@ -359,7 +370,9 @@ const toggleVolunteers = async () => {
 };
 
 const volunteersOn = () =>
-  screen.getByRole("switch", { name: "Volunteers" }).getAttribute("aria-checked");
+  screen
+    .getByRole("switch", { name: "Volunteers" })
+    .getAttribute("aria-checked");
 
 const tagsPanel = () => within(screen.getByRole("region", { name: "Tags" }));
 
@@ -405,7 +418,9 @@ it("says it could not refresh the member after a tag change", async () => {
 
   await toggleVolunteers();
 
-  expect(await screen.findByText(/Couldn't refresh this member\./)).toBeTruthy();
+  expect(
+    await screen.findByText(/Couldn't refresh this member\./),
+  ).toBeTruthy();
 });
 
 it("says when the tags fail to load", async () => {
@@ -426,7 +441,8 @@ it("keeps cached tags it could not refresh and says so", async () => {
   expect(screen.getByRole("switch", { name: "Volunteers" })).toBeTruthy();
 });
 
-const friendsPanel = () => within(screen.getByRole("region", { name: "Friends" }));
+const friendsPanel = () =>
+  within(screen.getByRole("region", { name: "Friends" }));
 
 it("lists the member's friends with their standing", async () => {
   detailStatus = 200;
@@ -508,7 +524,9 @@ it("keeps cached notifications it could not refresh and says so", async () => {
   queryClient.setQueryData(queryKeys.userNotifsAdmin(7), []);
   renderPage("notifications");
 
-  expect(await screen.findByText(/Couldn't refresh notifications\./)).toBeTruthy();
+  expect(
+    await screen.findByText(/Couldn't refresh notifications\./),
+  ).toBeTruthy();
   expect(screen.getByText("No texts sent")).toBeTruthy();
 });
 
@@ -527,7 +545,9 @@ it("keeps cached form responses it could not refresh and says so", async () => {
   queryClient.setQueryData(queryKeys.userFormResponsesAdmin(7), []);
   renderPage("tasks");
 
-  expect(await screen.findByText(/Couldn't refresh form responses\./)).toBeTruthy();
+  expect(
+    await screen.findByText(/Couldn't refresh form responses\./),
+  ).toBeTruthy();
   expect(screen.getByText("No form responses")).toBeTruthy();
 });
 
@@ -562,7 +582,9 @@ it("records an activity for the member once confirmed and shows their new status
 
   await recordCompleted();
 
-  expect(await screen.findByText("Completed", { selector: "span" })).toBeTruthy();
+  expect(
+    await screen.findByText("Completed", { selector: "span" }),
+  ).toBeTruthy();
   expect(createdActivities).toEqual([
     { actionId: 5, userId: 7, type: "user_completed" },
   ]);
@@ -586,6 +608,8 @@ it("shows a task the member has no record for without failing", async () => {
   relations = { ...relationsFor("todo"), users: [] };
   renderPage("tasks");
 
-  const row = (await screen.findByText("Call your representative")).closest("tr");
+  const row = (await screen.findByText("Call your representative")).closest(
+    "tr",
+  );
   expect(within(row!).getAllByText("—").length).toBeGreaterThan(0);
 });

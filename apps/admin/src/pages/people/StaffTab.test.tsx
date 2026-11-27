@@ -160,9 +160,7 @@ it("keeps the edits when the save fails", async () => {
   save();
 
   expect(
-    await screen.findByText(
-      "Couldn't save: The server didn't answer.",
-    ),
+    await screen.findByText("Couldn't save: The server didn't answer."),
   ).toBeTruthy();
   expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
   expect(screen.getAllByPlaceholderText("Brief title")[0]).toHaveProperty(

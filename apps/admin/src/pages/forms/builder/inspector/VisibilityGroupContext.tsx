@@ -1,7 +1,10 @@
 import type { PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { createContext, useContext } from "react";
-import { detachMember, type VisibilityGroups } from "../../../../lib/visibilityGroups";
+import {
+  detachMember,
+  type VisibilityGroups,
+} from "../../../../lib/visibilityGroups";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { SharedRuleSummary } from "./VisibilityGroupPanel";
 
@@ -55,7 +58,11 @@ export function SharedVisibilityNotice({
     <div className="flex flex-col gap-3">
       <SharedRuleSummary heading="Shared visibility" summary={summary} />
       <div className="flex flex-wrap gap-2">
-        <Button variant={ButtonVariant.Default} size="small" onClick={openGroup}>
+        <Button
+          variant={ButtonVariant.Default}
+          size="small"
+          onClick={openGroup}
+        >
           Open group settings
         </Button>
         <Button variant={ButtonVariant.Default} size="small" onClick={detach}>

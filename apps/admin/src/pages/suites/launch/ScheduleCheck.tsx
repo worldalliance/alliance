@@ -75,9 +75,7 @@ export function ScheduleCheck({
           ))}
         </div>
         {valid && (
-          <p>
-            Members have {completionTime(schedule)} to complete their tasks
-          </p>
+          <p>Members have {completionTime(schedule)} to complete their tasks</p>
         )}
         {eventInWindow && <p className="text-danger">{eventInWindow}</p>}
       </div>

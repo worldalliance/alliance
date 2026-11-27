@@ -162,7 +162,11 @@ export function TextCheck({
           Fix the text in {actions.length === 1 ? "the task" : "the tasks"},
           then re-run the checks.
         </p>
-        <Button size="small" variant={ButtonVariant.Default} onClick={onRecheck}>
+        <Button
+          size="small"
+          variant={ButtonVariant.Default}
+          onClick={onRecheck}
+        >
           Re-run checks
         </Button>
       </div>

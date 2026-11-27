@@ -2,7 +2,11 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { fireEvent, screen } from "@testing-library/react";
 import { dragOverAt } from "../../../../lib/testing/dragOverAt";
-import { heading, outline, pageTitle } from "../../../../lib/testing/formCanvas";
+import {
+  heading,
+  outline,
+  pageTitle,
+} from "../../../../lib/testing/formCanvas";
 import {
   contents,
   entries,

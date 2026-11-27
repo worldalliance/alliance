@@ -1,10 +1,10 @@
 import type { Page } from "@alliance/common/forms/form-schema";
+import type { VisibilityGroups } from "../../../../lib/visibilityGroups";
 import {
   CanvasTargetKind,
   type ResolvedTarget,
 } from "../selection/canvasSelection";
 import type { InsertLoc } from "./InsertPoint";
-import type { VisibilityGroups } from "../../../../lib/visibilityGroups";
 
 /**
  * Where "Add element below…" and `a` add: after the selection, inside the

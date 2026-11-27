@@ -167,7 +167,7 @@ describe("launchBlockers", () => {
     ).toEqual([
       {
         message:
-          'This suite has a "Resolution" event before the office deadline, which would end members\' time early. Move office taking action before it, or delete it on the suite\'s Events tab.',
+          "This suite has a \"Resolution\" event before the office deadline, which would end members' time early. Move office taking action before it, or delete it on the suite's Events tab.",
         section: LaunchSection.Schedule,
       },
     ]);

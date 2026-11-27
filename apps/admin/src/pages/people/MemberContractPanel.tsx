@@ -1,6 +1,7 @@
 import type { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { formatDate } from "../../lib/formatDate";
 import Badge from "../../ui/Badge";
+import { EmptyState } from "../../ui/EmptyState";
 import {
   Table,
   TableBody,
@@ -9,9 +10,12 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { EmptyState } from "../../ui/EmptyState";
 import { Panel } from "../../ui/templates/Overview";
-import { CONTRACT_STANDING, contractStanding, EVENT_STANDING } from "./memberRules";
+import {
+  CONTRACT_STANDING,
+  contractStanding,
+  EVENT_STANDING,
+} from "./memberRules";
 
 /** The member's contract standing and every signing and suspension, newest first. */
 export function MemberContractPanel({ user }: { user: UserAdminDetailDto }) {

@@ -4,8 +4,6 @@ import type {
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
 import { taskFlow } from "@alliance/shared/lib/copy";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { HEADER_TRUNCATES } from "../paneHeader";
 import Badge from "../../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { cn } from "../../../../ui/cn";
@@ -13,6 +11,8 @@ import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
 import { Field } from "../../../../ui/templates/Form";
 import { PaneHeader } from "../../../../ui/templates/Workspace";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { HEADER_TRUNCATES } from "../paneHeader";
 import { VIEW_LAYOUTS } from "./outputSelection";
 
 const HEADER = cn(HEADER_TRUNCATES, "z-20 bg-canvas");

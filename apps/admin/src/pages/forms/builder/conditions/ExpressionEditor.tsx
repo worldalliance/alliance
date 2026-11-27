@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { focusInPlace } from "../kit/revealInPane";
 import { Field } from "../../../../ui/templates/Form";
 import { Textarea } from "../../../../ui/Textarea";
+import { focusInPlace } from "../kit/revealInPane";
 
 export function ExpressionEditor({
   focusOnMount = false,

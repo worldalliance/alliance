@@ -1,10 +1,6 @@
 import type { PageItem } from "@alliance/common/forms/form-schema";
 import { Rows3 } from "lucide-react";
 import {
-  elementIcon,
-  elementText,
-} from "./elementIcons";
-import {
   ChildKind,
   describeElement,
   describeSection,
@@ -15,6 +11,7 @@ import {
   type ChildTarget,
   type ResolvedChild,
 } from "../selection/canvasSelection";
+import { elementIcon, elementText } from "./elementIcons";
 import type { OutlineEntry } from "./OutlineRow";
 
 const HOLDS_CHILDREN = {

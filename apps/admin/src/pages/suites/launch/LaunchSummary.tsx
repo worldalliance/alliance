@@ -69,8 +69,8 @@ export function LaunchSummary({
               </span>
             </li>
             <li>
-              {countOf(reminderCount, "default reminder")} on the members
-              taking action event
+              {countOf(reminderCount, "default reminder")} on the members taking
+              action event
             </li>
           </ol>
           <p className="text-caption text-fg-muted">

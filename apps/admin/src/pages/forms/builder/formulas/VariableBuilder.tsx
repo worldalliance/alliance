@@ -12,6 +12,10 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { milliseconds } from "date-fns";
 import { Check, Copy, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  FormPickerError,
+  FormPickerErrorReason,
+} from "../../../../components/FormPickerError";
 import { makeTempId } from "../../../../lib/tempId";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { EmptyState } from "../../../../ui/EmptyState";
@@ -19,7 +23,6 @@ import InlineError from "../../../../ui/InlineError";
 import { Input } from "../../../../ui/Input";
 import { Banner, BannerTone } from "../../../../ui/templates/Banner";
 import { Field, FormSection } from "../../../../ui/templates/Form";
-import { FormPickerError, FormPickerErrorReason } from "../../../../components/FormPickerError";
 import { FormulaEditor } from "./FormulaEditor";
 import { FormulaResult } from "./formulaResult";
 import { useFormulaSources } from "./FormulaSourcesContext";

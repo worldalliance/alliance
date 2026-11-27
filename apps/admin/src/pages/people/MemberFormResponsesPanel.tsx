@@ -1,4 +1,7 @@
-import { formLabel, useFormDisplaySlugs } from "@alliance/shared/lib/useFormsAdmin";
+import {
+  formLabel,
+  useFormDisplaySlugs,
+} from "@alliance/shared/lib/useFormsAdmin";
 import { useMemo } from "react";
 import { href, Link } from "react-router";
 import { formatDateTime } from "../../lib/formatDate";
@@ -23,7 +26,8 @@ export function MemberFormResponsesPanel({ userId }: { userId: number }) {
   const responses = useMemo(
     () =>
       [...(query.data ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       ),
     [query.data],
   );

@@ -1,4 +1,7 @@
-import type { ActionEventNotifDto, Push } from "@alliance/shared/client/types.gen";
+import type {
+  ActionEventNotifDto,
+  Push,
+} from "@alliance/shared/client/types.gen";
 import { Fragment, useState } from "react";
 import { formatDateTime } from "../../lib/formatDate";
 import { formatCount } from "../../lib/formatNumber";
@@ -27,7 +30,11 @@ import { sentenceCase } from "./memberRules";
 const describe = (count: number, rateText: string | null) =>
   [formatCount(count), rateText].filter(Boolean).join(" · ");
 
-export function MemberTextNotifsPanel({ texts }: { texts: ActionEventNotifDto[] }) {
+export function MemberTextNotifsPanel({
+  texts,
+}: {
+  texts: ActionEventNotifDto[];
+}) {
   return (
     <Panel
       title="Texts"
@@ -57,7 +64,9 @@ export function MemberTextNotifsPanel({ texts }: { texts: ActionEventNotifDto[] 
             {texts.map((notif) => {
               const mms = notif.mms;
               if (!mms) return null;
-              const status = deliveryBadge(mms.status || (notif.sent ? "sent" : "pending"));
+              const status = deliveryBadge(
+                mms.status || (notif.sent ? "sent" : "pending"),
+              );
               return (
                 <TableRow key={notif.id}>
                   <TableCell className="font-medium whitespace-nowrap">
@@ -69,7 +78,10 @@ export function MemberTextNotifsPanel({ texts }: { texts: ActionEventNotifDto[] 
                   <TableCell truncate>{mms.body || "—"}</TableCell>
                   <TableCell>
                     {mms.clickedLink
-                      ? linkClickedLabel({ clickedAt: notif.mmsClickedAt, sentAt: mms.createdAt })
+                      ? linkClickedLabel({
+                          clickedAt: notif.mmsClickedAt,
+                          sentAt: mms.createdAt,
+                        })
                       : "—"}
                   </TableCell>
                 </TableRow>
@@ -82,7 +94,11 @@ export function MemberTextNotifsPanel({ texts }: { texts: ActionEventNotifDto[] 
   );
 }
 
-export function MemberEmailNotifsPanel({ emails }: { emails: ActionEventNotifDto[] }) {
+export function MemberEmailNotifsPanel({
+  emails,
+}: {
+  emails: ActionEventNotifDto[];
+}) {
   const [open, setOpen] = useState<number | null>(null);
   return (
     <Panel
@@ -129,7 +145,9 @@ export function MemberEmailNotifsPanel({ emails }: { emails: ActionEventNotifDto
                           {formatDateTime(mail.createdAt)}
                         </ExpandToggle>
                       ) : (
-                        <span className="font-medium">{formatDateTime(mail.createdAt)}</span>
+                        <span className="font-medium">
+                          {formatDateTime(mail.createdAt)}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -140,7 +158,10 @@ export function MemberEmailNotifsPanel({ emails }: { emails: ActionEventNotifDto
                     <TableCell truncate>{mail.to}</TableCell>
                     <TableCell>
                       {mail.clickedLink
-                        ? linkClickedLabel({ clickedAt: notif.mailClickedAt, sentAt: mail.createdAt })
+                        ? linkClickedLabel({
+                            clickedAt: notif.mailClickedAt,
+                            sentAt: mail.createdAt,
+                          })
                         : "—"}
                     </TableCell>
                   </TableRow>

@@ -9,13 +9,13 @@ import { renderBlockEditor } from "../blocks/blockEditors";
 import { LocalExpressionBuffers } from "../conditions/expressionBuffers";
 import { CustomValidatorDraftsContext } from "../questions/customValidatorDrafts";
 import { renderFieldEditor } from "../questions/fieldEditors";
-import { VisibilityGroupContext } from "./VisibilityGroupContext";
 import { SelectChildProvider } from "./ChildRows";
 import {
   ALL_SECTIONS,
   SidebarSection,
   SidebarSections,
 } from "./sidebarSections";
+import { VisibilityGroupContext } from "./VisibilityGroupContext";
 
 const api = serveApi(routes({}, () => Response.json([])));
 

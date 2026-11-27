@@ -5,12 +5,12 @@ import {
   type VariableInput,
 } from "@alliance/common/forms/variable-inputs";
 import { useRef, useState } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { AddItemButton, ItemList } from "../kit/ItemList";
-import { focusInPlace } from "../kit/revealInPane";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { Field } from "../../../../ui/templates/Form";
 import { Textarea } from "../../../../ui/Textarea";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { AddItemButton, ItemList } from "../kit/ItemList";
+import { focusInPlace } from "../kit/revealInPane";
 import type { FormulaResult } from "./formulaResult";
 import { ResultPreview } from "./FormulaResultPreview";
 import {

@@ -3,12 +3,12 @@ import { useUserNotifsAndFormsAdmin } from "../../lib/useUserNotifsAndFormsAdmin
 import { Skeleton } from "../../ui/Skeleton";
 import { ContentState, TableSkeleton } from "../../ui/templates/States";
 import { byChannel } from "./memberNotifications";
+import { MemberNotificationSettingsPanel } from "./MemberNotificationSettingsPanel";
 import {
   MemberEmailNotifsPanel,
   MemberPushNotifsPanel,
   MemberTextNotifsPanel,
 } from "./MemberNotifPanels";
-import { MemberNotificationSettingsPanel } from "./MemberNotificationSettingsPanel";
 
 const historySkeleton = (
   <div className="overflow-hidden rounded-card border border-line bg-surface">

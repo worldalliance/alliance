@@ -3,15 +3,19 @@ import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import { DEFAULT_PREVIOUS_ANSWER_EMPTY_TEXT } from "@alliance/shared/lib/previousAnswers";
 import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { Checkbox } from "../../../../ui/Checkbox";
-import { Select } from "../../../../ui/Select";
-import { CheckboxField, Field, FieldGroup } from "../../../../ui/templates/Form";
 import {
   formFieldsErrorReason,
   FormPickerError,
   FormPickerErrorReason,
 } from "../../../../components/FormPickerError";
+import { Checkbox } from "../../../../ui/Checkbox";
+import { Select } from "../../../../ui/Select";
+import {
+  CheckboxField,
+  Field,
+  FieldGroup,
+} from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";

@@ -5,9 +5,9 @@ import {
   type CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
 import type { ReactNode } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Select } from "../../../../ui/Select";
 import { CheckboxField, Field } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import {
   CHECKBOX_TARGET_LABELS,
   extractsIntoTarget,

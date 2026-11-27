@@ -2,16 +2,12 @@ import type {
   ChatTranscriptBlock,
   ChatTranscriptMessage,
 } from "@alliance/common/forms/display-blocks";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import {
-  AddItemButton,
-  ItemList,
-  ItemRow,
-} from "../kit/ItemList";
 import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
 import { Field } from "../../../../ui/templates/Form";
 import { neighborMoves } from "../inspector/ChildRows";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { AddItemButton, ItemList, ItemRow } from "../kit/ItemList";
 import { choiceOf } from "./blockChoices";
 import { BlockPreview } from "./BlockPreview";
 import { BlockTextField } from "./BlockTextField";

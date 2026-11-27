@@ -3,15 +3,6 @@ import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { elementTarget } from "./selection/canvasSelection";
-import {
-  IssueGate,
-  openIssue,
-} from "./issues/IssueList";
-import { useCanvasEdits } from "./selection/useCanvasEdits";
-import { useCanvasSelection } from "./selection/useCanvasSelection";
-import { useOverrideTarget } from "./selection/useOverrideTarget";
-import { useSaveGate } from "./save/useSaveGate";
 import { ensurePages, ensureSchemaViews } from "../../../lib/ensureFormSchema";
 import { usePreviewAsOnLoad } from "../../../lib/formEditorLink";
 import {
@@ -27,7 +18,13 @@ import { useFormulaSourceValidation } from "../../../lib/useFormulaSourceForms";
 import { useInputSources } from "../../../lib/useInputSources";
 import { useSavedForm } from "../../../lib/useSavedForm";
 import { type VisibilityGroups } from "../../../lib/visibilityGroups";
+import { IssueGate, openIssue } from "./issues/IssueList";
+import { useSaveGate } from "./save/useSaveGate";
 import { SaveNotice, saveStatusOf } from "./saveStatusRules";
+import { elementTarget } from "./selection/canvasSelection";
+import { useCanvasEdits } from "./selection/useCanvasEdits";
+import { useCanvasSelection } from "./selection/useCanvasSelection";
+import { useOverrideTarget } from "./selection/useOverrideTarget";
 import { useFormReach, type FormTask } from "./useFormReach";
 import { useOutlineHidden } from "./useOutlineHidden";
 

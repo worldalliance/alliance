@@ -1,6 +1,6 @@
 import { LaunchSection } from "../../../components/suite-launch/launchBlockers";
-import { CheckboxField } from "../../../ui/templates/Form";
 import { Banner, BannerTone } from "../../../ui/templates/Banner";
+import { CheckboxField } from "../../../ui/templates/Form";
 
 /**
  * The member contract's breaches, first on the page. Accepting holds only for

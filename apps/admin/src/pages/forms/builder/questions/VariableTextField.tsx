@@ -12,12 +12,12 @@ import {
   type KeyboardEvent,
 } from "react";
 import type { TextareaAutosizeProps } from "react-textarea-autosize";
-import { focusInPlace } from "../kit/revealInPane";
+import FormTextarea from "../../../../components/FormTextarea";
 import { cn } from "../../../../ui/cn";
 import { popupClass } from "../../../../ui/styles";
 import { zIndex } from "../../../../ui/zIndex";
-import FormTextarea from "../../../../components/FormTextarea";
 import { useFormVariables } from "../formulas/FormVariablesContext";
+import { focusInPlace } from "../kit/revealInPane";
 
 const PARTIAL_NAME = /^[A-Za-z0-9_-]*$/;
 

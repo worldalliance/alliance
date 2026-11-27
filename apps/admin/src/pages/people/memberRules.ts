@@ -17,7 +17,10 @@ export const CONTRACT_STANDING: Record<
 > = {
   [ContractStanding.Signed]: { label: "Signed", tone: BadgeTone.Success },
   [ContractStanding.Suspended]: { label: "Suspended", tone: BadgeTone.Danger },
-  [ContractStanding.NotSigned]: { label: "Not signed", tone: BadgeTone.Neutral },
+  [ContractStanding.NotSigned]: {
+    label: "Not signed",
+    tone: BadgeTone.Neutral,
+  },
 };
 
 export const EVENT_STANDING: Record<ContractEventType, ContractStanding> = {

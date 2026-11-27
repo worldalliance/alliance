@@ -18,19 +18,14 @@ import {
   SegmentKind,
   type VisibilityGroups,
 } from "../../../../lib/visibilityGroups";
-import { InlineTextOverlay } from "./InlineTextOverlay";
-import { NO_ACTIONS } from "./noActions";
+import { cn } from "../../../../ui/cn";
 import {
   ElementActionsMenu,
   type ElementActions,
 } from "../inspector/ElementActionsMenu";
-import {
-  focusInPlace,
-  revealInPane,
-} from "../kit/revealInPane";
-import { cn } from "../../../../ui/cn";
-import { selectionRing } from "./CanvasContent";
-import { CanvasElement, type ContentOverride } from "./CanvasElement";
+import { SidebarSection } from "../inspector/sidebarSections";
+import { IssueMarker } from "../issues/IssueList";
+import { focusInPlace, revealInPane } from "../kit/revealInPane";
 import {
   CanvasTargetKind,
   describeElement,
@@ -40,6 +35,14 @@ import {
   type CanvasTarget,
   type ResolvedTarget,
 } from "../selection/canvasSelection";
+import {
+  extendableClick,
+  inRange,
+  rangeFocus,
+  type Span,
+} from "../selection/rangeSelection";
+import { selectionRing } from "./CanvasContent";
+import { CanvasElement, type ContentOverride } from "./CanvasElement";
 import { selectedOnCanvas } from "./CanvasWorkspace";
 import { ConditionsIndicator } from "./ConditionsIndicator";
 import {
@@ -50,15 +53,9 @@ import {
   TextLines,
   type InlineEditing,
 } from "./InlineText";
+import { InlineTextOverlay } from "./InlineTextOverlay";
 import type { InsertLoc } from "./InsertPoint";
-import { IssueMarker } from "../issues/IssueList";
-import {
-  extendableClick,
-  inRange,
-  rangeFocus,
-  type Span,
-} from "../selection/rangeSelection";
-import { SidebarSection } from "../inspector/sidebarSections";
+import { NO_ACTIONS } from "./noActions";
 import { useListDrag } from "./useListDrag";
 
 type FormCanvasProps = {

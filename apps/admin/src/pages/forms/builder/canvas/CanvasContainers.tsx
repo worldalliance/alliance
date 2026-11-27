@@ -19,17 +19,11 @@ import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../../../lib/displayBlockById";
 import { updateListSubField } from "../../../../lib/updateListSubField";
-import { InlineTextOverlay } from "./InlineTextOverlay";
 import { cn } from "../../../../ui/cn";
+import { subFieldEditsConditions } from "../inspector/ChildSettings";
+import { keepBrowserMenu } from "../inspector/ElementActionsMenu";
+import { SidebarSection } from "../inspector/sidebarSections";
 import { accordionWrites } from "../selection/accordionWrites";
-import {
-  CanvasContent,
-  CanvasQuestion,
-  ignoreAnswer,
-  INTERACTIVE_ON_CANVAS,
-  SELECT_OVERLAY,
-  selectionRing,
-} from "./CanvasContent";
 import {
   ChildKind,
   describeElement,
@@ -42,8 +36,14 @@ import {
   type ChildTarget,
   type ResolvedChild,
 } from "../selection/canvasSelection";
-import { subFieldEditsConditions } from "../inspector/ChildSettings";
-import { keepBrowserMenu } from "../inspector/ElementActionsMenu";
+import {
+  CanvasContent,
+  CanvasQuestion,
+  ignoreAnswer,
+  INTERACTIVE_ON_CANVAS,
+  SELECT_OVERLAY,
+  selectionRing,
+} from "./CanvasContent";
 import { ElementConditionsIndicator } from "./ConditionsIndicator";
 import {
   EditTextButton,
@@ -55,7 +55,7 @@ import {
   type InlineEditing,
   type InlineText,
 } from "./InlineText";
-import { SidebarSection } from "../inspector/sidebarSections";
+import { InlineTextOverlay } from "./InlineTextOverlay";
 
 type ContainerProps = {
   selectedChild: ResolvedChild | undefined;

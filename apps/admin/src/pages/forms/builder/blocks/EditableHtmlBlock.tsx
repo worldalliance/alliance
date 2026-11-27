@@ -1,7 +1,7 @@
 import type { HtmlBlock } from "@alliance/common/forms/display-blocks";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Textarea } from "../../../../ui/Textarea";
 import { Field } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import { ExpandableBlockText } from "./ExpandableBlockText";

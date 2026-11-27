@@ -32,9 +32,7 @@ function Minutes({ minutes }: { minutes: number }) {
   const over = isOverloaded(minutes);
   return (
     <span className={cn("tabular-nums", over && "font-semibold text-danger")}>
-      {over && (
-        <TriangleAlert className="mr-1 inline size-3.5" aria-hidden />
-      )}
+      {over && <TriangleAlert className="mr-1 inline size-3.5" aria-hidden />}
       <span className={cn(over && "text-danger")}>{minutes}</span>
       {over && (
         <span className="sr-only">{` over ${MAX_MEMBER_MINUTES} minutes`}</span>

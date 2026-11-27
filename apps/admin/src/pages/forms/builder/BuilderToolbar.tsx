@@ -1,4 +1,3 @@
-import { issueLocation } from "./issues/IssueList";
 import { IssueTargetKind } from "../../../lib/formIssues";
 import Badge from "../../../ui/Badge";
 import Button, { ButtonVariant } from "../../../ui/Button";
@@ -8,6 +7,7 @@ import { Tabs, TabsList, TabsTab } from "../../../ui/Tabs";
 import { WorkspaceToolbar } from "../../../ui/templates/Workspace";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../ui/Tooltip";
 import { useBuilder } from "./BuilderContext";
+import { issueLocation } from "./issues/IssueList";
 import { IssuesButton } from "./IssuesButton";
 import { LiveFormStatus } from "./LiveFormStatus";
 import { SaveStatus } from "./SaveStatus";

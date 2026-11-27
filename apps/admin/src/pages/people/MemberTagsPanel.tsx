@@ -1,4 +1,7 @@
-import type { TagDto, UserAdminDetailDto } from "@alliance/shared/client/types.gen";
+import type {
+  TagDto,
+  UserAdminDetailDto,
+} from "@alliance/shared/client/types.gen";
 import { useMemo, useState } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { formatCount } from "../../lib/formatNumber";
@@ -15,14 +18,21 @@ export function MemberTagsPanel({
   setTagMembership,
 }: {
   user: UserAdminDetailDto;
-  setTagMembership: (input: { tagId: string; member: boolean }) => Promise<TagDto>;
+  setTagMembership: (input: {
+    tagId: string;
+    member: boolean;
+  }) => Promise<TagDto>;
 }) {
-  const { summaries } = useTagsAdmin({ enabled: false, summariesEnabled: true });
+  const { summaries } = useTagsAdmin({
+    enabled: false,
+    summariesEnabled: true,
+  });
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const tags = useMemo(
-    () => [...(summaries.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...(summaries.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [summaries.data],
   );
   const theirs = useMemo(
@@ -36,7 +46,9 @@ export function MemberTagsPanel({
     try {
       await setTagMembership({ tagId, member });
     } catch (caught) {
-      setError(adminRefusalMessage(caught, "Couldn't change the member's tags."));
+      setError(
+        adminRefusalMessage(caught, "Couldn't change the member's tags."),
+      );
     } finally {
       setPending((current) => {
         const rest = new Set(current);
@@ -47,10 +59,7 @@ export function MemberTagsPanel({
   };
 
   return (
-    <Panel
-      title="Tags"
-      description={formatCount(theirs.size)}
-    >
+    <Panel title="Tags" description={formatCount(theirs.size)}>
       <ContentState
         things="tags"
         query={summaries}

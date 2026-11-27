@@ -9,14 +9,14 @@ import {
   getCustomComponentById,
 } from "@alliance/sharedweb/forms/components";
 import { useEffect, useMemo, useState } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Input } from "../../../../ui/Input";
 import { Select } from "../../../../ui/Select";
 import { Banner, BannerTone } from "../../../../ui/templates/Banner";
 import { CheckboxField, Field } from "../../../../ui/templates/Form";
-import { ExternalShareTargetSelect } from "./ExternalShareTargetSelect";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { RequiredToggle } from "./CommonControls";
 import { useDerivedWrite } from "./derivedWrite";
+import { ExternalShareTargetSelect } from "./ExternalShareTargetSelect";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";

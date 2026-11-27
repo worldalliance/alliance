@@ -5,10 +5,16 @@ import type {
 } from "@alliance/common/forms/display-blocks";
 import { NESTABLE_DISPLAY_KINDS } from "@alliance/common/forms/display-blocks";
 import { DISPLAY_KIND_NAMES } from "@alliance/common/forms/element-descriptors";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { AddItemButton } from "../kit/ItemList";
 import { Select } from "../../../../ui/Select";
 import { CheckboxField } from "../../../../ui/templates/Form";
+import {
+  ChildRow,
+  ChildRows,
+  neighborMoves,
+  useSelectChild,
+} from "../inspector/ChildRows";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { AddItemButton } from "../kit/ItemList";
 import {
   describeElement,
   describeSection,
@@ -16,12 +22,6 @@ import {
   sectionChild,
   sectionTitle,
 } from "../selection/canvasSelection";
-import {
-  ChildRow,
-  ChildRows,
-  neighborMoves,
-  useSelectChild,
-} from "../inspector/ChildRows";
 import { createDisplayBlock } from "./createDisplayBlock";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";

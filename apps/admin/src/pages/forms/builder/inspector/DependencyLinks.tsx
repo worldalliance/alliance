@@ -20,9 +20,9 @@ import {
 import { formEditorPath } from "../../../../lib/formEditorLink";
 import type { VisibilityGroups } from "../../../../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../../../../lib/visibilitySummary";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { cn } from "../../../../ui/cn";
 import { linkClass } from "../../../../ui/styles";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import {
   CanvasTargetKind,
   describeElement,
@@ -180,10 +180,7 @@ export function DependencyLinks({
           <LinkList label="Used by">
             {entries.map((entry) =>
               entry.kind === DependentEntryKind.Single ? (
-                <li
-                  key={JSON.stringify(entry.dependent.place)}
-                  className={ROW}
-                >
+                <li key={JSON.stringify(entry.dependent.place)} className={ROW}>
                   {placeLink(entry.dependent)}
                 </li>
               ) : (
@@ -206,10 +203,7 @@ export function DependencyLinks({
                     className="mt-1.5 ml-1 flex flex-col gap-1.5 border-l border-line pl-3"
                   >
                     {entry.members.map((member) => (
-                      <li
-                        key={JSON.stringify(member.place)}
-                        className={ROW}
-                      >
+                      <li key={JSON.stringify(member.place)} className={ROW}>
                         {placeLink(member)}
                       </li>
                     ))}

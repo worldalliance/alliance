@@ -19,8 +19,8 @@ import Button, { ButtonVariant } from "../../ui/Button";
 import InlineError from "../../ui/InlineError";
 import { Select } from "../../ui/Select";
 import { nameLinkClass } from "../../ui/styles";
-import { Panel } from "../../ui/templates/Overview";
 import { Field } from "../../ui/templates/Form";
+import { Panel } from "../../ui/templates/Overview";
 import { useToast } from "../../ui/ToastProvider";
 
 const NO_GROUPS: CommunityDto[] = [];
@@ -47,7 +47,10 @@ export function MemberGroupsPanel({
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const leads = useMemo(() => new Set(user.leaderOfIds ?? []), [user.leaderOfIds]);
+  const leads = useMemo(
+    () => new Set(user.leaderOfIds ?? []),
+    [user.leaderOfIds],
+  );
   const theirGroups = useMemo(
     () => [...(user.communities ?? [])].sort(byName),
     [user.communities],
@@ -59,7 +62,9 @@ export function MemberGroupsPanel({
   const destinations = useMemo(() => {
     const current = new Set(theirGroups.map((group) => group.id));
     return allGroups
-      .filter((group) => !current.has(group.id) && acceptsStaffAssignment(group))
+      .filter(
+        (group) => !current.has(group.id) && acceptsStaffAssignment(group),
+      )
       .sort(byName);
   }, [allGroups, theirGroups]);
 

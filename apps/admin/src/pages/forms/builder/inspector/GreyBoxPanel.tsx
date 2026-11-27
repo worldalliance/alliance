@@ -2,8 +2,8 @@ import type { PageItem } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import type { ReactNode } from "react";
 import { groupRunAt, regroup } from "../../../../lib/formGroups";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import Button, { ButtonVariant } from "../../../../ui/Button";
+import { InspectorGroup } from "../kit/InspectorGroup";
 
 function GreyBoxAction({
   onClick,

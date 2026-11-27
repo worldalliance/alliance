@@ -133,7 +133,9 @@ it("names what is missing instead of deleting", () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
 
-  expect(screen.getByText("Enter why the account is being deleted")).toBeTruthy();
+  expect(
+    screen.getByText("Enter why the account is being deleted"),
+  ).toBeTruthy();
   expect(screen.getByText("Type sam@example.com to confirm")).toBeTruthy();
   expect(bodies).toEqual([]);
 });

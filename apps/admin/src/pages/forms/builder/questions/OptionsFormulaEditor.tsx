@@ -1,11 +1,14 @@
 import type { OptionsFormula } from "@alliance/common/forms/variables";
 import { useMemo } from "react";
-import { ExpandableEditor } from "../kit/ExpandableEditor";
-import { FormPickerError, FormPickerErrorReason } from "../../../../components/FormPickerError";
+import {
+  FormPickerError,
+  FormPickerErrorReason,
+} from "../../../../components/FormPickerError";
 import { FormulaEditor } from "../formulas/FormulaEditor";
 import { FormulaResult } from "../formulas/formulaResult";
 import { useFormulaSources } from "../formulas/FormulaSourcesContext";
 import type { InputSources } from "../formulas/VariableInputPickers";
+import { ExpandableEditor } from "../kit/ExpandableEditor";
 
 export function OptionsFormulaEditor({
   fieldId,

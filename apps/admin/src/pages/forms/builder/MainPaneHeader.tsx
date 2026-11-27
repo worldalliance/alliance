@@ -1,11 +1,11 @@
-import { pageTitle } from "./selection/canvasSelection";
-import { HistoryControls } from "./save/HistoryControls";
 import { JsonScopeKind } from "../../../lib/formJson";
 import { MoreMenu, type MoreMenuItem } from "../../../ui/MoreMenu";
 import { ViewSwitch } from "../../../ui/templates/List";
 import { PaneHeader } from "../../../ui/templates/Workspace";
 import { useBuilder } from "./BuilderContext";
 import { HEADER_TRUNCATES } from "./paneHeader";
+import { HistoryControls } from "./save/HistoryControls";
+import { pageTitle } from "./selection/canvasSelection";
 
 enum Mode {
   Edit = "edit",

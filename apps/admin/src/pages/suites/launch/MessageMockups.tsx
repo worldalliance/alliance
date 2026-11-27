@@ -48,18 +48,14 @@ export const EmailMockup = ({
     aria-label="Email"
     className="flex max-w-2xl flex-col gap-3 rounded-card border border-line bg-surface p-4"
   >
-    <h4 className="text-heading font-semibold">
-      {subject ?? "(no subject)"}
-    </h4>
+    <h4 className="text-heading font-semibold">{subject ?? "(no subject)"}</h4>
     <div className="flex items-center gap-3">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-fg">
         A
       </span>
       <span>
         <span className="font-semibold">Alliance</span>
-        <span className="block text-caption text-fg-muted">
-          to {recipient}
-        </span>
+        <span className="block text-caption text-fg-muted">to {recipient}</span>
       </span>
     </div>
     {/* Sandboxed: keyword values such as #{fullname} are member-entered text. */}

@@ -1,4 +1,7 @@
-import type { ProfileDto, UserAdminDetailDto } from "@alliance/shared/client/types.gen";
+import type {
+  ProfileDto,
+  UserAdminDetailDto,
+} from "@alliance/shared/client/types.gen";
 import { useUserFriendsQuery } from "@alliance/shared/lib/user";
 import { loaderPrefetchStaleTime } from "@alliance/sharedweb/lib/queryClient";
 import type { ReactNode } from "react";
@@ -15,8 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { Fact } from "../../ui/templates/Record";
 import { Panel } from "../../ui/templates/Overview";
+import { Fact } from "../../ui/templates/Record";
 import { ContentState, TableSkeleton } from "../../ui/templates/States";
 import { inviteSource, reminderTime, sentenceCase } from "./memberRules";
 
@@ -52,7 +55,13 @@ function MemberAboutPanel({ user }: { user: UserAdminDetailDto }) {
   return (
     <Panel title="About">
       <div className="flex flex-col gap-4">
-        <p className={bio ? "max-w-prose whitespace-pre-wrap break-words" : "text-fg-muted"}>
+        <p
+          className={
+            bio
+              ? "max-w-prose whitespace-pre-wrap break-words"
+              : "text-fg-muted"
+          }
+        >
           {bio ? user.profileDescription : "No bio provided."}
         </p>
         <dl className="grid grid-cols-1 gap-x-8 @4xl:grid-cols-2">
@@ -61,10 +70,16 @@ function MemberAboutPanel({ user }: { user: UserAdminDetailDto }) {
             {user.shareInfoPublicly ? "Shared publicly" : "Private"}
           </Fact>
           <Fact label="Anonymous">{user.anonymous ? "Yes" : "No"}</Fact>
-          <Fact label="Email with leads">{shared(user.shareEmailWithCommunityLead)}</Fact>
-          <Fact label="Phone with leads">{shared(user.sharePhoneNumberWithCommunityLead)}</Fact>
+          <Fact label="Email with leads">
+            {shared(user.shareEmailWithCommunityLead)}
+          </Fact>
+          <Fact label="Phone with leads">
+            {shared(user.sharePhoneNumberWithCommunityLead)}
+          </Fact>
           <Fact label="Form responses">
-            {user.formDataPreference ? sentenceCase(user.formDataPreference) : "—"}
+            {user.formDataPreference
+              ? sentenceCase(user.formDataPreference)
+              : "—"}
           </Fact>
           <Fact label="Reminder time">{reminderTime(user) ?? "—"}</Fact>
           <Fact label="Cluster">
@@ -86,7 +101,9 @@ const friendStanding = (friend: ProfileDto) =>
     .join(" · ");
 
 function MemberFriendsPanel({ userId }: { userId: number }) {
-  const query = useUserFriendsQuery(userId, { staleTime: loaderPrefetchStaleTime });
+  const query = useUserFriendsQuery(userId, {
+    staleTime: loaderPrefetchStaleTime,
+  });
   const friends = query.data ?? [];
   return (
     <Panel

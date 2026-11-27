@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import { useUsersAdmin } from "../../../../lib/useUsersAdmin";
-import {
-  userLabel,
-  type OverrideTarget,
-} from "../blocks/perUserContent";
+import { userLabel, type OverrideTarget } from "../blocks/perUserContent";
 import type { ContentOverride } from "../canvas/CanvasElement";
 
 /**

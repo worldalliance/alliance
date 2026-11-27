@@ -8,9 +8,13 @@ import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { GripVertical } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../../../lib/displayBlockById";
-import { InlineTextOverlay } from "./InlineTextOverlay";
 import { cn } from "../../../../ui/cn";
 import { writeBlockFor } from "../blocks/perUserContent";
+import { SidebarSection } from "../inspector/sidebarSections";
+import { IssueMarker } from "../issues/IssueList";
+import { DropLine } from "../outline/DropLine";
+import type { ChildTarget, ResolvedChild } from "../selection/canvasSelection";
+import { extendableClick } from "../selection/rangeSelection";
 import { CanvasAccordion, CanvasList } from "./CanvasContainers";
 import {
   CanvasContent,
@@ -19,9 +23,7 @@ import {
   SELECT_OVERLAY,
   selectionRing,
 } from "./CanvasContent";
-import type { ChildTarget, ResolvedChild } from "../selection/canvasSelection";
 import { ElementConditionsIndicator } from "./ConditionsIndicator";
-import { DropLine } from "../outline/DropLine";
 import { ElementBoundary, FlaggedElement } from "./ElementBoundary";
 import {
   EditTextButton,
@@ -30,9 +32,7 @@ import {
   startOnEnter,
   type InlineEditing,
 } from "./InlineText";
-import { IssueMarker } from "../issues/IssueList";
-import { extendableClick } from "../selection/rangeSelection";
-import { SidebarSection } from "../inspector/sidebarSections";
+import { InlineTextOverlay } from "./InlineTextOverlay";
 import type { ListDrag } from "./useListDrag";
 
 type ContentProps = {

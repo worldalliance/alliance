@@ -1,7 +1,5 @@
 import type { AnyField, Page } from "@alliance/common/forms/form-schema";
 import type { ReactNode } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { ReadOnlyId } from "../kit/ReadOnlyId";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { Input } from "../../../../ui/Input";
 import { Field } from "../../../../ui/templates/Form";
@@ -10,6 +8,8 @@ import {
   expressionKeys,
 } from "../conditions/expressionBuffers";
 import { VisibilityConditions } from "../conditions/VisibilityConditions";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { ReadOnlyId } from "../kit/ReadOnlyId";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { ALL_SECTIONS, SectionPanels, SidebarSection } from "./sidebarSections";
 

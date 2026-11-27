@@ -1,9 +1,6 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import type { ReactNode } from "react";
-import {
-  EditorSize,
-  ExpandableEditor,
-} from "../kit/ExpandableEditor";
+import { EditorSize, ExpandableEditor } from "../kit/ExpandableEditor";
 import { BlockPreview, BlockPreviewAllowed } from "./BlockPreview";
 
 const ROWS: Record<EditorSize, number> = {

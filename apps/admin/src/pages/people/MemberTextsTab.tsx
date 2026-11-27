@@ -54,7 +54,10 @@ export function MemberTextsTab({
       }
       headerLink={
         threadId && (
-          <Link to={href("/inbox/:threadId", { threadId })} className={linkClass}>
+          <Link
+            to={href("/inbox/:threadId", { threadId })}
+            className={linkClass}
+          >
             Open this number's thread
           </Link>
         )

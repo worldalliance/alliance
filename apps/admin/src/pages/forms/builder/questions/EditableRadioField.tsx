@@ -1,6 +1,15 @@
 import type { RadioField } from "@alliance/common/forms/form-schema";
+import Button, { ButtonVariant } from "../../../../ui/Button";
+import { CheckboxField } from "../../../../ui/templates/Form";
 import { InspectorGroup } from "../kit/InspectorGroup";
 import { AddItemButton } from "../kit/ItemList";
+import {
+  DuplicateOptionsWarning,
+  RequiredToggle,
+  duplicateOptionValues,
+} from "./CommonControls";
+import { FieldLabelEditor } from "./FieldLabelEditor";
+import { FieldWrapper } from "./FieldWrapper";
 import {
   DefaultChoice,
   OptionLabelInput,
@@ -14,15 +23,6 @@ import {
   removeOption,
   type OptionDefaults,
 } from "./optionRules";
-import Button, { ButtonVariant } from "../../../../ui/Button";
-import { CheckboxField } from "../../../../ui/templates/Form";
-import {
-  DuplicateOptionsWarning,
-  RequiredToggle,
-  duplicateOptionValues,
-} from "./CommonControls";
-import { FieldLabelEditor } from "./FieldLabelEditor";
-import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
 
 export function EditableRadioField({

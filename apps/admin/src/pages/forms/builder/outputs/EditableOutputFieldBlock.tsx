@@ -7,14 +7,14 @@ import {
   type OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
-import { ReadOnlyId } from "../kit/ReadOnlyId";
 import { cn } from "../../../../ui/cn";
 import { Select } from "../../../../ui/Select";
 import { controlClass } from "../../../../ui/styles";
 import { CheckboxField, Field } from "../../../../ui/templates/Form";
-import { SectionPanels } from "../inspector/sidebarSections";
 import type { OutputBlockOption } from "../conditions/ContextRules";
 import { ElementConditions } from "../conditions/VisibilityConditions";
+import { SectionPanels } from "../inspector/sidebarSections";
+import { ReadOnlyId } from "../kit/ReadOnlyId";
 import { VariableTextField } from "../questions/VariableTextField";
 
 const FORMATS: {

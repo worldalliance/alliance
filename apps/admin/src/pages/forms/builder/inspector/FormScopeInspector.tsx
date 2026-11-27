@@ -1,4 +1,3 @@
-import FormSlugEditor from "../save/FormSlugEditor";
 import { JsonScopeKind } from "../../../../lib/formJson";
 import { formatCount } from "../../../../lib/formatNumber";
 import Button, { ButtonVariant } from "../../../../ui/Button";
@@ -7,6 +6,7 @@ import { Fact, FactList } from "../../../../ui/templates/Record";
 import { PaneHeader } from "../../../../ui/templates/Workspace";
 import { useBuilder } from "../BuilderContext";
 import { InspectorGroup } from "../kit/InspectorGroup";
+import FormSlugEditor from "../save/FormSlugEditor";
 
 /** The inspector with the form itself selected: its slug, its settings, its JSON and its size. */
 export function FormScopeInspector() {

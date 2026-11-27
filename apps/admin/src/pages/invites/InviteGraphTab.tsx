@@ -296,9 +296,8 @@ export function InviteGraphTab() {
                 </>
               ) : (
                 <p className="text-fg-muted">
-                  Select a member or campaign to trace who led to them and
-                  whom they invited. Select it again, or the background, to
-                  clear.
+                  Select a member or campaign to trace who led to them and whom
+                  they invited. Select it again, or the background, to clear.
                 </p>
               )}
             </div>

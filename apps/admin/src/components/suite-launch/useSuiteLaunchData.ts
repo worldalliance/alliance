@@ -313,9 +313,7 @@ export function useSuiteLaunchData(params: {
         ? [`Couldn't evaluate the cohort for ${action.name}.`]
         : [],
     ),
-    ...(actionList.isError
-      ? ["Couldn't load the tasks' variant forms."]
-      : []),
+    ...(actionList.isError ? ["Couldn't load the tasks' variant forms."] : []),
     ...variantResults.flatMap((result) =>
       result.isError ? ["Couldn't load a variant form."] : [],
     ),
@@ -324,9 +322,7 @@ export function useSuiteLaunchData(params: {
       : []),
     ...(users.isError ? ["Couldn't load members' contract status."] : []),
     ...(awayRanges.isError ? ["Couldn't load members' away dates."] : []),
-    ...(spellchecker.isError
-      ? ["Couldn't load the spelling dictionary."]
-      : []),
+    ...(spellchecker.isError ? ["Couldn't load the spelling dictionary."] : []),
   ];
 
   return {

@@ -73,7 +73,10 @@ export function useLaunchProgress(suiteId: number) {
   return {
     schedule,
     setScheduleTime: (field: keyof LaunchSchedule, at: Date) =>
-      setPickedSchedule((prev) => ({ ...(prev ?? defaultSchedule), [field]: at })),
+      setPickedSchedule((prev) => ({
+        ...(prev ?? defaultSchedule),
+        [field]: at,
+      })),
     readyActionVersions,
     setReady: (params: { actionId: number; version: string | null }) =>
       setReadyActionVersions((prev) => {

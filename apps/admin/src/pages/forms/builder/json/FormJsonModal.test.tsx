@@ -5,8 +5,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode, useState, type ReactElement } from "react";
 import { JsonScopeKind } from "../../../../lib/formJson";
 import { ToastProvider } from "../../../../ui/ToastProvider";
-import { FormJsonModal } from "./FormJsonModal";
 import { CustomValidatorDraftsContext } from "../questions/customValidatorDrafts";
+import { FormJsonModal } from "./FormJsonModal";
 
 // StrictMode, as the admin app runs in dev, mounts effects twice.
 const renderIn = (element: ReactElement) =>

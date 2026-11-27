@@ -10,10 +10,10 @@ import {
   serializeVisibilityFormula,
 } from "@alliance/shared/forms/visibilityFormula";
 import { useMemo, useState } from "react";
-import { ItemList } from "../kit/ItemList";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { Select } from "../../../../ui/Select";
 import { Field } from "../../../../ui/templates/Form";
+import { ItemList } from "../kit/ItemList";
 import { useCustomValidatorDrafts } from "../questions/customValidatorDrafts";
 import { AddRuleMenu } from "./AddRuleMenu";
 import {

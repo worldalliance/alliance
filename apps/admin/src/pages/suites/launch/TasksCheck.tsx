@@ -212,7 +212,9 @@ export function TasksCheck({
                 label="Ready to launch"
                 className="mt-1"
                 checked={checkedActionIds.has(action.id)}
-                onChange={(event) => onCheckedChange(entry, event.target.checked)}
+                onChange={(event) =>
+                  onCheckedChange(entry, event.target.checked)
+                }
               />
             </li>
           );

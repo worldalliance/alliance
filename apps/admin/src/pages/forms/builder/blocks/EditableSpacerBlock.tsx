@@ -1,7 +1,7 @@
 import type { SpacerBlock } from "@alliance/common/forms/display-blocks";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Select } from "../../../../ui/Select";
 import { Field } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { choiceOf } from "./blockChoices";
 import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";

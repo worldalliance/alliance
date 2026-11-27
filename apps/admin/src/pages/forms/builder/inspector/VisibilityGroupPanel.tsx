@@ -1,10 +1,10 @@
 import type { AnyField, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import Button, { ButtonVariant } from "../../../../ui/Button";
 import { MoreMenu } from "../../../../ui/MoreMenu";
 import { ConditionalVisibility } from "../conditions/ConditionalVisibility";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { SectionPanels } from "./sidebarSections";
 
 type GroupMember = {
@@ -109,8 +109,8 @@ export function VisibilityGroupPanel({
               </Button>
             </div>
             <p className="text-caption text-fg-muted">
-              Ungroup all keeps each element&apos;s visibility. Clear
-              visibility removes the rule from every element in the group.
+              Ungroup all keeps each element&apos;s visibility. Clear visibility
+              removes the rule from every element in the group.
             </p>
           </InspectorGroup>
         </>

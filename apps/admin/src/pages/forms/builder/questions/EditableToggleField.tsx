@@ -1,8 +1,8 @@
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import type { ToggleField } from "@alliance/common/forms/form-schema";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Select } from "../../../../ui/Select";
 import { Field } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";

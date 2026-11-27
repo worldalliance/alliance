@@ -15,8 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/Table";
-import { Fact } from "../../ui/templates/Record";
 import { Panel } from "../../ui/templates/Overview";
+import { Fact } from "../../ui/templates/Record";
 import { ContentState, TableSkeleton } from "../../ui/templates/States";
 
 const SOURCE_LABEL: Record<PreferenceSource, string> = {
@@ -28,14 +28,20 @@ const SOURCE_LABEL: Record<PreferenceSource, string> = {
 const onOff = (enabled: boolean) => (enabled ? "On" : "Off");
 
 /** The member's notification defaults and overrides, read-only. */
-export function MemberNotificationSettingsPanel({ userId }: { userId: number }) {
+export function MemberNotificationSettingsPanel({
+  userId,
+}: {
+  userId: number;
+}) {
   const query = useNotificationSettingsAdmin(userId);
   const settings = query.data;
   return (
     <Panel
       title="Notification settings"
       description={
-        settings ? `${formatCount(settings.overrides.length)} overrides` : undefined
+        settings
+          ? `${formatCount(settings.overrides.length)} overrides`
+          : undefined
       }
       flush
     >
@@ -50,7 +56,10 @@ export function MemberNotificationSettingsPanel({ userId }: { userId: number }) 
               <h3 className="sr-only">Defaults</h3>
               <dl className="grid grid-cols-2 gap-x-6 @4xl:grid-cols-4">
                 {CHANNELS.map((channel) => (
-                  <Fact key={channel} label={`${CHANNEL_LABEL[channel]} default`}>
+                  <Fact
+                    key={channel}
+                    label={`${CHANNEL_LABEL[channel]} default`}
+                  >
                     {onOff(defaultOf(settings, channel))}
                   </Fact>
                 ))}
@@ -81,7 +90,9 @@ export function MemberNotificationSettingsPanel({ userId }: { userId: number }) 
                         <span className="flex items-center gap-2">
                           {onOff(override.enabled)}
                           {!override.inEffect && (
-                            <Badge tone={BadgeTone.Neutral}>Not in effect</Badge>
+                            <Badge tone={BadgeTone.Neutral}>
+                              Not in effect
+                            </Badge>
                           )}
                         </span>
                       </TableCell>

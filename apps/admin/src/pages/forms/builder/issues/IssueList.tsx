@@ -17,6 +17,7 @@ import {
   type IssueTarget,
 } from "../../../../lib/formIssues";
 import { cn } from "../../../../ui/cn";
+import { SidebarSection } from "../inspector/sidebarSections";
 import {
   CanvasTargetKind,
   ChildKind,
@@ -26,7 +27,6 @@ import {
   type CanvasTarget,
   type ResolvedTarget,
 } from "../selection/canvasSelection";
-import { SidebarSection } from "../inspector/sidebarSections";
 
 export enum IssueGate {
   Save = "save",

@@ -10,12 +10,15 @@ import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { tagSummariesQuery } from "../../lib/useTagsAdmin";
 import { userActionRelationsQuery } from "../../lib/useUserActionRelationsAdmin";
 import { useUserAwayRangesAdmin } from "../../lib/useUserAwayRangesAdmin";
-import { useUserDetailAdmin, userDetailQuery } from "../../lib/useUserDetailAdmin";
+import {
+  useUserDetailAdmin,
+  userDetailQuery,
+} from "../../lib/useUserDetailAdmin";
 import {
   userFormResponsesQuery,
   userNotifsQuery,
 } from "../../lib/useUserNotifsAndFormsAdmin";
-import { PlaceId, placeById, RecordId } from "../../places";
+import { PlaceId, RecordId, placeById } from "../../places";
 import { AvatarProfile } from "../../ui/Avatar";
 import Button, { ButtonVariant } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
@@ -38,7 +41,13 @@ import { MemberProfileTab } from "./MemberProfileTab";
 import { MemberTasksTab } from "./MemberTasksTab";
 import { MemberTextsTab } from "./MemberTextsTab";
 
-const TABS = ["texts", "tasks", "membership", "notifications", "profile"] as const;
+const TABS = [
+  "texts",
+  "tasks",
+  "membership",
+  "notifications",
+  "profile",
+] as const;
 type Tab = (typeof TABS)[number];
 
 const SKELETON = (
@@ -70,7 +79,10 @@ const notFound = (
     emptyTitle="Member not found"
     emptyDescription="Their account may have been deleted."
     emptyAction={
-      <Button variant={ButtonVariant.Default} to={placeById(PlaceId.People).path}>
+      <Button
+        variant={ButtonVariant.Default}
+        to={placeById(PlaceId.People).path}
+      >
         All people
       </Button>
     }
@@ -110,7 +122,13 @@ export default function MemberPage() {
   return <MemberRecord key={id} userId={id} tabs={tabs} />;
 }
 
-function MemberRecord({ userId, tabs }: { userId: number; tabs: UrlTabs<Tab> }) {
+function MemberRecord({
+  userId,
+  tabs,
+}: {
+  userId: number;
+  tabs: UrlTabs<Tab>;
+}) {
   const detail = useUserDetailAdmin(userId);
   const away = useUserAwayRangesAdmin(userId);
   const { query } = detail;
@@ -119,10 +137,15 @@ function MemberRecord({ userId, tabs }: { userId: number; tabs: UrlTabs<Tab> }) 
   const user = missing ? undefined : query.data;
 
   const [actionError, setActionError] = useState<string | null>(null);
-  const reportError = useCallback((message: string) => setActionError(message), []);
+  const reportError = useCallback(
+    (message: string) => setActionError(message),
+    [],
+  );
   const clearError = useCallback(() => setActionError(null), []);
   const errors = { reportError, clearError };
-  const currentAway = away.query.isSuccess ? away.currentAwayRange ?? null : undefined;
+  const currentAway = away.query.isSuccess
+    ? (away.currentAwayRange ?? null)
+    : undefined;
 
   const body: Record<Tab, (shown: NonNullable<typeof user>) => ReactNode> = {
     texts: (shown) => <MemberTextsTab member={shown} />,
@@ -133,7 +156,12 @@ function MemberRecord({ userId, tabs }: { userId: number; tabs: UrlTabs<Tab> }) 
       </>
     ),
     membership: (shown) => (
-      <MemberMembershipTab user={shown} detail={detail} away={away} {...errors} />
+      <MemberMembershipTab
+        user={shown}
+        detail={detail}
+        away={away}
+        {...errors}
+      />
     ),
     notifications: (shown) => <MemberNotificationsTab userId={shown.id} />,
     profile: (shown) => <MemberProfileTab user={shown} />,
@@ -153,7 +181,10 @@ function MemberRecord({ userId, tabs }: { userId: number; tabs: UrlTabs<Tab> }) 
       badge={user && <MemberStatusBadges user={user} away={currentAway} />}
       description={
         user
-          ? [user.email, user.phoneNumber && formatPhoneNumberForDisplay(user.phoneNumber)]
+          ? [
+              user.email,
+              user.phoneNumber && formatPhoneNumberForDisplay(user.phoneNumber),
+            ]
               .filter(Boolean)
               .join(" · ")
           : ""
@@ -164,7 +195,9 @@ function MemberRecord({ userId, tabs }: { userId: number; tabs: UrlTabs<Tab> }) 
       tabs={tabs}
       banner={
         <>
-          {!missing && <RefreshFailedBanner things="this member" query={query} />}
+          {!missing && (
+            <RefreshFailedBanner things="this member" query={query} />
+          )}
           {user && away.query.isLoadingError && tabs.value !== "membership" && (
             <Banner tone={BannerTone.Danger}>
               Couldn't load {user.name}'s away periods, so whether they are away
@@ -176,7 +209,11 @@ function MemberRecord({ userId, tabs }: { userId: number; tabs: UrlTabs<Tab> }) 
             <Banner
               tone={BannerTone.Danger}
               action={
-                <Button size="small" variant={ButtonVariant.Ghost} onClick={clearError}>
+                <Button
+                  size="small"
+                  variant={ButtonVariant.Ghost}
+                  onClick={clearError}
+                >
                   Dismiss
                 </Button>
               }

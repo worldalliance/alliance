@@ -1,14 +1,8 @@
 import type { RankingField } from "@alliance/common/forms/form-schema";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import { AddItemButton } from "../kit/ItemList";
-import {
-  OptionLabelInput,
-  OptionSection,
-  OptionValueInput,
-} from "./OptionRows";
-import { newOption } from "./optionRules";
 import { Input } from "../../../../ui/Input";
 import { Field } from "../../../../ui/templates/Form";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { AddItemButton } from "../kit/ItemList";
 import {
   DuplicateOptionsWarning,
   RequiredToggle,
@@ -16,6 +10,12 @@ import {
 } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
+import {
+  OptionLabelInput,
+  OptionSection,
+  OptionValueInput,
+} from "./OptionRows";
+import { newOption } from "./optionRules";
 import type { BaseFieldProps } from "./types";
 
 export function EditableRankingField({

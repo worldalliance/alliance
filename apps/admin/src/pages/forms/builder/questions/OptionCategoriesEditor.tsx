@@ -4,14 +4,10 @@ import {
   type OptionCategory,
 } from "@alliance/common/forms/options-schema";
 import { useId } from "react";
-import { InspectorGroup } from "../kit/InspectorGroup";
-import {
-  AddItemButton,
-  ItemList,
-  ItemRow,
-} from "../kit/ItemList";
-import { swapOptions } from "./optionRules";
 import { Input } from "../../../../ui/Input";
+import { InspectorGroup } from "../kit/InspectorGroup";
+import { AddItemButton, ItemList, ItemRow } from "../kit/ItemList";
+import { swapOptions } from "./optionRules";
 
 type ChoiceOption = SelectField["options"][number];
 

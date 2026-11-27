@@ -1,8 +1,8 @@
 import type { HeaderBlock } from "@alliance/common/forms/display-blocks";
-import { InspectorGroup } from "../kit/InspectorGroup";
 import { Select } from "../../../../ui/Select";
 import { Field } from "../../../../ui/templates/Form";
 import { useSidebarSections } from "../inspector/sidebarSections";
+import { InspectorGroup } from "../kit/InspectorGroup";
 import { choiceOf } from "./blockChoices";
 import { BlockTextField } from "./BlockTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";

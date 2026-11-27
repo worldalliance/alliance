@@ -1,16 +1,17 @@
 import type { ChoiceField } from "@alliance/common/forms/formula-options";
 import { optionSectionId } from "@alliance/shared/forms/optionSections";
 import { useRef } from "react";
-import {
-  EditorSize,
-  ExpandableEditor,
-} from "../kit/ExpandableEditor";
+import Button, { ButtonVariant } from "../../../../ui/Button";
+import { Select } from "../../../../ui/Select";
+import { EditorSize, ExpandableEditor } from "../kit/ExpandableEditor";
 import { AddItemButton } from "../kit/ItemList";
 import { focusInPlace } from "../kit/revealInPane";
 import {
-  FixedOptionsTable,
-  type OptionSectionRows,
-} from "./FixedOptionsTable";
+  DuplicateOptionsWarning,
+  duplicateOptionValues,
+} from "./CommonControls";
+import { FixedOptionsTable, type OptionSectionRows } from "./FixedOptionsTable";
+import { categoryLabel, withCategory } from "./OptionCategoriesEditor";
 import {
   DefaultChoice,
   OptionLabelInput,
@@ -27,13 +28,6 @@ import {
   toggleManyDefault,
   type OptionDefaults,
 } from "./optionRules";
-import Button, { ButtonVariant } from "../../../../ui/Button";
-import { Select } from "../../../../ui/Select";
-import {
-  DuplicateOptionsWarning,
-  duplicateOptionValues,
-} from "./CommonControls";
-import { categoryLabel, withCategory } from "./OptionCategoriesEditor";
 
 /** Past this many options the inspector offers the one-line-per-option table. */
 const TABLE_AFTER = 8;

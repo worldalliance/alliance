@@ -7,8 +7,11 @@ import {
 import type { VariableFieldScope } from "@alliance/common/forms/variables";
 import type { FormOption } from "@alliance/shared/lib/useFormsAdmin";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
+import {
+  FormPickerError,
+  formFieldsErrorReason,
+} from "../../../../components/FormPickerError";
 import { Select } from "../../../../ui/Select";
-import { FormPickerError, formFieldsErrorReason } from "../../../../components/FormPickerError";
 
 export type InputSources = {
   /** Readable fields of a source form, or of this form for `undefined`. */
