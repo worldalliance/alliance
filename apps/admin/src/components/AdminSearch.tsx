@@ -145,7 +145,7 @@ const SearchPalette = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const AdminSearch = () => {
+const AdminSearch = ({ compact = false }: { compact?: boolean }) => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -164,11 +164,17 @@ const AdminSearch = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-500 hover:border-zinc-400"
+        title={compact ? "Search (⌘K)" : undefined}
+        className={cn(
+          "flex items-center gap-2 rounded-md border border-zinc-200 bg-white text-sm text-zinc-500 hover:border-zinc-300 hover:text-zinc-700",
+          compact ? "size-9 justify-center" : "w-full px-2 py-1.5",
+        )}
       >
         <Search size={14} aria-hidden />
-        Search
-        <kbd className="ml-auto font-sans text-xs text-zinc-400">⌘K</kbd>
+        <span className={cn(compact && "sr-only")}>Search</span>
+        {!compact && (
+          <kbd className="ml-auto font-sans text-xs text-zinc-500">⌘K</kbd>
+        )}
       </button>
       {open && <SearchPalette onClose={() => setOpen(false)} />}
     </>

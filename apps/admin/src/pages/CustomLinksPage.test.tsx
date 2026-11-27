@@ -5,7 +5,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import SidebarNav from "../components/SidebarNav";
+import { searchPages } from "../components/adminNavEntries";
 import CustomLinksPage from "./CustomLinksPage";
 
 const flyer: CustomLinkDto = {
@@ -188,23 +188,12 @@ test("displays a load failure and can retry", async () => {
   await screen.findByDisplayValue("/100k");
 });
 
-test("places Custom Links under the renamed Links folder", () => {
-  render(
-    <MemoryRouter initialEntries={["/custom-links"]}>
-      <SidebarNav
-        groupAssignmentCount={0}
-        needsReplyCount={0}
-        pendingOutreachPartnershipCount={0}
-      />
-    </MemoryRouter>,
-  );
-  expect(screen.getByRole("button", { name: "Links" })).toBeTruthy();
-  expect(
-    screen
-      .getByRole("link", { name: "Custom Links" })
-      .getAttribute("aria-current"),
-  ).toBe("page");
-  expect(screen.queryByText("Invites & Sharing")).toBeNull();
+test("finds Custom links through search, under Growth", () => {
+  expect(searchPages()).toContainEqual({
+    label: "Custom links",
+    section: "Growth",
+    to: "/custom-links",
+  });
 });
 
 test("rejects a reserved inline path edit without sending a request", async () => {

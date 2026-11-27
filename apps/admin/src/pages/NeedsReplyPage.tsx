@@ -11,6 +11,7 @@ import {
 } from "react";
 import { href, Link } from "react-router";
 import ComposingNotice from "../components/texts/ComposingNotice";
+import PageShell, { PageWidth } from "../components/ui/PageShell";
 import { SectionRefreshError } from "../components/user-detail/SectionQueryState";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { textPreview, threadContactName } from "../lib/memberTexts";
@@ -97,11 +98,11 @@ const NeedsReplyPage = () => {
   useClockMinute();
 
   return (
-    <div className="flex flex-col gap-4 p-5">
-      <title>Needs reply - Admin</title>
-      <div>
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-xl font-semibold">Needs reply</h1>
+    <PageShell
+      title="Needs reply"
+      width={PageWidth.Narrow}
+      meta={
+        <>
           <p role="status" className="text-sm text-zinc-600">
             {threads &&
               (threads.length > 0
@@ -113,15 +114,10 @@ const NeedsReplyPage = () => {
             isError={isRefetchError}
             className="mb-0"
           />
-        </div>
-        <p className="text-sm text-zinc-600">
-          Phone numbers with a text no staff member has answered yet, members or
-          not, longest waiting first. A number leaves the list once someone
-          replies, marks its texts handled, or it opts out of texts. It comes
-          back if that reply fails to send, if it texts again, or if someone
-          marks it needs reply.
-        </p>
-      </div>
+        </>
+      }
+      description="Phone numbers with a text no staff member has answered yet, members or not, longest waiting first. A number leaves the list once someone replies, marks its texts handled, or it opts out of texts. It comes back if that reply fails to send, if it texts again, or if someone marks it needs reply."
+    >
       <div {...listProps}>
         {!threads ? (
           isError ? (
@@ -139,7 +135,7 @@ const NeedsReplyPage = () => {
             No texts are waiting for a reply.
           </p>
         ) : (
-          <ul className="divide-y divide-zinc-200 border border-zinc-200 rounded">
+          <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white">
             {rows.map(({ thread, left }) => (
               <li key={thread.threadId}>
                 <Link
@@ -176,7 +172,7 @@ const NeedsReplyPage = () => {
           </ul>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 };
 

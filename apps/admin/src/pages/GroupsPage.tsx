@@ -23,6 +23,7 @@ import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
+import PageShell from "../components/ui/PageShell";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   useCommunitiesAdmin,
@@ -126,253 +127,259 @@ const GroupsPage: React.FC = () => {
   );
 
   return (
-    <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
-      {queueLoadFailed && (
-        <p className="w-full max-w-5xl text-sm text-red-500">
-          {adminRefusalMessage(
-            queueError,
-            "Unable to load members awaiting group assignment. Please try again.",
-          )}
-        </p>
-      )}
-      {membersUndergoingGroupAssignment.length > 0 && (
-        <GroupAssignmentPanel
-          members={membersUndergoingGroupAssignment}
-          onSelectionCountsChange={setPendingAssignmentsByCommunityId}
-        />
-      )}
+    <PageShell
+      title="Groups"
+      description="Manage member-facing groups and their details."
+    >
+      <div className="flex flex-col gap-y-6">
+        {queueLoadFailed && (
+          <p role="alert" className="text-sm text-red-600">
+            {adminRefusalMessage(
+              queueError,
+              "Unable to load members awaiting group assignment. Please try again.",
+            )}
+          </p>
+        )}
+        {membersUndergoingGroupAssignment.length > 0 && (
+          <GroupAssignmentPanel
+            members={membersUndergoingGroupAssignment}
+            onSelectionCountsChange={setPendingAssignmentsByCommunityId}
+          />
+        )}
 
-      <div className="w-full max-w-5xl flex flex-col gap-4">
-        <div className="flex flex-row items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold">Groups</h2>
-            <p className="text-sm text-zinc-500">
-              Manage member-facing groups and their details.
+        <div className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold">All groups</h2>
+          {!loading && !loadError && (
+            <Card style={CardStyle.White}>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-zinc-700">
+                  Unused capacity
+                </p>
+                <p className="text-2xl font-semibold text-zinc-900">
+                  {totalUnusedCapacity}
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {loading ? (
+            <p className="text-sm text-zinc-500">Loading groups…</p>
+          ) : loadError ? (
+            <p role="alert" className="text-sm text-red-600">
+              {loadError}
             </p>
-          </div>
+          ) : sortedCommunities.length ? (
+            <List>
+              {sortedCommunities.map((community) => (
+                <CommunityCard
+                  key={community.id}
+                  community={community}
+                  pendingAssignments={
+                    pendingAssignmentsByCommunityId[community.id] ?? 0
+                  }
+                />
+              ))}
+            </List>
+          ) : (
+            <p className="text-sm text-zinc-500">No groups yet.</p>
+          )}
         </div>
 
-        {!loading && !loadError && (
-          <Card style={CardStyle.White}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-zinc-700">
-                Unused capacity
-              </p>
-              <p className="text-2xl font-semibold text-zinc-900">
-                {totalUnusedCapacity}
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {loading ? (
-          <p className="text-sm text-zinc-500">Loading groups…</p>
-        ) : loadError ? (
-          <p className="text-sm text-red-500">{loadError}</p>
-        ) : sortedCommunities.length ? (
-          <List>
-            {sortedCommunities.map((community) => (
-              <CommunityCard
-                key={community.id}
-                community={community}
-                pendingAssignments={
-                  pendingAssignmentsByCommunityId[community.id] ?? 0
-                }
-              />
-            ))}
-          </List>
-        ) : (
-          <p className="text-sm text-zinc-500">No groups yet.</p>
-        )}
-      </div>
-
-      <Card className="w-full max-w-5xl" style={CardStyle.White}>
-        <p className="font-bold mb-4">Create group</p>
-        <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium text-zinc-700"
-              htmlFor="group-name"
-            >
-              Name
-            </label>
-            <input
-              id="group-name"
-              type="text"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm"
-              value={newCommunity.name}
-              maxLength={COMMUNITY_NAME_MAX_LENGTH}
-              onChange={(event) => {
-                setCreateError(null);
-                setNewCommunity((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }));
-              }}
-              placeholder="Member-visible title"
-            />
-            <CharacterLimitNotice
-              value={newCommunity.name}
-              max={COMMUNITY_NAME_MAX_LENGTH}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium text-zinc-700"
-              htmlFor="group-description"
-            >
-              Description
-            </label>
-            <textarea
-              id="group-description"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
-              value={newCommunity.description}
-              maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-              onChange={(event) => {
-                setCreateError(null);
-                setNewCommunity((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }));
-              }}
-              placeholder="What is this group for?"
-            />
-            <CharacterLimitNotice
-              value={newCommunity.description}
-              max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-            />
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-            <div className="flex flex-col gap-y-3">
-              <label
-                className="flex items-start gap-x-2 text-sm font-medium text-zinc-700"
-                htmlFor="group-public"
-              >
-                <input
-                  id="group-public"
-                  type="checkbox"
-                  checked={newCommunity.public}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    setCreateError(null);
-                    setNewCommunity((prev) => ({
-                      ...prev,
-                      public: checked,
-                      allowMemberInvites: true,
-                      allowStaffAssignments: true,
-                    }));
-                  }}
-                  className="mt-1"
-                />
-                <div>
-                  <p className="text-base font-medium">
-                    {groupSettings.public.name}
-                  </p>
-                  <p className="text-sm text-zinc-500 font-normal">
-                    {groupSettings.public.explanation}
-                  </p>
-                </div>
-              </label>
-              <label
-                className="flex items-start gap-x-2 text-sm font-medium text-zinc-700"
-                htmlFor="member-invites"
-              >
-                <input
-                  id="member-invites"
-                  type="checkbox"
-                  checked={newCommunity.allowMemberInvites}
-                  onChange={(event) => {
-                    setCreateError(null);
-                    setNewCommunity((prev) => ({
-                      ...prev,
-                      allowMemberInvites: event.target.checked,
-                    }));
-                  }}
-                  disabled={newCommunity.public}
-                  className="mt-1"
-                />
-                <div>
-                  <p className="text-base font-medium">
-                    {groupSettings.allowMemberInvites.name}
-                  </p>
-                  <p className="text-sm text-zinc-500 font-normal">
-                    {groupSettings.allowMemberInvites.explanation}
-                  </p>
-                </div>
-              </label>
-              <label
-                className="flex items-start gap-x-2 text-sm font-medium text-zinc-700"
-                htmlFor="staff-assignments"
-              >
-                <input
-                  id="staff-assignments"
-                  type="checkbox"
-                  checked={newCommunity.allowStaffAssignments}
-                  onChange={(event) => {
-                    setCreateError(null);
-                    setNewCommunity((prev) => ({
-                      ...prev,
-                      allowStaffAssignments: event.target.checked,
-                    }));
-                  }}
-                  disabled={newCommunity.public}
-                  className="mt-1"
-                />
-                <div>
-                  <p className="text-base font-medium">
-                    {groupSettings.allowStaffAssignments.name}
-                  </p>
-                  <p className="text-sm text-zinc-500 font-normal">
-                    {groupSettings.allowStaffAssignments.explanation}
-                  </p>
-                </div>
-              </label>
-            </div>
-            {requiresMaxCapacity && (
-              <div className="mt-4">
-                <label
-                  className="text-black font-medium"
-                  htmlFor="group-capacity"
-                >
-                  <p className="text-base font-medium">
-                    {groupSettings.maxCapacity.name}
-                  </p>
-                  <p className="text-sm text-zinc-500 font-normal">
-                    {groupSettings.maxCapacity.explanation}
-                  </p>
-                </label>
-                <input
-                  id="group-capacity"
-                  type="number"
-                  min={1}
-                  className="mt-2 border border-zinc-300 rounded px-3 py-2 text-sm w-full bg-white"
-                  value={newCommunity.maxCapacity ?? ""}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    const parsed = Number(value);
-                    setCreateError(null);
-                    setNewCommunity((prev) => ({
-                      ...prev,
-                      maxCapacity:
-                        value === "" || Number.isNaN(parsed) ? null : parsed,
-                    }));
-                  }}
-                />
-              </div>
-            )}
-          </div>
-          {createError && <p className="text-sm text-red-500">{createError}</p>}
-          <Button
-            type="submit"
-            color={ButtonColor.Blue}
-            className="self-start"
-            disabled={creating}
+        <Card style={CardStyle.White}>
+          <h2 className="mb-4 text-base font-semibold">Create group</h2>
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={handleCreateCommunity}
           >
-            {creating ? "Creating…" : "Create group"}
-          </Button>
-        </form>
-      </Card>
-    </div>
+            <div className="flex flex-col gap-1">
+              <label
+                className="text-sm font-medium text-zinc-700"
+                htmlFor="group-name"
+              >
+                Name
+              </label>
+              <input
+                id="group-name"
+                type="text"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm"
+                value={newCommunity.name}
+                maxLength={COMMUNITY_NAME_MAX_LENGTH}
+                onChange={(event) => {
+                  setCreateError(null);
+                  setNewCommunity((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }));
+                }}
+                placeholder="Member-visible title"
+              />
+              <CharacterLimitNotice
+                value={newCommunity.name}
+                max={COMMUNITY_NAME_MAX_LENGTH}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label
+                className="text-sm font-medium text-zinc-700"
+                htmlFor="group-description"
+              >
+                Description
+              </label>
+              <textarea
+                id="group-description"
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm min-h-[80px]"
+                value={newCommunity.description}
+                maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
+                onChange={(event) => {
+                  setCreateError(null);
+                  setNewCommunity((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }));
+                }}
+                placeholder="What is this group for?"
+              />
+              <CharacterLimitNotice
+                value={newCommunity.description}
+                max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
+              />
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+              <div className="flex flex-col gap-y-3">
+                <label
+                  className="flex items-start gap-x-2 text-sm font-medium text-zinc-700"
+                  htmlFor="group-public"
+                >
+                  <input
+                    id="group-public"
+                    type="checkbox"
+                    checked={newCommunity.public}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setCreateError(null);
+                      setNewCommunity((prev) => ({
+                        ...prev,
+                        public: checked,
+                        allowMemberInvites: true,
+                        allowStaffAssignments: true,
+                      }));
+                    }}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-base font-medium">
+                      {groupSettings.public.name}
+                    </p>
+                    <p className="text-sm text-zinc-500 font-normal">
+                      {groupSettings.public.explanation}
+                    </p>
+                  </div>
+                </label>
+                <label
+                  className="flex items-start gap-x-2 text-sm font-medium text-zinc-700"
+                  htmlFor="member-invites"
+                >
+                  <input
+                    id="member-invites"
+                    type="checkbox"
+                    checked={newCommunity.allowMemberInvites}
+                    onChange={(event) => {
+                      setCreateError(null);
+                      setNewCommunity((prev) => ({
+                        ...prev,
+                        allowMemberInvites: event.target.checked,
+                      }));
+                    }}
+                    disabled={newCommunity.public}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-base font-medium">
+                      {groupSettings.allowMemberInvites.name}
+                    </p>
+                    <p className="text-sm text-zinc-500 font-normal">
+                      {groupSettings.allowMemberInvites.explanation}
+                    </p>
+                  </div>
+                </label>
+                <label
+                  className="flex items-start gap-x-2 text-sm font-medium text-zinc-700"
+                  htmlFor="staff-assignments"
+                >
+                  <input
+                    id="staff-assignments"
+                    type="checkbox"
+                    checked={newCommunity.allowStaffAssignments}
+                    onChange={(event) => {
+                      setCreateError(null);
+                      setNewCommunity((prev) => ({
+                        ...prev,
+                        allowStaffAssignments: event.target.checked,
+                      }));
+                    }}
+                    disabled={newCommunity.public}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-base font-medium">
+                      {groupSettings.allowStaffAssignments.name}
+                    </p>
+                    <p className="text-sm text-zinc-500 font-normal">
+                      {groupSettings.allowStaffAssignments.explanation}
+                    </p>
+                  </div>
+                </label>
+              </div>
+              {requiresMaxCapacity && (
+                <div className="mt-4">
+                  <label
+                    className="text-black font-medium"
+                    htmlFor="group-capacity"
+                  >
+                    <p className="text-base font-medium">
+                      {groupSettings.maxCapacity.name}
+                    </p>
+                    <p className="text-sm text-zinc-500 font-normal">
+                      {groupSettings.maxCapacity.explanation}
+                    </p>
+                  </label>
+                  <input
+                    id="group-capacity"
+                    type="number"
+                    min={1}
+                    className="mt-2 border border-zinc-300 rounded-md px-3 py-2 text-sm w-full bg-white"
+                    value={newCommunity.maxCapacity ?? ""}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      const parsed = Number(value);
+                      setCreateError(null);
+                      setNewCommunity((prev) => ({
+                        ...prev,
+                        maxCapacity:
+                          value === "" || Number.isNaN(parsed) ? null : parsed,
+                      }));
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            {createError && (
+              <p role="alert" className="text-sm text-red-600">
+                {createError}
+              </p>
+            )}
+            <Button
+              type="submit"
+              color={ButtonColor.Blue}
+              className="self-start"
+              disabled={creating}
+            >
+              {creating ? "Creating…" : "Create group"}
+            </Button>
+          </form>
+        </Card>
+      </div>
+    </PageShell>
   );
 };
 

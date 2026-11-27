@@ -345,10 +345,10 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
   }, [assignmentPreview, assignGroups]);
 
   return (
-    <Card className="w-full max-w-5xl" style={CardStyle.White}>
+    <Card className="w-full" style={CardStyle.White}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-2xl font-semibold">Group assignment</h2>
+          <h2 className="text-base font-semibold">Group assignment</h2>
           <Button
             type="button"
             color={ButtonColor.Green}
@@ -361,7 +361,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         </div>
 
         {communitiesLoadFailed && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-red-600">
             {adminRefusalMessage(
               communitiesError,
               "Unable to load groups. Please try again.",
@@ -369,7 +369,9 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           </p>
         )}
         {submissionError && (
-          <p className="text-sm text-red-500">{submissionError}</p>
+          <p role="alert" className="text-sm text-red-600">
+            {submissionError}
+          </p>
         )}
         {showValidationError && !hasSelections && (
           <p className="text-sm text-amber-600">

@@ -4,14 +4,17 @@ import type React from "react";
 import { zIndex } from "./zIndex";
 
 type Align = NonNullable<React.ComponentProps<typeof Menu.Positioner>["align"]>;
+type Side = NonNullable<React.ComponentProps<typeof Menu.Positioner>["side"]>;
 
 function DropdownMenuContent({
   align = "start",
+  side,
   sideOffset = 4,
   className,
   ...props
 }: Menu.Popup.Props & {
   align?: Align;
+  side?: Side;
   sideOffset?: number;
 }) {
   return (
@@ -19,6 +22,7 @@ function DropdownMenuContent({
       <Menu.Positioner
         className={cn(zIndex.popover, "isolate outline-none")}
         align={align}
+        side={side}
         sideOffset={sideOffset}
       >
         <Menu.Popup
